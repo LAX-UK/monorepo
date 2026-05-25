@@ -62,7 +62,28 @@ describe("role policy (staff | client)", () => {
     expect(staffRoleDefaultDestination("staff", "catalogue_manager")).toBe("/admin/lots");
     expect(staffRoleDefaultDestination("staff", "specialist")).toBe("/admin/submissions");
     expect(staffRoleDefaultDestination("staff", "staff_viewer")).toBe("/admin/legal-entities");
+    expect(staffRoleDefaultDestination("staff", "content_marketing")).toBe("/admin/artists");
+    expect(staffRoleDefaultDestination("staff", "support_concierge")).toBe("/admin/legal-entities");
+    expect(staffRoleDefaultDestination("staff", null)).toBe("/admin");
     expect(staffRoleDefaultDestination("client", null)).toBe("/dashboard");
+  });
+
+  it("staffRoleDefaultDestination never returns /dashboard for staff", () => {
+    const staffRoles: (UserStaffRole | null)[] = [
+      "super_admin",
+      "finance_ops",
+      "auction_manager",
+      "catalogue_manager",
+      "specialist",
+      "operations_fulfilment",
+      "content_marketing",
+      "support_concierge",
+      "staff_viewer",
+      null,
+    ];
+    for (const sr of staffRoles) {
+      expect(staffRoleDefaultDestination("staff", sr)).not.toBe("/dashboard");
+    }
   });
 
   it("enumerates staff_role vs capability matrix (non–super_admin)", () => {

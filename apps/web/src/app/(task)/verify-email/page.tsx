@@ -37,13 +37,6 @@ export default async function VerifyEmailPage({
 
   const sessionUser = await getServerSessionUser();
 
-  if (!error && sessionUser?.id) {
-    const consumed = await tryConsumePendingInviteAfterVerify(queryInvite);
-    if (consumed) {
-      redirect(consumed.redirectTo);
-    }
-  }
-
   const destination = resolvePostVerifyDestination({
     requestedNext: queryNext,
     queryPersona,
@@ -75,6 +68,37 @@ export default async function VerifyEmailPage({
         </AuthLayout>
       </main>
     );
+  }
+
+  const verified = sessionUser?.emailVerified === true;
+
+  if (!verified) {
+    return (
+      <main id="main-content">
+        <AuthLayout
+          chrome="task"
+          title="Verify your email"
+          description="Open the verification link we sent to your inbox to finish setting up your account."
+        >
+          <div className="flex flex-col gap-6">
+            {email ? (
+              <VerifyPendingActions email={email} {...(queryNext ? { next: queryNext } : {})} />
+            ) : (
+              <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
+                <Link href="/login">Return to sign in</Link>
+              </Button>
+            )}
+          </div>
+        </AuthLayout>
+      </main>
+    );
+  }
+
+  if (sessionUser?.id) {
+    const consumed = await tryConsumePendingInviteAfterVerify(queryInvite);
+    if (consumed) {
+      redirect(consumed.redirectTo);
+    }
   }
 
   return (

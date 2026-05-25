@@ -14,10 +14,11 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; error?: string }>;
 }) {
   const sp = await searchParams;
   const token = typeof sp.token === "string" ? sp.token : "";
+  const linkError = typeof sp.error === "string" ? sp.error : "";
 
   return (
     <main id="main-content">
@@ -32,7 +33,9 @@ export default async function ResetPasswordPage({
           <div className="flex flex-col gap-6">
             <Alert variant="destructive">
               <AlertDescription>
-                This reset link is missing its token. Request a new password reset link to continue.
+                {linkError
+                  ? "This reset link has expired or has already been used. Request a new password reset link to continue."
+                  : "This reset link is missing its token. Request a new password reset link to continue."}
               </AlertDescription>
             </Alert>
             <Button asChild variant="cta" size="xl" className="font-headline shadow-none">

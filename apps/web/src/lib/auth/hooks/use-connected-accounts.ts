@@ -134,8 +134,9 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
     [state.totalMethods, state.google, state.apple],
   );
 
+  /** @deprecated No settings UI wires this yet; staff users cannot reach client dashboard settings. */
   const linkSocial = useCallback<UseConnectedAccountsReturn["linkSocial"]>(async (provider) => {
-    const callbackURL = `${window.location.origin}/dashboard/settings?tab=security&linked=${provider}`;
+    const callbackURL = `${window.location.origin}/dashboard/settings?tab=security`;
     try {
       const client = authClient as unknown as {
         linkSocial: (args: {
@@ -151,6 +152,7 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
     }
   }, []);
 
+  /** @deprecated No settings UI wires this yet. */
   const unlinkAccount = useCallback<UseConnectedAccountsReturn["unlinkAccount"]>(
     async (providerId) => {
       try {

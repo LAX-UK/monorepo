@@ -3,6 +3,8 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export type RequireAuthOptions = {
   isSuspended?: (userId: string) => Promise<boolean>;
+  /** When true, suspended users may proceed (e.g. `/users/me` for routing). */
+  allowSuspended?: boolean;
 };
 
 export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireAuthOptions) {
@@ -13,7 +15,7 @@ export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireA
     if (!user) {
       return c.json({ error: "Unauthorized", code: "session_required" }, 401);
     }
-    if (opts?.isSuspended && (await opts.isSuspended(user.id))) {
+    if (!opts?.allowSuspended && opts?.isSuspended && (await opts.isSuspended(user.id))) {
       return c.json({ error: "Account suspended", code: "account_suspended" }, 403);
     }
     c.set("userId", user.id);

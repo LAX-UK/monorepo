@@ -11,6 +11,7 @@ import { LogoutButton } from "@/components/layout/logout-button";
 import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { socialErrorMessage } from "@/lib/auth/social-error-message";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -36,7 +37,13 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     onTurnstileExpire,
   } = useSignInController(next);
   const socialError =
-    searchParams.get("social_error") === "1" ? "Could not sign in with that provider." : null;
+    searchParams.get("social_error") === "1"
+      ? socialErrorMessage(searchParams.get("reason"))
+      : null;
+  const verifyPending =
+    searchParams.get("verify_pending") === "1"
+      ? "Please check your inbox to finish verifying your email."
+      : null;
   const sessionExpired =
     searchParams.get("session_expired") === "1"
       ? "Your session expired or could not be restored. Please sign in again."
@@ -48,7 +55,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     let mutated = false;
-    for (const key of ["session_expired", "auth", "social_error"]) {
+    for (const key of ["session_expired", "auth", "social_error", "reason", "verify_pending"]) {
       if (params.has(key)) {
         params.delete(key);
         mutated = true;
@@ -95,7 +102,23 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             size="lg"
             className="font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
           >
-            <Link href="/dashboard">Continue to dashboard</Link>
+            <Link
+              href={resolvePostAuthDestination({
+                user: {
+                  email: user.email,
+                  role: user.role,
+                  staffRole: user.staffRole ?? null,
+                  emailVerified: user.emailVerified ?? false,
+                  suspended: user.suspended ?? false,
+                },
+                requestedNext: next,
+                context: "redirect-if-authed",
+                requireEmailVerification: false,
+                withWelcomeBack: true,
+              })}
+            >
+              Continue to dashboard
+            </Link>
           </Button>
           <LogoutButton className="min-h-11 rounded-md border border-outline-variant/30 px-4 py-2 text-center font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-high" />
         </div>
@@ -170,6 +193,14 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
         <p className="rounded-sm border border-brand-300 bg-surface-container-low px-4 py-3 font-footer-links text-sm text-brand-500 dark:border-outline-variant dark:bg-surface-container dark:text-on-surface-variant">
           Please sign in to continue.
         </p>
+      ) : null}
+      {verifyPending ? (
+        <output
+          className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"
+          aria-live="polite"
+        >
+          {verifyPending}
+        </output>
       ) : null}
       {sessionExpired ? (
         <output

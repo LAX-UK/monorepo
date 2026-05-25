@@ -1,11 +1,12 @@
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { useSearchParams } from "next/navigation";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockWatch = vi.fn(() => "user@example.com");
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams("next=%2Fdashboard"),
+  useSearchParams: vi.fn(() => new URLSearchParams("next=%2Fdashboard")),
 }));
 
 vi.mock("@/lib/auth/use-app-session", () => ({
@@ -41,6 +42,10 @@ vi.mock("@/components/auth/primitives/password-field", () => ({
 }));
 
 describe("SignInForm", () => {
+  beforeEach(() => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams("next=%2Fdashboard") as never);
+  });
+
   it("forgot password link carries next and email query params", () => {
     render(<SignInForm />);
 
@@ -48,5 +53,13 @@ describe("SignInForm", () => {
       "href",
       "/forgot-password?next=%2Fdashboard&email=user%40example.com",
     );
+  });
+
+  it("shows verify-pending banner when verify_pending=1", () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams("verify_pending=1") as never);
+    render(<SignInForm />);
+    expect(
+      screen.getByText(/please check your inbox to finish verifying your email/i),
+    ).toBeInTheDocument();
   });
 });

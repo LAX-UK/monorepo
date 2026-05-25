@@ -12,8 +12,24 @@ vi.mock("next/headers", () => ({
   })),
 }));
 
-import { resolveEffectiveThemePreference } from "./sync-theme-cookie.server";
-import { THEME_COOKIE_NAME } from "./theme-cookie";
+import {
+  resolveEffectiveThemePreference,
+  resolveThemePreference,
+} from "./sync-theme-cookie.server";
+
+describe("resolveThemePreference", () => {
+  it("returns cookie when present", () => {
+    expect(resolveThemePreference("dark", "system")).toBe("dark");
+  });
+
+  it("falls back to session theme when cookie absent", () => {
+    expect(resolveThemePreference(undefined, "dark")).toBe("dark");
+  });
+
+  it("returns null when both absent", () => {
+    expect(resolveThemePreference(undefined, undefined)).toBeNull();
+  });
+});
 
 describe("resolveEffectiveThemePreference", () => {
   beforeEach(() => {
@@ -21,22 +37,18 @@ describe("resolveEffectiveThemePreference", () => {
     mockSet.mockReset();
   });
 
-  it("returns cookie when present and does not overwrite", async () => {
+  it("returns cookie when present and does not write cookies", async () => {
     mockGet.mockReturnValue({ value: "dark" });
 
     await expect(resolveEffectiveThemePreference("system")).resolves.toBe("dark");
     expect(mockSet).not.toHaveBeenCalled();
   });
 
-  it("seeds cookie from profile when absent", async () => {
+  it("returns profile theme when cookie absent without writing cookies", async () => {
     mockGet.mockReturnValue(undefined);
 
     await expect(resolveEffectiveThemePreference("dark")).resolves.toBe("dark");
-    expect(mockSet).toHaveBeenCalledWith(THEME_COOKIE_NAME, "dark", {
-      path: "/",
-      maxAge: expect.any(Number),
-      sameSite: "lax",
-    });
+    expect(mockSet).not.toHaveBeenCalled();
   });
 
   it("returns null when cookie and profile are absent", async () => {

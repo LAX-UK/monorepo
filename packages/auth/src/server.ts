@@ -37,6 +37,7 @@ import {
   buildEmailVerificationBlock,
   buildJwtAndOidcPlugins,
 } from "./server-plugins.js";
+import { assertUserNotSuspendedForSession } from "./session-suspended-guard.js";
 
 export type AuthEnv = {
   db: Database;
@@ -165,6 +166,7 @@ export function createAuth(env: AuthEnv): Auth {
       email: env.email,
       requireEmailVerification: env.requireEmailVerification,
       revokeAllSessions: env.revokeAllSessions,
+      webOrigin: env.webOrigin,
     }),
     emailVerification: buildEmailVerificationBlock(env.email),
     databaseHooks: {
@@ -205,6 +207,9 @@ export function createAuth(env: AuthEnv): Auth {
       },
       session: {
         create: {
+          before: async (sess) => {
+            await assertUserNotSuspendedForSession(env.db, sess.userId);
+          },
           after: async (sess) => {
             if (!env.enableNewDeviceLoginEmail) return;
             // Count all sessions for this user (the new one is already committed).
