@@ -19,10 +19,8 @@ vi.mock("@/hooks/use-is-md", () => ({
   useIsMd: () => false,
 }));
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => ({ data: null, isPending: false }),
-  },
+vi.mock("@/lib/auth/use-app-session", () => ({
+  useAppSession: () => ({ user: null, pending: false }),
 }));
 
 vi.mock("@/lib/analytics/events", () => ({

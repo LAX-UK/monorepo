@@ -1,7 +1,7 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
 import { regenerateBackupCodesService } from "@/lib/auth/services/regenerate-backup-codes.service";
+import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { notify } from "@/lib/ui/notify";
 import { regenerateBackupCodesFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 export function useRegenerateBackupCodesController(onNewCodes: (codes: string[]) => void) {
-  const session = authClient.useSession();
+  const refetchSession = useRefetchAppSession();
   const [busy, setBusy] = useState(false);
   const form = useForm({
     resolver: zodResolver(regenerateBackupCodesFormSchema),
@@ -26,7 +26,7 @@ export function useRegenerateBackupCodesController(onNewCodes: (codes: string[])
       notify.error(r.message);
       return;
     }
-    await session.refetch({ query: { disableCookieCache: true } });
+    await refetchSession();
     form.reset();
     onNewCodes(r.backupCodes);
     notify.success("New backup codes generated", {

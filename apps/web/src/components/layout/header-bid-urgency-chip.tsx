@@ -1,6 +1,6 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
+import { useAppSession } from "@/lib/auth/use-app-session";
 import { cn } from "@auction/ui";
 import { Clock } from "lucide-react";
 import Link from "next/link";
@@ -8,11 +8,11 @@ import { useEffect, useState } from "react";
 
 /** Signed-in header chip linking to bids closing within 24 hours. */
 export function HeaderBidUrgencyChip({ className }: { className?: string }) {
-  const session = authClient.useSession();
+  const { user } = useAppSession();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!session.data?.user) {
+    if (!user) {
       setCount(0);
       return;
     }
@@ -28,9 +28,9 @@ export function HeaderBidUrgencyChip({ className }: { className?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [session.data?.user]);
+  }, [user]);
 
-  if (!session.data?.user || count <= 0) return null;
+  if (!user || count <= 0) return null;
 
   const label = count === 1 ? "1 lot closing" : `${count > 9 ? "9+" : count} lots closing`;
 

@@ -8,10 +8,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("next=%2Fdashboard"),
 }));
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => ({ data: null, isPending: false }),
-  },
+vi.mock("@/lib/auth/use-app-session", () => ({
+  useAppSession: () => ({ user: null, pending: false }),
 }));
 
 vi.mock("@/lib/auth/hooks/use-sign-in-controller", () => ({
