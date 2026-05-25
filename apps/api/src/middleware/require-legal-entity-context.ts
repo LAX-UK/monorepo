@@ -1,3 +1,4 @@
+import { X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
 import {
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
@@ -13,7 +14,7 @@ import type {
 } from "../services/interfaces/legal-entity-repository.js";
 import { PersonalLegalEntityUnavailableError } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 
-export const X_LEGAL_ENTITY_ID_HEADER = "x-legal-entity-id";
+export { X_LEGAL_ENTITY_ID_HEADER };
 
 type HeaderResolution =
   | { kind: "ok"; membership: ActiveMembership }

@@ -1,12 +1,16 @@
+import { BROWSER_API_CUSTOM_HEADERS, X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { describe, expect, it } from "vitest";
 import { BROWSER_CORS_ALLOW_HEADERS } from "./app.js";
-import { X_LEGAL_ENTITY_ID_HEADER } from "./middleware/require-legal-entity-context.js";
 
 const TEST_ORIGIN = "https://test.lax.bid";
 
 describe("browser CORS", () => {
+  it("allowlist matches shared @auction/http-headers package", () => {
+    expect(BROWSER_CORS_ALLOW_HEADERS).toEqual(BROWSER_API_CUSTOM_HEADERS);
+  });
+
   it("allowlist includes acting legal entity header", () => {
     expect(BROWSER_CORS_ALLOW_HEADERS).toContain(X_LEGAL_ENTITY_ID_HEADER);
   });

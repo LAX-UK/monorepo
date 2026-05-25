@@ -8,7 +8,7 @@ import type { LegalEntitySummary } from "@auction/types";
 export const ACTING_LEGAL_ENTITY_COOKIE = ACTING_LEGAL_ENTITY_COOKIE_NAME;
 
 /** Header name used by the API to validate acting context. */
-export const X_LEGAL_ENTITY_ID_HEADER = "x-legal-entity-id";
+export { X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
 
 /** Re-export of the canonical {@link LegalEntitySummary} so call sites can
  * import a single type without importing from `@auction/types` directly.
