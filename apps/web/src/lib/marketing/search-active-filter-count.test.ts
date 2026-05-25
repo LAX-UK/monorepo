@@ -15,4 +15,14 @@ describe("countSearchActiveFilters", () => {
       }),
     ).toBe(3);
   });
+
+  it("counts status and ending window filters", () => {
+    expect(
+      countSearchActiveFilters({
+        sort: "endingAsc",
+        status: "active",
+        ending: "24h",
+      }),
+    ).toBe(2);
+  });
 });
