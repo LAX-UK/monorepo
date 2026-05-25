@@ -1,6 +1,6 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
+import { useLogout } from "@/lib/auth/use-logout";
 import { useStaleStaffSession } from "@/lib/auth/use-stale-staff-session";
 import { Button } from "@auction/ui/components/button";
 import { usePathname } from "next/navigation";
@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation";
 export function StaleStaffSessionBanner() {
   const stale = useStaleStaffSession();
   const pathname = usePathname();
+  const next = encodeURIComponent(pathname || "/admin");
+  const { logout, pending } = useLogout({ redirectTo: `/login?next=${next}` });
 
   if (!stale) return null;
 
@@ -26,12 +28,8 @@ export function StaleStaffSessionBanner() {
         variant="outline"
         size="sm"
         className="mt-3"
-        onClick={() => {
-          void authClient.signOut().then(() => {
-            const next = encodeURIComponent(pathname || "/admin");
-            window.location.href = `/login?next=${next}`;
-          });
-        }}
+        disabled={pending}
+        onClick={() => void logout()}
       >
         Sign out and back in
       </Button>

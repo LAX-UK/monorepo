@@ -3,12 +3,14 @@ import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { HeaderAuthChip } from "./header-auth-chip";
 
-const useSessionMock = vi.fn();
+const useAppSessionMock = vi.fn();
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => useSessionMock(),
-  },
+vi.mock("@/lib/auth/use-app-session", () => ({
+  useAppSession: () => useAppSessionMock(),
+}));
+
+vi.mock("@/lib/auth/use-refetch-app-session", () => ({
+  useRefetchAppSession: () => vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -48,19 +50,17 @@ vi.mock("./notification-bell", () => ({
   NotificationBell: () => <button type="button">Notifications</button>,
 }));
 
-function sessionState(user: unknown, isPending = false) {
-  return {
-    data: user ? { user } : null,
-    isPending,
-    isRefetching: false,
-    error: null,
-    refetch: vi.fn(),
-  };
-}
+const clientUser = {
+  id: "user-1",
+  email: "client@example.com",
+  name: "Client User",
+  role: "client" as const,
+  image: null,
+};
 
 describe("HeaderAuthChip", () => {
   it("renders a loading skeleton while the session resolves", () => {
-    useSessionMock.mockReturnValue(sessionState(null, true));
+    useAppSessionMock.mockReturnValue({ user: null, pending: true });
 
     render(<HeaderAuthChip variant="account" />);
 
@@ -68,23 +68,15 @@ describe("HeaderAuthChip", () => {
   });
 
   it("renders the login pill when signed out", () => {
-    useSessionMock.mockReturnValue(sessionState(null));
+    useAppSessionMock.mockReturnValue({ user: null, pending: false });
 
     render(<HeaderAuthChip variant="account" />);
 
     expect(screen.getByRole("link", { name: /log in/i })).toHaveAttribute("href", "/login");
   });
 
-  it("renders the account menu and role pill when signed in", () => {
-    useSessionMock.mockReturnValue(
-      sessionState({
-        id: "user-1",
-        email: "client@example.com",
-        name: "Client User",
-        image: null,
-        role: "client",
-      }),
-    );
+  it("renders the account menu from SSR fallback without waiting on client session", () => {
+    useAppSessionMock.mockReturnValue({ user: clientUser, pending: false });
 
     render(<HeaderAuthChip variant="account" />);
 
