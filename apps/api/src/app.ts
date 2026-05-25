@@ -20,6 +20,7 @@ import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
 import { requirePlatformAdmin } from "./middleware/require-capability.js";
+import { X_LEGAL_ENTITY_ID_HEADER } from "./middleware/require-legal-entity-context.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
@@ -54,6 +55,17 @@ import { createVeriffWebhookRoutes } from "./routes/webhooks/veriff.js";
 import { createWellKnownRoutes } from "./routes/well-known.js";
 import { createXeroWebhookRoutes } from "./routes/xero-webhook.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
+
+/** Browser CORS allowlist — keep in sync with `hc-browser` custom headers. */
+export const BROWSER_CORS_ALLOW_HEADERS = [
+  "Content-Type",
+  "Authorization",
+  "Idempotency-Key",
+  "x-lax-consent-marketing",
+  "x-lax-consent-analytics",
+  "x-lax-page-url",
+  X_LEGAL_ENTITY_ID_HEADER,
+] as const;
 
 export function createApp(container: Container, env: Env, authenticator: IAuthenticator) {
   const webOrigins = trustedWebOrigins(env);
@@ -92,14 +104,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     "*",
     cors({
       origin: webOrigins,
-      allowHeaders: [
-        "Content-Type",
-        "Authorization",
-        "Idempotency-Key",
-        "x-lax-consent-marketing",
-        "x-lax-consent-analytics",
-        "x-lax-page-url",
-      ],
+      allowHeaders: [...BROWSER_CORS_ALLOW_HEADERS],
       exposeHeaders: ["Content-Length"],
       maxAge: 600,
       credentials: true,
