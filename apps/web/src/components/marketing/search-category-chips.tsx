@@ -1,7 +1,8 @@
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
+import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import type { Category } from "@auction/types";
+import type { Category, LotStatus } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -11,6 +12,8 @@ export type SearchCategoryChipsProps = {
   trimmed: string;
   sort: string;
   view: CatalogLayoutView;
+  status?: LotStatus;
+  ending?: SearchEndingWindow;
   /** Horizontal strip (toolbar / below bar) or vertical list (filter sheet). */
   layout?: "strip" | "list";
   className?: string;
@@ -30,15 +33,26 @@ export function SearchCategoryChips({
   trimmed,
   sort,
   view,
+  status,
+  ending,
   layout = "strip",
   className,
 }: SearchCategoryChipsProps) {
   if (categories.length === 0) return null;
 
+  const qsBase = {
+    offset: 0,
+    q: trimmed,
+    sort,
+    view,
+    ...(status ? { status } : {}),
+    ...(ending ? { ending } : {}),
+  };
+
   const links = (
     <>
       <Link
-        href={`/search?${buildSearchQs({ offset: 0, q: trimmed, sort, view })}`}
+        href={`/search?${buildSearchQs(qsBase)}`}
         scroll={false}
         className={chipClass(!categoryId)}
         aria-current={!categoryId ? "page" : undefined}
@@ -50,7 +64,7 @@ export function SearchCategoryChips({
         return (
           <Link
             key={c.id}
-            href={`/search?${buildSearchQs({ offset: 0, q: trimmed, sort, categoryId: c.id, view })}`}
+            href={`/search?${buildSearchQs({ ...qsBase, categoryId: c.id })}`}
             scroll={false}
             className={chipClass(active)}
             aria-current={active ? "page" : undefined}
