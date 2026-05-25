@@ -1,7 +1,7 @@
 "use client";
 
 import { WatchlistHeart } from "@/components/marketing/watchlist-heart";
-import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { cn } from "@auction/ui";
@@ -47,11 +47,14 @@ export function MarketingWatchlistHeart({
   const positionClass =
     layout === "inline" ? "relative shrink-0" : "pointer-events-auto absolute right-3 top-3 z-10";
 
+  const inFrame = useOverlayToneContext() != null;
   const overlayTone = useOverlayTone("topRight");
-  const overlayShell = overlayIconButtonClasses(
+  const imageAwareShell = overlayIconButtonClasses(
     overlayTone,
     "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)]",
   );
+  const useOverlayChrome = layout === "overlay" || inFrame;
+  const shellClass = useOverlayChrome ? imageAwareShell : inlineHeartShellClass;
   const overlayProps = overlayToneProps(overlayTone);
 
   const onLoginClick = useCallback(
@@ -68,12 +71,8 @@ export function MarketingWatchlistHeart({
       <button
         type="button"
         onClick={onLoginClick}
-        className={cn(
-          layout === "inline" ? inlineHeartShellClass : overlayShell,
-          positionClass,
-          className,
-        )}
-        {...(layout === "overlay" ? overlayProps : {})}
+        className={cn(shellClass, positionClass, className)}
+        {...(useOverlayChrome ? overlayProps : {})}
         aria-label={`Sign in to add ${lotTitle} to your watchlist`}
       >
         <Heart className="size-5 fill-transparent stroke-current" aria-hidden />
@@ -82,7 +81,7 @@ export function MarketingWatchlistHeart({
   }
 
   return (
-    <>
+    <span className="contents">
       <output className="sr-only" aria-live="polite">
         {liveText}
       </output>
@@ -91,13 +90,9 @@ export function MarketingWatchlistHeart({
         onChange={() => void toggle()}
         lotTitle={lotTitle}
         disabled={busy}
-        className={cn(
-          layout === "inline" ? inlineHeartShellClass : overlayShell,
-          positionClass,
-          className,
-        )}
-        {...(layout === "overlay" ? overlayProps : {})}
+        className={cn(shellClass, positionClass, className)}
+        {...(useOverlayChrome ? overlayProps : {})}
       />
-    </>
+    </span>
   );
 }

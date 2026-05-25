@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Printer } from "lucide-react";
 import { useCallback } from "react";
@@ -7,10 +8,11 @@ import { useCallback } from "react";
 type Props = {
   /** "text" matches Figma hero toolbar (no border, uppercase label). */
   appearance?: "default" | "text";
+  className?: string;
 };
 
 /** Thin client wrapper around `window.print()` — kept as its own component (SRP). */
-export function SaleroomPrintButton({ appearance = "default" }: Props) {
+export function SaleroomPrintButton({ appearance = "default", className }: Props) {
   const print = useCallback(() => {
     if (typeof window !== "undefined") window.print();
   }, []);
@@ -21,14 +23,14 @@ export function SaleroomPrintButton({ appearance = "default" }: Props) {
         type="button"
         variant="ghost"
         onClick={print}
-        className="inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface"
+        className={cn(
+          className ??
+            "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface",
+          "hover:bg-transparent hover:text-inherit",
+        )}
         aria-label="Print catalogue"
       >
-        <Printer
-          className="size-5 shrink-0 text-black dark:text-on-surface"
-          strokeWidth={1}
-          aria-hidden
-        />
+        <Printer className="size-5 shrink-0 stroke-current" strokeWidth={1} aria-hidden />
         Print
       </Button>
     );

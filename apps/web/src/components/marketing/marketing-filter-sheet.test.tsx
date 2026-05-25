@@ -2,6 +2,12 @@ import { MarketingFilterSheet } from "@/components/marketing/marketing-filter-sh
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+function clickFirstButton(name: string | RegExp) {
+  const button = screen.getAllByRole("button", { name })[0];
+  if (!button) throw new Error(`Expected button: ${String(name)}`);
+  fireEvent.click(button);
+}
+
 describe("MarketingFilterSheet", () => {
   it("opens from trigger and calls onApply with apply label", () => {
     const onApply = vi.fn();
@@ -17,9 +23,9 @@ describe("MarketingFilterSheet", () => {
       </MarketingFilterSheet>,
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Open filters" })[0]!);
+    clickFirstButton("Open filters");
     expect(screen.getAllByText("Filter body").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByRole("button", { name: "Show 12 results" })[0]!);
+    clickFirstButton("Show 12 results");
     expect(onApply).toHaveBeenCalledTimes(1);
   });
 
@@ -42,7 +48,7 @@ describe("MarketingFilterSheet", () => {
       </MarketingFilterSheet>,
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]!);
+    clickFirstButton("Close");
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 

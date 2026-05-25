@@ -1,5 +1,8 @@
 "use client";
 
+import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
+import type { SlotName } from "@/lib/media/overlay-tone-types";
+import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
 import { Eye } from "lucide-react";
 import { type MouseEvent, useRef } from "react";
@@ -16,6 +19,8 @@ type Props = {
   };
   className?: string;
   layout?: LayoutMode;
+  /** Adaptive tone slot when using overlay chrome (default bottomLeft). */
+  overlaySlot?: SlotName;
   /** Override default aria-label */
   ariaLabel?: string;
 };
@@ -23,18 +28,19 @@ type Props = {
 const inlineShellClass =
   "inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none";
 
-const overlayShellClass =
-  "inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/35 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none";
-
 export function LotQuickLookTrigger({
   vm,
   options,
   className,
   layout = "inline",
+  overlaySlot = "bottomLeft",
   ariaLabel,
 }: Props) {
   const quickLook = useLotQuickLookOptional();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const inFrame = useOverlayToneContext() != null;
+  const overlayTone = useOverlayTone(overlaySlot);
+  const useOverlayChrome = layout === "overlay" || inFrame;
 
   if (!quickLook) return null;
 
@@ -44,7 +50,9 @@ export function LotQuickLookTrigger({
     quickLook?.openQuickLook(vm, options as LotQuickLookOpenOptions, triggerRef);
   }
 
-  const shell = layout === "overlay" ? overlayShellClass : inlineShellClass;
+  const shell = useOverlayChrome
+    ? overlayIconButtonClasses(overlayTone, "size-11 shrink-0")
+    : inlineShellClass;
   const label = ariaLabel ?? `Quick look at ${vm.title}`;
 
   return (
@@ -53,6 +61,7 @@ export function LotQuickLookTrigger({
       type="button"
       onClick={handleClick}
       className={cn(shell, className)}
+      {...(useOverlayChrome ? overlayToneProps(overlayTone) : {})}
       aria-label={label}
     >
       <Eye className="size-5 shrink-0" aria-hidden />

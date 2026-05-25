@@ -131,7 +131,7 @@ export function SaleCardMedia({
   layout = "calendarRow",
   ...rest
 }: SaleCardMediaProps) {
-  const useAdaptiveOverlay = Boolean(rest.isLive && rest.countdownEndIso);
+  const useAdaptiveOverlay = Boolean(rest.coverImageUrl);
 
   return (
     <MediaShell
