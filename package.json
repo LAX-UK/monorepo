@@ -27,7 +27,8 @@
     "jwks:snapshot": "tsx scripts/jwks-snapshot.ts",
     "jwks:restore": "tsx scripts/jwks-restore.ts",
     "gen:apple-secret": "tsx scripts/generate-apple-client-secret.ts",
-    "cost:check": "tsx scripts/check-do-bill.ts"
+    "cost:check": "tsx scripts/check-do-bill.ts",
+    "audit:dark-mode": "tsx apps/web/src/lib/theme/audit-dark-mode.ts"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",

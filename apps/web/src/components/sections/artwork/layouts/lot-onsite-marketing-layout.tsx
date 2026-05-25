@@ -94,7 +94,7 @@ export function LotOnsiteMarketingLayout({
         {auction.title}
       </h1>
       <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-[var(--page-bottom-padding)] pt-6 sm:px-6 md:px-8">
-        <div className="relative overflow-hidden rounded-2xl border border-border-hairline bg-[#0a0a0a] shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-reduce:animate-none">
+        <div className="relative overflow-hidden rounded-2xl border border-border-hairline bg-[#0a0a0a] dark:bg-[#0a0a0a] shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-reduce:animate-none">
           <LotHeroViewTransitionShell
             lotId={auction.id}
             className="relative aspect-[21/9] min-h-[220px] w-full sm:min-h-[280px]"
@@ -113,14 +113,18 @@ export function LotOnsiteMarketingLayout({
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-6 sm:p-10 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl space-y-2">
-                <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-[#D1D1D1]">
+                <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-[#D1D1D1] dark:text-[#D1D1D1]">
                   In-gallery auction
                 </p>
-                <p className="font-body text-lg text-[#E8E8E8] sm:text-xl">{sale.title}</p>
-                <h2 className="font-body text-2xl font-medium text-[#F1F1F3] sm:text-4xl lg:text-[40px] lg:leading-tight">
+                <p className="font-body text-lg text-[#E8E8E8] dark:text-[#E8E8E8] sm:text-xl">
+                  {sale.title}
+                </p>
+                <h2 className="font-body text-2xl font-medium text-[#F1F1F3] dark:text-[#F1F1F3] sm:text-4xl lg:text-[40px] lg:leading-tight">
                   {auction.title}
                 </h2>
-                <p className="font-body text-base text-[#C8C8C8]">{summarySeed.sellerName}</p>
+                <p className="font-body text-base text-[#C8C8C8] dark:text-[#C8C8C8]">
+                  {summarySeed.sellerName}
+                </p>
               </div>
               <div className="shrink-0 rounded-xl bg-black/45 px-4 py-3 backdrop-blur-md sm:px-6">
                 <OnsiteSaleScheduleCountdown sale={sale} />

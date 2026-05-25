@@ -5,16 +5,29 @@ import { ConsentInit } from "@/components/analytics/consent-init";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
 import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
+import { SessionThemeSync } from "@/components/layout/session-theme-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
+import { ThemeSystemListener } from "@/components/layout/theme-system-listener";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
 import { readEffectiveConsentFromCookies } from "@/lib/analytics/consent/server";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
+import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import {
+  resolveSessionThemeSyncProp,
+  shouldFetchSessionForTheme,
+} from "@/lib/preferences/resolve-root-theme.server";
 import { isSsrDarkClass } from "@/lib/preferences/ssr-theme-dark";
-import { THEME_COOKIE_NAME, parseThemeCookie } from "@/lib/preferences/theme-cookie";
+import { resolveEffectiveThemePreference } from "@/lib/preferences/sync-theme-cookie.server";
+import {
+  DEFAULT_THEME_PREFERENCE,
+  THEME_COOKIE_NAME,
+  parseThemeCookie,
+} from "@/lib/preferences/theme-cookie";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import { cn } from "@auction/ui";
@@ -74,7 +87,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const nonce = hdrs.get("x-nonce") ?? "";
   const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
   const cookieStore = await cookies();
-  const themePref = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
+  const cookieHeader = hdrs.get("cookie") ?? "";
+  const existingTheme = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
+  const user = shouldFetchSessionForTheme(hasAuthSessionCookie(cookieHeader), existingTheme)
+    ? await getServerSessionUser()
+    : null;
+  const profileTheme = user?.uiPreferences?.theme ?? DEFAULT_THEME_PREFERENCE;
+  const themePref =
+    existingTheme ?? (await resolveEffectiveThemePreference(user ? profileTheme : undefined));
   // NOTE: `readEffectiveConsentFromCookies` honours the TEMPORARY pre-launch toggle
   // `NEXT_PUBLIC_DISABLE_CONSENT_BANNER=true` (marketing test only — see disable-banner.ts).
   const consentSnapshot = readEffectiveConsentFromCookies(cookieStore);
@@ -96,6 +116,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <ConsentProvider key={consentProviderKey} initialSnapshot={consentSnapshot}>
           <GtmNoscript analyticsGranted={consentSnapshot?.analytics === true} />
           <BottomChromeSync />
+          <SessionThemeSync
+            theme={resolveSessionThemeSyncProp({
+              user,
+              existingTheme,
+              defaultTheme: DEFAULT_THEME_PREFERENCE,
+            })}
+          />
+          <ThemeSystemListener />
           <script type="application/ld+json" suppressHydrationWarning {...(nonce ? { nonce } : {})}>
             {rootJsonLd}
           </script>
