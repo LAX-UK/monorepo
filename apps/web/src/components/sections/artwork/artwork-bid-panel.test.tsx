@@ -237,6 +237,38 @@ describe("ArtworkBidPanel", () => {
     expect(await screen.findByText(/bid placed successfully/i)).toBeInTheDocument();
   });
 
+  it("recovers from placeBid network failure without stuck submitting state", async () => {
+    placeBidMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(
+      <ArtworkBidPanel
+        auction={lot("other-seller")}
+        initialHistory={[]}
+        sessionUser={{
+          id: "buyer-1",
+          email: "b@b.co",
+          name: "Buyer",
+          role: "client",
+        }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other-artist/other",
+          sellerImageUrl: null,
+        }}
+        initialAutoBidSettings={null}
+        omitPricingHeader
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
+    fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /place bid/i })).not.toBeDisabled();
+  });
+
   it("reuses the same idempotency key for repeated confirm attempts", async () => {
     placeBidMock.mockResolvedValue({
       ok: false,
