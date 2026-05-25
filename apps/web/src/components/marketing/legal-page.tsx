@@ -87,7 +87,7 @@ export function LegalPage({
   return (
     <main
       id="main-content"
-      className="legal-print mx-auto max-w-3xl px-6 pb-24 pt-[var(--section-pt)] md:px-10 lg:pt-32"
+      className="legal-print mx-auto max-w-3xl px-6 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-10 lg:pt-32"
     >
       {content}
     </main>

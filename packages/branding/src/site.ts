@@ -44,6 +44,8 @@ export const SITE_THEME_COLOR_DARK = "#121414";
 export const SITE_LOGO_PATH = "/logo.svg";
 /** Compact mark for narrow chrome (e.g. collapsed dashboard sidebar). */
 export const SITE_LOGO_SHORT_PATH = "/logo-short.svg";
+/** Mark + LAX wordmark without full tagline (e.g. mobile marketing header). */
+export const SITE_LOGO_TEXT_PATH = "/logo-text.svg";
 
 export function siteCopyrightYear(): number {
   return new Date().getFullYear();

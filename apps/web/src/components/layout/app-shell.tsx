@@ -171,7 +171,8 @@ function AppShellFrame({ user, config, children }: Props) {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="left"
-          className="w-[min(100vw-1.5rem,14rem)] max-w-none border-outline-variant bg-surface-container-lowest p-0"
+          overlayClassName="z-[var(--z-overlay,60)]"
+          className="z-[var(--z-overlay,60)] w-[min(100vw-1.5rem,14rem)] max-w-none border-outline-variant bg-surface-container-lowest p-0"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Dashboard navigation</SheetTitle>
@@ -233,7 +234,9 @@ function AppShellFrame({ user, config, children }: Props) {
           id="main-content"
           className={cn(
             "min-h-0 flex-1 scroll-mt-[52px] overflow-y-auto overflow-x-hidden",
-            config.mobileNav.length > 0 && !hideBottomTabBar && "pb-20 lg:pb-0",
+            config.mobileNav.length > 0 &&
+              !hideBottomTabBar &&
+              "pb-[var(--page-bottom-padding)] lg:pb-0",
           )}
         >
           <div

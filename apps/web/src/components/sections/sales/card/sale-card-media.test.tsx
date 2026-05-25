@@ -72,10 +72,24 @@ describe("SaleCardMedia", () => {
     expect(roots[0]).toHaveClass("aspect-[16/10]");
     expect(roots[0]).toHaveClass("shrink-0");
     expect(roots[0]).toHaveClass("max-h-[11rem]");
-    expect(container.querySelector("[data-overlay-resolved]")).toBeNull();
+    expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
   });
 
-  it("non-live path does not use adaptive frame or crossOrigin", () => {
+  it("non-live path without cover image does not use adaptive frame", () => {
+    const { container } = render(
+      <SaleCardMedia
+        href="/sale/1"
+        coverImageUrl={null}
+        coverImageAlt="Scheduled sale"
+        isLive={false}
+        linkMode="area"
+      />,
+    );
+    expect(container.querySelector("[data-overlay-resolved]")).toBeNull();
+    expect(screen.queryByTestId("next-image")).not.toBeInTheDocument();
+  });
+
+  it("uses adaptive frame for scheduled sale cards with cover images", () => {
     const { container } = render(
       <SaleCardMedia
         href="/sale/1"
@@ -85,9 +99,9 @@ describe("SaleCardMedia", () => {
         linkMode="area"
       />,
     );
-    expect(container.querySelector("[data-overlay-resolved]")).toBeNull();
+    expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
     const img = screen.getByTestId("next-image");
-    expect(img).toHaveAttribute("data-crossorigin", "");
+    expect(img).toHaveAttribute("data-crossorigin", "anonymous");
   });
 
   it("shows live region when isLive and countdownEndIso are set", () => {

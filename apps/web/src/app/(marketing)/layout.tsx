@@ -10,12 +10,14 @@ export default async function MarketingLayout({ children }: { children: ReactNod
   const nav = await loadMegaMenuSections();
 
   return (
-    <MarketingLotQuickLookShell>
-      <CommandPaletteLazy variant="marketing" />
-      <SiteHeader user={null} nav={nav} transparentPaths={["/"]} />
-      {children}
+    <>
+      <MarketingLotQuickLookShell>
+        <CommandPaletteLazy variant="marketing" />
+        <SiteHeader user={null} nav={nav} transparentPaths={["/"]} />
+        {children}
+        <AuthRequiredToast />
+      </MarketingLotQuickLookShell>
       <SiteFooter />
-      <AuthRequiredToast />
-    </MarketingLotQuickLookShell>
+    </>
   );
 }

@@ -1,0 +1,58 @@
+"use client";
+
+import type { HeroStateVM } from "@/components/sections/home/home-view-models";
+import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
+import { OverlayToneText } from "@/components/ui/overlay-tone-text";
+import { LiveDot } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import Link from "next/link";
+
+type LiveVm = Extract<HeroStateVM, { kind: "live" }>;
+
+export function LaxHeroLiveOverlayContent({
+  vm,
+  watchOnYoutubeHref,
+}: {
+  vm: LiveVm;
+  watchOnYoutubeHref?: string | undefined;
+}) {
+  return (
+    <div className="relative z-[2] flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
+      <div className="relative flex max-w-[684px] flex-col gap-8 md:gap-14">
+        <div className="flex flex-col gap-6">
+          <LiveIndicatorRow
+            tone="white"
+            progressLabel="Live saleroom"
+            saleLine={vm.saleTitle}
+            announceUpdates
+          />
+          <OverlayToneText className="font-label text-base font-medium leading-6 tracking-normal">
+            {vm.modeLabel}
+          </OverlayToneText>
+          <OverlayToneText
+            as="h1"
+            variant="display"
+            className="font-headline text-4xl font-medium uppercase leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
+          >
+            Live · {vm.saleTitle}
+          </OverlayToneText>
+        </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <Button variant="liveJoin" size="xl" className="min-h-[44px] w-fit" asChild>
+            <Link href={vm.saleroomHref} className="inline-flex items-center justify-center gap-2">
+              <LiveDot className="h-5 w-5" />
+              Open saleroom
+            </Link>
+          </Button>
+          {watchOnYoutubeHref ? (
+            <Button variant="secondary" size="xl" className="min-h-[44px] w-fit" asChild>
+              <a href={watchOnYoutubeHref} target="_blank" rel="noreferrer noopener">
+                Watch on YouTube<span className="sr-only"> (opens in new tab)</span>
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,4 +1,5 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
+import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
 import {
@@ -287,6 +288,7 @@ export default async function ArtworkPage({ params }: PageProps) {
         currency={viewItemCurrency}
         {...(viewItemPriceMinor != null ? { priceMinor: viewItemPriceMinor } : {})}
       />
+      <RecentlyViewedTracker lotId={auction.id} href={lotPath(auction)} title={auction.title} />
       <script
         id={`auction-jsonld-${auction.id}`}
         type="application/ld+json"

@@ -1,5 +1,5 @@
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { AsyncButton } from "@auction/ui/components/loading-button";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type AuthSubmitButtonProps = {
@@ -17,15 +17,17 @@ export function AuthSubmitButton({
   ...rest
 }: AuthSubmitButtonProps) {
   return (
-    <Button
+    <AsyncButton
       type="submit"
       variant="cta"
       size="xl"
-      disabled={disabled ?? loading}
+      loading={loading}
+      {...(loadingLabel !== undefined && typeof loadingLabel === "string" ? { loadingLabel } : {})}
+      disabled={disabled}
       className={cn("font-headline shadow-none", className)}
       {...rest}
     >
-      {loading ? (loadingLabel ?? children) : children}
-    </Button>
+      {children}
+    </AsyncButton>
   );
 }

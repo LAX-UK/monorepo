@@ -222,6 +222,7 @@ import { SaleSoftDeleteService } from "./services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
 import { SaleroomService } from "./services/saleroom.service.js";
+import { SavedSearchService } from "./services/saved-search.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
@@ -288,6 +289,7 @@ export type Container = {
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   userService: UserService;
   watchlistService: WatchlistService;
+  savedSearchService: SavedSearchService;
   artistWatchlistService: ArtistWatchlistService;
   notificationService: NotificationService;
   notificationPreferenceRepository: INotificationPreferenceRepository;
@@ -1004,6 +1006,7 @@ export function createContainer(env: Env): Container {
     },
   );
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
+  const savedSearchService = new SavedSearchService(db);
   // Watchlist now references `artist_profile.id` (post-0046 migration), so the
   // existence check delegates to the artist registry instead of the user table.
   const artistWatchlistService = new ArtistWatchlistService(artistWatchlistRepo, {
@@ -1133,6 +1136,7 @@ export function createContainer(env: Env): Container {
     xeroWebhookEventRepository,
     userService,
     watchlistService,
+    savedSearchService,
     artistWatchlistService,
     notificationService,
     notificationPreferenceRepository,

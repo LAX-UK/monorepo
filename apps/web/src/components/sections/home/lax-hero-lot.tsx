@@ -1,10 +1,14 @@
+"use client";
+
 import { BuyersPremiumChip } from "@/components/marketing/buyers-premium-chip";
 import { MagneticButton } from "@/components/marketing/magnetic-button";
 import type { HeroLotVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
+import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
+import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { RevealOnMount } from "@/components/ui/reveal";
-import { Countdown, DisplayHeading, LabelCaps, LiveDot, StatTile } from "@auction/ui";
+import { Countdown, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -29,14 +33,7 @@ export function LaxHeroLot({ lot }: Props) {
             imgClassName="object-center"
             backdropScrim={
               <>
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(105deg, var(--color-scrim-hero-strong) 0%, var(--color-scrim-hero-soft) 45%, transparent 80%)",
-                  }}
-                  aria-hidden
-                />
+                <HeroHorizontalScrim />
                 <div
                   className="absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-t from-black/50 to-transparent"
                   aria-hidden
@@ -54,34 +51,41 @@ export function LaxHeroLot({ lot }: Props) {
                       saleLine={lot.saleMetaLine}
                       announceUpdates={lot.isAuctionLive}
                     />
-                    <LabelCaps className="text-base font-medium leading-6 tracking-normal text-white">
+                    <OverlayToneText className="font-label text-base font-medium leading-6 tracking-normal">
                       {lot.featuredHeading}
-                    </LabelCaps>
+                    </OverlayToneText>
                   </div>
                   <div className="flex flex-col gap-3">
-                    <DisplayHeading
+                    <OverlayToneText
                       as="h1"
-                      className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
+                      variant="display"
+                      className="font-headline text-4xl font-medium uppercase leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
                     >
                       {lot.title}
-                    </DisplayHeading>
-                    <span className="font-body text-sm font-semibold uppercase leading-4 tracking-[1.8px] text-white/90">
+                    </OverlayToneText>
+                    <OverlayToneText
+                      variant="muted"
+                      className="font-body text-sm font-semibold uppercase leading-4 tracking-[1.8px]"
+                    >
                       {lot.artistName}
-                    </span>
+                    </OverlayToneText>
                   </div>
                   <div className="fade-up-d2 flex flex-row flex-wrap gap-8 md:gap-12">
-                    <StatTile label={lot.priceLabel} value={lot.priceFormatted} tone="white" />
-                    <StatTile label="Current bid" value={lot.currentBidFormatted} tone="white" />
-                    <StatTile label="Bids" value={lot.bidCountDisplay} tone="white" />
+                    <HeroStat label={lot.priceLabel} value={lot.priceFormatted} />
+                    <HeroStat label="Current bid" value={lot.currentBidFormatted} />
+                    <HeroStat label="Bids" value={lot.bidCountDisplay} />
                     {lot.isAuctionLive && lot.endTime ? (
                       <div className="flex min-w-0 flex-col gap-2 border-l-2 border-accent-brand pl-4">
-                        <span className="font-label text-[13px] font-medium uppercase leading-4 text-white/80">
+                        <OverlayToneText
+                          variant="muted"
+                          className="font-label text-[13px] font-medium uppercase leading-4"
+                        >
                           Closes in
-                        </span>
+                        </OverlayToneText>
                         <Countdown
                           end={new Date(lot.endTime)}
                           variant="display"
-                          className="font-headline text-2xl font-normal leading-none tracking-[-0.96px] text-white md:text-[28px]"
+                          className="font-headline text-2xl font-normal leading-none tracking-[-0.96px] text-[color:var(--overlay-fg)] md:text-[28px]"
                         />
                       </div>
                     ) : null}
@@ -124,7 +128,7 @@ export function LaxHeroLot({ lot }: Props) {
                     <Button
                       variant="outline"
                       size="xl"
-                      className="min-h-[44px] min-w-0 border-white/80 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white sm:min-w-[200px] dark:border-white/80"
+                      className="min-h-[44px] min-w-0 border-[color:var(--overlay-border)] bg-transparent text-[color:var(--overlay-fg)] shadow-none hover:bg-[color:var(--overlay-bg)] sm:min-w-[200px]"
                       asChild
                     >
                       <Link
@@ -132,7 +136,7 @@ export function LaxHeroLot({ lot }: Props) {
                         className="inline-flex items-center justify-center gap-[11px]"
                       >
                         View lot
-                        <ArrowRight className="!size-5 shrink-0 text-white" aria-hidden />
+                        <ArrowRight className="!size-5 shrink-0" aria-hidden />
                       </Link>
                     </Button>
                   )}
@@ -142,17 +146,33 @@ export function LaxHeroLot({ lot }: Props) {
                 className="pointer-events-none absolute right-6 top-[calc(var(--header-height)+2.5rem)] hidden flex-col items-end gap-1 lg:flex"
                 aria-hidden
               >
-                <span className="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
+                <OverlayToneText
+                  variant="muted"
+                  className="font-label text-[10px] font-bold uppercase tracking-[0.2em] opacity-60"
+                >
                   Lot
-                </span>
-                <span className="font-artists-serif text-[72px] font-light leading-none text-white/[0.08]">
+                </OverlayToneText>
+                <OverlayToneText className="font-artists-serif text-[72px] font-light leading-none opacity-10">
                   {lotWatermark}
-                </span>
+                </OverlayToneText>
               </div>
             </div>
           </HeroAdaptiveShell>
         </RevealOnMount>
       </div>
     </section>
+  );
+}
+
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <OverlayToneText variant="muted" className="font-label text-[13px] font-medium uppercase">
+        {label}
+      </OverlayToneText>
+      <OverlayToneText className="font-headline text-2xl font-normal leading-none tracking-[-0.96px] md:text-[28px]">
+        {value}
+      </OverlayToneText>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ export default async function SalesIndexLoading() {
   return (
     <main
       id="main-content"
-      className="bg-page-bg pb-24 pt-[var(--header-height)] dark:bg-background"
+      className="bg-page-bg pb-[var(--page-bottom-padding)] pt-[var(--header-height)] dark:bg-background"
       aria-busy="true"
       aria-label="Loading sales"
     >
@@ -71,7 +71,7 @@ export default async function SalesIndexLoading() {
                       ))}
                     </div>
                   </div>
-                  <div className="min-w-0 flex-1 pb-20 lg:max-w-[989px] lg:pb-0 lg:pl-8">
+                  <div className="min-w-0 flex-1 pb-[var(--page-bottom-padding)] lg:max-w-[989px] lg:pb-0 lg:pl-8">
                     {browseIsDenseList ? (
                       <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:gap-4 lg:gap-5">
                         {(["a", "b", "c", "d", "e"] as const).map((k) => (

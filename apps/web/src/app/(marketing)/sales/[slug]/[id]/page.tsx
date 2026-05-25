@@ -279,7 +279,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   return (
     <main
       id="main-content"
-      className="bg-page-bg pb-32 pt-(--section-pt-tight) dark:bg-background lg:pb-24"
+      className="bg-page-bg pb-[var(--page-bottom-padding)] pt-(--section-pt-tight) dark:bg-background lg:pb-24"
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}

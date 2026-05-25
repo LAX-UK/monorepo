@@ -1,7 +1,9 @@
 import { DeferredLiveIframe } from "@/components/sections/home/deferred-live-iframe";
 import type { HeroStateVM } from "@/components/sections/home/home-view-models";
+import { LaxHeroLiveOverlayContent } from "@/components/sections/home/lax-hero-live-overlay-content";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
-import { MediaImage } from "@/components/ui/media-image";
+import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
+import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -49,44 +51,7 @@ function LiveHeroContent({
   vm: LiveVm;
   watchOnYoutubeHref?: string | undefined;
 }) {
-  return (
-    <div className="relative z-[2] flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
-      <div className="relative flex max-w-[684px] flex-col gap-8 md:gap-14">
-        <div className="flex flex-col gap-6">
-          <LiveIndicatorRow
-            tone="white"
-            progressLabel="Live saleroom"
-            saleLine={vm.saleTitle}
-            announceUpdates
-          />
-          <LabelCaps className="text-base font-medium leading-6 tracking-normal text-white">
-            {vm.modeLabel}
-          </LabelCaps>
-          <DisplayHeading
-            as="h1"
-            className="text-4xl font-medium uppercase leading-[120%] tracking-tight text-white md:text-[60px] md:leading-[72px]"
-          >
-            Live · {vm.saleTitle}
-          </DisplayHeading>
-        </div>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Button variant="liveJoin" size="xl" className="min-h-[44px] w-fit" asChild>
-            <Link href={vm.saleroomHref} className="inline-flex items-center justify-center gap-2">
-              <LiveDot className="h-5 w-5" />
-              Open saleroom
-            </Link>
-          </Button>
-          {watchOnYoutubeHref ? (
-            <Button variant="secondary" size="xl" className="min-h-[44px] w-fit" asChild>
-              <a href={watchOnYoutubeHref} target="_blank" rel="noreferrer noopener">
-                Watch on YouTube<span className="sr-only"> (opens in new tab)</span>
-              </a>
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
+  return <LaxHeroLiveOverlayContent vm={vm} watchOnYoutubeHref={watchOnYoutubeHref} />;
 }
 
 /** Twitch / Vimeo / Cloudflare: stacked embed + panel (legacy layout). */
@@ -161,47 +126,35 @@ export function LaxHeroLiveStream({ vm }: Props) {
   return (
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
       <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
-        <div className="absolute inset-0 overflow-hidden bg-black">
-          <RevealOnMount
-            className="absolute inset-0 z-0 hidden overflow-hidden motion-reduce:block"
-            innerClassName="absolute inset-0"
-          >
-            <MediaImage
-              src={poster}
-              alt={`${vm.saleTitle} — saleroom cover`}
-              label="Auction cover"
-              tone="dark"
-              priority
-              imgClassName="object-center"
-              sizes="100vw"
-            />
-          </RevealOnMount>
-          <div className="pointer-events-none absolute inset-0 z-[1] block motion-reduce:hidden">
-            <RevealOnMount
-              className="absolute inset-0 overflow-hidden"
-              innerClassName="absolute inset-0"
-            >
-              <iframe
-                title={`Live auction: ${vm.saleTitle}`}
-                src={bgSrc}
-                className="absolute left-1/2 top-1/2 h-[max(100%,56.25vw)] w-[max(100%,177.78vh)] max-w-none -translate-x-1/2 -translate-y-1/2 border-0"
-                loading="eager"
-                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </RevealOnMount>
-          </div>
-        </div>
-        <div
-          className="absolute inset-0 z-[1]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, var(--color-scrim-hero), var(--color-scrim-hero-mid), transparent)",
-          }}
-          aria-hidden
-        />
-        <LiveHeroContent vm={vm} watchOnYoutubeHref={watchHref} />
+        <HeroAdaptiveShell
+          src={poster}
+          alt={`${vm.saleTitle} — saleroom cover`}
+          priority
+          imgClassName="object-center opacity-0 motion-reduce:opacity-100"
+          backdropScrim={
+            <>
+              <div className="pointer-events-none absolute inset-0 z-[1] block motion-reduce:hidden">
+                <RevealOnMount
+                  className="absolute inset-0 overflow-hidden"
+                  innerClassName="absolute inset-0"
+                >
+                  <iframe
+                    title={`Live auction: ${vm.saleTitle}`}
+                    src={bgSrc}
+                    className="absolute left-1/2 top-1/2 h-[max(100%,56.25vw)] w-[max(100%,177.78vh)] max-w-none -translate-x-1/2 -translate-y-1/2 border-0"
+                    loading="eager"
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </RevealOnMount>
+              </div>
+              <HeroHorizontalScrim />
+            </>
+          }
+        >
+          <LiveHeroContent vm={vm} watchOnYoutubeHref={watchHref} />
+        </HeroAdaptiveShell>
       </div>
     </section>
   );

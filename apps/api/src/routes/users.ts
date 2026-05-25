@@ -19,6 +19,8 @@ import {
   pushSubscriptionBodySchema,
   pushUnsubscribeBodySchema,
   registerBodySchema,
+  savedSearchBodySchema,
+  savedSearchIdParamSchema,
   uiPreferencePatchSchema,
   updateAddressBodySchema,
   updateProfileSchema,
@@ -282,6 +284,41 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       const userId = c.get("userId") as string;
       const { artistId } = c.req.valid("param");
       await container.artistWatchlistService.remove(userId, artistId);
+      return c.body(null, 204);
+    },
+  );
+
+  r.get("/me/saved-searches", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const rows = await container.savedSearchService.list(userId);
+    return c.json({ data: rows });
+  });
+
+  r.post(
+    "/me/saved-searches",
+    requireAuth,
+    zValidator("json", savedSearchBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const row = await container.savedSearchService.create(userId, {
+        label: body.label,
+        query: body.query,
+        notifyEmail: body.notifyEmail,
+      });
+      return c.json({ data: row }, 201);
+    },
+  );
+
+  r.delete(
+    "/me/saved-searches/:id",
+    requireAuth,
+    zValidator("param", savedSearchIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const removed = await container.savedSearchService.remove(userId, id);
+      if (!removed) return c.json({ error: "Not found" }, 404);
       return c.body(null, 204);
     },
   );
