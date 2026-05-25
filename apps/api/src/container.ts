@@ -830,6 +830,7 @@ export function createContainer(env: Env): Container {
         legalEntityRepository,
         invoiceAddressingService,
         errorReporter,
+        redis,
       )
     : new NoOpAccountingProvider();
 
@@ -846,6 +847,7 @@ export function createContainer(env: Env): Container {
         payoutRepository,
         legalEntityRepository,
         errorReporter,
+        redis,
       )
     : null;
 
@@ -862,6 +864,7 @@ export function createContainer(env: Env): Container {
         xeroConnRepo,
         paymentExtRepo,
         errorReporter,
+        redis,
       )
     : null;
 
@@ -1092,6 +1095,9 @@ export function createContainer(env: Env): Container {
     lotService,
     invitationService,
     xeroOAuthService,
+    xeroConnectionRepository: xeroConnRepo,
+    xeroWebhookEventRepository,
+    paymentExternalRefRepository: paymentExtRepo,
     env,
   });
 

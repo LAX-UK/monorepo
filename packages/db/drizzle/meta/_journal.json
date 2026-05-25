@@ -526,6 +526,13 @@
       "when": 1783200000000,
       "tag": "0076_auto_bid_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1783300000000,
+      "tag": "0078_xero_connection_health",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { paymentExternalRef } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type {
   IPaymentExternalRefRepository,
   PaymentExternalRefRow,
@@ -119,5 +119,13 @@ export class DrizzlePaymentExternalRefRepository implements IPaymentExternalRefR
         updatedAt: new Date(),
       })
       .where(eq(paymentExternalRef.paymentId, paymentId));
+  }
+
+  async countSyncErrors(): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(paymentExternalRef)
+      .where(eq(paymentExternalRef.syncStatus, "error"));
+    return row?.count ?? 0;
   }
 }

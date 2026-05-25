@@ -1,4 +1,5 @@
 import type { Lot } from "@auction/types";
+import type { Redis } from "ioredis";
 import {
   Contact,
   Contacts,
@@ -66,6 +67,7 @@ export class XeroAccountingProvider implements IInvoiceAccountingProvider {
     /** when `XERO_USE_LEGAL_ENTITY_CONTACT`, sets Xero `invoiceAddresses` to match email/PDF bill-to. */
     private readonly invoiceAddressing: InvoiceAddressingService | null,
     private readonly errorReporter: IErrorReporter,
+    private readonly redis: Redis,
   ) {}
 
   private async refreshXeroTokensReporting(
@@ -73,7 +75,9 @@ export class XeroAccountingProvider implements IInvoiceAccountingProvider {
     conn: XeroConnectionRow,
   ): Promise<XeroConnectionRow> {
     try {
-      return await refreshXeroTokensIfNeeded(xero, this.connections, conn);
+      return await refreshXeroTokensIfNeeded(xero, this.connections, conn, {
+        redis: this.redis,
+      });
     } catch (cause) {
       this.errorReporter.report({
         severity: "error",
