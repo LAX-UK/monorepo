@@ -1,11 +1,7 @@
 "use client";
 
-import { getBrowserHc } from "@/lib/data/http/hc-browser";
+import { browserApiBase, browserFetch, getBrowserHc } from "@/lib/data/http/hc-browser";
 import { useCallback, useEffect, useState } from "react";
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
 
 export type UseWatchlistToggleArgs = {
   lotId: string;
@@ -54,10 +50,10 @@ export function useWatchlistToggle({
     setWatching(!prev);
     try {
       if (prev) {
-        const res = await fetch(`${apiBase()}/users/me/watchlist/${encodeURIComponent(lotId)}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
+        const res = await browserFetch(
+          `${browserApiBase()}/users/me/watchlist/${encodeURIComponent(lotId)}`,
+          { method: "DELETE" },
+        );
         if (!res.ok) throw new Error("remove_failed");
         setAnnounce("Removed from watchlist");
       } else {

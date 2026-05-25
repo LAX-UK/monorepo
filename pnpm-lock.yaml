@@ -47,6 +47,9 @@ importers:
       '@auction/email':
         specifier: workspace:^
         version: link:../../packages/email
+      '@auction/http-headers':
+        specifier: workspace:*
+        version: link:../../packages/http-headers
       '@auction/marketing-events':
         specifier: workspace:*
         version: link:../../packages/marketing-events
@@ -205,6 +208,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/http-headers':
+        specifier: workspace:*
+        version: link:../../packages/http-headers
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -591,6 +597,18 @@ importers:
       '@types/react':
         specifier: ^19.0.6
         version: 19.2.14
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
+  packages/http-headers:
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
