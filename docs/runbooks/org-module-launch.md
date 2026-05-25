@@ -7,9 +7,10 @@ When disabled:
 - UI shows a friendly **coming soon** page and hides nav / sign-up entry points.
 - Mutations are blocked at the API layer with `403` and code `ORG_MODULE_DISABLED`.
 
-## Implementation commit
+## Implementation commits
 
-Introduced in [`79d4b67a`](https://github.com/LAX-UK/monorepo/commit/79d4b67a) (`feat: hide organisation module on production domain until launch`).
+- [`79d4b67a`](https://github.com/LAX-UK/monorepo/commit/79d4b67a) — `feat: hide organisation module on production domain until launch`
+- [`4b5773ef`](https://github.com/LAX-UK/monorepo/commit/4b5773ef) — `fix(api): route org module gate through container for DIP lint`
 
 ## How the toggle works
 
@@ -79,6 +80,7 @@ flowchart TD
 - `apps/web/src/lib/legal-entity/org-module-enabled.ts`
 - `apps/web/src/lib/legal-entity/org-module-host.server.ts`
 - `apps/api/src/lib/org-module-enabled.ts`
+- `apps/api/src/lib/org-module-gate.ts`
 
 ### Coming-soon UI
 
