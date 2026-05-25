@@ -1,5 +1,6 @@
 "use client";
 
+import { MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -13,6 +14,8 @@ export type MarketingListToolbarProps = {
   trailing?: ReactNode;
   /** Mobile-only filter sheet trigger (`md:hidden`). */
   mobileFilterTrigger?: ReactNode;
+  /** When false, trailing controls stay on the primary row on mobile. */
+  stackTrailingOnMobile?: boolean;
   className?: string;
 };
 
@@ -23,9 +26,10 @@ export function MarketingListToolbar({
   sort,
   trailing,
   mobileFilterTrigger,
+  stackTrailingOnMobile = true,
   className,
 }: MarketingListToolbarProps) {
-  const stackTrailingOnMobile = Boolean(mobileFilterTrigger && trailing);
+  const stackTrailing = stackTrailingOnMobile && Boolean(mobileFilterTrigger && trailing);
   const hideFiltersOnMobile = Boolean(mobileFilterTrigger);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -61,9 +65,14 @@ export function MarketingListToolbar({
           className,
         )}
       >
-        <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 py-2 md:px-8 md:py-3">
+        <div
+          className={cn(
+            "mx-auto max-w-[var(--container-max,1440px)] py-2 md:py-3",
+            MARKETING_CATALOG_GUTTER,
+          )}
+        >
           <div className="flex flex-col gap-2 md:gap-0">
-            <div className="flex h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
+            <div className="flex min-w-0 h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
               {countLabel ? (
                 <p className="max-w-[6rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-[10rem]">
                   {countLabel}
@@ -88,7 +97,7 @@ export function MarketingListToolbar({
                   <div
                     className={cn(
                       "flex shrink-0 items-center gap-2 md:gap-3",
-                      stackTrailingOnMobile && "hidden md:flex",
+                      stackTrailing && "hidden md:flex",
                     )}
                   >
                     {trailing}
@@ -96,7 +105,7 @@ export function MarketingListToolbar({
                 ) : null}
               </div>
             </div>
-            {stackTrailingOnMobile ? (
+            {stackTrailing ? (
               <div
                 data-testid="mobile-trailing-row"
                 className="flex items-center justify-end gap-2 border-t border-border-hairline pt-2 md:hidden"
