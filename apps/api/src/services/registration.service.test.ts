@@ -72,4 +72,62 @@ describe("RegistrationService", () => {
       expect.objectContaining({ persona: "individual" }),
     );
   });
+
+  it("does not consume entity invites at signup", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.invitations.validateForRegistration).mockResolvedValue(
+      ok({
+        targetLegalEntityId: "le-1",
+      } as never),
+    );
+    const svc = new RegistrationService(
+      deps.validator,
+      deps.emailSignup,
+      deps.userProfile,
+      deps.welcome,
+      deps.invitations,
+    );
+
+    await svc.register({
+      firstName: "Inv",
+      lastName: "itee",
+      email: "inv@example.com",
+      password: "supersecret",
+      persona: "individual",
+      inviteToken: "tok",
+    });
+
+    expect(deps.invitations.consumeInviteForNewUser).not.toHaveBeenCalled();
+  });
+
+  it("consumes platform staff invites at signup", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.invitations.validateForRegistration).mockResolvedValue(
+      ok({
+        targetLegalEntityId: null,
+      } as never),
+    );
+    const svc = new RegistrationService(
+      deps.validator,
+      deps.emailSignup,
+      deps.userProfile,
+      deps.welcome,
+      deps.invitations,
+    );
+
+    await svc.register({
+      firstName: "Staff",
+      lastName: "User",
+      email: "staff@example.com",
+      password: "supersecret",
+      persona: "individual",
+      inviteToken: "tok",
+    });
+
+    expect(deps.invitations.consumeInviteForNewUser).toHaveBeenCalledWith(
+      "tok",
+      "user-new",
+      "staff@example.com",
+    );
+  });
 });

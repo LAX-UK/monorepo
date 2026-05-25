@@ -2,7 +2,7 @@
 
 import { authClient } from "@/lib/auth-client";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
-import { buildVerifyEmailCallbackUrl } from "@/lib/auth/verify-email-callback-url";
+import { buildVerifyEmailResendCallbackUrl } from "@/lib/auth/verify-email-resend-callback.server";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useState } from "react";
@@ -16,7 +16,11 @@ export function VerifyPendingActions({ email, next }: { email: string; next?: st
     if (cooldown > 0 || pending) return;
     setPending(true);
     setStatus(null);
-    const callbackURL = buildVerifyEmailCallbackUrl(email, next);
+    const callbackURL = await buildVerifyEmailResendCallbackUrl(
+      email,
+      next,
+      window.location.origin,
+    );
     const { error } = await authClient.sendVerificationEmail({
       email,
       callbackURL,

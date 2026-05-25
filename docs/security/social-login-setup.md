@@ -95,6 +95,7 @@ Apple cannot use `localhost` as a registered web domain. Test Apple on the publi
 Expected database results:
 
 - A social sign-in creates or reuses a `user` row.
-- Better Auth writes an `account` row with `provider_id = 'google'` or `provider_id = 'apple'`.
+- Better Auth writes an `account` row with `provider_id = 'google'` or `provider_id = 'apple'` (via the Better Auth `account` table).
+- `accountLinking.trustedProviders` is `[]` in code — linking requires the provider to assert a verified email (Google does; Apple relay emails link by `sub` only).
 - Existing verified email/password accounts are linked to Google or Apple when the provider returns the same verified email.
 - Apple private relay emails (`@privaterelay.appleid.com`) are not linked to an existing user by email.

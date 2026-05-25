@@ -1,12 +1,12 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
+import { VerifyPendingMissingEmail } from "@/components/auth/verify-pending-missing-email";
 import { redirectIfVerifyPendingNotNeeded } from "@/lib/auth/guards.server";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Verify your email",
@@ -27,7 +27,7 @@ export default async function VerifyPendingPage({
   await redirectIfVerifyPendingNotNeeded();
 
   if (!email) {
-    redirect("/login?verify_pending=1");
+    return <VerifyPendingMissingEmail />;
   }
 
   return (

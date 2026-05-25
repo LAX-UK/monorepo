@@ -53,6 +53,7 @@ export type ProfileMeRow = {
   deletionRequestedAt: Date | null;
   /** TOTP / backup-code 2FA enabled for this account (Better Auth). */
   twoFactorEnabled: boolean;
+  suspended: boolean;
 };
 
 export interface IProfileReader {

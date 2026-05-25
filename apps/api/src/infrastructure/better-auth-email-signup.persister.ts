@@ -12,12 +12,21 @@ export class BetterAuthEmailSignupPersister implements IEmailSignupPersister {
     name: string;
     email: string;
     password: string;
+    persona?: string;
+    inviteToken?: string;
   }): Promise<
     { ok: true; userId: string } | { ok: false; message: string; status?: number | undefined }
   > {
     try {
       const base = this.webOrigin.replace(/\/$/, "");
-      const callbackURL = `${base}/verify-email?email=${encodeURIComponent(input.email)}`;
+      const params = new URLSearchParams({ email: input.email });
+      if (input.persona === "individual" || input.persona === "organisation") {
+        params.set("persona", input.persona);
+      }
+      if (input.inviteToken) {
+        params.set("invite", input.inviteToken);
+      }
+      const callbackURL = `${base}/verify-email?${params.toString()}`;
       const result = await this.auth.api.signUpEmail({
         body: {
           name: input.name,

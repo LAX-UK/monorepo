@@ -11,6 +11,7 @@ export const templateNames = [
   "2fa-disabled",
   "new-device-login",
   "password-changed-elsewhere",
+  "password-changed-sessions-not-revoked",
   "change-email",
   "invite",
   "bid-outbid",
@@ -83,6 +84,10 @@ export type TemplateVarsByName = {
   };
   "password-changed-elsewhere": {
     userName?: string | null;
+  };
+  "password-changed-sessions-not-revoked": {
+    userName?: string | null;
+    sessionsSettingsUrl: string;
   };
   "change-email": {
     confirmationUrl: string;
@@ -259,6 +264,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "2fa-disabled": "live",
   "new-device-login": "live",
   "password-changed-elsewhere": "live",
+  "password-changed-sessions-not-revoked": "live",
   "change-email": "snapshot",
   invite: "live",
   "bid-outbid": "live",
