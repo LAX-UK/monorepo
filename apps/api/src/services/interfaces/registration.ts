@@ -1,4 +1,5 @@
 import type { SignupPersona } from "@auction/validators";
+
 export type { SignupPersona };
 
 export type RegistrationInput = {
@@ -21,6 +22,8 @@ export interface IEmailSignupPersister {
     name: string;
     email: string;
     password: string;
+    persona?: SignupPersona;
+    inviteToken?: string;
   }): Promise<
     { ok: true; userId: string } | { ok: false; message: string; status?: number | undefined }
   >;

@@ -16,6 +16,7 @@ function isApplePrivateRelay(email: string | null | undefined): boolean {
   return Boolean(email?.toLowerCase().endsWith("@privaterelay.appleid.com"));
 }
 
+/** @deprecated Better Auth handles OAuth linking via the `account` table; this service is unused. */
 export class AccountLinkingService {
   constructor(private readonly db: Database) {}
 

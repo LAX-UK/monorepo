@@ -2,6 +2,8 @@
 
 import { authClient } from "@/lib/auth-client";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
+import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
+import { clearPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
 import { notify } from "@/lib/ui/notify";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -29,6 +31,8 @@ export function useLogout(options?: UseLogoutOptions) {
         return;
       }
       await refetchSession();
+      clearClientActingLegalEntityId();
+      await clearPendingEntityInviteAction();
       router.push(redirectTo);
       router.refresh();
     } catch {

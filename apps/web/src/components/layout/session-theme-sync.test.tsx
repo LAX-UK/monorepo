@@ -85,4 +85,26 @@ describe("SessionThemeSync", () => {
     expect(localStorage.getItem("theme")).toBe("dark");
     expect(document.cookie).toContain(`${THEME_COOKIE_NAME}=dark`);
   });
+
+  it("prefers profile theme over default seed (system) from middleware", async () => {
+    document.cookie = `${THEME_COOKIE_NAME}=system`;
+
+    render(<SessionThemeSync theme="dark" />);
+
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains("dark")).toBe(true);
+    });
+    expect(localStorage.getItem("theme")).toBe("dark");
+    expect(document.cookie).toContain(`${THEME_COOKIE_NAME}=dark`);
+  });
+
+  it("applies default seed when no profile theme available", async () => {
+    document.cookie = `${THEME_COOKIE_NAME}=system`;
+
+    render(<SessionThemeSync theme={null} />);
+
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains("dark")).toBe(false);
+    });
+  });
 });

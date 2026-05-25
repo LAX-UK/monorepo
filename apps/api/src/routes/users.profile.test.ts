@@ -22,11 +22,12 @@ function baseProfile(over: Partial<ProfileMeRow> = {}): ProfileMeRow {
     signupPersona: null,
     deletionRequestedAt: null,
     twoFactorEnabled: false,
+    suspended: false,
     ...over,
   };
 }
 
-function appWithGetProfile(row: ProfileMeRow | null) {
+function appWithGetProfile(row: ProfileMeRow | null, opts?: { suspended?: boolean }) {
   const profileService = {
     getProfile: vi.fn().mockResolvedValue(row),
     updateProfile: vi.fn().mockResolvedValue(undefined),
@@ -46,7 +47,9 @@ function appWithGetProfile(row: ProfileMeRow | null) {
       patch: vi.fn(),
       resetLayoutDefaults: vi.fn(),
     },
-    userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+    userSuspensionChecker: {
+      isSuspended: vi.fn().mockResolvedValue(opts?.suspended ?? false),
+    },
     mediaUrlResolver: {
       resolve: vi.fn().mockImplementation((x: string | null) => Promise.resolve(x)),
     },
@@ -93,6 +96,14 @@ describe("GET /users/me", () => {
       density: "comfortable",
       viewSync: false,
     });
+  });
+
+  it("returns suspended true for suspended users instead of 403", async () => {
+    const { app } = appWithGetProfile(baseProfile({ suspended: true }), { suspended: true });
+    const res = await app.request("/users/me");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { suspended: boolean } };
+    expect(body.data.suspended).toBe(true);
   });
 });
 

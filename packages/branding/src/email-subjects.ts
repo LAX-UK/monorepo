@@ -7,5 +7,6 @@ export const emailSubjects = {
   twoFactorDisabled: `Two-factor authentication was turned off — ${SITE_NAME}`,
   newDeviceLogin: `New sign-in to your ${SITE_NAME} account`,
   passwordChangedElsewhere: `Your ${SITE_NAME} password was reset from another session`,
+  passwordChangedSessionsNotRevoked: `Action needed: review active ${SITE_NAME} sessions`,
   kycResubmissionRequired: `Action needed on your ${SITE_NAME} identity verification`,
 } as const;

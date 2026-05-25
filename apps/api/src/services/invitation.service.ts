@@ -162,6 +162,17 @@ export class InvitationService {
     return ok(row);
   }
 
+  /** Read-only invite classification for registration (no state mutation). */
+  async peekForRegistration(
+    token: string,
+    email: string,
+  ): Promise<Result<{ kind: "platform" | "entity" }, InvitationError>> {
+    const validated = await this.validateForRegistration(token, email);
+    if (validated.isErr()) return err(validated.error);
+    const kind = validated.value.targetLegalEntityId == null ? "platform" : "entity";
+    return ok({ kind });
+  }
+
   async consumeInviteForNewUser(
     token: string,
     newUserId: string,

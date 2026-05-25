@@ -64,6 +64,10 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
+  const requireAuthAllowSuspended = createRequireAuth(authenticator, {
+    isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+    allowSuspended: true,
+  });
   const requirePasswordStepUp = createRequireRecentPasswordAuth(
     container,
     PASSWORD_REQUIRED_POLICY,
@@ -806,7 +810,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     },
   );
 
-  r.get("/me", requireAuth, async (c) => {
+  r.get("/me", requireAuthAllowSuspended, async (c) => {
     const userId = c.get("userId") as string;
     const [row, uiPrefs] = await Promise.all([
       container.profileService.getProfile(userId),
@@ -833,6 +837,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         signupPersona: row.signupPersona,
         deletionRequestedAt: row.deletionRequestedAt,
         twoFactorEnabled: row.twoFactorEnabled,
+        suspended: row.suspended,
         uiPreferences: uiPrefs,
       },
     });

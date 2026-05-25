@@ -41,6 +41,11 @@ describe("getAuthPublicCookieRedirectUrl", () => {
     expect(getAuthPublicCookieRedirectUrl(u, "session_token=x")).toBeNull();
   });
 
+  it("bypasses when verify_pending=1", () => {
+    const u = new URL("http://localhost:3000/login?verify_pending=1");
+    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
+  });
+
   it("redirects login with cookie to safe next", () => {
     const u = new URL("http://localhost:3000/login?next=/dashboard/bids");
     const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session=1");
@@ -49,10 +54,11 @@ describe("getAuthPublicCookieRedirectUrl", () => {
     expect(out?.searchParams.get("welcome")).toBe("back");
   });
 
-  it("falls back to dashboard when next is unsafe", () => {
+  it("falls back to post-auth callback when next is unsafe", () => {
     const u = new URL("http://localhost:3000/login?next=//evil.com");
     const out = getAuthPublicCookieRedirectUrl(u, "session_token=x");
-    expect(out?.pathname).toBe("/dashboard");
+    expect(out?.pathname).toBe("/auth/social-callback");
+    expect(out?.searchParams.get("from")).toBeNull();
   });
 });
 

@@ -71,17 +71,30 @@ export function useSignInController(nextHref: string) {
           }),
         );
       } else {
-        const base = isSafeNextPath(nextHref) ? nextHref : "/dashboard";
-        const joiner = base.includes("?") ? "&" : "?";
-        router.push(`${base}${joiner}welcome=back`);
+        router.push(
+          resolvePostAuthDestination({
+            user: {
+              email: "",
+              role: "client",
+              emailVerified: true,
+              suspended: false,
+            },
+            requestedNext: nextHref,
+            context: "sign-in",
+            requireEmailVerification: false,
+            withWelcomeBack: true,
+          }),
+        );
       }
       router.refresh();
       return;
     }
     const maybeUnverified = result.code === "email_not_verified";
     if (maybeUnverified) {
-      const q = isSafeNextPath(nextHref) ? `?next=${encodeURIComponent(nextHref)}` : "";
-      router.push(`/register/verify-pending${q}`);
+      const params = new URLSearchParams({ email: data.email });
+      if (isSafeNextPath(nextHref)) params.set("next", nextHref);
+      const qs = params.toString();
+      router.push(`/register/verify-pending?${qs}`);
       router.refresh();
     }
   });
