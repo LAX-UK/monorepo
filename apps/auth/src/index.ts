@@ -26,7 +26,7 @@ import { trustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
 import { createAuthIssuerRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
-import { ensurePersonalLegalEntity } from "./services/ensure-personal-legal-entity.js";
+import { publishUserRegistered } from "./services/publish-user-registered.js";
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
@@ -83,9 +83,9 @@ const auth = createAuth({
     return rows.length;
   },
   onUserCreated: async (authUser) => {
-    await ensurePersonalLegalEntity(db, {
+    await publishUserRegistered(db, {
       userId: authUser.id,
-      displayName: authUser.name,
+      name: authUser.name,
       email: authUser.email,
     });
   },

@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 import { getTableColumns } from "drizzle-orm";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { API_COLUMN_UPDATE_GRANTS, AUTH_FULL_TABLES } from "./migrate-roles.js";
+import {
+  API_COLUMN_UPDATE_GRANTS,
+  AUTH_FULL_TABLES,
+  AUTH_INSERT_TABLES,
+  WORKER_PROVISIONING_TABLES,
+} from "./migrate-roles.js";
 import { user } from "./schema/auth.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
@@ -315,6 +320,15 @@ async function collectCallSites(): Promise<CallSiteRecord[]> {
 describe("migrate-roles invariants", () => {
   it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {
     expect([...AUTH_FULL_TABLES]).toContain("two_factor");
+  });
+
+  it("AUTH_INSERT_TABLES includes domain_events (auth emits user.registered)", () => {
+    expect([...AUTH_INSERT_TABLES]).toContain("domain_events");
+  });
+
+  it("WORKER_PROVISIONING_TABLES includes legal_entity tables", () => {
+    expect([...WORKER_PROVISIONING_TABLES]).toContain("legal_entity");
+    expect([...WORKER_PROVISIONING_TABLES]).toContain("legal_entity_member");
   });
 });
 
