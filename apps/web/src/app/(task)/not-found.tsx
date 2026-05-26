@@ -1,16 +1,10 @@
 import { AppNotFound } from "@/components/app/app-not-found";
-import { metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { NOT_FOUND_PRESETS } from "@/lib/ui/empty-state-copy";
 
-export const metadata = metadataForNotFound(
-  "Page not found",
-  "The page you requested may have moved or never existed.",
-);
-
-export default function MarketingNotFound() {
-  const preset = NOT_FOUND_PRESETS.marketing;
+export default function TaskNotFound() {
+  const preset = NOT_FOUND_PRESETS.task;
   return (
-    <main id="main-content">
+    <main id="main-content" className="min-h-[50vh] bg-surface">
       <AppNotFound
         kicker={preset.kicker}
         title={preset.title}
@@ -19,10 +13,7 @@ export default function MarketingNotFound() {
         primaryLabel={preset.primaryLabel}
         secondaryHref={preset.secondaryHref}
         secondaryLabel={preset.secondaryLabel}
-        searchHref={preset.searchHref}
-        searchLabel={preset.searchLabel}
         illustration={preset.illustration}
-        siteHeaderOffset
       />
     </main>
   );
