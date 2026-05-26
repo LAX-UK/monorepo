@@ -5,6 +5,7 @@ import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { SubmissionInlineActions } from "@/components/admin/submission-inline-actions";
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
@@ -116,7 +117,13 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
             ariaLabel="Submissions"
             columns={columns}
             data={rows}
-            emptyMessage="No submissions match this filter."
+            emptyComponent={
+              <FilterEmptyState
+                entity="submissions"
+                segment="admin"
+                hasActiveFilters={Boolean(filterForm)}
+              />
+            }
             density={density}
             enableRowSelection
             getRowId={(row) => row.id}

@@ -7,6 +7,8 @@ export function ArtistWorksEmptyState() {
   return (
     <MarketingEmptyState
       variant="panel"
+      context="noResults"
+      illustration="lots"
       title="No public lots yet"
       description={
         <>

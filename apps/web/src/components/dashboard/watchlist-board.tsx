@@ -1,5 +1,6 @@
 "use client";
 
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
@@ -148,7 +149,9 @@ export function WatchlistBoard({
     defaultValues: { q: initialQ },
   });
 
-  const filtered = useMemo(() => filterRows(rows, searchForm.watch("q") ?? ""), [rows, searchForm]);
+  const filterQuery = searchForm.watch("q") ?? "";
+  const filtered = useMemo(() => filterRows(rows, filterQuery), [rows, filterQuery]);
+  const hasActiveFilters = filterQuery.trim().length > 0;
 
   const columns = useMemo(() => watchlistColumns(artistNameById), [artistNameById]);
 
@@ -253,7 +256,16 @@ export function WatchlistBoard({
         <DataTable
           columns={columns}
           data={filtered}
-          emptyMessage="No watched lots match your filter."
+          emptyComponent={
+            <FilterEmptyState
+              entity="watched lots"
+              segment="dashboard"
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={() => searchForm.setValue("q", "")}
+              browseHref="/search"
+              browseLabel="Browse catalogue"
+            />
+          }
           density="compact"
           enableRowSelection
           getRowId={(row) => row.lotId}

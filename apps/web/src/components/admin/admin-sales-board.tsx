@@ -3,6 +3,7 @@
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getSaleBulkOperations } from "@/lib/admin/bulk-ops/sales";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
@@ -149,7 +150,14 @@ export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
             ariaLabel="Sales"
             columns={columns}
             data={rows}
-            emptyMessage="No sales on this page."
+            emptyComponent={
+              <FilterEmptyState
+                entity="sales"
+                segment="admin"
+                hasActiveFilters={Boolean(statusChips)}
+                title="No sales in this view"
+              />
+            }
             density={density}
             enableRowSelection
             getRowId={(r) => r.saleId}
