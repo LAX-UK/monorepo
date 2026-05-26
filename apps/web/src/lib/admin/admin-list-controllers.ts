@@ -39,7 +39,6 @@ import type {
   AdminArtistListRow,
   AdminCategory,
   ItemSubmission,
-  Lot,
   LotStatus,
   PaymentStatus,
   PayoutStatus,
@@ -163,7 +162,10 @@ export type LotsListQuery = AdminListQueryBase & {
   viewPipeline?: boolean | undefined;
 };
 
-export const lotsListController: IAdminListController<Lot, LotsListQuery> = {
+export const lotsListController: IAdminListController<
+  Awaited<ReturnType<typeof getAdminLotList>>[number],
+  LotsListQuery
+> = {
   id: "lots",
   parseQuery(sp) {
     const base = parseListSearchParams(sp);

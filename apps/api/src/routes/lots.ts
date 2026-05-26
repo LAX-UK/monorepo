@@ -1,6 +1,7 @@
 import {
   type CreateLotInput,
   type UserRole,
+  normalizeUserRoleOrClient,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
@@ -96,7 +97,30 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       role,
       staffRole,
     );
-    const withPricing = await lotsWithCheckoutPricing(container, data);
+    const viewerRole = normalizeUserRoleOrClient(role);
+    const staff = normalizeUserStaffRole(staffRole ?? undefined);
+    const canSeeLifecycle =
+      roleHasCapability(viewerRole, "catalogue.write", staff) ||
+      roleHasCapability(viewerRole, "auction.manage", staff);
+    let rows = data;
+    if (canSeeLifecycle && data.length > 0) {
+      const snapshots = await container.lotLifecycleQueryService.getSnapshotsForLots(
+        data.map((l) => l.id),
+      );
+      rows = data.map((lotRow) => {
+        const snap = snapshots.get(lotRow.id);
+        if (!snap) return lotRow;
+        return {
+          ...lotRow,
+          lifecycleSummary: {
+            lastEventType: snap.lastEventType,
+            lastEventAt: snap.lastEventAt.toISOString(),
+            returnCount: snap.returnCount,
+          },
+        };
+      });
+    }
+    const withPricing = await lotsWithCheckoutPricing(container, rows);
     return c.json({ data: withPricing });
   });
 

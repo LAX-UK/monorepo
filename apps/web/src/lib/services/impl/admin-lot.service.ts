@@ -5,6 +5,7 @@ import type {
   CancelLotBody,
   CreateLotInput,
   IAdminLotService,
+  ReturnLotToInventoryBody,
   UpdateLotInput,
   UpdateLotMarketingDetailsInput,
 } from "../interfaces/admin-lot-service";
@@ -74,5 +75,19 @@ export class AdminLotService implements IAdminLotService {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+  }
+
+  async returnToInventory(
+    id: string,
+    body: ReturnLotToInventoryBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/admin/lots/${encodeURIComponent(id)}/return-to-inventory`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
   }
 }

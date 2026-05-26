@@ -5,6 +5,7 @@
  *
  * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed:dev
  * Same password for every seeded account (email/password sign-in).
+ * Admin login: admin@lax.bid / Password123!
  */
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "@better-auth/utils/password";
@@ -18,48 +19,62 @@ const { Pool } = pg;
 /** One password for all seeded accounts — safe for local/staging only. */
 const SEED_PASSWORD = "Password123!";
 
-// ─── Original user IDs ────────────────────────────────────────────────────────
-const ADMIN_ID = "admin-seed-001";
-const ACCOUNTANT_ID = "accountant-seed-001";
-const USER1_ID = "user-seed-001";
-const USER2_ID = "user-seed-002";
-const GOOGLE_TEST_ID = "user-seed-google";
-const APPLE_TEST_ID = "user-seed-apple";
-const GALLERY_ADMIN_ID = "gallery-admin-seed-001";
-const GALLERY_FINANCE_ID = "gallery-finance-seed-001";
+// ─── Seeded user IDs (stable UUIDs — required where APIs/validators expect uuid) ─
+const U = {
+  admin: "90000000-0000-4000-8000-000000000001",
+  accountant: "90000000-0000-4000-8000-000000000002",
+  user1: "90000000-0000-4000-8000-000000000003",
+  user2: "90000000-0000-4000-8000-000000000004",
+  googleTest: "90000000-0000-4000-8000-000000000005",
+  appleTest: "90000000-0000-4000-8000-000000000006",
+  galleryAdmin: "90000000-0000-4000-8000-000000000007",
+  galleryFinance: "90000000-0000-4000-8000-000000000008",
+  suspended: "90000000-0000-4000-8000-000000000009",
+  unverified: "90000000-0000-4000-8000-000000000010",
+  bounced: "90000000-0000-4000-8000-000000000011",
+  kycPending: "90000000-0000-4000-8000-000000000012",
+  kycRejected: "90000000-0000-4000-8000-000000000013",
+  estateOwner: "90000000-0000-4000-8000-000000000014",
+  companyOwner: "90000000-0000-4000-8000-000000000015",
+  consignor: "90000000-0000-4000-8000-000000000016",
+  buyerAgent: "90000000-0000-4000-8000-000000000017",
+  viewer: "90000000-0000-4000-8000-000000000018",
+  specialist: "90000000-0000-4000-8000-000000000019",
+  staffAuctionMgr: "90000000-0000-4000-8000-000000000020",
+  staffCatalogueMgr: "90000000-0000-4000-8000-000000000021",
+  staffPlatformSpecialist: "90000000-0000-4000-8000-000000000022",
+  staffOpsFulfilment: "90000000-0000-4000-8000-000000000023",
+  staffContentMarketing: "90000000-0000-4000-8000-000000000024",
+  staffSupportConcierge: "90000000-0000-4000-8000-000000000025",
+  staffStaffViewer: "90000000-0000-4000-8000-000000000026",
+} as const;
 
-// ─── Extended user IDs ────────────────────────────────────────────────────────
-/** Platform role: client | Suspended user — email verified, KYC approved, account suspended. */
-const SUSPENDED_ID = "user-seed-suspended";
-/** Platform role: client | New registrant — email NOT yet verified, KYC unverified. */
-const UNVERIFIED_ID = "user-seed-unverified";
-/** Platform role: client | emailStatus=bounced — delivery hard-failed after prior verification. */
-const BOUNCED_ID = "user-seed-bounced";
-/** Platform role: client | KYC in progress — Stripe Identity session is processing. */
-const KYC_PENDING_ID = "user-seed-kyc-pending";
-/** Platform role: client | KYC hard-rejected by Stripe Identity. */
-const KYC_REJECTED_ID = "user-seed-kyc-rejected";
-/** Platform role: client | Owns an estate organisation. */
-const ESTATE_OWNER_ID = "user-seed-estate-owner";
-/** Platform role: client | Owns company, charity, institution, and other-subkind organisations. */
-const COMPANY_OWNER_ID = "user-seed-company-owner";
-/** Platform role: client | consignor seat in Northbank Gallery + staff seat in the estate. */
-const CONSIGNOR_ID = "user-seed-consignor";
-/** Platform role: client | buyer_agent seat in the otherRestricted entity. */
-const BUYER_AGENT_ID = "user-seed-buyer-agent";
-/** Platform role: client | viewer seat in Northbank Gallery. */
-const VIEWER_ID = "user-seed-viewer";
-/** Platform role: client | LAX specialist invited into Northbank Gallery (opt-in by gallery). */
-const SPECIALIST_ID = "user-seed-specialist";
-
-/** Platform staff — one login per remaining `user_staff_role` (super_admin + finance_ops seeded above). */
-const STAFF_AUCTION_MGR_ID = "staff-seed-auction-mgr";
-const STAFF_CATALOGUE_MGR_ID = "staff-seed-catalogue-mgr";
-const STAFF_PLATFORM_SPECIALIST_ID = "staff-seed-platform-specialist";
-const STAFF_OPS_FULFILMENT_ID = "staff-seed-ops-fulfilment";
-const STAFF_CONTENT_MARKETING_ID = "staff-seed-content-marketing";
-const STAFF_SUPPORT_CONCIERGE_ID = "staff-seed-support-concierge";
-const STAFF_VIEWER_PLATFORM_ID = "staff-seed-staff-viewer";
+const ADMIN_ID = U.admin;
+const ACCOUNTANT_ID = U.accountant;
+const USER1_ID = U.user1;
+const USER2_ID = U.user2;
+const GOOGLE_TEST_ID = U.googleTest;
+const APPLE_TEST_ID = U.appleTest;
+const GALLERY_ADMIN_ID = U.galleryAdmin;
+const GALLERY_FINANCE_ID = U.galleryFinance;
+const SUSPENDED_ID = U.suspended;
+const UNVERIFIED_ID = U.unverified;
+const BOUNCED_ID = U.bounced;
+const KYC_PENDING_ID = U.kycPending;
+const KYC_REJECTED_ID = U.kycRejected;
+const ESTATE_OWNER_ID = U.estateOwner;
+const COMPANY_OWNER_ID = U.companyOwner;
+const CONSIGNOR_ID = U.consignor;
+const BUYER_AGENT_ID = U.buyerAgent;
+const VIEWER_ID = U.viewer;
+const SPECIALIST_ID = U.specialist;
+const STAFF_AUCTION_MGR_ID = U.staffAuctionMgr;
+const STAFF_CATALOGUE_MGR_ID = U.staffCatalogueMgr;
+const STAFF_PLATFORM_SPECIALIST_ID = U.staffPlatformSpecialist;
+const STAFF_OPS_FULFILMENT_ID = U.staffOpsFulfilment;
+const STAFF_CONTENT_MARKETING_ID = U.staffContentMarketing;
+const STAFF_SUPPORT_CONCIERGE_ID = U.staffSupportConcierge;
+const STAFF_VIEWER_PLATFORM_ID = U.staffStaffViewer;
 
 // ─── Original personal legal-entity IDs ──────────────────────────────────────
 const LE = {
@@ -119,8 +134,9 @@ const LEO = {
   charityDocsReceived: "20000000-0000-4000-8000-000000000003",
   /** institution / under_review — admin is actively reviewing. */
   institutionUnderReview: "20000000-0000-4000-8000-000000000004",
-  /** lax_stock / approved — LAX-managed inventory; skips Stripe Connect entirely. */
-  laxStockApproved: "20000000-0000-4000-8000-000000000005",
+  /** lax_stock / approved — LAX-managed inventory; skips Stripe Connect entirely.
+   *  Matches production `PLATFORM_CATALOG_LEGAL_ENTITY_ID` and staff sale create. */
+  laxStockApproved: "30000000-0000-4000-9000-000000000001",
   /** other / restricted — flagged but still operational; admin co-sign required. */
   otherRestricted: "20000000-0000-4000-8000-000000000006",
   /** dealer / rejected — hard fail from KYB review. */
@@ -2655,9 +2671,9 @@ export async function runLegacyDemoSeed() {
     },
   ];
   await db.insert(sale).values(
-    saleRows.map(({ categoryId: _categoryId, createdBy, ...row }) => ({
+    saleRows.map(({ categoryId: _categoryId, createdBy: _createdBy, ...row }) => ({
       ...row,
-      createdByLegalEntityId: legalEntityIdForUser(createdBy),
+      createdByLegalEntityId: LEO.laxStockApproved,
     })),
   );
   await db.insert(saleCategories).values(

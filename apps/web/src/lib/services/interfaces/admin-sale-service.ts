@@ -1,6 +1,7 @@
 import type { LotStatus } from "@auction/types";
 import type {
   cancelSaleBodySchema,
+  createNestedLotForSaleSchema,
   createSaleSchema,
   markSaleEndedBodySchema,
   updateLotStatusBodySchema,
@@ -10,6 +11,7 @@ import type { z } from "zod";
 import type { ServiceResult } from "../http/service-result";
 
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
+export type CreateNestedLotForSaleInput = z.infer<typeof createNestedLotForSaleSchema>;
 export type UpdateSaleInput = z.infer<typeof updateSaleSchema>;
 export type CancelSaleBody = z.infer<typeof cancelSaleBodySchema>;
 export type MarkSaleEndedBody = z.infer<typeof markSaleEndedBodySchema>;
@@ -22,7 +24,15 @@ export interface IAdminSaleService {
   unpublish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   cancel(id: string, body: CancelSaleBody): Promise<ServiceResult<Record<string, unknown>>>;
   softDelete(id: string, confirmationPhrase: string): Promise<ServiceResult<void>>;
-  attachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
+  createNestedLot(
+    saleId: string,
+    input: CreateNestedLotForSaleInput,
+  ): Promise<ServiceResult<{ id: string }>>;
+  attachLot(
+    saleId: string,
+    lotId: string,
+    via?: "attach_endpoint" | "wizard",
+  ): Promise<ServiceResult<Record<string, unknown>>>;
   detachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
   markEnded(id: string, body: MarkSaleEndedBody): Promise<ServiceResult<Record<string, unknown>>>;
   cancelLot(

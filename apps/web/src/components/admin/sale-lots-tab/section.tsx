@@ -1,9 +1,11 @@
 "use client";
 
+import { AdminLotPicker } from "@/components/admin/admin-lot-picker";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import { MediaImage } from "@/components/ui/media-image";
 import { DisplayHeading } from "@/components/ui/typography";
+import { adminReturnLotToInventoryResultAction } from "@/lib/actions/admin";
 import {
   adminAttachLotToSaleResultAction,
   adminCancelLotInSaleResultAction,
@@ -25,6 +27,7 @@ export type SaleLotsTabLotRow = {
   title: string;
   lotNumber: number | null;
   status: LotStatus;
+  winnerId?: string | null;
   imageUrl?: string | null;
 };
 
@@ -34,7 +37,6 @@ type Props = {
   deliveryMode: SaleDeliveryMode;
   canEdit: boolean;
   lots: SaleLotsTabLotRow[];
-  draftOrphans: { id: string; title: string }[];
 };
 
 const LOT_TRANSITION_OPTIONS: Record<LotStatus, LotStatus[]> = {
@@ -48,18 +50,17 @@ const LOT_TRANSITION_OPTIONS: Record<LotStatus, LotStatus[]> = {
 
 type ViewMode = "list" | "grid";
 
-export function SaleLotsTabSection({
-  saleId,
-  saleStatus,
-  deliveryMode,
-  canEdit,
-  lots,
-  draftOrphans,
-}: Props) {
+export function SaleLotsTabSection({ saleId, saleStatus, deliveryMode, canEdit, lots }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [view, setView] = useState<ViewMode>("list");
+  const [attachLotId, setAttachLotId] = useState<string | null>(null);
+  const [attachTitle, setAttachTitle] = useState<string | null>(null);
   const isOnsite = deliveryMode === "onsite";
+  const returnEligible = lots.filter(
+    (l) =>
+      (l.status === "ended" || l.status === "cancelled" || l.status === "voided") && !l.winnerId,
+  );
 
   const run = (fn: () => Promise<ActionResult<void>>) => {
     startTransition(() => {
@@ -67,6 +68,8 @@ export function SaleLotsTabSection({
         const r = await fn();
         if (r.ok) {
           notify.success("Done");
+          setAttachLotId(null);
+          setAttachTitle(null);
           router.refresh();
           return;
         }
@@ -229,36 +232,76 @@ export function SaleLotsTabSection({
         ) : null}
       </div>
 
-      {canEdit && draftOrphans.length > 0 ? (
-        <div>
-          <DisplayHeading as="h2" className="text-xl">
-            Attach draft lot
+      {saleStatus === "cancelled" && returnEligible.length > 0 ? (
+        <div className="rounded-lg border border-border-hairline bg-surface-container-lowest/40 p-4">
+          <DisplayHeading as="h2" className="text-lg">
+            Return lots to inventory
           </DisplayHeading>
           <p className="mt-2 font-body text-sm text-on-surface-variant">
-            Standalone draft lots only.{" "}
-            {isOnsite
-              ? "Their schedule will inherit the sale window."
-              : "After attach, set schedule on the lot if needed."}
+            {returnEligible.length} lot{returnEligible.length === 1 ? "" : "s"} can be returned to
+            standalone draft inventory for reuse.
           </p>
-          <ul className="mt-4 space-y-3">
-            {draftOrphans.map((l) => (
-              <li
-                key={l.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-lowest/40 px-4 py-3"
-              >
-                <span className="font-body text-sm">{l.title}</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={pending}
-                  variant="secondary"
-                  onClick={() => run(() => adminAttachLotToSaleResultAction(saleId, l.id))}
-                >
-                  Attach
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <ConfirmActionButton
+            variant="secondary"
+            size="sm"
+            confirmTitle="Return eligible lots to inventory?"
+            confirmBody="Each lot will be reset to draft and detached from this sale."
+            confirmLabel="Return lots"
+            onConfirmed={async () => {
+              for (const lot of returnEligible) {
+                const r = await adminReturnLotToInventoryResultAction(lot.id, {
+                  reason: "Bulk return after sale cancellation",
+                  confirmVoided: lot.status === "voided",
+                });
+                if (!r.ok) {
+                  notify.error(`${lot.title}: ${r.error}`);
+                  return;
+                }
+              }
+              notify.success("Lots returned to inventory");
+              router.refresh();
+            }}
+          >
+            Return {returnEligible.length} lot{returnEligible.length === 1 ? "" : "s"}
+          </ConfirmActionButton>
+        </div>
+      ) : null}
+
+      {canEdit ? (
+        <div>
+          <DisplayHeading as="h2" className="text-xl">
+            Attach existing lot
+          </DisplayHeading>
+          <p className="mt-2 font-body text-sm text-on-surface-variant">
+            Search draft inventory — returned lots appear when recently sent back to inventory.
+            {isOnsite
+              ? " Attached lots inherit the sale schedule."
+              : " Set lot schedule after attach if needed."}
+          </p>
+          <div className="mt-4 max-w-xl space-y-3">
+            <AdminLotPicker
+              value={attachLotId}
+              displayLabel={attachTitle}
+              excludeSaleId={saleId}
+              disabled={pending}
+              onChange={(id, row) => {
+                setAttachLotId(id);
+                setAttachTitle(row?.title ?? null);
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending || !attachLotId}
+              variant="secondary"
+              onClick={() => {
+                if (!attachLotId) return;
+                run(() => adminAttachLotToSaleResultAction(saleId, attachLotId));
+              }}
+            >
+              Attach selected lot
+            </Button>
+          </div>
         </div>
       ) : null}
     </div>

@@ -1,6 +1,6 @@
 import type { RoleCapability, UserRole, UserStaffRole } from "@auction/types";
 import type { Context } from "hono";
-import { AuthzError } from "./errors.js";
+import { AuthzError, LotError } from "./errors.js";
 
 export type MissingCapabilityActor = {
   role: UserRole | string;
@@ -62,5 +62,8 @@ export function respondAuthzError(c: Context, e: AuthzError) {
 /** Map service-layer errors to JSON bodies (AuthzError includes structured capability metadata). */
 export function serviceErrorJsonBody(error: Error): Record<string, unknown> {
   if (error instanceof AuthzError) return authzErrorJsonBody(error);
+  if (error instanceof LotError && error.code) {
+    return { error: error.message, code: error.code };
+  }
   return { error: error.message };
 }
