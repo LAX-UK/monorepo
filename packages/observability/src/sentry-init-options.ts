@@ -24,7 +24,7 @@ export function createSharedSentryInitOptions(
   tracesSampleRate: number;
   profilesSampleRate: number;
   tracesSampler: (ctx: SamplingContext) => number;
-  beforeSend: <T extends ErrorEvent>(event: T, hint?: EventHint) => T;
+  beforeSend: <T extends ErrorEvent>(event: T, hint?: EventHint) => T | null;
   beforeSendTransaction: typeof scrubSentryTransaction;
 } {
   const tracesSampleRate = readSampleRate(

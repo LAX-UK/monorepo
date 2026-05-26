@@ -10,6 +10,13 @@ const SENSITIVE_HEADERS = new Set([
 
 const BODY_SCRUB_PATHS = ["/webhooks/", "/internal/jobs"];
 
+const AUTH_USER_ERROR_PATTERNS = [
+  /Invalid password/i,
+  /User not found/i,
+  /State mismatch/i,
+  /state_mismatch/i,
+] as const;
+
 function scrubRequestHeaders(headers: Record<string, string>): Record<string, string> {
   const scrubbed: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
@@ -24,8 +31,55 @@ function shouldScrubBody(url: string | undefined): boolean {
   return BODY_SCRUB_PATHS.some((segment) => url.includes(segment));
 }
 
+function eventMessage(event: ErrorEvent): string {
+  if (typeof event.message === "string") return event.message;
+  if (event.logentry?.message) return event.logentry.message;
+  return "";
+}
+
+function isConsoleLoggerEvent(event: ErrorEvent): boolean {
+  if (event.logger === "console") return true;
+  const tags = event.tags;
+  return tags?.logger === "console";
+}
+
+/** Drop expected noise: web-vitals misreported as errors, Better Auth user mistakes. */
+export function shouldDropSentryEvent(event: ErrorEvent): boolean {
+  const message = eventMessage(event);
+  if (message.startsWith("web-vitals.")) return true;
+
+  if (!isConsoleLoggerEvent(event)) return false;
+
+  const transaction = event.transaction ?? "";
+  const isAuthRoute =
+    transaction.includes("/api/auth/sign-in") ||
+    transaction.includes("/api/auth/callback") ||
+    transaction.includes("POST /api/auth/sign-in");
+
+  if (!isAuthRoute) return false;
+
+  return AUTH_USER_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+}
+
+/** Drop unmapped browser-extension errors (React streaming / JSON-LD eval noise). */
+export function shouldDropBrowserExtensionNoise(event: ErrorEvent): boolean {
+  const message = eventMessage(event);
+  if (!/parentNode|@context.*toLowerCase/i.test(message)) return false;
+
+  const frames = event.exception?.values?.[0]?.stacktrace?.frames ?? [];
+  if (frames.length === 0) return false;
+
+  return frames.some(
+    (frame) =>
+      frame.filename?.startsWith("app:///") === true ||
+      frame.abs_path?.startsWith("app:///") === true,
+  );
+}
+
 /** Strip sensitive headers and webhook/cron bodies before events leave the process. */
-export function scrubSentryEvent<T extends ErrorEvent>(event: T, _hint?: EventHint): T {
+export function scrubSentryEvent<T extends ErrorEvent>(event: T, _hint?: EventHint): T | null {
+  if (shouldDropSentryEvent(event)) return null;
+
   if (event.request?.headers) {
     event.request.headers = scrubRequestHeaders(event.request.headers as Record<string, string>);
   }
