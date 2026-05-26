@@ -5,6 +5,7 @@ import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
+import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
@@ -23,6 +24,7 @@ export class LotLifecycleService {
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
     /** Optional hook after a lot transitions to `active` (e.g. absentee replay). */
     private readonly onLotActivated: ((lotId: string) => Promise<void>) | null = null,
+    private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
   ) {}
 
   async runDutchDecrements(now: Date = new Date()): Promise<void> {
@@ -59,10 +61,17 @@ export class LotLifecycleService {
     const lots = this.repos.root.lot;
     const toActivate = await lots.findScheduledToActivate(now);
     for (const a of toActivate) {
-      await lots.updateStatus(a.id, "active");
-      if (a.auctionType === "dutch") {
-        await lots.setDutchLastDecrementAt(a.id, now);
-      }
+      await this.repos.runInTransaction(async ({ lot }, tx) => {
+        const row = await lot.findByIdForUpdate(a.id);
+        if (!row || row.status !== "scheduled" || row.startTime > now) return;
+        await lot.updateStatus(a.id, "active");
+        if (a.auctionType === "dutch") {
+          await lot.setDutchLastDecrementAt(a.id, now);
+        }
+        if (this.lotLifecycleRecording) {
+          await this.lotLifecycleRecording.recordActivated(tx, row, now);
+        }
+      });
       await this.notifyWatchlistStarting(a);
       await this.onLotActivated?.(a.id);
     }
@@ -131,10 +140,21 @@ export class LotLifecycleService {
     const lots = this.repos.root.lot;
     const a = await lots.findById(lotId);
     if (!a || a.status !== "active") return false;
-    const ok = await this.repos.runInTransaction(async ({ lot }) => {
+    const ok = await this.repos.runInTransaction(async ({ lot }, tx) => {
       const row = await lot.findByIdForUpdate(lotId);
       if (!row || row.status !== "active") return false;
       await lot.updateStatus(lotId, "ended");
+      if (this.lotLifecycleRecording) {
+        await this.lotLifecycleRecording.recordEnded(tx, {
+          lot: row,
+          payload: {
+            outcome: "no_sale",
+            winnerId: null,
+            saleId: row.saleId,
+            trigger: "clerk_no_sale",
+          },
+        });
+      }
       return true;
     });
     if (!ok) return false;
@@ -191,7 +211,9 @@ export class LotLifecycleService {
       } else if (reserveMet.length > 0 && this.antiShillingGuard && !chosen) {
         await lot.voidLotAntiShillingClose(row.id);
         voided = true;
-        if (this.domainEventPublisher) {
+        if (this.lotLifecycleRecording) {
+          await this.lotLifecycleRecording.recordVoided(tx, row, "no_valid_winner");
+        } else if (this.domainEventPublisher) {
           await this.domainEventPublisher.publish(tx, {
             aggregateType: "lot",
             aggregateId: row.id,
@@ -207,6 +229,18 @@ export class LotLifecycleService {
 
       if (!voided) {
         await lot.updateStatus(row.id, "ended");
+        if (this.lotLifecycleRecording) {
+          await this.lotLifecycleRecording.recordEnded(tx, {
+            lot: row,
+            payload: {
+              outcome: winnerId ? "sold" : "no_sale",
+              winnerId,
+              saleId: row.saleId,
+              trigger: ignoreEndTime ? "clerk_hammer" : "timed",
+              hammerPrice: chosen?.amount ?? null,
+            },
+          });
+        }
       }
       return { lotId: row.id, winnerId, voided };
     });
@@ -245,10 +279,17 @@ export class LotLifecycleService {
     const lots = this.repos.root.lot;
     const a = await lots.findById(lotId);
     if (!a || a.status !== "scheduled" || a.startTime > now) return;
-    await lots.updateStatus(lotId, "active");
-    if (a.auctionType === "dutch") {
-      await lots.setDutchLastDecrementAt(a.id, now);
-    }
+    await this.repos.runInTransaction(async ({ lot }, tx) => {
+      const row = await lot.findByIdForUpdate(lotId);
+      if (!row || row.status !== "scheduled" || row.startTime > now) return;
+      await lot.updateStatus(lotId, "active");
+      if (a.auctionType === "dutch") {
+        await lot.setDutchLastDecrementAt(a.id, now);
+      }
+      if (this.lotLifecycleRecording) {
+        await this.lotLifecycleRecording.recordActivated(tx, row, now);
+      }
+    });
     await this.notifyWatchlistStarting(a);
     await this.onLotActivated?.(lotId);
   }

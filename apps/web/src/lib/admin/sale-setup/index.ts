@@ -16,6 +16,10 @@ export {
   lotSavedMessage,
   publishBlockedCatalogueRoleMessage,
   readinessLabel,
+  reviewPublishBlockedHint,
+  reviewSaveDraftHint,
+  saveDraftSuccessMessage,
+  catalogPrepReviewNotice,
   saleSavedMessage,
   stepIntro,
   catalogueStaffReadOnlyMessage,
@@ -24,6 +28,8 @@ export {
 export { humanizeSetupError, type HumanizeSetupErrorInput } from "./humanize-setup-error";
 export {
   emptySaleSetupLotRow,
+  mergeSavedLotRow,
+  mergeWizardRowsWithServerLots,
   safeParseSaleSetupLotRowForApi,
   saleSetupLotRowFormSchema,
   saleSetupLotRowToApiPayload,
@@ -33,5 +39,9 @@ export {
 export {
   buildSaleSetupReadiness,
   countLotsCatalogReady,
+  isSaleSetupPublishReady,
+  resolveFirstBlockingSetupStep,
   type BuildSaleSetupReadinessInput,
+  type SaleSetupGateInput,
+  type SetupStepHrefFn,
 } from "./readiness";

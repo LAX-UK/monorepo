@@ -18,6 +18,7 @@ import type {
   ISaleSoftDeleteSideEffects,
   SaleSoftDeleteGuardCounts,
 } from "../services/interfaces/sale-soft-delete.js";
+import type { LotLifecycleRecording } from "../services/lot-lifecycle-recording.service.js";
 
 const WITHDRAWABLE_REGISTRATION_STATUSES = ["pending", "approved"] as const;
 const VOIDABLE_ABSENTEE_STATUSES = ["scheduled", "executing"] as const;
@@ -25,7 +26,10 @@ const CANCELLABLE_TELEPHONE_STATUSES = ["requested", "confirmed", "in_progress"]
 const OPEN_SALEROOM_STATUSES = ["pending", "live", "paused"] as const;
 
 export class DrizzleSaleSoftDeleteSideEffects implements ISaleSoftDeleteSideEffects {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
+  ) {}
 
   async countGuardsForSale(saleId: string): Promise<SaleSoftDeleteGuardCounts> {
     const [bidRow] = await this.db
@@ -62,6 +66,11 @@ export class DrizzleSaleSoftDeleteSideEffects implements ISaleSoftDeleteSideEffe
 
     await this.db.transaction(async (tx) => {
       if (lotIds.length > 0) {
+        const lotsBefore = await tx
+          .select()
+          .from(lot)
+          .where(and(eq(lot.saleId, saleId), isNull(lot.deletedAt)));
+
         await tx
           .update(lot)
           .set({
@@ -71,6 +80,22 @@ export class DrizzleSaleSoftDeleteSideEffects implements ISaleSoftDeleteSideEffe
             status: "cancelled",
           })
           .where(and(eq(lot.saleId, saleId), isNull(lot.deletedAt)));
+
+        if (this.lotLifecycleRecording) {
+          for (const l of lotsBefore) {
+            await this.lotLifecycleRecording.recordCancelled(
+              tx,
+              {
+                id: l.id,
+                status: "cancelled",
+                saleId: l.saleId,
+                sellerLegalEntityId: l.sellerLegalEntityId,
+              },
+              "sale_soft_delete",
+              actorUserId,
+            );
+          }
+        }
 
         await tx
           .update(lotDocument)

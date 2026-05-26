@@ -1,5 +1,5 @@
-import { buildLotPublishReadiness, buildSalePublishReadiness } from "@/lib/admin/catalog-readiness";
 import type { Lot, Sale } from "@auction/types";
+import { resolveFirstBlockingSetupStep } from "./readiness";
 
 /** Sale setup wizard step ids (URL ?step=). */
 export const SALE_SETUP_STEP_IDS = [
@@ -71,31 +71,7 @@ type ResolveInput = {
 
 /** First incomplete wizard step for resume navigation. */
 export function resolveFirstIncompleteStep(input: ResolveInput): SaleSetupStepId {
-  if (!input.sale) return "identity";
-
-  if (input.sale.status !== "draft") return "review";
-
-  const saleId = input.sale.id;
-  const saleReadiness = buildSalePublishReadiness(
-    saleId,
-    input.sale,
-    input.lots.length,
-    input.pendingRegistrationCount ?? null,
-  );
-  if (!input.sale.title?.trim()) return "identity";
-  if (!saleReadiness.items.find((i) => i.id === "schedule")?.ok) return "schedule";
-
-  if (input.lots.length === 0) return "lots";
-
-  for (const lot of input.lots) {
-    const connectRequired = input.connectRequiredByLotId?.get(lot.id) ?? false;
-    const lotReady = buildLotPublishReadiness(lot.id, lot, connectRequired);
-    if (lotReady.percent < 100) return "catalog-prep";
-  }
-
-  if (saleReadiness.percent < 100) return "review";
-
-  return "review";
+  return resolveFirstBlockingSetupStep(input);
 }
 
 /** Sale form field groups per setup step (steps 1–3 only). */

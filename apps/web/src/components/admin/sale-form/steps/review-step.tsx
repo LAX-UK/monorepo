@@ -1,16 +1,21 @@
 "use client";
 
-import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
 import { buyerPremiumSummary } from "@/components/admin/sale-detail/sale-detail-helpers";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import {
   buildSaleSetupReadiness,
   draftSaleLotPublishBanner,
+  isSaleSetupPublishReady,
   publishBlockedCatalogueRoleMessage,
+  reviewSaveDraftHint,
   saleSetupHref,
 } from "@/lib/admin/sale-setup";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
+import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
+import { Circle } from "lucide-react";
+import Link from "next/link";
 
 type Props = {
   saleId: string;
@@ -19,6 +24,62 @@ type Props = {
   pendingRegistrationCount?: number | null;
   canPublish: boolean;
 };
+
+function SetupReviewBeforePublish({
+  readiness,
+}: {
+  readiness: CatalogReadinessResult;
+}) {
+  if (readiness.percent === 100) {
+    return (
+      <p className="font-body text-sm text-positive">All checks complete. Ready to go live.</p>
+    );
+  }
+
+  const failing = readiness.items.filter((item) => !item.ok);
+  return (
+    <div className="space-y-3 rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
+      <p className="font-body text-sm text-on-surface-variant">{reviewSaveDraftHint()}</p>
+      <div>
+        <h3 className="font-label text-[10px] uppercase tracking-wide text-secondary">
+          Before you publish
+        </h3>
+        <ul className="mt-2 space-y-1.5">
+          {failing.map((item) => (
+            <li key={item.id}>
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className="flex items-start gap-2 text-sm text-on-surface hover:underline"
+                >
+                  <Circle
+                    className={cn(
+                      "mt-0.5 size-4 shrink-0",
+                      item.severity === "required" ? "text-danger" : "text-warning",
+                    )}
+                    aria-hidden
+                  />
+                  <span>{item.label}</span>
+                </Link>
+              ) : (
+                <span className="flex items-start gap-2 text-sm text-on-surface">
+                  <Circle
+                    className={cn(
+                      "mt-0.5 size-4 shrink-0",
+                      item.severity === "required" ? "text-danger" : "text-warning",
+                    )}
+                    aria-hidden
+                  />
+                  <span>{item.label}</span>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 export function SaleSetupReviewStep({
   saleId,
@@ -47,11 +108,7 @@ export function SaleSetupReviewStep({
         </Alert>
       ) : null}
 
-      <CatalogPublishReadiness
-        title="Ready to go live?"
-        readiness={readiness}
-        dismissKey={`setup-review:${saleId}`}
-      />
+      <SetupReviewBeforePublish readiness={readiness} />
 
       <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
         <dl className="grid gap-4 sm:grid-cols-2 font-body text-sm">
@@ -97,11 +154,10 @@ export function isSaleSetupReadyToPublish(
   lots: Lot[],
   pendingRegistrationCount: number | null = null,
 ): boolean {
-  const readiness = buildSaleSetupReadiness({
+  return isSaleSetupPublishReady({
     saleId,
     sale,
     lots,
     pendingRegistrationCount,
   });
-  return readiness.percent === 100;
 }

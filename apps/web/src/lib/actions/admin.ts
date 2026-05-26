@@ -11,6 +11,7 @@ import {
   setIdempotentLotCreate,
   setIdempotentLotPublish,
 } from "@/lib/actions/idempotency-cache";
+import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
@@ -43,6 +44,7 @@ import {
   lotFulfilmentCollectBodySchema,
   lotFulfilmentReleaseBodySchema,
   lotFulfilmentShipBodySchema,
+  returnLotToInventoryBodySchema,
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
@@ -732,6 +734,37 @@ export async function adminCancelLotResultAction(
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);
+    return actionSuccess();
+  });
+}
+
+export async function adminReturnLotToInventoryResultAction(
+  lotId: string,
+  body: z.infer<typeof returnLotToInventoryBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminReturnLotToInventoryResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    if (denied) return denied;
+    const id = lotId.trim();
+    if (!id) {
+      return actionFailure("Missing lot");
+    }
+    const p = returnLotToInventoryBodySchema.safeParse(body);
+    if (!p.success) {
+      return actionFailure(firstZodErrorMessage(p.error), zodErrorToFieldErrors(p.error));
+    }
+    const lotBefore = await getAdminLotById(id);
+    const { adminLots } = getWriteContainer();
+    const r = await adminLots.returnToInventory(id, p.data);
+    if (!r.ok) {
+      const meta = readApiActionErrorMeta(r.body);
+      return actionFailure(r.message, undefined, r.status, meta?.code as string | undefined);
+    }
+    revalidatePath("/admin/lots");
+    revalidatePath(`/admin/lots/${id}`);
+    if (lotBefore?.saleId) {
+      revalidateAdminSaleDetail(lotBefore.saleId);
+    }
     return actionSuccess();
   });
 }

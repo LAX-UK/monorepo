@@ -10,13 +10,15 @@ import {
 } from "@/components/admin/catalog";
 import { QuickActionsRail } from "@/components/admin/detail-rail";
 import { AdminLotEditableTitle } from "@/components/admin/editable-titles";
+import { ReturnToInventoryButton } from "@/components/admin/lot-actions/return-to-inventory-button";
 import { LotDetailMobilePublishCancel } from "@/components/admin/lot-detail-mobile-publish-cancel";
 import { LotDetailQueueNav } from "@/components/admin/lot-detail-queue-nav";
 import { LotContextRail } from "@/components/admin/lot-detail/lot-context-rail";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
+import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journey";
 import { buildLotMobileActions } from "@/lib/admin/build-lot-mobile-actions";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
-import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
+import type { AdminDomainEventRow, AdminLotLifecyclePayload } from "@/lib/data/http/admin.server";
 import { lotPath } from "@/lib/seo/url";
 import { formatMoney } from "@/lib/ui/format";
 import { Badge } from "@auction/ui";
@@ -28,6 +30,7 @@ type Props = {
   bidCount?: number | null;
   documentCount?: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
+  lifecycle?: AdminLotLifecyclePayload;
   connectRequired?: boolean;
   children: ReactNode;
 };
@@ -44,6 +47,7 @@ export function LotDetailShell({
   bidCount = null,
   documentCount = null,
   activityEvents = [],
+  lifecycle = { snapshot: null, events: [] },
   connectRequired = false,
   children,
 }: Props) {
@@ -168,6 +172,11 @@ export function LotDetailShell({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <AdminPinPageButton label={auction.title} />
+          <ReturnToInventoryButton
+            lotId={lotId}
+            status={auction.status}
+            hasWinner={Boolean(auction.winnerId)}
+          />
           <AdminLotDetailActions
             key={lotId}
             lotId={lotId}
@@ -256,6 +265,11 @@ export function LotDetailShell({
         </>
       }
     >
+      <LotStatusJourney
+        snapshot={lifecycle.snapshot}
+        events={lifecycle.events}
+        saleName={context.sale?.title ?? null}
+      />
       {children}
     </CatalogDetailShell>
   );

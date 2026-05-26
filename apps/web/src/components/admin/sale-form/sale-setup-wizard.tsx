@@ -20,10 +20,14 @@ import {
   SALE_SETUP_SALE_STEP_FIELDS,
   SALE_SETUP_STEPS,
   type SaleSetupStepId,
+  catalogPrepReviewNotice,
   catalogueStaffReadOnlyMessage,
   humanizeSetupError,
+  isSaleSetupPublishReady,
+  reviewPublishBlockedHint,
   saleSavedMessage,
   saleSetupStepId,
+  saveDraftSuccessMessage,
 } from "@/lib/admin/sale-setup";
 import {
   applyZodErrorsToForm,
@@ -62,6 +66,19 @@ import { SaleDocumentsStep } from "./steps/documents-step";
 import { SaleIdentityStep } from "./steps/identity-step";
 import { SaleSetupReviewStep, isSaleSetupReadyToPublish } from "./steps/review-step";
 import { SaleScheduleStep } from "./steps/schedule-step";
+
+function WizardStepSync({
+  stepIndex,
+  onStepIndex,
+}: {
+  stepIndex: number;
+  onStepIndex: (index: number) => void;
+}) {
+  useEffect(() => {
+    onStepIndex(stepIndex);
+  }, [onStepIndex, stepIndex]);
+  return null;
+}
 
 const SALE_STEP_FIELD_GROUPS: (keyof AdminSaleFormValues)[][] = [
   [...SALE_SETUP_SALE_STEP_FIELDS.identity],
@@ -116,6 +133,12 @@ export function SaleSetupWizard({
   const [lotsUnsaved, setLotsUnsaved] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [stepNotice, setStepNotice] = useState<string | null>(null);
+  const [wizardStepIndex, setWizardStepIndex] = useState(() =>
+    Math.max(
+      0,
+      SALE_SETUP_STEPS.findIndex((s) => s.id === initialStep),
+    ),
+  );
   const baselineRef = useRef(defaultValues);
   baselineRef.current = defaultValues;
   const wizardGoToRef = useRef<(index: number) => void>(() => {});
@@ -133,10 +156,42 @@ export function SaleSetupWizard({
   const readOnlyLots = !canManageSale;
   const readOnlyCatalog = !canEditCatalog && !canManageSale;
 
-  const persistSale = useCallback(async (): Promise<string | null> => {
-    const values = form.getValues();
-    if (!saleId) {
-      const api = safeParseCreateSaleFromForm(values);
+  const persistSale = useCallback(
+    async (opts?: { savedNoticeStep?: SaleSetupStepId }): Promise<string | null> => {
+      const values = form.getValues();
+      if (!saleId) {
+        const api = safeParseCreateSaleFromForm(values);
+        if (!api.success) {
+          for (const iss of api.error.issues) {
+            applyZodErrorsToForm(form, saleZodIssuePath([...iss.path]), iss.message);
+          }
+          notify.error("Check the form for errors");
+          return null;
+        }
+        const r = await adminCreateSaleResultAction(api.data, createIdempotencyKeyRef.current);
+        if (!r.ok) {
+          notify.error(
+            humanizeSetupError({
+              message: actionFailureNotifyMessage(r.error, {
+                status: r.status,
+                errorCode: r.errorCode,
+                meta: r.meta,
+              }),
+              errorCode: r.errorCode,
+            }),
+          );
+          return null;
+        }
+        clearWizardDraft(wizardDraftCookieKey("admin_sale_new", wizardDraftEntityId ?? "new"));
+        if (!r.data?.id) return null;
+        const newId = r.data.id;
+        setSaleId(newId);
+        router.replace(`/admin/sales/${newId}/setup?step=documents`);
+        setStepNotice(saleSavedMessage("documents"));
+        return newId;
+      }
+
+      const api = safeParseUpdateSaleFromForm(values);
       if (!api.success) {
         for (const iss of api.error.issues) {
           applyZodErrorsToForm(form, saleZodIssuePath([...iss.path]), iss.message);
@@ -144,7 +199,7 @@ export function SaleSetupWizard({
         notify.error("Check the form for errors");
         return null;
       }
-      const r = await adminCreateSaleResultAction(api.data, createIdempotencyKeyRef.current);
+      const r = await adminUpdateSaleResultAction(saleId, api.data);
       if (!r.ok) {
         notify.error(
           humanizeSetupError({
@@ -158,41 +213,12 @@ export function SaleSetupWizard({
         );
         return null;
       }
-      clearWizardDraft(wizardDraftCookieKey("admin_sale_new", wizardDraftEntityId ?? "new"));
-      if (!r.data?.id) return null;
-      const newId = r.data.id;
-      setSaleId(newId);
-      router.replace(`/admin/sales/${newId}/setup?step=documents`);
-      setStepNotice(saleSavedMessage("documents"));
-      return newId;
-    }
-
-    const api = safeParseUpdateSaleFromForm(values);
-    if (!api.success) {
-      for (const iss of api.error.issues) {
-        applyZodErrorsToForm(form, saleZodIssuePath([...iss.path]), iss.message);
-      }
-      notify.error("Check the form for errors");
-      return null;
-    }
-    const r = await adminUpdateSaleResultAction(saleId, api.data);
-    if (!r.ok) {
-      notify.error(
-        humanizeSetupError({
-          message: actionFailureNotifyMessage(r.error, {
-            status: r.status,
-            errorCode: r.errorCode,
-            meta: r.meta,
-          }),
-          errorCode: r.errorCode,
-        }),
-      );
-      return null;
-    }
-    setStepNotice(saleSavedMessage("lots"));
-    router.refresh();
-    return saleId;
-  }, [form, router, saleId, wizardDraftEntityId]);
+      setStepNotice(saleSavedMessage(opts?.savedNoticeStep ?? "lots"));
+      router.refresh();
+      return saleId;
+    },
+    [form, router, saleId, wizardDraftEntityId],
+  );
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -242,6 +268,22 @@ export function SaleSetupWizard({
     saleId &&
     activeSale &&
     isSaleSetupReadyToPublish(saleId, activeSale, lots, pendingRegistrationCount);
+  const isReviewStep = saleSetupStepId(wizardStepIndex) === "review";
+
+  const handleSaveDraft = useCallback(() => {
+    if (isReviewStep && saleId && canManageSale) {
+      startTransition(async () => {
+        if (form.formState.isDirty) {
+          const id = await persistSale({ savedNoticeStep: "review" });
+          if (!id) return;
+        }
+        notify.success(saveDraftSuccessMessage());
+        guardedPush(`/admin/sales/${saleId}`);
+      });
+      return;
+    }
+    guardedPush(saleId ? `/admin/sales/${saleId}` : "/admin/sales");
+  }, [canManageSale, form.formState.isDirty, guardedPush, isReviewStep, persistSale, saleId]);
 
   const wizardCreateDraftExtras =
     !saleId && canManageSale
@@ -337,7 +379,7 @@ export function SaleSetupWizard({
                   let ok = false;
                   await new Promise<void>((resolve) => {
                     startTransition(async () => {
-                      ok = (await persistSale()) != null;
+                      ok = (await persistSale({ savedNoticeStep: "documents" })) != null;
                       resolve();
                     });
                   });
@@ -348,13 +390,13 @@ export function SaleSetupWizard({
                     let ok = false;
                     await new Promise<void>((resolve) => {
                       startTransition(async () => {
-                        ok = (await persistSale()) != null;
+                        ok = (await persistSale({ savedNoticeStep: "lots" })) != null;
                         resolve();
                       });
                     });
                     if (!ok) return false;
                   } else {
-                    await persistSale();
+                    await persistSale({ savedNoticeStep: "lots" });
                   }
                 }
                 return true;
@@ -378,6 +420,17 @@ export function SaleSetupWizard({
               }
               if (stepId === "catalog-prep") {
                 router.replace(`/admin/sales/${saleId}/setup?step=review`);
+                if (
+                  activeSale &&
+                  !isSaleSetupPublishReady({
+                    saleId: saleId as string,
+                    sale: activeSale,
+                    lots,
+                    pendingRegistrationCount,
+                  })
+                ) {
+                  setStepNotice(catalogPrepReviewNotice());
+                }
                 return true;
               }
               return true;
@@ -388,14 +441,23 @@ export function SaleSetupWizard({
                 variant="outline"
                 disabled={pending}
                 className="min-h-11 w-full sm:w-auto"
-                onClick={() => guardedPush(saleId ? `/admin/sales/${saleId}` : "/admin/sales")}
+                onClick={handleSaveDraft}
               >
-                {saleId ? "Save & finish later" : "Cancel"}
+                {isReviewStep && saleId
+                  ? "Save as draft"
+                  : saleId
+                    ? "Save & finish later"
+                    : "Cancel"}
               </Button>
             }
             submitSlot={
               canManageSale ? (
-                <>
+                <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+                  {!readyToPublish ? (
+                    <p className="font-body text-xs text-on-surface-variant sm:text-right">
+                      {reviewPublishBlockedHint()}
+                    </p>
+                  ) : null}
                   <LoadingButton
                     type="button"
                     loading={pending}
@@ -415,7 +477,7 @@ export function SaleSetupWizard({
                     severity="warning"
                     onConfirm={handlePublish}
                   />
-                </>
+                </div>
               ) : (
                 <Button type="button" variant="outline" asChild className="min-h-11">
                   <Link href={saleId ? `/admin/sales/${saleId}` : "/admin/sales"}>
@@ -430,6 +492,7 @@ export function SaleSetupWizard({
               const stepId = saleSetupStepId(stepIndex);
               return (
                 <div className="space-y-8">
+                  <WizardStepSync stepIndex={stepIndex} onStepIndex={setWizardStepIndex} />
                   <SaleSetupStepIntro stepId={stepId} stepIndex={stepIndex} />
                   {stepIndex === 0 ? (
                     <fieldset disabled={readOnlySaleSteps}>
