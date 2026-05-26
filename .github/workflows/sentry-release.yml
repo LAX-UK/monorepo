@@ -22,16 +22,41 @@ on:
 permissions:
   contents: read
 
+env:
+  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+  SENTRY_ORG: lax-bid
+  # lax-bid is hosted in the EU region; default US endpoint can 500 on release APIs.
+  SENTRY_URL: https://de.sentry.io
+  RELEASE: ${{ inputs.git_sha || github.sha }}
+  ENV_SUFFIX: ${{ inputs.environment }}
+  SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
+
 jobs:
-  release:
+  prepare-release:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    env:
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: lax-bid
-      RELEASE: ${{ inputs.git_sha || github.sha }}
-      ENV_SUFFIX: ${{ inputs.environment }}
-      SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Sentry CLI
+        run: npm i -g @sentry/cli
+      - name: Create org release and associate all projects
+        run: |
+          set -euo pipefail
+          prefix="lax-${ENV_SUFFIX}"
+          sentry-cli releases new "$RELEASE" \
+            -p "${prefix}-api" \
+            -p "${prefix}-auth" \
+            -p "${prefix}-ws" \
+            -p "${prefix}-worker" \
+            -p "${prefix}-web"
+          sentry-cli releases set-commits "$RELEASE" --auto
+
+  upload-node-sourcemaps:
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     strategy:
       fail-fast: false
       matrix:
@@ -50,8 +75,6 @@ jobs:
             app_dir: worker
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -62,35 +85,23 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Sentry CLI
         run: npm i -g @sentry/cli
-      - name: Create release and upload Node source maps
+      - name: Build and upload Node source maps
         run: |
+          set -euo pipefail
           project="lax-${ENV_SUFFIX}-${{ matrix.sentry_app }}"
-          sentry-cli releases new "$RELEASE" -p "$project"
-          sentry-cli releases set-commits "$RELEASE" --auto
           pnpm turbo run build --filter="@auction/${{ matrix.package }}..."
           sentry-cli sourcemaps inject "apps/${{ matrix.app_dir }}/dist"
           sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app_dir }}/dist"
-          sentry-cli releases finalize "$RELEASE"
-          sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"
-  web-release:
+
+  finalize-release:
+    needs: upload-node-sourcemaps
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    env:
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: lax-bid
-      RELEASE: ${{ inputs.git_sha || github.sha }}
-      ENV_SUFFIX: ${{ inputs.environment }}
-      SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Install Sentry CLI
         run: npm i -g @sentry/cli
-      - name: Register web release (source maps uploaded at DO build)
+      - name: Finalize release and record deploy
         run: |
-          project="lax-${ENV_SUFFIX}-web"
-          sentry-cli releases new "$RELEASE" -p "$project"
-          sentry-cli releases set-commits "$RELEASE" --auto
+          set -euo pipefail
           sentry-cli releases finalize "$RELEASE"
           sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"
