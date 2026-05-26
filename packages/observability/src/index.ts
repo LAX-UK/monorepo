@@ -9,6 +9,8 @@ export {
   scrubSentryEvent,
   scrubSentryTransaction,
   sentryTracesSampler,
+  shouldDropBrowserExtensionNoise,
+  shouldDropSentryEvent,
 } from "./sentry-shared.js";
 export {
   resolveSentryEnvironmentFromEnv,
