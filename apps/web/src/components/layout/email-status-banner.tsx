@@ -1,7 +1,6 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
-import { buildVerifyEmailCallbackUrl } from "@/lib/auth/verify-email-callback-url";
+import { sendVerificationEmailFromBanner } from "@/lib/auth/services/send-verification-email.service";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
@@ -63,19 +62,13 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
                 (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
                   ? pathname
                   : "/dashboard";
-              const callbackURL = buildVerifyEmailCallbackUrl(user.email, next);
-              void authClient
-                .sendVerificationEmail({
-                  email: user.email,
-                  callbackURL,
-                })
-                .then(({ error }) => {
-                  if (error) {
-                    notify.error("Could not send verification email");
-                    return;
-                  }
-                  notify.success("Verification email sent");
-                });
+              void sendVerificationEmailFromBanner({ email: user.email, next }).then((result) => {
+                if (!result.ok) {
+                  notify.error(result.message);
+                  return;
+                }
+                notify.success("Verification email sent");
+              });
             }}
           >
             Send a new link
