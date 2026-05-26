@@ -1,5 +1,8 @@
-import { scrubSentryEvent, shouldDropBrowserExtensionNoise } from "@auction/observability";
 import { createSharedSentryInitOptions } from "@auction/observability/sentry-init-options";
+import {
+  scrubSentryEvent,
+  shouldDropBrowserExtensionNoise,
+} from "@auction/observability/sentry-shared";
 import type * as Sentry from "@sentry/nextjs";
 
 export function createWebSentryOptions(dsn: string): Parameters<typeof Sentry.init>[0] {
