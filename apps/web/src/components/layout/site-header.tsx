@@ -7,7 +7,7 @@ import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useLayoutEffect, useState } from "react";
+import { type RefObject, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HeaderAuthChip } from "./header-auth-chip";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
@@ -30,6 +30,24 @@ type SiteHeaderShellProps = SiteHeaderProps & {
   searchParams: ReturnType<typeof useSearchParams> | null;
 };
 
+function SiteHeaderHeightSync({ headerRef }: { headerRef: RefObject<HTMLElement | null> }) {
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const sync = () => {
+      document.documentElement.style.setProperty("--header-height", `${el.offsetHeight}px`);
+    };
+
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [headerRef]);
+
+  return null;
+}
+
 function SiteHeaderShell({
   nav: navProp,
   transparentPaths,
@@ -42,6 +60,7 @@ function SiteHeaderShell({
   const [atTop, setAtTop] = useState(true);
   const pathname = usePathname();
   const searchKey = searchParams == null ? "" : searchParams.toString();
+  const headerRef = useRef<HTMLElement>(null);
 
   const resolvedVariant: SiteHeaderChromeVariant =
     chromeVariant ??
@@ -71,59 +90,63 @@ function SiteHeaderShell({
     resolvedVariant === "transparentUntilScroll" && atTop && !megaOpen && !menuOpen;
 
   return (
-    <header
-      data-chrome-variant={resolvedVariant}
-      data-at-top={atTop ? "true" : "false"}
-      className={cn(
-        "fixed top-0 z-50 w-full border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
-        isTransparent
-          ? "border-transparent bg-transparent"
-          : cn(
-              "border-nav-border bg-surface shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface",
-              megaOpen && "border-transparent shadow-none backdrop-blur-none",
-            ),
-      )}
-    >
-      <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-6 px-6 pt-3 pb-4 md:px-10">
-        <div className="hidden lg:block">
-          <HeaderUtilityBar />
+    <>
+      <SiteHeaderHeightSync headerRef={headerRef} />
+      <header
+        ref={headerRef}
+        data-chrome-variant={resolvedVariant}
+        data-at-top={atTop ? "true" : "false"}
+        className={cn(
+          "fixed top-0 z-50 w-full border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
+          isTransparent
+            ? "border-transparent bg-transparent"
+            : cn(
+                "border-nav-border bg-surface shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface",
+                megaOpen && "border-transparent shadow-none backdrop-blur-none",
+              ),
+        )}
+      >
+        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-6 px-6 pt-3 pb-4 md:px-10">
+          <div className="hidden lg:block">
+            <HeaderUtilityBar />
+          </div>
+
+          <HeaderMegaNav
+            sections={nav}
+            pathname={pathname}
+            searchParams={searchParams}
+            onOpenChange={setMegaOpen}
+            logo={
+              <Link
+                href="/"
+                className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+              >
+                <LaxLogo variant="header" />
+              </Link>
+            }
+            trailing={
+              <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:max-w-[420px] lg:flex-none">
+                <HeaderSearchTrigger />
+                <ThemeToggle />
+                <HeaderAuthChip variant="notifications" />
+                <div className="lg:hidden">
+                  <HeaderAuthChip variant="account" />
+                </div>
+                <MobileMenuIconButton menuOpen={menuOpen} onToggle={() => setMenuOpen((o) => !o)} />
+              </div>
+            }
+          />
         </div>
 
-        <HeaderMegaNav
-          sections={nav}
+        <MobileNavDrawer
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
           pathname={pathname}
           searchParams={searchParams}
-          onOpenChange={setMegaOpen}
-          logo={
-            <Link
-              href="/"
-              className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-            >
-              <LaxLogo variant="header" />
-            </Link>
-          }
-          trailing={
-            <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:max-w-[420px] lg:flex-none">
-              <HeaderSearchTrigger />
-              <ThemeToggle />
-              <HeaderAuthChip variant="notifications" />
-              <div className="lg:hidden">
-                <HeaderAuthChip variant="account" />
-              </div>
-              <MobileMenuIconButton menuOpen={menuOpen} onToggle={() => setMenuOpen((o) => !o)} />
-            </div>
-          }
+          sections={nav}
         />
-      </div>
-
-      <MobileNavDrawer
-        open={menuOpen}
-        onOpenChange={setMenuOpen}
-        pathname={pathname}
-        searchParams={searchParams}
-        sections={nav}
-      />
-    </header>
+      </header>
+    </>
   );
 }
 

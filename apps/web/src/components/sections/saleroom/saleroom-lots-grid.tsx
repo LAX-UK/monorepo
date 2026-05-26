@@ -1,3 +1,4 @@
+import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { RevealInView } from "@/components/ui/reveal";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { cn } from "@auction/ui";
@@ -22,7 +23,15 @@ export function SaleroomLotsGrid({
   emptyMessage = "No lots in this section yet.",
 }: Props) {
   if (lots.length === 0) {
-    return <p className="py-12 text-center text-on-surface-variant">{emptyMessage}</p>;
+    return (
+      <MarketingEmptyState
+        className="py-4"
+        context="noResults"
+        illustration="lots"
+        title={emptyMessage}
+        description="Lots will appear here when they are listed in this section."
+      />
+    );
   }
   return (
     <ul

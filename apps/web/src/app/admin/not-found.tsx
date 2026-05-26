@@ -1,13 +1,16 @@
-import { SegmentNotFound } from "@/components/marketing/segment-not-found";
+import { AppNotFound } from "@/components/app/app-not-found";
+import { NOT_FOUND_PRESETS } from "@/lib/ui/empty-state-copy";
 
 export default function AdminNotFound() {
+  const preset = NOT_FOUND_PRESETS.admin;
   return (
-    <SegmentNotFound
-      kicker="404 \u00B7 Admin"
-      title="That admin route doesn't exist"
-      description="Check the URL or return to the operations cockpit."
-      primaryHref="/admin"
-      primaryLabel="Operations"
+    <AppNotFound
+      kicker={preset.kicker}
+      title={preset.title}
+      description={preset.description}
+      primaryHref={preset.primaryHref}
+      primaryLabel={preset.primaryLabel}
+      illustration={preset.illustration}
     />
   );
 }

@@ -78,6 +78,8 @@ Money-path filters previously tuned manually in the Sentry UI are now codified o
 
 Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins. Raw structured log lines (`pino` stdout) remain in **DigitalOcean App Platform** component logs (~30 day retention) and are not searchable from Sentry.
 
+**Web route error boundaries** (`apps/web` `error.tsx`, `global-error.tsx`, and shared `AppRouteError` / `AdminRouteError` / `DashboardRouteError`) call `useReportRouteError`, which reports to Sentry via `captureException`. Expect grouped issues when users hit recoverable UI failures (marketing, dashboard, admin, auth `(task)` segments).
+
 ---
 
 ## Stripe dashboard checks

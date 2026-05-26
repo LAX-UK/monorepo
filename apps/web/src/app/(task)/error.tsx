@@ -3,9 +3,9 @@
 import { AppRouteError } from "@/components/app/app-route-error";
 import { ROUTE_ERROR_PRESETS } from "@/lib/ui/empty-state-copy";
 
-const preset = ROUTE_ERROR_PRESETS.root;
+const preset = ROUTE_ERROR_PRESETS.task;
 
-export default function ErrorPage({
+export default function TaskError({
   error,
   reset,
 }: {
@@ -13,7 +13,7 @@ export default function ErrorPage({
   reset: () => void;
 }) {
   return (
-    <main id="main-content" className="min-h-[60vh]">
+    <main id="main-content" className="min-h-[50vh]">
       <AppRouteError
         error={error}
         reset={reset}

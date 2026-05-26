@@ -10,6 +10,7 @@ import {
   userRowActionsColumn,
   userStatusColumn,
 } from "@/components/admin/users-board";
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
@@ -170,7 +171,7 @@ export function AdminClientsBoard({ rows, totalMatches }: Props) {
       bulkOperations={bulkOperations}
       drawerTitle="Client"
       tableAriaLabel="Clients"
-      emptyMessage="No clients match this filter."
+      emptyComponent={<FilterEmptyState entity="clients" segment="admin" hasActiveFilters />}
       renderDrawerOverview={renderDrawerOverview}
       renderDrawerActions={renderDrawerActions}
       renderMobileCard={renderMobileCard}

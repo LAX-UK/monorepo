@@ -28,4 +28,9 @@ describe("DashboardEmptyState", () => {
     expect(container.querySelector("h3")).toHaveTextContent("All caught up");
     expect(container.querySelector("h2")).toBeNull();
   });
+
+  it("wires aria-labelledby on hero variant section", () => {
+    const { container } = render(<DashboardEmptyState variant="hero" title="All caught up" />);
+    expect(container.querySelector("section[aria-labelledby]")).toBeTruthy();
+  });
 });
