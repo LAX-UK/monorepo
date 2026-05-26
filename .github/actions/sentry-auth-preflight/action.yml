@@ -24,7 +24,7 @@ runs:
         fi
         http_code="$(curl -sS -o /tmp/sentry-health.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          https://sentry.io/api/0/)"
+          https://de.sentry.io/api/0/)"
         if [ "$http_code" != "200" ]; then
           echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not an Organization Token), regenerate terraform-bot, then gh secret set SENTRY_AUTH_TOKEN (and --env test if using the test environment)."
           head -c 500 /tmp/sentry-health.json 2>/dev/null || true
@@ -32,7 +32,7 @@ runs:
         fi
         org_code="$(curl -sS -o /tmp/sentry-org.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/")"
+          "https://de.sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/")"
         if [ "$org_code" != "200" ]; then
           echo "::error::Sentry org lookup returned HTTP ${org_code} for slug '${SENTRY_ORG_SLUG}'. Confirm the slug in Sentry → Settings → General (URL is sentry.io/settings/{slug}/)."
           head -c 500 /tmp/sentry-org.json 2>/dev/null || true
@@ -40,7 +40,7 @@ runs:
         fi
         teams_code="$(curl -sS -o /tmp/sentry-teams.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          "https://sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/teams/")"
+          "https://de.sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/teams/")"
         if [ "$teams_code" != "200" ]; then
           echo "::error::Could not list teams for org '${SENTRY_ORG_SLUG}' (HTTP ${teams_code}). Check terraform-bot Team permission and org slug."
           head -c 500 /tmp/sentry-teams.json 2>/dev/null || true
