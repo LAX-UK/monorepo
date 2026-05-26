@@ -15,7 +15,11 @@ import {
 } from "@/lib/forms/form-result";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { LotStatus } from "@auction/types";
-import { createSaleSchema, updateSaleSchema } from "@auction/validators";
+import {
+  createNestedLotForSaleSchema,
+  createSaleSchema,
+  updateSaleSchema,
+} from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
@@ -23,6 +27,7 @@ import type { z } from "zod";
 function revalidateAdminSaleDetail(saleId: string) {
   revalidatePath("/admin/sales");
   revalidatePath(`/admin/sales/${saleId}`);
+  revalidatePath(`/admin/sales/${saleId}/setup`);
   revalidatePath(`/admin/sales/${saleId}/schedule`);
   revalidatePath(`/admin/sales/${saleId}/lots`);
   revalidatePath(`/admin/sales/${saleId}/documents`);
@@ -317,6 +322,33 @@ export async function adminUpdateSaleResultAction(
     revalidateAdminSaleDetail(id);
     revalidatePath("/");
     return actionSuccess();
+  });
+}
+
+export async function adminAddLotToSaleResultAction(
+  saleId: string,
+  input: z.infer<typeof createNestedLotForSaleSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  return instrumentServerAction("adminAddLotToSaleResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+    const sid = saleId.trim();
+    if (!sid) {
+      return actionFailure("Missing sale");
+    }
+    const parsed = createNestedLotForSaleSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSales } = getWriteContainer();
+    const r = await adminSales.createNestedLot(sid, parsed.data);
+    if (!r.ok) {
+      const meta = readApiActionErrorMeta(r.body);
+      return actionFailure(r.message, undefined, r.status, r.code, meta);
+    }
+    revalidateAdminSaleDetail(sid);
+    revalidatePath("/admin/lots");
+    return actionSuccess({ id: r.data.id });
   });
 }
 

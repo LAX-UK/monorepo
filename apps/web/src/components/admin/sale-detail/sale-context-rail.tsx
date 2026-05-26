@@ -10,6 +10,7 @@ import { sumLotHammers } from "@/components/admin/sale-detail/sale-detail-helper
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { buildSalePublishReadiness } from "@/lib/admin/catalog-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
+import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import type { Lot, Sale } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -40,9 +41,17 @@ export function SaleContextRail({
   publicHref,
 }: Props) {
   const readiness =
-    sale.status === "draft" || sale.status === "scheduled"
-      ? buildSalePublishReadiness(saleId, sale, lots.length, registrationCount)
-      : null;
+    sale.status === "draft"
+      ? buildSaleSetupReadiness({
+          saleId,
+          sale,
+          lots,
+          pendingRegistrationCount: registrationCount,
+          setupStepHref: (step) => saleSetupHref(saleId, step),
+        })
+      : sale.status === "scheduled"
+        ? buildSalePublishReadiness(saleId, sale, lots.length, registrationCount)
+        : null;
 
   const pendingRegs =
     liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;
@@ -82,6 +91,12 @@ export function SaleContextRail({
               : []),
             ...(sale.status === "draft"
               ? [
+                  {
+                    id: "setup",
+                    label: "Continue setup",
+                    href: saleSetupHref(saleId, "identity"),
+                    variant: "default" as const,
+                  },
                   {
                     id: "edit",
                     label: "Edit draft",

@@ -13,6 +13,7 @@ import {
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { buildSaleSummaryItems } from "@/lib/admin/build-sale-summary-items";
 import { buildSalePublishReadiness } from "@/lib/admin/catalog-readiness";
+import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
 import Link from "next/link";
@@ -46,12 +47,37 @@ export function SaleOverviewTab({
   );
 
   const readiness =
-    sale.status === "draft" || sale.status === "scheduled"
-      ? buildSalePublishReadiness(saleId, sale, lots.length, registrationCount)
-      : null;
+    sale.status === "draft"
+      ? buildSaleSetupReadiness({
+          saleId,
+          sale,
+          lots,
+          pendingRegistrationCount: registrationCount,
+          setupStepHref: (step) => saleSetupHref(saleId, step),
+        })
+      : sale.status === "scheduled"
+        ? buildSalePublishReadiness(saleId, sale, lots.length, registrationCount)
+        : null;
+
+  const showContinueSetup = sale.status === "draft" && readiness && readiness.percent < 100;
 
   return (
     <div className="space-y-8">
+      {showContinueSetup ? (
+        <Link
+          href={saleSetupHref(saleId, "identity")}
+          className="block rounded-xl border border-primary/30 bg-primary/5 p-5 transition-colors hover:bg-primary/10"
+        >
+          <h3 className="font-headline text-base text-on-surface">Continue sale setup</h3>
+          <p className="mt-2 font-body text-sm text-on-surface-variant">
+            {readiness?.completeCount ?? 0} of {readiness?.totalCount ?? 0} checks complete — finish
+            setup to publish.
+          </p>
+          <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+            Continue setup →
+          </span>
+        </Link>
+      ) : null}
       {readiness ? (
         <CatalogPublishReadiness
           title="Catalog readiness"

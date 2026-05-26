@@ -2,6 +2,7 @@
 export const CATALOG_FORM_IDS = {
   lot: "admin-catalog-lot-form",
   sale: "admin-catalog-sale-form",
+  saleSetup: "admin-catalog-sale-setup-form",
   artist: "admin-catalog-artist-form",
   category: "admin-catalog-category-form",
   lotMarketing: "admin-catalog-lot-marketing-form",

@@ -56,4 +56,29 @@ describe("createPlatformCatalogLegalEntityIdProvider", () => {
 
     await expect(provider()).resolves.toBe(PLATFORM_ID);
   });
+
+  it("re-resolves when a cached platform id disappears from the database", async () => {
+    const staleId = "20000000-0000-4000-8000-000000000005";
+    let call = 0;
+    const limit = vi.fn().mockImplementation(() => {
+      call += 1;
+      if (call === 1) {
+        return Promise.resolve([{ id: staleId, kind: "organisation", status: "approved" }]);
+      }
+      if (call === 2) {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve([{ id: PLATFORM_ID, kind: "organisation", status: "approved" }]);
+    });
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const select = vi.fn().mockReturnValue({ from });
+
+    const provider = createPlatformCatalogLegalEntityIdProvider({
+      db: { select } as never,
+    });
+
+    await expect(provider()).resolves.toBe(staleId);
+    await expect(provider()).resolves.toBe(PLATFORM_ID);
+  });
 });
