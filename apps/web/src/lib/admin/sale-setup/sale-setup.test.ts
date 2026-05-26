@@ -2,7 +2,11 @@ import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { humanizeSetupError } from "./humanize-setup-error";
 import { emptySaleSetupLotRow, safeParseSaleSetupLotRowForApi } from "./lot-row-schema";
-import { buildSaleSetupReadiness } from "./readiness";
+import {
+  buildSaleSetupReadiness,
+  isSaleSetupPublishReady,
+  resolveFirstBlockingSetupStep,
+} from "./readiness";
 import { resolveFirstIncompleteStep, saleSetupStepIndex } from "./steps";
 
 const saleId = "10000000-0000-4000-8000-000000000001";
@@ -82,6 +86,35 @@ describe("resolveFirstIncompleteStep", () => {
     expect(
       resolveFirstIncompleteStep({ sale: draftSale(), lots: [draftLot({ images: [] })] }),
     ).toBe("catalog-prep");
+    expect(
+      resolveFirstBlockingSetupStep({ sale: draftSale(), lots: [draftLot({ images: [] })] }),
+    ).toBe("catalog-prep");
+  });
+
+  it("returns schedule when opening time is in the past", () => {
+    const pastStart = new Date(Date.now() - 3_600_000);
+    const futureEnd = new Date(Date.now() + 86_400_000);
+    const sale = draftSale({ startTime: pastStart, endTime: futureEnd });
+    const lot = draftLot({
+      images: ["img-key"],
+      description: "Catalogue text",
+    });
+    expect(resolveFirstIncompleteStep({ sale, lots: [lot] })).toBe("schedule");
+  });
+
+  it("returns review when sale and lots are publish-ready", () => {
+    const lot = draftLot({
+      images: ["img-key"],
+      description: "Catalogue text",
+    });
+    expect(resolveFirstIncompleteStep({ sale: draftSale(), lots: [lot] })).toBe("review");
+    expect(
+      isSaleSetupPublishReady({
+        saleId,
+        sale: draftSale(),
+        lots: [lot],
+      }),
+    ).toBe(true);
   });
 });
 
@@ -108,6 +141,52 @@ describe("safeParseSaleSetupLotRowForApi", () => {
       expect(parsed.data.sellerId).toBe(sellerId);
     }
   });
+
+  it("rejects lot start before sale start", () => {
+    const row = {
+      ...emptySaleSetupLotRow("row-1"),
+      title: "Vase",
+      sellerLegalEntityId: sellerId,
+      categoryIds: [categoryId],
+      startingPrice: "100.00",
+      startTime: "2030-01-01T08:00",
+      endTime: "2030-01-01T11:00",
+    };
+    const ctx = {
+      saleStartTime: new Date("2030-01-01T09:00"),
+      saleEndTime: new Date("2030-01-01T18:00"),
+      deliveryMode: "online" as const,
+      englishOnlyAuctionsLocked: false,
+    };
+    const parsed = safeParseSaleSetupLotRowForApi(row, ctx);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0]?.path).toEqual(["startTime"]);
+    }
+  });
+
+  it("rejects lot end after sale end", () => {
+    const row = {
+      ...emptySaleSetupLotRow("row-1"),
+      title: "Vase",
+      sellerLegalEntityId: sellerId,
+      categoryIds: [categoryId],
+      startingPrice: "100.00",
+      startTime: "2030-01-01T10:00",
+      endTime: "2030-01-01T19:00",
+    };
+    const ctx = {
+      saleStartTime: new Date("2030-01-01T09:00"),
+      saleEndTime: new Date("2030-01-01T18:00"),
+      deliveryMode: "online" as const,
+      englishOnlyAuctionsLocked: false,
+    };
+    const parsed = safeParseSaleSetupLotRowForApi(row, ctx);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0]?.path).toEqual(["endTime"]);
+    }
+  });
 });
 
 describe("buildSaleSetupReadiness", () => {
@@ -121,6 +200,29 @@ describe("buildSaleSetupReadiness", () => {
     const imageItem = result.items.find((i) => i.id.includes("images"));
     expect(imageItem?.ok).toBe(false);
     expect(imageItem?.label).toContain("Blue vase");
+    expect(imageItem?.href).toBe("/setup?step=catalog-prep");
+  });
+
+  it("links schedule blockers to the schedule step", () => {
+    const pastStart = new Date(Date.now() - 3_600_000);
+    const futureEnd = new Date(Date.now() + 86_400_000);
+    const result = buildSaleSetupReadiness({
+      saleId,
+      sale: draftSale({ startTime: pastStart, endTime: futureEnd }),
+      lots: [draftLot({ images: ["img"], description: "desc" })],
+      setupStepHref: (step) => `/setup?step=${step}`,
+    });
+    const futureItem = result.items.find((i) => i.id === "sale_start_future");
+    expect(futureItem?.href).toBe("/setup?step=schedule");
+  });
+
+  it("omits venue check for online sales", () => {
+    const result = buildSaleSetupReadiness({
+      saleId,
+      sale: draftSale({ deliveryMode: "online" }),
+      lots: [draftLot({ images: ["img"], description: "desc" })],
+    });
+    expect(result.items.some((i) => i.id === "venue")).toBe(false);
   });
 });
 

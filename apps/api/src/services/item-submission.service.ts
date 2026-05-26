@@ -35,6 +35,7 @@ import type {
   ListSubmissionsFilter,
 } from "./interfaces/repositories.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
+import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { submissionToCreateLotInput } from "./submission-to-lot.mapper.js";
@@ -54,6 +55,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     private readonly legalEntityRepository: ILegalEntityRepository | null = null,
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
     private readonly mediaUrlResolver: MediaUrlResolver | undefined = undefined,
+    private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
   ) {}
 
   private async assertSellerEntityAllowsSubmissions(
@@ -281,6 +283,13 @@ export class ItemSubmissionService implements IItemSubmissionService {
           sellerLegalEntityId: s.legalEntityId,
           artistId,
         });
+        if (this.lotLifecycleRecording) {
+          await this.lotLifecycleRecording.recordCreated(tx, {
+            lot: createdLot,
+            source: "submission",
+            actorUserId: adminId,
+          });
+        }
         const submission = await subRepo.update(id, {
           status: "converted",
           convertedLotId: createdLot.id,

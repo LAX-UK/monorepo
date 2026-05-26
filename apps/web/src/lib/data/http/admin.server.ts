@@ -232,7 +232,9 @@ function parseAdminPayoutRow(raw: unknown): AdminPayoutRow {
 /** Matches {@link listLotsQuerySchema} max on the API. */
 const ADMIN_LOT_LIST_MAX_LIMIT = 100;
 
-export async function getAdminLotList(params: ListLotsParams = {}): Promise<Lot[]> {
+export async function getAdminLotList(
+  params: ListLotsParams = {},
+): Promise<Array<Lot & { lifecycleSummary?: AdminLotLifecycleSummary }>> {
   const qs = new URLSearchParams(
     buildLotListQuery({
       ...params,
@@ -254,8 +256,29 @@ export async function getAdminLotList(params: ListLotsParams = {}): Promise<Lot[
     throw new Error(`Failed to load lots: ${res.status}${detail}`);
   }
   const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseLot);
+  return body.data.map((raw) => {
+    const lot = parseLot(raw);
+    const o = raw as Record<string, unknown>;
+    const ls = o.lifecycleSummary as Record<string, unknown> | undefined;
+    if (!ls || typeof ls.lastEventType !== "string" || typeof ls.lastEventAt !== "string") {
+      return lot;
+    }
+    return {
+      ...lot,
+      lifecycleSummary: {
+        lastEventType: ls.lastEventType,
+        lastEventAt: ls.lastEventAt,
+        returnCount: Number(ls.returnCount ?? 0),
+      },
+    };
+  });
 }
+
+export type AdminLotLifecycleSummary = {
+  lastEventType: string;
+  lastEventAt: string;
+  returnCount: number;
+};
 
 export async function getAdminCategoryList(
   params: {
@@ -966,6 +989,76 @@ export async function searchAdminLegalEntitiesForPicker(params: {
         ? (row.status as LegalEntityStatus)
         : "lead",
   }));
+}
+
+export type AdminLotPickerRow = {
+  id: string;
+  title: string;
+  lifecycle: {
+    kind: "new_draft" | "returned";
+    returnedAt: string | null;
+    lastSaleId: string | null;
+    lastSaleName: string | null;
+    returnCount: number;
+  };
+};
+
+export class AdminLotBrowseError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    const hint = status === 404 ? " (browse endpoint missing — restart/rebuild API)" : "";
+    super(`Failed to browse lots: ${status}${hint}`);
+    this.name = "AdminLotBrowseError";
+    this.status = status;
+  }
+}
+
+export async function getAdminLotBrowse(params: {
+  q?: string;
+  sellerLegalEntityId?: string;
+  categoryIds?: string[];
+  artistId?: string;
+  state?: "available" | "returned" | "all";
+  excludeSaleId?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ rows: AdminLotPickerRow[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (params.q?.trim()) qs.set("q", params.q.trim());
+  if (params.sellerLegalEntityId) qs.set("sellerLegalEntityId", params.sellerLegalEntityId);
+  if (params.categoryIds?.length) qs.set("categoryIds", params.categoryIds.join(","));
+  if (params.artistId) qs.set("artistId", params.artistId);
+  if (params.state) qs.set("state", params.state);
+  if (params.excludeSaleId) qs.set("excludeSaleId", params.excludeSaleId);
+  qs.set("limit", String(params.limit ?? 25));
+  qs.set("offset", String(params.offset ?? 0));
+  const res = await authedServerFetch(`/admin/lots/browse?${qs.toString()}`);
+  if (!res.ok) throw new AdminLotBrowseError(res.status);
+  const body = (await res.json()) as { data: AdminLotPickerRow[]; total: number };
+  return { rows: body.data, total: body.total };
+}
+
+export type AdminLotLifecyclePayload = {
+  snapshot: {
+    currentStatus: string;
+    lastEventType: string;
+    lastEventAt: string;
+    lastSaleId: string | null;
+    returnCount: number;
+  } | null;
+  events: {
+    eventType: string;
+    occurredAt: string;
+    saleTitle?: string | null;
+  }[];
+};
+
+export async function getAdminLotLifecycle(lotId: string): Promise<AdminLotLifecyclePayload> {
+  const res = await authedServerFetch(`/admin/lots/${encodeURIComponent(lotId)}/lifecycle`);
+  if (!res.ok) throw new Error(`Failed to load lot lifecycle: ${res.status}`);
+  const body = (await res.json()) as { data: AdminLotLifecyclePayload };
+  return body.data;
 }
 
 export async function getAdminLegalEntitiesForUser(userId: string): Promise<LegalEntity[]> {

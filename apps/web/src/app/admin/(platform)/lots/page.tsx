@@ -15,6 +15,7 @@ import { lotsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { lotActiveLensId, lotLensItems } from "@/lib/admin/catalog/lots-lenses";
+import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminLotsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
@@ -122,6 +123,13 @@ export default async function AdminLotsPage({
     endTimeIso: a.endTime.toISOString(),
     endTimeLabel: formatDateTime(a.endTime),
     currentPrice: a.currentPrice,
+    ...(a.lifecycleSummary
+      ? {
+          lastActivityType: a.lifecycleSummary.lastEventType,
+          lastActivityAt: a.lifecycleSummary.lastEventAt,
+          lastActivityLabel: domainEventLabel(a.lifecycleSummary.lastEventType),
+        }
+      : {}),
   }));
 
   const activeOnPage = lotTableRows.filter((r) => r.status === "active").length;

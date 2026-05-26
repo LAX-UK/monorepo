@@ -23,6 +23,7 @@ import {
   adminListEventsQuerySchema,
   adminListOutboxQuerySchema,
   adminListSuppressionsQuerySchema,
+  adminLotBrowseQuerySchema,
   adminLotFulfilmentListQuerySchema,
   adminLotFulfilmentLotIdParamSchema,
   adminPatchStaffRoleBodySchema,
@@ -46,8 +47,10 @@ import {
   lotFulfilmentCollectBodySchema,
   lotFulfilmentReleaseBodySchema,
   lotFulfilmentShipBodySchema,
+  lotIdOnlyParamSchema,
   lotIdParamSchema,
   paymentIdParamSchema,
+  returnLotToInventoryBodySchema,
   saleroomAdvanceLotBodySchema,
   updateProfileSchema,
   userIdParamSchema,
@@ -683,6 +686,91 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const data = await container.admin.ops.listAttentionFeed();
     return c.json({ data });
   });
+
+  /** GET /admin/lots/browse — attachable draft lots for sale setup picker. */
+  platform.get(
+    "/lots/browse",
+    requireSpecialistCatalogueOrAuctionManage,
+    zValidator("query", adminLotBrowseQuerySchema),
+    async (c) => {
+      const query = c.req.valid("query");
+      const result = await container.adminLotBrowseService.listAttachable({
+        limit: query.limit,
+        offset: query.offset,
+        state: query.state,
+        ...(query.q ? { q: query.q } : {}),
+        ...(query.sellerLegalEntityId ? { sellerLegalEntityId: query.sellerLegalEntityId } : {}),
+        ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
+        ...(query.artistId ? { artistId: query.artistId } : {}),
+        ...(query.excludeSaleId ? { excludeSaleId: query.excludeSaleId } : {}),
+      });
+      return c.json({ data: result.data, total: result.total });
+    },
+  );
+
+  /** GET /admin/lots/:lotId/lifecycle — snapshot + recent events for journey strip. */
+  platform.get(
+    "/lots/:lotId/lifecycle",
+    requireSpecialistCatalogueOrAuctionManage,
+    zValidator("param", lotIdOnlyParamSchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const snapshot = await container.lotLifecycleQueryService.getSnapshot(lotId);
+      const events = await container.lotLifecycleQueryService.timeline(lotId, {
+        limit: 10,
+        includeSaleContext: true,
+      });
+      return c.json({
+        data: {
+          snapshot: snapshot
+            ? {
+                currentStatus: snapshot.currentStatus,
+                lastEventType: snapshot.lastEventType,
+                lastEventAt: snapshot.lastEventAt.toISOString(),
+                lastSaleId: snapshot.lastSaleId,
+                returnCount: snapshot.returnCount,
+              }
+            : null,
+          events: events.map((ev) => ({
+            eventType: ev.eventType,
+            occurredAt: ev.occurredAt.toISOString(),
+            saleTitle: ev.saleTitle ?? null,
+          })),
+        },
+      });
+    },
+  );
+
+  /** POST /admin/lots/:lotId/return-to-inventory */
+  platform.post(
+    "/lots/:lotId/return-to-inventory",
+    requireAuctionManage,
+    zValidator("param", lotIdOnlyParamSchema),
+    zValidator("json", returnLotToInventoryBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const { lotId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const result = await container.lotTransitionOrchestrator.returnToInventory(
+        userId,
+        role,
+        lotId,
+        {
+          reason: body.reason,
+          ...(body.confirmVoided !== undefined ? { confirmVoided: body.confirmVoided } : {}),
+          ...(body.notifyBidders !== undefined ? { notifyBidders: body.notifyBidders } : {}),
+        },
+        staff,
+      );
+      return result.match(
+        (lot) => c.json({ data: lot }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
 
   /** GET /admin/lots/artist-backfill-review — pending `lot_artist_backfill` tasks (SE-P23). */
   platform.get("/lots/artist-backfill-review", async (c) => {

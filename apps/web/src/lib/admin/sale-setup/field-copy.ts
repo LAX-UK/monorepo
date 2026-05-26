@@ -61,9 +61,27 @@ export function saleSavedMessage(nextStep: SaleSetupStepId): string {
       return "Sale saved. Add terms and PDF attachments next.";
     case "lots":
       return "Sale saved. Add your lots next.";
+    case "review":
+      return "Sale saved as draft.";
     default:
       return "Sale saved.";
   }
+}
+
+export function reviewSaveDraftHint(): string {
+  return "Not ready to go live? Save as draft and finish photos, descriptions, or schedule details later.";
+}
+
+export function reviewPublishBlockedHint(): string {
+  return "Complete the items below to publish.";
+}
+
+export function saveDraftSuccessMessage(): string {
+  return "Sale saved as draft. You can continue setup anytime.";
+}
+
+export function catalogPrepReviewNotice(): string {
+  return "You can save as draft on the next step and finish catalog details later.";
 }
 
 export function lotSavedMessage(title: string): string {

@@ -1,11 +1,16 @@
 "use client";
 
 import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-picker";
+import { AdminLotPicker } from "@/components/admin/admin-lot-picker";
 import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
 import { CategoryPicker } from "@/components/forms/category-picker";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
-import { adminAddLotToSaleResultAction } from "@/lib/actions/admin-sales";
+import {
+  adminAddLotToSaleResultAction,
+  adminAttachLotToSaleResultAction,
+  adminDetachLotFromSaleResultAction,
+} from "@/lib/actions/admin-sales";
 import {
   type SaleSetupLotRowContext,
   type SaleSetupLotRowFormValues,
@@ -14,9 +19,13 @@ import {
   fieldTierSuffix,
   humanizeSetupError,
   lotSavedMessage,
+  mergeSavedLotRow,
+  mergeWizardRowsWithServerLots,
   safeParseSaleSetupLotRowForApi,
 } from "@/lib/admin/sale-setup";
+import { toDatetimeLocalValue } from "@/lib/forms/schemas/admin-lot-defaults";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
+import { formatDateTime } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { lotAuctionTypes } from "@auction/types";
@@ -51,6 +60,7 @@ type Props = {
 function lotToRow(lot: Lot): SaleSetupLotRowFormValues {
   return {
     clientRowId: lot.id,
+    source: "new",
     lotId: lot.id,
     title: lot.title,
     sellerLegalEntityId: lot.sellerLegalEntityId ?? "",
@@ -63,8 +73,8 @@ function lotToRow(lot: Lot): SaleSetupLotRowFormValues {
     auctionType: lot.auctionType,
     startingPrice: lot.startingPrice,
     artistId: lot.artistId ?? null,
-    startTime: "",
-    endTime: "",
+    startTime: toDatetimeLocalValue(lot.startTime),
+    endTime: toDatetimeLocalValue(lot.endTime),
   };
 }
 
@@ -92,6 +102,7 @@ function LotRowEditor({
   saleId,
   onSaved,
   onRemove,
+  onDetached,
 }: {
   row: SaleSetupLotRowFormValues;
   rowIndex: number;
@@ -101,13 +112,67 @@ function LotRowEditor({
   englishOnlyAuctionsLocked: boolean;
   readOnly: boolean;
   saleId: string;
-  onSaved: (lotId: string) => void;
+  onSaved: (lotId: string, values: SaleSetupLotRowFormValues, meta?: { title?: string }) => void;
   onRemove: () => void;
+  onDetached?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const form = useForm<SaleSetupLotRowFormValues>({ defaultValues: row });
   const isSaved = Boolean(row.lotId);
+  const isExisting = row.source === "existing";
   const inheritsTiming = saleModeInheritsLotTiming(ctx.deliveryMode);
+  const saleStartLocal = toDatetimeLocalValue(ctx.saleStartTime);
+  const saleEndLocal = toDatetimeLocalValue(ctx.saleEndTime);
+  const lotStartValue = form.watch("startTime");
+  const endTimeMin = lotStartValue?.trim() ? lotStartValue : saleStartLocal;
+  const [attachLotId, setAttachLotId] = useState<string | null>(null);
+  const [attachTitle, setAttachTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    form.reset(row);
+  }, [form, row]);
+
+  const attachExisting = useCallback(() => {
+    if (!attachLotId) {
+      notify.error("Choose a lot to attach");
+      return;
+    }
+    startTransition(async () => {
+      const r = await adminAttachLotToSaleResultAction(saleId, attachLotId, { via: "wizard" });
+      if (!r.ok) {
+        notify.error(actionFailureNotifyMessage(r.error));
+        return;
+      }
+      notify.success(`Attached ${attachTitle ?? "lot"}`);
+      onSaved(
+        attachLotId,
+        { ...row, title: attachTitle ?? row.title },
+        attachTitle ? { title: attachTitle } : undefined,
+      );
+    });
+  }, [attachLotId, attachTitle, onSaved, row, saleId]);
+
+  const detachAttached = useCallback(() => {
+    const lotId = row.lotId;
+    if (!lotId) return;
+    if (
+      !window.confirm(
+        "Detach this lot from the sale? It returns to inventory as a standalone draft lot.",
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const r = await adminDetachLotFromSaleResultAction(saleId, lotId);
+      if (!r.ok) {
+        notify.error(actionFailureNotifyMessage(r.error));
+        return;
+      }
+      notify.success(`Detached ${row.title || attachTitle || "lot"}`);
+      onRemove();
+      onDetached?.();
+    });
+  }, [attachTitle, onDetached, onRemove, row.lotId, row.title, saleId]);
 
   const auctionTypeOptions = useMemo(() => {
     if (!englishOnlyAuctionsLocked) return lotAuctionTypes;
@@ -142,9 +207,81 @@ function LotRowEditor({
       }
       if (!r.data?.id) return;
       notify.success(lotSavedMessage(values.title));
-      onSaved(r.data.id);
+      onSaved(r.data.id, values);
     });
   }, [ctx, form, onSaved, saleId]);
+
+  if (isExisting && isSaved) {
+    return (
+      <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-headline text-base text-on-surface">
+            Lot {rowIndex + 1}
+            <span className="ml-2 inline-flex items-center gap-1 font-body text-xs text-primary">
+              <CheckCircle2 className="size-3.5" aria-hidden />
+              Attached
+            </span>
+          </p>
+          {!readOnly ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={detachAttached}
+              disabled={pending}
+              aria-label="Detach lot from sale"
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+        </div>
+        <p className="font-body text-sm text-on-surface">
+          {row.title || attachTitle || "Existing lot"}
+        </p>
+        <p className="mt-1 font-body text-xs text-on-surface-variant">
+          Existing inventory lot attached to this sale.
+        </p>
+      </div>
+    );
+  }
+
+  if (isExisting && !isSaved && !readOnly) {
+    return (
+      <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-headline text-base text-on-surface">
+            Attach existing lot {rowIndex + 1}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+            aria-label="Remove row"
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </Button>
+        </div>
+        <AdminLotPicker
+          value={attachLotId}
+          displayLabel={attachTitle}
+          excludeSaleId={saleId}
+          onChange={(id, hit) => {
+            setAttachLotId(id);
+            setAttachTitle(hit?.title ?? null);
+          }}
+        />
+        <LoadingButton
+          type="button"
+          loading={pending}
+          onClick={attachExisting}
+          className="mt-4 w-full sm:w-auto"
+        >
+          Attach to sale
+        </LoadingButton>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -280,45 +417,55 @@ function LotRowEditor({
           </div>
 
           {!inheritsTiming ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="startTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      <LabelCaps>Lot opens{fieldTierSuffix("required")}</LabelCaps>
-                    </FormLabel>
-                    <FormControl>
-                      <UnderlineInput
-                        {...field}
-                        type="datetime-local"
-                        disabled={readOnly || isSaved}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      <LabelCaps>Lot closes{fieldTierSuffix("required")}</LabelCaps>
-                    </FormLabel>
-                    <FormControl>
-                      <UnderlineInput
-                        {...field}
-                        type="datetime-local"
-                        disabled={readOnly || isSaved}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        <LabelCaps>Lot opens{fieldTierSuffix("required")}</LabelCaps>
+                      </FormLabel>
+                      <FormControl>
+                        <UnderlineInput
+                          {...field}
+                          type="datetime-local"
+                          min={saleStartLocal}
+                          max={saleEndLocal}
+                          disabled={readOnly || isSaved}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        <LabelCaps>Lot closes{fieldTierSuffix("required")}</LabelCaps>
+                      </FormLabel>
+                      <FormControl>
+                        <UnderlineInput
+                          {...field}
+                          type="datetime-local"
+                          min={endTimeMin}
+                          max={saleEndLocal}
+                          disabled={readOnly || isSaved}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <p className="font-body text-xs text-on-surface-variant">
+                Sale runs {formatDateTime(ctx.saleStartTime)} – {formatDateTime(ctx.saleEndTime)}{" "}
+                (local). Lot times must fall within this window.
+              </p>
             </div>
           ) : (
             <p className="font-body text-xs text-on-surface-variant">
@@ -387,9 +534,7 @@ export function SaleLotRowsEditor({
   }, [onUnsavedChange, unsavedCount]);
 
   useEffect(() => {
-    if (lots.length > 0) {
-      setRows(lots.map(lotToRow));
-    }
+    setRows((prev) => mergeWizardRowsWithServerLots(prev, lots, lotToRow));
   }, [lots]);
 
   const ctx: SaleSetupLotRowContext = useMemo(
@@ -419,26 +564,50 @@ export function SaleLotRowsEditor({
           englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
           readOnly={readOnly}
           saleId={saleId}
-          onSaved={(lotId) => {
+          onSaved={(lotId, values, meta) => {
             setRows((prev) =>
-              prev.map((r) => (r.clientRowId === row.clientRowId ? { ...r, lotId } : r)),
+              prev.map((r) =>
+                r.clientRowId === row.clientRowId ? mergeSavedLotRow(values, lotId, meta) : r,
+              ),
             );
             onLotsChange();
           }}
           onRemove={() => setRows((prev) => prev.filter((r) => r.clientRowId !== row.clientRowId))}
+          onDetached={onLotsChange}
         />
       ))}
 
       {!readOnly ? (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setRows((prev) => [...prev, emptySaleSetupLotRow(crypto.randomUUID())])}
-          className="gap-2"
-        >
-          <Plus className="size-4" aria-hidden />
-          Add another lot
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setRows((prev) => [
+                ...prev,
+                { ...emptySaleSetupLotRow(crypto.randomUUID()), source: "new" },
+              ])
+            }
+            className="gap-2"
+          >
+            <Plus className="size-4" aria-hidden />
+            Create new lot
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setRows((prev) => [
+                ...prev,
+                { ...emptySaleSetupLotRow(crypto.randomUUID()), source: "existing" },
+              ])
+            }
+            className="gap-2"
+          >
+            <Plus className="size-4" aria-hidden />
+            Add existing lot
+          </Button>
+        </div>
       ) : null}
 
       {unsavedCount > 0 ? (

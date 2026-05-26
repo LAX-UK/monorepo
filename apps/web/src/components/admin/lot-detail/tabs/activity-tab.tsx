@@ -12,7 +12,7 @@ export function LotActivityTab({ lotId }: Props) {
   return (
     <CatalogDetailTabPanel
       title="Activity"
-      description="Audit timeline for this lot — bids, condition reports, and lifecycle events."
+      description="Audit timeline for this lot — lifecycle transitions, sale attachment, bids, and condition reports."
     >
       <ActivityContent lotId={lotId} />
       <p className="mt-6 font-body text-xs text-on-surface-variant">

@@ -95,10 +95,18 @@ export class AdminSaleService implements IAdminSaleService {
     return serviceSuccess({ id }, r.status);
   }
 
-  async attachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>> {
+  async attachLot(
+    saleId: string,
+    lotId: string,
+    via: "attach_endpoint" | "wizard" = "attach_endpoint",
+  ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/sales/${encodeURIComponent(saleId)}/lots/attach/${encodeURIComponent(lotId)}`,
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ via }),
+      },
     );
   }
 
