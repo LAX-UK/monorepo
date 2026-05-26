@@ -103,7 +103,10 @@ export class SaleService {
     }
     const createdByLegalEntityId = await this.resolvePlatformCatalogLegalEntityId();
     if (!createdByLegalEntityId) {
-      throw new LotError("Platform catalog legal entity is not configured. Contact support.", 400);
+      throw new LotError(
+        "Platform catalog legal entity is not configured. Reseed the dev database (pnpm --filter @auction/db db:seed:dev) and restart the API.",
+        400,
+      );
     }
     const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId });
     if (input.lots?.length) {

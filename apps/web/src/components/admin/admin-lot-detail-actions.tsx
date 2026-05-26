@@ -18,6 +18,8 @@ type Props = {
   publicHref: string;
   sellerLegalEntityId: string | null;
   canPublish: boolean;
+  /** When lot belongs to a draft sale, publish is done via sale publish. */
+  saleStatus?: string | null;
   canCancel: boolean;
   showEditDraft: boolean;
   showEditLot: boolean;
@@ -29,6 +31,7 @@ export function AdminLotDetailActions({
   publicHref,
   sellerLegalEntityId,
   canPublish,
+  saleStatus = null,
   canCancel,
   showEditDraft,
   showEditLot,
@@ -45,6 +48,9 @@ export function AdminLotDetailActions({
         ? "Edit catalog copy"
         : null;
 
+  const publishViaSale = saleStatus === "draft";
+  const showLotPublish = canPublish && !publishViaSale;
+
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {editLabel ? (
@@ -52,7 +58,12 @@ export function AdminLotDetailActions({
           <Link href={editHref}>{editLabel}</Link>
         </Button>
       ) : null}
-      {canPublish ? (
+      {publishViaSale && canPublish ? (
+        <p className="max-w-xs font-body text-xs text-on-surface-variant">
+          Publish this lot with the sale when you go live.
+        </p>
+      ) : null}
+      {showLotPublish ? (
         <PublishLotButton lotId={lotId} sellerLegalEntityId={sellerLegalEntityId} />
       ) : null}
       {canCancel ? <CancelLotButton lotId={lotId} /> : null}

@@ -66,6 +66,41 @@ test.describe("admin catalog navigation", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Sale setup wizard
+// ---------------------------------------------------------------------------
+
+test.describe("admin sale setup wizard", () => {
+  test("new sale page shows setup wizard step 1", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/sales/new");
+    await expect(page.getByRole("heading", { name: /new sale|set up sale/i })).toBeVisible();
+    await expect(page.getByText(/step 1 of 6/i)).toBeVisible();
+    await expect(page.getByLabel(/title/i).first()).toBeVisible();
+  });
+
+  test("draft sale setup page loads for existing sale", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/sales");
+    const draftLink = page.getByRole("link", { name: /draft/i }).first();
+    const hasDraft = await draftLink.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!hasDraft) {
+      test.skip(true, "No draft sales in seed data");
+      return;
+    }
+    await page.locator("table tbody tr").first().getByRole("link").first().click();
+    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+    const setupLink = page.getByRole("link", { name: /continue setup/i });
+    if (await setupLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await setupLink.click();
+      await page.waitForURL(/\/admin\/sales\/[^/]+\/setup/);
+      await expect(page.getByText(/step \d of 6/i)).toBeVisible();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Lot create flow
 // ---------------------------------------------------------------------------
 
