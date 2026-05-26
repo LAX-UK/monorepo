@@ -4,6 +4,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { getIdempotentSaleCreate, setIdempotentSaleCreate } from "@/lib/actions/idempotency-cache";
+import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -15,19 +16,14 @@ import {
 } from "@/lib/forms/form-result";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { LotStatus } from "@auction/types";
-import { createSaleSchema, updateSaleSchema } from "@auction/validators";
+import {
+  createNestedLotForSaleSchema,
+  createSaleSchema,
+  updateSaleSchema,
+} from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
-
-function revalidateAdminSaleDetail(saleId: string) {
-  revalidatePath("/admin/sales");
-  revalidatePath(`/admin/sales/${saleId}`);
-  revalidatePath(`/admin/sales/${saleId}/schedule`);
-  revalidatePath(`/admin/sales/${saleId}/lots`);
-  revalidatePath(`/admin/sales/${saleId}/documents`);
-  revalidatePath(`/admin/sales/${saleId}/registrations`);
-}
 
 function parseCoverImagesFromForm(formData: FormData): string[] | undefined {
   const raw = String(formData.get("coverImages") ?? "").trim();
@@ -320,6 +316,33 @@ export async function adminUpdateSaleResultAction(
   });
 }
 
+export async function adminAddLotToSaleResultAction(
+  saleId: string,
+  input: z.infer<typeof createNestedLotForSaleSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  return instrumentServerAction("adminAddLotToSaleResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+    const sid = saleId.trim();
+    if (!sid) {
+      return actionFailure("Missing sale");
+    }
+    const parsed = createNestedLotForSaleSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSales } = getWriteContainer();
+    const r = await adminSales.createNestedLot(sid, parsed.data);
+    if (!r.ok) {
+      const meta = readApiActionErrorMeta(r.body);
+      return actionFailure(r.message, undefined, r.status, r.code, meta);
+    }
+    revalidateAdminSaleDetail(sid);
+    revalidatePath("/admin/lots");
+    return actionSuccess({ id: r.data.id });
+  });
+}
+
 export async function adminPublishSaleResultAction(saleId: string): Promise<ActionResult<void>> {
   return instrumentServerAction("adminPublishSaleResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SALES_ACCESS);
@@ -407,6 +430,7 @@ export async function adminSoftDeleteSaleResultAction(
 export async function adminAttachLotToSaleResultAction(
   saleId: string,
   lotId: string,
+  opts?: { via?: "attach_endpoint" | "wizard" },
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminAttachLotToSaleResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SALES_ACCESS);
@@ -417,7 +441,7 @@ export async function adminAttachLotToSaleResultAction(
       return actionFailure("Missing sale or lot");
     }
     const { adminSales } = getWriteContainer();
-    const r = await adminSales.attachLot(sid, lid);
+    const r = await adminSales.attachLot(sid, lid, opts?.via);
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }

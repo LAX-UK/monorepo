@@ -13,6 +13,7 @@ import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { englishOnlyAdminLotAuctionTypeViolation } from "@auction/validators";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import type { LotCancelledPayload } from "../domain/lot-events.js";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
@@ -20,6 +21,7 @@ import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { mergeSaleTimingIntoPatch, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { findPostgresError } from "../lib/pg-error.js";
+import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
@@ -35,6 +37,8 @@ import type {
 } from "./interfaces/repositories.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
+import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
+import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
@@ -101,6 +105,8 @@ export type LotServiceOptions = {
   domainEventPublisher?: DomainEventPublisher | null;
   mediaUrlResolver?: MediaUrlResolver;
   englishOnlyAuctions?: boolean;
+  lotLifecycleRecording?: LotLifecycleRecording | null;
+  lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
 };
 
 export class LotService {
@@ -118,6 +124,8 @@ export class LotService {
   private readonly domainEventPublisher: DomainEventPublisher | null;
   private readonly mediaUrlResolver: MediaUrlResolver | undefined;
   private readonly englishOnlyAuctions: boolean;
+  private readonly lotLifecycleRecording: LotLifecycleRecording | null;
+  private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
 
   constructor(opts: LotServiceOptions) {
     this.lotRepo = opts.lotRepo;
@@ -134,6 +142,34 @@ export class LotService {
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
     this.mediaUrlResolver = opts.mediaUrlResolver;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
+    this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
+    this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
+  }
+
+  returnToInventory(
+    actorUserId: string,
+    userRole: string,
+    lotId: string,
+    input: Parameters<LotTransitionOrchestrator["returnToInventory"]>[3],
+    userStaffRole?: string | null,
+  ) {
+    if (!this._lotTransitionOrchestrator) {
+      return Promise.resolve(err(new LotError("Return to inventory is not configured", 500)));
+    }
+    return this._lotTransitionOrchestrator.returnToInventory(
+      actorUserId,
+      userRole,
+      lotId,
+      input,
+      userStaffRole,
+    );
+  }
+
+  private async recordLifecycle(
+    fn: (tx: NonNullable<LotServiceOptions["db"]>) => Promise<void>,
+  ): Promise<void> {
+    if (!this.db || !this.lotLifecycleRecording) return;
+    await this.db.transaction(async (tx) => fn(tx));
   }
 
   async create(_sellerId: string, input: CreateLotInput): Promise<Result<Lot, LotError>> {
@@ -151,7 +187,25 @@ export class LotService {
     if (timingResult.isErr()) {
       return err(timingResult.error);
     }
+    if (this.db && this.lotLifecycleRecording) {
+      const created = await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        const row = await lotRepo.create(timingResult.value);
+        await this.lotLifecycleRecording?.recordCreated(tx, {
+          lot: row,
+          source: "staff_create",
+        });
+        return row;
+      });
+      return ok(created);
+    }
     const created = await this.lotRepo.create(timingResult.value);
+    await this.recordLifecycle(async (tx) => {
+      await this.lotLifecycleRecording?.recordCreated(tx, {
+        lot: created,
+        source: "staff_create",
+      });
+    });
     return ok(created);
   }
 
@@ -214,9 +268,25 @@ export class LotService {
         }
       }
     }
-    await this.lotRepo.updateStatus(lotId, "scheduled");
-    const updated = await this.lotRepo.findById(lotId);
-    if (!updated) return err(new LotError("Lot not found", 404));
+    let updated: Lot;
+    if (this.db && this.lotLifecycleRecording) {
+      updated = await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        await lotRepo.updateStatus(lotId, "scheduled");
+        const row = await lotRepo.findById(lotId);
+        if (!row) throw new LotError("Lot not found", 404);
+        await this.lotLifecycleRecording?.recordPublished(tx, row, _userId);
+        return row;
+      });
+    } else {
+      await this.lotRepo.updateStatus(lotId, "scheduled");
+      const row = await this.lotRepo.findById(lotId);
+      if (!row) return err(new LotError("Lot not found", 404));
+      updated = row;
+      await this.recordLifecycle(async (tx) => {
+        await this.lotLifecycleRecording?.recordPublished(tx, updated, _userId);
+      });
+    }
     await this.jobScheduler?.scheduleLot(lotId, updated.startTime, updated.endTime);
     return ok(updated);
   }
@@ -226,6 +296,7 @@ export class LotService {
     userRole: string,
     lotId: string,
     userStaffRole?: string | null,
+    cancelReason: LotCancelledPayload["reason"] = "manual",
   ): Promise<Result<Lot, LotError | AuthzError>> {
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
@@ -238,9 +309,25 @@ export class LotService {
       return err(new LotError("This lot cannot be cancelled"));
     }
     await this.jobScheduler?.cancelLotJobs(lotId);
-    await this.lotRepo.updateStatus(lotId, "cancelled");
-    const updated = await this.lotRepo.findById(lotId);
-    if (!updated) return err(new LotError("Lot not found", 404));
+    let updated: Lot;
+    if (this.db && this.lotLifecycleRecording) {
+      updated = await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        await lotRepo.updateStatus(lotId, "cancelled");
+        const row = await lotRepo.findById(lotId);
+        if (!row) throw new LotError("Lot not found", 404);
+        await this.lotLifecycleRecording?.recordCancelled(tx, row, cancelReason, _userId);
+        return row;
+      });
+    } else {
+      await this.lotRepo.updateStatus(lotId, "cancelled");
+      const row = await this.lotRepo.findById(lotId);
+      if (!row) return err(new LotError("Lot not found", 404));
+      updated = row;
+      await this.recordLifecycle(async (tx) => {
+        await this.lotLifecycleRecording?.recordCancelled(tx, updated, cancelReason, _userId);
+      });
+    }
 
     if (this.lotNotifications) {
       const bidders = await this.bids.listDistinctBidderIds(lotId);
@@ -328,7 +415,46 @@ export class LotService {
     }
     let updated: Lot;
     try {
-      updated = await this.lotRepo.update(lotId, patch);
+      if (
+        patch.saleId !== undefined &&
+        patch.saleId !== a.saleId &&
+        this.db &&
+        this.lotLifecycleRecording
+      ) {
+        updated = await this.db.transaction(async (tx) => {
+          const lotRepo = new DrizzleLotRepository(tx);
+          const row = await lotRepo.update(lotId, patch);
+          if (a.saleId && patch.saleId !== a.saleId) {
+            await this.lotLifecycleRecording?.recordDetached(tx, a, a.saleId);
+          }
+          if (patch.saleId) {
+            await this.lotLifecycleRecording?.recordAttached(tx, row, {
+              saleId: patch.saleId,
+              lotNumber: row.lotNumber,
+              fromSaleId: a.saleId,
+              via: "patch",
+            });
+          }
+          return row;
+        });
+      } else {
+        updated = await this.lotRepo.update(lotId, patch);
+        if (patch.saleId !== undefined && patch.saleId !== a.saleId) {
+          await this.recordLifecycle(async (tx) => {
+            if (a.saleId && patch.saleId !== a.saleId) {
+              await this.lotLifecycleRecording?.recordDetached(tx, a, a.saleId);
+            }
+            if (patch.saleId) {
+              await this.lotLifecycleRecording?.recordAttached(tx, updated, {
+                saleId: patch.saleId,
+                lotNumber: updated.lotNumber,
+                fromSaleId: a.saleId,
+                via: "patch",
+              });
+            }
+          });
+        }
+      }
     } catch (error) {
       const mapped = mapLotUpdateDbError(error);
       if (mapped) {
@@ -577,7 +703,7 @@ export class LotService {
     const db = this.db;
     const publisher = this.domainEventPublisher;
     const legalEntityRepository = this.legalEntityRepository;
-    if (!db || !publisher || !legalEntityRepository) {
+    if (!db || !legalEntityRepository || (!this.lotLifecycleRecording && !publisher)) {
       return err(new LotError("Withdrawal requests are not available", 503));
     }
     const lotRow = await this.lotRepo.findById(lotId);
@@ -623,14 +749,23 @@ export class LotService {
         })
         .returning({ id: adminReviewTask.id });
       if (!row) throw new Error("admin_review_task_insert_failed");
-      await publisher.publish(tx, {
-        aggregateType: "lot",
-        aggregateId: lotId,
-        eventType: "lot.withdrawal_requested",
-        payload: { sellerLegalEntityId: sellerLegalEntityId },
-        actorUserId: sellerUserId,
-        actingLegalEntityId: sellerLegalEntityId,
-      });
+      if (this.lotLifecycleRecording) {
+        await this.lotLifecycleRecording.recordWithdrawalRequested(
+          tx,
+          lotRow,
+          sellerLegalEntityId,
+          sellerUserId,
+        );
+      } else if (publisher) {
+        await publisher.publish(tx, {
+          aggregateType: "lot",
+          aggregateId: lotId,
+          eventType: "lot.withdrawal_requested",
+          payload: { sellerLegalEntityId: sellerLegalEntityId },
+          actorUserId: sellerUserId,
+          actingLegalEntityId: sellerLegalEntityId,
+        });
+      }
       return row.id;
     });
 
@@ -666,7 +801,13 @@ export class LotService {
     if (!pending[0]) {
       return err(new LotError("No pending withdrawal request for this lot", 404));
     }
-    const cancelRes = await this.cancel(adminUserId, adminRole, lotId, adminStaffRole);
+    const cancelRes = await this.cancel(
+      adminUserId,
+      adminRole,
+      lotId,
+      adminStaffRole,
+      "withdrawal",
+    );
     if (cancelRes.isErr()) return cancelRes;
     await this.db
       .update(adminReviewTask)

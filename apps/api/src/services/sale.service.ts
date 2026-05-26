@@ -18,6 +18,7 @@ import {
 import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
+import type { LotAttachedToSalePayload } from "../domain/lot-events.js";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { lotTimingViolationForSale, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
@@ -28,10 +29,13 @@ import {
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
+import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
+import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 
 /** Optional follow state for public sale detail responses. */
@@ -54,6 +58,7 @@ export type SaleServiceOptions = {
   englishOnlyAuctions?: boolean;
   db?: Database;
   domainEventPublisher?: DomainEventPublisher | null;
+  lotLifecycleRecording?: LotLifecycleRecording | null;
 };
 
 export class SaleService {
@@ -67,6 +72,7 @@ export class SaleService {
   private readonly englishOnlyAuctions: boolean;
   private readonly db: Database | undefined;
   private readonly domainEventPublisher: DomainEventPublisher | null;
+  private readonly lotLifecycleRecording: LotLifecycleRecording | null;
 
   constructor(opts: SaleServiceOptions) {
     this.saleRepo = opts.saleRepo;
@@ -79,6 +85,12 @@ export class SaleService {
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.db = opts.db;
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
+    this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
+  }
+
+  private async recordLotLifecycle(fn: (tx: Database) => Promise<void>): Promise<void> {
+    if (!this.db || !this.lotLifecycleRecording) return;
+    await this.db.transaction(fn);
   }
 
   private async publishSaleEvent(
@@ -103,7 +115,10 @@ export class SaleService {
     }
     const createdByLegalEntityId = await this.resolvePlatformCatalogLegalEntityId();
     if (!createdByLegalEntityId) {
-      throw new LotError("Platform catalog legal entity is not configured. Contact support.", 400);
+      throw new LotError(
+        "Platform catalog legal entity is not configured. Reseed the dev database (pnpm --filter @auction/db db:seed:dev) and restart the API.",
+        400,
+      );
     }
     const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId });
     if (input.lots?.length) {
@@ -120,13 +135,36 @@ export class SaleService {
         if (!resolved.ok) {
           throw new LotError(resolved.message, 400);
         }
-        await this.lotRepo.create({
-          ...lotFields,
-          sellerLegalEntityId: sellerId,
-          startTime: resolved.startTime,
-          endTime: resolved.endTime,
-          saleId: sale.id,
-        });
+        if (this.db && this.lotLifecycleRecording) {
+          await this.db.transaction(async (tx) => {
+            const lotRepo = new DrizzleLotRepository(tx);
+            const created = await lotRepo.create({
+              ...lotFields,
+              sellerLegalEntityId: sellerId,
+              startTime: resolved.startTime,
+              endTime: resolved.endTime,
+              saleId: sale.id,
+            });
+            await this.lotLifecycleRecording?.recordCreated(tx, {
+              lot: created,
+              source: "sale_create",
+            });
+          });
+        } else {
+          const created = await this.lotRepo.create({
+            ...lotFields,
+            sellerLegalEntityId: sellerId,
+            startTime: resolved.startTime,
+            endTime: resolved.endTime,
+            saleId: sale.id,
+          });
+          await this.recordLotLifecycle(async (tx) => {
+            await this.lotLifecycleRecording?.recordCreated(tx, {
+              lot: created,
+              source: "sale_create",
+            });
+          });
+        }
       }
     }
     await this.publishSaleEvent(adminId, sale.id, "sale.created", {
@@ -292,25 +330,62 @@ export class SaleService {
       }
     }
 
-    if (caps.inheritsLotTiming) {
-      for (const l of lots) {
-        const resolved = resolveLotTimingForSale(sale, l.startTime, l.endTime);
-        if (
-          resolved.ok &&
-          (resolved.startTime.getTime() !== l.startTime.getTime() ||
-            resolved.endTime.getTime() !== l.endTime.getTime())
-        ) {
-          await this.lotRepo.update(l.id, {
-            startTime: resolved.startTime,
-            endTime: resolved.endTime,
-          });
+    if (this.db && this.lotLifecycleRecording) {
+      await this.db.transaction(async (tx) => {
+        const saleRepo = new DrizzleSaleRepository(tx);
+        const lotRepo = new DrizzleLotRepository(tx);
+        if (caps.inheritsLotTiming) {
+          for (const l of lots) {
+            const resolved = resolveLotTimingForSale(sale, l.startTime, l.endTime);
+            if (
+              resolved.ok &&
+              (resolved.startTime.getTime() !== l.startTime.getTime() ||
+                resolved.endTime.getTime() !== l.endTime.getTime())
+            ) {
+              await lotRepo.update(l.id, {
+                startTime: resolved.startTime,
+                endTime: resolved.endTime,
+              });
+            }
+          }
+        }
+        await saleRepo.updateStatus(saleId, "scheduled");
+        for (const l of lots) {
+          await lotRepo.updateStatus(l.id, "scheduled");
+          const row = await lotRepo.findById(l.id);
+          if (!row) throw new LotError("Lot not found", 404);
+          await this.lotLifecycleRecording?.recordPublished(tx, row, userId);
+        }
+      });
+    } else {
+      if (caps.inheritsLotTiming) {
+        for (const l of lots) {
+          const resolved = resolveLotTimingForSale(sale, l.startTime, l.endTime);
+          if (
+            resolved.ok &&
+            (resolved.startTime.getTime() !== l.startTime.getTime() ||
+              resolved.endTime.getTime() !== l.endTime.getTime())
+          ) {
+            await this.lotRepo.update(l.id, {
+              startTime: resolved.startTime,
+              endTime: resolved.endTime,
+            });
+          }
         }
       }
+      await this.saleRepo.updateStatus(saleId, "scheduled");
+      for (const l of lots) {
+        await this.lotRepo.updateStatus(l.id, "scheduled");
+        await this.recordLotLifecycle(async (tx) => {
+          await this.lotLifecycleRecording?.recordPublished(
+            tx,
+            { ...l, status: "scheduled" },
+            userId,
+          );
+        });
+      }
     }
-
-    await this.saleRepo.updateStatus(saleId, "scheduled");
     for (const l of lots) {
-      await this.lotRepo.updateStatus(l.id, "scheduled");
       const lotStart = caps.inheritsLotTiming ? sale.startTime : l.startTime;
       const lotEnd = caps.inheritsLotTiming ? sale.endTime : l.endTime;
       await this.jobScheduler?.scheduleLot(l.id, lotStart, lotEnd);
@@ -363,9 +438,28 @@ export class SaleService {
     }
     for (const l of lots) {
       await this.jobScheduler?.cancelLotJobs(l.id);
-      await this.lotRepo.updateStatus(l.id, "draft");
     }
-    await this.saleRepo.updateStatus(saleId, "draft");
+    if (this.db && this.lotLifecycleRecording) {
+      await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        const saleRepo = new DrizzleSaleRepository(tx);
+        for (const l of lots) {
+          await lotRepo.updateStatus(l.id, "draft");
+          const row = await lotRepo.findById(l.id);
+          if (!row) throw new LotError("Lot not found", 404);
+          await this.lotLifecycleRecording?.recordUnpublished(tx, row, "sale_unpublish", userId);
+        }
+        await saleRepo.updateStatus(saleId, "draft");
+      });
+    } else {
+      for (const l of lots) {
+        await this.lotRepo.updateStatus(l.id, "draft");
+        await this.recordLotLifecycle(async (tx) => {
+          await this.lotLifecycleRecording?.recordUnpublished(tx, l, "sale_unpublish", userId);
+        });
+      }
+      await this.saleRepo.updateStatus(saleId, "draft");
+    }
     const updated = await this.saleRepo.findById(saleId);
     if (!updated) return err(new LotError("Sale not found", 404));
     await this.publishSaleEvent(userId, saleId, "sale.unpublished", {
@@ -399,10 +493,38 @@ export class SaleService {
     for (const l of lots) {
       if (l.status === "draft" || l.status === "scheduled" || l.status === "active") {
         await this.jobScheduler?.cancelLotJobs(l.id);
-        await this.lotRepo.updateStatus(l.id, "cancelled");
       }
     }
-    await this.saleRepo.updateStatus(saleId, "cancelled");
+    if (this.db && this.lotLifecycleRecording) {
+      await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        const saleRepo = new DrizzleSaleRepository(tx);
+        for (const l of lots) {
+          if (l.status === "draft" || l.status === "scheduled" || l.status === "active") {
+            await lotRepo.updateStatus(l.id, "cancelled");
+            const row = await lotRepo.findById(l.id);
+            if (!row) throw new LotError("Lot not found", 404);
+            await this.lotLifecycleRecording?.recordCancelled(tx, row, "sale_cancel", userId);
+          }
+        }
+        await saleRepo.updateStatus(saleId, "cancelled");
+      });
+    } else {
+      for (const l of lots) {
+        if (l.status === "draft" || l.status === "scheduled" || l.status === "active") {
+          await this.lotRepo.updateStatus(l.id, "cancelled");
+          await this.recordLotLifecycle(async (tx) => {
+            await this.lotLifecycleRecording?.recordCancelled(
+              tx,
+              { ...l, status: "cancelled" },
+              "sale_cancel",
+              userId,
+            );
+          });
+        }
+      }
+      await this.saleRepo.updateStatus(saleId, "cancelled");
+    }
     const updated = await this.saleRepo.findById(saleId);
     if (!updated) return err(new LotError("Sale not found", 404));
     await this.publishSaleEvent(userId, saleId, "sale.cancelled", {
@@ -448,13 +570,38 @@ export class SaleService {
     if (lockMsg) {
       return err(new LotError(lockMsg));
     }
-    const created = await this.lotRepo.create({
-      ...lotFields,
-      sellerLegalEntityId: sellerId,
-      startTime: resolved.startTime,
-      endTime: resolved.endTime,
-      saleId,
-    });
+    let created: Lot;
+    if (this.db && this.lotLifecycleRecording) {
+      created = await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        const row = await lotRepo.create({
+          ...lotFields,
+          sellerLegalEntityId: sellerId,
+          startTime: resolved.startTime,
+          endTime: resolved.endTime,
+          saleId,
+        });
+        await this.lotLifecycleRecording?.recordCreated(tx, {
+          lot: row,
+          source: "sale_create",
+        });
+        return row;
+      });
+    } else {
+      created = await this.lotRepo.create({
+        ...lotFields,
+        sellerLegalEntityId: sellerId,
+        startTime: resolved.startTime,
+        endTime: resolved.endTime,
+        saleId,
+      });
+      await this.recordLotLifecycle(async (tx) => {
+        await this.lotLifecycleRecording?.recordCreated(tx, {
+          lot: created,
+          source: "sale_create",
+        });
+      });
+    }
     return ok(created);
   }
 
@@ -463,6 +610,7 @@ export class SaleService {
     saleId: string,
     lotId: string,
     userStaffRole?: string | null,
+    attachVia: LotAttachedToSalePayload["via"] = "attach_endpoint",
   ): Promise<Result<Lot, LotError | AuthzError>> {
     if (
       !roleHasCapability(
@@ -493,12 +641,40 @@ export class SaleService {
     if (!resolved.ok) {
       return err(new LotError(resolved.message, 400));
     }
-    const updated = await this.lotRepo.update(lotId, {
-      saleId,
-      lotNumber,
-      startTime: resolved.startTime,
-      endTime: resolved.endTime,
-    });
+    let updated: Lot;
+    if (this.db && this.lotLifecycleRecording) {
+      updated = await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        const row = await lotRepo.update(lotId, {
+          saleId,
+          lotNumber,
+          startTime: resolved.startTime,
+          endTime: resolved.endTime,
+        });
+        await this.lotLifecycleRecording?.recordAttached(tx, existingLot, {
+          saleId,
+          lotNumber,
+          fromSaleId: null,
+          via: attachVia,
+        });
+        return row;
+      });
+    } else {
+      updated = await this.lotRepo.update(lotId, {
+        saleId,
+        lotNumber,
+        startTime: resolved.startTime,
+        endTime: resolved.endTime,
+      });
+      await this.recordLotLifecycle(async (tx) => {
+        await this.lotLifecycleRecording?.recordAttached(tx, existingLot, {
+          saleId,
+          lotNumber,
+          fromSaleId: null,
+          via: attachVia,
+        });
+      });
+    }
     return ok(updated);
   }
 
@@ -526,7 +702,19 @@ export class SaleService {
     if (!l || l.saleId !== saleId) {
       return err(new LotError("Lot not found in this sale", 404));
     }
-    await this.lotRepo.clearSaleId(lotId);
+    const fromSaleId = l.saleId;
+    if (this.db && this.lotLifecycleRecording) {
+      await this.db.transaction(async (tx) => {
+        const lotRepo = new DrizzleLotRepository(tx);
+        await lotRepo.clearSaleId(lotId);
+        await this.lotLifecycleRecording?.recordDetached(tx, l, fromSaleId);
+      });
+    } else {
+      await this.lotRepo.clearSaleId(lotId);
+      await this.recordLotLifecycle(async (tx) => {
+        await this.lotLifecycleRecording?.recordDetached(tx, l, fromSaleId);
+      });
+    }
     return ok(undefined);
   }
 

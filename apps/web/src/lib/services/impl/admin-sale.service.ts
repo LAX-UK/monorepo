@@ -3,15 +3,17 @@ import type { IAuthedApiClient } from "../http/authed-api-client";
 import { type ServiceResult, serviceSuccess } from "../http/service-result";
 import type {
   CancelSaleBody,
+  CreateNestedLotForSaleInput,
   CreateSaleInput,
   IAdminSaleService,
   MarkSaleEndedBody,
   UpdateSaleInput,
 } from "../interfaces/admin-sale-service";
 
-function readSaleId(body: unknown): string | undefined {
+function readEntityId(body: unknown): string | undefined {
   if (body && typeof body === "object" && "data" in body) {
-    return (body as { data?: { id?: string } }).data?.id;
+    const data = (body as { data?: { id?: string } }).data;
+    if (data && typeof data.id === "string") return data.id;
   }
   return undefined;
 }
@@ -26,7 +28,7 @@ export class AdminSaleService implements IAdminSaleService {
       body: JSON.stringify(input),
     });
     if (!r.ok) return r;
-    const id = readSaleId(r.data);
+    const id = readEntityId(r.data);
     if (!id)
       return { ok: false, message: "Create failed: missing id", status: r.status, body: r.data };
     return serviceSuccess({ id }, r.status);
@@ -71,10 +73,40 @@ export class AdminSaleService implements IAdminSaleService {
     });
   }
 
-  async attachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>> {
+  async createNestedLot(
+    saleId: string,
+    input: CreateNestedLotForSaleInput,
+  ): Promise<ServiceResult<{ id: string }>> {
+    const r = await this.api.json<unknown>(`/sales/${encodeURIComponent(saleId)}/lots`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!r.ok) return r;
+    const id = readEntityId(r.data);
+    if (!id) {
+      return {
+        ok: false,
+        message: "Create failed: missing lot id",
+        status: r.status,
+        body: r.data,
+      };
+    }
+    return serviceSuccess({ id }, r.status);
+  }
+
+  async attachLot(
+    saleId: string,
+    lotId: string,
+    via: "attach_endpoint" | "wizard" = "attach_endpoint",
+  ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/sales/${encodeURIComponent(saleId)}/lots/attach/${encodeURIComponent(lotId)}`,
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ via }),
+      },
     );
   }
 

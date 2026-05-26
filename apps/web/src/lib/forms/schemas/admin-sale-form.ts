@@ -69,6 +69,13 @@ export const adminSaleFormValuesSchema = z
         path: ["endTime"],
       });
     }
+    if (!Number.isNaN(start.getTime()) && start.getTime() <= Date.now()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Opening time must be in the future",
+        path: ["startTime"],
+      });
+    }
     const previewRaw = values.previewStartTime.trim();
     if (previewRaw) {
       const preview = new Date(previewRaw);

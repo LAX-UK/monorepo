@@ -1,6 +1,7 @@
 export * from "./auth.js";
 export * from "./user-invitation.js";
 export * from "./lots.js";
+export * from "./lot-lifecycle-snapshot.js";
 export * from "./lot-categories.js";
 export * from "./sales.js";
 export * from "./sale-categories.js";

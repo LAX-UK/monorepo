@@ -1,5 +1,6 @@
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { SaleLotsTabSection } from "@/components/admin/sale-lots-tab-section";
+import { saleSetupHref } from "@/lib/admin/sale-setup";
 import type { Lot, Sale } from "@auction/types";
 import Link from "next/link";
 
@@ -7,10 +8,9 @@ type Props = {
   saleId: string;
   sale: Sale;
   lots: Lot[];
-  draftOrphans: Lot[];
 };
 
-export function SaleLotsTab({ saleId, sale, lots, draftOrphans }: Props) {
+export function SaleLotsTab({ saleId, sale, lots }: Props) {
   const canEdit = sale.status === "draft";
 
   return (
@@ -26,10 +26,10 @@ export function SaleLotsTab({ saleId, sale, lots, draftOrphans }: Props) {
         </p>
         {canEdit ? (
           <Link
-            href="/admin/lots/new"
+            href={saleSetupHref(saleId, "lots")}
             className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
           >
-            New lot →
+            Add lots in setup →
           </Link>
         ) : null}
       </div>
@@ -44,9 +44,9 @@ export function SaleLotsTab({ saleId, sale, lots, draftOrphans }: Props) {
             title: l.title,
             lotNumber: l.lotNumber,
             status: l.status,
+            winnerId: l.winnerId ?? null,
             imageUrl: l.images[0] ?? null,
           }))}
-          draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
         />
       </div>
     </CatalogDetailTabPanel>
