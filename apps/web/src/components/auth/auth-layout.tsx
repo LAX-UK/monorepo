@@ -11,7 +11,7 @@ type AuthLayoutProps = {
   description?: string;
   /** Optional full-bleed background image (blurred). */
   backgroundSrc?: string;
-  /** `task` = under `(task)/layout` shell (no bottom browse link; header uses text wordmark). */
+  /** `task` = under `(task)/layout` shell (no bottom browse link; header is back-to-gallery only). */
   chrome?: "standalone" | "task";
 };
 
