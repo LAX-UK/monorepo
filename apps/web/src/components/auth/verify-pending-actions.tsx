@@ -1,8 +1,7 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
-import { buildVerifyEmailResendCallbackUrl } from "@/lib/auth/verify-email-resend-callback.server";
+import { resendVerificationEmailFromPending } from "@/lib/auth/services/send-verification-email.service";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useState } from "react";
@@ -16,18 +15,18 @@ export function VerifyPendingActions({ email, next }: { email: string; next?: st
     if (cooldown > 0 || pending) return;
     setPending(true);
     setStatus(null);
-    const callbackURL = await buildVerifyEmailResendCallbackUrl(
+    const result = await resendVerificationEmailFromPending({
       email,
-      next,
-      window.location.origin,
-    );
-    const { error } = await authClient.sendVerificationEmail({
-      email,
-      callbackURL,
+      next: next ?? null,
+      webOrigin: window.location.origin,
     });
+    if (!result.ok) {
+      setStatus(result.message);
+    } else {
+      setStatus("Verification email sent.");
+      startCooldown(45);
+    }
     setPending(false);
-    setStatus(error ? "Could not resend right now. Please try again." : "Verification email sent.");
-    if (!error) startCooldown(45);
   }
 
   return (

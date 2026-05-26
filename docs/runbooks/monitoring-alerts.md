@@ -78,6 +78,8 @@ Money-path filters previously tuned manually in the Sentry UI are now codified o
 
 Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins. Raw structured log lines (`pino` stdout) remain in **DigitalOcean App Platform** component logs (~30 day retention) and are not searchable from Sentry.
 
+**Web route error boundaries** (`apps/web` `error.tsx`, `global-error.tsx`, and shared `AppRouteError` / `AdminRouteError` / `DashboardRouteError`) call `useReportRouteError`, which reports to Sentry via `captureException`. Expect grouped issues when users hit recoverable UI failures (marketing, dashboard, admin, auth `(task)` segments).
+
 ---
 
 ## Stripe dashboard checks
@@ -97,6 +99,17 @@ Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins
 2. Ensure idle connections are released (restart test app pods/containers after heavy test runs).
 3. If needed, bump `max_connections` on the DigitalOcean test Postgres cluster.
 4. After infra is fixed, **resolve or ignore** these issues in Sentry — they should not recur.
+
+## Post-deploy Sentry cleanup (2026-05 Sentry follow-up)
+
+After the web vitals metrics + auth resend error-handling deploy is live, bulk-resolve stale issues in [Sentry unresolved](https://lax-bid.sentry.io/issues/?query=is%3Aunresolved):
+
+| Issue | Action |
+|-------|--------|
+| `LAX-PROD-WEB-1` … `LAX-PROD-WEB-6` | Resolve — legacy `web-vitals.*` captureMessage noise (replaced by metrics) |
+| `LAX-PROD-WEB-C` | Resolve after verify-pending try/catch deploy — `Failed to fetch (auth.lax.bid)` on resend |
+
+Filter tip: `message:web-vitals.` selects all six web-vitals issues at once.
 
 ## Related
 

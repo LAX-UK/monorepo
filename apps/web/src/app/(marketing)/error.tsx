@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { DisplayHeading } from "@/components/ui/typography";
-import Link from "next/link";
-import { useEffect } from "react";
+import { AppRouteError } from "@/components/app/app-route-error";
+import { ROUTE_ERROR_PRESETS } from "@/lib/ui/empty-state-copy";
+
+const preset = ROUTE_ERROR_PRESETS.marketing;
 
 export default function MarketingError({
   error,
@@ -12,29 +12,14 @@ export default function MarketingError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
-
   return (
-    <section className="mx-auto flex w-full max-w-xl flex-col justify-center px-6 py-24 text-center">
-      <DisplayHeading as="h1" className="mb-4 text-3xl">
-        Something went wrong
-      </DisplayHeading>
-      <p className="mb-8 font-body text-sm text-on-surface-variant">
-        {process.env.NODE_ENV === "development" ? error.message : "Please try again in a moment."}
-      </p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <Button type="button" variant="primary" onClick={() => reset()}>
-          Try again
-        </Button>
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
-        >
-          Back to gallery
-        </Link>
-      </div>
-    </section>
+    <AppRouteError
+      error={error}
+      reset={reset}
+      title={preset.title}
+      homeHref={preset.homeHref}
+      homeLabel={preset.homeLabel}
+      siteHeaderOffset
+    />
   );
 }

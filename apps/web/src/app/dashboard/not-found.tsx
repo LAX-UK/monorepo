@@ -1,18 +1,19 @@
-import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
+import { AppNotFound } from "@/components/app/app-not-found";
+import { NOT_FOUND_PRESETS } from "@/lib/ui/empty-state-copy";
 
 export default function DashboardNotFound() {
+  const preset = NOT_FOUND_PRESETS.dashboard;
   return (
     <div className="mx-auto max-w-xl py-12">
-      <DashboardEmptyState
-        title="That section doesn't exist"
-        description="The dashboard URL you opened isn't a known route. Return to the overview to find what you need."
-        action={
-          <Button variant="cta" asChild>
-            <Link href="/dashboard">Open dashboard</Link>
-          </Button>
-        }
+      <AppNotFound
+        kicker={preset.kicker}
+        title={preset.title}
+        description={preset.description}
+        primaryHref={preset.primaryHref}
+        primaryLabel={preset.primaryLabel}
+        secondaryHref={preset.secondaryHref}
+        secondaryLabel={preset.secondaryLabel}
+        illustration={preset.illustration}
       />
     </div>
   );
