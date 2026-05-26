@@ -1,3 +1,8 @@
+import {
+  EmptyStateIllustration,
+  type EmptyStateIllustrationKey,
+} from "@/components/illustrations/empty-state-illustrations";
+import { CONTEXT_DEFAULT_ILLUSTRATION, type EmptyStateContext } from "@/lib/ui/empty-state-copy";
 import { cn } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { type ComponentProps, type ReactNode, useId } from "react";
@@ -10,7 +15,19 @@ export type DashboardEmptyStateProps = Omit<EmptyProps, "title"> & {
   variant?: DashboardEmptyStateVariant;
   title: ReactNode;
   headingLevel?: "h2" | "h3";
+  context?: EmptyStateContext;
+  illustration?: EmptyStateIllustrationKey;
 };
+
+function resolveIllustrationKey(
+  illustration: EmptyStateIllustrationKey | undefined,
+  context: EmptyStateContext | undefined,
+): EmptyStateIllustrationKey | null {
+  if (illustration) return illustration;
+  if (!context) return null;
+  if (context === "noResults" || context === "filtered") return null;
+  return CONTEXT_DEFAULT_ILLUSTRATION[context];
+}
 
 /** Dashboard-scoped empty state — `quiet` (inline lists) or `hero` (whole-page). */
 export function DashboardEmptyState({
@@ -20,11 +37,16 @@ export function DashboardEmptyState({
   title,
   description,
   action,
-  illustration,
+  illustration: illustrationKey,
   headingLevel = "h2",
+  context,
 }: DashboardEmptyStateProps) {
   const headingId = useId();
   const Heading = headingLevel;
+  const resolvedKey = resolveIllustrationKey(illustrationKey, context);
+  const resolvedIllustration = resolvedKey ? (
+    <EmptyStateIllustration name={resolvedKey} />
+  ) : undefined;
 
   if (variant === "hero") {
     return (
@@ -35,6 +57,7 @@ export function DashboardEmptyState({
         )}
         aria-labelledby={headingId}
       >
+        {resolvedIllustration ? <div className="mb-5">{resolvedIllustration}</div> : null}
         {icon ? (
           <div className="mb-5 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary sm:mb-6 sm:size-16 [&_svg]:size-6 sm:[&_svg]:size-8">
             {icon}
@@ -69,7 +92,7 @@ export function DashboardEmptyState({
   };
   if (description) quietProps.description = description;
   if (action) quietProps.action = action;
-  if (illustration) quietProps.illustration = illustration;
+  if (resolvedIllustration) quietProps.illustration = resolvedIllustration;
   if (icon) quietProps.icon = icon;
 
   return (

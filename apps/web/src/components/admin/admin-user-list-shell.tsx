@@ -25,6 +25,7 @@ type Props = {
   drawerTitle?: string;
   tableAriaLabel?: string;
   emptyMessage?: string;
+  emptyComponent?: ReactNode;
   renderDrawerOverview: (user: AdminUserRow) => ReactNode;
   renderDrawerActions?: (user: AdminUserRow) => ReactNode;
   renderMobileCard: (user: AdminUserRow, onOpen: () => void) => ReactNode;
@@ -43,6 +44,7 @@ export function AdminUserListShell({
   drawerTitle = "User",
   tableAriaLabel = "Accounts",
   emptyMessage = "No matching accounts.",
+  emptyComponent,
   renderDrawerOverview,
   renderDrawerActions,
   renderMobileCard,
@@ -76,7 +78,7 @@ export function AdminUserListShell({
           ariaLabel={tableAriaLabel}
           columns={columns}
           data={rows}
-          emptyMessage={emptyMessage}
+          {...(emptyComponent ? { emptyComponent } : { emptyMessage })}
           density={tableDensity}
           stickyFirstColumn
           enableRowSelection
