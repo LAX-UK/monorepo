@@ -4,6 +4,7 @@ import { eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
 import { processClearArtistBlocks } from "./clear-artist-blocks.js";
+import { processLegalEntityProvisioning } from "./legal-entity-provisioning.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
 import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
 import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
@@ -212,6 +213,7 @@ export function createProjectorRunner(options: {
     await processLotVoidedAntiShillingEmails();
     await ensureCursor("clear_artist_blocks");
     await processClearArtistBlocks({ db: options.db, log: options.log });
+    await processLegalEntityProvisioning({ db: options.db, log: options.log });
     await options.heartbeat();
   }
 
