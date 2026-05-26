@@ -327,7 +327,8 @@ export class DrizzleBidRepository implements IBidRepository {
   async markWinningBid(lotId: string, bidId: string) {
     await this.db
       .update(bid)
-      .set({ isWinning: sql`(id = ${bidId}::uuid)` })
-      .where(eq(bid.lotId, lotId));
+      .set({ isWinning: false })
+      .where(and(eq(bid.lotId, lotId), eq(bid.isWinning, true)));
+    await this.db.update(bid).set({ isWinning: true }).where(eq(bid.id, bidId));
   }
 }
