@@ -36,7 +36,10 @@ export const notification = pgTable(
         'payment_received',
         'payment_due',
         'lot_ended_seller',
-        'kyc_resubmission_required'
+        'kyc_resubmission_required',
+        'submission_received_for_review',
+        'submission_approved',
+        'submission_rejected'
       )`,
     ),
   ],

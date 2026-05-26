@@ -46,6 +46,15 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "kyc_resubmission_required") {
     return { label: "Identity", Icon: ShieldAlert, tone: "warn" };
   }
+  if (type === "submission_received_for_review") {
+    return { label: "Submission", Icon: BellRing, tone: "info" };
+  }
+  if (type === "submission_approved") {
+    return { label: "Approved", Icon: Trophy, tone: "success" };
+  }
+  if (type === "submission_rejected") {
+    return { label: "Not accepted", Icon: XCircle, tone: "neutral" };
+  }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };
   }
