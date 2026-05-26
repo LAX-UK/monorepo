@@ -36,6 +36,7 @@ export * from "./xero.js";
 export * from "./admin-email.js";
 export * from "./admin-marketing-events.js";
 export * from "./admin-audit.js";
+export * from "./admin-lot.js";
 export * from "./admin-ops.js";
 /** Legal Entity Model validators */
 export * from "./legal-entity.js";

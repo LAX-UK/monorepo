@@ -102,8 +102,17 @@ This catalog is the contract between event producers and projectors. When you ad
 | `bid.lot_won` | apps/worker (lot lifecycle) | zoho, notifications | Lot ended with this user as high bidder | `{lotId, userId, winningBidId, amountCents, endedAt}` |
 | `payment.captured` | apps/api | xero, zoho | Stripe payment intent transitions to captured | `{paymentId, lotId, userId, amountCents, capturedAt, stripeIntentId}` |
 | `payment.refunded` | apps/api | xero, zoho | Refund processed | `{paymentId, lotId, userId, amountCents, refundedAt, reason}` |
-| `lot.activated` | apps/worker (lot lifecycle) | none yet | Lot start time reached | `{lotId, auctionId, activatedAt}` |
-| `lot.ended` | apps/worker (lot lifecycle) | zoho (for unsold flag) | Lot end time reached | `{lotId, auctionId, endedAt, hadWinner}` |
+| `lot.activated` | apps/api (lot lifecycle service) | notification-fanout (planned) | Lot start time reached or saleroom open | `{saleId, activatedAt}` |
+| `lot.created` | apps/api | lot_lifecycle_snapshot projector | Staff create, sale addLot, submission approve | `{saleId, source}` |
+| `lot.attached_to_sale` | apps/api | lot_lifecycle_snapshot projector | attach endpoint, sale patch, wizard attach | `{saleId, lotNumber, fromSaleId, via}` |
+| `lot.detached_from_sale` | apps/api | lot_lifecycle_snapshot projector | detach endpoint or saleId cleared via patch | `{fromSaleId}` |
+| `lot.published` | apps/api | lot_lifecycle_snapshot projector | Lot or sale publish cascade | `{saleId}` |
+| `lot.unpublished` | apps/api | lot_lifecycle_snapshot projector | Sale unpublish cascade or manual | `{saleId, reason}` |
+| `lot.cancelled` | apps/api | lot_lifecycle_snapshot projector | Manual, sale cancel, soft delete, withdrawal | `{reason}` |
+| `lot.ended` | apps/api / apps/worker | zoho (hadWinner), notification-fanout | Timed close, clerk hammer/no-sale, early close, admin override | `{outcome, winnerId, saleId, trigger, hammerPrice?, hadWinner?, endedAt?}` |
+| `lot.voided` | apps/api | lot-voided-anti-shilling worker | Anti-shilling at close | `{reason}` |
+| `lot.withdrawal_requested` | apps/api | lot_lifecycle_snapshot projector | Seller withdrawal task opened | `{sellerLegalEntityId}` |
+| `lot.returned_to_inventory` | apps/api | lot_lifecycle_snapshot projector | Staff return-to-inventory transition | `{fromStatus, lastSaleId, reason}` |
 
 Admin bulk operations added in the dashboard UX pass are synchronous admin APIs,
 not domain-event producers today:

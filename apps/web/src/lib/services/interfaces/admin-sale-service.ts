@@ -28,7 +28,11 @@ export interface IAdminSaleService {
     saleId: string,
     input: CreateNestedLotForSaleInput,
   ): Promise<ServiceResult<{ id: string }>>;
-  attachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
+  attachLot(
+    saleId: string,
+    lotId: string,
+    via?: "attach_endpoint" | "wizard",
+  ): Promise<ServiceResult<Record<string, unknown>>>;
   detachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
   markEnded(id: string, body: MarkSaleEndedBody): Promise<ServiceResult<Record<string, unknown>>>;
   cancelLot(

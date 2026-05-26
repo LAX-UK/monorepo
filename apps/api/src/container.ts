@@ -123,6 +123,7 @@ import { XeroPayoutBillWriter } from "./services/accounting/xero-payout-bill.wri
 import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
+import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
 import { AnalyticsService } from "./services/analytics.service.js";
 import { ArtistProfileService } from "./services/artist-profile.service.js";
@@ -186,8 +187,12 @@ import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecy
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { PersonalLegalEntityResolver } from "./services/legal-entity/personal-legal-entity-resolver.service.js";
 import { LotFulfilmentService } from "./services/lot-fulfilment.service.js";
+import { LotLifecycleEventRecorder } from "./services/lot-lifecycle-event-recorder.js";
+import { LotLifecycleQueryService } from "./services/lot-lifecycle-query.service.js";
+import { LotLifecycleRecording } from "./services/lot-lifecycle-recording.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
+import { LotTransitionOrchestrator } from "./services/lot-transition-orchestrator.js";
 import { LotService } from "./services/lot.service.js";
 import { MarketingEventService } from "./services/marketing-event.service.js";
 import { MediaUrlResolver } from "./services/media-url-resolver.js";
@@ -265,6 +270,9 @@ export type Container = {
   saleBiddersService: SaleBiddersService;
   saleRegistrationService: SaleRegistrationService;
   lotLifecycleService: LotLifecycleService;
+  lotLifecycleQueryService: LotLifecycleQueryService;
+  lotTransitionOrchestrator: LotTransitionOrchestrator;
+  adminLotBrowseService: AdminLotBrowseService;
   absenteeBidService: AbsenteeBidService;
   saleroomService: SaleroomService;
   lotFulfilmentService: LotFulfilmentService;
@@ -445,6 +453,8 @@ export function createContainer(env: Env): Container {
     new DrizzleLegalEntityNotificationRecipientRepository(db);
   const kycRepository = new DrizzleKycRepository(db);
   const domainEventPublisher = new DomainEventPublisher();
+  const lotLifecycleEventRecorder = new LotLifecycleEventRecorder(domainEventPublisher);
+  const lotLifecycleRecording = new LotLifecycleRecording(lotLifecycleEventRecorder);
   const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher);
   const organizationOnboardingService: IOrganizationOnboardingService =
     new OrganizationOnboardingService(db, domainEventPublisher);
@@ -618,6 +628,7 @@ export function createContainer(env: Env): Container {
     async (lotId) => {
       await lotLifecycleHooks.onLotActivated?.(lotId);
     },
+    lotLifecycleRecording,
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
@@ -718,6 +729,15 @@ export function createContainer(env: Env): Container {
     (lotId) => lotLifecycleService.processEndJob(lotId),
   );
 
+  const lotTransitionOrchestrator = new LotTransitionOrchestrator(
+    db,
+    lotLifecycleEventRecorder,
+    lotRepo,
+    lotJobScheduler,
+  );
+  const lotLifecycleQueryService = new LotLifecycleQueryService(db);
+  const adminLotBrowseService = new AdminLotBrowseService(db);
+
   const lotNotificationCoordinator = new LotNotificationCoordinator(
     notificationWriteRepo,
     userNotificationPublisher,
@@ -738,6 +758,8 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
     mediaUrlResolver,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
+    lotLifecycleRecording,
+    lotTransitionOrchestrator,
   });
 
   const conditionReportService = new ConditionReportService(
@@ -763,8 +785,9 @@ export function createContainer(env: Env): Container {
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     db,
     domainEventPublisher,
+    lotLifecycleRecording,
   });
-  const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db);
+  const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db, lotLifecycleRecording);
   const saleSoftDeleteService = new SaleSoftDeleteService(
     saleRepo,
     lotRepo,
@@ -779,6 +802,7 @@ export function createContainer(env: Env): Container {
     lotJobScheduler,
     db,
     domainEventPublisher,
+    lotLifecycleRecording,
   );
 
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
@@ -793,6 +817,7 @@ export function createContainer(env: Env): Container {
     legalEntityRepository,
     domainEventPublisher,
     mediaUrlResolver,
+    lotLifecycleRecording,
   );
 
   const categoryService = new CategoryService(categoryRepo, db, domainEventPublisher);
@@ -976,6 +1001,7 @@ export function createContainer(env: Env): Container {
     idempotencyStore: bidIdempotencyStore,
     bidEligibility: bidEligibilityService,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
+    lotLifecycleRecording,
   });
   const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
   const autoBidService = new AutoBidService({
@@ -1125,6 +1151,9 @@ export function createContainer(env: Env): Container {
     saleBiddersService,
     saleRegistrationService,
     lotLifecycleService,
+    lotLifecycleQueryService,
+    lotTransitionOrchestrator,
+    adminLotBrowseService,
     absenteeBidService,
     saleroomService,
     lotFulfilmentService,

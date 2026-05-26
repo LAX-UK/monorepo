@@ -533,6 +533,20 @@
       "when": 1783300000000,
       "tag": "0078_xero_connection_health",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1783400000000,
+      "tag": "0079_lot_lifecycle_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1783500000000,
+      "tag": "0080_lot_attachable_indexes",
+      "breakpoints": true
     }
   ]
 }

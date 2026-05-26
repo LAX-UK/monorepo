@@ -8,10 +8,9 @@ type Props = {
   saleId: string;
   sale: Sale;
   lots: Lot[];
-  draftOrphans: Lot[];
 };
 
-export function SaleLotsTab({ saleId, sale, lots, draftOrphans }: Props) {
+export function SaleLotsTab({ saleId, sale, lots }: Props) {
   const canEdit = sale.status === "draft";
 
   return (
@@ -45,9 +44,9 @@ export function SaleLotsTab({ saleId, sale, lots, draftOrphans }: Props) {
             title: l.title,
             lotNumber: l.lotNumber,
             status: l.status,
+            winnerId: l.winnerId ?? null,
             imageUrl: l.images[0] ?? null,
           }))}
-          draftOrphans={draftOrphans.map((l) => ({ id: l.id, title: l.title }))}
         />
       </div>
     </CatalogDetailTabPanel>

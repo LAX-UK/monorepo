@@ -2,6 +2,7 @@ import type {
   bulkLotsBodySchema,
   cancelLotBodySchema,
   createLotSchema,
+  returnLotToInventoryBodySchema,
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
@@ -13,6 +14,7 @@ export type UpdateLotInput = z.infer<typeof updateLotSchema>;
 export type UpdateLotMarketingDetailsInput = z.infer<typeof updateLotMarketingDetailsSchema>;
 export type CancelLotBody = z.infer<typeof cancelLotBodySchema>;
 export type BulkLotsBody = z.infer<typeof bulkLotsBodySchema>;
+export type ReturnLotToInventoryBody = z.infer<typeof returnLotToInventoryBodySchema>;
 
 export interface IAdminLotService {
   create(input: CreateLotInput): Promise<ServiceResult<{ id: string }>>;
@@ -24,4 +26,8 @@ export interface IAdminLotService {
   publish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   cancel(id: string, body: CancelLotBody): Promise<ServiceResult<Record<string, unknown>>>;
   bulk(body: BulkLotsBody): Promise<ServiceResult<Record<string, unknown>>>;
+  returnToInventory(
+    id: string,
+    body: ReturnLotToInventoryBody,
+  ): Promise<ServiceResult<Record<string, unknown>>>;
 }

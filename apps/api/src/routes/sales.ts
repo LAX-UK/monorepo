@@ -1,5 +1,6 @@
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import {
+  attachLotToSaleBodySchema,
   cancelSaleBodySchema,
   createNestedLotForSaleSchema,
   createSaleSchema,
@@ -329,11 +330,19 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     "/:id/lots/attach/:lotId",
     requireAuth,
     zValidator("param", saleLotIdParamSchema),
+    zValidator("json", attachLotToSaleBodySchema.optional()),
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
       const staffRole = c.get("userStaffRole") ?? null;
       const { id, lotId } = c.req.valid("param");
-      const result = await container.saleService.attachExistingLot(role, id, lotId, staffRole);
+      const body = c.req.valid("json") ?? { via: "attach_endpoint" as const };
+      const result = await container.saleService.attachExistingLot(
+        role,
+        id,
+        lotId,
+        staffRole,
+        body.via,
+      );
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }

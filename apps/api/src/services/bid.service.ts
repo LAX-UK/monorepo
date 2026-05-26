@@ -16,6 +16,7 @@ import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
+import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { NotificationFactory } from "./notification.factory.js";
@@ -69,6 +70,7 @@ export type BidServiceOptions = {
   idempotencyStore?: IIdempotencyStore | null;
   bidEligibility?: IBidEligibility | null;
   englishOnlyAuctions?: boolean;
+  lotLifecycleRecording?: LotLifecycleRecording | null;
 };
 
 export class BidService implements IBidPlacer {
@@ -86,6 +88,7 @@ export class BidService implements IBidPlacer {
   private readonly idempotencyStore: IIdempotencyStore | null;
   private readonly bidEligibility: IBidEligibility | null;
   private readonly englishOnlyAuctions: boolean;
+  private readonly lotLifecycleRecording: LotLifecycleRecording | null;
 
   constructor(opts: BidServiceOptions) {
     this.repos = opts.repos;
@@ -102,6 +105,7 @@ export class BidService implements IBidPlacer {
     this.idempotencyStore = opts.idempotencyStore ?? null;
     this.bidEligibility = opts.bidEligibility ?? null;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
+    this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
   }
 
   async placeBid(input: PlaceBidInput): Promise<Result<Bid, BidError>> {
@@ -265,6 +269,25 @@ export class BidService implements IBidPlacer {
           }
 
           let endedEarly = false;
+          const recordEarlyClose = async (winnerUserId: string, hammerPrice: string) => {
+            if (!this.lotLifecycleRecording) return;
+            await this.lotLifecycleRecording.recordEnded(tx, {
+              lot: {
+                id: lotRow.id,
+                status: "ended",
+                saleId: lotRow.saleId,
+                sellerLegalEntityId: lotRow.sellerLegalEntityId,
+              },
+              payload: {
+                outcome: "sold",
+                winnerId: winnerUserId,
+                saleId: lotRow.saleId,
+                trigger: "early_close",
+                hammerPrice,
+              },
+              actorUserId: placedByUserId,
+            });
+          };
           if (lotRow.auctionType === "dutch") {
             const winnerUserId = lastBid.placedByUserId ?? lastBid.bidderId;
             const winnerLegalEntityId = lastBid.buyerLegalEntityId ?? buyerLegalEntityId;
@@ -274,6 +297,7 @@ export class BidService implements IBidPlacer {
             await lots.setWinner(lotId, winnerUserId, winnerLegalEntityId);
             await lots.updateStatus(lotId, "ended");
             endedEarly = true;
+            await recordEarlyClose(winnerUserId, lastBid.amount);
           } else if (lotRow.auctionType === "buy_it_now") {
             const bn =
               lotRow.buyNowPrice !== null && lotRow.buyNowPrice !== ""
@@ -294,6 +318,7 @@ export class BidService implements IBidPlacer {
               await lots.setWinner(lotId, winnerUserId, winnerLegalEntityId);
               await lots.updateStatus(lotId, "ended");
               endedEarly = true;
+              await recordEarlyClose(winnerUserId, lastBid.amount);
             }
           }
 

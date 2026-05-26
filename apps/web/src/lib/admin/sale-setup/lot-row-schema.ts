@@ -1,5 +1,9 @@
 import type { LotAuctionType, SaleDeliveryMode } from "@auction/types";
-import { createNestedLotForSaleSchema, getSaleModeCapabilities } from "@auction/validators";
+import {
+  createNestedLotForSaleSchema,
+  getSaleModeCapabilities,
+  lotTimingViolationAgainstSale,
+} from "@auction/validators";
 import { z } from "zod";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a valid price (e.g. 100.00)");
@@ -7,6 +11,7 @@ const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a valid price
 /** Wizard lot row — slim subset for step 4. */
 export const saleSetupLotRowFormSchema = z.object({
   clientRowId: z.string().min(1),
+  source: z.enum(["new", "existing"]).default("new"),
   lotId: z.string().uuid().optional(),
   title: z.string().min(1, "Enter a lot title").max(500),
   sellerLegalEntityId: z.string().uuid("Choose a seller"),
@@ -34,6 +39,7 @@ export type SaleSetupLotRowContext = {
 export function emptySaleSetupLotRow(clientRowId: string): SaleSetupLotRowFormValues {
   return {
     clientRowId,
+    source: "new",
     title: "",
     sellerLegalEntityId: "",
     categoryIds: [],
@@ -43,6 +49,49 @@ export function emptySaleSetupLotRow(clientRowId: string): SaleSetupLotRowFormVa
     startTime: "",
     endTime: "",
   };
+}
+
+export function mergeSavedLotRow(
+  row: SaleSetupLotRowFormValues,
+  lotId: string,
+  meta?: { title?: string },
+): SaleSetupLotRowFormValues {
+  return {
+    ...row,
+    lotId,
+    title: meta?.title ?? row.title,
+    source: row.source === "existing" ? "existing" : row.source,
+  };
+}
+
+export function mergeWizardRowsWithServerLots<T extends { id: string }>(
+  currentRows: SaleSetupLotRowFormValues[],
+  serverLots: T[],
+  lotToRow: (lot: T) => SaleSetupLotRowFormValues,
+): SaleSetupLotRowFormValues[] {
+  const unsaved = currentRows.filter((r) => !r.lotId);
+  const prevByLotId = new Map(currentRows.flatMap((r) => (r.lotId ? [[r.lotId, r] as const] : [])));
+  const existingAttachedIds = new Set(
+    currentRows.flatMap((r) => (r.source === "existing" && r.lotId ? [r.lotId] : [])),
+  );
+  const serverRows = serverLots.map((lot) => {
+    const prev = prevByLotId.get(lot.id);
+    const row = lotToRow(lot);
+    const source = existingAttachedIds.has(lot.id) ? ("existing" as const) : row.source;
+    if (!prev) {
+      return source === row.source ? row : { ...row, source };
+    }
+    return {
+      ...row,
+      clientRowId: prev.clientRowId,
+      source,
+      ...(prev.sellerDisplayName ? { sellerDisplayName: prev.sellerDisplayName } : {}),
+    };
+  });
+  if (serverRows.length === 0 && unsaved.length === 0) {
+    return [emptySaleSetupLotRow(crypto.randomUUID())];
+  }
+  return [...serverRows, ...unsaved];
 }
 
 export function saleSetupLotRowToApiPayload(
@@ -108,6 +157,51 @@ export function safeParseSaleSetupLotRowForApi(
         success: false as const,
         error: new z.ZodError([
           { code: "custom", message: "Choose a lot closing time", path: ["endTime"] },
+        ]),
+      };
+    }
+
+    const lotStart = new Date(row.startTime);
+    const lotEnd = new Date(row.endTime);
+    if (Number.isNaN(lotStart.getTime()) || Number.isNaN(lotEnd.getTime())) {
+      return {
+        success: false as const,
+        error: new z.ZodError([
+          {
+            code: "custom",
+            message: "Choose valid lot opening and closing times",
+            path: ["startTime"],
+          },
+        ]),
+      };
+    }
+    if (lotEnd <= lotStart) {
+      return {
+        success: false as const,
+        error: new z.ZodError([
+          { code: "custom", message: "Closing time must be after opening time", path: ["endTime"] },
+        ]),
+      };
+    }
+
+    const violation = lotTimingViolationAgainstSale(
+      {
+        deliveryMode: ctx.deliveryMode,
+        startTime: ctx.saleStartTime,
+        endTime: ctx.saleEndTime,
+      },
+      lotStart,
+      lotEnd,
+    );
+    if (violation) {
+      return {
+        success: false as const,
+        error: new z.ZodError([
+          {
+            code: "custom",
+            message: violation,
+            path: violation.includes("start") ? ["startTime"] : ["endTime"],
+          },
         ]),
       };
     }
