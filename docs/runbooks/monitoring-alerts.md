@@ -98,6 +98,17 @@ Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins
 3. If needed, bump `max_connections` on the DigitalOcean test Postgres cluster.
 4. After infra is fixed, **resolve or ignore** these issues in Sentry — they should not recur.
 
+## Post-deploy Sentry cleanup (2026-05 Sentry follow-up)
+
+After the web vitals metrics + auth resend error-handling deploy is live, bulk-resolve stale issues in [Sentry unresolved](https://lax-bid.sentry.io/issues/?query=is%3Aunresolved):
+
+| Issue | Action |
+|-------|--------|
+| `LAX-PROD-WEB-1` … `LAX-PROD-WEB-6` | Resolve — legacy `web-vitals.*` captureMessage noise (replaced by metrics) |
+| `LAX-PROD-WEB-C` | Resolve after verify-pending try/catch deploy — `Failed to fetch (auth.lax.bid)` on resend |
+
+Filter tip: `message:web-vitals.` selects all six web-vitals issues at once.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)
