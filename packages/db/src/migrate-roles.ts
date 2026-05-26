@@ -103,7 +103,12 @@ const WORKER_LOCK_READ_TABLES = [
   "bid",
   "lot",
 ];
-const WORKER_FULL_TABLES = ["projector_state", "webhook_event", "upload_object"];
+export const WORKER_FULL_TABLES = [
+  "projector_state",
+  "webhook_event",
+  "upload_object",
+  "marketing_click_ids",
+] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 
