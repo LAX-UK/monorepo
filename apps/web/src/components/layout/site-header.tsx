@@ -3,7 +3,6 @@
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
-import { SITE_LOGO_TEXT_PATH } from "@/lib/brand";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -100,14 +99,7 @@ function SiteHeaderShell({
               href="/"
               className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
             >
-              <LaxLogo
-                variant="header"
-                imageSrc={SITE_LOGO_TEXT_PATH}
-                imageWidth={430}
-                imageHeight={202}
-                className="lg:hidden"
-              />
-              <LaxLogo variant="header" className="hidden lg:block" />
+              <LaxLogo variant="header" />
             </Link>
           }
           trailing={
