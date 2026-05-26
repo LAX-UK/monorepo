@@ -25,6 +25,8 @@ export const AUTH_FULL_TABLES = [
 // Postmark webhook and the unsubscribe route).
 const AUTH_INSERT_SELECT_TABLES = ["email_outbox"];
 const AUTH_SELECT_TABLES = ["email_suppression"];
+/** Auth emits `user.registered` into the domain-events outbox after signup (see apps/auth). */
+export const AUTH_INSERT_TABLES = ["domain_events"] as const;
 const API_DENY_TABLES = [
   "session",
   "account",
@@ -102,6 +104,8 @@ const WORKER_LOCK_READ_TABLES = [
   "lot",
 ];
 const WORKER_FULL_TABLES = ["projector_state", "webhook_event", "upload_object"];
+/** Worker provisions personal legal entities from `user.registered` domain events. */
+export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 
 type RoleName = "auth_app" | "api_app" | "worker_app";
 
@@ -232,6 +236,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     for (const tableName of AUTH_SELECT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "SELECT");
     }
+    for (const tableName of AUTH_INSERT_TABLES) {
+      await grantIfExists(client, "auth_app", tableName, "INSERT");
+    }
     for (const tableName of tables) {
       if (API_DENY_TABLES.includes(tableName)) {
         await revokeIfExists(client, "api_app", tableName);
@@ -268,6 +275,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     await grantIfExists(client, "worker_app", "marketing_event_outbox", "INSERT, SELECT, UPDATE");
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
+    }
+    for (const tableName of WORKER_PROVISIONING_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
     }
 
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
