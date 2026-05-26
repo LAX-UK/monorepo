@@ -85,6 +85,19 @@ Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins
 - **Developers → Webhooks:** delivery success rate &gt; 99%.
 - **Connect → Transfers:** failed transfers list empty after settlement window.
 
+## Test environment: Postgres connection slot exhaustion
+
+**Sentry issues:** `LAX-TEST-API-*` (e.g. `remaining connection slots are reserved for SUPERUSER`).
+
+**Symptom:** API or auth requests fail in the **test** environment with Postgres error `53300` / “remaining connection slots are reserved for roles with the SUPERUSER attribute”. This is **not** a production bug — the test DB `max_connections` is exhausted.
+
+**Mitigations:**
+
+1. Lower per-app pool size in test env config (API, auth, worker) so total connections stay below `max_connections` minus the superuser reserve.
+2. Ensure idle connections are released (restart test app pods/containers after heavy test runs).
+3. If needed, bump `max_connections` on the DigitalOcean test Postgres cluster.
+4. After infra is fixed, **resolve or ignore** these issues in Sentry — they should not recur.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)
