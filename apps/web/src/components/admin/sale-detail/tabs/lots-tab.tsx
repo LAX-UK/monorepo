@@ -1,5 +1,6 @@
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { SaleLotsTabSection } from "@/components/admin/sale-lots-tab-section";
+import { saleSetupHref } from "@/lib/admin/sale-setup";
 import type { Lot, Sale } from "@auction/types";
 import Link from "next/link";
 
@@ -26,10 +27,10 @@ export function SaleLotsTab({ saleId, sale, lots, draftOrphans }: Props) {
         </p>
         {canEdit ? (
           <Link
-            href="/admin/lots/new"
+            href={saleSetupHref(saleId, "lots")}
             className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
           >
-            New lot →
+            Add lots in setup →
           </Link>
         ) : null}
       </div>

@@ -26,7 +26,12 @@ export function SaleDocumentsStep({ form, mode, saleId, initialSaleDocuments }: 
   return (
     <CatalogFormSection title="Documents & terms" collapsible={false}>
       {mode === "edit" && saleId ? (
-        <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
+        <div className="space-y-2">
+          <p className="font-body text-sm text-on-surface-variant">
+            PDF attachments (optional) — stored on this sale for staff download.
+          </p>
+          <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
+        </div>
       ) : null}
 
       <FormField
@@ -40,6 +45,9 @@ export function SaleDocumentsStep({ form, mode, saleId, initialSaleDocuments }: 
             <FormControl>
               <Textarea id="terms" rows={4} className="font-body text-sm" {...field} />
             </FormControl>
+            <p className="font-body text-xs text-on-surface-variant">
+              Shown to bidders on the public sale page when filled in.
+            </p>
             <FormMessage />
           </FormItem>
         )}

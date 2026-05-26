@@ -174,6 +174,7 @@ export function LotDetailShell({
             publicHref={publicHref}
             sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
             canPublish={canPublish}
+            saleStatus={context.sale?.status ?? null}
             canCancel={canCancel}
             showEditDraft={canEditDraft}
             showEditLot={canEditLot}
@@ -187,6 +188,7 @@ export function LotDetailShell({
           lotId={lotId}
           sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
           canPublish={canPublish}
+          saleStatus={context.sale?.status ?? null}
           canCancel={canCancel}
         />
       }

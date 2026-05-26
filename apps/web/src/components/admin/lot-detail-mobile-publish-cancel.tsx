@@ -7,6 +7,7 @@ type Props = {
   lotId: string;
   sellerLegalEntityId: string | null;
   canPublish: boolean;
+  saleStatus?: string | null;
   canCancel: boolean;
 };
 
@@ -15,12 +16,14 @@ export function LotDetailMobilePublishCancel({
   lotId,
   sellerLegalEntityId,
   canPublish,
+  saleStatus = null,
   canCancel,
 }: Props) {
-  if (!canPublish && !canCancel) return null;
+  const showLotPublish = canPublish && saleStatus !== "draft";
+  if (!showLotPublish && !canCancel) return null;
   return (
     <div className="flex flex-wrap justify-end gap-1">
-      {canPublish ? (
+      {showLotPublish ? (
         <PublishLotButton lotId={lotId} sellerLegalEntityId={sellerLegalEntityId} />
       ) : null}
       {canCancel ? <CancelLotButton lotId={lotId} /> : null}
