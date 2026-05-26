@@ -22,41 +22,65 @@ on:
 permissions:
   contents: read
 
-env:
-  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-  SENTRY_ORG: lax-bid
-  # lax-bid is hosted in the EU region; default US endpoint can 500 on release APIs.
-  SENTRY_URL: https://de.sentry.io
-  RELEASE: ${{ inputs.git_sha || github.sha }}
-  ENV_SUFFIX: ${{ inputs.environment }}
-  SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
-
 jobs:
-  prepare-release:
+  ensure-release:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: lax-bid
+      SENTRY_URL: https://de.sentry.io
+      RELEASE: ${{ inputs.git_sha || github.sha }}
+      ENV_SUFFIX: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install Sentry CLI
-        run: npm i -g @sentry/cli
-      - name: Create org release and associate all projects
+        run: npm i -g @sentry/cli@2.58.4
+      - name: Verify Sentry auth
         run: |
           set -euo pipefail
-          prefix="lax-${ENV_SUFFIX}"
-          sentry-cli releases new "$RELEASE" \
-            -p "${prefix}-api" \
-            -p "${prefix}-auth" \
-            -p "${prefix}-ws" \
-            -p "${prefix}-worker" \
-            -p "${prefix}-web"
-          sentry-cli releases set-commits "$RELEASE" --auto
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "::error::SENTRY_AUTH_TOKEN is empty for environment '${{ inputs.environment }}'. Set the terraform-bot internal integration token on the repo and on GitHub environment secrets (see infra/terraform/BOOTSTRAP.md)."
+            exit 1
+          fi
+          sentry-cli info >/tmp/sentry-info.txt 2>&1 || {
+            cat /tmp/sentry-info.txt
+            echo "::error::sentry-cli auth failed against ${SENTRY_URL}. Regenerate the terraform-bot token with Release: Admin and org:ci."
+            exit 1
+          }
+      - name: Ensure org release exists
+        env:
+          SENTRY_LOG_LEVEL: info
+        run: |
+          set -euo pipefail
+
+          if sentry-cli releases info "$RELEASE" >/dev/null 2>&1; then
+            echo "Release ${RELEASE} already exists"
+          else
+            echo "Creating release ${RELEASE}"
+            # Org-level release; per-project sourcemap uploads attach artifacts below.
+            sentry-cli releases new "$RELEASE"
+          fi
+
+          # --auto requires GitHub repo integration and often 500s without it; explicit commit is safer.
+          if ! sentry-cli releases set-commits "$RELEASE" \
+            --commit "${GITHUB_REPOSITORY}@${RELEASE}" \
+            --ignore-missing; then
+            echo "::warning::set-commits failed; continuing without commit association"
+          fi
 
   upload-node-sourcemaps:
-    needs: prepare-release
+    needs: ensure-release
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: lax-bid
+      SENTRY_URL: https://de.sentry.io
+      RELEASE: ${{ inputs.git_sha || github.sha }}
+      ENV_SUFFIX: ${{ inputs.environment }}
     strategy:
       fail-fast: false
       matrix:
@@ -84,8 +108,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Sentry CLI
-        run: npm i -g @sentry/cli
+        run: npm i -g @sentry/cli@2.58.4
       - name: Build and upload Node source maps
+        env:
+          SENTRY_LOG_LEVEL: info
         run: |
           set -euo pipefail
           project="lax-${ENV_SUFFIX}-${{ matrix.sentry_app }}"
@@ -97,11 +123,24 @@ jobs:
     needs: upload-node-sourcemaps
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: lax-bid
+      SENTRY_URL: https://de.sentry.io
+      RELEASE: ${{ inputs.git_sha || github.sha }}
+      SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
     steps:
       - name: Install Sentry CLI
-        run: npm i -g @sentry/cli
+        run: npm i -g @sentry/cli@2.58.4
       - name: Finalize release and record deploy
+        env:
+          SENTRY_LOG_LEVEL: info
         run: |
           set -euo pipefail
-          sentry-cli releases finalize "$RELEASE"
-          sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"
+          if ! sentry-cli releases finalize "$RELEASE"; then
+            echo "::warning::finalize failed (release may already be finalized)"
+          fi
+          if ! sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"; then
+            echo "::error::deploy record failed for release ${RELEASE}"
+            exit 1
+          fi
