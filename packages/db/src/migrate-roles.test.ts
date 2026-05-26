@@ -8,6 +8,7 @@ import {
   API_COLUMN_UPDATE_GRANTS,
   AUTH_FULL_TABLES,
   AUTH_INSERT_TABLES,
+  WORKER_FULL_TABLES,
   WORKER_PROVISIONING_TABLES,
 } from "./migrate-roles.js";
 import { user } from "./schema/auth.js";
@@ -329,6 +330,10 @@ describe("migrate-roles invariants", () => {
   it("WORKER_PROVISIONING_TABLES includes legal_entity tables", () => {
     expect([...WORKER_PROVISIONING_TABLES]).toContain("legal_entity");
     expect([...WORKER_PROVISIONING_TABLES]).toContain("legal_entity_member");
+  });
+
+  it("WORKER_FULL_TABLES includes marketing_click_ids (purge job + click-id store)", () => {
+    expect([...WORKER_FULL_TABLES]).toContain("marketing_click_ids");
   });
 });
 
