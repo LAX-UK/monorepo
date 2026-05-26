@@ -11,6 +11,10 @@
     "./sentry-init-options": {
       "types": "./dist/sentry-init-options.d.ts",
       "default": "./dist/sentry-init-options.js"
+    },
+    "./sentry-shared": {
+      "types": "./dist/sentry-shared.d.ts",
+      "default": "./dist/sentry-shared.js"
     }
   },
   "scripts": {
