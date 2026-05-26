@@ -9,3 +9,21 @@
 7. **GDPR purge**: Apply `0058_user_pii_purge.sql`; worker job `purge-soft-deleted-users` calls `SELECT user_pii_purge(id)` for users past deletion cooling-off.
 
 See also: [auth-secrets-rotation.md](./auth-secrets-rotation.md), [jwks-rotation.md](./jwks-rotation.md).
+
+## Backfill: personal legal entity for users missing provisioning (LAX-PROD-AUTH-2)
+
+After deploying the `user.registered` → worker projector flow, optionally enqueue domain events for users who signed up while `auth_app` lacked `legal_entity` write access. The worker projector provisions entities idempotently on the next tick.
+
+Run once against production (or test) as `DATABASE_URL_OWNER`:
+
+```sql
+INSERT INTO domain_events (aggregate_type, aggregate_id, event_type, payload, producer, schema_version)
+SELECT 'user', u.id, 'user.registered',
+       jsonb_build_object('userId', u.id, 'email', u.email, 'name', u.name, 'source', 'backfill'),
+       'ops/backfill', 1
+FROM "user" u
+LEFT JOIN legal_entity le ON le.created_by_user_id = u.id AND le.kind = 'individual'
+WHERE le.id IS NULL;
+```
+
+Do not run automatically in deploy scripts. Users who hit an authenticated API path before the projector runs are still covered by lazy `ensurePersonalEntity` on the API side.
