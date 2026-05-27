@@ -503,3 +503,41 @@ test.describe("admin artist review flow", () => {
     expect(href).toMatch(/aggregateId=/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Scheduled sale + draft lot publish
+// ---------------------------------------------------------------------------
+
+test.describe("scheduled sale draft lot publish", () => {
+  test("draft lot on a scheduled sale exposes publish control on detail", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/sales?status=scheduled");
+    await expect(page.getByRole("heading", { name: /sales/i })).toBeVisible();
+
+    const scheduledRow = page.locator("table tbody tr").first();
+    const hasScheduled = await scheduledRow.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasScheduled) {
+      test.skip(true, "No scheduled sales in seed data");
+      return;
+    }
+    await scheduledRow.getByRole("link").first().click();
+    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+
+    await page.goto(`${page.url()}/lots`);
+    const draftLotLink = page
+      .locator("table tbody tr")
+      .filter({ hasText: /draft/i })
+      .first()
+      .getByRole("link")
+      .first();
+    const hasDraftLot = await draftLotLink.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasDraftLot) {
+      test.skip(true, "Scheduled sale has no draft lots in seed data");
+      return;
+    }
+    await draftLotLink.click();
+    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+    await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible();
+  });
+});

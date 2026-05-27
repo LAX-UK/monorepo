@@ -4,13 +4,17 @@ import {
   type Bid,
   type CreateLotInput,
   type Lot,
+  type Sale,
   type UserRole,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
-import { englishOnlyAdminLotAuctionTypeViolation } from "@auction/validators";
+import {
+  englishOnlyAdminLotAuctionTypeViolation,
+  isStartInFutureForPublish,
+} from "@auction/validators";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import type { LotCancelledPayload } from "../domain/lot-events.js";
@@ -18,6 +22,7 @@ import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
+import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { mergeSaleTimingIntoPatch, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
@@ -230,46 +235,22 @@ export class LotService {
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
-    if (a.status !== "draft") {
-      return err(new LotError("Only draft lots can be published"));
-    }
-    if (a.startTime.getTime() <= Date.now()) {
-      return err(new LotError("startTime must be in the future to publish"));
-    }
+
+    let saleForPublish: Sale | null = null;
     if (a.saleId) {
       if (!this.saleRepo) {
         return err(new LotError("Sale repository not configured", 500));
       }
-      const saleForPublish = await this.saleRepo.findById(a.saleId);
-      if (!saleForPublish) {
-        return err(new LotError("Sale not found", 404));
-      }
-      if (saleForPublish.status === "draft") {
-        return err(
-          new LotError(
-            "Publish this lot with the sale when the sale goes live",
-            409,
-            "use_sale_publish",
-          ),
-        );
-      }
-      const timingPatchResult = await this.applySaleTimingPolicyToLot(a, {});
-      if (timingPatchResult.isErr()) {
-        return err(timingPatchResult.error);
-      }
-      const aligned = timingPatchResult.value;
-      if (
-        aligned.startTime &&
-        aligned.endTime &&
-        (aligned.startTime.getTime() !== a.startTime.getTime() ||
-          aligned.endTime.getTime() !== a.endTime.getTime())
-      ) {
-        await this.lotRepo.update(lotId, {
-          startTime: aligned.startTime,
-          endTime: aligned.endTime,
-        });
-      }
+      const sale = await this.saleRepo.findById(a.saleId);
+      if (!sale) return err(new LotError("Sale not found", 404));
+      saleForPublish = sale;
     }
+
+    const publishable = assertLotPublishable(a, { sale: saleForPublish, requireCatalogue: true });
+    if (!publishable.ok) {
+      return err(publishable.error);
+    }
+    const alignedPatch = publishable.timing.alignedPatch;
     if (this.enforceIndividualConnectOnPublish && this.legalEntityRepository) {
       const blocked = await findLotsMissingSellerConnect([a], this.legalEntityRepository);
       if (blocked.length > 0) {
@@ -286,6 +267,9 @@ export class LotService {
     if (this.db && this.lotLifecycleRecording) {
       updated = await this.db.transaction(async (tx) => {
         const lotRepo = new DrizzleLotRepository(tx);
+        if (alignedPatch) {
+          await lotRepo.update(lotId, alignedPatch);
+        }
         await lotRepo.updateStatus(lotId, "scheduled");
         const row = await lotRepo.findById(lotId);
         if (!row) throw new LotError("Lot not found", 404);
@@ -293,6 +277,9 @@ export class LotService {
         return row;
       });
     } else {
+      if (alignedPatch) {
+        await this.lotRepo.update(lotId, alignedPatch);
+      }
       await this.lotRepo.updateStatus(lotId, "scheduled");
       const row = await this.lotRepo.findById(lotId);
       if (!row) return err(new LotError("Lot not found", 404));
@@ -435,7 +422,7 @@ export class LotService {
     if (
       a.status === "scheduled" &&
       (patch.startTime !== undefined || patch.endTime !== undefined) &&
-      nextStart.getTime() <= Date.now()
+      !isStartInFutureForPublish(nextStart)
     ) {
       return err(new LotError("startTime must be in the future for scheduled lots"));
     }

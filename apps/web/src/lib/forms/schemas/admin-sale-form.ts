@@ -1,9 +1,11 @@
 import type { BuyerPremiumTier } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
+import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
   buyerPremiumTiersSchema,
   createSaleSchema,
   isAllowedStreamUrl,
+  isStartInFutureForPublish,
   isUkPostcode,
   majorToMinor,
   mediaReferenceSchema,
@@ -60,8 +62,8 @@ export const adminSaleFormValuesSchema = z
     terms: z.string().max(50_000),
   })
   .superRefine((values, ctx) => {
-    const start = new Date(values.startTime);
-    const end = new Date(values.endTime);
+    const start = instantFromDatetimeFormString(values.startTime);
+    const end = instantFromDatetimeFormString(values.endTime);
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end <= start) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -69,16 +71,9 @@ export const adminSaleFormValuesSchema = z
         path: ["endTime"],
       });
     }
-    if (!Number.isNaN(start.getTime()) && start.getTime() <= Date.now()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Opening time must be in the future",
-        path: ["startTime"],
-      });
-    }
     const previewRaw = values.previewStartTime.trim();
     if (previewRaw) {
-      const preview = new Date(previewRaw);
+      const preview = instantFromDatetimeFormString(previewRaw);
       if (Number.isNaN(preview.getTime())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -115,6 +110,20 @@ export const adminSaleFormValuesSchema = z
       }
     }
   });
+
+/** Draft sales require a future opening time; published sale edits omit this rule. */
+export function adminSaleDraftScheduleSchema() {
+  return adminSaleFormValuesSchema.superRefine((values, ctx) => {
+    const start = instantFromDatetimeFormString(values.startTime);
+    if (!Number.isNaN(start.getTime()) && !isStartInFutureForPublish(start)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Opening time must be in the future",
+        path: ["startTime"],
+      });
+    }
+  });
+}
 
 export type AdminSaleTierRow = z.infer<typeof adminSaleTierRowSchema>;
 
@@ -195,6 +204,11 @@ function pickLocationUpdate(
   return out;
 }
 
+/** @internal Shared by create/update sale form parsers. */
+export const buildSaleLocationCreatePayload = pickLocationCreate;
+/** @internal Shared by create/update sale form parsers. */
+export const buildSaleLocationUpdatePayload = pickLocationUpdate;
+
 export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
   const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
   if (!tiers.ok) {
@@ -209,10 +223,10 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
     deliveryMode: values.deliveryMode,
     streamUrl: isOnsite ? values.streamUrl.trim() || undefined : undefined,
     ...pickLocationCreate(values, isOnsite),
-    startTime: new Date(values.startTime),
-    endTime: new Date(values.endTime),
+    startTime: instantFromDatetimeFormString(values.startTime),
+    endTime: instantFromDatetimeFormString(values.endTime),
     previewStartTime: values.previewStartTime.trim()
-      ? new Date(values.previewStartTime)
+      ? instantFromDatetimeFormString(values.previewStartTime)
       : undefined,
     buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
     ...(tiers.data !== null ? { buyerPremiumTiers: tiers.data } : {}),
@@ -244,10 +258,12 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
     deliveryMode: values.deliveryMode,
     streamUrl: isOnsite ? (streamRaw === "" ? null : streamRaw) : null,
     ...pickLocationUpdate(values, isOnsite),
-    startTime: values.startTime.trim() ? new Date(values.startTime) : undefined,
-    endTime: values.endTime.trim() ? new Date(values.endTime) : undefined,
+    startTime: values.startTime.trim()
+      ? instantFromDatetimeFormString(values.startTime)
+      : undefined,
+    endTime: values.endTime.trim() ? instantFromDatetimeFormString(values.endTime) : undefined,
     previewStartTime: values.previewStartTime.trim()
-      ? new Date(values.previewStartTime)
+      ? instantFromDatetimeFormString(values.previewStartTime)
       : undefined,
     buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
     buyerPremiumTiers: tiers.data,

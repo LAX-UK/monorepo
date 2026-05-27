@@ -152,6 +152,17 @@ export const createSaleSchema = z.preprocess(
   normalizeOptionalCategoryIdsInput,
   saleCreateBodySchema.superRefine((data, ctx) => {
     refineByMode(data, ctx, "onsite");
+    if (
+      data.previewStartTime &&
+      data.startTime &&
+      data.previewStartTime.getTime() >= data.startTime.getTime()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Preview must be before sale start",
+        path: ["previewStartTime"],
+      });
+    }
   }),
 );
 
@@ -164,6 +175,17 @@ export const updateSaleSchema = z.preprocess(
     .omit({ lots: true })
     .superRefine((data, ctx) => {
       refineByMode(data, ctx, "onsite");
+      if (
+        data.previewStartTime &&
+        data.startTime &&
+        data.previewStartTime.getTime() >= data.startTime.getTime()
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Preview must be before sale start",
+          path: ["previewStartTime"],
+        });
+      }
     }),
 );
 

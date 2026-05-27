@@ -32,6 +32,7 @@ import {
   isSaleSetupPublishReady,
   reviewPublishBlockedHint,
   saleSavedMessage,
+  saleSetupHref,
   saleSetupStepId,
   saveDraftSuccessMessage,
   scheduleLotConflictPersistBlocked,
@@ -42,7 +43,7 @@ import {
 } from "@/lib/admin/zod-form-errors";
 import {
   type AdminSaleFormValues,
-  adminSaleFormValuesSchema,
+  adminSaleDraftScheduleSchema,
   normalizeAdminFormTiersToApi,
   safeParseCreateSaleFromForm,
   safeParseUpdateSaleFromForm,
@@ -154,7 +155,7 @@ export function SaleSetupWizard({
   const createIdempotencyKeyRef = useRef(`sale-create-${crypto.randomUUID()}`);
 
   const form = useForm<AdminSaleFormValues>({
-    resolver: zodResolver(adminSaleFormValuesSchema),
+    resolver: zodResolver(adminSaleDraftScheduleSchema()),
     defaultValues,
   });
 
@@ -298,6 +299,8 @@ export function SaleSetupWizard({
   const readyToPublish =
     saleId &&
     activeSale &&
+    !form.formState.isDirty &&
+    !lotsUnsaved &&
     isSaleSetupReadyToPublish(
       saleId,
       activeSale,
@@ -308,19 +311,25 @@ export function SaleSetupWizard({
   const isReviewStep = saleSetupStepId(wizardStepIndex) === "review";
 
   const handleSaveDraft = useCallback(() => {
-    if (isReviewStep && saleId && canManageSale) {
-      startTransition(async () => {
-        if (form.formState.isDirty) {
-          const id = await persistSale({ savedNoticeStep: "review" });
-          if (!id) return;
-        }
-        notify.success(saveDraftSuccessMessage());
-        guardedPush(`/admin/sales/${saleId}`);
-      });
-      return;
-    }
-    guardedPush(saleId ? `/admin/sales/${saleId}` : "/admin/sales");
-  }, [canManageSale, form.formState.isDirty, guardedPush, isReviewStep, persistSale, saleId]);
+    startTransition(async () => {
+      if (saleId && canManageSale && form.formState.isDirty) {
+        const id = await persistSale({
+          savedNoticeStep: isReviewStep ? "review" : saleSetupStepId(wizardStepIndex),
+        });
+        if (!id) return;
+      }
+      notify.success(saveDraftSuccessMessage());
+      guardedPush(saleId ? `/admin/sales/${saleId}` : "/admin/sales");
+    });
+  }, [
+    canManageSale,
+    form.formState.isDirty,
+    guardedPush,
+    isReviewStep,
+    persistSale,
+    saleId,
+    wizardStepIndex,
+  ]);
 
   const wizardCreateDraftExtras =
     !saleId && canManageSale
@@ -348,6 +357,10 @@ export function SaleSetupWizard({
 
   const handlePublish = async () => {
     if (!saleId) return;
+    if (form.formState.isDirty) {
+      const id = await persistSale({ savedNoticeStep: "review" });
+      if (!id) return;
+    }
     const r = await adminPublishSaleResultAction(saleId);
     if (!r.ok) {
       notify.error(
@@ -408,7 +421,7 @@ export function SaleSetupWizard({
                 const fields = SALE_STEP_FIELD_GROUPS[stepIndex];
                 if (
                   fields?.length &&
-                  !(await validateWizardStep(form, adminSaleFormValuesSchema, fields))
+                  !(await validateWizardStep(form, adminSaleDraftScheduleSchema(), fields))
                 ) {
                   return false;
                 }
@@ -433,7 +446,14 @@ export function SaleSetupWizard({
                     });
                     if (!ok) return false;
                   } else {
-                    await persistSale({ savedNoticeStep: "lots" });
+                    let ok = false;
+                    await new Promise<void>((resolve) => {
+                      startTransition(async () => {
+                        ok = (await persistSale({ savedNoticeStep: "lots" })) != null;
+                        resolve();
+                      });
+                    });
+                    return ok;
                   }
                 }
                 return true;
@@ -558,6 +578,7 @@ export function SaleSetupWizard({
                         customMapUrl={customMapUrl}
                         postcodeIsValid={postcodeIsValid}
                         lots={lots}
+                        {...(saleId ? { lotsSetupHref: saleSetupHref(saleId, "lots") } : {})}
                       />
                     </fieldset>
                   ) : null}
@@ -591,6 +612,7 @@ export function SaleSetupWizard({
                   {stepIndex === 4 && saleId && activeSale ? (
                     <SaleSetupCatalogPrepStep
                       saleId={saleId}
+                      sale={activeSale}
                       lots={lots}
                       readOnly={readOnlyCatalog}
                       {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}

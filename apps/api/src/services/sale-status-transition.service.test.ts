@@ -241,11 +241,13 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
   });
 
   it("rejects scheduling when startTime is in the past", async () => {
-    const window = saleWindow();
-    const lot = {
-      ...draftLot(window),
+    const saleStart = new Date(Date.now() - 7_200_000);
+    const saleEnd = new Date(Date.now() + 86_400_000);
+    const window = { saleStart, saleEnd };
+    const lot = draftLot(window, {
       startTime: new Date(Date.now() - 3_600_000),
-    };
+      endTime: new Date(Date.now() + 3_600_000),
+    });
     const scheduleLot = vi.fn();
     const lotRepo: ILotRepository = {
       findById: vi.fn().mockResolvedValue(lot),
@@ -276,7 +278,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     );
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
-      expect(result.error.message).toContain("startTime must be in the future");
+      expect(result.error.message).toContain("startTime must be in the future to publish");
     }
     expect(lotRepo.updateStatus).not.toHaveBeenCalled();
     expect(scheduleLot).not.toHaveBeenCalled();

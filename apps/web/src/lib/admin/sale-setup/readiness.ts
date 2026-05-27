@@ -3,14 +3,14 @@ import {
   type CatalogReadinessResult,
   buildLotPublishReadiness,
   buildSalePublishReadiness,
+  lotFitsSaleWindowForPublish,
 } from "@/lib/admin/catalog-readiness";
 import {
   type ConnectRequiredByLotId,
   lotConnectRequired,
 } from "@/lib/admin/connect-readiness-shared";
-import { parseSaleWindowFromSale } from "@/lib/admin/sale-lot-window-sync";
 import type { Lot, Sale } from "@auction/types";
-import { lotTimingViolationAgainstSale } from "@auction/validators";
+import { isStartInFutureForPublish } from "@auction/validators";
 import { readinessLabel } from "./field-copy";
 import type { SaleSetupStepId } from "./steps";
 
@@ -69,7 +69,7 @@ export function resolveFirstBlockingSetupStep(input: SaleSetupGateInput): SaleSe
     input.pendingRegistrationCount ?? null,
   );
   if (!saleReadiness.items.find((i) => i.id === "schedule")?.ok) return "schedule";
-  if (input.sale.startTime.getTime() <= Date.now()) return "schedule";
+  if (!isStartInFutureForPublish(input.sale.startTime)) return "schedule";
 
   const venueItem = saleReadiness.items.find((i) => i.id === "venue");
   if (input.sale.deliveryMode === "onsite" && venueItem && !venueItem.ok) return "schedule";
@@ -77,15 +77,17 @@ export function resolveFirstBlockingSetupStep(input: SaleSetupGateInput): SaleSe
   if (input.lots.length === 0) return "lots";
 
   for (const lot of input.lots) {
-    const window = parseSaleWindowFromSale(input.sale);
-    if (lotTimingViolationAgainstSale(window, lot.startTime, lot.endTime)) {
+    if (!lotFitsSaleWindowForPublish(lot, input.sale)) {
       return "lots";
     }
   }
 
   for (const lot of input.lots) {
     const connectRequired = lotConnectRequired(input.connectRequiredByLotId, lot.id);
-    const lotReady = buildLotPublishReadiness(lot.id, lot, connectRequired);
+    const lotReady = buildLotPublishReadiness(lot.id, lot, {
+      connectRequired,
+      sale: input.sale,
+    });
     if (lotReady.percent < 100) return "catalog-prep";
   }
 
@@ -117,7 +119,7 @@ export function buildSaleSetupReadiness(
       return relabeled;
     });
 
-  if (sale.status === "draft" && sale.startTime.getTime() <= Date.now()) {
+  if (sale.status === "draft" && !isStartInFutureForPublish(sale.startTime)) {
     items.push({
       id: "sale_start_future",
       label: readinessLabel("sale_start_future"),
@@ -128,9 +130,7 @@ export function buildSaleSetupReadiness(
   }
 
   for (const lot of lots) {
-    const window = parseSaleWindowFromSale(sale);
-    const saleWindowViolation = lotTimingViolationAgainstSale(window, lot.startTime, lot.endTime);
-    if (saleWindowViolation) {
+    if (!lotFitsSaleWindowForPublish(lot, sale)) {
       const lotTitle = lot.title.trim() || "Untitled lot";
       items.push({
         id: `lot:${lot.id}:sale_window`,
@@ -142,7 +142,10 @@ export function buildSaleSetupReadiness(
     }
 
     const connectRequired = lotConnectRequired(connectRequiredByLotId, lot.id);
-    const lotReady = buildLotPublishReadiness(lot.id, lot, connectRequired);
+    const lotReady = buildLotPublishReadiness(lot.id, lot, {
+      connectRequired,
+      sale,
+    });
     const lotTitle = lot.title.trim() || "Untitled lot";
     for (const lotItem of lotReady.items) {
       if (lotItem.ok) continue;
@@ -172,12 +175,16 @@ export function buildSaleSetupReadiness(
 export function countLotsCatalogReady(
   lots: Lot[],
   connectRequiredByLotId?: ConnectRequiredByLotId,
+  sale?: Pick<Sale, "id" | "deliveryMode" | "startTime" | "endTime"> | null,
 ): { ready: number; total: number } {
   if (lots.length === 0) return { ready: 0, total: 0 };
   let ready = 0;
   for (const lot of lots) {
     const connectRequired = lotConnectRequired(connectRequiredByLotId, lot.id);
-    const r = buildLotPublishReadiness(lot.id, lot, connectRequired);
+    const r = buildLotPublishReadiness(lot.id, lot, {
+      connectRequired,
+      ...(sale ? { sale } : {}),
+    });
     if (r.percent === 100) ready++;
   }
   return { ready, total: lots.length };

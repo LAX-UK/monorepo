@@ -1,4 +1,5 @@
 import type { Lot, Sale } from "@auction/types";
+import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -163,6 +164,20 @@ describe("countLotsCatalogReady", () => {
     expect(countLotsCatalogReady([lot])).toEqual({ ready: 1, total: 1 });
     expect(countLotsCatalogReady([lot], { [lot.id]: true })).toEqual({ ready: 0, total: 1 });
   });
+
+  it("excludes lots outside the sale window when sale context is provided", () => {
+    const sale = draftSale({
+      startTime: new Date("2030-06-01T10:00:00Z"),
+      endTime: new Date("2030-06-07T18:00:00Z"),
+    });
+    const lot = draftLot({
+      images: ["img-key"],
+      description: "Catalogue text",
+      startTime: new Date("2030-05-31T10:00:00Z"),
+      endTime: new Date("2030-06-02T18:00:00Z"),
+    });
+    expect(countLotsCatalogReady([lot], undefined, sale)).toEqual({ ready: 0, total: 1 });
+  });
 });
 
 describe("safeParseSaleSetupLotRowForApi", () => {
@@ -177,8 +192,8 @@ describe("safeParseSaleSetupLotRowForApi", () => {
       endTime: "2030-01-01T11:00",
     };
     const ctx = {
-      saleStartTime: new Date("2030-01-01T09:00"),
-      saleEndTime: new Date("2030-01-01T18:00"),
+      saleStartTime: instantFromDatetimeFormString("2030-01-01T09:00"),
+      saleEndTime: instantFromDatetimeFormString("2030-01-01T18:00"),
       deliveryMode: "online" as const,
       englishOnlyAuctionsLocked: false,
     };
@@ -200,8 +215,8 @@ describe("safeParseSaleSetupLotRowForApi", () => {
       endTime: "2030-01-01T11:00",
     };
     const ctx = {
-      saleStartTime: new Date("2030-01-01T09:00"),
-      saleEndTime: new Date("2030-01-01T18:00"),
+      saleStartTime: instantFromDatetimeFormString("2030-01-01T09:00"),
+      saleEndTime: instantFromDatetimeFormString("2030-01-01T18:00"),
       deliveryMode: "online" as const,
       englishOnlyAuctionsLocked: false,
     };
@@ -223,8 +238,8 @@ describe("safeParseSaleSetupLotRowForApi", () => {
       endTime: "2030-01-01T19:00",
     };
     const ctx = {
-      saleStartTime: new Date("2030-01-01T09:00"),
-      saleEndTime: new Date("2030-01-01T18:00"),
+      saleStartTime: instantFromDatetimeFormString("2030-01-01T09:00"),
+      saleEndTime: instantFromDatetimeFormString("2030-01-01T18:00"),
       deliveryMode: "online" as const,
       englishOnlyAuctionsLocked: false,
     };

@@ -8,7 +8,6 @@ import {
 } from "@/components/admin/detail-rail";
 import { sumLotHammers } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
-import { buildSalePublishReadiness } from "@/lib/admin/catalog-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
@@ -55,9 +54,7 @@ export function SaleContextRail({
           ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
           setupStepHref: (step) => saleSetupHref(saleId, step),
         })
-      : sale.status === "scheduled"
-        ? buildSalePublishReadiness(saleId, sale, lots.length, registrationCount)
-        : null;
+      : null;
 
   const pendingRegs =
     liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;

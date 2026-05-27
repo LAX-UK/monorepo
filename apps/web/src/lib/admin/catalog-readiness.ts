@@ -4,6 +4,7 @@ import {
 } from "@/components/admin/category-detail/category-detail-types";
 import { readinessLabel } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminCategory, Lot, Sale } from "@auction/types";
+import { lotTimingViolationAgainstSale, saleModeInheritsLotTiming } from "@auction/validators";
 
 export type CatalogReadinessItem = {
   id: string;
@@ -26,12 +27,51 @@ function pct(complete: number, total: number): number {
   return Math.round((complete / total) * 100);
 }
 
+export type LotPublishReadinessContext = {
+  connectRequired?: boolean;
+  sale?: Pick<Sale, "deliveryMode" | "startTime" | "endTime"> | null;
+};
+
+/** Onsite lots inherit sale timing at publish; API coerces drift — do not block readiness. */
+export function lotFitsSaleWindowForPublish(
+  lot: Pick<Lot, "startTime" | "endTime">,
+  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime">,
+): boolean {
+  if (saleModeInheritsLotTiming(sale.deliveryMode)) {
+    return true;
+  }
+  return (
+    lotTimingViolationAgainstSale(
+      {
+        deliveryMode: sale.deliveryMode,
+        startTime: sale.startTime,
+        endTime: sale.endTime,
+      },
+      lot.startTime,
+      lot.endTime,
+    ) == null
+  );
+}
+
+export function lotPublishRequiredBlockers(result: CatalogReadinessResult): CatalogReadinessItem[] {
+  return result.items.filter((item) => item.severity === "required" && !item.ok);
+}
+
+export function lotPublishBlockedReason(result: CatalogReadinessResult): string | null {
+  const first = lotPublishRequiredBlockers(result)[0];
+  return first?.label ?? null;
+}
+
 export function buildLotPublishReadiness(
   lotId: string,
   auction: Lot,
-  connectRequired = false,
+  context: LotPublishReadinessContext = {},
 ): CatalogReadinessResult {
+  const connectRequired = context.connectRequired ?? false;
   const scheduleValid = auction.endTime.getTime() > auction.startTime.getTime();
+  const saleWindowOk =
+    !context.sale || !auction.saleId || lotFitsSaleWindowForPublish(auction, context.sale);
+
   const items: CatalogReadinessItem[] = [
     {
       id: "images",
@@ -67,6 +107,13 @@ export function buildLotPublishReadiness(
       ok: Boolean(auction.saleId),
       severity: "warning",
       href: `/admin/lots/${lotId}`,
+    },
+    {
+      id: "sale-window",
+      label: "Lot schedule fits sale window",
+      ok: saleWindowOk,
+      severity: "required",
+      href: `/admin/lots/${lotId}/edit`,
     },
     {
       id: "schedule",

@@ -2,7 +2,7 @@
 
 import { getLotCatalogueProfile } from "@/lib/admin/lot-catalogue";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
-import type { ArtistProfile, CategoryNode } from "@auction/types";
+import type { ArtistProfile, CategoryNode, Sale } from "@auction/types";
 import type { UseFormReturn } from "react-hook-form";
 import { CatalogueBiddingSection } from "./catalogue/catalogue-bidding-section";
 import { CatalogueDetailsSection } from "./catalogue/catalogue-details-section";
@@ -15,6 +15,7 @@ type Props = {
   form: UseFormReturn<AdminLotFormValues>;
   categories: CategoryNode[];
   artists: ArtistProfile[];
+  sales: Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">[];
   showArtistField?: boolean;
   onEditLotType?: () => void;
 };
@@ -23,6 +24,7 @@ export function LotCatalogueStep({
   form,
   categories,
   artists,
+  sales,
   showArtistField = true,
   onEditLotType,
 }: Props) {
@@ -34,7 +36,7 @@ export function LotCatalogueStep({
       <LotTypeSummaryBanner profile={profile} onEditLotType={onEditLotType} />
       <CataloguePricingSection form={form} fields={profile.fields} />
       <CatalogueBiddingSection form={form} fields={profile.fields} />
-      <CatalogueScheduleSection form={form} fields={profile.fields} />
+      <CatalogueScheduleSection form={form} fields={profile.fields} sales={sales} />
       <CatalogueDetailsSection
         form={form}
         categories={categories}
