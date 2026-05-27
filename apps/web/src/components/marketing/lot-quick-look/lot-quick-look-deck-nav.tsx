@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
@@ -37,24 +38,34 @@ export function LotQuickLookDeckNav({
         )}
         aria-label="Browse related lots"
       >
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
+          className={cn(
+            navButtonClass,
+            "pointer-events-auto focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",
+          )}
           onClick={onPrev}
           disabled={deckIndex <= 0}
-          className={cn(navButtonClass, "pointer-events-auto")}
           aria-label="Previous lot"
         >
           <ChevronLeft className="size-5" aria-hidden />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
+          className={cn(
+            navButtonClass,
+            "pointer-events-auto focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",
+          )}
           onClick={onNext}
           disabled={deckIndex >= deckLength - 1}
-          className={cn(navButtonClass, "pointer-events-auto")}
           aria-label="Next lot"
         >
           <ChevronRight className="size-5" aria-hidden />
-        </button>
+        </Button>
       </div>
     );
   }
@@ -64,25 +75,35 @@ export function LotQuickLookDeckNav({
       className={cn("flex items-center justify-between gap-3", className)}
       aria-label="Browse related lots"
     >
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
+        className={cn(
+          navButtonClass,
+          "focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",
+        )}
         onClick={onPrev}
         disabled={deckIndex <= 0}
-        className={navButtonClass}
         aria-label="Previous lot"
       >
         <ChevronLeft className="size-5" aria-hidden />
-      </button>
+      </Button>
       <span className="font-body text-sm tabular-nums text-on-surface-variant">{label}</span>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
+        className={cn(
+          navButtonClass,
+          "focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",
+        )}
         onClick={onNext}
         disabled={deckIndex >= deckLength - 1}
-        className={navButtonClass}
         aria-label="Next lot"
       >
         <ChevronRight className="size-5" aria-hidden />
-      </button>
+      </Button>
     </div>
   );
 }

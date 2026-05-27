@@ -1,9 +1,9 @@
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { Button } from "@/components/ui/button";
 import { DASHBOARD_CTA } from "@/lib/dashboard/dashboard-copy";
 import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { usePersonalProfileForSubmissions } from "@/lib/legal-entity/submissions-access-actions";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 
 /** Shown on seller routes when the user is acting as an organisation. */
 export function SellerOrgContextBanner() {

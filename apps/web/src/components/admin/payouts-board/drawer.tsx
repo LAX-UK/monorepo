@@ -7,6 +7,7 @@ import { addPayoutAdjustmentAction } from "@/lib/admin/payout.actions";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
 import { formatDate, formatMoney } from "@/lib/ui/format";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 
 export function PayoutDrawerContent({ payout }: { payout: AdminPayoutRow }) {
   const adjustmentDisabled =
@@ -100,13 +101,14 @@ export function PayoutDrawerContent({ payout }: { payout: AdminPayoutRow }) {
             />
           </label>
         </div>
-        <button
+        <Button
           type="submit"
+          variant="outline"
           disabled={adjustmentDisabled}
-          className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold disabled:opacity-50"
+          className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold disabled:opacity-50 shadow-none"
         >
           Add adjustment
-        </button>
+        </Button>
       </form>
 
       <PayoutMarkPaidButton

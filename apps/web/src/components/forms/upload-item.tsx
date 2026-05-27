@@ -2,6 +2,7 @@
 
 import type { UploadGalleryItem } from "@/lib/forms/image/use-upload-gallery";
 import { Button } from "@auction/ui/components/button";
+import { UploadProgress } from "@auction/ui/components/upload-progress";
 
 type Props = {
   item: UploadGalleryItem;
@@ -19,11 +20,10 @@ export function UploadItem({ item, onRetry }: Props) {
         </span>
       </div>
       {showProgress && item.progress != null ? (
-        <progress
-          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-outline-variant/30 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-outline-variant/30 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary"
+        <UploadProgress
+          className="mt-2"
           value={item.progress}
-          max={100}
-          aria-label={`Uploading ${item.fileName}`}
+          label={`Uploading ${item.fileName}`}
         />
       ) : null}
       {item.status === "error" && onRetry ? (

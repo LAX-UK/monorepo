@@ -1,7 +1,6 @@
 "use client";
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
-import { Button } from "@/components/ui/button";
 import {
   type MemberRow,
   removeMemberAction,
@@ -10,6 +9,7 @@ import {
 } from "@/lib/legal-entity/member-management.actions";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { legalEntityMemberRoles } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import {
   Select,

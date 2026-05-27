@@ -2,6 +2,7 @@
 
 import { CalendarIcon } from "lucide-react";
 import * as React from "react";
+import { useMinWidthMd } from "../../hooks/use-media-query.js";
 import {
   AUCTION_ZONE_LABEL,
   DEFAULT_AUCTION_ZONE,
@@ -15,15 +16,9 @@ import {
   zonedInstantToDatetimeFormString,
 } from "../../lib/datetime/index.js";
 import { cn } from "../../lib/utils.js";
-import {
-  BottomSheet,
-  BottomSheetContent,
-  BottomSheetTitle,
-  BottomSheetTrigger,
-} from "./bottom-sheet.js";
 import { Button } from "./button.js";
 import { Calendar } from "./calendar.js";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover.js";
+import { ResponsivePickerShell } from "./responsive-picker-shell.js";
 import { TimePicker } from "./time-picker.js";
 
 export type DateTimePickerProps = {
@@ -96,6 +91,7 @@ function DateTimePicker({
   "aria-describedby": ariaDescribedBy,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
+  const isDesktop = useMinWidthMd();
   const parsed = value.trim() ? fromDatetimeFormString(value, zone) : null;
   const datePart = parsed ? toDateFormString(parsed.instant, zone) : "";
   const timePart = parsed ? toTimeFormString(parsed.instant, zone) : "12:00";
@@ -107,20 +103,6 @@ function DateTimePicker({
   };
 
   const displayLabel = value.trim() ? formatDatetimeDisplayHuman(value, zone) : placeholder;
-
-  const triggerProps = {
-    id,
-    type: "button" as const,
-    variant: "outline" as const,
-    disabled,
-    "aria-invalid": ariaInvalid,
-    "aria-describedby": ariaDescribedBy,
-    onBlur,
-    className: cn(
-      "min-h-11 w-full justify-start px-3 py-3 text-left font-body text-sm font-normal",
-      !value && "text-on-surface-variant",
-    ),
-  };
 
   const panelProps = {
     timePart,
@@ -141,38 +123,35 @@ function DateTimePicker({
     </Button>
   );
 
+  const trigger = (
+    <Button
+      id={id}
+      type="button"
+      variant="outline"
+      disabled={disabled}
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
+      onBlur={onBlur}
+      className={cn(
+        "min-h-11 w-full justify-start px-3 py-3 text-left font-body text-sm font-normal",
+        !value && "text-on-surface-variant",
+      )}
+    >
+      <CalendarIcon className="mr-2 size-4 opacity-60" />
+      {displayLabel}
+    </Button>
+  );
+
   return (
     <div className={cn("grid gap-1", className)}>
-      <div className="md:hidden">
-        <BottomSheet open={open} onOpenChange={setOpen}>
-          <BottomSheetTrigger asChild>
-            <Button {...triggerProps}>
-              <CalendarIcon className="mr-2 size-4 opacity-60" />
-              {displayLabel}
-            </Button>
-          </BottomSheetTrigger>
-          <BottomSheetContent footer={doneButton}>
-            <BottomSheetTitle className="sr-only">Pick date and time</BottomSheetTitle>
-            <DateTimePickerPanel {...panelProps} />
-          </BottomSheetContent>
-        </BottomSheet>
-      </div>
-
-      <div className="hidden md:block">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button {...triggerProps}>
-              <CalendarIcon className="mr-2 size-4 opacity-60" />
-              {displayLabel}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <DateTimePickerPanel {...panelProps} />
-            <div className="border-t border-outline-variant/25 p-3 pt-0">{doneButton}</div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
+      <ResponsivePickerShell
+        open={open}
+        onOpenChange={setOpen}
+        trigger={trigger}
+        panel={<DateTimePickerPanel {...panelProps} />}
+        footer={isDesktop === false ? doneButton : undefined}
+        sheetTitle="Pick date and time"
+      />
       {showZoneLabel && !open ? (
         <p className="font-body text-xs text-on-surface-variant">{AUCTION_ZONE_LABEL}</p>
       ) : null}

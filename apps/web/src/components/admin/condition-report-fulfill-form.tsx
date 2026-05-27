@@ -3,6 +3,8 @@
 import { DocumentUploadField } from "@/components/forms/document-upload-field";
 import { adminFulfillConditionReportAction } from "@/lib/actions/admin";
 import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
+import { Textarea } from "@auction/ui/components/textarea";
 import { useState } from "react";
 
 type Props = {
@@ -22,15 +24,11 @@ export function ConditionReportFulfillForm({ requestId }: Props) {
       <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Publish to catalogue
       </p>
-      <input
-        name="summary"
-        placeholder="Summary (public)"
-        className="w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-sm"
-      />
-      <textarea
+      <Input name="summary" placeholder="Summary (public)" className="w-full font-body text-sm" />
+      <Textarea
         name="details"
         placeholder="Details (public)"
-        className="min-h-20 w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-sm"
+        className="min-h-20 font-body text-sm"
       />
       <div className="space-y-1">
         <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
@@ -43,10 +41,10 @@ export function ConditionReportFulfillForm({ requestId }: Props) {
           onChange={setDownloadUrl}
         />
       </div>
-      <textarea
+      <Textarea
         name="responseNote"
         placeholder="Internal note (optional)"
-        className="min-h-16 w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-xs"
+        className="min-h-16 font-body text-xs"
       />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" size="sm" className="min-h-9">

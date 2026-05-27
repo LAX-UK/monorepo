@@ -3,7 +3,6 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardSkeleton } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
-import { Button } from "@/components/ui/button";
 import { DASHBOARD_CTA, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   type DashboardSliceFailure,
@@ -12,6 +11,7 @@ import {
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import type { SubmissionListFilterValues } from "@auction/validators";
 import { Plus } from "lucide-react";
 import Link from "next/link";

@@ -5,6 +5,7 @@ import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-t
 import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
@@ -68,15 +69,16 @@ export function MarketingWatchlistHeart({
 
   if (!isAuthenticated) {
     return (
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={onLoginClick}
         className={cn(shellClass, positionClass, className)}
         {...(useOverlayChrome ? overlayProps : {})}
         aria-label={`Sign in to add ${lotTitle} to your watchlist`}
       >
         <Heart className="size-5 fill-transparent stroke-current" aria-hidden />
-      </button>
+      </Button>
     );
   }
 

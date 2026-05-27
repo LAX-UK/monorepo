@@ -3,6 +3,7 @@
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { adminRejectSaleRegistrationAction } from "@/lib/actions/admin";
 import { Label } from "@auction/ui/components/label";
+import { Textarea } from "@auction/ui/components/textarea";
 
 type Props = {
   saleId: string;
@@ -24,11 +25,11 @@ export function SaleRegistrationRejectButton({ saleId, registrationId, reasonFie
       <Label htmlFor={reasonFieldId} className="sr-only">
         Rejection reason (optional)
       </Label>
-      <textarea
+      <Textarea
         id={reasonFieldId}
         name="reason"
         placeholder="Optional reason"
-        className="mb-1 min-h-16 w-48 rounded border border-outline-variant/40 bg-surface px-2 py-1 font-body text-xs"
+        className="mb-1 min-h-16 w-48 font-body text-xs"
       />
       <ConfirmFormSubmit
         formId={formId}

@@ -1,9 +1,9 @@
 "use client";
 
-import { Button as UiButton } from "@/components/ui/button";
 import { lotPath } from "@/lib/seo/url";
 import type { UserNotification } from "@auction/types";
 import { cn } from "@auction/ui";
+import { Button as UiButton } from "@auction/ui/components/button";
 import { Button as ShadButton } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {

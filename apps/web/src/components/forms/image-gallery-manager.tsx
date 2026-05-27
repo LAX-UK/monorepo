@@ -11,9 +11,9 @@ import {
 import { useUploadGallery } from "@/lib/forms/image/use-upload-gallery";
 import { notify } from "@/lib/ui/notify";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
-import { useRef, useState } from "react";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
@@ -63,9 +63,6 @@ export function ImageGalleryManager({
   disabled = false,
   previewUrlByKey = {},
 }: Props) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const [dragging, setDragging] = useState(false);
   const entries = toEntries(value);
   const { sensors, onDragEnd } = useImageReorder({
     value: entries,
@@ -100,78 +97,41 @@ export function ImageGalleryManager({
     <div className="space-y-4">
       {remaining > 0 ? (
         <div className="flex flex-col gap-2 sm:block">
-          <button
-            type="button"
+          <FileUploadTrigger
+            dropzone
             disabled={disabled}
-            aria-label={dropzoneAriaLabel(kind)}
-            className={`w-full rounded-lg border border-dashed p-6 text-left transition ${
-              disabled
-                ? "cursor-not-allowed opacity-60"
-                : dragging
-                  ? "border-primary bg-primary-container/20"
-                  : "border-outline-variant bg-surface-container-lowest"
-            }`}
-            onClick={() => !disabled && inputRef.current?.click()}
-            onDragEnter={(event) => {
-              if (disabled) return;
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragOver={(event) => event.preventDefault()}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(event) => {
-              if (disabled) return;
-              event.preventDefault();
-              setDragging(false);
-              void uploadFiles(event.dataTransfer.files);
-            }}
+            multiple
+            accept={IMAGE_ACCEPT}
+            inputId={`image-gallery-${kind}`}
+            onFilesSelected={(files) => void uploadFiles(files)}
+            className="[&_[role=button]]:min-h-0 [&_[role=button]]:rounded-lg [&_[role=button]]:border-outline-variant [&_[role=button]]:bg-surface-container-lowest [&_[role=button]]:p-6 [&_[role=button]]:text-left"
           >
-            <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            <span
+              className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
+              aria-label={dropzoneAriaLabel(kind)}
+            >
               Upload images
             </span>
             <span className="mt-2 block font-body text-sm text-on-surface-variant">
               Drop files here or click to choose. JPEG, PNG, WebP, and GIF up to 10 MB each.
             </span>
-          </button>
-          <button
-            type="button"
+          </FileUploadTrigger>
+          <FileUploadTrigger
             disabled={disabled}
-            className="min-h-12 w-full rounded-lg border border-border-hairline bg-surface-container-low px-4 font-label text-xs font-semibold uppercase tracking-wider text-primary sm:hidden"
-            onClick={() => !disabled && cameraInputRef.current?.click()}
-            data-testid="image-gallery-take-photo"
+            accept={IMAGE_ACCEPT}
+            capture="environment"
+            inputId={`image-gallery-camera-${kind}`}
+            onFilesSelected={(files) => void uploadFiles(files)}
+            className="sm:hidden"
           >
             Take photo
-          </button>
+          </FileUploadTrigger>
         </div>
       ) : (
         <p className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4 font-body text-sm text-on-surface-variant">
           Maximum of {maxFiles} images reached. Remove an image before uploading another.
         </p>
       )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        multiple
-        disabled={disabled}
-        className="hidden"
-        onChange={(event) => {
-          if (event.target.files) void uploadFiles(event.target.files);
-          event.currentTarget.value = "";
-        }}
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        capture="environment"
-        disabled={disabled}
-        className="hidden"
-        onChange={(event) => {
-          if (event.target.files) void uploadFiles(event.target.files);
-          event.currentTarget.value = "";
-        }}
-      />
       {items.length > 0 ? (
         <ul className="space-y-2" aria-live="polite">
           {items.map((item) => (

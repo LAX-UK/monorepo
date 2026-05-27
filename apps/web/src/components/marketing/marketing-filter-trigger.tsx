@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { SlidersHorizontal } from "lucide-react";
 import { forwardRef } from "react";
 
@@ -13,9 +14,10 @@ export type MarketingFilterTriggerProps = {
 export const MarketingFilterTrigger = forwardRef<HTMLButtonElement, MarketingFilterTriggerProps>(
   function MarketingFilterTrigger({ activeCount = 0, className, ...props }, ref) {
     return (
-      <button
+      <Button
         ref={ref}
         type="button"
+        variant="ghost"
         className={cn(
           "inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface transition-colors hover:border-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
           className,
@@ -32,7 +34,7 @@ export const MarketingFilterTrigger = forwardRef<HTMLButtonElement, MarketingFil
             {activeCount > 9 ? "9+" : activeCount}
           </span>
         ) : null}
-      </button>
+      </Button>
     );
   },
 );

@@ -7,7 +7,6 @@ import {
   SellerOrgContextBanner,
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
-import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { buildSellerPayoutFailure } from "@/lib/dashboard/dashboard-fetch-errors";
@@ -16,6 +15,7 @@ import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { getPayoutStatusView } from "@/lib/presenters/payment-status";
 import type { Payout } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
@@ -136,7 +136,7 @@ export default async function SellerPayoutsPage() {
               <Button variant="primary" asChild>
                 <Link href={DASHBOARD_ROUTES.sellerInSale}>{DASHBOARD_CTA.itemsInSale}</Link>
               </Button>
-              <Button variant="secondary" asChild>
+              <Button variant="secondaryOutline" asChild>
                 <Link href={DASHBOARD_ROUTES.submissionsNew}>{DASHBOARD_CTA.newSubmission}</Link>
               </Button>
             </div>

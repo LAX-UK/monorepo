@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { TimelineStages } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
@@ -135,7 +135,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-hairline p-4 pt-3">
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="secondaryOutline"
                     className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
                     onClick={() => setOpenId(row.id)}
                   >
@@ -151,7 +151,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                     </Button>
                   ) : (
                     <Button
-                      variant="secondary"
+                      variant="secondaryOutline"
                       className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
                       asChild
                     >

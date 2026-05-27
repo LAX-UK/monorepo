@@ -7,13 +7,13 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
-import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { formatMoney } from "@/lib/format-currency";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
+import { Button } from "@auction/ui/components/button";
 import { Button as UiButton } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import {
@@ -383,7 +383,7 @@ export function BidsBoard({
         actions={
           <Button
             type="button"
-            variant="secondary"
+            variant="secondaryOutline"
             onClick={exportCurrentTab}
             disabled={!currentTabHasRows}
             aria-label="Download current tab as CSV"
@@ -456,7 +456,7 @@ export function BidsBoard({
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" variant="secondary">
+                  <Button type="submit" variant="secondaryOutline">
                     Apply
                   </Button>
                 </form>
@@ -499,7 +499,7 @@ export function BidsBoard({
               title="No matches"
               description="Nothing in this tab matches your search. Clear the filter or try another title."
               action={
-                <Button type="button" variant="secondary" onClick={() => clearSearch(tab)}>
+                <Button type="button" variant="secondaryOutline" onClick={() => clearSearch(tab)}>
                   Clear search
                 </Button>
               }

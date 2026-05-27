@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import type { ReactNode } from "react";
 import { useCallback, useId, useRef, useState } from "react";
 
@@ -73,12 +74,13 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
         {tabs.map(({ id, label }, i) => {
           const selected = tab === id;
           return (
-            <button
+            <Button
               key={id}
               ref={(el) => {
                 tabRefs.current[i] = el;
               }}
               type="button"
+              variant="ghost"
               role="tab"
               id={`${baseId}-tab-${id}`}
               aria-selected={selected}
@@ -93,7 +95,7 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
               )}
             >
               {label}
-            </button>
+            </Button>
           );
         })}
       </div>

@@ -12,13 +12,16 @@ Use `@auction/ui` primitives for all **visible** form controls in `apps/web`. Do
 
 | Use case | Component | Notes |
 |----------|-----------|-------|
-| Auction scheduling | `DateTimePicker` | London zone label; bottom sheet on small screens, popover on `md+`; I/O via `@auction/ui/lib/datetime` |
+| Auction scheduling | `DateTimePicker` | London zone label; `ResponsivePickerShell` mounts **one** overlay (bottom sheet on small screens, popover on `md+`); I/O via `@auction/ui/lib/datetime` |
+| Date-only fields | `DatePicker` | Same responsive shell as `DateTimePicker` |
 | Analytics ranges | `DateRangePicker` | Uses `DEFAULT_AUCTION_ZONE` |
 | Quiet hours | `TimePicker` | UTC copy in form labels; native time input encapsulated in UI package |
 | Static long lists | `Combobox` / `RhfCombobox` | Searchable; use when options > ~20 |
 | Async entity search | `AsyncCombobox` / `RhfAsyncCombobox` | Admin pickers (users, lots, legal entities); selected state keeps summary + **Change** (reopens search) + **Clear** |
 
 Datetime I/O must use `@auction/ui/lib/datetime` (`toDatetimeFormString`, `instantFromDatetimeFormString`, etc.) — not ad-hoc `new Date(formString)`.
+
+**Responsive overlays:** `DateTimePicker` and `DatePicker` use `ResponsivePickerShell`, which conditionally mounts either `Popover` (desktop) or `BottomSheet` (mobile) based on viewport — never both at once. Do not hide portaled drawers with CSS alone.
 
 Copy guide:
 

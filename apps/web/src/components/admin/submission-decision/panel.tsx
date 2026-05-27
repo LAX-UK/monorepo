@@ -1,8 +1,8 @@
 "use client";
 
-import { AsyncCombobox } from "@/components/admin/_picker/async-combobox";
 import type { ArtistSearchHit } from "@/components/artists/artist-search";
 import { CreateArtistDialog } from "@/components/artists/create-artist-dialog";
+import { RhfAsyncCombobox } from "@/components/ui/rhf-async-combobox";
 import { LabelCaps } from "@/components/ui/typography";
 import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import {
@@ -231,17 +231,18 @@ export function AdminSubmissionDecisionPanel({
                   <div className="flex items-baseline justify-between gap-3">
                     <LabelCaps>Catalogue artist</LabelCaps>
                     {submitterDisplayName ? (
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => {
                           setCreateSeed(submitterDisplayName);
                           setCreateOpen(true);
                         }}
                         disabled={pending}
-                        className="inline-flex items-center rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] uppercase tracking-wide text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-auto min-h-0 items-center rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] uppercase tracking-wide text-on-surface shadow-none transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Use submitter as artist
-                      </button>
+                      </Button>
                     ) : null}
                   </div>
                   <FormField
@@ -249,37 +250,36 @@ export function AdminSubmissionDecisionPanel({
                     name="artistId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormControl>
-                          <AsyncCombobox<ArtistSearchHit>
-                            value={field.value ?? null}
-                            onChange={(id) => {
-                              field.onChange(id ?? null);
-                              setCreateSeed(null);
-                            }}
-                            disabled={pending}
-                            searchHits={searchHits}
-                            resolveHit={resolveHit}
-                            renderHit={(hit) => (
-                              <span className="text-left font-body text-sm text-on-surface">
-                                <span className="font-medium">{hit.displayName}</span>
-                                <span className="mt-0.5 block font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                                  {artistKindMeta(hit.kind).badge} · /{hit.slug}
-                                </span>
+                        <RhfAsyncCombobox<ArtistSearchHit>
+                          value={field.value ?? null}
+                          onChange={(id) => {
+                            field.onChange(id ?? null);
+                            setCreateSeed(null);
+                          }}
+                          onBlur={field.onBlur}
+                          disabled={pending}
+                          searchHits={searchHits}
+                          resolveHit={resolveHit}
+                          renderHit={(hit) => (
+                            <span className="text-left font-body text-sm text-on-surface">
+                              <span className="font-medium">{hit.displayName}</span>
+                              <span className="mt-0.5 block font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+                                {artistKindMeta(hit.kind).badge} · /{hit.slug}
                               </span>
-                            )}
-                            renderSelected={(hit) => (
-                              <div className="text-sm">
-                                <p className="font-medium text-on-surface">{hit.displayName}</p>
-                                <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                                  {artistKindMeta(hit.kind).badge} ·{" "}
-                                  {artistStatusLabel(hit.status).label} · /{hit.slug}
-                                </p>
-                              </div>
-                            )}
-                            placeholder="Search by name, slug, alias…"
-                            clearLabel="Clear artist"
-                          />
-                        </FormControl>
+                            </span>
+                          )}
+                          renderSelected={(hit) => (
+                            <div className="text-sm">
+                              <p className="font-medium text-on-surface">{hit.displayName}</p>
+                              <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+                                {artistKindMeta(hit.kind).badge} ·{" "}
+                                {artistStatusLabel(hit.status).label} · /{hit.slug}
+                              </p>
+                            </div>
+                          )}
+                          placeholder="Search by name, slug, alias…"
+                          clearLabel="Clear artist"
+                        />
                         <p className="text-xs text-on-surface-variant">
                           Required before publish but can be left blank to attach later.
                           Inline-creating defaults to{" "}
@@ -287,17 +287,18 @@ export function AdminSubmissionDecisionPanel({
                         </p>
                         <FormMessage />
                         <div className="flex justify-end pt-2">
-                          <button
+                          <Button
                             type="button"
+                            variant="link"
                             disabled={pending}
                             onClick={() => {
                               setCreateSeed("");
                               setCreateOpen(true);
                             }}
-                            className="font-label text-[11px] uppercase tracking-wide text-primary underline"
+                            className="h-auto min-h-0 p-0 font-label text-[11px] uppercase tracking-wide underline shadow-none underline-offset-2"
                           >
                             New artist / maker
-                          </button>
+                          </Button>
                         </div>
                       </FormItem>
                     )}

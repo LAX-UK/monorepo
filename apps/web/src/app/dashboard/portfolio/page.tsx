@@ -14,7 +14,6 @@ import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/pr
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
-import { Button } from "@/components/ui/button";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import {
   type DashboardSliceFailure,
@@ -27,6 +26,7 @@ import {
   filterPortfolioRows,
   toPortfolioLotCards,
 } from "@/lib/data/view-models/dashboard-portfolio.vm";
+import { Button } from "@auction/ui/components/button";
 import { Inbox } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";

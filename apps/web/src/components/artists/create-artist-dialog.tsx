@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { adminCreateArtistResultAction } from "@/lib/actions/admin";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { Button } from "@auction/ui/components/button";
 import {
   Dialog,
   DialogContent,

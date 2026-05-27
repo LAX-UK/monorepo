@@ -2,6 +2,7 @@
 
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { adminDeclineConditionReportAction } from "@/lib/actions/admin";
+import { Textarea } from "@auction/ui/components/textarea";
 
 type Props = { requestId: string };
 
@@ -15,10 +16,10 @@ export function ConditionReportDeclineButton({ requestId }: Props) {
       className="mt-3 flex flex-col gap-2"
     >
       <input type="hidden" name="requestId" value={requestId} />
-      <textarea
+      <Textarea
         name="responseNote"
         placeholder="Decline reason (optional)"
-        className="min-h-14 w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-xs"
+        className="min-h-14 font-body text-xs"
       />
       <ConfirmFormSubmit
         formId={formId}

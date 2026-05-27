@@ -1,7 +1,7 @@
 import { BidErrorView } from "@/components/bid/bid-error-view";
-import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/format-currency";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 type Props = {
@@ -58,7 +58,7 @@ export function BidConfirmation({
       </div>
       <BidErrorView error={error} />
       <div className="flex gap-4">
-        <Button type="button" variant="secondary" className="flex-1 py-6" onClick={onCancel}>
+        <Button type="button" variant="secondaryOutline" className="flex-1 py-6" onClick={onCancel}>
           Cancel
         </Button>
         <Button

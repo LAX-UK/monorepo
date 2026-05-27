@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -59,16 +60,17 @@ export function WizardStepIndicator({
           );
           if (onStepClick) {
             return (
-              <button
+              <Button
                 key={step.id}
                 type="button"
+                variant="ghost"
                 disabled={stepNavigationDisabled}
                 onClick={() => {
                   if (stepNavigationDisabled) return;
                   onStepClick(index);
                 }}
                 className={cn(
-                  "inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-1.5 transition-colors",
+                  "inline-flex h-auto min-h-10 items-center gap-2 rounded-md border px-3 py-1.5 shadow-none transition-colors",
                   active
                     ? "border-primary/40 bg-primary/5 text-on-surface"
                     : "border-outline-variant/40 bg-surface-container-lowest text-on-surface-variant hover:border-primary/30",
@@ -76,7 +78,7 @@ export function WizardStepIndicator({
                 aria-current={active ? "step" : undefined}
               >
                 {content}
-              </button>
+              </Button>
             );
           }
           return (
