@@ -14,7 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "./command.js";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover.js";
+import { ResponsivePickerShell } from "./responsive-picker-shell.js";
 
 const DEBOUNCE_MS = 300;
 
@@ -66,7 +66,7 @@ function InlineActionButton({
   );
 }
 
-/** Debounced async search combobox built on Command + Popover. */
+/** Debounced async search combobox built on Command + responsive overlay shell. */
 export function AsyncCombobox<THit extends AsyncComboboxHit>({
   value,
   onChange,
@@ -224,16 +224,18 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
       >
         <div className="min-w-0 flex-1">{selectedSummary}</div>
         <div className="flex flex-wrap items-center gap-2">
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+          <ResponsivePickerShell
+            open={open}
+            onOpenChange={setOpen}
+            trigger={
               <InlineActionButton {...comboboxA11y} disabled={disabled} aria-label={changeLabel}>
                 {changeLabel}
               </InlineActionButton>
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-              {searchPanel}
-            </PopoverContent>
-          </Popover>
+            }
+            panel={searchPanel}
+            sheetTitle={searchPlaceholder}
+            popoverContentClassName="w-[var(--radix-popover-trigger-width)] p-0"
+          />
           <InlineActionButton onClick={handleClear} disabled={disabled} aria-label={clearLabel}>
             <X className="size-3.5" />
             {clearLabel}
@@ -244,8 +246,10 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <ResponsivePickerShell
+      open={open}
+      onOpenChange={setOpen}
+      trigger={
         <Button
           type="button"
           variant="outline"
@@ -258,10 +262,10 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
         >
           {placeholder}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        {searchPanel}
-      </PopoverContent>
-    </Popover>
+      }
+      panel={searchPanel}
+      sheetTitle={searchPlaceholder}
+      popoverContentClassName="w-[var(--radix-popover-trigger-width)] p-0"
+    />
   );
 }

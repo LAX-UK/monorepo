@@ -1,10 +1,13 @@
 "use client";
 
-import { searchAdminLotsBrowseAction } from "@/lib/actions/admin-lots-browse";
+import {
+  resolveAdminLotForPickerAction,
+  searchAdminLotsBrowseAction,
+} from "@/lib/actions/admin-lots-browse";
 import type { AdminLotPickerRow } from "@/lib/data/http/admin.server";
 import { AsyncCombobox } from "@auction/ui/components/async-combobox";
 import { Button } from "@auction/ui/components/button";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export type AdminLotPickerProps = {
   value: string | null;
@@ -35,6 +38,28 @@ export function AdminLotPicker({
 }: AdminLotPickerProps) {
   const [state, setState] = useState<"available" | "returned" | "all">("all");
 
+  const searchHits = useCallback(
+    async (q: string) => {
+      const result = await searchAdminLotsBrowseAction({
+        ...(q.trim() ? { q: q.trim() } : {}),
+        state,
+        ...(excludeSaleId ? { excludeSaleId } : {}),
+        ...(sellerLegalEntityId ? { sellerLegalEntityId } : {}),
+        limit: 25,
+        offset: 0,
+      });
+      if (!result.ok) throw new Error(result.error || "Search failed");
+      return result.data?.rows ?? [];
+    },
+    [excludeSaleId, sellerLegalEntityId, state],
+  );
+
+  const resolveHit = useCallback(async (lotId: string) => {
+    const result = await resolveAdminLotForPickerAction(lotId);
+    if (!result.ok) return null;
+    return result.data ?? null;
+  }, []);
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
@@ -64,30 +89,8 @@ export function AdminLotPicker({
         minQueryLen={0}
         placeholder={searchPlaceholder}
         searchPlaceholder={searchPlaceholder}
-        searchHits={async (q) => {
-          const result = await searchAdminLotsBrowseAction({
-            ...(q.trim() ? { q: q.trim() } : {}),
-            state,
-            ...(excludeSaleId ? { excludeSaleId } : {}),
-            ...(sellerLegalEntityId ? { sellerLegalEntityId } : {}),
-            limit: 25,
-            offset: 0,
-          });
-          if (!result.ok) throw new Error(result.error || "Search failed");
-          return result.data?.rows ?? [];
-        }}
-        resolveHit={async (id) => {
-          const result = await searchAdminLotsBrowseAction({
-            q: id,
-            state,
-            ...(excludeSaleId ? { excludeSaleId } : {}),
-            ...(sellerLegalEntityId ? { sellerLegalEntityId } : {}),
-            limit: 25,
-            offset: 0,
-          });
-          if (!result.ok) return null;
-          return result.data?.rows.find((row) => row.id === id) ?? null;
-        }}
+        searchHits={searchHits}
+        resolveHit={resolveHit}
         renderHit={(row) => (
           <>
             <span className="font-medium text-on-surface">{row.title}</span>

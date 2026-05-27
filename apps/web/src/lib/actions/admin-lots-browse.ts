@@ -6,11 +6,15 @@ import { getAdminLotBrowseFallback } from "@/lib/admin/lot-browse-fallback";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import {
   AdminLotBrowseError,
+  type AdminLotLifecyclePayload,
   type AdminLotPickerRow,
   getAdminLotBrowse,
+  getAdminLotById,
+  getAdminLotLifecycle,
 } from "@/lib/data/http/admin.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import type { Lot } from "@auction/types";
 
 export type SearchAdminLotsBrowseInput = {
   q?: string;
@@ -59,6 +63,54 @@ export async function searchAdminLotsBrowseAction(
       return actionSuccess({ rows, total });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Lot search failed";
+      return actionFailure(message);
+    }
+  });
+}
+
+function mapLotAndLifecycleToPickerRow(
+  lot: Lot,
+  lifecycle: AdminLotLifecyclePayload | null,
+): AdminLotPickerRow {
+  const returnCount = lifecycle?.snapshot?.returnCount ?? 0;
+  const lastSaleId = lifecycle?.snapshot?.lastSaleId ?? null;
+  const lastSaleName = lifecycle?.events.find((event) => event.saleTitle)?.saleTitle ?? null;
+
+  return {
+    id: lot.id,
+    title: lot.title,
+    lifecycle: {
+      kind: returnCount > 0 ? "returned" : "new_draft",
+      returnedAt: null,
+      lastSaleId,
+      lastSaleName,
+      returnCount,
+    },
+  };
+}
+
+/** Resolve a single attachable lot row for picker selected-state display. */
+export async function resolveAdminLotForPickerAction(
+  lotId: string,
+): Promise<ActionResult<AdminLotPickerRow | null>> {
+  return instrumentServerAction("resolveAdminLotForPickerAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
+
+    try {
+      const lot = await getAdminLotById(lotId);
+      if (!lot) return actionSuccess(null);
+
+      let lifecycle: AdminLotLifecyclePayload | null = null;
+      try {
+        lifecycle = await getAdminLotLifecycle(lotId);
+      } catch {
+        lifecycle = null;
+      }
+
+      return actionSuccess(mapLotAndLifecycleToPickerRow(lot, lifecycle));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Lot lookup failed";
       return actionFailure(message);
     }
   });

@@ -2,6 +2,7 @@
 
 import { CalendarIcon } from "lucide-react";
 import * as React from "react";
+import { useMinWidthMd } from "../../hooks/use-media-query.js";
 import {
   AUCTION_ZONE_LABEL,
   DEFAULT_AUCTION_ZONE,
@@ -90,6 +91,7 @@ function DateTimePicker({
   "aria-describedby": ariaDescribedBy,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
+  const isDesktop = useMinWidthMd();
   const parsed = value.trim() ? fromDatetimeFormString(value, zone) : null;
   const datePart = parsed ? toDateFormString(parsed.instant, zone) : "";
   const timePart = parsed ? toTimeFormString(parsed.instant, zone) : "12:00";
@@ -147,7 +149,7 @@ function DateTimePicker({
         onOpenChange={setOpen}
         trigger={trigger}
         panel={<DateTimePickerPanel {...panelProps} />}
-        footer={doneButton}
+        footer={isDesktop === false ? doneButton : undefined}
         sheetTitle="Pick date and time"
       />
       {showZoneLabel && !open ? (
