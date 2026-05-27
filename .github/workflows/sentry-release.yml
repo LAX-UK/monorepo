@@ -22,14 +22,17 @@ on:
 permissions:
   contents: read
 
+env:
+  SENTRY_APPS: web,api,auth,ws,worker
+  SENTRY_ORG: lax-bid
+  SENTRY_URL: https://sentry.io
+
 jobs:
   ensure-release:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: lax-bid
-      SENTRY_URL: https://sentry.io
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
     steps:
@@ -48,12 +51,18 @@ jobs:
         run: |
           set -euo pipefail
 
-          if sentry-cli releases info "$RELEASE" >/dev/null 2>&1; then
+          IFS=',' read -ra apps <<< "${SENTRY_APPS}"
+          project_args=()
+          for app in "${apps[@]}"; do
+            project_args+=(-p "lax-${ENV_SUFFIX}-${app}")
+          done
+          anchor_project="lax-${ENV_SUFFIX}-api"
+
+          if sentry-cli releases info "$RELEASE" -p "$anchor_project" >/dev/null 2>&1; then
             echo "Release ${RELEASE} already exists"
           else
-            echo "Creating release ${RELEASE}"
-            # Org-level release; per-project sourcemap uploads attach artifacts below.
-            sentry-cli releases new "$RELEASE"
+            echo "Creating release ${RELEASE} for all projects"
+            sentry-cli releases new "$RELEASE" "${project_args[@]}"
           fi
 
           # --auto requires GitHub repo integration and often 500s without it; explicit commit is safer.
@@ -69,8 +78,6 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: lax-bid
-      SENTRY_URL: https://sentry.io
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
     strategy:
@@ -117,9 +124,8 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: lax-bid
-      SENTRY_URL: https://sentry.io
       RELEASE: ${{ inputs.git_sha || github.sha }}
+      ENV_SUFFIX: ${{ inputs.environment }}
       SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
     steps:
       - name: Install Sentry CLI
@@ -129,10 +135,11 @@ jobs:
           SENTRY_LOG_LEVEL: info
         run: |
           set -euo pipefail
-          if ! sentry-cli releases finalize "$RELEASE"; then
+          anchor_project="lax-${ENV_SUFFIX}-api"
+          if ! sentry-cli releases finalize "$RELEASE" -p "$anchor_project"; then
             echo "::warning::finalize failed (release may already be finalized)"
           fi
-          if ! sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV"; then
+          if ! sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV" -p "$anchor_project"; then
             echo "::error::deploy record failed for release ${RELEASE}"
             exit 1
           fi
