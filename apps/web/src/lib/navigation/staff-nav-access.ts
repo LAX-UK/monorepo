@@ -32,6 +32,11 @@ export const SALES_ACCESS: CapabilityRequirement = {
   anyOf: ["auction.manage", "platform.admin.full"],
 };
 
+/** View draft sales and work on catalog prep / lots in sale setup. */
+export const SALE_CATALOG_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "catalogue.write", "platform.admin.full"],
+};
+
 export const ARTISTS_ACCESS: CapabilityRequirement = {
   anyOf: ["artist.read", "artist.review", "catalogue.write", "platform.admin.full"],
 };

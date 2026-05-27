@@ -10,6 +10,10 @@ import { LotsMobileCards } from "@/components/admin/lots-board/mobile-cards";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
+import {
+  type ConnectRequiredByLotId,
+  bulkPublishPreflightWarning,
+} from "@/lib/admin/bulk-ops/lot-bulk-result";
 import { getLotBulkOperations } from "@/lib/admin/bulk-ops/lots";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { Lot } from "@auction/types";
@@ -30,6 +34,9 @@ type Props = {
   statusChips?: ReactNode;
   /** Trimmed search query (?q=) for layout links; rendered only on the client. */
   searchQuery: string;
+  /** When false, bulk Cancel is hidden (requires auction.manage). */
+  canManageAuction?: boolean;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
 export function AdminLotsBoard({
@@ -40,13 +47,19 @@ export function AdminLotsBoard({
   urlError,
   statusChips,
   searchQuery,
+  canManageAuction = false,
+  connectRequiredByLotId,
 }: Props) {
   const { density } = useTableDensity();
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
 
   const data = useMemo(() => rows.map((r) => ({ ...r, id: r.id })), [rows]);
   const columns = useMemo(() => lotColumns(), []);
-  const bulkOperations = useMemo(() => getLotBulkOperations(), []);
+  const bulkOperations = useMemo(() => getLotBulkOperations(canManageAuction), [canManageAuction]);
+  const bulkPreflightWarning = useMemo(
+    () => bulkPublishPreflightWarning(selectedIds, fullLots, connectRequiredByLotId),
+    [selectedIds, fullLots, connectRequiredByLotId],
+  );
 
   if (viewPipeline) {
     return (
@@ -114,7 +127,12 @@ export function AdminLotsBoard({
         }
         cards={<LotsMobileCards rows={data} />}
       />
-      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
+      <BulkActionsToolbar
+        selectedIds={selectedIds}
+        operations={bulkOperations}
+        onClear={clear}
+        preflightWarning={bulkPreflightWarning}
+      />
     </div>
   );
 }

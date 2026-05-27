@@ -2,8 +2,6 @@
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminReturnLotToInventoryResultAction } from "@/lib/actions/admin";
-import { Can } from "@/lib/auth/capabilities";
-import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import type { LotStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -19,6 +17,7 @@ type Props = {
 
 const ELIGIBLE: LotStatus[] = ["ended", "cancelled", "voided"];
 
+/** Return-to-inventory control — parent gates visibility via `canManageAuction`. */
 export function ReturnToInventoryButton({ lotId, status, hasWinner, disabled }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -27,7 +26,7 @@ export function ReturnToInventoryButton({ lotId, status, hasWinner, disabled }: 
   if (!ELIGIBLE.includes(status) || hasWinner) return null;
 
   return (
-    <Can requirement={SALES_ACCESS}>
+    <>
       <Button
         type="button"
         variant="outline"
@@ -64,6 +63,6 @@ export function ReturnToInventoryButton({ lotId, status, hasWinner, disabled }: 
           router.refresh();
         }}
       />
-    </Can>
+    </>
   );
 }

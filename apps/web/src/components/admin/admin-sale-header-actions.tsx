@@ -84,9 +84,11 @@ export function AdminSaleHeaderActions({
           <Link href={`/admin/saleroom/${saleId}`}>Open saleroom</Link>
         </Button>
       ) : null}
-      <Button variant="outline" size="sm" asChild>
-        <Link href={`/admin/sales/${saleId}/edit`}>{canEdit ? "Edit draft" : "Edit details"}</Link>
-      </Button>
+      {canEdit ? (
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/admin/sales/${saleId}/edit`}>Edit draft</Link>
+        </Button>
+      ) : null}
       {hasMoreActions ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

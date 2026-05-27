@@ -34,7 +34,7 @@ export function stepIntro(stepId: SaleSetupStepId): { title: string; body: strin
     case "lots":
       return {
         title: "Add lots to this sale",
-        body: "Enter the basics for each lot. You’ll add photos and catalog text in the next step.",
+        body: "Create a new lot or attach one from inventory. You’ll add photos and catalog text in the next step.",
       };
     case "catalog-prep":
       return {
@@ -47,6 +47,28 @@ export function stepIntro(stepId: SaleSetupStepId): { title: string; body: strin
         body: "Check everything below, then publish the sale when you’re ready.",
       };
   }
+}
+
+export function lotsStepFirstLotPrompt(): string {
+  return "How would you like to add your first lot?";
+}
+
+export function attachLotReviewPrompt(): string {
+  return "Review this lot before attaching it to the sale.";
+}
+
+export function attachLotScheduleConflictBanner(): string {
+  return "This lot's schedule doesn't fit the sale window. Adjust the times below or sync them to the sale window before attaching.";
+}
+
+export function attachLotChangeLotLabel(): string {
+  return "Change lot";
+}
+
+export function attachExistingLotPanelBody(isOnsite: boolean): string {
+  return isOnsite
+    ? "Search draft inventory. Attached lots inherit the sale schedule."
+    : "Search draft inventory. Review the lot and adjust its schedule to fit this sale before attaching.";
 }
 
 export function deliveryModeExplanation(mode: "online" | "onsite"): string {
@@ -92,8 +114,13 @@ export function draftSaleLotPublishBanner(): string {
   return "Lots in a draft sale are published together when you publish the sale.";
 }
 
+/** Shared title for Connect-blocked publish surfaces (banner + readiness). */
+export function connectPublishBlockedTitle(): string {
+  return READINESS_LABELS.connect ?? "Seller must finish payout setup";
+}
+
 export function catalogueStaffReadOnlyMessage(): string {
-  return "An auction manager needs to set up the sale and add lots first. You can finish catalog copy and images once lots exist.";
+  return "Sale schedule and identity are managed by auction ops. You can add lots, photos, and catalog descriptions in the steps below.";
 }
 
 export function publishBlockedCatalogueRoleMessage(): string {
@@ -113,7 +140,31 @@ export const READINESS_LABELS: Record<string, string> = {
   sale: "Assign lot to a sale",
   connect: "Seller must finish payout setup",
   sale_start_future: "Opening time must be in the future",
+  sale_window: "Lot schedule fits the sale window",
 };
+
+export function scheduleLotConflictBanner(count: number): string {
+  const noun = count === 1 ? "lot needs" : "lots need";
+  return `${count} ${noun} schedule updates — the new sale window conflicts with existing lot times. Save will fail until you update them on the Lots step (or use Sync lot times).`;
+}
+
+export function scheduleLotConflictPersistBlocked(titles: readonly string[]): string {
+  const shown = titles.slice(0, 3);
+  const suffix = titles.length > 3 ? ` and ${titles.length - 3} more` : "";
+  return `Update lot schedules before saving: ${shown.join(", ")}${suffix}. Go to the Lots step or use Sync lot times.`;
+}
+
+export function syncLotsToSaleWindowLabel(count: number): string {
+  return count === 1 ? "Sync lot to sale window" : `Sync ${count} lots to sale window`;
+}
+
+export function scheduleOutOfSyncBadge(): string {
+  return "Schedule out of sync";
+}
+
+export function updateLotScheduleLabel(): string {
+  return "Update lot schedule";
+}
 
 export function readinessLabel(id: string, context?: { lotTitle?: string; artistName?: string }) {
   const base = READINESS_LABELS[id] ?? id;

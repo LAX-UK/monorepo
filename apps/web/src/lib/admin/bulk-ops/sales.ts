@@ -23,8 +23,8 @@ async function runSequential(
   return actionSuccess();
 }
 
-export function getSaleBulkOperations(): BulkOperation[] {
-  return [
+export function getSaleBulkOperations(canManageSales: boolean): BulkOperation[] {
+  const ops: BulkOperation[] = [
     {
       id: "copy-ids",
       label: "Copy IDs",
@@ -34,18 +34,23 @@ export function getSaleBulkOperations(): BulkOperation[] {
         return actionSuccess();
       },
     },
-    {
-      id: "publish",
-      label: "Publish",
-      confirm: "Publish all selected draft sales?",
-      run: (ids) => runSequential(ids, (id) => adminPublishSaleResultAction(id), "Publish"),
-    },
-    {
-      id: "cancel",
-      label: "Cancel",
-      destructive: true,
-      confirm: "Cancel selected sales? Live or scheduled sales will be cancelled.",
-      run: (ids) => runSequential(ids, (id) => adminCancelSaleResultAction(id), "Cancel"),
-    },
   ];
+  if (canManageSales) {
+    ops.push(
+      {
+        id: "publish",
+        label: "Publish",
+        confirm: "Publish all selected draft sales?",
+        run: (ids) => runSequential(ids, (id) => adminPublishSaleResultAction(id), "Publish"),
+      },
+      {
+        id: "cancel",
+        label: "Cancel",
+        destructive: true,
+        confirm: "Cancel selected sales? Live or scheduled sales will be cancelled.",
+        run: (ids) => runSequential(ids, (id) => adminCancelSaleResultAction(id), "Cancel"),
+      },
+    );
+  }
+  return ops;
 }

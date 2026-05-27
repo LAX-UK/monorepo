@@ -9,10 +9,17 @@ type Props = {
   onSave: (next: string) => Promise<ActionResult<void>>;
   className?: string;
   as?: "h1" | "span";
+  editable?: boolean;
 };
 
 /** Inline-editable title — default `span` because `DashboardDetailHeader` / `DashboardPageHeader` own the outer `<h1>`. */
-export function AdminEditableTitle({ value, onSave, className, as = "span" }: Props) {
+export function AdminEditableTitle({
+  value,
+  onSave,
+  className,
+  as = "span",
+  editable = true,
+}: Props) {
   const Tag = as;
   const isStandaloneHeading = as === "h1";
   return (
@@ -26,6 +33,7 @@ export function AdminEditableTitle({ value, onSave, className, as = "span" }: Pr
         value={value}
         onSave={onSave}
         ariaLabel="Title"
+        disabled={!editable}
         className={cn(isStandaloneHeading && "font-headline text-2xl font-semibold sm:text-3xl")}
         inputClassName={cn(isStandaloneHeading && "font-headline text-xl sm:text-2xl")}
       />

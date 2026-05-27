@@ -30,6 +30,7 @@ export default async function AdminNewSalePage({
 
   let defaultValues = emptyAdminSaleFormValues();
   let wizardDraftEntityId: string | undefined;
+  let cloneFailed = false;
 
   if (cloneFromId) {
     wizardDraftEntityId = `clone-${cloneFromId}`;
@@ -40,6 +41,8 @@ export default async function AdminNewSalePage({
         ...fromForm,
         title: fromForm.title.trim() ? `${fromForm.title.trim()} (copy)` : "",
       };
+    } else {
+      cloneFailed = true;
     }
   }
 
@@ -51,7 +54,11 @@ export default async function AdminNewSalePage({
     <CatalogFormShell
       breadcrumbs={<CatalogBreadcrumbs segments={[{ label: "Sales", href: "/admin/sales" }]} />}
       title="New sale"
-      description="Set up your sale step by step."
+      description={
+        cloneFailed
+          ? "Could not load the sale to clone — starting with a blank form."
+          : "Set up your sale step by step."
+      }
       wizardMobile={{
         formId: CATALOG_FORM_IDS.saleSetup,
         submitLabel: "Publish sale",

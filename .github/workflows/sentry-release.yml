@@ -29,27 +29,19 @@ jobs:
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: lax-bid
-      SENTRY_URL: https://de.sentry.io
+      SENTRY_URL: https://sentry.io
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/sentry-auth-preflight
+        with:
+          organization-slug: lax-bid
+          team-slug: lax-engineering
       - name: Install Sentry CLI
         run: npm i -g @sentry/cli@2.58.4
-      - name: Verify Sentry auth
-        run: |
-          set -euo pipefail
-          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
-            echo "::error::SENTRY_AUTH_TOKEN is empty for environment '${{ inputs.environment }}'. Set the terraform-bot internal integration token on the repo and on GitHub environment secrets (see infra/terraform/BOOTSTRAP.md)."
-            exit 1
-          fi
-          sentry-cli info >/tmp/sentry-info.txt 2>&1 || {
-            cat /tmp/sentry-info.txt
-            echo "::error::sentry-cli auth failed against ${SENTRY_URL}. Regenerate the terraform-bot token with Release: Admin and org:ci."
-            exit 1
-          }
       - name: Ensure org release exists
         env:
           SENTRY_LOG_LEVEL: info
@@ -78,7 +70,7 @@ jobs:
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: lax-bid
-      SENTRY_URL: https://de.sentry.io
+      SENTRY_URL: https://sentry.io
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
     strategy:
@@ -126,7 +118,7 @@ jobs:
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: lax-bid
-      SENTRY_URL: https://de.sentry.io
+      SENTRY_URL: https://sentry.io
       RELEASE: ${{ inputs.git_sha || github.sha }}
       SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
     steps:

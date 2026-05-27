@@ -16,8 +16,11 @@ import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import type { SalePresetId } from "@/lib/admin/list-presets/sales-presets";
 import { saleListActivePreset, saleListPresetHref } from "@/lib/admin/list-presets/sales-presets";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminSalesKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
+import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
@@ -47,6 +50,12 @@ export default async function AdminSalesPage({
     period?: string;
   }>;
 }) {
+  const user = await requireAdminCapability(SALE_CATALOG_ACCESS, "/admin/sales");
+  const canManageSales = userHasAccessTo(
+    user.role as UserRole,
+    user.staffRole ?? null,
+    SALES_ACCESS,
+  );
   const sp = await searchParams;
   const periodDays = parseAdminKpiPeriod(sp.period);
   const error = safeDecodeAdminErrorParam(sp.error);
@@ -136,14 +145,14 @@ export default async function AdminSalesPage({
             <Button variant="secondary" asChild>
               <Link href="/admin/sales">Clear filters</Link>
             </Button>
-          ) : (
+          ) : canManageSales ? (
             <Button variant="default" asChild>
               <Link href="/admin/sales/new">
                 <Plus className="size-4" aria-hidden />
                 New sale
               </Link>
             </Button>
-          )
+          ) : null
         }
       />
     ) : null;
@@ -153,12 +162,14 @@ export default async function AdminSalesPage({
       title="Sales"
       description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
       primaryAction={
-        <Button variant="default" asChild>
-          <Link href="/admin/sales/new">
-            <Plus className="size-4" aria-hidden />
-            New sale
-          </Link>
-        </Button>
+        canManageSales ? (
+          <Button variant="default" asChild>
+            <Link href="/admin/sales/new">
+              <Plus className="size-4" aria-hidden />
+              New sale
+            </Link>
+          </Button>
+        ) : undefined
       }
       filterBar={
         <CatalogSalesFilterToolbar
@@ -224,7 +235,7 @@ export default async function AdminSalesPage({
     >
       {!err && boardRows.length > 0 ? (
         <Suspense fallback={<PageSkeleton variant="table" />}>
-          <AdminSalesBoard rows={boardRows} toolbarEnd={null} />
+          <AdminSalesBoard rows={boardRows} toolbarEnd={null} canManageSales={canManageSales} />
         </Suspense>
       ) : null}
     </CatalogListShell>
