@@ -33,6 +33,7 @@ import {
 } from "@/lib/forms/form-result";
 import { CATEGORIES_ACCESS, LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { CapabilityRequirement, Lot } from "@auction/types";
+import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
   adminBulkInvitationsBodySchema,
   adminBulkSubmissionsBodySchema,
@@ -327,8 +328,8 @@ export async function adminCreateLotAction(formData: FormData): Promise<void> {
         dutchDecrementAmount:
           String(formData.get("dutchDecrementAmount") ?? "").trim() || undefined,
         dutchDecrementIntervalMs: dutchInterval ? Number.parseInt(dutchInterval, 10) : undefined,
-        startTime: new Date(startRaw),
-        endTime: new Date(endRaw),
+        startTime: instantFromDatetimeFormString(startRaw),
+        endTime: instantFromDatetimeFormString(endRaw),
       });
       if (!parsed.success) {
         redirect(
@@ -377,8 +378,8 @@ export async function adminUpdateLotAction(formData: FormData): Promise<void> {
         dutchDecrementAmount:
           String(formData.get("dutchDecrementAmount") ?? "").trim() || undefined,
         dutchDecrementIntervalMs: dutchInterval ? Number.parseInt(dutchInterval, 10) : undefined,
-        startTime: startRaw ? new Date(startRaw) : undefined,
-        endTime: endRaw ? new Date(endRaw) : undefined,
+        startTime: startRaw ? instantFromDatetimeFormString(startRaw) : undefined,
+        endTime: endRaw ? instantFromDatetimeFormString(endRaw) : undefined,
       });
       if (!parsed.success) {
         redirect(

@@ -53,13 +53,14 @@ function FilterFooter({
   return (
     <div className="flex flex-row items-center justify-between gap-3 px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {onReset ? (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onReset}
-          className="min-h-10 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="min-h-10 rounded-none px-0 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-primary underline-offset-4 hover:bg-transparent hover:text-primary hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           {resetLabel}
-        </button>
+        </Button>
       ) : (
         <span />
       )}

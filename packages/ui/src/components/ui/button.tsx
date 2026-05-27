@@ -11,13 +11,22 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-on-primary shadow hover:opacity-95",
+        /** Gradient primary CTA (dashboard / auth flows). */
+        primary:
+          "rounded-md bg-gradient-to-br from-primary to-primary-container font-label font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-sm hover:opacity-95",
         destructive: "bg-error text-on-error shadow-sm hover:opacity-95",
         success: "bg-success text-on-success shadow-sm hover:opacity-95",
         outline:
           "border border-outline-variant/25 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low",
         secondary: "bg-secondary-container text-on-secondary-container shadow-sm hover:opacity-95",
+        /** Bordered label-caps secondary (legacy app Button). */
+        secondaryOutline:
+          "rounded-md border border-border-hairline bg-transparent font-label font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:bg-surface-container-low",
         ghost: "hover:bg-surface-container-high hover:text-on-surface",
         link: "text-primary underline-offset-4 hover:underline",
+        /** Text link with underline-on-hover (legacy app tertiary). */
+        tertiary:
+          "h-auto min-h-0 rounded-none border-b border-primary/0 bg-transparent p-0 px-0 py-2 font-label text-label font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary shadow-none hover:border-primary focus-visible:ring-accent-brand",
         ctaLink:
           "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-none hover:underline focus-visible:ring-accent-brand",
         /** Primary marketing CTA (solid) */
@@ -31,16 +40,19 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
+        sm: "min-h-9 rounded-md px-4 py-2 text-xs",
+        md: "min-h-11 rounded-md px-6 py-3 text-xs",
+        lg: "min-h-12 rounded-md px-8 py-3.5 text-sm",
         icon: "h-9 w-9",
+        /** Link-shaped controls — no block tap target */
+        link: "h-auto min-h-0 p-0",
         /** Full-width auth / hero primary button */
         xl: "h-[60px] min-h-[44px] w-full px-8 py-[18px] text-base font-semibold leading-6 tracking-wide",
       },
     },
     defaultVariants: {
       variant: "default",
-      size: "default",
+      size: "md",
     },
   },
 );
@@ -52,9 +64,18 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const isLinkShape =
+      variant === "tertiary" ||
+      variant === "ctaLink" ||
+      variant === "link" ||
+      variant === "chevron";
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props} />
+      <Comp
+        className={cn(buttonVariants({ variant, size: isLinkShape ? "link" : size }), className)}
+        ref={ref}
+        {...props}
+      />
     );
   },
 );

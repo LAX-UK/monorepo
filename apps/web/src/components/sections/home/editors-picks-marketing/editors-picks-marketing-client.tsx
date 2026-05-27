@@ -90,14 +90,15 @@ function EditorsPicksCarousel({
         <div className="pointer-events-none absolute inset-y-0 right-0 z-[1] hidden w-16 bg-gradient-to-l from-page-bg via-page-bg/90 to-transparent sm:block" />
       ) : null}
       {canScrollEnd ? (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={scrollForward}
           className="pointer-events-auto absolute right-0 top-[170px] z-[2] hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface shadow-sm outline-offset-2 hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex dark:bg-surface-container-low dark:hover:bg-surface-container"
           aria-label="Scroll to see more editor's picks"
         >
           <ChevronRight className="size-5 shrink-0" aria-hidden />
-        </button>
+        </Button>
       ) : null}
     </div>
   );

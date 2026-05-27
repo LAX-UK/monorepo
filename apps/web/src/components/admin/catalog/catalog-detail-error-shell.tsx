@@ -3,6 +3,7 @@ import {
   CatalogBreadcrumbs,
   CatalogDetailShell,
 } from "@/components/admin/catalog";
+import { Button } from "@auction/ui/components/button";
 
 type Props = {
   title: string;
@@ -34,13 +35,14 @@ export function CatalogDetailErrorShell({
         <p className="font-body text-sm text-on-surface-variant">{message}</p>
         <div className="flex flex-wrap gap-2">
           {reset ? (
-            <button
+            <Button
               type="button"
+              variant="default"
               onClick={reset}
               className="inline-flex min-h-10 items-center rounded-md bg-primary px-4 font-label text-xs font-bold uppercase tracking-[0.12em] text-on-primary"
             >
               Try again
-            </button>
+            </Button>
           ) : null}
           <a
             href={listHref}

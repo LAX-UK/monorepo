@@ -68,15 +68,17 @@ export function SortableImageCard({
             </span>
           ) : null}
         </div>
-        <button
+        <Button
           type="button"
-          className="absolute right-2 top-2 inline-flex size-9 items-center justify-center rounded-full bg-surface-container-lowest/90 text-on-surface shadow-sm hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          variant="ghost"
+          size="icon"
+          className="absolute right-2 top-2 size-9 rounded-full bg-surface-container-lowest/90 text-on-surface shadow-sm hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0"
           aria-label={dragAriaLabel}
           {...attributes}
           {...listeners}
         >
           <GripVertical className="size-4" aria-hidden />
-        </button>
+        </Button>
       </div>
 
       <div className="mt-3 space-y-3">

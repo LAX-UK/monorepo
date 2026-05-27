@@ -2,10 +2,10 @@
 
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
-import { Button } from "@/components/ui/button";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { ItemSubmissionStatus } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import {
   Form,
@@ -109,7 +109,7 @@ function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
           <Button
-            variant="secondary"
+            variant="secondaryOutline"
             className="px-4 py-2 text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
             asChild
           >
@@ -247,7 +247,7 @@ export function SubmissionsBoard({
             description="Nothing in the current list matches that title. Try another phrase or clear the title filter."
             action={
               <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" variant="secondary" onClick={() => clearTitleSearch()}>
+                <Button type="button" variant="secondaryOutline" onClick={() => clearTitleSearch()}>
                   Clear title search
                 </Button>
                 <StartSubmissionAction />
@@ -260,7 +260,7 @@ export function SubmissionsBoard({
             description="Try a different status or start a new submission for specialist review."
             action={
               <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" variant="secondary" asChild>
+                <Button type="button" variant="secondaryOutline" asChild>
                   <Link href={DASHBOARD_ROUTES.submissions}>Show all</Link>
                 </Button>
                 <StartSubmissionAction />

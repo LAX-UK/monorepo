@@ -2,11 +2,11 @@
 
 import { BackupCodesDisplay } from "@/components/auth/backup-codes-display";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
-import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
 import { useEnableTwoFactorController } from "@/lib/auth/hooks/use-enable-two-factor-controller";
 import { parseTotpSecretFromUri } from "@/lib/auth/totp-uri";
 import { notify } from "@/lib/ui/notify";
+import { Button } from "@auction/ui/components/button";
 import {
   Card,
   CardContent,
@@ -138,7 +138,7 @@ export function TwoFactorEnableWizard() {
                   </code>
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="secondaryOutline"
                     className="shrink-0"
                     onClick={() => {
                       void navigator.clipboard.writeText(secret);

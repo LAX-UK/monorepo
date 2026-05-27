@@ -3,6 +3,7 @@
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Pencil } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -109,11 +110,11 @@ export function EditableCell({
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       className={cn(
-        "group inline-flex max-w-full items-center gap-1.5 rounded px-1 -mx-1 text-left",
-        "hover:bg-surface-container-high/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group inline-flex h-auto min-h-0 max-w-full items-center gap-1.5 rounded px-1 -mx-1 text-left shadow-none hover:bg-surface-container-high/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       aria-label={`${ariaLabel}. Press Enter to edit.`}
@@ -130,6 +131,6 @@ export function EditableCell({
         className="size-3 shrink-0 text-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         aria-hidden
       />
-    </button>
+    </Button>
   );
 }

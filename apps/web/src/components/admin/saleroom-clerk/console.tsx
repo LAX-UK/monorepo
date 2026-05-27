@@ -18,6 +18,14 @@ import type {
 import { getSocket } from "@/lib/socket";
 import type { Lot } from "@auction/types";
 import type { SaleroomRealtimePayload } from "@auction/types";
+import { Label } from "@auction/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -30,6 +38,7 @@ type Props = {
 
 export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }: Props) {
   const [liveFeed, setLiveFeed] = useState<SaleroomRealtimePayload[]>([]);
+  const [advanceLotId, setAdvanceLotId] = useState(lots[0]?.id ?? "");
 
   useEffect(() => {
     const socket = getSocket();
@@ -134,20 +143,25 @@ export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }
             className="mt-3 flex flex-wrap items-end gap-3"
           >
             <input type="hidden" name="saleId" value={saleId} />
-            <label className="flex flex-col gap-1 font-body text-xs text-secondary">
-              Lot
-              <select
-                name="lotId"
-                defaultValue={lots[0]?.id ?? ""}
-                className="min-w-[240px] rounded-md border border-outline-variant/30 bg-background px-3 py-2 font-body text-sm"
-              >
-                {lots.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.title?.trim() || l.id}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <input type="hidden" name="lotId" value={advanceLotId} />
+            <div className="flex flex-col gap-1 font-body text-xs text-secondary">
+              <Label htmlFor={`saleroom-advance-lot-${saleId}`}>Lot</Label>
+              <Select value={advanceLotId} onValueChange={setAdvanceLotId}>
+                <SelectTrigger
+                  id={`saleroom-advance-lot-${saleId}`}
+                  className="min-w-[240px] font-body text-sm"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {lots.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.title?.trim() || l.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <SaleroomPendingSubmit
               formId={`saleroom-advance-${saleId}`}
               pendingLabel="Advancing…"

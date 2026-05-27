@@ -42,8 +42,9 @@ function WizardStepList({
         const active = index === activeIndex;
         return (
           <li key={step.id}>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               disabled={!reachable}
               aria-current={active ? "step" : undefined}
               onClick={() => {
@@ -52,7 +53,7 @@ function WizardStepList({
                 onSelectStep?.();
               }}
               className={cn(
-                "flex w-full min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors",
+                "flex h-auto min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left font-body font-normal transition-colors focus-visible:bg-transparent focus-visible:text-inherit",
                 active && "border-primary/40 bg-primary/5",
                 !active && reachable && "border-border-hairline hover:bg-surface-container-low",
                 !reachable && "cursor-not-allowed opacity-50",
@@ -71,7 +72,7 @@ function WizardStepList({
               <span className="font-label text-xs font-semibold uppercase tracking-wider">
                 {step.label}
               </span>
-            </button>
+            </Button>
           </li>
         );
       })}

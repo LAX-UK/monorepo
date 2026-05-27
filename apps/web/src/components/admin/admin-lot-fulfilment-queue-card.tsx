@@ -7,6 +7,7 @@ import {
 } from "@/lib/actions/admin";
 import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin.server";
 import { Button } from "@auction/ui/components/button";
+import { Textarea } from "@auction/ui/components/textarea";
 import Link from "next/link";
 
 const inputClass =
@@ -60,11 +61,7 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus, embedded = fals
           <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Approve release
           </p>
-          <textarea
-            name="notes"
-            placeholder="Notes (optional)"
-            className={`min-h-16 ${inputClass} text-xs`}
-          />
+          <Textarea name="notes" placeholder="Notes (optional)" className="min-h-16 text-xs" />
           <Button type="submit" size="sm" className="min-h-9">
             Release to buyer logistics
           </Button>

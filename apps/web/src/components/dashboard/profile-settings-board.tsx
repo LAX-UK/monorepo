@@ -4,12 +4,13 @@ import { SettingsField } from "@/components/dashboard/settings-field";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { SettingsTag } from "@/components/dashboard/settings-tag";
 import { ImageUploadField } from "@/components/forms/image-upload-field";
-import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { updateProfileImageAction } from "@/lib/actions/profile";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
 import { notify } from "@/lib/ui/notify";
+import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -90,7 +91,12 @@ function PersonalNameBlock({ initialName }: { initialName: string }) {
                 </FormItem>
               )}
             />
-            <Button type="submit" variant="secondary" disabled={isSubmitting} className="min-w-28">
+            <Button
+              type="submit"
+              variant="secondaryOutline"
+              disabled={isSubmitting}
+              className="min-w-28"
+            >
               {isSubmitting ? "Saving…" : "Save name"}
             </Button>
           </form>
@@ -249,18 +255,17 @@ function AddAddressBlock() {
             name="addressType"
             render={({ field }) => (
               <FormItem>
-                <FormControl>
-                  <select
-                    value={field.value ?? "both"}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
-                  >
-                    <option value="both">Billing and shipping</option>
-                    <option value="shipping">Shipping only</option>
-                    <option value="billing">Billing only</option>
-                  </select>
-                </FormControl>
+                <RhfSelect
+                  value={field.value ?? "both"}
+                  onValueChange={field.onChange}
+                  onBlur={field.onBlur}
+                  options={[
+                    { value: "both", label: "Billing and shipping" },
+                    { value: "shipping", label: "Shipping only" },
+                    { value: "billing", label: "Billing only" },
+                  ]}
+                  triggerClassName="min-h-11 w-full font-body text-sm"
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -283,7 +288,12 @@ function AddAddressBlock() {
             )}
           />
           <div className="md:col-span-2">
-            <Button type="submit" variant="secondary" disabled={isSubmitting} className="min-w-28">
+            <Button
+              type="submit"
+              variant="secondaryOutline"
+              disabled={isSubmitting}
+              className="min-w-28"
+            >
               {isSubmitting ? "Adding…" : "Add address"}
             </Button>
           </div>

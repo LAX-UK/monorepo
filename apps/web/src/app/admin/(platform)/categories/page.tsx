@@ -8,10 +8,10 @@ import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filt
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { Button } from "@/components/ui/button";
 import { categoriesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -79,7 +79,7 @@ export default async function AdminCategoriesPage({
         }
         action={
           hasFilters ? (
-            <Button variant="secondary" asChild>
+            <Button variant="secondaryOutline" asChild>
               <Link href="/admin/categories">Clear filters</Link>
             </Button>
           ) : (

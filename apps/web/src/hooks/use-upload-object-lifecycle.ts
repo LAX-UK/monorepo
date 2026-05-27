@@ -33,6 +33,10 @@ export type UploadValidationOutcome =
   | { kind: "rejected"; reason: string }
   | { kind: "timeout" };
 
+export type UploadFileOptions = {
+  onProgress?: (loaded: number, total: number) => void;
+};
+
 const DEFAULT_VALIDATION_TIMEOUT_MS = 60_000;
 
 function uploadValidationTimeoutMs(): number {
@@ -48,6 +52,30 @@ async function errorFromResponse(response: Response, fallback: string): Promise<
     return (body as { error: string }).error;
   }
   return fallback;
+}
+
+function putFileWithProgress(
+  url: string,
+  file: File,
+  headers: Headers,
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    headers.forEach((value, key) => xhr.setRequestHeader(key, value));
+    if (onProgress) {
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) onProgress(event.loaded, event.total);
+      });
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error("Object storage rejected the upload"));
+    };
+    xhr.onerror = () => reject(new Error("Object storage rejected the upload"));
+    xhr.send(file);
+  });
 }
 
 async function waitForActiveUpload(
@@ -100,7 +128,11 @@ export function uploadValidationErrorMessage(outcome: UploadValidationOutcome): 
 }
 
 export function useUploadObjectLifecycle() {
-  async function uploadFile(file: File, kind: string): Promise<ConfirmedUpload> {
+  async function uploadFile(
+    file: File,
+    kind: string,
+    options?: UploadFileOptions,
+  ): Promise<ConfirmedUpload> {
     const base = apiBaseUrl();
     const presign = await fetch(`${base}/uploads/presign`, {
       method: "POST",
@@ -111,12 +143,7 @@ export function useUploadObjectLifecycle() {
     if (!presign.ok) throw new Error(await errorFromResponse(presign, "Could not prepare upload"));
     const presignBody = (await presign.json()) as PresignResponse;
     const headers = new Headers(presignBody.data.requiredHeaders);
-    const put = await fetch(presignBody.data.uploadUrl, {
-      method: "PUT",
-      headers,
-      body: file,
-    });
-    if (!put.ok) throw new Error("Object storage rejected the upload");
+    await putFileWithProgress(presignBody.data.uploadUrl, file, headers, options?.onProgress);
 
     const confirm = await fetch(`${base}/uploads/confirm`, {
       method: "POST",

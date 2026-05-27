@@ -20,6 +20,7 @@ import { formatMoney } from "@/lib/ui/format";
 import { payoutStatuses } from "@auction/types";
 import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
@@ -121,12 +122,13 @@ export default async function AdminPayoutsPage({
               className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
             />
           </label>
-          <button
+          <Button
             type="submit"
+            variant="outline"
             className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold"
           >
             Apply
-          </button>
+          </Button>
         </form>
       </div>
     </Surface>

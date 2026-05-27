@@ -10,6 +10,13 @@ import type { DocumentEntityKind, EntityDocument } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function uploadKindForEntity(entityKind: DocumentEntityKind): DocumentUploadKind {
@@ -180,19 +187,18 @@ export function DocumentAttachmentManager<TKind extends string>({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor={`doc-kind-${entityId}`}>Document type</Label>
-            <select
-              id={`doc-kind-${entityId}`}
-              className="mt-1 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body text-sm"
-              value={kind}
-              disabled={busy}
-              onChange={(e) => setKind(e.target.value as TKind)}
-            >
-              {kinds.map((k) => (
-                <option key={k} value={k}>
-                  {documentKindLabel(k)}
-                </option>
-              ))}
-            </select>
+            <Select value={kind} disabled={busy} onValueChange={(v) => setKind(v as TKind)}>
+              <SelectTrigger id={`doc-kind-${entityId}`} className="mt-1 w-full font-body text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {kinds.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {documentKindLabel(k)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor={`doc-label-${entityId}`}>Label (optional)</Label>

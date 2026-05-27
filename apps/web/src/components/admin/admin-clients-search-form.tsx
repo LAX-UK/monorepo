@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { zodResolver } from "@hookform/resolvers/zod";

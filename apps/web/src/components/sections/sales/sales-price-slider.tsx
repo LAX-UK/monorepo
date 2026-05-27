@@ -3,6 +3,7 @@
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import { Button } from "@auction/ui";
+import { Slider } from "@auction/ui/components/slider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -39,36 +40,17 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
         <span className="font-medium">-</span>
         <span>{hi.toLocaleString()}£</span>
       </div>
-      <div className="flex flex-col gap-3">
-        <label className="font-body text-xs text-on-surface-variant">
-          Min
-          <input
-            type="range"
-            min={min}
-            max={max}
-            value={lo}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setLo((_prev) => (v > hi ? hi : v));
-            }}
-            className="mt-1 w-full accent-primary"
-          />
-        </label>
-        <label className="font-body text-xs text-on-surface-variant">
-          Max
-          <input
-            type="range"
-            min={min}
-            max={max}
-            value={hi}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setHi((_prev) => (v < lo ? lo : v));
-            }}
-            className="mt-1 w-full accent-primary"
-          />
-        </label>
-      </div>
+      <Slider
+        min={min}
+        max={max}
+        value={[lo, hi]}
+        onValueChange={(values) => {
+          const [nextLo, nextHi] = values;
+          if (nextLo !== undefined) setLo(nextLo);
+          if (nextHi !== undefined) setHi(nextHi);
+        }}
+        className="py-2"
+      />
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
           <Link href={applyHref}>Apply</Link>
