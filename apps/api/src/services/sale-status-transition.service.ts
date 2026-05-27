@@ -11,7 +11,7 @@ import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { canAdminOverrideLotStatus } from "../domain/lot-transitions.js";
 import { AuthzError, LotError } from "../lib/errors.js";
-import { resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
+import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
@@ -241,37 +241,20 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     }
     let workingLot = l;
     if (status === "scheduled") {
-      if (workingLot.status !== "draft") {
-        return err(new LotError("Only draft lots can be scheduled"));
+      const publishable = assertLotPublishable(workingLot, {
+        sale,
+        requireCatalogue: false,
+        rejectDraftSale: true,
+      });
+      if (!publishable.ok) {
+        return err(publishable.error);
       }
-      if (sale.status === "draft") {
-        return err(
-          new LotError(
-            "Publish this lot with the sale when the sale goes live",
-            409,
-            "use_sale_publish",
-          ),
-        );
-      }
-      if (workingLot.startTime.getTime() <= Date.now()) {
-        return err(new LotError("startTime must be in the future to publish"));
-      }
-      const resolved = resolveLotTimingForSale(sale, workingLot.startTime, workingLot.endTime);
-      if (!resolved.ok) {
-        return err(new LotError(resolved.message, 400));
-      }
-      if (
-        resolved.startTime.getTime() !== workingLot.startTime.getTime() ||
-        resolved.endTime.getTime() !== workingLot.endTime.getTime()
-      ) {
-        await this.lotRepo.update(lotId, {
-          startTime: resolved.startTime,
-          endTime: resolved.endTime,
-        });
+      if (publishable.timing.alignedPatch) {
+        await this.lotRepo.update(lotId, publishable.timing.alignedPatch);
         workingLot = {
           ...workingLot,
-          startTime: resolved.startTime,
-          endTime: resolved.endTime,
+          startTime: publishable.timing.startTime,
+          endTime: publishable.timing.endTime,
         };
       }
     }

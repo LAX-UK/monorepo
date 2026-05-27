@@ -1,10 +1,12 @@
 "use client";
 
-import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-picker";
 import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
 import { AttachExistingLotReview } from "@/components/admin/attach-existing-lot-review";
 import { CategoryPicker } from "@/components/forms/category-picker";
 import { UnderlineInput } from "@/components/ui/input";
+import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
+import { RhfLegalEntityPicker } from "@/components/ui/rhf-legal-entity-picker";
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import {
@@ -34,7 +36,6 @@ import {
   updateLotScheduleLabel,
 } from "@/lib/admin/sale-setup";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
-import { toDatetimeLocalValue } from "@/lib/forms/schemas/admin-lot-defaults";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { formatDateTime } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
@@ -51,6 +52,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
+import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
@@ -88,8 +90,8 @@ function lotToRow(lot: Lot): SaleSetupLotRowFormValues {
     auctionType: lot.auctionType,
     startingPrice: lot.startingPrice,
     artistId: lot.artistId ?? null,
-    startTime: toDatetimeLocalValue(lot.startTime),
-    endTime: toDatetimeLocalValue(lot.endTime),
+    startTime: toDatetimeFormString(lot.startTime),
+    endTime: toDatetimeFormString(lot.endTime),
   };
 }
 
@@ -138,10 +140,7 @@ function LotRowEditor({
   const isSaved = Boolean(row.lotId);
   const isExisting = row.source === "existing";
   const inheritsTiming = saleModeInheritsLotTiming(ctx.deliveryMode);
-  const saleStartLocal = toDatetimeLocalValue(ctx.saleStartTime);
-  const saleEndLocal = toDatetimeLocalValue(ctx.saleEndTime);
   const lotStartValue = form.watch("startTime");
-  const endTimeMin = lotStartValue?.trim() ? lotStartValue : saleStartLocal;
 
   useEffect(() => {
     form.reset(row);
@@ -160,7 +159,12 @@ function LotRowEditor({
     startTransition(async () => {
       const r = await adminDetachLotFromSaleResultAction(saleId, lotId);
       if (!r.ok) {
-        notify.error(actionFailureNotifyMessage(r.error));
+        notify.error(
+          humanizeSetupError({
+            message: actionFailureNotifyMessage(r.error),
+            errorCode: r.errorCode,
+          }),
+        );
         return;
       }
       notify.success(`Detached ${row.title || "lot"}`);
@@ -208,8 +212,8 @@ function LotRowEditor({
     const startRaw = lotStartValue?.trim() || row.startTime?.trim();
     const endRaw = form.watch("endTime")?.trim() || row.endTime?.trim();
     if (!startRaw || !endRaw) return null;
-    const startTime = new Date(startRaw);
-    const endTime = new Date(endRaw);
+    const startTime = instantFromDatetimeFormString(startRaw);
+    const endTime = instantFromDatetimeFormString(endRaw);
     if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) return null;
     return {
       id: row.lotId,
@@ -390,17 +394,15 @@ function LotRowEditor({
                 <FormLabel>
                   <LabelCaps>Seller{fieldTierSuffix("required")}</LabelCaps>
                 </FormLabel>
-                <FormControl>
-                  <AdminLegalEntityPicker
-                    value={field.value || null}
-                    displayLabel={form.watch("sellerDisplayName") ?? null}
-                    onChange={(id, entity) => {
-                      field.onChange(id ?? "");
-                      if (entity) form.setValue("sellerDisplayName", entity.displayName);
-                    }}
-                    disabled={readOnly || isSaved}
-                  />
-                </FormControl>
+                <RhfLegalEntityPicker
+                  value={field.value || null}
+                  displayLabel={form.watch("sellerDisplayName") ?? null}
+                  onChange={(id, entity) => {
+                    field.onChange(id ?? "");
+                    if (entity) form.setValue("sellerDisplayName", entity.displayName);
+                  }}
+                  disabled={readOnly || isSaved}
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -436,17 +438,17 @@ function LotRowEditor({
                   <FormLabel>
                     <LabelCaps>Auction type{fieldTierSuffix("required")}</LabelCaps>
                   </FormLabel>
-                  <select
-                    {...field}
+                  <RhfSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
                     disabled={readOnly || isSaved || englishOnlyAuctionsLocked}
-                    className="w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 py-2 font-body text-sm"
-                  >
-                    {auctionTypeOptions.map((t) => (
-                      <option key={t} value={t}>
-                        {t.replace(/_/g, " ")}
-                      </option>
-                    ))}
-                  </select>
+                    options={auctionTypeOptions.map((t) => ({
+                      value: t,
+                      label: t.replace(/_/g, " "),
+                    }))}
+                    triggerClassName="w-full font-body text-sm"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -479,15 +481,12 @@ function LotRowEditor({
                       <FormLabel>
                         <LabelCaps>Lot opens{fieldTierSuffix("required")}</LabelCaps>
                       </FormLabel>
-                      <FormControl>
-                        <UnderlineInput
-                          {...field}
-                          type="datetime-local"
-                          min={saleStartLocal}
-                          max={saleEndLocal}
-                          disabled={readOnly}
-                        />
-                      </FormControl>
+                      <RhfDateTimePicker
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={readOnly}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -500,15 +499,12 @@ function LotRowEditor({
                       <FormLabel>
                         <LabelCaps>Lot closes{fieldTierSuffix("required")}</LabelCaps>
                       </FormLabel>
-                      <FormControl>
-                        <UnderlineInput
-                          {...field}
-                          type="datetime-local"
-                          min={endTimeMin}
-                          max={saleEndLocal}
-                          disabled={readOnly}
-                        />
-                      </FormControl>
+                      <RhfDateTimePicker
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={readOnly}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -516,7 +512,7 @@ function LotRowEditor({
               </div>
               <p className="font-body text-xs text-on-surface-variant">
                 Sale runs {formatDateTime(ctx.saleStartTime)} – {formatDateTime(ctx.saleEndTime)}{" "}
-                (local). Lot times must fall within this window.
+                (London time). Lot times must fall within this window.
               </p>
             </div>
           ) : (

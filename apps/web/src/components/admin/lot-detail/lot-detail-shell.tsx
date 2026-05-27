@@ -18,6 +18,7 @@ import { LotDetailConnectNotice } from "@/components/admin/lot-detail/lot-detail
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journey";
 import { buildLotMobileActions } from "@/lib/admin/build-lot-mobile-actions";
+import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import type { AdminDomainEventRow, AdminLotLifecyclePayload } from "@/lib/data/http/admin.server";
 import { lotPath } from "@/lib/seo/url";
@@ -79,6 +80,14 @@ export function LotDetailShell({
 
   const catalogIncomplete =
     auction.status === "draft" && (auction.images.length === 0 || !auction.description?.trim());
+
+  const publishReadiness =
+    auction.status === "draft"
+      ? buildLotPublishReadiness(lotId, auction, {
+          connectRequired,
+          sale: context.sale,
+        })
+      : null;
 
   const tabSpecs = [
     {
@@ -194,6 +203,7 @@ export function LotDetailShell({
             canPublish={canPublish}
             connectBlocked={connectRequired}
             saleStatus={context.sale?.status ?? null}
+            publishReadiness={publishReadiness}
             canCancel={canCancel}
             showEditDraft={canEditDraft}
             showEditLot={canEditLot}
@@ -209,6 +219,7 @@ export function LotDetailShell({
           canPublish={canPublish}
           connectBlocked={connectRequired}
           saleStatus={context.sale?.status ?? null}
+          publishReadiness={publishReadiness}
           canCancel={canCancel}
         />
       }

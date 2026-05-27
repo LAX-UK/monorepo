@@ -2,6 +2,9 @@
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminPublishLotResultAction } from "@/lib/actions/admin";
+import { lotPublishBlockedReason } from "@/lib/admin/catalog-readiness";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -13,6 +16,8 @@ type Props = {
   disabled?: boolean;
   /** Proactive server check — disables publish; banner shown by page/layout, not here. */
   connectBlocked?: boolean;
+  /** When set, publish is disabled until required readiness items pass. */
+  publishReadiness?: CatalogReadinessResult | null;
 };
 
 /** Publish control — parent gates visibility via `canPublish` (capability + lot status). */
@@ -21,17 +26,22 @@ export function PublishLotButton({
   sellerLegalEntityId: _sellerLegalEntityId,
   disabled,
   connectBlocked = false,
+  publishReadiness = null,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const reactiveConnect = searchParams.get("error_code") === "connect_required";
   const connectBlockedEffective = connectBlocked || reactiveConnect;
+  const readinessBlockedReason = publishReadiness
+    ? lotPublishBlockedReason(publishReadiness)
+    : null;
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const idempotencyKeyRef = useRef(`lot-publish-${crypto.randomUUID()}`);
 
-  const publishDisabled = disabled || connectBlockedEffective || pending;
+  const publishDisabled =
+    disabled || connectBlockedEffective || pending || Boolean(readinessBlockedReason);
 
   const promoteConnectToShell = (detail?: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -46,7 +56,13 @@ export function PublishLotButton({
 
   return (
     <>
-      <Button type="button" size="sm" disabled={publishDisabled} onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        size="sm"
+        disabled={publishDisabled}
+        title={readinessBlockedReason ?? undefined}
+        onClick={() => setOpen(true)}
+      >
         Publish
       </Button>
       <TypedConfirmationDialog
@@ -74,7 +90,12 @@ export function PublishLotButton({
                     reject(new Error("connect_required"));
                     return;
                   }
-                  notify.error(r.error);
+                  notify.error(
+                    humanizeSetupError({
+                      message: r.error,
+                      errorCode: r.errorCode,
+                    }),
+                  );
                   reject(new Error(r.error));
                 } catch (e) {
                   reject(e);

@@ -378,6 +378,7 @@ export function AdminLotForm({
                       form={form}
                       categories={categories}
                       artists={artists}
+                      sales={sales}
                       showArtistField={showArtistField}
                     />
                   ),
@@ -446,6 +447,7 @@ export function AdminLotForm({
                       form={form}
                       categories={categories}
                       artists={artists}
+                      sales={sales}
                       showArtistField={showArtistField}
                       onEditLotType={handleEditLotType}
                     />

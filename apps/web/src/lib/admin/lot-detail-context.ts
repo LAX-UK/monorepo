@@ -6,10 +6,10 @@ import {
   getAdminLegalEntityById,
   getAdminSaleById,
 } from "@/lib/data/http/admin.server";
-import type { Lot, SaleStatus } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 
 export type LotDetailContext = {
-  sale: { id: string; title: string; status: SaleStatus } | null;
+  sale: Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime"> | null;
   artist: { id: string; displayName: string } | null;
   seller: { id: string; displayName: string } | null;
   categories: { id: string; name: string }[];
@@ -36,7 +36,14 @@ export async function fetchLotDetailContext(auction: Lot): Promise<LotDetailCont
 
   return {
     sale: saleBundle
-      ? { id: saleBundle.sale.id, title: saleBundle.sale.title, status: saleBundle.sale.status }
+      ? {
+          id: saleBundle.sale.id,
+          title: saleBundle.sale.title,
+          status: saleBundle.sale.status,
+          deliveryMode: saleBundle.sale.deliveryMode,
+          startTime: saleBundle.sale.startTime,
+          endTime: saleBundle.sale.endTime,
+        }
       : null,
     artist: artist ? { id: artist.id, displayName: artist.displayName } : null,
     seller: seller ? { id: seller.id, displayName: seller.displayName } : null,

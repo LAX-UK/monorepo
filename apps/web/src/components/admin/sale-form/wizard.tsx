@@ -25,6 +25,7 @@ import {
 import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
 import {
   type AdminSaleFormValues,
+  adminSaleDraftScheduleSchema,
   adminSaleFormValuesSchema,
   normalizeAdminFormTiersToApi,
   safeParseCreateSaleFromForm,
@@ -117,6 +118,10 @@ export function AdminSaleForm({
   lots = [],
 }: Props) {
   const isDraft = mode === "create" || !saleStatus || saleStatus === "draft";
+  const formSchema = useMemo(
+    () => (isDraft ? adminSaleDraftScheduleSchema() : adminSaleFormValuesSchema),
+    [isDraft],
+  );
   const [pending, startTransition] = useTransition();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const router = useRouter();
@@ -126,7 +131,7 @@ export function AdminSaleForm({
   const wizardGoToRef = useRef<(index: number) => void>(() => {});
 
   const form = useForm<AdminSaleFormValues>({
-    resolver: zodResolver(adminSaleFormValuesSchema),
+    resolver: zodResolver(formSchema),
     defaultValues,
   });
   const getValuesRef = useRef(form.getValues);
@@ -136,13 +141,13 @@ export function AdminSaleForm({
   const validateAllWizardSteps = useCallback(async () => {
     for (let i = 0; i < SALE_STEP_FIELDS.length; i++) {
       const fields = SALE_STEP_FIELDS[i];
-      if (fields?.length && !(await validateWizardStep(form, adminSaleFormValuesSchema, fields))) {
+      if (fields?.length && !(await validateWizardStep(form, formSchema, fields))) {
         wizardGoToRef.current(i);
         return false;
       }
     }
     return true;
-  }, [form]);
+  }, [form, formSchema]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -250,10 +255,13 @@ export function AdminSaleForm({
                   return;
                 }
                 notify.error(
-                  actionFailureNotifyMessage(r.error, {
-                    status: r.status,
+                  humanizeSetupError({
+                    message: actionFailureNotifyMessage(r.error, {
+                      status: r.status,
+                      errorCode: r.errorCode,
+                      meta: r.meta,
+                    }),
                     errorCode: r.errorCode,
-                    meta: r.meta,
                   }),
                 );
                 if (r.fieldErrors) {

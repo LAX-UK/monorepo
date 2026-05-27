@@ -292,5 +292,39 @@ export { ConfirmDialog } from "./components/ui/confirm-dialog.js";
 export type { ConfirmDialogProps, ConfirmDialogTone } from "./components/ui/confirm-dialog.js";
 export { StickySaveBar } from "./components/ui/sticky-save-bar.js";
 export type { StickySaveBarProps } from "./components/ui/sticky-save-bar.js";
+export { Slider } from "./components/ui/slider.js";
+export { DatePicker } from "./components/ui/date-picker.js";
+export { DateTimePicker } from "./components/ui/date-time-picker.js";
+export { TimePicker } from "./components/ui/time-picker.js";
+export { Combobox } from "./components/ui/combobox.js";
+export type { ComboboxOption, ComboboxProps } from "./components/ui/combobox.js";
+export { AsyncCombobox } from "./components/ui/async-combobox.js";
+export type { AsyncComboboxHit, AsyncComboboxProps } from "./components/ui/async-combobox.js";
+export { FileUploadTrigger } from "./components/ui/file-upload-trigger.js";
+export type { FileUploadTriggerProps } from "./components/ui/file-upload-trigger.js";
+export { UploadProgress } from "./components/ui/upload-progress.js";
+export {
+  AUCTION_ZONE_LABEL,
+  DEFAULT_AUCTION_ZONE,
+  combineDateAndTime,
+  formatDatetimeDisplayHuman,
+  fromDateFormString,
+  fromDatetimeFormString,
+  fromTimeFormString,
+  instantFromDatetimeFormString,
+  instantFromZoned,
+  toCalendarDate,
+  toDateFormString,
+  toDatetimeFormString,
+  toTimeFormString,
+  tzDateFromParts,
+  zonedInstantToDatetimeFormString,
+} from "./lib/datetime/index.js";
+export type {
+  DateFormString,
+  DatetimeFormString,
+  TimeFormString,
+  ZonedInstant,
+} from "./lib/datetime/index.js";
 export { EntityList, EntityForm } from "./shell/index.js";
 export type { EntityListProps, EntityFormProps, EntityFormSection } from "./shell/index.js";
