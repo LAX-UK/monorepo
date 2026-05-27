@@ -7,16 +7,31 @@ import {
   adminSoftDeleteSaleResultAction,
   adminUnpublishSaleResultAction,
 } from "@/lib/actions/admin-sales";
+import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import type { ActionResult } from "@/lib/forms/form-result";
+import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
 export const SALE_PUBLISH_PHRASE = "PUBLISH";
 
 export function useSaleLifecycleActions(saleId: string) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+
+  const promoteConnectToShell = (detail?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("error_code", "connect_required");
+    if (detail?.trim()) {
+      params.set("error", detail.trim());
+    } else {
+      params.delete("error");
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const run = (fn: () => Promise<ActionResult<void>>) => {
     startTransition(() => {
@@ -27,7 +42,22 @@ export function useSaleLifecycleActions(saleId: string) {
           router.refresh();
           return;
         }
-        notify.error(r.error);
+        if (r.errorCode === "connect_required") {
+          promoteConnectToShell(
+            humanizeSetupError({
+              message: r.error,
+              errorCode: r.errorCode,
+            }),
+          );
+          return;
+        }
+        notify.error(
+          actionFailureNotifyMessage(r.error, {
+            status: r.status,
+            errorCode: r.errorCode,
+            meta: r.meta,
+          }),
+        );
       })();
     });
   };

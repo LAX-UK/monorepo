@@ -45,6 +45,8 @@ const MESSAGE_MAP: ReadonlyArray<[pattern: RegExp | string, message: string]> = 
   ["Preview must be before sale start", "Preview must start before the sale opens."],
 ];
 
+import { connectPublishBlockedTitle } from "./field-copy";
+
 export type HumanizeSetupErrorInput = {
   message: string;
   errorCode?: string | undefined;
@@ -52,7 +54,7 @@ export type HumanizeSetupErrorInput = {
 
 export function humanizeSetupError(input: HumanizeSetupErrorInput): string {
   if (input.errorCode === "connect_required") {
-    return "The seller needs to complete payout setup before this sale can go live.";
+    return connectPublishBlockedTitle();
   }
 
   const raw = input.message.trim();

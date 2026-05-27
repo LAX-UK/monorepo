@@ -1,3 +1,4 @@
+import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
 import type { Lot, Sale } from "@auction/types";
 import { resolveFirstBlockingSetupStep } from "./readiness";
 
@@ -66,7 +67,7 @@ type ResolveInput = {
   sale: Sale | null;
   lots: Lot[];
   pendingRegistrationCount?: number | null;
-  connectRequiredByLotId?: ReadonlyMap<string, boolean>;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
 /** First incomplete wizard step for resume navigation. */

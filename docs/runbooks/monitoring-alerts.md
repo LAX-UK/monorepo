@@ -116,3 +116,14 @@ Filter tip: `message:web-vitals.` selects all six web-vitals issues at once.
 - [Scale monitoring](./scale-monitoring.md)
 - [On-call](./on-call.md)
 - [Buyer payment flow](./buyer-payment-flow.md)
+
+## Catalog Connect enforcement (Stripe)
+
+When `STRIPE_SECRET_KEY` is **not** set in the API/web environment, Connect readiness checks are disabled and lots can be scheduled without seller payout setup. This is intentional for local/dev stacks without Stripe.
+
+When Stripe **is** configured:
+
+- Lots **with** a `sellerLegalEntityId` must have an approved legal entity with Connect payouts enabled and no outstanding requirements before publish/schedule (API + admin UI readiness).
+- Lots **without** a `sellerLegalEntityId` skip Connect checks (platform-catalog / legacy inventory paths). New lot create requires a seller; attach and legacy rows may omit one by design.
+
+If production shows unexpected publish without Connect, verify `STRIPE_SECRET_KEY` is present on API containers and the lot has a seller assigned.

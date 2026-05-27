@@ -2,6 +2,7 @@ import {
   categoryDetailTabHref,
   categoryEditHref,
 } from "@/components/admin/category-detail/category-detail-types";
+import { readinessLabel } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminCategory, Lot, Sale } from "@auction/types";
 
 export type CatalogReadinessItem = {
@@ -44,11 +45,11 @@ export function buildLotPublishReadiness(
       label: "Catalogue description",
       ok: Boolean(auction.description?.trim()),
       severity: "required",
-      href: `/admin/lots/${lotId}/edit`,
+      href: `/admin/lots/${lotId}/edit/catalog`,
     },
     {
       id: "seller",
-      label: connectRequired ? "Seller Connect account" : "Seller legal entity",
+      label: connectRequired ? readinessLabel("connect") : "Seller legal entity",
       ok: Boolean(auction.sellerLegalEntityId) && !connectRequired,
       severity: "required",
       href: `/admin/lots/${lotId}`,

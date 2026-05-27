@@ -786,6 +786,8 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
     lotLifecycleRecording,
+    legalEntityRepository,
+    enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
   });
   const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db, lotLifecycleRecording);
   const saleSoftDeleteService = new SaleSoftDeleteService(
@@ -803,6 +805,8 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
     lotLifecycleRecording,
+    legalEntityRepository,
+    stripeConnectService.isConfigured(),
   );
 
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);

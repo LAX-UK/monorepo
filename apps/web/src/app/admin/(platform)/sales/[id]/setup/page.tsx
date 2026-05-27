@@ -3,6 +3,7 @@ import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell"
 import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard";
 import { firstString } from "@/lib/admin/admin-list-params";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { loadAdminSaleDetail, loadAdminSaleRegistrationCount } from "@/lib/admin/load-sale-detail";
 import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sale-setup";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -42,19 +43,22 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
   const canEditCatalog = userHasAccessTo(role, staffRole, LOTS_ACCESS);
 
   const stepParam = firstString(sp.step)?.trim() as SaleSetupStepId | undefined;
+
+  const [categories, artistResult, registrationCount, connectRequiredByLotId] = await Promise.all([
+    (await getServerCategoryReader()).tree(),
+    getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
+    loadAdminSaleRegistrationCount(id, sale),
+    buildConnectRequiredByLotId(lots),
+  ]);
+
   const initialStep =
     stepParam ??
     resolveFirstIncompleteStep({
       sale,
       lots,
-      pendingRegistrationCount: await loadAdminSaleRegistrationCount(id, sale),
+      pendingRegistrationCount: registrationCount,
+      connectRequiredByLotId,
     });
-
-  const [categories, artistResult, registrationCount] = await Promise.all([
-    (await getServerCategoryReader()).tree(),
-    getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
-    loadAdminSaleRegistrationCount(id, sale),
-  ]);
 
   const defaultValues = saleToAdminSaleFormValues(sale);
   const saleWithCovers = bundle.sale as typeof sale & { coverImagePresentedUrls?: string[] };
@@ -94,6 +98,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         canManageSale={canManageSale}
         canEditCatalog={canEditCatalog}
         pendingRegistrationCount={registrationCount}
+        connectRequiredByLotId={connectRequiredByLotId}
       />
     </CatalogFormShell>
   );
