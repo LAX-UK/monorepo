@@ -2,6 +2,7 @@
 
 import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
 import { UnderlineInput } from "@/components/ui/input";
+import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
 import {
@@ -22,7 +23,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 import { normalizeUkPostcode } from "@auction/validators";
 import { useMemo } from "react";
@@ -56,6 +56,7 @@ type Props = {
   customMapUrl: string | undefined;
   postcodeIsValid: boolean;
   lots?: readonly Lot[];
+  lotsSetupHref?: string;
 };
 
 export function SaleScheduleStep({
@@ -72,6 +73,7 @@ export function SaleScheduleStep({
   customMapUrl,
   postcodeIsValid,
   lots = [],
+  lotsSetupHref,
 }: Props) {
   const deliveryMode = form.watch("deliveryMode");
   const startTime = form.watch("startTime");
@@ -93,8 +95,13 @@ export function SaleScheduleStep({
             </p>
             <p>
               Pending sale window: {formatDateTime(pendingWindow.startTime)} –{" "}
-              {formatDateTime(pendingWindow.endTime)} (local).
+              {formatDateTime(pendingWindow.endTime)} (London time).
             </p>
+            {lotsSetupHref ? (
+              <Button type="button" size="sm" variant="outline" asChild>
+                <a href={lotsSetupHref}>Adjust lot schedules</a>
+              </Button>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -121,7 +128,7 @@ export function SaleScheduleStep({
                 <LabelCaps>Auction type</LabelCaps>
               </FormLabel>
               <RhfSelect
-                value={field.value}
+                value={field.value ?? ""}
                 onValueChange={(v) => {
                   if (isDraft) field.onChange(v);
                 }}
@@ -425,16 +432,14 @@ export function SaleScheduleStep({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  <LabelCaps>Start (local)</LabelCaps>
+                  <LabelCaps>Start (London)</LabelCaps>
                 </FormLabel>
-                <FormControl>
-                  <Input
-                    type="datetime-local"
-                    className="min-h-11 py-3 font-body text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={!isDraft}
-                    {...field}
-                  />
-                </FormControl>
+                <RhfDateTimePicker
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={!isDraft}
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -445,16 +450,14 @@ export function SaleScheduleStep({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  <LabelCaps>End (local)</LabelCaps>
+                  <LabelCaps>End (London)</LabelCaps>
                 </FormLabel>
-                <FormControl>
-                  <Input
-                    type="datetime-local"
-                    className="min-h-11 py-3 font-body text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={!isDraft}
-                    {...field}
-                  />
-                </FormControl>
+                <RhfDateTimePicker
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={!isDraft}
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -475,14 +478,12 @@ export function SaleScheduleStep({
               <FormLabel>
                 <LabelCaps>Preview start (optional)</LabelCaps>
               </FormLabel>
-              <FormControl>
-                <Input
-                  type="datetime-local"
-                  className="min-h-11 py-3 font-body text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={!isDraft}
-                  {...field}
-                />
-              </FormControl>
+              <RhfDateTimePicker
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                disabled={!isDraft}
+              />
               <FormMessage />
             </FormItem>
           )}

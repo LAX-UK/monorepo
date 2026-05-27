@@ -14,7 +14,7 @@ import { type LotImageSaveEntry, useLotImagesSave } from "@/lib/admin/lots/use-l
 import { countLotsCatalogReady, humanizeSetupError, saleSetupHref } from "@/lib/admin/sale-setup";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { LoadingButton } from "@auction/ui/components/loading-button";
@@ -24,6 +24,7 @@ import { useState, useTransition } from "react";
 
 type Props = {
   saleId: string;
+  sale: Pick<Sale, "id" | "deliveryMode" | "startTime" | "endTime">;
   lots: Lot[];
   readOnly?: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
@@ -31,10 +32,12 @@ type Props = {
 
 function LotCatalogPrepCard({
   lot,
+  sale,
   readOnly,
   connectRequired,
 }: {
   lot: Lot;
+  sale: Pick<Sale, "id" | "deliveryMode" | "startTime" | "endTime">;
   readOnly: boolean;
   connectRequired: boolean;
 }) {
@@ -55,7 +58,7 @@ function LotCatalogPrepCard({
       description: descDirty ? description : lot.description,
       images: entries.map((e) => e.key),
     },
-    connectRequired,
+    { connectRequired, sale },
   );
 
   function saveImages() {
@@ -140,11 +143,12 @@ function LotCatalogPrepCard({
 
 export function SaleSetupCatalogPrepStep({
   saleId,
+  sale,
   lots,
   readOnly = false,
   connectRequiredByLotId,
 }: Props) {
-  const { ready, total } = countLotsCatalogReady(lots, connectRequiredByLotId);
+  const { ready, total } = countLotsCatalogReady(lots, connectRequiredByLotId, sale);
 
   if (lots.length === 0) {
     return (
@@ -170,6 +174,7 @@ export function SaleSetupCatalogPrepStep({
         <LotCatalogPrepCard
           key={lot.id}
           lot={lot}
+          sale={sale}
           readOnly={readOnly}
           connectRequired={lotConnectRequired(connectRequiredByLotId, lot.id)}
         />

@@ -2,6 +2,7 @@
 
 import { CancelLotButton } from "@/components/admin/lot-actions/cancel-lot-button";
 import { PublishLotButton } from "@/components/admin/lot-actions/publish-lot-button";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   canPublish: boolean;
   connectBlocked?: boolean;
   saleStatus?: string | null;
+  publishReadiness?: CatalogReadinessResult | null;
   canCancel: boolean;
 };
 
@@ -20,6 +22,7 @@ export function LotDetailMobilePublishCancel({
   canPublish,
   connectBlocked = false,
   saleStatus = null,
+  publishReadiness = null,
   canCancel,
 }: Props) {
   const publishViaSale = saleStatus === "draft";
@@ -38,6 +41,7 @@ export function LotDetailMobilePublishCancel({
             lotId={lotId}
             sellerLegalEntityId={sellerLegalEntityId}
             connectBlocked={connectBlocked}
+            publishReadiness={publishReadiness}
           />
         ) : null}
         {canCancel ? <CancelLotButton lotId={lotId} /> : null}

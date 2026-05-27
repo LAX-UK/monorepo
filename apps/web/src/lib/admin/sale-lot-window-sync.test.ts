@@ -60,14 +60,6 @@ describe("findLotsOutsideSaleWindow", () => {
     expect(conflicts[0]?.violation).toContain("Lot end must not be after");
   });
 
-  it("returns empty for onsite sales", () => {
-    const conflicts = findLotsOutsideSaleWindow(
-      [lot({ startTime: new Date("2020-01-01T00:00:00Z") })],
-      { deliveryMode: "onsite", startTime: saleStart, endTime: saleEnd },
-    );
-    expect(conflicts).toHaveLength(0);
-  });
-
   it("returns empty when lot fits window", () => {
     const conflicts = findLotsOutsideSaleWindow([lot()], {
       deliveryMode: "online",
@@ -75,6 +67,20 @@ describe("findLotsOutsideSaleWindow", () => {
       endTime: saleEnd,
     });
     expect(conflicts).toHaveLength(0);
+  });
+
+  it("flags onsite lots that drift from the sale window", () => {
+    const conflicts = findLotsOutsideSaleWindow(
+      [
+        lot({
+          startTime: new Date("2020-01-01T00:00:00Z"),
+          endTime: new Date("2020-01-02T00:00:00Z"),
+        }),
+      ],
+      { deliveryMode: "onsite", startTime: saleStart, endTime: saleEnd },
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.violation).toContain("Onsite lots");
   });
 });
 

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  auctionMinuteEpoch,
+  instantFromAuctionDatetimeFormString,
+  isStartInFutureForPublish,
+  toAuctionDatetimeFormString,
+} from "./auction-datetime.js";
+import {
   type LotSaleTimingWindow,
   alignLotTimingWithSale,
+  findLotTimingConflicts,
   lotTimingViolationAgainstSale,
   normalizeLotTimingForSale,
 } from "./lot-sale-timing.js";
@@ -20,6 +27,28 @@ const onsiteSale: LotSaleTimingWindow = {
   startTime: saleStart,
   endTime: saleEnd,
 };
+
+describe("auctionMinuteEpoch", () => {
+  it("treats sub-minute offsets within the same London minute as equal", () => {
+    const base = instantFromAuctionDatetimeFormString("2026-06-01T11:00");
+    const withSeconds = new Date(base.getTime() + 30_000);
+    expect(auctionMinuteEpoch(base)).toBe(auctionMinuteEpoch(withSeconds));
+  });
+});
+
+describe("isStartInFutureForPublish", () => {
+  it("accepts start time in the current auction minute", () => {
+    const now = instantFromAuctionDatetimeFormString("2030-06-01T10:15");
+    const start = new Date(now.getTime() + 15_000);
+    expect(isStartInFutureForPublish(start, now)).toBe(true);
+  });
+
+  it("rejects start time in a past auction minute", () => {
+    const now = instantFromAuctionDatetimeFormString("2030-06-01T10:15");
+    const start = instantFromAuctionDatetimeFormString("2030-06-01T10:14");
+    expect(isStartInFutureForPublish(start, now)).toBe(false);
+  });
+});
 
 describe("alignLotTimingWithSale", () => {
   it("inherits sale window for onsite sales", () => {
@@ -52,6 +81,19 @@ describe("lotTimingViolationAgainstSale", () => {
     ).toBeNull();
   });
 
+  it("accepts online lot start in same minute as sale start despite sub-minute drift", () => {
+    const saleWithSeconds = {
+      ...onlineSale,
+      startTime: new Date(saleStart.getTime() + 30_000),
+    };
+    const lotAtMinute = instantFromAuctionDatetimeFormString(
+      toAuctionDatetimeFormString(saleStart),
+    );
+    expect(
+      lotTimingViolationAgainstSale(saleWithSeconds, lotAtMinute, new Date("2026-06-03T18:00:00Z")),
+    ).toBeNull();
+  });
+
   it("rejects online lot start before sale start", () => {
     expect(
       lotTimingViolationAgainstSale(
@@ -72,7 +114,7 @@ describe("lotTimingViolationAgainstSale", () => {
     ).toContain("after the sale end");
   });
 
-  it("requires exact match for onsite sales", () => {
+  it("requires exact minute match for onsite sales", () => {
     expect(
       lotTimingViolationAgainstSale(
         onsiteSale,
@@ -80,6 +122,32 @@ describe("lotTimingViolationAgainstSale", () => {
         new Date("2026-06-03T18:00:00Z"),
       ),
     ).toContain("Onsite lots must use the sale");
+  });
+
+  it("accepts onsite lot at sale minute boundaries despite sub-second drift", () => {
+    const saleWithSeconds = {
+      ...onsiteSale,
+      startTime: new Date(saleStart.getTime() + 45_000),
+      endTime: new Date(saleEnd.getTime() + 45_000),
+    };
+    const lotStart = instantFromAuctionDatetimeFormString(toAuctionDatetimeFormString(saleStart));
+    const lotEnd = instantFromAuctionDatetimeFormString(toAuctionDatetimeFormString(saleEnd));
+    expect(lotTimingViolationAgainstSale(saleWithSeconds, lotStart, lotEnd)).toBeNull();
+  });
+});
+
+describe("findLotTimingConflicts", () => {
+  it("includes onsite lots that drift from the sale window", () => {
+    const conflicts = findLotTimingConflicts(onsiteSale, [
+      {
+        id: "lot-1",
+        title: "Vase",
+        startTime: new Date("2026-06-02T10:00:00Z"),
+        endTime: new Date("2026-06-03T18:00:00Z"),
+      },
+    ]);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.violation).toContain("Onsite lots");
   });
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { AdminLotPicker } from "@/components/admin/admin-lot-picker";
-import { UnderlineInput } from "@/components/ui/input";
+import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminGetLotAttachPreviewAction, adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { adminAttachLotToSaleResultAction } from "@/lib/actions/admin-sales";
@@ -24,22 +24,15 @@ import {
   syncLotsToSaleWindowLabel,
 } from "@/lib/admin/sale-setup";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
-import { toDatetimeLocalValue } from "@/lib/forms/schemas/admin-lot-defaults";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { formatDateTime } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
+import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
@@ -118,8 +111,6 @@ export function AttachExistingLotReview({
   );
 
   const inheritsTiming = saleModeInheritsLotTiming(saleWindow.deliveryMode);
-  const saleStartLocal = toDatetimeLocalValue(saleWindow.startTime);
-  const saleEndLocal = toDatetimeLocalValue(saleWindow.endTime);
 
   const form = useForm<SaleSetupLotRowFormValues>({
     defaultValues: emptySaleSetupLotRow("attach-review"),
@@ -127,7 +118,6 @@ export function AttachExistingLotReview({
 
   const lotStartValue = form.watch("startTime");
   const lotEndValue = form.watch("endTime");
-  const endTimeMin = lotStartValue?.trim() ? lotStartValue : saleStartLocal;
 
   const loadPreview = useCallback(
     async (lotId: string) => {
@@ -177,8 +167,8 @@ export function AttachExistingLotReview({
       startTime: saleWindow.startTime,
       endTime: saleWindow.endTime,
     });
-    form.setValue("startTime", toDatetimeLocalValue(proposed.startTime), { shouldValidate: true });
-    form.setValue("endTime", toDatetimeLocalValue(proposed.endTime), { shouldValidate: true });
+    form.setValue("startTime", toDatetimeFormString(proposed.startTime), { shouldValidate: true });
+    form.setValue("endTime", toDatetimeFormString(proposed.endTime), { shouldValidate: true });
   }, [
     form,
     inheritsTiming,
@@ -388,15 +378,12 @@ export function AttachExistingLotReview({
                         <FormLabel>
                           <LabelCaps>Lot opens{fieldTierSuffix("required")}</LabelCaps>
                         </FormLabel>
-                        <FormControl>
-                          <UnderlineInput
-                            {...field}
-                            type="datetime-local"
-                            min={saleStartLocal}
-                            max={saleEndLocal}
-                            disabled={disabled || pending}
-                          />
-                        </FormControl>
+                        <RhfDateTimePicker
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          disabled={disabled || pending}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -409,15 +396,12 @@ export function AttachExistingLotReview({
                         <FormLabel>
                           <LabelCaps>Lot closes{fieldTierSuffix("required")}</LabelCaps>
                         </FormLabel>
-                        <FormControl>
-                          <UnderlineInput
-                            {...field}
-                            type="datetime-local"
-                            min={endTimeMin}
-                            max={saleEndLocal}
-                            disabled={disabled || pending}
-                          />
-                        </FormControl>
+                        <RhfDateTimePicker
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          disabled={disabled || pending}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -425,8 +409,8 @@ export function AttachExistingLotReview({
                 </div>
                 <p className="font-body text-xs text-on-surface-variant">
                   Sale runs {formatDateTime(saleWindow.startTime)} –{" "}
-                  {formatDateTime(saleWindow.endTime)} (local). Lot times must fall within this
-                  window.
+                  {formatDateTime(saleWindow.endTime)} (London time). Lot times must fall within
+                  this window.
                 </p>
               </div>
             )}

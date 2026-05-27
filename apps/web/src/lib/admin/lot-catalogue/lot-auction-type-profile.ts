@@ -93,13 +93,13 @@ function buildProfile(auctionType: LotAuctionType): LotCatalogueProfile {
     startTime: {
       visible: true,
       required: true,
-      label: "Start (local)",
+      label: "Start (London)",
       section: "schedule" as const,
     },
     endTime: {
       visible: true,
       required: true,
-      label: "End (local)",
+      label: "End (London)",
       section: "schedule" as const,
     },
     medium: {
