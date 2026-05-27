@@ -295,6 +295,8 @@ export type { StickySaveBarProps } from "./components/ui/sticky-save-bar.js";
 export { DateTimePicker } from "./components/ui/date-time-picker.js";
 export { TimePicker } from "./components/ui/time-picker.js";
 export type { TimePickerProps } from "./components/ui/time-picker.js";
+export { Combobox } from "./components/ui/combobox.js";
+export type { ComboboxOption, ComboboxProps } from "./components/ui/combobox.js";
 export {
   AUCTION_ZONE_LABEL,
   DEFAULT_AUCTION_ZONE,

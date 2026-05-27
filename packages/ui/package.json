@@ -277,6 +277,10 @@
       "types": "./dist/components/ui/time-picker.d.ts",
       "default": "./dist/components/ui/time-picker.js"
     },
+    "./components/combobox": {
+      "types": "./dist/components/ui/combobox.d.ts",
+      "default": "./dist/components/ui/combobox.js"
+    },
     "./shell": {
       "types": "./dist/shell/index.d.ts",
       "default": "./dist/shell/index.js"
