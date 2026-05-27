@@ -1,16 +1,21 @@
 "use client";
 
 import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-picker";
-import { AdminLotPicker } from "@/components/admin/admin-lot-picker";
 import { type ArtistChipModel, ArtistPicker } from "@/components/admin/artist-picker";
+import { AttachExistingLotReview } from "@/components/admin/attach-existing-lot-review";
 import { CategoryPicker } from "@/components/forms/category-picker";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
+import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import {
   adminAddLotToSaleResultAction,
-  adminAttachLotToSaleResultAction,
   adminDetachLotFromSaleResultAction,
 } from "@/lib/actions/admin-sales";
+import { notifyLotFormValidationFailure } from "@/lib/admin/lot-form-validation-notify";
+import {
+  findLotsOutsideSaleWindow,
+  proposeLotTimesWithinWindow,
+} from "@/lib/admin/sale-lot-window-sync";
 import {
   type SaleSetupLotRowContext,
   type SaleSetupLotRowFormValues,
@@ -19,10 +24,16 @@ import {
   fieldTierSuffix,
   humanizeSetupError,
   lotSavedMessage,
+  lotsStepFirstLotPrompt,
   mergeSavedLotRow,
   mergeWizardRowsWithServerLots,
   safeParseSaleSetupLotRowForApi,
+  scheduleLotConflictBanner,
+  scheduleOutOfSyncBadge,
+  syncLotsToSaleWindowLabel,
+  updateLotScheduleLabel,
 } from "@/lib/admin/sale-setup";
+import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import { toDatetimeLocalValue } from "@/lib/forms/schemas/admin-lot-defaults";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { formatDateTime } from "@/lib/ui/format";
@@ -56,6 +67,10 @@ type Props = {
   onLotsChange: () => void;
   onUnsavedChange?: (unsaved: boolean) => void;
 };
+
+function draftLotRow(source: "new" | "existing"): SaleSetupLotRowFormValues {
+  return { ...emptySaleSetupLotRow(crypto.randomUUID()), source };
+}
 
 function lotToRow(lot: Lot): SaleSetupLotRowFormValues {
   return {
@@ -103,6 +118,7 @@ function LotRowEditor({
   onSaved,
   onRemove,
   onDetached,
+  onScheduleUpdated,
 }: {
   row: SaleSetupLotRowFormValues;
   rowIndex: number;
@@ -115,6 +131,7 @@ function LotRowEditor({
   onSaved: (lotId: string, values: SaleSetupLotRowFormValues, meta?: { title?: string }) => void;
   onRemove: () => void;
   onDetached?: () => void;
+  onScheduleUpdated?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const form = useForm<SaleSetupLotRowFormValues>({ defaultValues: row });
@@ -125,32 +142,10 @@ function LotRowEditor({
   const saleEndLocal = toDatetimeLocalValue(ctx.saleEndTime);
   const lotStartValue = form.watch("startTime");
   const endTimeMin = lotStartValue?.trim() ? lotStartValue : saleStartLocal;
-  const [attachLotId, setAttachLotId] = useState<string | null>(null);
-  const [attachTitle, setAttachTitle] = useState<string | null>(null);
 
   useEffect(() => {
     form.reset(row);
   }, [form, row]);
-
-  const attachExisting = useCallback(() => {
-    if (!attachLotId) {
-      notify.error("Choose a lot to attach");
-      return;
-    }
-    startTransition(async () => {
-      const r = await adminAttachLotToSaleResultAction(saleId, attachLotId, { via: "wizard" });
-      if (!r.ok) {
-        notify.error(actionFailureNotifyMessage(r.error));
-        return;
-      }
-      notify.success(`Attached ${attachTitle ?? "lot"}`);
-      onSaved(
-        attachLotId,
-        { ...row, title: attachTitle ?? row.title },
-        attachTitle ? { title: attachTitle } : undefined,
-      );
-    });
-  }, [attachLotId, attachTitle, onSaved, row, saleId]);
 
   const detachAttached = useCallback(() => {
     const lotId = row.lotId;
@@ -168,11 +163,11 @@ function LotRowEditor({
         notify.error(actionFailureNotifyMessage(r.error));
         return;
       }
-      notify.success(`Detached ${row.title || attachTitle || "lot"}`);
+      notify.success(`Detached ${row.title || "lot"}`);
       onRemove();
       onDetached?.();
     });
-  }, [attachTitle, onDetached, onRemove, row.lotId, row.title, saleId]);
+  }, [onDetached, onRemove, row.lotId, row.title, saleId]);
 
   const auctionTypeOptions = useMemo(() => {
     if (!englishOnlyAuctionsLocked) return lotAuctionTypes;
@@ -184,11 +179,8 @@ function LotRowEditor({
       const values = form.getValues();
       const parsed = safeParseSaleSetupLotRowForApi(values, ctx);
       if (!parsed.success) {
-        for (const iss of parsed.error.issues) {
-          const path = iss.path.join(".") || "title";
-          form.setError(path as keyof SaleSetupLotRowFormValues, { message: iss.message });
-        }
-        notify.error("Check this lot for errors");
+        applyZodIssuesToForm(form, parsed.error.issues);
+        notifyLotFormValidationFailure({ issues: parsed.error.issues });
         return;
       }
       const r = await adminAddLotToSaleResultAction(saleId, parsed.data);
@@ -210,6 +202,65 @@ function LotRowEditor({
       onSaved(r.data.id, values);
     });
   }, [ctx, form, onSaved, saleId]);
+
+  const lotScheduleSnapshot = useMemo(() => {
+    if (!row.lotId) return null;
+    const startRaw = lotStartValue?.trim() || row.startTime?.trim();
+    const endRaw = form.watch("endTime")?.trim() || row.endTime?.trim();
+    if (!startRaw || !endRaw) return null;
+    const startTime = new Date(startRaw);
+    const endTime = new Date(endRaw);
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) return null;
+    return {
+      id: row.lotId,
+      title: row.title,
+      startTime,
+      endTime,
+    };
+  }, [form, lotStartValue, row.endTime, row.lotId, row.startTime, row.title]);
+
+  const scheduleOutOfSync = useMemo(() => {
+    if (!lotScheduleSnapshot || inheritsTiming) return false;
+    return (
+      findLotsOutsideSaleWindow([lotScheduleSnapshot], {
+        deliveryMode: ctx.deliveryMode,
+        startTime: ctx.saleStartTime,
+        endTime: ctx.saleEndTime,
+      }).length > 0
+    );
+  }, [ctx.deliveryMode, ctx.saleEndTime, ctx.saleStartTime, inheritsTiming, lotScheduleSnapshot]);
+
+  const updateSchedule = useCallback(() => {
+    if (!row.lotId) return;
+    startTransition(async () => {
+      const values = form.getValues();
+      const parsed = safeParseSaleSetupLotRowForApi(values, ctx);
+      if (!parsed.success) {
+        applyZodIssuesToForm(form, parsed.error.issues);
+        notifyLotFormValidationFailure({ issues: parsed.error.issues });
+        return;
+      }
+      const r = await adminUpdateLotResultAction(row.lotId as string, {
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+      });
+      if (!r.ok) {
+        notify.error(
+          humanizeSetupError({
+            message: actionFailureNotifyMessage(r.error, {
+              status: r.status,
+              errorCode: r.errorCode,
+              meta: r.meta,
+            }),
+            errorCode: r.errorCode,
+          }),
+        );
+        return;
+      }
+      notify.success("Lot schedule updated");
+      onScheduleUpdated?.();
+    });
+  }, [ctx, form, onScheduleUpdated, row.lotId]);
 
   if (isExisting && isSaved) {
     return (
@@ -235,9 +286,7 @@ function LotRowEditor({
             </Button>
           ) : null}
         </div>
-        <p className="font-body text-sm text-on-surface">
-          {row.title || attachTitle || "Existing lot"}
-        </p>
+        <p className="font-body text-sm text-on-surface">{row.title || "Existing lot"}</p>
         <p className="mt-1 font-body text-xs text-on-surface-variant">
           Existing inventory lot attached to this sale.
         </p>
@@ -247,39 +296,37 @@ function LotRowEditor({
 
   if (isExisting && !isSaved && !readOnly) {
     return (
-      <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <p className="font-headline text-base text-on-surface">
-            Attach existing lot {rowIndex + 1}
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onRemove}
-            aria-label="Remove row"
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </Button>
-        </div>
-        <AdminLotPicker
-          value={attachLotId}
-          displayLabel={attachTitle}
-          excludeSaleId={saleId}
-          onChange={(id, hit) => {
-            setAttachLotId(id);
-            setAttachTitle(hit?.title ?? null);
-          }}
-        />
-        <LoadingButton
-          type="button"
-          loading={pending}
-          onClick={attachExisting}
-          className="mt-4 w-full sm:w-auto"
-        >
-          Attach to sale
-        </LoadingButton>
-      </div>
+      <AttachExistingLotReview
+        saleId={saleId}
+        saleWindow={{
+          deliveryMode: ctx.deliveryMode,
+          startTime: ctx.saleStartTime,
+          endTime: ctx.saleEndTime,
+        }}
+        englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+        attachVia="wizard"
+        categories={categories}
+        artists={artists}
+        onAttached={(lotId, title) => {
+          onSaved(lotId, { ...row, title }, { title });
+        }}
+        headerSlot={
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="font-headline text-base text-on-surface">
+              Attach existing lot {rowIndex + 1}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onRemove}
+              aria-label="Remove row"
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          </div>
+        }
+      />
     );
   }
 
@@ -293,6 +340,11 @@ function LotRowEditor({
               <span className="ml-2 inline-flex items-center gap-1 font-body text-xs text-primary">
                 <CheckCircle2 className="size-3.5" aria-hidden />
                 Saved
+              </span>
+            ) : null}
+            {scheduleOutOfSync ? (
+              <span className="ml-2 font-body text-xs text-warning">
+                {scheduleOutOfSyncBadge()}
               </span>
             ) : null}
           </p>
@@ -433,7 +485,7 @@ function LotRowEditor({
                           type="datetime-local"
                           min={saleStartLocal}
                           max={saleEndLocal}
-                          disabled={readOnly || isSaved}
+                          disabled={readOnly}
                         />
                       </FormControl>
                       <FormMessage />
@@ -454,7 +506,7 @@ function LotRowEditor({
                           type="datetime-local"
                           min={endTimeMin}
                           max={saleEndLocal}
-                          disabled={readOnly || isSaved}
+                          disabled={readOnly}
                         />
                       </FormControl>
                       <FormMessage />
@@ -505,6 +557,17 @@ function LotRowEditor({
               Save lot
             </LoadingButton>
           ) : null}
+          {!readOnly && isSaved && !inheritsTiming ? (
+            <LoadingButton
+              type="button"
+              loading={pending}
+              onClick={updateSchedule}
+              variant="secondary"
+              className="w-full sm:w-auto"
+            >
+              {updateLotScheduleLabel()}
+            </LoadingButton>
+          ) : null}
         </div>
       </div>
     </Form>
@@ -524,8 +587,11 @@ export function SaleLotRowsEditor({
 }: Props) {
   const [rows, setRows] = useState<SaleSetupLotRowFormValues[]>(() => {
     if (lots.length > 0) return lots.map(lotToRow);
-    return [emptySaleSetupLotRow(crypto.randomUUID())];
+    return [];
   });
+
+  const showFirstLotChoice = !readOnly && lots.length === 0 && rows.length === 0;
+  const showAddLotActions = !readOnly && !showFirstLotChoice;
 
   const unsavedCount = rows.filter((r) => !r.lotId).length;
 
@@ -547,11 +613,104 @@ export function SaleLotRowsEditor({
     [englishOnlyAuctionsLocked, sale.deliveryMode, sale.endTime, sale.startTime],
   );
 
+  const lotWindowConflicts = useMemo(
+    () =>
+      findLotsOutsideSaleWindow(lots, {
+        deliveryMode: sale.deliveryMode,
+        startTime: sale.startTime,
+        endTime: sale.endTime,
+      }),
+    [lots, sale.deliveryMode, sale.endTime, sale.startTime],
+  );
+
+  const [syncPending, startSyncTransition] = useTransition();
+
+  const syncLotsToWindow = useCallback(() => {
+    if (lotWindowConflicts.length === 0) return;
+    const message =
+      lotWindowConflicts.length === 1
+        ? "Adjust this lot's open/close times to fit the sale window?"
+        : `Adjust ${lotWindowConflicts.length} lots' open/close times to fit the sale window?`;
+    if (!window.confirm(message)) return;
+    startSyncTransition(async () => {
+      const window = {
+        deliveryMode: sale.deliveryMode,
+        startTime: sale.startTime,
+        endTime: sale.endTime,
+      };
+      for (const conflict of lotWindowConflicts) {
+        const proposed = proposeLotTimesWithinWindow(conflict.lot, window);
+        const r = await adminUpdateLotResultAction(conflict.lot.id, proposed);
+        if (!r.ok) {
+          notify.error(
+            humanizeSetupError({
+              message: actionFailureNotifyMessage(r.error, {
+                status: r.status,
+                errorCode: r.errorCode,
+                meta: r.meta,
+              }),
+              errorCode: r.errorCode,
+            }),
+          );
+          return;
+        }
+      }
+      notify.success("Lot schedules updated");
+      onLotsChange();
+    });
+  }, [lotWindowConflicts, onLotsChange, sale.deliveryMode, sale.endTime, sale.startTime]);
+
   return (
     <div className="space-y-6">
       <Alert>
         <AlertDescription>{deliveryModeExplanation(sale.deliveryMode)}</AlertDescription>
       </Alert>
+
+      {lotWindowConflicts.length > 0 && !readOnly ? (
+        <Alert className="border-warning/40 bg-warning/5">
+          <AlertDescription className="space-y-3 font-body text-sm text-on-surface-variant">
+            <p>{scheduleLotConflictBanner(lotWindowConflicts.length)}</p>
+            <LoadingButton
+              type="button"
+              size="sm"
+              variant="secondary"
+              loading={syncPending}
+              onClick={syncLotsToWindow}
+            >
+              {syncLotsToSaleWindowLabel(lotWindowConflicts.length)}
+            </LoadingButton>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {showFirstLotChoice ? (
+        <div className="rounded-xl border border-dashed border-border-hairline bg-surface-container-low/40 p-6">
+          <p className="font-headline text-base text-on-surface">{lotsStepFirstLotPrompt()}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => setRows((prev) => [...prev, draftLotRow("new")])}
+              className="gap-2"
+            >
+              <Plus className="size-4" aria-hidden />
+              Create new lot
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRows((prev) => [...prev, draftLotRow("existing")])}
+              className="gap-2"
+            >
+              <Plus className="size-4" aria-hidden />
+              Add existing lot
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {readOnly && lots.length === 0 ? (
+        <p className="font-body text-sm text-on-surface-variant">No lots yet.</p>
+      ) : null}
 
       {rows.map((row, index) => (
         <LotRowEditor
@@ -574,20 +733,16 @@ export function SaleLotRowsEditor({
           }}
           onRemove={() => setRows((prev) => prev.filter((r) => r.clientRowId !== row.clientRowId))}
           onDetached={onLotsChange}
+          onScheduleUpdated={onLotsChange}
         />
       ))}
 
-      {!readOnly ? (
+      {showAddLotActions ? (
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
-              setRows((prev) => [
-                ...prev,
-                { ...emptySaleSetupLotRow(crypto.randomUUID()), source: "new" },
-              ])
-            }
+            onClick={() => setRows((prev) => [...prev, draftLotRow("new")])}
             className="gap-2"
           >
             <Plus className="size-4" aria-hidden />
@@ -596,12 +751,7 @@ export function SaleLotRowsEditor({
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
-              setRows((prev) => [
-                ...prev,
-                { ...emptySaleSetupLotRow(crypto.randomUUID()), source: "existing" },
-              ])
-            }
+            onClick={() => setRows((prev) => [...prev, draftLotRow("existing")])}
             className="gap-2"
           >
             <Plus className="size-4" aria-hidden />

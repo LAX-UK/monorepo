@@ -27,11 +27,13 @@ export function AdminLotEditableTitle({ lotId, value, ...rest }: TitleProps & { 
 export function AdminSaleEditableTitle({
   saleId,
   value,
+  editable = true,
   ...rest
-}: TitleProps & { saleId: string }) {
+}: TitleProps & { saleId: string; editable?: boolean }) {
   return (
     <AdminEditableTitle
       value={value}
+      editable={editable}
       onSave={(next) => adminUpdateSaleTitleFieldAction(saleId, next)}
       {...rest}
     />

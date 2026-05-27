@@ -1,34 +1,52 @@
 "use client";
 
-import { AdminLotConnectRequiredBanner } from "@/components/admin/admin-lot-connect-required-banner";
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminPublishLotResultAction } from "@/lib/actions/admin";
-import { Can } from "@/lib/auth/capabilities";
-import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
 type Props = {
   lotId: string;
   sellerLegalEntityId: string | null;
   disabled?: boolean;
+  /** Proactive server check — disables publish; banner shown by page/layout, not here. */
+  connectBlocked?: boolean;
 };
 
-export function PublishLotButton({ lotId, sellerLegalEntityId, disabled }: Props) {
+/** Publish control — parent gates visibility via `canPublish` (capability + lot status). */
+export function PublishLotButton({
+  lotId,
+  sellerLegalEntityId: _sellerLegalEntityId,
+  disabled,
+  connectBlocked = false,
+}: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const reactiveConnect = searchParams.get("error_code") === "connect_required";
+  const connectBlockedEffective = connectBlocked || reactiveConnect;
   const [pending, startTransition] = useTransition();
-  const [connectRequired, setConnectRequired] = useState(false);
   const [open, setOpen] = useState(false);
   const idempotencyKeyRef = useRef(`lot-publish-${crypto.randomUUID()}`);
 
+  const publishDisabled = disabled || connectBlockedEffective || pending;
+
+  const promoteConnectToShell = (detail?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("error_code", "connect_required");
+    if (detail?.trim()) {
+      params.set("error", detail.trim());
+    } else {
+      params.delete("error");
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   return (
-    <Can requirement={SALES_ACCESS}>
-      {connectRequired ? (
-        <AdminLotConnectRequiredBanner sellerLegalEntityId={sellerLegalEntityId} />
-      ) : null}
-      <Button type="button" size="sm" disabled={disabled || pending} onClick={() => setOpen(true)}>
+    <>
+      <Button type="button" size="sm" disabled={publishDisabled} onClick={() => setOpen(true)}>
         Publish
       </Button>
       <TypedConfirmationDialog
@@ -46,14 +64,13 @@ export function PublishLotButton({ lotId, sellerLegalEntityId, disabled }: Props
                 try {
                   const r = await adminPublishLotResultAction(lotId, idempotencyKeyRef.current);
                   if (r.ok) {
-                    setConnectRequired(false);
                     notify.success("Published");
                     router.refresh();
                     resolve();
                     return;
                   }
                   if (r.errorCode === "connect_required") {
-                    setConnectRequired(true);
+                    promoteConnectToShell(r.error);
                     reject(new Error("connect_required"));
                     return;
                   }
@@ -67,6 +84,6 @@ export function PublishLotButton({ lotId, sellerLegalEntityId, disabled }: Props
           });
         }}
       />
-    </Can>
+    </>
   );
 }

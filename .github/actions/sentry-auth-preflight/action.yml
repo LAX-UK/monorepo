@@ -22,25 +22,27 @@ runs:
           echo "::error::SENTRY_AUTH_TOKEN is not set. Create the terraform-bot internal integration (infra/terraform/BOOTSTRAP.md §6) and run: gh secret set SENTRY_AUTH_TOKEN"
           exit 1
         fi
+        sentry_base="${SENTRY_URL:-https://sentry.io}"
+        sentry_base="${sentry_base%/}"
         http_code="$(curl -sS -o /tmp/sentry-health.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          https://de.sentry.io/api/0/)"
+          "${sentry_base}/api/0/")"
         if [ "$http_code" != "200" ]; then
-          echo "::error::Sentry API returned HTTP ${http_code}. Use an Internal Integration token (not an Organization Token), regenerate terraform-bot, then gh secret set SENTRY_AUTH_TOKEN (and --env test if using the test environment)."
+          echo "::error::Sentry API returned HTTP ${http_code} against ${sentry_base}. Use an Internal Integration token (not an Organization Token), regenerate terraform-bot, then gh secret set SENTRY_AUTH_TOKEN (and --env test if using the test environment)."
           head -c 500 /tmp/sentry-health.json 2>/dev/null || true
           exit 1
         fi
         org_code="$(curl -sS -o /tmp/sentry-org.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          "https://de.sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/")"
+          "${sentry_base}/api/0/organizations/${SENTRY_ORG_SLUG}/")"
         if [ "$org_code" != "200" ]; then
-          echo "::error::Sentry org lookup returned HTTP ${org_code} for slug '${SENTRY_ORG_SLUG}'. Confirm the slug in Sentry → Settings → General (URL is sentry.io/settings/{slug}/)."
+          echo "::error::Sentry org lookup returned HTTP ${org_code} for slug '${SENTRY_ORG_SLUG}' on ${sentry_base}. Confirm the slug in Sentry → Settings → General (URL is lax-bid.sentry.io for US). A 404 on de.sentry.io usually means the org is on US SaaS — set SENTRY_URL=https://sentry.io."
           head -c 500 /tmp/sentry-org.json 2>/dev/null || true
           exit 1
         fi
         teams_code="$(curl -sS -o /tmp/sentry-teams.json -w '%{http_code}' \
           -H "Authorization: Bearer ${token}" \
-          "https://de.sentry.io/api/0/organizations/${SENTRY_ORG_SLUG}/teams/")"
+          "${sentry_base}/api/0/organizations/${SENTRY_ORG_SLUG}/teams/")"
         if [ "$teams_code" != "200" ]; then
           echo "::error::Could not list teams for org '${SENTRY_ORG_SLUG}' (HTTP ${teams_code}). Check terraform-bot Team permission and org slug."
           head -c 500 /tmp/sentry-teams.json 2>/dev/null || true

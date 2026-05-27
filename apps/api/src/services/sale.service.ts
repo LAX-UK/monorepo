@@ -4,6 +4,7 @@ import {
   type Lot,
   type Sale,
   type UserRole,
+  normalizeUserRoleOrClient,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
@@ -23,17 +24,23 @@ import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { lotTimingViolationForSale, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import {
+  rollbackSalePublishOnScheduleFailure,
+  scheduleJobsFailedError,
+} from "../lib/lot-schedule-jobs.js";
+import {
   presentLotsImages,
   presentSaleAdminImages,
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
+import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
@@ -59,6 +66,8 @@ export type SaleServiceOptions = {
   db?: Database;
   domainEventPublisher?: DomainEventPublisher | null;
   lotLifecycleRecording?: LotLifecycleRecording | null;
+  legalEntityRepository?: ILegalEntityRepository | null;
+  enforceIndividualConnectOnPublish?: boolean;
 };
 
 export class SaleService {
@@ -73,6 +82,8 @@ export class SaleService {
   private readonly db: Database | undefined;
   private readonly domainEventPublisher: DomainEventPublisher | null;
   private readonly lotLifecycleRecording: LotLifecycleRecording | null;
+  private readonly legalEntityRepository: ILegalEntityRepository | null;
+  private readonly enforceIndividualConnectOnPublish: boolean;
 
   constructor(opts: SaleServiceOptions) {
     this.saleRepo = opts.saleRepo;
@@ -86,6 +97,8 @@ export class SaleService {
     this.db = opts.db;
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
     this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
+    this.legalEntityRepository = opts.legalEntityRepository ?? null;
+    this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
   }
 
   private async recordLotLifecycle(fn: (tx: Database) => Promise<void>): Promise<void> {
@@ -330,6 +343,22 @@ export class SaleService {
       }
     }
 
+    if (this.enforceIndividualConnectOnPublish && this.legalEntityRepository) {
+      const blocked = await findLotsMissingSellerConnect(lots, this.legalEntityRepository);
+      if (blocked.length > 0) {
+        const titles = blocked.map((l) => `"${l.title}"`).join(", ");
+        return err(
+          new LotError(
+            blocked.length === 1
+              ? `This seller must complete Stripe Connect onboarding before the lot can be scheduled. (lot ${titles})`
+              : `Sellers must complete Stripe Connect onboarding before publish (${blocked.length} lots: ${titles})`,
+            409,
+            "connect_required",
+          ),
+        );
+      }
+    }
+
     if (this.db && this.lotLifecycleRecording) {
       await this.db.transaction(async (tx) => {
         const saleRepo = new DrizzleSaleRepository(tx);
@@ -385,10 +414,28 @@ export class SaleService {
         });
       }
     }
+    const scheduledLotIds: string[] = [];
     for (const l of lots) {
       const lotStart = caps.inheritsLotTiming ? sale.startTime : l.startTime;
       const lotEnd = caps.inheritsLotTiming ? sale.endTime : l.endTime;
-      await this.jobScheduler?.scheduleLot(l.id, lotStart, lotEnd);
+      try {
+        await this.jobScheduler?.scheduleLot(l.id, lotStart, lotEnd);
+        scheduledLotIds.push(l.id);
+      } catch {
+        await rollbackSalePublishOnScheduleFailure({
+          jobScheduler: this.jobScheduler,
+          lotRepo: this.lotRepo,
+          saleRepo: this.saleRepo,
+          lotLifecycleRecording: this.lotLifecycleRecording,
+          db: this.db ?? null,
+          recordLotLifecycle: (fn) => this.recordLotLifecycle(fn),
+          saleId,
+          lots,
+          scheduledLotIds,
+          actorUserId: userId,
+        });
+        return err(scheduleJobsFailedError());
+      }
     }
     const updatedSale = await this.saleRepo.findById(saleId);
     if (!updatedSale) return err(new LotError("Sale not found", 404));
@@ -541,14 +588,16 @@ export class SaleService {
     row: CreateNestedLotForSaleInput,
     userStaffRole?: string | null,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can add lots to a sale", 403));
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!canManageCatalogue(role, staff)) {
+      return err(
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can add lots to a sale",
+          role,
+          staff,
+        ),
+      );
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -612,14 +661,16 @@ export class SaleService {
     userStaffRole?: string | null,
     attachVia: LotAttachedToSalePayload["via"] = "attach_endpoint",
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can attach lots", 403));
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!canManageCatalogue(role, staff)) {
+      return err(
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can attach lots",
+          role,
+          staff,
+        ),
+      );
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -684,14 +735,16 @@ export class SaleService {
     lotId: string,
     userStaffRole?: string | null,
   ): Promise<Result<void, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can detach lots", 403));
+    const role = normalizeUserRoleOrClient(userRole);
+    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+    if (!canManageCatalogue(role, staff)) {
+      return err(
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can detach lots",
+          role,
+          staff,
+        ),
+      );
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
@@ -701,6 +754,9 @@ export class SaleService {
     const l = await this.lotRepo.findById(lotId);
     if (!l || l.saleId !== saleId) {
       return err(new LotError("Lot not found in this sale", 404));
+    }
+    if (l.status !== "draft") {
+      return err(new LotError("Only draft lots can be moved between sales"));
     }
     const fromSaleId = l.saleId;
     if (this.db && this.lotLifecycleRecording) {
@@ -789,11 +845,15 @@ export class SaleService {
         startTime: nextStart,
         endTime: nextEnd,
       };
+      const violations: string[] = [];
       for (const l of lots) {
         const violation = lotTimingViolationForSale(nextSale, l.startTime, l.endTime);
         if (violation) {
-          return err(new LotError(`${violation} (lot "${l.title}")`, 400));
+          violations.push(`${violation} (lot "${l.title}")`);
         }
+      }
+      if (violations.length > 0) {
+        return err(new LotError(violations.join("; "), 400));
       }
     }
     const updated = await this.saleRepo.update(saleId, normalized);

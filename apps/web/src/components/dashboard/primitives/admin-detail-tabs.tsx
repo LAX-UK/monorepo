@@ -29,10 +29,18 @@ type Props = {
   className?: string;
   /** When true, sync active tab to `?tab=` in the URL. */
   syncUrl?: boolean;
+  /** Exposes programmatic tab navigation (mirrors wizard `onStepControl`). */
+  onTabControl?: (control: { goTo: (value: string) => void }) => void;
 };
 
 /** Sticky, horizontally scrollable admin detail tabs. */
-export function AdminDetailTabs({ defaultValue, tabs, className, syncUrl = false }: Props) {
+export function AdminDetailTabs({
+  defaultValue,
+  tabs,
+  className,
+  syncUrl = false,
+  onTabControl,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -57,6 +65,15 @@ export function AdminDetailTabs({ defaultValue, tabs, className, syncUrl = false
     },
     [syncUrl, searchParams, router, pathname],
   );
+
+  useEffect(() => {
+    onTabControl?.({
+      goTo: (value: string) => {
+        if (!tabs.some((t) => t.value === value)) return;
+        onValueChange(value);
+      },
+    });
+  }, [onTabControl, onValueChange, tabs]);
 
   return (
     <Tabs value={active} onValueChange={onValueChange} className={cn("w-full", className)}>

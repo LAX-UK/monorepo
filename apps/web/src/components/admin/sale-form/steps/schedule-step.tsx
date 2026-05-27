@@ -4,9 +4,16 @@ import { CatalogFormSection } from "@/components/admin/forms/catalog-form-sectio
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
+import {
+  findLotsOutsideSaleWindow,
+  parseSaleWindowFromForm,
+} from "@/lib/admin/sale-lot-window-sync";
+import { scheduleLotConflictBanner } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { formatNumber } from "@/lib/ui/format";
+import { formatDateTime, formatNumber } from "@/lib/ui/format";
+import type { Lot } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import {
   FormControl,
@@ -18,6 +25,7 @@ import {
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 import { normalizeUkPostcode } from "@auction/validators";
+import { useMemo } from "react";
 import type {
   FieldArrayWithId,
   UseFieldArrayAppend,
@@ -47,6 +55,7 @@ type Props = {
   previewMapUrl: string | null;
   customMapUrl: string | undefined;
   postcodeIsValid: boolean;
+  lots?: readonly Lot[];
 };
 
 export function SaleScheduleStep({
@@ -62,9 +71,34 @@ export function SaleScheduleStep({
   previewMapUrl,
   customMapUrl,
   postcodeIsValid,
+  lots = [],
 }: Props) {
+  const deliveryMode = form.watch("deliveryMode");
+  const startTime = form.watch("startTime");
+  const endTime = form.watch("endTime");
+  const lotConflicts = useMemo(() => {
+    const window = parseSaleWindowFromForm({ deliveryMode, startTime, endTime });
+    if (!window || lots.length === 0) return [];
+    return findLotsOutsideSaleWindow(lots, window);
+  }, [deliveryMode, endTime, lots, startTime]);
+  const pendingWindow = parseSaleWindowFromForm({ deliveryMode, startTime, endTime });
+
   return (
     <>
+      {lotConflicts.length > 0 && pendingWindow ? (
+        <Alert className="border-warning/40 bg-warning/5">
+          <AlertDescription className="space-y-2 text-pretty font-body text-sm text-on-surface-variant">
+            <p className="font-medium text-on-surface">
+              {scheduleLotConflictBanner(lotConflicts.length)}
+            </p>
+            <p>
+              Pending sale window: {formatDateTime(pendingWindow.startTime)} –{" "}
+              {formatDateTime(pendingWindow.endTime)} (local).
+            </p>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {!isDraft ? (
         <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-3 font-body text-sm text-on-surface-variant">
           <strong className="text-warning">Read-only fields:</strong> Schedule, delivery mode, and

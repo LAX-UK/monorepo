@@ -22,6 +22,7 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   let cloneDefaults = emptyAdminLotFormValues();
+  let cloneFailed = false;
   if (fromLotId) {
     try {
       const existing = await getAdminLotById(fromLotId);
@@ -30,9 +31,11 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
           ...lotToAdminLotFormValues(existing),
           title: `${existing.title} (copy)`,
         };
+      } else {
+        cloneFailed = true;
       }
     } catch {
-      /* ignore clone failures — fall back to empty form */
+      cloneFailed = true;
     }
   }
   if (englishOnlyAuctionsLocked && cloneDefaults.auctionType !== "english") {
@@ -52,11 +55,13 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
   if (salesResult.status === "rejected") loadWarnings.push("sales list");
   if (artistResult.status === "rejected") loadWarnings.push("artist list");
 
-  const description = fromLotId
-    ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
-    : loadWarnings.length > 0
-      ? `Some lists could not be loaded (${loadWarnings.join(", ")}). You can still create a draft.`
-      : null;
+  const description = cloneFailed
+    ? "Could not load the lot to clone — starting with a blank form."
+    : fromLotId
+      ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
+      : loadWarnings.length > 0
+        ? `Some lists could not be loaded (${loadWarnings.join(", ")}). You can still create a draft.`
+        : null;
 
   return (
     <CatalogFormShell

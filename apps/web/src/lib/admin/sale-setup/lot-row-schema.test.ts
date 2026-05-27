@@ -1,9 +1,12 @@
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
 import {
   emptySaleSetupLotRow,
   mergeSavedLotRow,
   mergeWizardRowsWithServerLots,
 } from "@/lib/admin/sale-setup";
-import { describe, expect, it } from "vitest";
 
 describe("mergeSavedLotRow", () => {
   it("preserves existing source and title when attaching inventory", () => {
@@ -42,6 +45,16 @@ describe("mergeSavedLotRow", () => {
 });
 
 describe("mergeWizardRowsWithServerLots", () => {
+  it("returns no rows when the sale has no lots and nothing is in progress", () => {
+    const merged = mergeWizardRowsWithServerLots([], [], (lot: { id: string; title: string }) => ({
+      ...emptySaleSetupLotRow(lot.id),
+      lotId: lot.id,
+      title: lot.title,
+    }));
+
+    expect(merged).toEqual([]);
+  });
+
   it("keeps unsaved rows while syncing saved lots from the server", () => {
     const unsaved = emptySaleSetupLotRow("draft-row");
     const current = [

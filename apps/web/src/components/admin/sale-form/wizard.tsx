@@ -13,6 +13,12 @@ import {
   adminUpdateSaleResultAction,
 } from "@/lib/actions/admin-sales";
 import {
+  findLotsOutsideSaleWindow,
+  parseSaleWindowFromForm,
+} from "@/lib/admin/sale-lot-window-sync";
+import { scheduleLotConflictPersistBlocked } from "@/lib/admin/sale-setup/field-copy";
+import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
+import {
   applyZodErrorsToForm,
   zodIssuePathForForm as zodPathJoin,
 } from "@/lib/admin/zod-form-errors";
@@ -28,7 +34,8 @@ import {
 import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
-import type { CategoryNode, EntityDocument } from "@auction/types";
+import type { CategoryNode, EntityDocument, Lot } from "@auction/types";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
@@ -39,8 +46,9 @@ import {
   isUkPostcode,
 } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { SaleDocumentsStep } from "./steps/documents-step";
 import { SaleIdentityStep } from "./steps/identity-step";
@@ -85,6 +93,7 @@ type Props = {
   wizardDraftEntityId?: string;
   /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
   htmlFormId?: string;
+  lots?: Lot[];
 };
 
 function saleZodIssuePath(path: (string | number)[]): string {
@@ -105,9 +114,11 @@ export function AdminSaleForm({
   previewUrlByKey = {},
   wizardDraftEntityId,
   htmlFormId,
+  lots = [],
 }: Props) {
   const isDraft = mode === "create" || !saleStatus || saleStatus === "draft";
   const [pending, startTransition] = useTransition();
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
   const baselineRef = useRef(defaultValues);
@@ -267,6 +278,19 @@ export function AdminSaleForm({
                 notify.error("Check the form for errors");
                 return;
               }
+              if (isDraft && lots.length > 0) {
+                const pendingWindow = parseSaleWindowFromForm(values);
+                if (pendingWindow) {
+                  const conflicts = findLotsOutsideSaleWindow(lots, pendingWindow);
+                  if (conflicts.length > 0) {
+                    const titles = conflicts.map((c) => c.lot.title.trim() || "Untitled lot");
+                    setSaveNotice(scheduleLotConflictPersistBlocked(titles));
+                    wizardGoToRef.current(1);
+                    return;
+                  }
+                }
+              }
+              setSaveNotice(null);
               const r = await adminUpdateSaleResultAction(saleId, api.data);
               if (r.ok) {
                 notify.success("Saved");
@@ -274,10 +298,13 @@ export function AdminSaleForm({
                 return;
               }
               notify.error(
-                actionFailureNotifyMessage(r.error, {
-                  status: r.status,
+                humanizeSetupError({
+                  message: actionFailureNotifyMessage(r.error, {
+                    status: r.status,
+                    errorCode: r.errorCode,
+                    meta: r.meta,
+                  }),
                   errorCode: r.errorCode,
-                  meta: r.meta,
                 }),
               );
               if (r.fieldErrors) {
@@ -294,6 +321,22 @@ export function AdminSaleForm({
               English-only mode is on: any lots created with this sale must use the{" "}
               <span className="font-medium text-on-surface">english</span> auction type
             </p>
+          ) : null}
+
+          {saveNotice ? (
+            <Alert className="border-warning/40 bg-warning/5">
+              <AlertDescription className="space-y-2 font-body text-sm text-on-surface-variant">
+                <p>{saveNotice}</p>
+                {saleId ? (
+                  <Link
+                    href={`/admin/sales/${saleId}/setup?step=lots`}
+                    className="font-medium text-primary underline underline-offset-2"
+                  >
+                    Open sale setup — Lots step
+                  </Link>
+                ) : null}
+              </AlertDescription>
+            </Alert>
           ) : null}
 
           <AdminFormWizard
@@ -364,6 +407,7 @@ export function AdminSaleForm({
                     previewMapUrl={previewMapUrl}
                     customMapUrl={customMapUrl}
                     postcodeIsValid={postcodeIsValid}
+                    lots={lots}
                   />
                 ) : null}
                 {stepIndex === 2 ? (

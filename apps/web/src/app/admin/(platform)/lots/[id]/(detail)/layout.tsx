@@ -1,11 +1,15 @@
 import { LotDetailShell } from "@/components/admin/lot-detail/lot-detail-shell";
+import { loadLotConnectRequired } from "@/lib/admin/connect-readiness";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import {
   getAdminDomainEventsForAggregate,
   getAdminLotLifecycle,
 } from "@/lib/data/http/admin.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
+import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -15,7 +19,18 @@ type Props = {
 
 export default async function AdminLotDetailLayout({ params, children }: Props) {
   const { id } = await params;
-  const [bundle, bids, documents, activityEvents, lifecycle] = await Promise.all([
+  const user = await requireAdminCapability(LOTS_ACCESS, `/admin/lots/${id}`);
+  const canManageCatalog = userHasAccessTo(
+    user.role as UserRole,
+    user.staffRole ?? null,
+    LOTS_ACCESS,
+  );
+  const canManageAuction = userHasAccessTo(
+    user.role as UserRole,
+    user.staffRole ?? null,
+    SALES_ACCESS,
+  );
+  const [bundle, bids, documents, activityEvents, lifecycle, connectRequired] = await Promise.all([
     loadAdminLotDetail(id),
     getServerLotBids(id, 100).catch(() => []),
     getServerLotDocuments(id).catch(() => []),
@@ -23,6 +38,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       () => [],
     ),
     getAdminLotLifecycle(id).catch(() => ({ snapshot: null, events: [] })),
+    loadLotConnectRequired(id),
   ]);
 
   return (
@@ -33,6 +49,9 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       documentCount={documents.length}
       activityEvents={activityEvents}
       lifecycle={lifecycle}
+      canManageCatalog={canManageCatalog}
+      canManageAuction={canManageAuction}
+      connectRequired={connectRequired}
     >
       {children}
     </LotDetailShell>

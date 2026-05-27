@@ -29,8 +29,8 @@ export function buildLotListQuery(params: ListLotsParams): Record<string, string
   return q;
 }
 
-/** Initial bid history for artwork SSR (no auth). */
-export async function getServerLotBids(lotId: string, limit = 50): Promise<Bid[]> {
+/** Initial bid history for artwork SSR (no auth). Deduped per request via React cache. */
+export const getServerLotBids = cache(async (lotId: string, limit = 50): Promise<Bid[]> => {
   const client = await getServerHc();
   const res = await client.lots[":id"].bids.$get({
     param: { id: lotId },
@@ -41,7 +41,7 @@ export async function getServerLotBids(lotId: string, limit = 50): Promise<Bid[]
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseBid);
-}
+});
 
 export async function getServerArchiveMetricsReader(): Promise<ArchiveMetricsReader> {
   const base = getServerApiBase();

@@ -361,7 +361,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const result = await container.saleService.detachLot(role, id, lotId, staffRole);
       return result.match(
         () => c.body(null, 204),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+        (error) => c.json(serviceErrorJsonBody(error), asHttpStatus(error.status)),
       );
     },
   );
@@ -398,16 +398,21 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     zValidator("param", saleLotIdParamSchema),
     zValidator("json", cancelSaleBodySchema),
     async (c) => {
+      const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
       const staffRole = c.get("userStaffRole") ?? null;
       const { id, lotId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      const result = await container.saleStatusTransitionService.cancelLot(
+      const lot = await container.lotService.getById(lotId);
+      if (!lot || lot.saleId !== id) {
+        return c.json({ error: "Lot not found in this sale" }, 404);
+      }
+      const result = await container.lotService.cancel(
+        userId,
         role,
-        id,
         lotId,
-        reason,
-        staffRole,
+        normalizeUserStaffRole(staffRole ?? undefined),
+        reason?.trim() ? "admin_override" : "manual",
       );
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
@@ -426,6 +431,29 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       const staffRole = c.get("userStaffRole") ?? null;
       const { id, lotId } = c.req.valid("param");
       const { status, reason } = c.req.valid("json");
+      if (status === "cancelled") {
+        const userId = c.get("userId") as string;
+        const lot = await container.lotService.getById(lotId);
+        if (!lot || lot.saleId !== id) {
+          return c.json({ error: "Lot not found in this sale" }, 404);
+        }
+        const cancelResult = await container.lotService.cancel(
+          userId,
+          role,
+          lotId,
+          normalizeUserStaffRole(staffRole ?? undefined),
+          reason?.trim() ? "admin_override" : "manual",
+        );
+        if (cancelResult.isErr()) {
+          return c.json(
+            serviceErrorJsonBody(cancelResult.error),
+            asHttpStatus(cancelResult.error.status),
+          );
+        }
+        return c.json({
+          data: await presentLotImages(container.mediaUrlResolver, cancelResult.value),
+        });
+      }
       const result = await container.saleStatusTransitionService.setLotStatus(
         role,
         id,

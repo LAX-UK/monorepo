@@ -4,7 +4,13 @@ import {
   buildLotPublishReadiness,
   buildSalePublishReadiness,
 } from "@/lib/admin/catalog-readiness";
+import {
+  type ConnectRequiredByLotId,
+  lotConnectRequired,
+} from "@/lib/admin/connect-readiness-shared";
+import { parseSaleWindowFromSale } from "@/lib/admin/sale-lot-window-sync";
 import type { Lot, Sale } from "@auction/types";
+import { lotTimingViolationAgainstSale } from "@auction/validators";
 import { readinessLabel } from "./field-copy";
 import type { SaleSetupStepId } from "./steps";
 
@@ -30,7 +36,7 @@ export type BuildSaleSetupReadinessInput = {
   sale: Sale;
   lots: Lot[];
   pendingRegistrationCount?: number | null;
-  connectRequiredByLotId?: ReadonlyMap<string, boolean>;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
   /** When set, readiness links point to wizard step instead of detail tabs. */
   setupStepHref?: SetupStepHrefFn;
 };
@@ -39,7 +45,7 @@ export type SaleSetupGateInput = {
   sale: Sale | null;
   lots: Lot[];
   pendingRegistrationCount?: number | null;
-  connectRequiredByLotId?: ReadonlyMap<string, boolean>;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
 export function isSaleSetupPublishReady(
@@ -71,7 +77,14 @@ export function resolveFirstBlockingSetupStep(input: SaleSetupGateInput): SaleSe
   if (input.lots.length === 0) return "lots";
 
   for (const lot of input.lots) {
-    const connectRequired = input.connectRequiredByLotId?.get(lot.id) ?? false;
+    const window = parseSaleWindowFromSale(input.sale);
+    if (lotTimingViolationAgainstSale(window, lot.startTime, lot.endTime)) {
+      return "lots";
+    }
+  }
+
+  for (const lot of input.lots) {
+    const connectRequired = lotConnectRequired(input.connectRequiredByLotId, lot.id);
     const lotReady = buildLotPublishReadiness(lot.id, lot, connectRequired);
     if (lotReady.percent < 100) return "catalog-prep";
   }
@@ -115,7 +128,20 @@ export function buildSaleSetupReadiness(
   }
 
   for (const lot of lots) {
-    const connectRequired = connectRequiredByLotId?.get(lot.id) ?? false;
+    const window = parseSaleWindowFromSale(sale);
+    const saleWindowViolation = lotTimingViolationAgainstSale(window, lot.startTime, lot.endTime);
+    if (saleWindowViolation) {
+      const lotTitle = lot.title.trim() || "Untitled lot";
+      items.push({
+        id: `lot:${lot.id}:sale_window`,
+        label: `${lotTitle}: ${readinessLabel("sale_window")}`,
+        ok: false,
+        severity: "required",
+        href: setupStepHref?.("lots") ?? `/admin/lots/${lot.id}/edit`,
+      });
+    }
+
+    const connectRequired = lotConnectRequired(connectRequiredByLotId, lot.id);
     const lotReady = buildLotPublishReadiness(lot.id, lot, connectRequired);
     const lotTitle = lot.title.trim() || "Untitled lot";
     for (const lotItem of lotReady.items) {
@@ -123,7 +149,7 @@ export function buildSaleSetupReadiness(
       if (lotItem.id === "sale") continue;
       items.push({
         id: `lot:${lot.id}:${lotItem.id}`,
-        label: readinessLabel(lotItem.id, { lotTitle }),
+        label: lotItem.id === "seller" ? lotItem.label : readinessLabel(lotItem.id, { lotTitle }),
         ok: false,
         severity: lotItem.severity,
         href: setupStepHref?.("catalog-prep") ?? lotItem.href ?? `/admin/lots/${lot.id}`,
@@ -145,12 +171,12 @@ export function buildSaleSetupReadiness(
 
 export function countLotsCatalogReady(
   lots: Lot[],
-  connectRequiredByLotId?: ReadonlyMap<string, boolean>,
+  connectRequiredByLotId?: ConnectRequiredByLotId,
 ): { ready: number; total: number } {
   if (lots.length === 0) return { ready: 0, total: 0 };
   let ready = 0;
   for (const lot of lots) {
-    const connectRequired = connectRequiredByLotId?.get(lot.id) ?? false;
+    const connectRequired = lotConnectRequired(connectRequiredByLotId, lot.id);
     const r = buildLotPublishReadiness(lot.id, lot, connectRequired);
     if (r.percent === 100) ready++;
   }

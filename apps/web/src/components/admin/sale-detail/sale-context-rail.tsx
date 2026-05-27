@@ -9,6 +9,7 @@ import {
 import { sumLotHammers } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { buildSalePublishReadiness } from "@/lib/admin/catalog-readiness";
+import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
@@ -25,6 +26,8 @@ type Props = {
   registrationCount: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
   deleteBlockers?: readonly string[];
+  canManageSales?: boolean;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
   status?: ReactNode;
   publicHref?: string;
 };
@@ -37,6 +40,8 @@ export function SaleContextRail({
   registrationCount,
   activityEvents = [],
   deleteBlockers = [],
+  canManageSales = false,
+  connectRequiredByLotId,
   status,
   publicHref,
 }: Props) {
@@ -47,6 +52,7 @@ export function SaleContextRail({
           sale,
           lots,
           pendingRegistrationCount: registrationCount,
+          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
           setupStepHref: (step) => saleSetupHref(saleId, step),
         })
       : sale.status === "scheduled"
@@ -97,12 +103,16 @@ export function SaleContextRail({
                     href: saleSetupHref(saleId, "identity"),
                     variant: "default" as const,
                   },
-                  {
-                    id: "edit",
-                    label: "Edit draft",
-                    href: `/admin/sales/${saleId}/edit`,
-                    variant: "outline" as const,
-                  },
+                  ...(canManageSales
+                    ? [
+                        {
+                          id: "edit",
+                          label: "Edit draft",
+                          href: `/admin/sales/${saleId}/edit`,
+                          variant: "outline" as const,
+                        },
+                      ]
+                    : []),
                 ]
               : []),
             ...(publicHref
@@ -155,7 +165,7 @@ export function SaleContextRail({
             compact
           />
         ) : null}
-        {deleteBlockers.length > 0 ? (
+        {deleteBlockers.length > 0 && canManageSales ? (
           <div className="rounded-lg border border-border-hairline bg-surface-container-low px-4 py-3">
             <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
               Cannot delete

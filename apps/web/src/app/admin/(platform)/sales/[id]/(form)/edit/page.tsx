@@ -2,6 +2,7 @@ import { AdminSaleForm } from "@/components/admin/admin-sale-form";
 import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
@@ -10,16 +11,18 @@ import {
   buildCoverImagePreviewMap,
   saleToAdminSaleFormValues,
 } from "@/lib/forms/schemas/admin-sale-defaults";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notFound } from "next/navigation";
 
 export default async function AdminEditSalePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requireAdminCapability(SALES_ACCESS, `/admin/sales/${id}/edit`);
   const [bundle, categories] = await Promise.all([
     getAdminSaleById(id),
     (async () => (await getServerCategoryReader()).tree())(),
   ]);
   if (!bundle) notFound();
-  const { sale } = bundle;
+  const { sale, lots } = bundle;
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   const saleDocuments = await getServerSaleDocuments(id);
@@ -58,6 +61,7 @@ export default async function AdminEditSalePage({ params }: { params: Promise<{ 
         initialSaleDocuments={saleDocuments}
         previewUrlByKey={previewUrlByKey}
         htmlFormId={CATALOG_FORM_IDS.sale}
+        lots={lots}
       />
     </CatalogFormShell>
   );
