@@ -3,8 +3,8 @@ import type {
   SaleSetupLotRowFormValues,
 } from "@/lib/admin/sale-setup/lot-row-schema";
 import { safeParseSaleSetupLotRowForApi } from "@/lib/admin/sale-setup/lot-row-schema";
-import { toDatetimeLocalValue } from "@/lib/forms/schemas/admin-lot-defaults";
 import type { Lot } from "@auction/types";
+import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
   type createNestedLotForSaleSchema,
   lotTimingViolationAgainstSale,
@@ -32,8 +32,8 @@ export function inventoryLotToAttachReviewRow(
     auctionType: lot.auctionType,
     startingPrice: lot.startingPrice,
     artistId: lot.artistId ?? null,
-    startTime: toDatetimeLocalValue(lot.startTime),
-    endTime: toDatetimeLocalValue(lot.endTime),
+    startTime: toDatetimeFormString(lot.startTime),
+    endTime: toDatetimeFormString(lot.endTime),
   };
 }
 
@@ -44,8 +44,8 @@ export function attachReviewScheduleChanged(
   const startRaw = values.startTime?.trim();
   const endRaw = values.endTime?.trim();
   if (!startRaw || !endRaw) return false;
-  const startTime = new Date(startRaw);
-  const endTime = new Date(endRaw);
+  const startTime = instantFromDatetimeFormString(startRaw);
+  const endTime = instantFromDatetimeFormString(endRaw);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) return false;
   return (
     startTime.getTime() !== original.startTime.getTime() ||
@@ -83,8 +83,8 @@ export function attachReviewScheduleViolation(
   const startRaw = values.startTime?.trim();
   const endRaw = values.endTime?.trim();
   if (!startRaw || !endRaw) return "Choose lot opening and closing times";
-  const startTime = new Date(startRaw);
-  const endTime = new Date(endRaw);
+  const startTime = instantFromDatetimeFormString(startRaw);
+  const endTime = instantFromDatetimeFormString(endRaw);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
     return "Choose valid lot opening and closing times";
   }

@@ -16,6 +16,7 @@ import { isSaleLiveish, venueOneLiner } from "@/components/admin/sale-detail/sal
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { buildSaleNavigationActionItems } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
+import { isSaleSetupPublishReady } from "@/lib/admin/sale-setup/readiness";
 import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { salePath } from "@/lib/seo/url";
 import { Badge } from "@auction/ui";
@@ -65,6 +66,17 @@ export function SaleDetailShell({
 
   const pendingRegs =
     liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;
+
+  const publishReady =
+    sale.status === "draft"
+      ? isSaleSetupPublishReady({
+          saleId,
+          sale,
+          lots,
+          pendingRegistrationCount: pendingRegs > 0 ? pendingRegs : null,
+          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
+        })
+      : false;
 
   const tabSpecs = [
     {
@@ -136,6 +148,7 @@ export function SaleDetailShell({
             saleTitle={sale.title}
             canEdit={canEditDraftSale}
             canPublish={canPublish}
+            publishReady={publishReady}
             canUnpublish={canUnpublish}
             canCancel={canCancel}
             canDelete={canDelete}
@@ -150,6 +163,7 @@ export function SaleDetailShell({
           saleId={saleId}
           saleTitle={sale.title}
           canPublish={canPublish}
+          publishReady={publishReady}
           canUnpublish={canUnpublish}
           canCancel={canCancel}
           canDelete={canDelete}

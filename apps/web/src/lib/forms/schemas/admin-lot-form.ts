@@ -1,5 +1,6 @@
 import { lotAuctionTypes } from "@auction/types";
 import type { SaleDeliveryMode } from "@auction/types";
+import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
   type CreateLotInput,
   createLotSchema,
@@ -159,8 +160,8 @@ export const adminLotFormValuesSchema = zod
         path: ["dimensions"],
       });
     }
-    const start = new Date(values.startTime);
-    const end = new Date(values.endTime);
+    const start = instantFromDatetimeFormString(values.startTime);
+    const end = instantFromDatetimeFormString(values.endTime);
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end <= start) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
@@ -187,8 +188,8 @@ export function refineLotTimingForAssignedSale(
   if (!values.saleId) return;
   const sale = salesById.get(values.saleId);
   if (!sale) return;
-  const start = new Date(values.startTime);
-  const end = new Date(values.endTime);
+  const start = instantFromDatetimeFormString(values.startTime);
+  const end = instantFromDatetimeFormString(values.endTime);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
 
   const window = {
@@ -263,8 +264,8 @@ function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }
         ? Number.parseInt(String(v.dutchDecrementIntervalMs).trim(), 10)
         : undefined,
     images: opts?.forUpdate ? v.images : v.images.length > 0 ? v.images : undefined,
-    startTime: new Date(v.startTime),
-    endTime: new Date(v.endTime),
+    startTime: instantFromDatetimeFormString(v.startTime),
+    endTime: instantFromDatetimeFormString(v.endTime),
     saleId: v.saleId,
     ...(lotNumberRaw !== undefined ? { lotNumber: lotNumberRaw } : {}),
     ...(v.artistId !== undefined ? { artistId: v.artistId } : {}),

@@ -4,11 +4,8 @@ import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-s
 import { LotEditFormLayout } from "@/components/admin/lot-form/lot-edit-form-layout";
 import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import {
-  getAdminArtistList,
-  getAdminLotById,
-  getAdminSalesList,
-} from "@/lib/data/http/admin.server";
+import { getLotFormAssignableSales } from "@/lib/admin/lot-form-sales";
+import { getAdminArtistList, getAdminLotById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -28,15 +25,16 @@ type Props = {
 
 export default async function AdminEditLotLayout({ params, children }: Props) {
   const { id } = await params;
-  const [auction, categories, salesRows, artistList, lotDocuments] = await Promise.all([
+  const [auction, categories, sales, artistList, lotDocuments] = await Promise.all([
     getAdminLotById(id).catch(() => null),
     (async () => (await getServerCategoryReader()).tree())(),
-    getAdminSalesList({ limit: 200 }).catch(() => []),
+    getAdminLotById(id)
+      .then((lot) => getLotFormAssignableSales(lot?.saleId))
+      .catch(() => getLotFormAssignableSales()),
     getAdminArtistList({ includeArchived: false, limit: 200 }),
     getServerLotDocuments(id),
   ]);
   const artists = artistList.rows;
-  const sales = salesRows.map((r) => r.sale);
   if (!auction) notFound();
   if (auction.status === "ended" || auction.status === "cancelled" || auction.status === "voided") {
     redirect(`/admin/lots/${id}`);

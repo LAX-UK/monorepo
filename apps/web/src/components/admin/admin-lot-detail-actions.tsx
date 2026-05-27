@@ -2,6 +2,7 @@
 
 import { CancelLotButton } from "@/components/admin/lot-actions/cancel-lot-button";
 import { PublishLotButton } from "@/components/admin/lot-actions/publish-lot-button";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -23,6 +24,7 @@ type Props = {
   connectBlocked?: boolean;
   /** When lot belongs to a draft sale, publish is done via sale publish. */
   saleStatus?: string | null;
+  publishReadiness?: CatalogReadinessResult | null;
   canCancel: boolean;
   showEditDraft: boolean;
   showEditLot: boolean;
@@ -36,6 +38,7 @@ export function AdminLotDetailActions({
   canPublish,
   connectBlocked = false,
   saleStatus = null,
+  publishReadiness = null,
   canCancel,
   showEditDraft,
   showEditLot,
@@ -72,6 +75,7 @@ export function AdminLotDetailActions({
           lotId={lotId}
           sellerLegalEntityId={sellerLegalEntityId}
           connectBlocked={connectBlocked}
+          publishReadiness={publishReadiness}
         />
       ) : null}
       {canCancel ? <CancelLotButton lotId={lotId} /> : null}

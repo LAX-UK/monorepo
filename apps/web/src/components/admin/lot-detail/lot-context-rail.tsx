@@ -39,7 +39,12 @@ export function LotContextRail({
   quickActions,
 }: Props) {
   const readiness =
-    auction.status === "draft" ? buildLotPublishReadiness(lotId, auction, connectRequired) : null;
+    auction.status === "draft"
+      ? buildLotPublishReadiness(lotId, auction, {
+          connectRequired,
+          sale: context.sale,
+        })
+      : null;
 
   const related = [
     ...(context.sale

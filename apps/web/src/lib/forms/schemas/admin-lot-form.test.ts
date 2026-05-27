@@ -1,3 +1,4 @@
+import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { describe, expect, it } from "vitest";
 import {
   type AdminLotFormValues,
@@ -138,6 +139,31 @@ describe("buildAdminLotFormSchema", () => {
       endTime: "2026-06-03T18:00",
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("accepts lot schedule when form minute matches sale start despite sub-minute drift", () => {
+    const assignSaleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const saleStart = new Date("2026-06-01T10:00:00Z");
+    const saleWithSeconds = new Date(saleStart.getTime() + 30_000);
+    const salesById = new Map([
+      [
+        assignSaleId,
+        {
+          id: assignSaleId,
+          deliveryMode: "online" as const,
+          startTime: saleWithSeconds,
+          endTime: new Date("2026-06-07T18:00:00Z"),
+        },
+      ],
+    ]);
+    const schema = buildAdminLotFormSchema(salesById);
+    const parsed = schema.safeParse({
+      ...base,
+      saleId: assignSaleId,
+      startTime: toDatetimeFormString(saleStart),
+      endTime: "2026-06-03T18:00",
+    });
+    expect(parsed.success).toBe(true);
   });
 });
 

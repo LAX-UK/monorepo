@@ -18,6 +18,7 @@ type Props = {
   saleId: string;
   saleTitle: string;
   canPublish: boolean;
+  publishReady?: boolean;
   canUnpublish: boolean;
   canCancel: boolean;
   canDelete: boolean;
@@ -54,6 +55,7 @@ export function SaleDetailMobileLifecycleTrailing({
   saleId,
   saleTitle,
   canPublish,
+  publishReady = true,
   canUnpublish,
   canCancel,
   canDelete,
@@ -97,9 +99,15 @@ export function SaleDetailMobileLifecycleTrailing({
             type="button"
             size="sm"
             variant="outline"
-            disabled={pending}
+            disabled={pending || (item.kind === "publish" && !publishReady)}
+            title={
+              item.kind === "publish" && !publishReady
+                ? "Complete sale setup on the review step before publishing"
+                : undefined
+            }
             className="min-h-11"
             onClick={() => {
+              if (item.kind === "publish" && !publishReady) return;
               if (item.kind === "publish") setPublishOpen(true);
               else if (item.kind === "delete") setDeleteOpen(true);
               else setConfirmKind(item.kind);

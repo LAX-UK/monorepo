@@ -1,4 +1,5 @@
 import type { Lot } from "@auction/types";
+import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import { describe, expect, it } from "vitest";
 import {
   attachReviewScheduleChanged,
@@ -7,8 +8,8 @@ import {
   validateAttachReviewSchedule,
 } from "./attach-existing-lot";
 
-const saleStart = new Date("2030-06-01T10:00:00");
-const saleEnd = new Date("2030-06-01T18:00:00");
+const saleStart = instantFromDatetimeFormString("2030-06-01T10:00");
+const saleEnd = instantFromDatetimeFormString("2030-06-01T18:00");
 
 function draftLot(overrides: Partial<Lot> = {}): Lot {
   return {
@@ -106,8 +107,8 @@ describe("validateAttachReviewSchedule", () => {
 
   it("passes when schedule fits the sale window", () => {
     const lot = draftLot({
-      startTime: new Date("2030-06-01T10:30:00"),
-      endTime: new Date("2030-06-01T11:30:00"),
+      startTime: instantFromDatetimeFormString("2030-06-01T10:30"),
+      endTime: instantFromDatetimeFormString("2030-06-01T11:30"),
     });
     const row = inventoryLotToAttachReviewRow(lot, "row-1");
     const result = validateAttachReviewSchedule(row, {

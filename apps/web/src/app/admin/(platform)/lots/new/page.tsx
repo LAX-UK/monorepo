@@ -2,11 +2,8 @@ import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { AdminLotForm } from "@/components/admin/lot-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import {
-  getAdminArtistList,
-  getAdminLotById,
-  getAdminSalesList,
-} from "@/lib/data/http/admin.server";
+import { getLotFormAssignableSales } from "@/lib/admin/lot-form-sales";
+import { getAdminArtistList, getAdminLotById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import {
@@ -30,6 +27,8 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
         cloneDefaults = {
           ...lotToAdminLotFormValues(existing),
           title: `${existing.title} (copy)`,
+          saleId: "",
+          lotNumber: null,
         };
       } else {
         cloneFailed = true;
@@ -44,11 +43,11 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
 
   const [categoriesResult, salesResult, artistResult] = await Promise.allSettled([
     (async () => (await getServerCategoryReader()).tree())(),
-    getAdminSalesList({ limit: 200 }),
+    getLotFormAssignableSales(),
     getAdminArtistList({ includeArchived: false, limit: 200 }),
   ]);
   const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
-  const sales = salesResult.status === "fulfilled" ? salesResult.value.map((r) => r.sale) : [];
+  const sales = salesResult.status === "fulfilled" ? salesResult.value : [];
   const artists = artistResult.status === "fulfilled" ? artistResult.value.rows : [];
   const loadWarnings: string[] = [];
   if (categoriesResult.status === "rejected") loadWarnings.push("category tree");

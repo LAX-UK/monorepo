@@ -1,4 +1,5 @@
 import type { LotAuctionType, SaleDeliveryMode } from "@auction/types";
+import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
   createNestedLotForSaleSchema,
   getSaleModeCapabilities,
@@ -102,12 +103,12 @@ export function saleSetupLotRowToApiPayload(
   const start = caps.inheritsLotTiming
     ? ctx.saleStartTime
     : row.startTime?.trim()
-      ? new Date(row.startTime)
+      ? instantFromDatetimeFormString(row.startTime)
       : ctx.saleStartTime;
   const end = caps.inheritsLotTiming
     ? ctx.saleEndTime
     : row.endTime?.trim()
-      ? new Date(row.endTime)
+      ? instantFromDatetimeFormString(row.endTime)
       : ctx.saleEndTime;
 
   return {
@@ -161,8 +162,8 @@ export function safeParseSaleSetupLotRowForApi(
       };
     }
 
-    const lotStart = new Date(row.startTime);
-    const lotEnd = new Date(row.endTime);
+    const lotStart = instantFromDatetimeFormString(row.startTime);
+    const lotEnd = instantFromDatetimeFormString(row.endTime);
     if (Number.isNaN(lotStart.getTime()) || Number.isNaN(lotEnd.getTime())) {
       return {
         success: false as const,
