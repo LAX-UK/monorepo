@@ -27,6 +27,8 @@ type Props = {
   saleTitle: string;
   canEdit: boolean;
   canPublish: boolean;
+  /** When false, publish is disabled until setup checklist passes. */
+  publishReady?: boolean;
   canUnpublish: boolean;
   canCancel: boolean;
   canDelete: boolean;
@@ -62,6 +64,7 @@ export function AdminSaleHeaderActions({
   saleTitle,
   canEdit,
   canPublish,
+  publishReady = true,
   canUnpublish,
   canCancel,
   canDelete,
@@ -100,13 +103,24 @@ export function AdminSaleHeaderActions({
           <DropdownMenuContent align="end" className="w-52">
             {canPublish ? (
               <DropdownMenuItem
-                disabled={pending}
+                disabled={pending || !publishReady}
+                title={
+                  !publishReady
+                    ? "Complete sale setup on the review step before publishing"
+                    : undefined
+                }
                 onSelect={(e) => {
                   e.preventDefault();
+                  if (!publishReady) return;
                   setPublishOpen(true);
                 }}
               >
                 Publish sale
+              </DropdownMenuItem>
+            ) : null}
+            {canPublish && !publishReady ? (
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/sales/${saleId}/setup?step=review`}>Continue setup</Link>
               </DropdownMenuItem>
             ) : null}
             {canUnpublish ? (

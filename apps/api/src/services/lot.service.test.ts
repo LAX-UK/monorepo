@@ -682,6 +682,8 @@ describe("LotService.publish", () => {
   const draftLotBase: Lot = {
     ...baseLot,
     status: "draft",
+    description: "Catalogue description",
+    images: ["lot/a.jpg"],
     startTime: futureStart,
     endTime: futureEnd,
     sellerLegalEntityId: "ent-1",
@@ -811,6 +813,58 @@ describe("LotService.publish", () => {
     });
     const result = await svc.publish("admin", "staff", lotId, "super_admin");
     expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects publish when lot has no images", async () => {
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue({ ...draftLotBase, images: [] }),
+      updateStatus: vi.fn(),
+    } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: {
+        scheduleLot: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotJobs: vi.fn(),
+      },
+      lotNotifications: null,
+    });
+    const result = await svc.publish("admin", "staff", lotId, "super_admin");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error instanceof LotError) {
+      expect(result.error.message).toContain("image");
+    }
+    expect(lotRepo.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("rejects publish when lot has no catalogue description", async () => {
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue({
+        ...draftLotBase,
+        images: ["lot/a.jpg"],
+        description: "   ",
+      }),
+      updateStatus: vi.fn(),
+    } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: {
+        scheduleLot: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotJobs: vi.fn(),
+      },
+      lotNotifications: null,
+    });
+    const result = await svc.publish("admin", "staff", lotId, "super_admin");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error instanceof LotError) {
+      expect(result.error.message).toContain("description");
+    }
+    expect(lotRepo.updateStatus).not.toHaveBeenCalled();
   });
 
   it("returns use_sale_publish when lot belongs to a draft sale", async () => {
@@ -1035,6 +1089,8 @@ describe("LotService.bulkPublishOrCancel", () => {
         sellerLegalEntityId: null,
         title: "Lot",
         auctionType: "english",
+        images: ["img.jpg"],
+        description: "Catalogue description",
       }),
       updateStatus: vi.fn(),
     } as unknown as ILotRepository;
@@ -1077,6 +1133,8 @@ describe("LotService.bulkPublishOrCancel", () => {
         sellerLegalEntityId: "ent-1",
         title: "Lot",
         auctionType: "english",
+        images: ["img.jpg"],
+        description: "Catalogue description",
       }),
       updateStatus: vi.fn(),
     } as unknown as ILotRepository;
@@ -1115,6 +1173,8 @@ describe("LotService.bulkPublishOrCancel", () => {
         sellerLegalEntityId: "ent-1",
         title: "Lot",
         auctionType: "english",
+        images: ["img.jpg"],
+        description: "Catalogue description",
       }),
       updateStatus: vi.fn(),
     } as unknown as ILotRepository;

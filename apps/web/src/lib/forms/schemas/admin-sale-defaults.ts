@@ -1,8 +1,36 @@
 import type { Sale } from "@auction/types";
-import { toDatetimeLocalValue } from "./admin-lot-defaults";
+import {
+  DEFAULT_AUCTION_ZONE,
+  toDatetimeFormString,
+  tzDateFromParts,
+} from "@auction/ui/lib/datetime";
+import { TZDate } from "@date-fns/tz";
+import { addDays, addHours } from "date-fns";
 import type { AdminSaleFormValues } from "./admin-sale-form";
 
 export type SaleWithPresentedCovers = Sale & { coverImagePresentedUrls?: string[] };
+
+function defaultScheduleInstants(): { start: Date; end: Date } {
+  const now = new TZDate(new Date(), DEFAULT_AUCTION_ZONE);
+  const startTz = tzDateFromParts(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate(),
+    addHours(now, 1).getHours(),
+    0,
+    DEFAULT_AUCTION_ZONE,
+  );
+  const start = new Date(startTz.getTime());
+  const endTz = tzDateFromParts(
+    addDays(startTz, 7).getFullYear(),
+    addDays(startTz, 7).getMonth() + 1,
+    addDays(startTz, 7).getDate(),
+    startTz.getHours(),
+    0,
+    DEFAULT_AUCTION_ZONE,
+  );
+  return { start, end: new Date(endTz.getTime()) };
+}
 
 /** Maps storage keys to resolved thumbnail URLs for admin image fields. */
 export function buildCoverImagePreviewMap(
@@ -34,9 +62,9 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
     locationCounty: sale.locationCounty ?? "",
     locationPostcode: sale.locationPostcode ?? "",
     locationCountry: sale.locationCountry ?? "",
-    startTime: toDatetimeLocalValue(sale.startTime),
-    endTime: toDatetimeLocalValue(sale.endTime),
-    previewStartTime: sale.previewStartTime ? toDatetimeLocalValue(sale.previewStartTime) : "",
+    startTime: toDatetimeFormString(sale.startTime),
+    endTime: toDatetimeFormString(sale.endTime),
+    previewStartTime: sale.previewStartTime ? toDatetimeFormString(sale.previewStartTime) : "",
     buyerPremiumRate: sale.buyerPremiumRate,
     buyerPremiumTiers: (sale.buyerPremiumTiers ?? []).map((t) => ({
       hammerThresholdMajor: String(t.hammerThresholdMinor / 100),
@@ -47,10 +75,7 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
 }
 
 export function emptyAdminSaleFormValues(): AdminSaleFormValues {
-  const s = new Date();
-  s.setHours(s.getHours() + 1, 0, 0, 0);
-  const e = new Date(s);
-  e.setDate(e.getDate() + 7);
+  const { start, end } = defaultScheduleInstants();
   return {
     title: "",
     description: "",
@@ -67,8 +92,8 @@ export function emptyAdminSaleFormValues(): AdminSaleFormValues {
     locationCounty: "",
     locationPostcode: "",
     locationCountry: "United Kingdom",
-    startTime: toDatetimeLocalValue(s),
-    endTime: toDatetimeLocalValue(e),
+    startTime: toDatetimeFormString(start),
+    endTime: toDatetimeFormString(end),
     previewStartTime: "",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: [],

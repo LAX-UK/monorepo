@@ -15,6 +15,7 @@ import type {
 import {
   englishOnlyAdminLotAuctionTypeViolation,
   getSaleModeCapabilities,
+  isStartInFutureForPublish,
 } from "@auction/validators";
 import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -22,6 +23,7 @@ import type { z } from "zod";
 import type { LotAttachedToSalePayload } from "../domain/lot-events.js";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
+import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { lotTimingViolationForSale, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import {
   rollbackSalePublishOnScheduleFailure,
@@ -323,7 +325,7 @@ export class SaleService {
     if (sale.status !== "draft") {
       return err(new LotError("Only draft sales can be published"));
     }
-    if (sale.startTime.getTime() <= Date.now()) {
+    if (!isStartInFutureForPublish(sale.startTime)) {
       return err(new LotError("startTime must be in the future to publish"));
     }
     if (lots.length === 0) {
@@ -334,12 +336,14 @@ export class SaleService {
       if (l.status !== "draft") {
         return err(new LotError("All lots in the sale must be draft to publish"));
       }
-      if (!caps.inheritsLotTiming && l.startTime.getTime() <= Date.now()) {
-        return err(new LotError("Each lot startTime must be in the future to publish"));
-      }
-      const violation = lotTimingViolationForSale(sale, l.startTime, l.endTime);
-      if (violation) {
-        return err(new LotError(`${violation} (lot "${l.title}")`, 400));
+      const publishable = assertLotPublishable(l, {
+        sale,
+        requireCatalogue: true,
+        rejectDraftSale: false,
+      });
+      if (!publishable.ok) {
+        const error = publishable.error;
+        return err(new LotError(`${error.message} (lot "${l.title}")`, error.status, error.code));
       }
     }
 
@@ -832,11 +836,26 @@ export class SaleService {
     }
     if (caps.inheritsLotTiming) {
       const lots = await this.lotRepo.findBySaleId(saleId);
-      for (const l of lots) {
-        if (l.status === "draft") {
-          await this.lotRepo.update(l.id, { startTime: nextStart, endTime: nextEnd });
+      const syncDraftLots = async (lotRepo: ILotRepository) => {
+        for (const l of lots) {
+          if (l.status === "draft") {
+            await lotRepo.update(l.id, { startTime: nextStart, endTime: nextEnd });
+          }
         }
+      };
+      if (this.db) {
+        const updated = await this.db.transaction(async (tx) => {
+          const lotRepo = new DrizzleLotRepository(tx);
+          const saleRepo = new DrizzleSaleRepository(tx);
+          await syncDraftLots(lotRepo);
+          return saleRepo.update(saleId, normalized);
+        });
+        if (patch.coverImages !== undefined) {
+          await this.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
+        }
+        return ok(updated);
       }
+      await syncDraftLots(this.lotRepo);
     } else if (patch.startTime !== undefined || patch.endTime !== undefined) {
       const lots = await this.lotRepo.findBySaleId(saleId);
       const nextSale = {
