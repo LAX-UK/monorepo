@@ -2,7 +2,7 @@
 
 import { TwoFactorDisableDialog } from "@/components/auth/two-factor-disable-dialog";
 import { TwoFactorRegenerateCodesDialog } from "@/components/auth/two-factor-regenerate-codes-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
@@ -43,7 +43,7 @@ export function TwoFactorStatusCard({ twoFactorEnabled }: TwoFactorStatusCardPro
                 Keep backup codes somewhere safe offline.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="secondary" onClick={() => setRegenOpen(true)}>
+                <Button type="button" variant="secondaryOutline" onClick={() => setRegenOpen(true)}>
                   Regenerate backup codes
                 </Button>
                 <Button type="button" variant="destructive" onClick={() => setDisableOpen(true)}>

@@ -4,6 +4,7 @@ import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-t
 import type { SlotName } from "@/lib/media/overlay-tone-types";
 import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Eye } from "lucide-react";
 import { type MouseEvent, useRef } from "react";
 import { useLotQuickLookOptional } from "./lot-quick-look-context";
@@ -56,15 +57,17 @@ export function LotQuickLookTrigger({
   const label = ariaLabel ?? `Quick look at ${vm.title}`;
 
   return (
-    <button
+    <Button
       ref={triggerRef}
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={handleClick}
-      className={cn(shell, className)}
+      className={cn(shell, className, "[&_svg]:pointer-events-none [&_svg]:size-5")}
       {...(useOverlayChrome ? overlayToneProps(overlayTone) : {})}
       aria-label={label}
     >
       <Eye className="size-5 shrink-0" aria-hidden />
-    </button>
+    </Button>
   );
 }

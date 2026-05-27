@@ -2,8 +2,8 @@
 
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
-import { Button } from "@/components/ui/button";
 import { UnderlineInput } from "@/components/ui/input";
+import { RhfSelect } from "@/components/ui/rhf-select";
 import {
   createAddressFromValuesAction,
   removeAddressAction,
@@ -11,6 +11,7 @@ import {
   updateAddressFromValuesAction,
 } from "@/lib/actions/profile";
 import { notify } from "@/lib/ui/notify";
+import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -163,18 +164,17 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="addressType"
         render={({ field }) => (
           <FormItem>
-            <FormControl>
-              <select
-                value={field.value ?? "both"}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
-              >
-                <option value="both">Billing and shipping</option>
-                <option value="shipping">Shipping only</option>
-                <option value="billing">Billing only</option>
-              </select>
-            </FormControl>
+            <RhfSelect
+              value={field.value ?? "both"}
+              onValueChange={field.onChange}
+              onBlur={field.onBlur}
+              options={[
+                { value: "both", label: "Billing and shipping" },
+                { value: "shipping", label: "Shipping only" },
+                { value: "billing", label: "Billing only" },
+              ]}
+              triggerClassName="min-h-11 w-full font-body text-sm"
+            />
             <FormMessage />
           </FormItem>
         )}

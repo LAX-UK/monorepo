@@ -1,5 +1,6 @@
 import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
+import { ArtistsDirectoryLetterCollapsible } from "@/components/sections/artists/artists-directory-letter-collapsible";
 import type { ArtistDirectoryPreset } from "@/lib/artists/directory-presets";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { Button, DisplayHeading, LabelCaps, cn } from "@auction/ui";
@@ -109,12 +110,7 @@ export function ArtistsDirectoryHero({
           ))}
         </div>
 
-        <details className="mt-5 md:hidden">
-          <summary className="cursor-pointer font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant marker:content-none [&::-webkit-details-marker]:hidden">
-            Jump to letter
-          </summary>
-          <div className="mt-3">{letterBar}</div>
-        </details>
+        <ArtistsDirectoryLetterCollapsible letterBar={letterBar} />
         <div className="mt-6 hidden md:block">
           {letterJumpLabel}
           {letterBar}

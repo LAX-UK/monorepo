@@ -1,14 +1,8 @@
 "use client";
 
-import { UserPicker } from "@/components/admin/user-picker";
+import { RhfUserPicker } from "@/components/ui/rhf-user-picker";
 import { LabelCaps } from "@/components/ui/typography";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
+import { FormField, FormItem, FormLabel, FormMessage } from "@auction/ui/components/form";
 import type { ArtistFormSectionProps } from "../types";
 
 type Props = ArtistFormSectionProps & {
@@ -26,13 +20,11 @@ export function UserLinkSection({ control, disabled = false, emphasize = false }
           <FormLabel>
             <LabelCaps>Linked platform user</LabelCaps>
           </FormLabel>
-          <FormControl>
-            <UserPicker
-              value={field.value ?? null}
-              onChange={(id) => field.onChange(id)}
-              disabled={disabled}
-            />
-          </FormControl>
+          <RhfUserPicker
+            value={field.value ?? null}
+            onChange={(id) => field.onChange(id)}
+            disabled={disabled}
+          />
           <p
             className={`text-xs text-on-surface-variant ${emphasize ? "rounded-lg border border-primary/20 bg-primary-container/10 p-3" : ""}`}
           >

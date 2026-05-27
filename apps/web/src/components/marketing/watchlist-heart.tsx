@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Heart } from "lucide-react";
 import * as React from "react";
 
@@ -44,8 +45,9 @@ export function WatchlistHeart({
     : `Add ${lotTitle ?? "this lot"} to your watchlist`;
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={handleClick}
       disabled={disabled}
       aria-pressed={isPressed}
@@ -68,6 +70,6 @@ export function WatchlistHeart({
           )}
         />
       </span>
-    </button>
+    </Button>
   );
 }

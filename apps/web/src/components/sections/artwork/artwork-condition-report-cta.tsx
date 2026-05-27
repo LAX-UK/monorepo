@@ -3,6 +3,7 @@
 import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { Button } from "@auction/ui/components/button";
+import { Textarea } from "@auction/ui/components/textarea";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -105,11 +106,11 @@ export function ArtworkConditionReportCta({
         Request a formal condition report for this lot.
       </p>
       <form onSubmit={(e) => void submit(e)} className="mt-2 space-y-2">
-        <textarea
+        <Textarea
           value={note}
           onChange={(ev) => setNote(ev.target.value)}
           placeholder="Optional note for the specialist…"
-          className="min-h-16 w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-xs"
+          className="min-h-16 font-body text-xs"
         />
         {err ? <p className="text-xs text-destructive">{err}</p> : null}
         {msg ? <p className="text-xs text-primary">{msg}</p> : null}

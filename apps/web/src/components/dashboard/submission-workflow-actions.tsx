@@ -1,12 +1,12 @@
 "use client";
 
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
-import { Button } from "@/components/ui/button";
 import {
   submitForReviewFromValuesAction,
   withdrawSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
 import { notify } from "@/lib/ui/notify";
+import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -54,7 +54,7 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
         <ConfirmActionButton
           type="button"
           disabled={pending}
-          variant="secondary"
+          variant="secondaryOutline"
           confirmTitle="Withdraw submission"
           confirmBody="Withdraw this submission? You can start a new submission later if needed."
           confirmLabel="Withdraw"

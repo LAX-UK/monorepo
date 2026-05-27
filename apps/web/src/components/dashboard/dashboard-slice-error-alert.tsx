@@ -1,9 +1,9 @@
 "use client";
 
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
-import { Button } from "@/components/ui/button";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { usePersonalProfileForSubmissions } from "@/lib/legal-entity/submissions-access-actions";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 type DashboardSliceErrorAlertProps = {

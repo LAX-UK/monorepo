@@ -13,7 +13,7 @@ import {
   CommandItem,
   CommandList,
 } from "./command.js";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover.js";
+import { ResponsivePickerShell } from "./responsive-picker-shell.js";
 
 export type ComboboxOption = {
   value: string;
@@ -55,60 +55,65 @@ function Combobox({
   const [open, setOpen] = React.useState(false);
   const selected = options.find((o) => o.value === value);
 
+  const trigger = (
+    <Button
+      id={id}
+      type="button"
+      variant="outline"
+      // biome-ignore lint/a11y/useSemanticElements: searchable popover combobox; native select cannot host Command list
+      role="combobox"
+      aria-expanded={open}
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
+      aria-busy={ariaBusy}
+      disabled={disabled}
+      onBlur={onBlur}
+      className={cn(
+        "min-h-11 w-full justify-between px-3 py-3 font-body text-sm font-normal",
+        !selected && "text-on-surface-variant",
+        className,
+      )}
+    >
+      {selected?.label ?? placeholder}
+      <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+    </Button>
+  );
+
+  const panel = (
+    <Command>
+      <CommandInput placeholder={searchPlaceholder} />
+      <CommandList>
+        <CommandEmpty>{emptyLabel}</CommandEmpty>
+        <CommandGroup>
+          {options.map((option) => (
+            <CommandItem
+              key={option.value}
+              value={`${option.label} ${option.keywords ?? ""}`.trim()}
+              onSelect={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              <CheckIcon
+                className={cn("mr-2 size-4", value === option.value ? "opacity-100" : "opacity-0")}
+              />
+              {option.label}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  );
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          // biome-ignore lint/a11y/useSemanticElements: searchable popover combobox; native select cannot host Command list
-          role="combobox"
-          aria-expanded={open}
-          aria-invalid={ariaInvalid}
-          aria-describedby={ariaDescribedBy}
-          aria-busy={ariaBusy}
-          disabled={disabled}
-          onBlur={onBlur}
-          className={cn(
-            "min-h-11 w-full justify-between px-3 py-3 font-body text-sm font-normal",
-            !selected && "text-on-surface-variant",
-            className,
-          )}
-        >
-          {selected?.label ?? placeholder}
-          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyLabel}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={`${option.label} ${option.keywords ?? ""}`.trim()}
-                  onSelect={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                >
-                  <CheckIcon
-                    className={cn(
-                      "mr-2 size-4",
-                      value === option.value ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <ResponsivePickerShell
+      open={open}
+      onOpenChange={setOpen}
+      trigger={trigger}
+      panel={panel}
+      sheetTitle={placeholder}
+      popoverContentClassName="w-[var(--radix-popover-trigger-width)] p-0"
+    />
   );
 }
 

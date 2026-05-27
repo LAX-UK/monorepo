@@ -259,12 +259,13 @@ export function CheckoutPurchasePanel({
                         {checkoutAddresses.map((address) => {
                           const selected = field.value === address.id;
                           return (
-                            <button
+                            <Button
                               key={address.id}
                               type="button"
+                              variant="ghost"
                               aria-pressed={selected}
                               onClick={() => field.onChange(address.id)}
-                              className={`rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                              className={`w-full justify-start rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                                 selected
                                   ? "border-primary bg-primary-container/10"
                                   : "border-border-hairline bg-surface-container-low/30 hover:border-primary/50"
@@ -279,7 +280,7 @@ export function CheckoutPurchasePanel({
                                 {address.line2 ? `, ${address.line2}` : ""}, {address.city},{" "}
                                 {address.postalCode}, {address.country}
                               </span>
-                            </button>
+                            </Button>
                           );
                         })}
                       </div>

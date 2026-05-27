@@ -8,7 +8,6 @@ import { type AdminLotTableRow, lotColumns } from "@/components/admin/lots-board
 import { LotsLayoutToggle } from "@/components/admin/lots-board/layout-toggle";
 import { LotsMobileCards } from "@/components/admin/lots-board/mobile-cards";
 import { useTableDensity } from "@/components/layout/density-provider";
-import { Button } from "@/components/ui/button";
 import { TableScroll } from "@/components/ui/table-scroll";
 import {
   type ConnectRequiredByLotId,
@@ -19,6 +18,7 @@ import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { Lot } from "@auction/types";
 import { EntityList } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo } from "react";

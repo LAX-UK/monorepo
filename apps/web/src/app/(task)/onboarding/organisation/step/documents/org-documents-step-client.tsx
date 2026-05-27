@@ -6,6 +6,7 @@ import {
 } from "@/app/(task)/onboarding/organisation/onboarding-actions";
 import { apiBaseUrl } from "@/lib/auth/api-base";
 import { Button } from "@auction/ui/components/button";
+import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import Link from "next/link";
@@ -166,14 +167,12 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
                   <p className="text-xs text-on-surface-variant">Label: {slot.label}</p>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                  disabled={pending}
-                  onChange={(e) => onUpload(slot, e.target.files?.[0] ?? null)}
-                />
-              </div>
+              <FileUploadTrigger
+                disabled={pending}
+                busy={pending}
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                onFilesSelected={(files) => onUpload(slot, files[0] ?? null)}
+              />
             </div>
           </li>
         ))}

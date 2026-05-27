@@ -305,9 +305,10 @@ export function LotAutoBidPanel({
             {allowedSteps.map((s) => {
               const selected = Math.abs(s - stepNumeric) < 1e-9;
               return (
-                <button
+                <Button
                   key={s}
                   type="button"
+                  variant="ghost"
                   disabled={disabled || saving || clearing}
                   onClick={() => onStepSelect(s.toFixed(2))}
                   className={cn(
@@ -318,7 +319,7 @@ export function LotAutoBidPanel({
                   )}
                 >
                   +{formatMoney(s.toFixed(2))}
-                </button>
+                </Button>
               );
             })}
           </div>

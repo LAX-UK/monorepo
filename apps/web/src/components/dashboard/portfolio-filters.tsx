@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { FilterChip } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import {
   Form,
   FormControl,
@@ -125,7 +125,7 @@ export function PortfolioFilters({ initialQ, payment, year, years }: PortfolioFi
               </FormItem>
             )}
           />
-          <Button type="submit" variant="secondary">
+          <Button type="submit" variant="secondaryOutline">
             Apply
           </Button>
         </form>

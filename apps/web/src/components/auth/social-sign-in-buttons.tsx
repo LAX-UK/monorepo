@@ -1,9 +1,9 @@
 "use client";
 
 import { ProviderMark } from "@/components/auth/provider-mark";
-import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { Button } from "@auction/ui/components/button";
 import { useState } from "react";
 
 type Props = {
@@ -45,7 +45,7 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
     <div className="flex flex-col gap-3">
       <Button
         type="button"
-        variant="secondary"
+        variant="secondaryOutline"
         className="min-h-12 w-full gap-3 rounded-md border-outline-variant/40 bg-surface-container-low px-4 py-3 tracking-[0.08em] normal-case text-on-surface hover:bg-surface-container"
         disabled={pending !== null}
         aria-busy={pending === "google"}
@@ -59,7 +59,7 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
       {APPLE_ENABLED ? (
         <Button
           type="button"
-          variant="secondary"
+          variant="secondaryOutline"
           className="min-h-12 w-full gap-3 rounded-md border-outline-variant/40 bg-surface-container-low px-4 py-3 tracking-[0.08em] normal-case text-on-surface hover:bg-surface-container"
           disabled={pending !== null}
           aria-busy={pending === "apple"}

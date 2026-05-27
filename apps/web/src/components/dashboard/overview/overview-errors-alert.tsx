@@ -1,7 +1,7 @@
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
-import { Button } from "@/components/ui/button";
 import { DASHBOARD_ROUTES, dashboardLoginUrl } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewErrors } from "@/lib/data/view-models/dashboard-overview.vm";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 const SLICE_LINKS: Partial<Record<keyof DashboardOverviewErrors, { href: string; label: string }>> =
@@ -51,7 +51,7 @@ export function OverviewErrorsAlert({ errors }: OverviewErrorsAlertProps) {
             >
               <span className="text-on-surface">{message}</span>
               {link ? (
-                <Button variant="secondary" size="sm" asChild className="shrink-0">
+                <Button variant="secondaryOutline" size="sm" asChild className="shrink-0">
                   <Link href={link.href}>{link.label}</Link>
                 </Button>
               ) : null}

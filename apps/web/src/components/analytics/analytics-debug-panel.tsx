@@ -4,6 +4,7 @@ import { readConsentFromDocument } from "@/lib/analytics/consent-headers";
 import { useConsent } from "@/lib/analytics/consent/context";
 import { trackPageView } from "@/lib/analytics/events";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
+import { Button } from "@auction/ui/components/button";
 import { useEffect, useMemo, useState } from "react";
 
 type Row = { label: string; value: string; ok: boolean | null };
@@ -105,9 +106,10 @@ export function AnalyticsDebugPanel() {
       </ul>
       <p className="mt-2 break-all text-on-surface-variant">cookie: {cookieRaw}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button
+        <Button
           type="button"
-          className="rounded bg-primary px-2 py-1 font-sans text-xs text-on-primary"
+          variant="default"
+          className="h-auto min-h-0 rounded px-2 py-1 font-sans text-xs"
           onClick={() => {
             trackPageView(window.location.pathname);
             setNetworkHint(
@@ -116,10 +118,11 @@ export function AnalyticsDebugPanel() {
           }}
         >
           Push test page_view
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="rounded border border-outline-variant px-2 py-1 font-sans text-xs"
+          variant="outline"
+          className="h-auto min-h-0 rounded px-2 py-1 font-sans text-xs"
           onClick={() => {
             void fetch("https://gtm.lax.bid/healthy")
               .then((r) => setNetworkHint(`gtm.lax.bid/healthy → ${r.status}`))
@@ -127,7 +130,7 @@ export function AnalyticsDebugPanel() {
           }}
         >
           Ping gtm.lax.bid
-        </button>
+        </Button>
       </div>
       {networkHint ? <p className="mt-2 text-on-surface-variant">{networkHint}</p> : null}
       <p className="mt-2 font-sans text-[10px] leading-snug text-on-surface-variant">

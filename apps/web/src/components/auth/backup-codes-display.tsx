@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Label } from "@auction/ui/components/label";
 import { useCallback, useState } from "react";
@@ -54,7 +54,7 @@ export function BackupCodesDisplay({
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="secondary" onClick={() => void copyAll()}>
+        <Button type="button" variant="secondaryOutline" onClick={() => void copyAll()}>
           Copy all
         </Button>
         <Button type="button" variant="tertiary" onClick={downloadTxt}>

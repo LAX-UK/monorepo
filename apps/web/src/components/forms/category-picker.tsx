@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useSplitOverlayOpen } from "@/hooks/use-split-overlay-open";
 import type { CategoryNode } from "@auction/types";
 import {
@@ -10,6 +9,7 @@ import {
   BottomSheetTitle,
   BottomSheetTrigger,
 } from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
 import {
   Command,
   CommandEmpty,
@@ -108,7 +108,11 @@ export function CategoryPicker({
   };
 
   const trigger = (
-    <Button type="button" variant="secondary" className="min-h-12 w-full justify-start text-left">
+    <Button
+      type="button"
+      variant="secondaryOutline"
+      className="min-h-12 w-full justify-start text-left"
+    >
       <span className={selected.length ? "" : "text-on-surface-variant"}>{selectedNames}</span>
     </Button>
   );
@@ -148,15 +152,16 @@ export function CategoryPicker({
       {selected.length ? (
         <div className="flex flex-wrap gap-2">
           {selected.map((category, index) => (
-            <button
+            <Button
               key={category.id}
               type="button"
+              variant="ghost"
+              className="h-auto min-h-0 rounded-full border border-outline-variant/30 px-3 py-1 font-body text-xs font-normal text-on-surface-variant hover:bg-transparent hover:border-primary hover:text-primary"
               onClick={() => toggle(category.id)}
-              className="rounded-full border border-outline-variant/30 px-3 py-1 font-body text-xs text-on-surface-variant hover:border-primary hover:text-primary"
             >
               {index === 0 ? "Primary: " : ""}
               {category.path} x
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}

@@ -1,7 +1,12 @@
 "use client";
 
+import { FilterSelect } from "@/components/ui/filter-select";
 import type { ArtistProfile, CategoryNode, Sale } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
 import { X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
 
 type LotSort = "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc" | "sellerAsc";
 
@@ -39,120 +44,127 @@ type Props = {
   categories: CategoryNode[];
 };
 
-const selectCls =
-  "h-10 min-w-[9rem] rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50";
+const labelCapsCls =
+  "font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
+const selectCls = "h-10 min-w-[9rem]";
+
+function LotFilterSearch({ defaultQ }: { defaultQ?: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
+
+  return (
+    <form
+      className="flex flex-col gap-1"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        const nextQ = String(fd.get("q") ?? "").trim();
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("offset", "0");
+        if (nextQ) params.set("q", nextQ);
+        else params.delete("q");
+        const qs = params.toString();
+        startTransition(() => {
+          router.push(qs ? `${pathname}?${qs}` : pathname);
+        });
+      }}
+    >
+      <span className={labelCapsCls}>Search</span>
+      <div className="flex items-center gap-2">
+        <Input
+          name="q"
+          type="search"
+          defaultValue={defaultQ ?? ""}
+          placeholder="Title…"
+          className="h-10 w-44 font-body text-sm"
+        />
+        <Button type="submit" className="h-10 shrink-0">
+          Apply
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export function LotFilterForm({
   status,
   q,
   viewPipeline,
-  artistId,
-  saleId,
-  categoryId,
-  sort,
-  lens,
+  artistId: _artistId,
+  saleId: _saleId,
+  categoryId: _categoryId,
+  sort: _sort,
+  lens: _lens,
   artists,
   sales,
   categories,
 }: Props) {
   const flat = flattenCategories(categories);
-  const hasFilters = !!(artistId || saleId || categoryId || sort || q);
+  const hasFilters = !!(_artistId || _saleId || _categoryId || _sort || q);
 
   return (
-    <form method="get" action="/admin/lots" className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="offset" value="0" />
-      {/* Preserve existing params */}
-      {status ? <input type="hidden" name="status" value={status} /> : null}
-      {viewPipeline ? <input type="hidden" name="view" value="pipeline" /> : null}
-      {lens ? <input type="hidden" name="lens" value={lens} /> : null}
+    <div className="flex flex-wrap items-end gap-2">
+      <LotFilterSearch defaultQ={q ?? ""} />
 
-      {/* Search */}
-      <label className="flex flex-col gap-1">
-        <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Search
-        </span>
-        <input
-          name="q"
-          type="search"
-          defaultValue={q ?? ""}
-          placeholder="Title…"
-          className="h-10 w-44 rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-      </label>
-
-      {/* Artist */}
       {artists.length > 0 ? (
-        <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Artist
-          </span>
-          <select name="artistId" defaultValue={artistId ?? ""} className={selectCls}>
-            <option value="">All artists</option>
-            {artists.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1">
+          <span className={labelCapsCls}>Artist</span>
+          <FilterSelect
+            param="artistId"
+            resetParams={{ offset: "0" }}
+            className={selectCls}
+            options={[
+              { value: "", label: "All artists" },
+              ...artists.map((a) => ({ value: a.id, label: a.displayName })),
+            ]}
+          />
+        </div>
       ) : null}
 
-      {/* Sale */}
       {sales.length > 0 ? (
-        <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Sale
-          </span>
-          <select name="saleId" defaultValue={saleId ?? ""} className={selectCls}>
-            <option value="">All sales</option>
-            {sales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1">
+          <span className={labelCapsCls}>Sale</span>
+          <FilterSelect
+            param="saleId"
+            resetParams={{ offset: "0" }}
+            className={selectCls}
+            options={[
+              { value: "", label: "All sales" },
+              ...sales.map((s) => ({ value: s.id, label: s.title })),
+            ]}
+          />
+        </div>
       ) : null}
 
-      {/* Category */}
       {flat.length > 0 ? (
-        <label className="flex flex-col gap-1">
-          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Category
-          </span>
-          <select name="categoryId" defaultValue={categoryId ?? ""} className={selectCls}>
-            <option value="">All categories</option>
-            {flat.map((c) => (
-              <option key={c.id} value={c.id}>
-                {"  ".repeat(c.depth)}
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1">
+          <span className={labelCapsCls}>Category</span>
+          <FilterSelect
+            param="categoryId"
+            resetParams={{ offset: "0" }}
+            className={selectCls}
+            options={[
+              { value: "", label: "All categories" },
+              ...flat.map((c) => ({
+                value: c.id,
+                label: `${"  ".repeat(c.depth)}${c.name}`,
+              })),
+            ]}
+          />
+        </div>
       ) : null}
 
-      {/* Sort */}
-      <label className="flex flex-col gap-1">
-        <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Sort
-        </span>
-        <select name="sort" defaultValue={sort ?? ""} className={selectCls}>
-          <option value="">Default</option>
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <button
-        type="submit"
-        className="h-10 shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary transition-colors hover:bg-primary/90"
-      >
-        Apply
-      </button>
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Sort</span>
+        <FilterSelect
+          param="sort"
+          resetParams={{ offset: "0" }}
+          className={selectCls}
+          options={[{ value: "", label: "Default" }, ...SORT_OPTIONS]}
+        />
+      </div>
 
       {hasFilters ? (
         <a
@@ -164,6 +176,6 @@ export function LotFilterForm({
           Clear
         </a>
       ) : null}
-    </form>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@auction/ui/components/button";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -25,7 +25,7 @@ describe("Button", () => {
 
   it("merges className onto asChild output", () => {
     render(
-      <Button variant="secondary" asChild className="w-full">
+      <Button variant="secondaryOutline" asChild className="w-full">
         <a href="/dashboard/submissions/new">New submission</a>
       </Button>,
     );

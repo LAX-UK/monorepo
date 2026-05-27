@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/ui/format";
+import { Button } from "@auction/ui/components/button";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 
@@ -27,7 +27,7 @@ export function EntityDetailMeta({
       {entityId ? (
         <Button
           type="button"
-          variant="secondary"
+          variant="secondaryOutline"
           size="sm"
           className="h-8 font-mono text-[11px]"
           onClick={() => void navigator.clipboard.writeText(entityId)}

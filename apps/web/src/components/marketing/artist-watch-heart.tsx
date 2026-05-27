@@ -5,6 +5,7 @@ import {
   defaultArtistWatchlistClient,
 } from "@/lib/data/http/artist-watchlist.client";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -63,22 +64,24 @@ export function ArtistWatchHeart({
   const label = watching ? `Unfollow ${artistName}` : `Follow ${artistName}`;
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={(e) => void onClick(e)}
       disabled={busy}
       aria-pressed={watching}
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] items-center justify-center rounded-full backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+        "inline-flex size-[var(--tap-target-min,44px)] min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 rounded-full backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-0 [&_svg]:size-4",
         watching
-          ? "bg-surface/90 text-error ring-1 ring-error/35 hover:bg-surface"
-          : "bg-surface/80 text-on-surface hover:bg-surface",
+          ? "bg-surface/90 text-error ring-1 ring-error/35 hover:bg-surface hover:text-error"
+          : "bg-surface/80 text-on-surface hover:bg-surface hover:text-on-surface",
         busy && "opacity-60",
       )}
     >
       <Heart className={cn("size-4", watching && "fill-current")} aria-hidden strokeWidth={2} />
-    </button>
+    </Button>
   );
 }

@@ -7,6 +7,7 @@ import { WithdrawalDrawerContent } from "@/components/admin/withdrawals-board/dr
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { LotWithdrawalRequestTask } from "@/lib/data/http/admin.server";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { useCallback, useMemo, useState } from "react";
 
 export function AdminWithdrawalsBoard({ tasks }: { tasks: LotWithdrawalRequestTask[] }) {
@@ -34,13 +35,14 @@ export function AdminWithdrawalsBoard({ tasks }: { tasks: LotWithdrawalRequestTa
           <ul className="space-y-3">
             {tasks.map((task) => (
               <li key={task.id}>
-                <button
+                <Button
                   type="button"
-                  className="w-full rounded-lg border border-border-hairline p-4 text-left"
+                  variant="outline"
+                  className="h-auto min-h-0 w-full rounded-lg border border-border-hairline p-4 text-left shadow-none"
                   onClick={() => onOpen(task)}
                 >
                   <span className="font-medium">{task.kind.replaceAll("_", " ")}</span>
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
