@@ -4,6 +4,7 @@ import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { useState } from "react";
 
 type Props = {
@@ -60,13 +61,14 @@ function EventPayload({ payload }: { payload: Record<string, unknown> }) {
 
   return (
     <div className="mt-2">
-      <button
+      <Button
         type="button"
+        variant="link"
         onClick={() => setOpen((v) => !v)}
-        className="font-label text-[10px] uppercase tracking-wide text-primary hover:underline"
+        className="h-auto min-h-0 p-0 font-label text-[10px] uppercase tracking-wide shadow-none"
       >
         {open ? "Hide payload" : "Show payload"}
-      </button>
+      </Button>
       {open ? (
         <pre
           className={cn(

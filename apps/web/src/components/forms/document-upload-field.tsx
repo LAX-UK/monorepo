@@ -2,8 +2,8 @@
 
 import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
 import { Button } from "@auction/ui/components/button";
-import { cn } from "@auction/ui/lib/utils";
-import { useCallback, useRef, useState } from "react";
+import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
+import { useCallback, useState } from "react";
 
 export type DocumentUploadKind =
   | "lot_document"
@@ -27,6 +27,8 @@ type DocumentUploadFieldProps = {
   inputId?: string;
 };
 
+const DOCUMENT_ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
+
 export function DocumentUploadField({
   kind,
   value = null,
@@ -39,10 +41,8 @@ export function DocumentUploadField({
   inputId,
 }: DocumentUploadFieldProps) {
   const { uploadFile } = useUploadObjectLifecycle();
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState(false);
 
   const fileInputId = inputId ?? `doc-upload-${kind}`;
 
@@ -71,82 +71,44 @@ export function DocumentUploadField({
     [kind, onChange, onFileSelected, uploadFile, valueMode],
   );
 
-  async function onPick(files: FileList | null) {
-    const file = files?.[0];
+  async function onPick(files: FileList) {
+    const file = files[0];
     if (!file) return;
     await processFile(file);
   }
-
-  function onDrop(ev: React.DragEvent) {
-    ev.preventDefault();
-    setDragOver(false);
-    if (busy) return;
-    const file = ev.dataTransfer.files?.[0];
-    if (file) void processFile(file);
-  }
-
-  const openPicker = () => {
-    if (!busy) inputRef.current?.click();
-  };
 
   const legacyMode = !onFileSelected;
 
   return (
     <div className="space-y-2">
-      <input
-        ref={inputRef}
-        id={fileInputId}
-        type="file"
-        accept="application/pdf,image/jpeg,image/png,image/webp"
-        className="hidden"
-        disabled={busy}
-        onChange={(ev) => {
-          void onPick(ev.target.files);
-          ev.currentTarget.value = "";
-        }}
-      />
-
       {dropzone && onFileSelected ? (
-        <button
-          type="button"
-          disabled={busy}
-          aria-label="Upload document"
-          className={cn(
-            "flex min-h-[7rem] w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors",
-            dragOver
-              ? "border-primary bg-primary/5"
-              : "border-outline-variant/50 bg-surface-container-low/30 hover:border-outline-variant",
-            busy && "pointer-events-none opacity-60",
-          )}
-          onClick={openPicker}
-          onDragEnter={(ev) => {
-            ev.preventDefault();
-            if (!busy) setDragOver(true);
-          }}
-          onDragLeave={(ev) => {
-            ev.preventDefault();
-            setDragOver(false);
-          }}
-          onDragOver={(ev) => ev.preventDefault()}
-          onDrop={onDrop}
+        <FileUploadTrigger
+          dropzone
+          disabled={Boolean(busy)}
+          busy={Boolean(busy)}
+          accept={DOCUMENT_ACCEPT}
+          inputId={fileInputId}
+          {...(helperText ? { helperText } : {})}
+          onFilesSelected={(files) => void onPick(files)}
         >
           <span className="font-body text-sm text-on-surface">
             Drop a file here or <span className="text-primary underline">browse</span>
           </span>
-          {helperText ? (
-            <span className="mt-1 block font-body text-xs text-on-surface-variant">
-              {helperText}
-            </span>
-          ) : null}
-        </button>
+        </FileUploadTrigger>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" disabled={busy} onClick={openPicker}>
+          <FileUploadTrigger
+            disabled={Boolean(busy)}
+            busy={Boolean(busy)}
+            accept={DOCUMENT_ACCEPT}
+            inputId={fileInputId}
+            onFilesSelected={(files) => void onPick(files)}
+          >
             Choose file
-          </Button>
-          {legacyMode && value ? (
+          </FileUploadTrigger>
+          {legacyMode && value && status ? (
             <span className="max-w-[min(100%,28rem)] truncate rounded-full bg-surface-container-high px-3 py-1 font-body text-xs text-on-surface">
-              {valueMode === "publicUrl" ? value : `Upload ID: ${value.slice(0, 8)}…`}
+              {status}
             </span>
           ) : null}
           {legacyMode && value ? (

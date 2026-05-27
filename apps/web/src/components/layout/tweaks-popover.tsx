@@ -10,6 +10,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@auction/ui/components/popover";
+import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import { Columns3, Rows3, SlidersHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -92,52 +93,31 @@ export function DensityTweakSection() {
       </div>
       <fieldset className="flex flex-col gap-2">
         <legend className="sr-only">Choose dashboard density</legend>
-        <div
-          role="radiogroup"
-          aria-labelledby="tweaks-density-label"
+        <RadioGroup
+          value={density}
+          onValueChange={(v) => setDensity(v as "normal" | "compact")}
           className="grid grid-cols-2 gap-2"
+          aria-labelledby="tweaks-density-label"
         >
-          <DensityRadio
-            label="Comfortable"
-            checked={!isCompact}
-            onSelect={() => setDensity("normal")}
-          />
-          <DensityRadio
-            label="Compact"
-            checked={isCompact}
-            onSelect={() => setDensity("compact")}
-          />
-        </div>
+          <DensityRadio label="Comfortable" value="normal" />
+          <DensityRadio label="Compact" value="compact" />
+        </RadioGroup>
       </fieldset>
     </section>
   );
 }
 
-function DensityRadio({
-  label,
-  checked,
-  onSelect,
-}: {
-  label: string;
-  checked: boolean;
-  onSelect: () => void;
-}) {
+function DensityRadio({ label, value }: { label: string; value: string }) {
+  const id = `density-${value}`;
   return (
     <label
+      htmlFor={id}
       className={[
-        "flex min-h-10 cursor-pointer items-center justify-center rounded-sm border px-3 py-2 font-label text-xs font-semibold uppercase tracking-[0.08em] transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary",
-        checked
-          ? "border-on-surface bg-surface-container text-on-surface"
-          : "border-outline-variant/40 text-on-surface-variant hover:border-on-surface/60 hover:text-on-surface",
+        "flex min-h-10 cursor-pointer items-center justify-center rounded-sm border px-3 py-2 font-label text-xs font-semibold uppercase tracking-[0.08em] transition-colors has-[[data-state=checked]]:border-on-surface has-[[data-state=checked]]:bg-surface-container has-[[data-state=checked]]:text-on-surface",
+        "border-outline-variant/40 text-on-surface-variant hover:border-on-surface/60 hover:text-on-surface",
       ].join(" ")}
     >
-      <input
-        type="radio"
-        name="dashboard-density"
-        checked={checked}
-        onChange={() => onSelect()}
-        className="sr-only"
-      />
+      <RadioGroupItem id={id} value={value} className="sr-only" />
       {label}
     </label>
   );

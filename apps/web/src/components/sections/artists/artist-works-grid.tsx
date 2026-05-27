@@ -8,6 +8,7 @@ import { lotCatalogStatusPresentation } from "@/lib/marketing/lot-catalog-status
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -57,9 +58,10 @@ function WorkFilterControls({
       {FILTERS.map((item) => {
         const selected = value === item.value;
         return (
-          <button
+          <Button
             key={item.value}
             type="button"
+            variant="ghost"
             aria-pressed={selected}
             onClick={() => onChange(item.value)}
             className={cn(
@@ -70,7 +72,7 @@ function WorkFilterControls({
             )}
           >
             {item.label}
-          </button>
+          </Button>
         );
       })}
     </div>

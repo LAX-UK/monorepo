@@ -4,12 +4,12 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { Button } from "@/components/ui/button";
 import { type UnderlineTab, UnderlineTabs } from "@/components/ui/underline-tabs";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle, BulkActionBar, cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Button as ShadButton } from "@auction/ui/components/button";
 import { CheckCheck, RefreshCcw } from "lucide-react";
 import Link from "next/link";
@@ -365,7 +365,7 @@ export function NotificationsInboxBoard({
               </Button>
               <Button
                 type="button"
-                variant="secondary"
+                variant="secondaryOutline"
                 className="min-h-11"
                 onClick={() => void handleBulkArchive()}
               >
@@ -425,7 +425,7 @@ export function NotificationsInboxBoard({
             <div className="mt-8 flex justify-center">
               <Button
                 type="button"
-                variant="secondary"
+                variant="secondaryOutline"
                 disabled={loadingMore}
                 onClick={() => void loadMore()}
               >
@@ -463,7 +463,7 @@ function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps)
         title="Nothing matches that type"
         description="Try clearing the type filter to see all notifications in this tab."
         action={
-          <Button type="button" variant="secondary" onClick={onClearType}>
+          <Button type="button" variant="secondaryOutline" onClick={onClearType}>
             Show all types
           </Button>
         }
@@ -476,7 +476,7 @@ function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps)
         title="No unread notifications"
         description="You're up to date. Switch to All to see your full history."
         action={
-          <Button type="button" variant="secondary" asChild>
+          <Button type="button" variant="secondaryOutline" asChild>
             <Link href="/dashboard/notifications">View all</Link>
           </Button>
         }
@@ -489,7 +489,7 @@ function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps)
         title="Nothing archived"
         description="Archived notifications appear here. Archive a row to move it out of the active inbox."
         action={
-          <Button type="button" variant="secondary" asChild>
+          <Button type="button" variant="secondaryOutline" asChild>
             <Link href="/dashboard/notifications">Back to All</Link>
           </Button>
         }
@@ -501,7 +501,7 @@ function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps)
       title="You're all caught up"
       description="We'll surface bids, wins, payments, and saved-lot updates here as they happen."
       action={
-        <Button type="button" variant="secondary" asChild>
+        <Button type="button" variant="secondaryOutline" asChild>
           <Link href="/sales">Browse auctions</Link>
         </Button>
       }

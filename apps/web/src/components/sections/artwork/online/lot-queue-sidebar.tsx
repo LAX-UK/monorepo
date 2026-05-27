@@ -3,6 +3,7 @@
 import type { LotQueueCardVM } from "@/components/sections/artwork/artwork-view-models";
 import { LotQueueCard } from "@/components/sections/artwork/online/lot-queue-card";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -49,9 +50,10 @@ export function LotQueueSidebar({
     >
       {/* Mobile: collapsed trigger + horizontal carousel */}
       <div className="lg:hidden">
-        <button
+        <Button
           type="button"
-          className="flex w-full items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low/50 px-3 py-3 text-left dark:bg-surface-container-low/30"
+          variant="ghost"
+          className="flex w-full items-center justify-start gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low/50 px-3 py-3 text-left dark:bg-surface-container-low/30"
           aria-expanded={mobileOpen}
           aria-controls={panelId}
           onClick={() => setMobileOpen((o) => !o)}
@@ -75,7 +77,7 @@ export function LotQueueSidebar({
               </span>
             ) : null}
           </span>
-        </button>
+        </Button>
         {mobileOpen && !isSaleQueueLoading && allCards.length > 0 ? (
           <div id={panelId} className="mt-3">
             <ul className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

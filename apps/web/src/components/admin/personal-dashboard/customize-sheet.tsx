@@ -7,6 +7,7 @@ import {
   type DashboardWidgetState,
 } from "@/lib/admin/dashboard-widgets.vm";
 import { Button } from "@auction/ui/components/button";
+import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Sheet,
   SheetContent,
@@ -70,12 +71,15 @@ export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
             const meta = WIDGET_LABELS[w.id];
             return (
               <li key={w.id}>
-                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border-hairline p-3">
-                  <input
-                    type="checkbox"
+                <label
+                  htmlFor={`widget-${w.id}`}
+                  className="flex cursor-pointer items-start gap-3 rounded-md border border-border-hairline p-3"
+                >
+                  <Checkbox
+                    id={`widget-${w.id}`}
                     className="mt-1"
                     checked={!w.hidden}
-                    onChange={() => toggle(w.id)}
+                    onCheckedChange={() => toggle(w.id)}
                   />
                   <span>
                     <span className="block font-label text-sm font-semibold text-on-surface">

@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { inviteMemberAction } from "@/lib/legal-entity/member-management.actions";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { legalEntityMemberRoles } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {

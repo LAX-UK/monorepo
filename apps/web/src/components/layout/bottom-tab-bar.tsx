@@ -5,6 +5,7 @@ import { ClientMobileMoreSheet } from "@/components/layout/client-mobile-more-sh
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -61,14 +62,15 @@ export function BottomTabBar() {
             return (
               <li key={item.id} className="min-w-0">
                 {more ? (
-                  <button
+                  <Button
                     type="button"
-                    className="flex min-h-[var(--tap-target-min,44px)] w-full flex-col items-center justify-center rounded-lg px-1 font-label text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    variant="ghost"
+                    className="flex h-auto min-h-[var(--tap-target-min,44px)] w-full flex-col items-center justify-center rounded-lg px-1 font-label font-normal text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0"
                     onClick={() => setMoreOpen(true)}
                     aria-label="Open more dashboard actions"
                   >
                     {content}
-                  </button>
+                  </Button>
                 ) : (
                   <Link
                     href={item.href}

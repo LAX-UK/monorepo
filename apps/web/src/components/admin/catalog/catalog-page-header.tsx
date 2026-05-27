@@ -95,13 +95,23 @@ export function CatalogPageHeader({
                       {action.href ? (
                         <Link href={action.href}>{action.label}</Link>
                       ) : action.htmlForm ? (
-                        <button type="submit" form={action.htmlForm}>
+                        <Button
+                          type="submit"
+                          form={action.htmlForm}
+                          variant="ghost"
+                          className="w-full justify-start font-normal"
+                        >
                           {action.label}
-                        </button>
+                        </Button>
                       ) : (
-                        <button type="button" onClick={action.onClick}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full justify-start font-normal"
+                          onClick={action.onClick}
+                        >
                           {action.label}
-                        </button>
+                        </Button>
                       )}
                     </DropdownMenuItem>
                   ))}

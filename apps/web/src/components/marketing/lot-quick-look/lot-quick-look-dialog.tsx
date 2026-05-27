@@ -185,14 +185,15 @@ function QuickLookImageStrip({
     >
       {images.map((src, index) => (
         <li key={src} className="shrink-0">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => onSelect(index)}
             className={cn(
-              "relative size-12 overflow-hidden rounded-md border-2 transition-all motion-safe:duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              "relative h-auto min-h-0 size-12 overflow-hidden rounded-md border-2 p-0 font-normal transition-all motion-safe:duration-200 focus-visible:border-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0",
               index === activeIndex
-                ? "scale-100 border-primary"
-                : "scale-95 border-transparent opacity-70 hover:scale-100 hover:opacity-100",
+                ? "scale-100 border-primary hover:bg-transparent"
+                : "scale-95 border-transparent opacity-70 hover:scale-100 hover:opacity-100 hover:bg-transparent",
             )}
             aria-label={`Show image ${index + 1}`}
             aria-current={index === activeIndex ? "true" : undefined}
@@ -205,7 +206,7 @@ function QuickLookImageStrip({
               imgClassName="size-full object-cover"
               sizes="48px"
             />
-          </button>
+          </Button>
         </li>
       ))}
     </ul>
@@ -263,10 +264,11 @@ function QuickLookBody({
         onTouchEnd={handleTouchEnd}
       >
         {deckNav}
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onHeroClick}
-          className="absolute inset-0 size-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="absolute inset-0 z-0 h-full min-h-0 w-full cursor-zoom-in rounded-none border-0 p-0 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0"
           aria-label={`Expand image for ${vm.title}`}
         >
           <MediaImage
@@ -279,7 +281,7 @@ function QuickLookBody({
             sizes="(max-width: 640px) 100vw, 480px"
             priority
           />
-        </button>
+        </Button>
       </div>
 
       {showGalleryDock ? (
@@ -522,13 +524,14 @@ export function LotQuickLookDialog() {
               >
                 {contextLabel}
               </p>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                className="h-auto min-h-0 rounded-none px-0 font-body text-xs font-normal text-primary underline-offset-2 hover:bg-transparent hover:text-primary hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 onClick={() => handleOpenChange(false)}
-                className="font-body text-xs text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 Back to results
-              </button>
+              </Button>
             </div>
 
             <QuickLookStatusBand vm={vm} statusId={statusId} />

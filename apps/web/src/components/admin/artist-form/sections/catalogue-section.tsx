@@ -1,5 +1,6 @@
 "use client";
 
+import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
 import type { ArtistKind, ArtistStatus } from "@auction/types";
 import {
@@ -53,21 +54,14 @@ export function CatalogueSection({ control, disabled = false }: ArtistFormSectio
             <FormLabel>
               <LabelCaps>Status</LabelCaps>
             </FormLabel>
-            <FormControl>
-              <select
-                value={field.value ?? "approved"}
-                disabled={disabled}
-                onChange={(event) => field.onChange(event.target.value as ArtistStatus)}
-                onBlur={field.onBlur}
-                className="min-h-11 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface"
-              >
-                {ARTIST_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FormControl>
+            <RhfSelect
+              value={field.value ?? "approved"}
+              onValueChange={(v) => field.onChange(v as ArtistStatus)}
+              onBlur={field.onBlur}
+              disabled={disabled}
+              options={[...ARTIST_STATUS_OPTIONS]}
+              triggerClassName="min-h-11 w-full font-body text-sm"
+            />
             <p className="text-xs text-on-surface-variant">
               Approved profiles appear in the public directory. Pending hides the profile and flags
               attached lots for review.

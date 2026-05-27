@@ -5,12 +5,16 @@ import {
   CatalogFilterBar,
   type CatalogSegmentItem,
 } from "@/components/admin/catalog/catalog-filter-bar";
+import { FilterCheckboxGroup } from "@/components/ui/filter-checkbox-group";
+import { FilterSelect } from "@/components/ui/filter-select";
+import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
 
-const inputCls =
-  "h-10 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50";
-const selectCls =
-  "h-10 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-2 font-body text-sm text-on-surface";
+const inputCls = "h-10 w-full font-body text-sm";
+const selectCls = "h-10 w-full font-body text-sm";
 const labelCapsCls =
   "font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
@@ -29,94 +33,105 @@ function ArtistRegistryFilterForm({
 }: {
   defaults: FilterDefaults;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
+
   return (
-    <form method="get" action="/admin/artists" className="space-y-4">
-      <input type="hidden" name="offset" value="0" />
-      <input type="hidden" name="backfill" value="" />
-      <input type="hidden" name="duplicates" value="" />
+    <div className="space-y-4">
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("offset", "0");
+          params.delete("backfill");
+          params.delete("duplicates");
+          const nextQ = String(fd.get("q") ?? "").trim();
+          if (nextQ) params.set("q", nextQ);
+          else params.delete("q");
+          const qs = params.toString();
+          startTransition(() => {
+            router.push(qs ? `${pathname}?${qs}` : pathname);
+          });
+        }}
+      >
+        <label className="flex flex-col gap-1" htmlFor="catalog-artists-search">
+          <span className={labelCapsCls}>Search</span>
+          <Input
+            id="catalog-artists-search"
+            name="q"
+            type="search"
+            defaultValue={defaults.q ?? ""}
+            placeholder="Name or slug…"
+            className={inputCls}
+          />
+        </label>
 
-      <label className="flex flex-col gap-1">
-        <span className={labelCapsCls}>Search</span>
-        <input
-          name="q"
-          type="search"
-          defaultValue={defaults.q ?? ""}
-          placeholder="Name or slug…"
-          className={inputCls}
-        />
-      </label>
+        <Button type="submit" className="h-10 w-full shrink-0">
+          Apply
+        </Button>
+      </form>
 
-      <label className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <span className={labelCapsCls}>Status</span>
-        <select name="status" defaultValue={defaults.status ?? ""} className={selectCls}>
-          <option value="">Any</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-          <option value="merged_into">Merged</option>
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1">
-        <span className={labelCapsCls}>Kind</span>
-        <select name="kind" defaultValue={defaults.kind ?? ""} className={selectCls}>
-          <option value="">Any</option>
-          <option value="artist">Artist</option>
-          <option value="maker">Maker</option>
-          <option value="brand">Brand</option>
-          <option value="marque">Marque</option>
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1">
-        <span className={labelCapsCls}>Sort</span>
-        <select name="sort" defaultValue={defaults.sort ?? "name_asc"} className={selectCls}>
-          <option value="name_asc">Name A–Z</option>
-          <option value="popular">Most lots</option>
-          <option value="recent">Recently updated</option>
-        </select>
-      </label>
-
-      <div className="flex flex-col gap-3 border-t border-outline-variant/40 pt-3">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="featured"
-            value="true"
-            defaultChecked={defaults.featured === true}
-            className="size-4 rounded border-outline-variant accent-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">Featured</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="verified"
-            value="true"
-            defaultChecked={defaults.verified === true}
-            className="size-4 rounded border-outline-variant accent-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">Verified</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="includeArchived"
-            value="true"
-            defaultChecked={defaults.includeArchived === true}
-            className="size-4 rounded border-outline-variant accent-primary"
-          />
-          <span className="font-body text-sm text-on-surface-variant">Include archived</span>
-        </label>
+        <FilterSelect
+          param="status"
+          resetParams={{ offset: "0" }}
+          className={selectCls}
+          options={[
+            { value: "", label: "Any" },
+            { value: "pending", label: "Pending" },
+            { value: "approved", label: "Approved" },
+            { value: "rejected", label: "Rejected" },
+            { value: "merged_into", label: "Merged" },
+          ]}
+        />
       </div>
 
-      <button
-        type="submit"
-        className="h-10 w-full shrink-0 rounded-md bg-primary px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary transition-colors hover:bg-primary/90"
-      >
-        Apply
-      </button>
-    </form>
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Kind</span>
+        <FilterSelect
+          param="kind"
+          resetParams={{ offset: "0" }}
+          className={selectCls}
+          options={[
+            { value: "", label: "Any" },
+            { value: "artist", label: "Artist" },
+            { value: "maker", label: "Maker" },
+            { value: "brand", label: "Brand" },
+            { value: "marque", label: "Marque" },
+          ]}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Sort</span>
+        <FilterSelect
+          param="sort"
+          resetParams={{ offset: "0" }}
+          defaultValue="name_asc"
+          className={selectCls}
+          options={[
+            { value: "name_asc", label: "Name A–Z" },
+            { value: "popular", label: "Most lots" },
+            { value: "recent", label: "Recently updated" },
+          ]}
+        />
+      </div>
+
+      <FilterCheckboxGroup
+        className="flex flex-col gap-3 border-t border-outline-variant/40 pt-3"
+        resetParams={{ offset: "0" }}
+        options={[
+          { param: "featured", label: "Featured", checkedValue: "true" },
+          { param: "verified", label: "Verified", checkedValue: "true" },
+          { param: "includeArchived", label: "Include archived", checkedValue: "true" },
+        ]}
+      />
+    </div>
   );
 }
 

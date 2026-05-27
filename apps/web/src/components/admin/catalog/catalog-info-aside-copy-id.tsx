@@ -1,6 +1,7 @@
 "use client";
 
 import { notify } from "@/lib/ui/notify";
+import { Button } from "@auction/ui/components/button";
 
 type Props = {
   entityId: string;
@@ -8,15 +9,16 @@ type Props = {
 
 export function CatalogInfoAsideCopyId({ entityId }: Props) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       aria-label={`Copy ID ${entityId}`}
-      className="mt-1 block w-full truncate text-left font-mono text-xs text-on-surface hover:text-primary"
+      className="mt-1 block h-auto min-h-0 w-full truncate justify-start p-0 text-left font-mono text-xs text-on-surface shadow-none hover:bg-transparent hover:text-primary"
       onClick={() => {
         void navigator.clipboard.writeText(entityId).then(() => notify.success("ID copied"));
       }}
     >
       {entityId}
-    </button>
+    </Button>
   );
 }

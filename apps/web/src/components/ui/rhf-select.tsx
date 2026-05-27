@@ -21,9 +21,7 @@ type Props = {
   triggerClassName?: string;
 };
 
-/** Radix Select wired for react-hook-form `FormField` + `FormItem`.
- * Place inside `FormControl`’s sibling pattern: `FormItem` → `FormField` → `RhfSelect` (helper includes `FormControl` around the trigger).
- */
+/** Radix Select wired for react-hook-form `FormField` + `FormItem`. Includes `FormControl` around the trigger. */
 export function RhfSelect({
   value,
   onValueChange,

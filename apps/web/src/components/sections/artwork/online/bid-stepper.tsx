@@ -2,6 +2,7 @@
 
 import { formatMoney } from "@/lib/format-currency";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Minus, Plus } from "lucide-react";
 import { useId, useMemo } from "react";
 
@@ -50,15 +51,16 @@ export function BidStepper({
 
   return (
     <div className={cn("flex w-full items-center gap-4", className)}>
-      <button
+      <Button
         type="button"
+        variant="ghost"
         aria-label="Decrease bid"
         disabled={disabled || atMin}
         onClick={dec}
         className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-[#757575] transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#050505]/20 disabled:opacity-40 dark:outline-outline-variant dark:focus-visible:ring-white/20"
       >
         <Minus className="size-5 text-[#050505] dark:text-on-surface" aria-hidden />
-      </button>
+      </Button>
       <div
         className="flex min-h-14 flex-1 flex-col items-center justify-center gap-2 rounded-[4px] px-8 py-3 outline outline-1 outline-offset-[-1px] outline-[#757575] dark:outline-outline-variant"
         aria-live="polite"
@@ -77,15 +79,16 @@ export function BidStepper({
           {display}
         </span>
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
         aria-label="Increase bid"
         disabled={disabled}
         onClick={inc}
         className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-[#757575] transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#050505]/20 disabled:opacity-40 dark:outline-outline-variant dark:focus-visible:ring-white/20"
       >
         <Plus className="size-5 text-[#050505] dark:text-on-surface" aria-hidden />
-      </button>
+      </Button>
     </div>
   );
 }

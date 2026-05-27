@@ -1,8 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
 import { Surface } from "@auction/ui/components/surface";
 import { Textarea } from "@auction/ui/components/textarea";
 import { ArrowRight, Send } from "lucide-react";
@@ -85,18 +92,18 @@ export function ArtistChangeRequestForm({ recipient }: ArtistChangeRequestFormPr
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={kindId}>What needs to change?</Label>
-          <select
-            id={kindId}
-            value={kind}
-            onChange={(event) => setKind(event.target.value as ChangeKind)}
-            className="h-11 w-full rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            {CHANGE_KIND_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <Select value={kind} onValueChange={(v) => setKind(v as ChangeKind)}>
+            <SelectTrigger id={kindId} className="h-11 w-full font-body text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CHANGE_KIND_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="font-body text-xs text-on-surface-variant">
             {CHANGE_KIND_OPTIONS.find((o) => o.value === kind)?.helper}
           </p>

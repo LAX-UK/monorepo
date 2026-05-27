@@ -2,6 +2,7 @@
 
 import { ARTIST_KIND_OPTIONS, artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { ArtistKind } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { Brush, Factory, Gem, Tag } from "lucide-react";
 
 const KIND_ICONS: Record<ArtistKind, typeof Brush> = {
@@ -39,16 +40,17 @@ export function KindSelector({
         const meta = artistKindMeta(opt.value);
         const Icon = KIND_ICONS[opt.value];
         return (
-          <button
+          <Button
             key={opt.value}
             type="button"
+            variant="outline"
             disabled={disabled}
             // biome-ignore lint/a11y/useSemanticElements: card grid; native radios break layout
             role="radio"
             aria-checked={active}
             onBlur={onBlur}
             onClick={() => onChange(opt.value)}
-            className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-colors ${
+            className={`flex h-auto min-h-0 flex-col items-start gap-2 rounded-xl border p-3 text-left shadow-none transition-colors ${
               active
                 ? "border-primary bg-primary-container/25 ring-1 ring-primary/30"
                 : "border-outline-variant/40 bg-surface-container-lowest hover:border-primary/35"
@@ -61,7 +63,7 @@ export function KindSelector({
               {meta.label}
             </span>
             <span className="text-xs leading-snug text-on-surface-variant">{meta.description}</span>
-          </button>
+          </Button>
         );
       })}
     </div>
