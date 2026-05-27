@@ -4,6 +4,15 @@ import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
+import { Label } from "@auction/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -150,40 +159,51 @@ export function SaleroomRegisterToBid({
       <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Register to bid
       </p>
-      <label className="font-body text-xs text-secondary">
-        Buying as
-        <select
-          className="mt-1 w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-sm"
-          value={entityId}
-          onChange={(ev) => setEntityId(ev.target.value)}
-          required
-        >
-          <option value="">Select legal entity…</option>
-          {agentEntities.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.displayName}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="space-y-1">
+        <Label htmlFor={`register-entity-${saleId}`} className="font-body text-xs text-secondary">
+          Buying as
+        </Label>
+        <Select value={entityId} onValueChange={setEntityId} required>
+          <SelectTrigger
+            id={`register-entity-${saleId}`}
+            className="w-full font-body text-sm"
+            aria-required="true"
+          >
+            <SelectValue placeholder="Select legal entity…" />
+          </SelectTrigger>
+          <SelectContent>
+            {agentEntities.map((e) => (
+              <SelectItem key={e.id} value={e.id}>
+                {e.displayName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {entityId && selectedStatus ? (
         <p className="font-body text-xs text-secondary">
           Status for this sale:{" "}
           <span className="font-medium text-on-surface">{selectedStatus}</span>
         </p>
       ) : null}
-      <label className="font-body text-xs text-secondary">
-        Optional bid limit (same currency as the sale)
-        <input
+      <div className="space-y-1">
+        <Label
+          htmlFor={`register-bid-limit-${saleId}`}
+          className="font-body text-xs text-secondary"
+        >
+          Optional bid limit (same currency as the sale)
+        </Label>
+        <Input
+          id={`register-bid-limit-${saleId}`}
           type="number"
           min={0}
           step="0.01"
-          className="mt-1 w-full rounded border border-outline-variant/40 bg-surface px-2 py-2 font-body text-sm"
+          className="font-body text-sm"
           value={bidLimit}
           onChange={(ev) => setBidLimit(ev.target.value)}
           placeholder="e.g. 50000"
         />
-      </label>
+      </div>
       {error ? <p className="font-body text-xs text-destructive">{error}</p> : null}
       {message ? <p className="font-body text-xs text-primary">{message}</p> : null}
       <Button type="submit" disabled={loading} className="min-h-11 w-full sm:w-auto" size="sm">

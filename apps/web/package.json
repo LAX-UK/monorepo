@@ -7,7 +7,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "biome check . && node scripts/check-dashboard-error-copy.mjs && node scripts/check-no-direct-usesession.mjs",
+    "lint": "biome check . && node scripts/check-dashboard-error-copy.mjs && node scripts/check-no-direct-usesession.mjs && node scripts/check-native-form-controls.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",

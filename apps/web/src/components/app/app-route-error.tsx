@@ -4,10 +4,10 @@ import {
   EmptyStateIllustration,
   type EmptyStateIllustrationKey,
 } from "@/components/illustrations/empty-state-illustrations";
-import { Button } from "@/components/ui/button";
 import { DisplayHeading } from "@/components/ui/typography";
 import { useReportRouteError } from "@/lib/observability/use-report-route-error";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 export type AppRouteErrorProps = {

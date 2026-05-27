@@ -90,9 +90,10 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
                 {FILTERS.map((f) => {
                   const selected = filter === f.id;
                   return (
-                    <button
+                    <Button
                       key={f.id}
                       type="button"
+                      variant="ghost"
                       role="tab"
                       aria-selected={selected}
                       onClick={() => setFilter(f.id)}
@@ -103,7 +104,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
                       }
                     >
                       {f.label}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>

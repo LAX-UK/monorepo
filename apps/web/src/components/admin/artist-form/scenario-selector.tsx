@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@auction/ui/components/button";
 import { Landmark, UserRound } from "lucide-react";
 import { SCENARIO_REGISTRY } from "./scenario-config";
 import type { ArtistScenario } from "./types";
@@ -33,12 +34,13 @@ export function ScenarioSelector({ value, onChange, disabled = false }: Props) {
           const Icon = ICONS[id];
           const active = value === id;
           return (
-            <button
+            <Button
               key={id}
               type="button"
+              variant="outline"
               disabled={disabled}
               onClick={() => onChange(id)}
-              className={`flex flex-col items-start gap-3 rounded-2xl border p-4 text-left transition-colors ${
+              className={`flex h-auto min-h-0 flex-col items-start gap-3 rounded-2xl border p-4 text-left shadow-none transition-colors ${
                 active
                   ? "border-primary bg-primary-container/30 ring-2 ring-primary/25"
                   : "border-outline-variant/40 bg-surface-container-lowest hover:border-primary/40"
@@ -56,7 +58,7 @@ export function ScenarioSelector({ value, onChange, disabled = false }: Props) {
                   {cfg.examples}
                 </span>
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { NotificationPushEnableButton } from "@/components/dashboard/notification-push-enable-button";
+import { RhfTimePicker } from "@/components/ui/rhf-time-picker";
 import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
 import { notify } from "@/lib/ui/notify";
 import type { NotificationPreference } from "@auction/types";
@@ -19,7 +20,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { Surface } from "@auction/ui/components/surface";
 import { Switch } from "@auction/ui/components/switch";
@@ -349,7 +349,7 @@ export function NotificationPreferencesForm({
           </h2>
           <p className="mt-2 font-body text-sm text-on-surface-variant">
             Quiet hours apply to push and WhatsApp. Email and in-app notifications can still be
-            delivered.
+            delivered. Times below are in UTC.
           </p>
           <div className="mt-2 flex flex-wrap gap-3">
             <FormField
@@ -358,13 +358,12 @@ export function NotificationPreferencesForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="font-body text-sm">Start</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="time"
-                      className="mt-1 block min-h-11 min-w-36 font-body text-sm"
-                      {...field}
-                    />
-                  </FormControl>
+                  <RhfTimePicker
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className="mt-1 block min-w-36 font-body text-sm"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -375,13 +374,12 @@ export function NotificationPreferencesForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="font-body text-sm">End</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="time"
-                      className="mt-1 block min-h-11 min-w-36 font-body text-sm"
-                      {...field}
-                    />
-                  </FormControl>
+                  <RhfTimePicker
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className="mt-1 block min-w-36 font-body text-sm"
+                  />
                   <FormMessage />
                 </FormItem>
               )}

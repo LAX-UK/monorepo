@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Loader2, UserPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -123,9 +123,10 @@ export function ArtistSearch({
         <ul className="divide-y rounded-md border bg-surface" aria-label="Artist matches">
           {hits.map((hit) => (
             <li key={hit.id}>
-              <button
+              <Button
                 type="button"
-                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-surface-container"
+                variant="ghost"
+                className="flex h-auto min-h-0 w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left font-body font-normal hover:bg-surface-container"
                 onClick={() => onSelect(hit)}
                 disabled={disabled || hit.status === "merged_into"}
               >
@@ -145,7 +146,7 @@ export function ArtistSearch({
                   </span>
                 </span>
                 <span className="text-xs uppercase text-on-surface-variant">{hit.kind}</span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -156,7 +157,7 @@ export function ArtistSearch({
           <span className="text-sm text-on-surface-variant">No matches for “{query.trim()}”.</span>
           <Button
             type="button"
-            variant="secondary"
+            variant="secondaryOutline"
             onClick={() => onCreateNew(query.trim())}
             disabled={disabled}
           >

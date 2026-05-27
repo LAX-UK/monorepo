@@ -9,7 +9,6 @@ import {
   SellerOrgContextBanner,
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
-import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -20,6 +19,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import type { DashboardSalesReader } from "@/lib/data/readers/dashboard-readers";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import type { Lot } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
@@ -256,7 +256,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
                 : "Your approved submissions will appear here once we schedule them into a sale."
             }
             action={
-              <Button variant="secondary" asChild>
+              <Button variant="secondaryOutline" asChild>
                 <Link href={PAGE_PATH}>Show live & scheduled</Link>
               </Button>
             }

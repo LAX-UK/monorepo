@@ -7,7 +7,6 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { PaymentsPageToolbar } from "@/components/dashboard/payments-page-toolbar";
 import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { Button } from "@/components/ui/button";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
@@ -25,6 +24,7 @@ import {
   toPaymentDisplayRows,
 } from "@/lib/data/view-models/dashboard-payments.vm";
 import { lotPath } from "@/lib/seo/url";
+import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import { CreditCard } from "lucide-react";
@@ -188,7 +188,7 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
               title="No payments match this filter"
               description="Try a different status or clear the filter to see everything."
               action={
-                <Button variant="secondary" asChild>
+                <Button variant="secondaryOutline" asChild>
                   <Link href={PAGE_PATH}>Show all</Link>
                 </Button>
               }

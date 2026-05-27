@@ -7,7 +7,6 @@ import {
   SellerOrgContextBanner,
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
-import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -19,6 +18,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { ArrowRight, CalendarDays, FileStack, Layers, Sparkles, WalletCards } from "lucide-react";
 import Link from "next/link";
@@ -220,7 +220,7 @@ export default async function SellerOverviewPage() {
       {submissionsFailure ? (
         <div className="space-y-3">
           <DashboardSliceErrorAlert failure={submissionsFailure} />
-          <Button variant="secondary" asChild>
+          <Button variant="secondaryOutline" asChild>
             <Link href={DASHBOARD_ROUTES.submissionsNew}>{DASHBOARD_CTA.newSubmission}</Link>
           </Button>
         </div>
@@ -422,7 +422,7 @@ export default async function SellerOverviewPage() {
             approval.
           </p>
         </div>
-        <Button variant="secondary" asChild>
+        <Button variant="secondaryOutline" asChild>
           <Link href="/dashboard/seller/artist">Artist profile (request changes)</Link>
         </Button>
       </Surface>

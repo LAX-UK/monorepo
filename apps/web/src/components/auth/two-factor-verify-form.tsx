@@ -4,6 +4,7 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { UnderlineInput } from "@/components/ui/input";
 import { useVerifyTotpController } from "@/lib/auth/hooks/use-verify-totp-controller";
+import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   Form,
@@ -153,9 +154,10 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
       )}
 
       <div className="text-center">
-        <button
+        <Button
           type="button"
-          className="font-footer-links text-sm text-primary underline-offset-2 hover:underline"
+          variant="ghost"
+          className="h-auto min-h-0 rounded-none px-0 font-footer-links text-sm font-normal text-primary underline-offset-2 hover:bg-transparent hover:underline hover:text-primary"
           onClick={() => {
             setMode(mode === "totp" ? "backup" : "totp");
             totpForm.reset();
@@ -165,7 +167,7 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
           disabled={busy}
         >
           {mode === "totp" ? "Use a backup code instead" : "Use authenticator code instead"}
-        </button>
+        </Button>
       </div>
     </div>
   );

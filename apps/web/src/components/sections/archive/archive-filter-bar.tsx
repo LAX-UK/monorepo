@@ -1,14 +1,8 @@
 "use client";
 
+import { FilterSelect } from "@/components/ui/filter-select";
 import type { Category } from "@auction/types";
 import { FilterChip } from "@auction/ui";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
 import { Separator } from "@auction/ui/components/separator";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useTransition } from "react";
@@ -25,17 +19,30 @@ function buildYearRange(): number[] {
   return years;
 }
 
-export function ArchiveFilterBar({ categories }: Props) {
+function useArchiveFilterPendingNavigation() {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const navigate = useCallback(
+    (href: string) => {
+      startTransition(() => {
+        router.push(href, { scroll: false });
+      });
+    },
+    [router],
+  );
+  return { pending, navigate };
+}
+
+export function ArchiveFilterBar({ categories }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [pending, startTransition] = useTransition();
+  const { pending, navigate } = useArchiveFilterPendingNavigation();
+  const usePendingNavigation = useCallback(() => ({ pending, navigate }), [pending, navigate]);
 
   const years = useMemo(() => buildYearRange(), []);
 
   const year = searchParams.get("year") ?? "all";
   const categoryId = searchParams.get("categoryId") ?? "";
-  const sort = searchParams.get("sort") ?? "hammer";
 
   const setParams = useCallback(
     (updates: Record<string, string>) => {
@@ -45,11 +52,10 @@ export function ArchiveFilterBar({ categories }: Props) {
         else next.set(k, v);
       }
       next.delete("page");
-      startTransition(() => {
-        router.push(`${pathname}?${next.toString()}`, { scroll: false });
-      });
+      const qs = next.toString();
+      navigate(qs ? `${pathname}?${qs}` : pathname);
     },
-    [pathname, router, searchParams],
+    [navigate, pathname, searchParams],
   );
 
   const categoryOptions = useMemo(() => categories, [categories]);
@@ -121,23 +127,19 @@ export function ArchiveFilterBar({ categories }: Props) {
           <span className="font-label text-[0.625rem] uppercase tracking-[0.2em] text-on-surface-variant">
             Sort by
           </span>
-          <Select
-            value={sort}
-            disabled={pending}
-            onValueChange={(value) => setParams({ sort: value })}
-          >
-            <SelectTrigger
-              aria-label="Sort archive"
-              className="h-auto cursor-pointer border-none bg-transparent p-0 font-label text-xs font-medium uppercase tracking-[0.2em] text-on-surface shadow-none focus:ring-0 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hammer">Hammer price (high to low)</SelectItem>
-              <SelectItem value="recent">Most recent</SelectItem>
-              <SelectItem value="artist">Artist name (A to Z)</SelectItem>
-            </SelectContent>
-          </Select>
+          <FilterSelect
+            param="sort"
+            defaultValue="hammer"
+            clearParams={["page"]}
+            usePendingNavigation={usePendingNavigation}
+            options={[
+              { value: "hammer", label: "Hammer price (high to low)" },
+              { value: "recent", label: "Most recent" },
+              { value: "artist", label: "Artist name (A to Z)" },
+            ]}
+            ariaLabel="Sort archive"
+            className="h-auto cursor-pointer border-none bg-transparent p-0 font-label text-xs font-medium uppercase tracking-[0.2em] text-on-surface shadow-none focus:ring-0 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          />
         </div>
       </div>
     </section>

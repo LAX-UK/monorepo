@@ -6,7 +6,7 @@ import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { useUploadGallery } from "@/lib/forms/image/use-upload-gallery";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
-import { useRef, useState } from "react";
+import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 
 /** Image-only upload kinds (presign + thumbnail UI). */
 export type ImageUploadKind =
@@ -73,8 +73,6 @@ export function ImageUploadField({
   disabled = false,
   previewUrlByKey = {},
 }: ImageUploadFieldProps) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [dragging, setDragging] = useState(false);
   const label = placeholderLabel(kind);
   const isAvatar = kind === "avatar";
 
@@ -97,31 +95,15 @@ export function ImageUploadField({
 
   return (
     <div className="space-y-3">
-      <button
-        type="button"
+      <FileUploadTrigger
+        dropzone
         disabled={disabled}
-        aria-label={dropzoneAriaLabel(kind)}
-        className={`w-full rounded-lg border border-dashed p-6 text-left transition ${
-          disabled
-            ? "cursor-not-allowed opacity-60"
-            : dragging
-              ? "border-primary bg-primary-container/20"
-              : "border-outline-variant bg-surface-container-lowest"
-        }`}
-        onClick={() => !disabled && inputRef.current?.click()}
-        onDragEnter={(event) => {
-          if (disabled) return;
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragOver={(event) => event.preventDefault()}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(event) => {
-          if (disabled) return;
-          event.preventDefault();
-          setDragging(false);
-          void uploadFiles(event.dataTransfer.files);
-        }}
+        multiple={multiple}
+        accept={IMAGE_ACCEPT}
+        inputId={`image-upload-${kind}`}
+        dropzoneAriaLabel={dropzoneAriaLabel(kind)}
+        onFilesSelected={(files) => void uploadFiles(files)}
+        className="[&_[role=button]]:min-h-0 [&_[role=button]]:rounded-lg [&_[role=button]]:border-outline-variant [&_[role=button]]:bg-surface-container-lowest [&_[role=button]]:p-6 [&_[role=button]]:text-left"
       >
         <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Upload images
@@ -129,19 +111,7 @@ export function ImageUploadField({
         <span className="mt-2 block font-body text-sm text-on-surface-variant">
           Drop files here or click to choose. JPEG, PNG, WebP, and GIF up to 10 MB each.
         </span>
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        multiple={multiple}
-        disabled={disabled}
-        className="hidden"
-        onChange={(event) => {
-          if (event.target.files) void uploadFiles(event.target.files);
-          event.currentTarget.value = "";
-        }}
-      />
+      </FileUploadTrigger>
       {value.length > 0 ? (
         <div className={isAvatar ? "max-w-40" : "grid gap-3 sm:grid-cols-2"}>
           {value.map((urlOrKey, index) => (

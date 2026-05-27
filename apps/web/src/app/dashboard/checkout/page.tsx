@@ -6,13 +6,13 @@ import {
 } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
-import { Button } from "@/components/ui/button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { ArrowRight, Gavel, ShoppingBag } from "lucide-react";
 import Link from "next/link";
@@ -144,7 +144,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           title="Some lots were not in your basket"
           message="Lots in the URL are not assigned to you as the winning bidder. Open your collection to start checkout from a won lot."
         >
-          <Button variant="secondary" asChild>
+          <Button variant="secondaryOutline" asChild>
             <Link href="/dashboard/portfolio">Open collection</Link>
           </Button>
         </DashboardErrorAlert>
@@ -155,7 +155,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           title="Some lots could not load"
           message={`${fetchFailureCount} lot${fetchFailureCount === 1 ? "" : "s"} could not be loaded. Try again or open your collection.`}
         >
-          <Button variant="secondary" asChild>
+          <Button variant="secondaryOutline" asChild>
             <Link href="/dashboard/portfolio">Open collection</Link>
           </Button>
         </DashboardErrorAlert>
@@ -226,7 +226,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
                         {formatMoney(row.total.toFixed(2))}
                       </p>
                     </div>
-                    <Button variant="secondary" asChild>
+                    <Button variant="secondaryOutline" asChild>
                       <Link
                         href={`/dashboard/checkout/${row.lot.id}`}
                         className="inline-flex items-center gap-2"

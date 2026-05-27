@@ -1,5 +1,6 @@
 "use client";
 
+import { FilterSelect, filterSelectTriggerClassName } from "@/components/ui/filter-select";
 import type { SalePresetId } from "@/lib/admin/list-presets/sales-presets";
 import { X } from "lucide-react";
 import Link from "next/link";
@@ -11,53 +12,53 @@ type Props = {
   activeLensId: SalePresetId;
 };
 
-const selectCls =
-  "h-10 min-w-[9rem] rounded-md border border-outline-variant bg-surface-container-lowest px-2.5 font-body text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50";
+const selectCls = filterSelectTriggerClassName;
+const labelCapsCls =
+  "font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
-export function SaleFilterForm({ q, lifecycle, delivery, activeLensId }: Props) {
-  const hasFilters = Boolean(delivery?.trim() || lifecycle?.trim());
+export function SaleFilterForm({
+  q: _q,
+  lifecycle: _lifecycle,
+  delivery: _delivery,
+  activeLensId,
+}: Props) {
+  const hasFilters = Boolean(_delivery?.trim() || _lifecycle?.trim());
 
   return (
-    <form method="get" action="/admin/sales" className="flex flex-col gap-4">
-      <input type="hidden" name="offset" value="0" />
-      {q?.trim() ? <input type="hidden" name="q" value={q} /> : null}
-
-      <label className="flex flex-col gap-1">
-        <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Time window
-        </span>
-        <select
-          name="lifecycle"
-          defaultValue={lifecycle ?? (activeLensId === "all" ? "" : activeLensId)}
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Time window</span>
+        <FilterSelect
+          param="lifecycle"
+          resetParams={{ offset: "0" }}
+          defaultValue={activeLensId === "all" ? "" : activeLensId}
           className={selectCls}
-        >
-          <option value="">All sales</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="live">Live now</option>
-          <option value="closed">Past (not settled)</option>
-          <option value="settled">Settled</option>
-        </select>
-      </label>
+          options={[
+            { value: "", label: "All sales" },
+            { value: "upcoming", label: "Upcoming" },
+            { value: "live", label: "Live now" },
+            { value: "closed", label: "Past (not settled)" },
+            { value: "settled", label: "Settled" },
+          ]}
+        />
+      </div>
 
-      <label className="flex flex-col gap-1">
-        <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Delivery mode
-        </span>
-        <select name="delivery" defaultValue={delivery ?? ""} className={selectCls}>
-          <option value="">Any delivery</option>
-          <option value="online">Online only</option>
-          <option value="onsite">Onsite only</option>
-        </select>
-      </label>
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Delivery mode</span>
+        <FilterSelect
+          param="delivery"
+          resetParams={{ offset: "0" }}
+          className={selectCls}
+          options={[
+            { value: "", label: "Any delivery" },
+            { value: "online", label: "Online only" },
+            { value: "onsite", label: "Onsite only" },
+          ]}
+        />
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <button
-          type="submit"
-          className="inline-flex min-h-10 items-center rounded-md bg-primary px-4 font-label text-xs font-bold uppercase tracking-[0.12em] text-on-primary"
-        >
-          Apply filters
-        </button>
-        {hasFilters ? (
+      {hasFilters ? (
+        <div className="pt-1">
           <Link
             href="/admin/sales"
             className="inline-flex min-h-10 items-center gap-1 rounded-md border border-outline-variant px-3 font-label text-xs uppercase tracking-[0.12em] text-on-surface-variant"
@@ -65,8 +66,8 @@ export function SaleFilterForm({ q, lifecycle, delivery, activeLensId }: Props) 
             <X className="size-3.5" aria-hidden />
             Clear
           </Link>
-        ) : null}
-      </div>
-    </form>
+        </div>
+      ) : null}
+    </div>
   );
 }

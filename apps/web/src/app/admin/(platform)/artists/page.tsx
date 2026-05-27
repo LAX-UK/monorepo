@@ -9,13 +9,13 @@ import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filt
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { Button } from "@/components/ui/button";
 import { artistsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { ArtistPresetId } from "@/lib/admin/artist-list-presets";
 import { artistListActivePreset, artistListPresetHref } from "@/lib/admin/artist-list-presets";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
+import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -161,7 +161,7 @@ export default async function AdminArtistsPage({
         }
         action={
           hasFilters ? (
-            <Button variant="secondary" asChild>
+            <Button variant="secondaryOutline" asChild>
               <Link href="/admin/artists">Clear filters</Link>
             </Button>
           ) : (
@@ -179,7 +179,7 @@ export default async function AdminArtistsPage({
         title="No rows on this page"
         description="Try the previous page or clear filters — results may have shifted."
         action={
-          <Button variant="secondary" asChild>
+          <Button variant="secondaryOutline" asChild>
             <Link
               href={buildListHref("/admin/artists", sp, {
                 offset: Math.max(0, query.offset - query.limit),

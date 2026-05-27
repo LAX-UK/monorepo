@@ -14,7 +14,7 @@ import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
-import { Button } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Check, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -81,9 +81,10 @@ function ClientIdentityCell({ u, onOpen }: { u: AdminUserRow; onOpen: () => void
 
 export function AdminClientMobileCard({ u, onOpen }: { u: AdminUserRow; onOpen: () => void }) {
   return (
-    <button
+    <Button
       type="button"
-      className="flex w-full items-center gap-3 rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      variant="outline"
+      className="flex h-auto min-h-0 w-full items-center gap-3 rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4 text-left shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       onClick={onOpen}
     >
       <AdminUserAvatar user={u} />
@@ -102,7 +103,7 @@ export function AdminClientMobileCard({ u, onOpen }: { u: AdminUserRow; onOpen: 
         </div>
       </div>
       <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-    </button>
+    </Button>
   );
 }
 

@@ -1,6 +1,10 @@
-import { cn } from "@auction/ui";
+"use client";
+
 import type { TocNavItem } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
+
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 
 type Props = {
   items: readonly TocNavItem[];
@@ -12,15 +16,7 @@ export function PolicyMobileToc({ items, className }: Props) {
   if (items.length === 0) return null;
 
   return (
-    <details
-      className={cn(
-        "mb-8 rounded-lg border border-border-hairline bg-surface-container-low/40 md:hidden",
-        className,
-      )}
-    >
-      <summary className="cursor-pointer list-none px-4 py-3 font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface [&::-webkit-details-marker]:hidden">
-        On this page
-      </summary>
+    <CollapsibleSection title="On this page" className={cn("mb-8 md:hidden", className)}>
       <nav aria-label="On this page" className="border-t border-border-hairline px-4 py-3">
         <ul className="flex flex-col gap-2">
           {items.map((item) => (
@@ -35,6 +31,6 @@ export function PolicyMobileToc({ items, className }: Props) {
           ))}
         </ul>
       </nav>
-    </details>
+    </CollapsibleSection>
   );
 }
