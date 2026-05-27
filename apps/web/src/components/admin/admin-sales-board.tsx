@@ -100,13 +100,14 @@ type Props = {
   rows: AdminSaleBoardRow[];
   statusChips?: ReactNode;
   toolbarEnd?: ReactNode;
+  canManageSales?: boolean;
 };
 
-export function AdminSalesBoard({ rows, statusChips, toolbarEnd }: Props) {
+export function AdminSalesBoard({ rows, statusChips, toolbarEnd, canManageSales = false }: Props) {
   const { density } = useTableDensity();
   const columns = useMemo(() => saleColumns(), []);
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
-  const bulkOperations = useMemo(() => getSaleBulkOperations(), []);
+  const bulkOperations = useMemo(() => getSaleBulkOperations(canManageSales), [canManageSales]);
 
   const cards = (
     <ul className="space-y-3">

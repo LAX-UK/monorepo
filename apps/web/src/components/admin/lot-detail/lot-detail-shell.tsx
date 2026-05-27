@@ -14,6 +14,7 @@ import { ReturnToInventoryButton } from "@/components/admin/lot-actions/return-t
 import { LotDetailMobilePublishCancel } from "@/components/admin/lot-detail-mobile-publish-cancel";
 import { LotDetailQueueNav } from "@/components/admin/lot-detail-queue-nav";
 import { LotContextRail } from "@/components/admin/lot-detail/lot-context-rail";
+import { LotDetailConnectNotice } from "@/components/admin/lot-detail/lot-detail-connect-notice";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journey";
 import { buildLotMobileActions } from "@/lib/admin/build-lot-mobile-actions";
@@ -23,6 +24,7 @@ import { lotPath } from "@/lib/seo/url";
 import { formatMoney } from "@/lib/ui/format";
 import { Badge } from "@auction/ui";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 type Props = {
   lotId: string;
@@ -32,6 +34,8 @@ type Props = {
   activityEvents?: readonly AdminDomainEventRow[];
   lifecycle?: AdminLotLifecyclePayload;
   connectRequired?: boolean;
+  canManageCatalog?: boolean;
+  canManageAuction?: boolean;
   children: ReactNode;
 };
 
@@ -49,15 +53,18 @@ export function LotDetailShell({
   activityEvents = [],
   lifecycle = { snapshot: null, events: [] },
   connectRequired = false,
+  canManageCatalog = false,
+  canManageAuction = false,
   children,
 }: Props) {
   const { auction, context } = bundle;
   const publicHref = lotPath({ id: auction.id, title: auction.title });
   const subtitle = lotSubtitle(auction);
 
-  const canPublish = auction.status === "draft";
+  const canPublish = auction.status === "draft" && canManageCatalog;
   const canCancel =
-    auction.status === "draft" || auction.status === "scheduled" || auction.status === "active";
+    canManageAuction &&
+    (auction.status === "draft" || auction.status === "scheduled" || auction.status === "active");
   const canEditDraft = auction.status === "draft";
   const canEditLot = auction.status === "scheduled";
   const showEditCatalog = auction.status === "active";
@@ -172,17 +179,20 @@ export function LotDetailShell({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <AdminPinPageButton label={auction.title} />
-          <ReturnToInventoryButton
-            lotId={lotId}
-            status={auction.status}
-            hasWinner={Boolean(auction.winnerId)}
-          />
+          {canManageAuction ? (
+            <ReturnToInventoryButton
+              lotId={lotId}
+              status={auction.status}
+              hasWinner={Boolean(auction.winnerId)}
+            />
+          ) : null}
           <AdminLotDetailActions
             key={lotId}
             lotId={lotId}
             publicHref={publicHref}
             sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
             canPublish={canPublish}
+            connectBlocked={connectRequired}
             saleStatus={context.sale?.status ?? null}
             canCancel={canCancel}
             showEditDraft={canEditDraft}
@@ -197,6 +207,7 @@ export function LotDetailShell({
           lotId={lotId}
           sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
           canPublish={canPublish}
+          connectBlocked={connectRequired}
           saleStatus={context.sale?.status ?? null}
           canCancel={canCancel}
         />
@@ -270,6 +281,12 @@ export function LotDetailShell({
         events={lifecycle.events}
         saleName={context.sale?.title ?? null}
       />
+      <Suspense fallback={null}>
+        <LotDetailConnectNotice
+          proactiveConnectRequired={connectRequired}
+          sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
+        />
+      </Suspense>
       {children}
     </CatalogDetailShell>
   );

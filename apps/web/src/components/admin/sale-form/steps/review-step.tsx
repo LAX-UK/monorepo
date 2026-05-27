@@ -2,6 +2,7 @@
 
 import { buyerPremiumSummary } from "@/components/admin/sale-detail/sale-detail-helpers";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
 import {
   buildSaleSetupReadiness,
   draftSaleLotPublishBanner,
@@ -23,6 +24,7 @@ type Props = {
   lots: Lot[];
   pendingRegistrationCount?: number | null;
   canPublish: boolean;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
 function SetupReviewBeforePublish({
@@ -87,12 +89,14 @@ export function SaleSetupReviewStep({
   lots,
   pendingRegistrationCount = null,
   canPublish,
+  connectRequiredByLotId,
 }: Props) {
   const readiness = buildSaleSetupReadiness({
     saleId,
     sale,
     lots,
     pendingRegistrationCount,
+    ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
     setupStepHref: (step) => saleSetupHref(saleId, step),
   });
 
@@ -153,11 +157,13 @@ export function isSaleSetupReadyToPublish(
   sale: Sale,
   lots: Lot[],
   pendingRegistrationCount: number | null = null,
+  connectRequiredByLotId?: ConnectRequiredByLotId,
 ): boolean {
   return isSaleSetupPublishReady({
     saleId,
     sale,
     lots,
     pendingRegistrationCount,
+    ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
   });
 }

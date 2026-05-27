@@ -1,9 +1,13 @@
 import type { Lot, Sale } from "@auction/types";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
 import { humanizeSetupError } from "./humanize-setup-error";
 import { emptySaleSetupLotRow, safeParseSaleSetupLotRowForApi } from "./lot-row-schema";
 import {
   buildSaleSetupReadiness,
+  countLotsCatalogReady,
   isSaleSetupPublishReady,
   resolveFirstBlockingSetupStep,
 } from "./readiness";
@@ -116,6 +120,49 @@ describe("resolveFirstIncompleteStep", () => {
       }),
     ).toBe(true);
   });
+
+  it("returns catalog-prep when connect is required for a lot", () => {
+    const lot = draftLot({
+      images: ["img-key"],
+      description: "Catalogue text",
+    });
+    expect(
+      resolveFirstIncompleteStep({
+        sale: draftSale(),
+        lots: [lot],
+        connectRequiredByLotId: { [lot.id]: true },
+      }),
+    ).toBe("catalog-prep");
+  });
+});
+
+describe("buildSaleSetupReadiness", () => {
+  it("uses connect readiness label when connect is required", () => {
+    const lot = draftLot({
+      images: ["img-key"],
+      description: "Catalogue text",
+      sellerLegalEntityId: sellerId,
+    });
+    const result = buildSaleSetupReadiness({
+      saleId,
+      sale: draftSale(),
+      lots: [lot],
+      connectRequiredByLotId: { [lot.id]: true },
+    });
+    const sellerItem = result.items.find((i) => i.id === `lot:${lot.id}:seller`);
+    expect(sellerItem?.label).toBe("Seller must finish payout setup");
+  });
+});
+
+describe("countLotsCatalogReady", () => {
+  it("excludes lots blocked by Connect from ready count", () => {
+    const lot = draftLot({
+      images: ["img-key"],
+      description: "Catalogue text",
+    });
+    expect(countLotsCatalogReady([lot])).toEqual({ ready: 1, total: 1 });
+    expect(countLotsCatalogReady([lot], { [lot.id]: true })).toEqual({ ready: 0, total: 1 });
+  });
 });
 
 describe("safeParseSaleSetupLotRowForApi", () => {
@@ -216,6 +263,34 @@ describe("buildSaleSetupReadiness", () => {
     expect(futureItem?.href).toBe("/setup?step=schedule");
   });
 
+  it("adds sale_window readiness when lot opens before sale start", () => {
+    const saleStart = new Date(Date.now() + 86_400_000);
+    const saleEnd = new Date(saleStart.getTime() + 86_400_000);
+    const lot = draftLot({
+      title: "Blue vase",
+      startTime: new Date(saleStart.getTime() - 3_600_000),
+      endTime: new Date(saleStart.getTime() + 3_600_000),
+      images: ["img"],
+      description: "desc",
+    });
+    const result = buildSaleSetupReadiness({
+      saleId,
+      sale: draftSale({ startTime: saleStart, endTime: saleEnd }),
+      lots: [lot],
+      setupStepHref: (step) => `/setup?step=${step}`,
+    });
+    const windowItem = result.items.find((i) => i.id === `lot:${lot.id}:sale_window`);
+    expect(windowItem?.ok).toBe(false);
+    expect(windowItem?.label).toContain("Blue vase");
+    expect(windowItem?.href).toBe("/setup?step=lots");
+    expect(
+      resolveFirstBlockingSetupStep({
+        sale: draftSale({ startTime: saleStart, endTime: saleEnd }),
+        lots: [lot],
+      }),
+    ).toBe("lots");
+  });
+
   it("omits venue check for online sales", () => {
     const result = buildSaleSetupReadiness({
       saleId,
@@ -223,6 +298,19 @@ describe("buildSaleSetupReadiness", () => {
       lots: [draftLot({ images: ["img"], description: "desc" })],
     });
     expect(result.items.some((i) => i.id === "venue")).toBe(false);
+  });
+
+  it("includes connect blockers when connectRequiredByLotId is set", () => {
+    const lot = draftLot({ images: ["img"], description: "desc" });
+    const result = buildSaleSetupReadiness({
+      saleId,
+      sale: draftSale(),
+      lots: [lot],
+      connectRequiredByLotId: { [lot.id]: true },
+    });
+    const connectItem = result.items.find((i) => i.id.includes(":seller"));
+    expect(connectItem?.ok).toBe(false);
+    expect(connectItem?.label).toContain("payout setup");
   });
 });
 

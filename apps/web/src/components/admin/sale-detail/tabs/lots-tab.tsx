@@ -8,9 +8,10 @@ type Props = {
   saleId: string;
   sale: Sale;
   lots: Lot[];
+  canManageAuction?: boolean;
 };
 
-export function SaleLotsTab({ saleId, sale, lots }: Props) {
+export function SaleLotsTab({ saleId, sale, lots, canManageAuction = false }: Props) {
   const canEdit = sale.status === "draft";
 
   return (
@@ -38,7 +39,10 @@ export function SaleLotsTab({ saleId, sale, lots }: Props) {
           saleId={saleId}
           saleStatus={sale.status}
           deliveryMode={sale.deliveryMode}
+          saleStartTime={sale.startTime}
+          saleEndTime={sale.endTime}
           canEdit={canEdit}
+          canManageAuction={canManageAuction}
           lots={lots.map((l) => ({
             id: l.id,
             title: l.title,

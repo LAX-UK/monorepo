@@ -2,6 +2,7 @@
 
 import { CancelLotButton } from "@/components/admin/lot-actions/cancel-lot-button";
 import { PublishLotButton } from "@/components/admin/lot-actions/publish-lot-button";
+import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
 import { Button } from "@auction/ui/components/button";
 import {
   DropdownMenu,
@@ -18,6 +19,8 @@ type Props = {
   publicHref: string;
   sellerLegalEntityId: string | null;
   canPublish: boolean;
+  /** When true, seller Connect is not ready — publish is disabled. */
+  connectBlocked?: boolean;
   /** When lot belongs to a draft sale, publish is done via sale publish. */
   saleStatus?: string | null;
   canCancel: boolean;
@@ -31,6 +34,7 @@ export function AdminLotDetailActions({
   publicHref,
   sellerLegalEntityId,
   canPublish,
+  connectBlocked = false,
   saleStatus = null,
   canCancel,
   showEditDraft,
@@ -60,11 +64,15 @@ export function AdminLotDetailActions({
       ) : null}
       {publishViaSale && canPublish ? (
         <p className="max-w-xs font-body text-xs text-on-surface-variant">
-          Publish this lot with the sale when you go live.
+          {draftSaleLotPublishBanner()}
         </p>
       ) : null}
       {showLotPublish ? (
-        <PublishLotButton lotId={lotId} sellerLegalEntityId={sellerLegalEntityId} />
+        <PublishLotButton
+          lotId={lotId}
+          sellerLegalEntityId={sellerLegalEntityId}
+          connectBlocked={connectBlocked}
+        />
       ) : null}
       {canCancel ? <CancelLotButton lotId={lotId} /> : null}
       <DropdownMenu>

@@ -6,6 +6,10 @@ import { LotImageManager } from "@/components/admin/lot-image-manager";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
+import {
+  type ConnectRequiredByLotId,
+  lotConnectRequired,
+} from "@/lib/admin/connect-readiness-shared";
 import { type LotImageSaveEntry, useLotImagesSave } from "@/lib/admin/lots/use-lot-images-save";
 import { countLotsCatalogReady, humanizeSetupError, saleSetupHref } from "@/lib/admin/sale-setup";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
@@ -22,14 +26,17 @@ type Props = {
   saleId: string;
   lots: Lot[];
   readOnly?: boolean;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
 function LotCatalogPrepCard({
   lot,
   readOnly,
+  connectRequired,
 }: {
   lot: Lot;
   readOnly: boolean;
+  connectRequired: boolean;
 }) {
   const router = useRouter();
   const [descPending, startDescTransition] = useTransition();
@@ -41,11 +48,15 @@ function LotCatalogPrepCard({
   const [description, setDescription] = useState(lot.description ?? "");
   const [descDirty, setDescDirty] = useState(false);
 
-  const readiness = buildLotPublishReadiness(lot.id, {
-    ...lot,
-    description: descDirty ? description : lot.description,
-    images: entries.map((e) => e.key),
-  });
+  const readiness = buildLotPublishReadiness(
+    lot.id,
+    {
+      ...lot,
+      description: descDirty ? description : lot.description,
+      images: entries.map((e) => e.key),
+    },
+    connectRequired,
+  );
 
   function saveImages() {
     save(entries);
@@ -127,8 +138,13 @@ function LotCatalogPrepCard({
   );
 }
 
-export function SaleSetupCatalogPrepStep({ saleId, lots, readOnly = false }: Props) {
-  const { ready, total } = countLotsCatalogReady(lots);
+export function SaleSetupCatalogPrepStep({
+  saleId,
+  lots,
+  readOnly = false,
+  connectRequiredByLotId,
+}: Props) {
+  const { ready, total } = countLotsCatalogReady(lots, connectRequiredByLotId);
 
   if (lots.length === 0) {
     return (
@@ -151,7 +167,12 @@ export function SaleSetupCatalogPrepStep({ saleId, lots, readOnly = false }: Pro
         live
       </p>
       {lots.map((lot) => (
-        <LotCatalogPrepCard key={lot.id} lot={lot} readOnly={readOnly} />
+        <LotCatalogPrepCard
+          key={lot.id}
+          lot={lot}
+          readOnly={readOnly}
+          connectRequired={lotConnectRequired(connectRequiredByLotId, lot.id)}
+        />
       ))}
     </div>
   );

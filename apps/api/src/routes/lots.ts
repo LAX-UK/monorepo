@@ -24,7 +24,8 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
-import { type AuthzError, LotError } from "../lib/errors.js";
+import { canManageCatalogue } from "../lib/catalogue-auth.js";
+import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { serviceErrorJsonBody } from "../lib/forbidden-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { listLotDocumentsPublic } from "../lib/list-lot-documents-public.js";
@@ -127,9 +128,16 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const { ids, op } = c.req.valid("json");
+    const { ids, op, reason } = c.req.valid("json");
     const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const result = await container.lotService.bulkPublishOrCancel(userId, role, ids, op, staff);
+    const result = await container.lotService.bulkPublishOrCancel(
+      userId,
+      role,
+      ids,
+      op,
+      staff,
+      reason,
+    );
     if (result.isErr()) {
       return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
     }
@@ -191,8 +199,15 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-      const result = await container.lotService.cancel(userId, role, id, staff);
+      const result = await container.lotService.cancel(
+        userId,
+        role,
+        id,
+        staff,
+        body.reason?.trim() ? "admin_override" : "manual",
+      );
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
@@ -340,8 +355,13 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    if (!roleHasCapability(role, "auction.manage", staff)) {
-      return c.json({ error: "Only staff with auction.manage can create lots" }, 403);
+    if (!canManageCatalogue(role, staff)) {
+      const e = missingCatalogueCapabilityError(
+        "Only staff with auction.manage or catalogue.write can create lots",
+        role,
+        staff,
+      );
+      return c.json(serviceErrorJsonBody(e), asHttpStatus(e.status));
     }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json") as CreateLotInput;

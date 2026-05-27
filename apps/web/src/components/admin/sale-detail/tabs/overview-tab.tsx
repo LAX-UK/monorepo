@@ -4,7 +4,6 @@ import {
   CatalogDetailSummaryStrip,
   CatalogExternalLink,
   CatalogInfoCard,
-  CatalogPublishReadiness,
 } from "@/components/admin/catalog";
 import {
   buyerPremiumSummary,
@@ -13,6 +12,7 @@ import {
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { buildSaleSummaryItems } from "@/lib/admin/build-sale-summary-items";
 import { buildSalePublishReadiness } from "@/lib/admin/catalog-readiness";
+import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
@@ -26,6 +26,7 @@ type Props = {
   isOnsite: boolean;
   venueLines: string[];
   registrationCount: number | null;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
 export function SaleOverviewTab({
@@ -36,6 +37,7 @@ export function SaleOverviewTab({
   isOnsite,
   venueLines,
   registrationCount,
+  connectRequiredByLotId,
 }: Props) {
   const summaryItems = buildSaleSummaryItems(
     saleId,
@@ -53,6 +55,7 @@ export function SaleOverviewTab({
           sale,
           lots,
           pendingRegistrationCount: registrationCount,
+          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
           setupStepHref: (step) => saleSetupHref(saleId, step),
         })
       : sale.status === "scheduled"
@@ -77,13 +80,6 @@ export function SaleOverviewTab({
             Continue setup →
           </span>
         </Link>
-      ) : null}
-      {readiness ? (
-        <CatalogPublishReadiness
-          title="Catalog readiness"
-          readiness={readiness}
-          dismissKey={`sale-overview:${saleId}`}
-        />
       ) : null}
 
       <CatalogDetailSummaryStrip items={summaryItems} />

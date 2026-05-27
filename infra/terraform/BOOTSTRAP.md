@@ -129,6 +129,10 @@ Create the Sentry organization and team used by Terraform. **Confirm slugs in th
 | Organization slug | Settings → General Settings (URL: `sentry.io/settings/{slug}/`) | `lax-bid` |
 | Team slug | Settings → Teams → pick team → slug in URL or team settings | `lax-engineering` |
 
+**Region:** `lax-bid` is on **US** Sentry (`https://lax-bid.sentry.io`). CI workflows and
+`sentry-cli` must use `SENTRY_URL=https://sentry.io` — **not** `https://de.sentry.io` (EU).
+A 404 on org lookup against `de.sentry.io` usually means the wrong regional API host, not a bad token.
+
 If the team does not exist yet, create it under **Settings → Teams** before running apply.
 Projects are assigned to this team automatically.
 
@@ -194,7 +198,12 @@ read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
   xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
   -H "Authorization: Bearer {}" https://sentry.io/api/0/
 
-# Org-scoped access (internal integration tokens support this)
+# Org-scoped access on US SaaS (expect HTTP 200; 404 on de.sentry.io means wrong region)
+read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
+  xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+  -H "Authorization: Bearer {}" \
+  "https://sentry.io/api/0/organizations/lax-bid/"
+
 read -rs token; printf '%s' "$token" | tr -d '[:space:]' | \
   xargs -I{} curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
   -H "Authorization: Bearer {}" \

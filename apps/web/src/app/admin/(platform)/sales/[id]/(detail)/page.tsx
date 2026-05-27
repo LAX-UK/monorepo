@@ -1,6 +1,7 @@
 import { CatalogDetailActionError } from "@/components/admin/catalog";
 import { isSaleLiveish, saleVenueLines } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleOverviewTab } from "@/components/admin/sale-detail/tabs/overview-tab";
+import { loadSaleConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { loadAdminSaleDetail, loadAdminSaleRegistrationCount } from "@/lib/admin/load-sale-detail";
 
 type Props = {
@@ -16,7 +17,10 @@ export default async function AdminSaleOverviewPage({ params, searchParams }: Pr
   const { sale, lots } = bundle;
   const liveish = isSaleLiveish(sale);
   const isOnsite = sale.deliveryMode === "onsite";
-  const registrationCount = await loadAdminSaleRegistrationCount(id, sale);
+  const [registrationCount, connectRequiredByLotId] = await Promise.all([
+    loadAdminSaleRegistrationCount(id, sale),
+    loadSaleConnectRequiredByLotId(id),
+  ]);
 
   return (
     <>
@@ -29,6 +33,7 @@ export default async function AdminSaleOverviewPage({ params, searchParams }: Pr
         isOnsite={isOnsite}
         venueLines={saleVenueLines(sale)}
         registrationCount={registrationCount}
+        connectRequiredByLotId={connectRequiredByLotId}
       />
     </>
   );

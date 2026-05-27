@@ -16,6 +16,12 @@ import {
   adminUpdateSaleResultAction,
 } from "@/lib/actions/admin-sales";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
+import {
+  findLotsOutsideSaleWindow,
+  parseSaleWindowFromForm,
+  parseSaleWindowFromSale,
+} from "@/lib/admin/sale-lot-window-sync";
 import {
   SALE_SETUP_SALE_STEP_FIELDS,
   SALE_SETUP_STEPS,
@@ -28,6 +34,7 @@ import {
   saleSavedMessage,
   saleSetupStepId,
   saveDraftSuccessMessage,
+  scheduleLotConflictPersistBlocked,
 } from "@/lib/admin/sale-setup";
 import {
   applyZodErrorsToForm,
@@ -101,6 +108,7 @@ type Props = {
   canManageSale: boolean;
   canEditCatalog: boolean;
   pendingRegistrationCount?: number | null;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
 function saleZodIssuePath(path: (string | number)[]): string {
@@ -125,6 +133,7 @@ export function SaleSetupWizard({
   canManageSale,
   canEditCatalog,
   pendingRegistrationCount = null,
+  connectRequiredByLotId,
 }: Props) {
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
@@ -153,7 +162,8 @@ export function SaleSetupWizard({
   getValuesRef.current = form.getValues;
 
   const readOnlySaleSteps = !canManageSale;
-  const readOnlyLots = !canManageSale;
+  const canEditLotsStep = canManageSale || canEditCatalog;
+  const readOnlyLots = !canEditLotsStep;
   const readOnlyCatalog = !canEditCatalog && !canManageSale;
 
   const persistSale = useCallback(
@@ -186,8 +196,8 @@ export function SaleSetupWizard({
         if (!r.data?.id) return null;
         const newId = r.data.id;
         setSaleId(newId);
-        router.replace(`/admin/sales/${newId}/setup?step=documents`);
-        setStepNotice(saleSavedMessage("documents"));
+        router.replace(`/admin/sales/${newId}/setup?step=schedule`);
+        setStepNotice(saleSavedMessage("schedule"));
         return newId;
       }
 
@@ -198,6 +208,16 @@ export function SaleSetupWizard({
         }
         notify.error("Check the form for errors");
         return null;
+      }
+      const pendingWindow = parseSaleWindowFromForm(values);
+      if (pendingWindow && lots.length > 0) {
+        const conflicts = findLotsOutsideSaleWindow(lots, pendingWindow);
+        if (conflicts.length > 0) {
+          const titles = conflicts.map((c) => c.lot.title.trim() || "Untitled lot");
+          setStepNotice(scheduleLotConflictPersistBlocked(titles));
+          wizardGoToRef.current(1);
+          return null;
+        }
       }
       const r = await adminUpdateSaleResultAction(saleId, api.data);
       if (!r.ok) {
@@ -217,7 +237,7 @@ export function SaleSetupWizard({
       router.refresh();
       return saleId;
     },
-    [form, router, saleId, wizardDraftEntityId],
+    [form, lots, router, saleId, wizardDraftEntityId],
   );
 
   const { fields, append, remove } = useFieldArray({
@@ -246,6 +266,8 @@ export function SaleSetupWizard({
   }, [tierRowsWatch, buyerPremiumRateWatch]);
 
   const deliveryMode = form.watch("deliveryMode");
+  const watchedStartTime = form.watch("startTime");
+  const watchedEndTime = form.watch("endTime");
   const isOnsite = deliveryMode === "onsite";
   const watchedLocation = {
     locationName: form.watch("locationName"),
@@ -264,10 +286,25 @@ export function SaleSetupWizard({
   const postcodeIsValid = postcodeRaw.trim() === "" || isUkPostcode(postcodeRaw);
 
   const activeSale = sale;
+  const pendingSaleWindow = useMemo(() => {
+    const fromForm = parseSaleWindowFromForm({
+      deliveryMode,
+      startTime: watchedStartTime,
+      endTime: watchedEndTime,
+    });
+    if (fromForm) return fromForm;
+    return activeSale ? parseSaleWindowFromSale(activeSale) : null;
+  }, [activeSale, deliveryMode, watchedEndTime, watchedStartTime]);
   const readyToPublish =
     saleId &&
     activeSale &&
-    isSaleSetupReadyToPublish(saleId, activeSale, lots, pendingRegistrationCount);
+    isSaleSetupReadyToPublish(
+      saleId,
+      activeSale,
+      lots,
+      pendingRegistrationCount,
+      connectRequiredByLotId,
+    );
   const isReviewStep = saleSetupStepId(wizardStepIndex) === "review";
 
   const handleSaveDraft = useCallback(() => {
@@ -427,6 +464,7 @@ export function SaleSetupWizard({
                     sale: activeSale,
                     lots,
                     pendingRegistrationCount,
+                    ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
                   })
                 ) {
                   setStepNotice(catalogPrepReviewNotice());
@@ -519,6 +557,7 @@ export function SaleSetupWizard({
                         previewMapUrl={previewMapUrl}
                         customMapUrl={customMapUrl}
                         postcodeIsValid={postcodeIsValid}
+                        lots={lots}
                       />
                     </fieldset>
                   ) : null}
@@ -532,10 +571,14 @@ export function SaleSetupWizard({
                       />
                     </fieldset>
                   ) : null}
-                  {stepIndex === 3 && saleId && activeSale ? (
+                  {stepIndex === 3 && saleId && activeSale && pendingSaleWindow ? (
                     <SaleLotRowsEditor
                       saleId={saleId}
-                      sale={activeSale}
+                      sale={{
+                        deliveryMode: pendingSaleWindow.deliveryMode,
+                        startTime: pendingSaleWindow.startTime,
+                        endTime: pendingSaleWindow.endTime,
+                      }}
                       lots={lots}
                       categories={categories}
                       artists={artists}
@@ -550,6 +593,7 @@ export function SaleSetupWizard({
                       saleId={saleId}
                       lots={lots}
                       readOnly={readOnlyCatalog}
+                      {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
                     />
                   ) : null}
                   {stepIndex === 5 && saleId && activeSale ? (
@@ -559,6 +603,7 @@ export function SaleSetupWizard({
                       lots={lots}
                       pendingRegistrationCount={pendingRegistrationCount}
                       canPublish={canManageSale}
+                      {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
                     />
                   ) : null}
                 </div>

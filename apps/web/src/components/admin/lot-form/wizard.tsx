@@ -19,8 +19,15 @@ import {
   adminUpdateLotMarketingDetailsResultAction,
   adminUpdateLotResultAction,
 } from "@/lib/actions/admin";
-import { applyLotTypeFieldReset, getCatalogueStepFieldKeys } from "@/lib/admin/lot-catalogue";
-import { applyZodErrorsToForm, zodIssuePathForForm } from "@/lib/admin/zod-form-errors";
+import { applyLotTypeFieldReset } from "@/lib/admin/lot-catalogue";
+import {
+  buildLotEditTabFields,
+  buildLotStepFields,
+  lotFormStepLabel,
+  lotFormValidationBanner,
+} from "@/lib/admin/lot-form-field-ownership";
+import { notifyLotFormValidationFailure } from "@/lib/admin/lot-form-validation-notify";
+import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import {
   type AdminLotFormSaleTiming,
   type AdminLotFormValues,
@@ -44,7 +51,7 @@ import { Form } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useForm, useFormState } from "react-hook-form";
 import { z as zod } from "zod";
 import { LotCatalogueStep } from "./steps/catalogue-step";
@@ -56,27 +63,6 @@ const LOT_FORM_STEPS = [
   { id: "sale-seller", label: "Sale & seller" },
   { id: "catalogue", label: "Catalogue" },
 ] as const;
-
-const LOT_IDENTITY_STEP_FIELDS = [
-  "title",
-  "auctionType",
-  "description",
-] as const satisfies readonly (keyof AdminLotFormValues)[];
-const LOT_SALE_SELLER_STEP_FIELDS = [
-  "sellerLegalEntityId",
-  "saleId",
-] as const satisfies readonly (keyof AdminLotFormValues)[];
-
-function buildLotStepFields(
-  auctionType: LotAuctionType,
-  opts?: { includeArtist?: boolean },
-): (keyof AdminLotFormValues)[][] {
-  return [
-    [...LOT_IDENTITY_STEP_FIELDS],
-    [...LOT_SALE_SELLER_STEP_FIELDS],
-    getCatalogueStepFieldKeys(auctionType, opts),
-  ];
-}
 
 type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
 
@@ -119,6 +105,8 @@ export function AdminLotForm({
   const baselineRef = useRef(defaultValues);
   baselineRef.current = defaultValues;
   const wizardGoToRef = useRef<(index: number) => void>(() => {});
+  const tabGoToRef = useRef<(tabValue: string) => void>(() => {});
+  const [validationBanner, setValidationBanner] = useState<string | null>(null);
   const salesById = useMemo(() => {
     const map = new Map<string, AdminLotFormSaleTiming>();
     for (const s of sales) {
@@ -170,6 +158,39 @@ export function AdminLotForm({
     () => buildLotStepFields(auctionType, { includeArtist: showArtistField }),
     [auctionType, showArtistField],
   );
+  const editTabFields = useMemo(
+    () => buildLotEditTabFields(auctionType, { includeArtist: showArtistField }),
+    [auctionType, showArtistField],
+  );
+
+  const reportZodValidationFailure = useCallback(
+    (issues: zod.ZodIssue[]) => {
+      if (mode === "create") {
+        applyZodIssuesToForm(form, issues, {
+          stepFields: lotStepFields,
+          goTo: wizardGoToRef.current,
+        });
+        const stepIndex = issues[0]?.path[0]
+          ? lotStepFields.findIndex((fields) =>
+              fields.some((f) => String(f) === String(issues[0]?.path[0])),
+            )
+          : -1;
+        if (issues.length > 1 && stepIndex >= 0) {
+          setValidationBanner(lotFormValidationBanner(issues.length, lotFormStepLabel(stepIndex)));
+        } else {
+          setValidationBanner(null);
+        }
+      } else {
+        applyZodIssuesToForm(form, issues, {
+          tabFields: editTabFields,
+          goToTab: tabGoToRef.current,
+        });
+        setValidationBanner(null);
+      }
+      notifyLotFormValidationFailure({ issues });
+    },
+    [editTabFields, form, lotStepFields, mode],
+  );
 
   const handleAuctionTypeChange = useCallback(
     (previous: LotAuctionType, next: LotAuctionType) => {
@@ -215,8 +236,14 @@ export function AdminLotForm({
           className="space-y-8"
           onSubmit={form.handleSubmit(
             async (values) => {
+              setValidationBanner(null);
               if (mode === "create" && !(await validateAllWizardSteps())) {
-                notify.error("Check the form for errors");
+                const parsed = await formSchema.safeParseAsync(form.getValues());
+                if (!parsed.success) {
+                  reportZodValidationFailure(parsed.error.issues);
+                } else {
+                  notifyLotFormValidationFailure({});
+                }
                 return;
               }
               startTransition(async () => {
@@ -224,10 +251,7 @@ export function AdminLotForm({
                 if (mode === "create") {
                   const api = safeParseCreateLotFromForm(values);
                   if (!api.success) {
-                    for (const iss of api.error.issues) {
-                      applyZodErrorsToForm(form, zodIssuePathForForm([...iss.path]), iss.message);
-                    }
-                    notify.error("Check the form for errors");
+                    reportZodValidationFailure(api.error.issues);
                     return;
                   }
                   const r = await adminCreateLotResultAction(
@@ -274,10 +298,7 @@ export function AdminLotForm({
                 }
                 const api = safeParseUpdateLotFromForm(values);
                 if (!api.success) {
-                  for (const iss of api.error.issues) {
-                    applyZodErrorsToForm(form, zodIssuePathForForm([...iss.path]), iss.message);
-                  }
-                  notify.error("Check the form for errors");
+                  reportZodValidationFailure(api.error.issues);
                   return;
                 }
                 const r = await adminUpdateLotResultAction(lotId, api.data);
@@ -308,18 +329,30 @@ export function AdminLotForm({
               });
             },
             async () => {
-              // Resolver rejected before the success handler — common when invalid fields
-              // live on an unmounted wizard step. Jump back and surface errors.
+              setValidationBanner(null);
+              const parsed = await formSchema.safeParseAsync(form.getValues());
+              if (!parsed.success) {
+                reportZodValidationFailure(parsed.error.issues);
+                return;
+              }
               if (mode === "create") {
                 await validateAllWizardSteps();
               }
-              notify.error("Check the form for errors");
+              notifyLotFormValidationFailure({});
             },
           )}
         >
+          {validationBanner ? (
+            <p className="font-body text-sm text-error" role="alert">
+              {validationBanner}
+            </p>
+          ) : null}
           {mode === "edit" ? (
             <AdminDetailTabs
               defaultValue="overview"
+              onTabControl={({ goTo }) => {
+                tabGoToRef.current = goTo;
+              }}
               tabs={[
                 {
                   value: "overview",
