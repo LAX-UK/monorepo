@@ -269,14 +269,6 @@
       "types": "./dist/lib/datetime/index.d.ts",
       "default": "./dist/lib/datetime/index.js"
     },
-    "./components/slider": {
-      "types": "./dist/components/ui/slider.d.ts",
-      "default": "./dist/components/ui/slider.js"
-    },
-    "./components/date-picker": {
-      "types": "./dist/components/ui/date-picker.d.ts",
-      "default": "./dist/components/ui/date-picker.js"
-    },
     "./components/date-time-picker": {
       "types": "./dist/components/ui/date-time-picker.d.ts",
       "default": "./dist/components/ui/date-time-picker.js"
@@ -284,22 +276,6 @@
     "./components/time-picker": {
       "types": "./dist/components/ui/time-picker.d.ts",
       "default": "./dist/components/ui/time-picker.js"
-    },
-    "./components/combobox": {
-      "types": "./dist/components/ui/combobox.d.ts",
-      "default": "./dist/components/ui/combobox.js"
-    },
-    "./components/async-combobox": {
-      "types": "./dist/components/ui/async-combobox.d.ts",
-      "default": "./dist/components/ui/async-combobox.js"
-    },
-    "./components/file-upload-trigger": {
-      "types": "./dist/components/ui/file-upload-trigger.d.ts",
-      "default": "./dist/components/ui/file-upload-trigger.js"
-    },
-    "./components/upload-progress": {
-      "types": "./dist/components/ui/upload-progress.d.ts",
-      "default": "./dist/components/ui/upload-progress.js"
     },
     "./shell": {
       "types": "./dist/shell/index.d.ts",
@@ -325,7 +301,6 @@
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
-    "@radix-ui/react-slider": "^1.3.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
