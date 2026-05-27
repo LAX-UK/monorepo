@@ -12,6 +12,7 @@ import {
   CONDITION_REPORTS_ACCESS,
   CONVEYOR_ACCESS,
   LOTS_ACCESS,
+  SALE_CATALOG_ACCESS,
   STAFF_OVERVIEW_ACCESS,
   SUBMISSIONS_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
@@ -151,7 +152,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/sales",
           label: "Sales",
           icon: ScrollText,
-          requirement: "auction.manage",
+          requirement: SALE_CATALOG_ACCESS,
         },
         {
           id: "lots",

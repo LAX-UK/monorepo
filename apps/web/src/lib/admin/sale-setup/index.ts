@@ -11,6 +11,11 @@ export {
 } from "./steps";
 export {
   deliveryModeExplanation,
+  lotsStepFirstLotPrompt,
+  attachLotReviewPrompt,
+  attachLotScheduleConflictBanner,
+  attachLotChangeLotLabel,
+  attachExistingLotPanelBody,
   draftSaleLotPublishBanner,
   fieldTierSuffix,
   lotSavedMessage,
@@ -23,6 +28,11 @@ export {
   saleSavedMessage,
   stepIntro,
   catalogueStaffReadOnlyMessage,
+  scheduleLotConflictPersistBlocked,
+  syncLotsToSaleWindowLabel,
+  scheduleLotConflictBanner,
+  scheduleOutOfSyncBadge,
+  updateLotScheduleLabel,
   type FieldTier,
 } from "./field-copy";
 export { humanizeSetupError, type HumanizeSetupErrorInput } from "./humanize-setup-error";

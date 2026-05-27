@@ -12,7 +12,15 @@ import {
   setIdempotentLotPublish,
 } from "@/lib/actions/idempotency-cache";
 import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
-import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import {
+  type BulkLotsActionResult,
+  bulkLotsFailureMessage,
+  parseBulkLotsApiResponse,
+} from "@/lib/admin/bulk-ops/lot-bulk-result";
+import {
+  assertAdminCapabilityForRedirect,
+  denyUnlessAdminCapability,
+} from "@/lib/auth/assert-admin-action-capability";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
@@ -24,7 +32,7 @@ import {
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
 import { CATEGORIES_ACCESS, LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
-import type { CapabilityRequirement } from "@auction/types";
+import type { CapabilityRequirement, Lot } from "@auction/types";
 import {
   adminBulkInvitationsBodySchema,
   adminBulkSubmissionsBodySchema,
@@ -128,6 +136,11 @@ export async function adminBulkLotsAction(formData: FormData): Promise<void> {
       if (!parsed.success) {
         redirect(`/admin/lots?error=${encodeURIComponent("Invalid bulk payload")}`);
       }
+      const access = parsed.data.op === "cancel" ? SALES_ACCESS : LOTS_ACCESS;
+      const denied = await assertAdminCapabilityForRedirect(access);
+      if (!denied.ok) {
+        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
+      }
       const { adminLots } = getWriteContainer();
       const r = await adminLots.bulk(parsed.data);
       if (!r.ok) {
@@ -144,6 +157,10 @@ export async function adminPublishLotAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminPublishLotAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("lotId") ?? "").trim();
       if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
       const { adminLots } = getWriteContainer();
@@ -164,6 +181,10 @@ export async function adminCancelLotAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminCancelLotAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("lotId") ?? "").trim();
       if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
       const body = cancelLotBodySchema.safeParse({
@@ -283,6 +304,10 @@ export async function adminCreateLotAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminCreateLotAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/lots/new?error=${encodeURIComponent(denied.message)}`);
+      }
       const startRaw = String(formData.get("startTime") ?? "");
       const endRaw = String(formData.get("endTime") ?? "");
       const dutchInterval = String(formData.get("dutchDecrementIntervalMs") ?? "").trim();
@@ -327,6 +352,10 @@ export async function adminUpdateLotAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminUpdateLotAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("lotId") ?? "").trim();
       if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
       const startRaw = String(formData.get("startTime") ?? "");
@@ -374,7 +403,7 @@ export async function adminCreateLotResultAction(
   idempotencyKey?: string,
 ): Promise<ActionResult<{ id: string }>> {
   return instrumentServerAction("adminCreateLotResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
     const cachedId = getIdempotentLotCreate(idempotencyKey);
     if (cachedId) return actionSuccess({ id: cachedId });
@@ -624,7 +653,7 @@ export async function adminUpdateLotMarketingDetailsResultAction(
   input: z.infer<typeof updateLotMarketingDetailsSchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminUpdateLotMarketingDetailsResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
     const id = lotId.trim();
     if (!id) {
@@ -643,6 +672,28 @@ export async function adminUpdateLotMarketingDetailsResultAction(
     revalidatePath(`/admin/lots/${id}`);
     revalidatePath("/", "layout");
     return actionSuccess();
+  });
+}
+
+export async function adminGetLotAttachPreviewAction(lotId: string): Promise<ActionResult<Lot>> {
+  return instrumentServerAction("adminGetLotAttachPreviewAction", async () => {
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+    if (denied) return denied;
+    const id = lotId.trim();
+    if (!id) {
+      return actionFailure("Missing lot");
+    }
+    const lot = await getAdminLotById(id).catch(() => null);
+    if (!lot) {
+      return actionFailure("Lot not found", undefined, 404);
+    }
+    if (lot.status !== "draft") {
+      return actionFailure("Only draft lots can be attached");
+    }
+    if (lot.saleId != null) {
+      return actionFailure("Lot already belongs to a sale");
+    }
+    return actionSuccess(lot);
   });
 }
 
@@ -691,7 +742,7 @@ export async function adminPublishLotResultAction(
   idempotencyKey?: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminPublishLotResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
     const id = lotId.trim();
     if (!id) {
@@ -793,21 +844,32 @@ export async function adminApproveWithdrawalRequestResultAction(
 
 export async function adminBulkLotsResultAction(
   body: z.infer<typeof bulkLotsBodySchema>,
-): Promise<ActionResult<void>> {
+): Promise<ActionResult<BulkLotsActionResult>> {
   return instrumentServerAction("adminBulkLotsResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
-    if (denied) return denied;
     const parsed = bulkLotsBodySchema.safeParse(body);
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
     }
+    const access = parsed.data.op === "cancel" ? SALES_ACCESS : LOTS_ACCESS;
+    const denied = await denyUnlessAdminCapability(access);
+    if (denied) return denied;
     const { adminLots } = getWriteContainer();
     const r = await adminLots.bulk(parsed.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, r.code);
+    }
+    const bulk = parseBulkLotsApiResponse(r.data);
+    if (!bulk) {
+      return actionFailure("Unexpected bulk response from server");
     }
     revalidatePath("/admin/lots");
-    return actionSuccess();
+    for (const lotId of parsed.data.ids) {
+      revalidateAdminLotDetail(lotId);
+    }
+    if (bulk.failed >= bulk.attempted) {
+      return actionFailure(bulkLotsFailureMessage(bulk), undefined, undefined, undefined, { bulk });
+    }
+    return actionSuccess(bulk);
   });
 }
 

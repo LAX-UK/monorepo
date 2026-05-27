@@ -5,6 +5,7 @@ import { AuthzError, LotError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import { SaleService, type SaleServiceOptions } from "./sale.service.js";
 
@@ -457,6 +458,125 @@ describe("SaleService.updateDraft", () => {
     if (result.isOk()) return;
     expect(result.error).toBeInstanceOf(AuthzError);
   });
+
+  it("aggregates lot timing violations when shrinking an online sale window", async () => {
+    const saleStart = new Date("2030-06-01T10:00:00Z");
+    const saleEnd = new Date("2030-06-07T18:00:00Z");
+    const sale = baseSale({
+      status: "draft",
+      deliveryMode: "online",
+      startTime: saleStart,
+      endTime: saleEnd,
+    });
+    const lots: Lot[] = [
+      {
+        id: "lot-1",
+        saleId: sale.id,
+        lotNumber: 1,
+        sellerLegalEntityId: "seller-1",
+        artistId: null,
+        title: "Blue vase",
+        description: null,
+        medium: null,
+        dimensions: null,
+        images: [],
+        categoryId: "c1",
+        auctionType: "english",
+        startingPrice: "100",
+        reservePrice: null,
+        buyNowPrice: null,
+        currentPrice: "100",
+        buyerPremiumRate: "0.25",
+        minBidIncrement: "10",
+        dutchDecrementAmount: null,
+        dutchDecrementIntervalMs: 60_000,
+        dutchLastDecrementAt: null,
+        startTime: new Date("2030-06-01T10:00:00Z"),
+        endTime: new Date("2030-06-08T18:00:00Z"),
+        status: "draft",
+        winnerId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        marketingDetails: {},
+      },
+      {
+        id: "lot-2",
+        saleId: sale.id,
+        lotNumber: 2,
+        sellerLegalEntityId: "seller-1",
+        artistId: null,
+        title: "Red vase",
+        description: null,
+        medium: null,
+        dimensions: null,
+        images: [],
+        categoryId: "c1",
+        auctionType: "english",
+        startingPrice: "100",
+        reservePrice: null,
+        buyNowPrice: null,
+        currentPrice: "100",
+        buyerPremiumRate: "0.25",
+        minBidIncrement: "10",
+        dutchDecrementAmount: null,
+        dutchDecrementIntervalMs: 60_000,
+        dutchLastDecrementAt: null,
+        startTime: new Date("2030-06-01T10:00:00Z"),
+        endTime: new Date("2030-06-09T18:00:00Z"),
+        status: "draft",
+        winnerId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        marketingDetails: {},
+      },
+    ];
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn(),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue(lots),
+    } as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { endTime: new Date("2030-06-06T18:00:00Z") },
+      "super_admin",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) return;
+    expect(result.error.message).toContain("Blue vase");
+    expect(result.error.message).toContain("Red vase");
+    expect(result.error.message).toContain(";");
+    expect(saleRepo.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("SaleService.publish authorization", () => {
+  it("returns 403 when catalogue_manager staff tries to publish a sale", async () => {
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo: {} as ISaleRepository,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s1", "catalogue_manager");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(AuthzError);
+      expect((result.error as AuthzError).status).toBe(403);
+    }
+  });
 });
 
 describe("SaleService.publish domain events", () => {
@@ -542,6 +662,207 @@ describe("SaleService.publish domain events", () => {
         }),
       }),
     );
+  });
+
+  it("blocks publish when seller connect is not ready", async () => {
+    const sale = baseSale({ id: "s-connect", status: "draft", deliveryMode: "online" });
+    const lot: Lot = {
+      id: "lot-1",
+      saleId: "s-connect",
+      lotNumber: 1,
+      sellerLegalEntityId: "seller-1",
+      artistId: null,
+      title: "Work",
+      description: null,
+      medium: null,
+      dimensions: null,
+      images: ["img.jpg"],
+      categoryId: "c1",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+      status: "draft",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      updateStatus: vi.fn(),
+    } as unknown as ISaleRepository;
+
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([lot]),
+    } as unknown as ILotRepository;
+
+    const legalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({
+        status: "approved",
+        stripeConnectPayoutsEnabled: false,
+        stripeConnectRequirementsCurrentlyDue: [],
+      }),
+    } as unknown as ILegalEntityRepository;
+
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        legalEntityRepository,
+        enforceIndividualConnectOnPublish: true,
+      }),
+    );
+
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-connect", "super_admin");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(LotError);
+      expect(result.error.code).toBe("connect_required");
+    }
+  });
+
+  it("reverts sale and lots to draft when scheduleLot fails mid-loop", async () => {
+    const sale = baseSale({ id: "s-sched-fail", status: "draft" });
+    const lot1: Lot = {
+      id: "lot-1",
+      saleId: "s-sched-fail",
+      lotNumber: 1,
+      sellerLegalEntityId: "seller-1",
+      artistId: null,
+      title: "Work 1",
+      description: null,
+      medium: null,
+      dimensions: null,
+      images: [],
+      categoryId: "c1",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+      status: "draft",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+    const lot2: Lot = { ...lot1, id: "lot-2", lotNumber: 2, title: "Work 2" };
+
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ISaleRepository;
+
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([lot1, lot2]),
+      update: vi.fn(),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ILotRepository;
+
+    const scheduleLot = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("redis down"));
+    const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
+
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: {
+          scheduleLot,
+          cancelLotJobs,
+          rescheduleEnd: vi.fn(),
+        } as ILotJobScheduler,
+      }),
+    );
+
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-sched-fail", "super_admin");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({
+        name: "LotError",
+        code: "schedule_jobs_failed",
+        status: 503,
+      });
+    }
+    expect(saleRepo.updateStatus).toHaveBeenCalledWith("s-sched-fail", "scheduled");
+    expect(saleRepo.updateStatus).toHaveBeenCalledWith("s-sched-fail", "draft");
+    expect(lotRepo.updateStatus).toHaveBeenCalledWith("lot-1", "scheduled");
+    expect(lotRepo.updateStatus).toHaveBeenCalledWith("lot-2", "scheduled");
+    expect(lotRepo.updateStatus).toHaveBeenCalledWith("lot-1", "draft");
+    expect(lotRepo.updateStatus).toHaveBeenCalledWith("lot-2", "draft");
+    expect(cancelLotJobs).toHaveBeenCalledWith("lot-1");
+    expect(scheduleLot).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("SaleService.detachLot", () => {
+  it("rejects detaching non-draft lots", async () => {
+    const sale = baseSale({ status: "draft" });
+    const lot: Lot = {
+      id: "lot-1",
+      saleId: sale.id,
+      lotNumber: 1,
+      sellerLegalEntityId: "seller-1",
+      artistId: null,
+      title: "Work",
+      description: null,
+      medium: null,
+      dimensions: null,
+      images: [],
+      categoryId: "c1",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+      status: "scheduled",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lot),
+      clearSaleId: vi.fn(),
+    } as unknown as ILotRepository;
+    const svc = new SaleService(saleServiceOpts({ saleRepo, lotRepo, jobScheduler: null }));
+
+    const result = await svc.detachLot("staff", sale.id, lot.id, "super_admin");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Only draft lots");
+    }
+    expect(lotRepo.clearSaleId).not.toHaveBeenCalled();
   });
 });
 

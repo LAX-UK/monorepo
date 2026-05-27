@@ -2,8 +2,6 @@
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminCancelLotResultAction } from "@/lib/actions/admin";
-import { Can } from "@/lib/auth/capabilities";
-import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -14,13 +12,14 @@ type Props = {
   disabled?: boolean;
 };
 
+/** Cancel control — parent gates visibility via `canCancel` (capability + lot status). */
 export function CancelLotButton({ lotId, disabled }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
 
   return (
-    <Can requirement={SALES_ACCESS}>
+    <>
       <Button
         type="button"
         variant="secondary"
@@ -54,6 +53,6 @@ export function CancelLotButton({ lotId, disabled }: Props) {
           router.refresh();
         }}
       />
-    </Can>
+    </>
   );
 }

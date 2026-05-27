@@ -19,8 +19,10 @@ import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/er
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { mergeSaleTimingIntoPatch, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
+import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { findPostgresError } from "../lib/pg-error.js";
+import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
@@ -217,8 +219,14 @@ export class LotService {
   ): Promise<Result<Lot, LotError | AuthzError>> {
     const role = normalizeUserRoleOrClient(userRole);
     const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
-    if (!roleHasCapability(role, "auction.manage", staff)) {
-      return err(new AuthzError("Only staff with auction.manage can publish lots", 403));
+    if (!canManageCatalogue(role, staff)) {
+      return err(
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can publish lots",
+          role,
+          staff,
+        ),
+      );
     }
     const a = await this.lotRepo.findById(lotId);
     if (!a) return err(new LotError("Lot not found", 404));
@@ -229,6 +237,22 @@ export class LotService {
       return err(new LotError("startTime must be in the future to publish"));
     }
     if (a.saleId) {
+      if (!this.saleRepo) {
+        return err(new LotError("Sale repository not configured", 500));
+      }
+      const saleForPublish = await this.saleRepo.findById(a.saleId);
+      if (!saleForPublish) {
+        return err(new LotError("Sale not found", 404));
+      }
+      if (saleForPublish.status === "draft") {
+        return err(
+          new LotError(
+            "Publish this lot with the sale when the sale goes live",
+            409,
+            "use_sale_publish",
+          ),
+        );
+      }
       const timingPatchResult = await this.applySaleTimingPolicyToLot(a, {});
       if (timingPatchResult.isErr()) {
         return err(timingPatchResult.error);
@@ -246,26 +270,16 @@ export class LotService {
         });
       }
     }
-    if (
-      this.enforceIndividualConnectOnPublish &&
-      this.legalEntityRepository &&
-      a.sellerLegalEntityId
-    ) {
-      const seller = await this.legalEntityRepository.findById(a.sellerLegalEntityId);
-      if (seller) {
-        const connectReady =
-          seller.status === "approved" &&
-          seller.stripeConnectPayoutsEnabled &&
-          (seller.stripeConnectRequirementsCurrentlyDue ?? []).length === 0;
-        if (!connectReady) {
-          return err(
-            new LotError(
-              "This seller must complete Stripe Connect onboarding before the lot can be scheduled.",
-              409,
-              "connect_required",
-            ),
-          );
-        }
+    if (this.enforceIndividualConnectOnPublish && this.legalEntityRepository) {
+      const blocked = await findLotsMissingSellerConnect([a], this.legalEntityRepository);
+      if (blocked.length > 0) {
+        return err(
+          new LotError(
+            "This seller must complete Stripe Connect onboarding before the lot can be scheduled.",
+            409,
+            "connect_required",
+          ),
+        );
       }
     }
     let updated: Lot;
@@ -287,7 +301,19 @@ export class LotService {
         await this.lotLifecycleRecording?.recordPublished(tx, updated, _userId);
       });
     }
-    await this.jobScheduler?.scheduleLot(lotId, updated.startTime, updated.endTime);
+    const scheduleResult = await scheduleLotWithDraftRollback({
+      jobScheduler: this.jobScheduler,
+      lotRepo: this.lotRepo,
+      lotLifecycleRecording: this.lotLifecycleRecording,
+      db: this.db ?? null,
+      recordLotLifecycle: (fn) => this.recordLifecycle(fn),
+      lotId,
+      startTime: updated.startTime,
+      endTime: updated.endTime,
+      actorUserId: _userId,
+      unpublishReason: "manual",
+    });
+    if (scheduleResult.isErr()) return err(scheduleResult.error);
     return ok(updated);
   }
 
@@ -308,7 +334,6 @@ export class LotService {
     if (!CANCELLABLE.has(a.status)) {
       return err(new LotError("This lot cannot be cancelled"));
     }
-    await this.jobScheduler?.cancelLotJobs(lotId);
     let updated: Lot;
     if (this.db && this.lotLifecycleRecording) {
       updated = await this.db.transaction(async (tx) => {
@@ -328,6 +353,7 @@ export class LotService {
         await this.lotLifecycleRecording?.recordCancelled(tx, updated, cancelReason, _userId);
       });
     }
+    await this.jobScheduler?.cancelLotJobs(lotId);
 
     if (this.lotNotifications) {
       const bidders = await this.bids.listDistinctBidderIds(lotId);
@@ -504,6 +530,21 @@ export class LotService {
     }
 
     if (input.saleId === null) {
+      if (lot.saleId != null) {
+        if (!this.saleRepo) {
+          return err(new LotError("Sale repository not configured", 500));
+        }
+        const sourceSale = await this.saleRepo.findById(lot.saleId);
+        if (!sourceSale) {
+          return err(new LotError("Sale not found", 404));
+        }
+        if (sourceSale.status !== "draft") {
+          return err(new LotError("Lots can only be detached while the sale is draft"));
+        }
+        if (lot.status !== "draft") {
+          return err(new LotError("Only draft lots can be moved between sales"));
+        }
+      }
       patch.lotNumber = null;
       return ok(patch);
     }
@@ -515,6 +556,21 @@ export class LotService {
     const sale = await this.saleRepo.findById(input.saleId);
     if (!sale) {
       return err(new LotError("Sale not found", 404));
+    }
+    if (sale.status !== "draft") {
+      return err(new LotError("Lots can only be attached while the sale is draft"));
+    }
+    if (input.saleId !== lot.saleId && lot.status !== "draft") {
+      return err(new LotError("Only draft lots can be moved between sales"));
+    }
+    if (lot.saleId != null && lot.saleId !== input.saleId) {
+      const sourceSale = await this.saleRepo.findById(lot.saleId);
+      if (!sourceSale) {
+        return err(new LotError("Sale not found", 404));
+      }
+      if (sourceSale.status !== "draft") {
+        return err(new LotError("Lots can only be detached while the sale is draft"));
+      }
     }
 
     const inSale = await this.lotRepo.findBySaleId(input.saleId);
@@ -546,6 +602,9 @@ export class LotService {
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) {
       return err(new LotError("Sale not found", 404));
+    }
+    if (sale.status !== "draft") {
+      return err(new LotError("Lots can only be added while the sale is draft"));
     }
     const resolved = resolveLotTimingForSale(sale, input.startTime, input.endTime);
     if (!resolved.ok) {
@@ -590,9 +649,13 @@ export class LotService {
   ): Promise<Result<Lot, LotError | AuthzError>> {
     const role = normalizeUserRoleOrClient(userRole);
     const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
-    if (!roleHasCapability(role, "auction.manage", staff)) {
+    if (!canManageCatalogue(role, staff)) {
       return err(
-        new AuthzError("Only staff with auction.manage can update marketing details", 403),
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can update marketing details",
+          role,
+          staff,
+        ),
       );
     }
     const a = await this.lotRepo.findById(lotId);
@@ -631,20 +694,56 @@ export class LotService {
     ids: string[],
     op: "publish" | "cancel",
     userStaffRole?: string | null,
-  ): Promise<Result<{ attempted: number; failed: number; errors: string[] }, AuthzError>> {
+    reason?: string,
+  ): Promise<
+    Result<
+      {
+        attempted: number;
+        failed: number;
+        errors: Array<{ lotId: string; message: string; code?: string }>;
+      },
+      AuthzError
+    >
+  > {
     const role = normalizeUserRoleOrClient(userRole);
     const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
-    if (!roleHasCapability(role, "auction.manage", staff)) {
-      return err(new AuthzError("Forbidden", 403));
+    if (op === "cancel") {
+      if (!roleHasCapability(role, "auction.manage", staff)) {
+        return err(new AuthzError("Only staff with auction.manage can bulk cancel lots", 403));
+      }
+    } else if (!canManageCatalogue(role, staff)) {
+      return err(
+        missingCatalogueCapabilityError(
+          "Only staff with auction.manage or catalogue.write can run bulk lot actions",
+          role,
+          staff,
+        ),
+      );
     }
-    const errors: string[] = [];
+    const errors: Array<{ lotId: string; message: string; code?: string }> = [];
+    const cancelReason =
+      op === "cancel" && reason?.trim() ? ("admin_override" as const) : ("manual" as const);
     for (const id of ids) {
       if (op === "publish") {
         const res = await this.publish(userId, userRole, id, userStaffRole);
-        if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
+        if (res.isErr()) {
+          const error = res.error;
+          errors.push({
+            lotId: id,
+            message: error.message,
+            ...(error instanceof LotError && error.code ? { code: error.code } : {}),
+          });
+        }
       } else {
-        const res = await this.cancel(userId, userRole, id, userStaffRole);
-        if (res.isErr()) errors.push(`${id}: ${res.error.message}`);
+        const res = await this.cancel(userId, userRole, id, userStaffRole, cancelReason);
+        if (res.isErr()) {
+          const error = res.error;
+          errors.push({
+            lotId: id,
+            message: error.message,
+            ...(error instanceof LotError && error.code ? { code: error.code } : {}),
+          });
+        }
       }
     }
     return ok({ attempted: ids.length, failed: errors.length, errors });

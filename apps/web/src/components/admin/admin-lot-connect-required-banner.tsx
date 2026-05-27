@@ -1,3 +1,4 @@
+import { connectPublishBlockedTitle } from "@/lib/admin/sale-setup/field-copy";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
 
@@ -15,13 +16,12 @@ export function AdminLotConnectRequiredBanner({ sellerLegalEntityId, detail }: P
       className="border-outline-variant/40 bg-surface-container-high/60"
       data-testid="admin-lot-connect-required-banner"
     >
-      <AlertTitle>Stripe Connect required before scheduling</AlertTitle>
+      <AlertTitle>{connectPublishBlockedTitle()}</AlertTitle>
       <AlertDescription className="space-y-3 text-pretty">
         <p>
-          This lot is assigned to an <span className="font-medium">individual</span> seller whose
-          Stripe Connect account is not ready (charges and payouts must both be enabled). Ask the
-          consignor to sign in and finish Connect onboarding from their account area, then retry{" "}
-          <span className="font-medium">Publish</span>.
+          This lot is assigned to a seller whose Stripe Connect account is not ready (charges and
+          payouts must both be enabled). Ask the consignor to sign in and finish Connect onboarding
+          from their account area, then retry <span className="font-medium">Publish</span>.
         </p>
         {sellerLegalEntityId ? (
           <p>

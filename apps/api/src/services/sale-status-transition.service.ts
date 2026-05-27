@@ -11,10 +11,14 @@ import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { canAdminOverrideLotStatus } from "../domain/lot-transitions.js";
 import { AuthzError, LotError } from "../lib/errors.js";
+import { resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
+import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";
+import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleStatusTransitionService } from "./interfaces/sale-status-transition.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
@@ -40,6 +44,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     private readonly db: Database | null = null,
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
     private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
+    private readonly legalEntityRepository: ILegalEntityRepository | null = null,
+    private readonly enforceIndividualConnectOnPublish = false,
   ) {}
 
   private async recordLot(fn: (tx: Database) => Promise<void>): Promise<void> {
@@ -151,6 +157,9 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     return ok({ sale: updatedSale, lots: updatedLots });
   }
 
+  /**
+   * @deprecated No route callers — use {@link LotService.cancel} via POST .../cancel.
+   */
   async cancelLot(
     userRole: string,
     saleId: string,
@@ -173,30 +182,13 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     if (!l || l.saleId !== saleId) {
       return err(new LotError("Lot not found in this sale", 404));
     }
-    if (l.status !== "draft" && l.status !== "scheduled" && l.status !== "active") {
-      return err(new LotError("Lot cannot be cancelled in its current status"));
-    }
-    await this.jobScheduler?.cancelLotJobs(lotId);
-    let updated: Lot;
-    if (this.db && this.lotLifecycleRecording) {
-      updated = await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
-        await lotRepo.updateStatus(lotId, "cancelled");
-        const row = await lotRepo.findById(lotId);
-        if (!row) throw new LotError("Lot not found", 404);
-        await this.lotLifecycleRecording?.recordCancelled(tx, row, "manual");
-        return row;
-      });
-    } else {
-      await this.lotRepo.updateStatus(lotId, "cancelled");
-      const row = await this.lotRepo.findById(lotId);
-      if (!row) return err(new LotError("Lot not found", 404));
-      updated = row;
-      await this.recordLot(async (tx) => {
-        await this.lotLifecycleRecording?.recordCancelled(tx, updated, "manual");
-      });
-    }
-    return ok(updated);
+    return err(
+      new LotError(
+        "Use POST /sales/:id/lots/:lotId/cancel to cancel lots with bidder notifications",
+        422,
+        "use_dedicated_cancel",
+      ),
+    );
   }
 
   async setLotStatus(
@@ -235,8 +227,69 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
         ),
       );
     }
-    if (status === "cancelled" || status === "ended") {
+    if (status === "cancelled") {
+      return err(
+        new LotError(
+          "Use POST /sales/:id/lots/:lotId/cancel to cancel lots with bidder notifications",
+          422,
+          "use_dedicated_cancel",
+        ),
+      );
+    }
+    if (status === "ended") {
       await this.jobScheduler?.cancelLotJobs(lotId);
+    }
+    let workingLot = l;
+    if (status === "scheduled") {
+      if (workingLot.status !== "draft") {
+        return err(new LotError("Only draft lots can be scheduled"));
+      }
+      if (sale.status === "draft") {
+        return err(
+          new LotError(
+            "Publish this lot with the sale when the sale goes live",
+            409,
+            "use_sale_publish",
+          ),
+        );
+      }
+      if (workingLot.startTime.getTime() <= Date.now()) {
+        return err(new LotError("startTime must be in the future to publish"));
+      }
+      const resolved = resolveLotTimingForSale(sale, workingLot.startTime, workingLot.endTime);
+      if (!resolved.ok) {
+        return err(new LotError(resolved.message, 400));
+      }
+      if (
+        resolved.startTime.getTime() !== workingLot.startTime.getTime() ||
+        resolved.endTime.getTime() !== workingLot.endTime.getTime()
+      ) {
+        await this.lotRepo.update(lotId, {
+          startTime: resolved.startTime,
+          endTime: resolved.endTime,
+        });
+        workingLot = {
+          ...workingLot,
+          startTime: resolved.startTime,
+          endTime: resolved.endTime,
+        };
+      }
+    }
+    if (
+      status === "scheduled" &&
+      this.enforceIndividualConnectOnPublish &&
+      this.legalEntityRepository
+    ) {
+      const blocked = await findLotsMissingSellerConnect([workingLot], this.legalEntityRepository);
+      if (blocked.length > 0) {
+        return err(
+          new LotError(
+            "This seller must complete Stripe Connect onboarding before the lot can be scheduled.",
+            409,
+            "connect_required",
+          ),
+        );
+      }
     }
     let updated: Lot;
     if (this.db && this.lotLifecycleRecording) {
@@ -245,9 +298,7 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
         await lotRepo.updateStatus(lotId, status);
         const row = await lotRepo.findById(lotId);
         if (!row) throw new LotError("Lot not found", 404);
-        if (status === "cancelled") {
-          await this.lotLifecycleRecording?.recordCancelled(tx, row, "admin_override");
-        } else if (status === "ended") {
+        if (status === "ended") {
           await this.lotLifecycleRecording?.recordEnded(tx, {
             lot: row,
             payload: {
@@ -268,9 +319,7 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
       if (!row) return err(new LotError("Lot not found", 404));
       updated = row;
       await this.recordLot(async (tx) => {
-        if (status === "cancelled") {
-          await this.lotLifecycleRecording?.recordCancelled(tx, updated, "admin_override");
-        } else if (status === "ended") {
+        if (status === "ended") {
           await this.lotLifecycleRecording?.recordEnded(tx, {
             lot: updated,
             payload: {
@@ -284,6 +333,20 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
           await this.lotLifecycleRecording?.recordPublished(tx, updated);
         }
       });
+    }
+    if (status === "scheduled") {
+      const scheduleResult = await scheduleLotWithDraftRollback({
+        jobScheduler: this.jobScheduler,
+        lotRepo: this.lotRepo,
+        lotLifecycleRecording: this.lotLifecycleRecording,
+        db: this.db ?? null,
+        recordLotLifecycle: (fn) => this.recordLot(fn),
+        lotId,
+        startTime: updated.startTime,
+        endTime: updated.endTime,
+        unpublishReason: "manual",
+      });
+      if (scheduleResult.isErr()) return err(scheduleResult.error);
     }
     return ok(updated);
   }

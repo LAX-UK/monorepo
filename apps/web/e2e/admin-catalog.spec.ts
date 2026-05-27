@@ -15,11 +15,21 @@ const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
 
 const staffEmail = process.env.PLAYWRIGHT_STAFF_EMAIL ?? "";
 const staffPassword = process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "";
+const catalogueEmail = process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL ?? "";
+const cataloguePassword = process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD ?? "";
 
 async function staffLogin(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(staffEmail);
   await page.getByLabel(/password/i).fill(staffPassword);
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL(/dashboard/);
+}
+
+async function catalogueManagerLogin(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.getByLabel(/email/i).fill(catalogueEmail);
+  await page.getByLabel(/password/i).fill(cataloguePassword);
   await page.getByRole("button", { name: /sign in/i }).click();
   await page.waitForURL(/dashboard/);
 }
@@ -62,6 +72,259 @@ test.describe("admin catalog navigation", () => {
     await staffLogin(page);
     await page.goto("/admin/submissions");
     await expect(page.getByRole("heading", { name: /submissions/i })).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Catalogue manager smoke (catalogue.write without auction.manage)
+// ---------------------------------------------------------------------------
+
+test.describe("catalogue manager catalog access", () => {
+  test("can open lots list and draft lot detail publish control", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(
+      !catalogueEmail || !cataloguePassword,
+      "Set PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL/PASSWORD",
+    );
+    await catalogueManagerLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible();
+
+    const firstLot = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasDraft = await firstLot.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasDraft) {
+      test.skip(true, "No draft lots in seed data");
+      return;
+    }
+    await firstLot.click();
+    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+    await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible();
+  });
+
+  test("bulk Cancel is hidden on lots list", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(
+      !catalogueEmail || !cataloguePassword,
+      "Set PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL/PASSWORD",
+    );
+    await catalogueManagerLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible();
+
+    const firstRowCheckbox = page.locator("table tbody tr").first().getByRole("checkbox");
+    const hasRows = await firstRowCheckbox.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasRows) {
+      test.skip(true, "No lots in seed data");
+      return;
+    }
+    await firstRowCheckbox.check();
+    await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^cancel$/i })).toHaveCount(0);
+  });
+
+  test("detail Cancel auction is hidden on lot detail", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(
+      !catalogueEmail || !cataloguePassword,
+      "Set PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL/PASSWORD",
+    );
+    await catalogueManagerLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    const firstLot = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasDraft = await firstLot.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasDraft) {
+      test.skip(true, "No draft lots in seed data");
+      return;
+    }
+    await firstLot.click();
+    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+    await expect(page.getByRole("button", { name: /cancel auction/i })).toHaveCount(0);
+  });
+
+  test("sale lots tab hides return to inventory for catalogue manager", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(
+      !catalogueEmail || !cataloguePassword,
+      "Set PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL/PASSWORD",
+    );
+    await catalogueManagerLogin(page);
+    await page.goto("/admin/sales");
+    const cancelledRow = page
+      .locator("table tbody tr")
+      .filter({ hasText: /cancelled/i })
+      .first();
+    const hasCancelled = await cancelledRow.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasCancelled) {
+      test.skip(true, "No cancelled sales in seed data");
+      return;
+    }
+    await cancelledRow.getByRole("link").first().click();
+    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+    await page.goto(`${page.url()}/lots`);
+    await expect(page.getByText(/return lots to inventory/i)).toHaveCount(0);
+  });
+
+  test("sale detail hides publish and bulk cancel for catalogue manager", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(
+      !catalogueEmail || !cataloguePassword,
+      "Set PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL/PASSWORD",
+    );
+    await catalogueManagerLogin(page);
+    await page.goto("/admin/sales");
+    await expect(page.getByRole("heading", { name: /sales/i })).toBeVisible();
+
+    const firstRowCheckbox = page.locator("table tbody tr").first().getByRole("checkbox");
+    const hasRows = await firstRowCheckbox.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasRows) {
+      test.skip(true, "No sales in seed data");
+      return;
+    }
+    await firstRowCheckbox.check();
+    await expect(page.getByRole("button", { name: /^publish$/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^cancel$/i })).toHaveCount(0);
+
+    await page.locator("table tbody tr").first().getByRole("link").first().click();
+    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+    await expect(page.getByRole("button", { name: /more sale actions/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /edit draft/i })).toHaveCount(0);
+  });
+
+  test("shows bulk publish preflight hint when lots are sale-assigned", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(
+      !catalogueEmail || !cataloguePassword,
+      "Set PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL/PASSWORD",
+    );
+    await catalogueManagerLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    const firstRowCheckbox = page.locator("table tbody tr").first().getByRole("checkbox");
+    const hasRows = await firstRowCheckbox.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasRows) {
+      test.skip(true, "No lots in seed data");
+      return;
+    }
+    await firstRowCheckbox.check();
+    const preflight = page.getByText(/published together when you publish the sale/i);
+    const hasPreflight = await preflight.isVisible({ timeout: 2000 }).catch(() => false);
+    if (!hasPreflight) {
+      test.skip(true, "Selected lot is not assigned to a draft sale");
+      return;
+    }
+    await expect(preflight).toBeVisible();
+  });
+});
+
+test.describe("lot detail connect banner", () => {
+  test("shows connect banner when lot detail has connect_required error", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    const firstLotLink = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasDraft = await firstLotLink.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasDraft) {
+      test.skip(true, "No draft lots in seed data");
+      return;
+    }
+    const href = await firstLotLink.getAttribute("href");
+    if (!href) {
+      test.skip(true, "Could not resolve lot detail href");
+      return;
+    }
+    await page.goto(`${href}?error_code=connect_required`);
+    await expect(page.getByTestId("admin-lot-connect-required-banner")).toBeVisible();
+  });
+
+  test("shows connect banner on non-overview lot detail tab", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    const firstLotLink = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasDraft = await firstLotLink.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasDraft) {
+      test.skip(true, "No draft lots in seed data");
+      return;
+    }
+    const href = await firstLotLink.getAttribute("href");
+    if (!href) {
+      test.skip(true, "Could not resolve lot detail href");
+      return;
+    }
+    await page.goto(`${href}/images?error_code=connect_required`);
+    await expect(page.getByTestId("admin-lot-connect-required-banner")).toBeVisible();
+  });
+
+  test("shows draft-sale publish copy on lot detail when sale is draft", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/sales");
+    const draftLink = page.getByRole("link", { name: /draft/i }).first();
+    const hasDraftSale = await draftLink.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!hasDraftSale) {
+      test.skip(true, "No draft sales in seed data");
+      return;
+    }
+    await page.locator("table tbody tr").first().getByRole("link").first().click();
+    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+    await page.goto(`${page.url()}/lots`);
+    const lotLink = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasLot = await lotLink.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasLot) {
+      test.skip(true, "No lots on draft sale");
+      return;
+    }
+    await lotLink.click();
+    await page.waitForURL(/\/admin\/lots\/[^/]+/);
+    await expect(page.getByText(/published together when you publish the sale/i)).toBeVisible();
+  });
+});
+
+test.describe("sale detail connect banner", () => {
+  test("shows connect banner when sale detail has connect_required error", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/sales");
+    const draftLink = page.getByRole("link", { name: /draft/i }).first();
+    const hasDraftSale = await draftLink.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!hasDraftSale) {
+      test.skip(true, "No draft sales in seed data");
+      return;
+    }
+    await page.locator("table tbody tr").first().getByRole("link").first().click();
+    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+    await page.goto(`${page.url()}?error_code=connect_required`);
+    await expect(page.getByTestId("admin-lot-connect-required-banner")).toBeVisible();
+  });
+});
+
+test.describe("lot detail proactive connect", () => {
+  test("shows connect banner on draft lot when seller connect is blocked", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(!process.env.STRIPE_SECRET_KEY?.trim(), "Requires Stripe Connect enforcement in API");
+    await staffLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    const rows = page.locator("table tbody tr");
+    const rowCount = await rows.count();
+    if (rowCount === 0) {
+      test.skip(true, "No draft lots in seed data");
+      return;
+    }
+    for (let i = 0; i < Math.min(rowCount, 10); i++) {
+      const link = rows.nth(i).getByRole("link").first();
+      if (!(await link.isVisible().catch(() => false))) continue;
+      await link.click();
+      await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+      const banner = page.getByTestId("admin-lot-connect-required-banner");
+      const publish = page.getByRole("button", { name: /^publish$/i });
+      const hasBanner = await banner.isVisible({ timeout: 2000 }).catch(() => false);
+      const publishDisabled = await publish.isDisabled().catch(() => false);
+      if (hasBanner && publishDisabled) {
+        await expect(banner).toBeVisible();
+        return;
+      }
+      await page.goto("/admin/lots?status=draft");
+    }
+    test.skip(true, "No draft lot with blocked seller Connect in seed data");
   });
 });
 

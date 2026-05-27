@@ -5,7 +5,10 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { getIdempotentSaleCreate, setIdempotentSaleCreate } from "@/lib/actions/idempotency-cache";
 import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
-import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import {
+  assertAdminCapabilityForRedirect,
+  denyUnlessAdminCapability,
+} from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -14,7 +17,7 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
-import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { LotStatus } from "@auction/types";
 import {
   createNestedLotForSaleSchema,
@@ -94,6 +97,10 @@ export async function adminCreateSaleAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminCreateSaleAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales/new?error=${encodeURIComponent(denied.message)}`);
+      }
       const cat = String(formData.get("categoryId") ?? "").trim();
       const dmRaw = String(formData.get("deliveryMode") ?? "onsite").trim();
       const deliveryMode = dmRaw === "online" || dmRaw === "onsite" ? dmRaw : "onsite";
@@ -138,6 +145,10 @@ export async function adminUpdateSaleAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminUpdateSaleAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("saleId") ?? "").trim();
       if (!id) redirect(`/admin/sales?error=${encodeURIComponent("Missing sale")}`);
       const cat = String(formData.get("categoryId") ?? "").trim();
@@ -188,6 +199,10 @@ export async function adminPublishSaleAction(formData: FormData): Promise<void> 
   return instrumentServerAction(
     "adminPublishSaleAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("saleId") ?? "").trim();
       if (!id) redirect(`/admin/sales?error=${encodeURIComponent("Missing sale")}`);
       const { adminSales } = getWriteContainer();
@@ -207,6 +222,10 @@ export async function adminCancelSaleAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminCancelSaleAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("saleId") ?? "").trim();
       if (!id) redirect(`/admin/sales?error=${encodeURIComponent("Missing sale")}`);
       const { adminSales } = getWriteContainer();
@@ -226,6 +245,10 @@ export async function adminAttachLotToSaleAction(formData: FormData): Promise<vo
   return instrumentServerAction(
     "adminAttachLotToSaleAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales?error=${encodeURIComponent(denied.message)}`);
+      }
       const saleId = String(formData.get("saleId") ?? "").trim();
       const lotId = String(formData.get("lotId") ?? "").trim();
       if (!saleId || !lotId)
@@ -247,6 +270,10 @@ export async function adminDetachLotFromSaleAction(formData: FormData): Promise<
   return instrumentServerAction(
     "adminDetachLotFromSaleAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales?error=${encodeURIComponent(denied.message)}`);
+      }
       const saleId = String(formData.get("saleId") ?? "").trim();
       const lotId = String(formData.get("lotId") ?? "").trim();
       if (!saleId || !lotId)
@@ -321,7 +348,7 @@ export async function adminAddLotToSaleResultAction(
   input: z.infer<typeof createNestedLotForSaleSchema>,
 ): Promise<ActionResult<{ id: string }>> {
   return instrumentServerAction("adminAddLotToSaleResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
     const sid = saleId.trim();
     if (!sid) {
@@ -354,7 +381,8 @@ export async function adminPublishSaleResultAction(saleId: string): Promise<Acti
     const { adminSales } = getWriteContainer();
     const r = await adminSales.publish(id);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      const meta = readApiActionErrorMeta(r.body);
+      return actionFailure(r.message, undefined, r.status, r.code, meta);
     }
     revalidateAdminSaleDetail(id);
     revalidatePath("/");
@@ -433,7 +461,7 @@ export async function adminAttachLotToSaleResultAction(
   opts?: { via?: "attach_endpoint" | "wizard" },
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminAttachLotToSaleResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
     const sid = saleId.trim();
     const lid = lotId.trim();
@@ -456,7 +484,7 @@ export async function adminDetachLotFromSaleResultAction(
   lotId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminDetachLotFromSaleResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
     const sid = saleId.trim();
     const lid = lotId.trim();

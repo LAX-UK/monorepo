@@ -89,7 +89,7 @@ export function mergeWizardRowsWithServerLots<T extends { id: string }>(
     };
   });
   if (serverRows.length === 0 && unsaved.length === 0) {
-    return [emptySaleSetupLotRow(crypto.randomUUID())];
+    return [];
   }
   return [...serverRows, ...unsaved];
 }

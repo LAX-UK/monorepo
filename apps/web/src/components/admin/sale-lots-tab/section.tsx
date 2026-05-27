@@ -1,17 +1,17 @@
 "use client";
 
-import { AdminLotPicker } from "@/components/admin/admin-lot-picker";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AttachExistingLotReview } from "@/components/admin/attach-existing-lot-review";
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import { MediaImage } from "@/components/ui/media-image";
 import { DisplayHeading } from "@/components/ui/typography";
 import { adminReturnLotToInventoryResultAction } from "@/lib/actions/admin";
 import {
-  adminAttachLotToSaleResultAction,
   adminCancelLotInSaleResultAction,
   adminDetachLotFromSaleResultAction,
   adminSetLotStatusResultAction,
 } from "@/lib/actions/admin-sales";
+import { attachExistingLotPanelBody } from "@/lib/admin/sale-setup";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import type { LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
@@ -35,7 +35,10 @@ type Props = {
   saleId: string;
   saleStatus: SaleStatus;
   deliveryMode: SaleDeliveryMode;
+  saleStartTime: Date;
+  saleEndTime: Date;
   canEdit: boolean;
+  canManageAuction?: boolean;
   lots: SaleLotsTabLotRow[];
 };
 
@@ -50,12 +53,19 @@ const LOT_TRANSITION_OPTIONS: Record<LotStatus, LotStatus[]> = {
 
 type ViewMode = "list" | "grid";
 
-export function SaleLotsTabSection({ saleId, saleStatus, deliveryMode, canEdit, lots }: Props) {
+export function SaleLotsTabSection({
+  saleId,
+  saleStatus,
+  deliveryMode,
+  saleStartTime,
+  saleEndTime,
+  canEdit,
+  canManageAuction = false,
+  lots,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [view, setView] = useState<ViewMode>("list");
-  const [attachLotId, setAttachLotId] = useState<string | null>(null);
-  const [attachTitle, setAttachTitle] = useState<string | null>(null);
   const isOnsite = deliveryMode === "onsite";
   const returnEligible = lots.filter(
     (l) =>
@@ -68,8 +78,6 @@ export function SaleLotsTabSection({ saleId, saleStatus, deliveryMode, canEdit, 
         const r = await fn();
         if (r.ok) {
           notify.success("Done");
-          setAttachLotId(null);
-          setAttachTitle(null);
           router.refresh();
           return;
         }
@@ -184,7 +192,8 @@ export function SaleLotsTabSection({ saleId, saleStatus, deliveryMode, canEdit, 
                         Detach
                       </Button>
                     ) : null}
-                    {transitions.includes("cancelled") &&
+                    {canManageAuction &&
+                    transitions.includes("cancelled") &&
                     saleStatus !== "ended" &&
                     saleStatus !== "cancelled" ? (
                       <ConfirmActionButton
@@ -202,25 +211,27 @@ export function SaleLotsTabSection({ saleId, saleStatus, deliveryMode, canEdit, 
                         Cancel lot
                       </ConfirmActionButton>
                     ) : null}
-                    {transitions
-                      .filter((t) => t !== "cancelled")
-                      .map((next) => (
-                        <ConfirmActionButton
-                          key={next}
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          disabled={pending}
-                          confirmTitle={`Mark as ${next}`}
-                          confirmBody={`Mark lot "${l.title}" as ${next}?`}
-                          confirmLabel={`Mark ${next}`}
-                          onConfirmed={() =>
-                            run(() => adminSetLotStatusResultAction(saleId, l.id, next))
-                          }
-                        >
-                          Mark {next}
-                        </ConfirmActionButton>
-                      ))}
+                    {canManageAuction
+                      ? transitions
+                          .filter((t) => t !== "cancelled")
+                          .map((next) => (
+                            <ConfirmActionButton
+                              key={next}
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              disabled={pending}
+                              confirmTitle={`Mark as ${next}`}
+                              confirmBody={`Mark lot "${l.title}" as ${next}?`}
+                              confirmLabel={`Mark ${next}`}
+                              onConfirmed={() =>
+                                run(() => adminSetLotStatusResultAction(saleId, l.id, next))
+                              }
+                            >
+                              Mark {next}
+                            </ConfirmActionButton>
+                          ))
+                      : null}
                   </div>
                 </li>
               );
@@ -228,11 +239,20 @@ export function SaleLotsTabSection({ saleId, saleStatus, deliveryMode, canEdit, 
           </ul>
         )}
         {lots.length === 0 ? (
-          <p className="mt-3 font-body text-sm text-on-surface-variant">No lots attached yet.</p>
+          <div className="mt-3 space-y-2">
+            <p className="font-body text-sm text-on-surface-variant">No lots attached yet.</p>
+            {canEdit && saleStatus === "draft" ? (
+              <Button variant="secondary" size="sm" asChild>
+                <Link href={`/admin/sales/${saleId}/setup?step=lots`}>
+                  Continue setup to add lots
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
-      {saleStatus === "cancelled" && returnEligible.length > 0 ? (
+      {saleStatus === "cancelled" && returnEligible.length > 0 && canManageAuction ? (
         <div className="rounded-lg border border-border-hairline bg-surface-container-lowest/40 p-4">
           <DisplayHeading as="h2" className="text-lg">
             Return lots to inventory
@@ -273,34 +293,15 @@ export function SaleLotsTabSection({ saleId, saleStatus, deliveryMode, canEdit, 
             Attach existing lot
           </DisplayHeading>
           <p className="mt-2 font-body text-sm text-on-surface-variant">
-            Search draft inventory — returned lots appear when recently sent back to inventory.
-            {isOnsite
-              ? " Attached lots inherit the sale schedule."
-              : " Set lot schedule after attach if needed."}
+            {attachExistingLotPanelBody(isOnsite)}
           </p>
-          <div className="mt-4 max-w-xl space-y-3">
-            <AdminLotPicker
-              value={attachLotId}
-              displayLabel={attachTitle}
-              excludeSaleId={saleId}
+          <div className="mt-4 max-w-xl">
+            <AttachExistingLotReview
+              saleId={saleId}
+              saleWindow={{ deliveryMode, startTime: saleStartTime, endTime: saleEndTime }}
               disabled={pending}
-              onChange={(id, row) => {
-                setAttachLotId(id);
-                setAttachTitle(row?.title ?? null);
-              }}
+              onAttached={() => router.refresh()}
             />
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending || !attachLotId}
-              variant="secondary"
-              onClick={() => {
-                if (!attachLotId) return;
-                run(() => adminAttachLotToSaleResultAction(saleId, attachLotId));
-              }}
-            >
-              Attach selected lot
-            </Button>
           </div>
         </div>
       ) : null}

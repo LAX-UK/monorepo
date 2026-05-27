@@ -11,13 +11,16 @@ import {
 import { AdminSaleEditableTitle } from "@/components/admin/editable-titles";
 import { SaleDetailMobileLifecycleTrailing } from "@/components/admin/sale-detail-mobile-lifecycle-trailing";
 import { SaleContextRail } from "@/components/admin/sale-detail/sale-context-rail";
+import { SaleDetailConnectNotice } from "@/components/admin/sale-detail/sale-detail-connect-notice";
 import { isSaleLiveish, venueOneLiner } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { buildSaleNavigationActionItems } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
+import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { salePath } from "@/lib/seo/url";
 import { Badge } from "@auction/ui";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 type Props = {
   saleId: string;
@@ -25,6 +28,8 @@ type Props = {
   registrationCount?: number | null;
   documentCount?: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
+  canManageSales?: boolean;
+  connectRequiredByLotId?: ConnectRequiredByLotId;
   children: ReactNode;
 };
 
@@ -34,6 +39,8 @@ export function SaleDetailShell({
   registrationCount = null,
   documentCount = null,
   activityEvents = [],
+  canManageSales = false,
+  connectRequiredByLotId,
   children,
 }: Props) {
   const { sale, lots } = bundle;
@@ -41,18 +48,20 @@ export function SaleDetailShell({
   const venueLine = venueOneLiner(sale);
   const publicHref = salePath({ id: sale.id, title: sale.title });
 
-  const canEdit = sale.status === "draft";
-  const canPublish = sale.status === "draft";
-  const canUnpublish = sale.status === "scheduled";
+  const canEditDraftSale = sale.status === "draft" && canManageSales;
+  const canPublish = sale.status === "draft" && canManageSales;
+  const canUnpublish = sale.status === "scheduled" && canManageSales;
   const canCancel =
-    sale.status === "draft" || sale.status === "scheduled" || sale.status === "active";
-  const canDelete = bundle.deleteEligibility?.canDelete === true;
+    canManageSales &&
+    (sale.status === "draft" || sale.status === "scheduled" || sale.status === "active");
+  const canDelete = canManageSales && bundle.deleteEligibility?.canDelete === true;
   const deleteBlockers =
     sale.status === "draft" || sale.status === "scheduled"
       ? (bundle.deleteEligibility?.blockers ?? [])
       : [];
   const isOnsite = sale.deliveryMode === "onsite";
-  const canMarkOnsiteEnded = isOnsite && (sale.status === "active" || sale.status === "scheduled");
+  const canMarkOnsiteEnded =
+    canManageSales && isOnsite && (sale.status === "active" || sale.status === "scheduled");
 
   const pendingRegs =
     liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;
@@ -95,7 +104,7 @@ export function SaleDetailShell({
   const mobileActions = buildSaleNavigationActionItems({
     saleId,
     publicHref,
-    canEdit,
+    canEdit: canEditDraftSale,
     liveish,
   });
 
@@ -107,7 +116,9 @@ export function SaleDetailShell({
         />
       }
       eyebrow="Sale"
-      title={<AdminSaleEditableTitle saleId={saleId} value={sale.title} />}
+      title={
+        <AdminSaleEditableTitle saleId={saleId} value={sale.title} editable={canManageSales} />
+      }
       {...(venueLine ? { description: venueLine } : {})}
       meta={
         <div className="flex flex-wrap items-center gap-2">
@@ -123,7 +134,7 @@ export function SaleDetailShell({
           <AdminSaleHeaderActions
             saleId={saleId}
             saleTitle={sale.title}
-            canEdit={canEdit}
+            canEdit={canEditDraftSale}
             canPublish={canPublish}
             canUnpublish={canUnpublish}
             canCancel={canCancel}
@@ -163,12 +174,19 @@ export function SaleDetailShell({
               >
                 Open saleroom →
               </a>
-            ) : canEdit ? (
+            ) : canEditDraftSale ? (
               <a
                 href={`/admin/sales/${saleId}/edit`}
                 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
               >
                 Edit draft →
+              </a>
+            ) : sale.status === "draft" ? (
+              <a
+                href={`/admin/sales/${saleId}/setup?step=identity`}
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+              >
+                Continue setup →
               </a>
             ) : undefined
           }
@@ -183,6 +201,8 @@ export function SaleDetailShell({
           registrationCount={registrationCount}
           activityEvents={activityEvents}
           deleteBlockers={deleteBlockers}
+          canManageSales={canManageSales}
+          {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
           status={<AdminStatusBadge domain="sale" status={sale.status} />}
           publicHref={publicHref}
         />
@@ -208,6 +228,12 @@ export function SaleDetailShell({
         </>
       }
     >
+      <Suspense fallback={null}>
+        <SaleDetailConnectNotice
+          lots={lots}
+          {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
+        />
+      </Suspense>
       {children}
     </CatalogDetailShell>
   );

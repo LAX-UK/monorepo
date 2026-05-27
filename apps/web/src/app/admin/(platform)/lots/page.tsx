@@ -15,12 +15,16 @@ import { lotsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { lotActiveLensId, lotLensItems } from "@/lib/admin/catalog/lots-lenses";
+import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminLotsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { getLotWithdrawalRequests } from "@/lib/data/http/admin.server";
+import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { formatDateTime } from "@/lib/ui/format";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
@@ -48,6 +52,12 @@ export default async function AdminLotsPage({
     lens?: string;
   }>;
 }) {
+  const user = await requireAdminCapability(LOTS_ACCESS, "/admin/lots");
+  const canManageAuction = userHasAccessTo(
+    user.role as UserRole,
+    user.staffRole ?? null,
+    SALES_ACCESS,
+  );
   const sp = await searchParams;
   const activeLens = lotActiveLensId(sp);
   const attentionLens = activeLens === "attention";
@@ -134,6 +144,8 @@ export default async function AdminLotsPage({
 
   const activeOnPage = lotTableRows.filter((r) => r.status === "active").length;
   const draftOnPage = lotTableRows.filter((r) => r.status === "draft").length;
+  const connectRequiredByLotId =
+    pageRows.length > 0 ? await buildConnectRequiredByLotId(pageRows) : undefined;
 
   const lenses =
     nav.withdrawalsPending > 0
@@ -299,6 +311,8 @@ export default async function AdminLotsPage({
             listError={listError}
             urlError={error}
             searchQuery={q}
+            canManageAuction={canManageAuction}
+            {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
           />
         </Suspense>
       ) : null}

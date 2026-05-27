@@ -3,12 +3,10 @@ import {
   CatalogDetailSummaryStrip,
   CatalogExternalLink,
   CatalogInfoCard,
-  CatalogPublishReadiness,
 } from "@/components/admin/catalog";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { MediaImage } from "@/components/ui/media-image";
 import { buildLotSummaryItems } from "@/lib/admin/build-lot-summary-items";
-import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import { formatDateTime, formatMoney, formatPercent } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
@@ -22,17 +20,9 @@ type Props = {
   imageAlts: string[];
   context: LotDetailContext;
   bidCount: number | null;
-  connectRequired?: boolean;
 };
 
-export function AdminLotOverviewPanel({
-  lotId,
-  auction,
-  imageAlts,
-  context,
-  bidCount,
-  connectRequired = false,
-}: Props) {
+export function AdminLotOverviewPanel({ lotId, auction, imageAlts, context, bidCount }: Props) {
   const premiumPct = Number.parseFloat(auction.buyerPremiumRate);
   const premiumLabel = Number.isNaN(premiumPct)
     ? auction.buyerPremiumRate
@@ -40,19 +30,9 @@ export function AdminLotOverviewPanel({
 
   const summaryItems = buildLotSummaryItems(lotId, auction, bidCount);
   const marketing = auction.marketingDetails;
-  const readiness =
-    auction.status === "draft" ? buildLotPublishReadiness(lotId, auction, connectRequired) : null;
 
   return (
     <div className="space-y-8">
-      {readiness ? (
-        <CatalogPublishReadiness
-          title="Catalog readiness"
-          readiness={readiness}
-          dismissKey={`lot-overview:${lotId}`}
-        />
-      ) : null}
-
       <CatalogDetailSummaryStrip items={summaryItems} />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
