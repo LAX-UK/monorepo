@@ -3,6 +3,7 @@
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Label } from "@auction/ui/components/label";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
 
 export type FilterCheckboxOption = {
   param: string;
@@ -11,16 +12,41 @@ export type FilterCheckboxOption = {
   checkedValue?: string;
 };
 
+type PendingNavigation = {
+  pending: boolean;
+  navigate: (href: string) => void;
+};
+
 type Props = {
   options: FilterCheckboxOption[];
   className?: string;
   resetParams?: Record<string, string>;
+  /** Inject shared pending navigation (e.g. marketing catalog context). */
+  usePendingNavigation?: () => PendingNavigation;
 };
 
-export function FilterCheckboxGroup({ options, className, resetParams }: Props) {
+function defaultPendingNavigation(): PendingNavigation {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return {
+    pending,
+    navigate: (href: string) => {
+      startTransition(() => {
+        router.push(href, { scroll: false });
+      });
+    },
+  };
+}
+
+export function FilterCheckboxGroup({
+  options,
+  className,
+  resetParams,
+  usePendingNavigation = defaultPendingNavigation,
+}: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { pending, navigate } = usePendingNavigation();
 
   function toggle(param: string, checked: boolean, checkedValue = "1") {
     const params = new URLSearchParams(searchParams.toString());
@@ -30,7 +56,7 @@ export function FilterCheckboxGroup({ options, className, resetParams }: Props) 
     if (checked) params.set(param, checkedValue);
     else params.delete(param);
     const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    navigate(qs ? `${pathname}?${qs}` : pathname);
   }
 
   return (
@@ -44,6 +70,8 @@ export function FilterCheckboxGroup({ options, className, resetParams }: Props) 
             <Checkbox
               id={id}
               checked={checked}
+              disabled={pending}
+              aria-busy={pending}
               onCheckedChange={(v) => toggle(opt.param, v === true, checkedValue)}
             />
             <Label htmlFor={id} className="font-body text-sm text-on-surface">

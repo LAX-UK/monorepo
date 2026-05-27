@@ -10,7 +10,7 @@ const hits: Hit[] = [
 ];
 
 describe("AsyncCombobox", () => {
-  it("exposes combobox a11y on empty trigger", () => {
+  it("exposes combobox a11y on empty trigger", async () => {
     render(
       <AsyncCombobox<Hit>
         value={null}
@@ -26,7 +26,7 @@ describe("AsyncCombobox", () => {
       />,
     );
 
-    const trigger = screen.getByRole("combobox");
+    const trigger = await screen.findByRole("combobox");
     expect(trigger).toHaveTextContent("Pick one");
     expect(trigger).toHaveAttribute("id", "picker");
     expect(trigger).toHaveAttribute("aria-invalid", "true");

@@ -37,6 +37,19 @@ function ResponsivePickerShell({
   popoverContentClassName = "w-auto p-0",
 }: ResponsivePickerShellProps) {
   const isDesktop = useMinWidthMd();
+  const prevDesktop = React.useRef(isDesktop);
+
+  React.useEffect(() => {
+    if (
+      prevDesktop.current !== null &&
+      isDesktop !== null &&
+      prevDesktop.current !== isDesktop &&
+      open
+    ) {
+      onOpenChange(false);
+    }
+    prevDesktop.current = isDesktop;
+  }, [isDesktop, open, onOpenChange]);
 
   if (isDesktop === null) {
     return React.cloneElement(trigger, { disabled: true, "aria-busy": true });
