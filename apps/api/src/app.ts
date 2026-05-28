@@ -10,8 +10,11 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Container } from "./container.js";
 import type { Env } from "./env.js";
+import { assertBullBoardProductionSafety, mountBullBoard } from "./lib/bull-board.js";
 import { createAppLogger } from "./lib/logger.js";
+import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { trustedWebOrigins } from "./lib/trusted-origins.js";
+import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
 import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
 import { createAuthRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
@@ -21,6 +24,7 @@ import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
 import { requirePlatformAdmin } from "./middleware/require-capability.js";
+import { requireSuperAdminStaffRole } from "./middleware/require-staff-role.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
@@ -212,6 +216,14 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))
     .route("/webhooks", createXeroWebhookRoutes(container));
+
+  assertBullBoardProductionSafety(env);
+  mountBullBoard(app, connectionOptionsFromRedisUrl(env.REDIS_URL), env, {
+    requireAuth,
+    requirePlatformAdmin,
+    requireSuperAdminStaffRole,
+    auditAccess: createAuditAccessMiddleware(appLogger),
+  });
 
   return routed;
 }

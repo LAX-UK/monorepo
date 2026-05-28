@@ -12,7 +12,8 @@ import {
 import { createDb } from "@auction/db";
 import { session } from "@auction/db/schema";
 import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
-import { Sentry, initNodeSentry } from "@auction/observability";
+import { Sentry, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
+import { EMAIL_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
 import { serve } from "@hono/node-server";
 import { Queue } from "bullmq";
 import { eq, sql } from "drizzle-orm";
@@ -46,7 +47,18 @@ const log = pino({
 
 const db = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
-const emailQueue = new Queue<{ outboxId: string }>("email", { connection: redis });
+redis.on("error", (err: Error) => {
+  log.error({ err }, "redis connection error");
+  Sentry.captureException(err);
+});
+const bullTelemetry = getBullMqTelemetry("auction-auth");
+const emailQueue = new Queue<{ outboxId: string }>(
+  EMAIL_QUEUE_NAME,
+  createBullQueueOptions(EMAIL_QUEUE_NAME, {
+    connection: redis,
+    ...(bullTelemetry ? { telemetry: bullTelemetry } : {}),
+  }),
+);
 const emailService =
   env.EMAIL_PROVIDER === "postmark"
     ? new PostmarkEmailService(db, emailQueue)

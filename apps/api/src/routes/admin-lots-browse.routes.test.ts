@@ -31,6 +31,7 @@ describe("admin lots browse routes", () => {
     });
 
     const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
       admin: {
         requestLifecycle: {
           isSuspended: vi.fn().mockResolvedValue(false),
@@ -68,6 +69,7 @@ describe("admin lots browse routes", () => {
 
   it("GET /lots/browse returns 401 when unauthenticated", async () => {
     const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
       admin: {
         requestLifecycle: {
           isSuspended: vi.fn().mockResolvedValue(false),
