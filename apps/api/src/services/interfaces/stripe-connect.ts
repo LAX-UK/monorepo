@@ -1,6 +1,13 @@
 import type { LegalEntity } from "@auction/types";
 import type Stripe from "stripe";
 
+export type ConnectClientConfig = {
+  publishableKey: string | null;
+  connectEnforced: boolean;
+};
+
+export type ConnectSessionSurface = "onboarding" | "management";
+
 export type ConnectAccountStatus = {
   /** Stripe account id (acct_…) when present. */
   stripeAccountId: string | null;
@@ -12,6 +19,8 @@ export type ConnectAccountStatus = {
   disabledReason: string | null;
   /** True when the account is active and ready to receive payouts. */
   ready: boolean;
+  /** True when live Stripe sync failed and cached flags were returned instead. */
+  syncDegraded?: boolean;
 };
 
 export type CreateAccountResult = {
@@ -31,6 +40,7 @@ export type InitiateTransferResult =
       ok: false;
       reason:
         | "stripe_not_configured"
+        | "internal_misconfiguration"
         | "payout_not_found"
         | "payout_already_processed"
         | "entity_not_found"
@@ -49,46 +59,41 @@ export class StripeConnectNotConfiguredError extends Error {
   }
 }
 
-export interface IStripeConnectService {
-  isConfigured(): boolean;
-
-  /** Create (or look up) the Stripe Connect Express account for an
-   * organisation legal entity. Idempotent — returns the existing account
-   * id when one already exists on the entity row.
-   */
+/** Account lifecycle: create, status, sync. */
+export interface IConnectAccountSync {
   ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult>;
-
-  /** Current Connect status for the legal entity (live-synced when Stripe is configured). */
   getStatus(legalEntityId: string): Promise<ConnectAccountStatus>;
-
-  /** Refresh Connect flags from Stripe and apply lifecycle promotion when ready. */
   syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus>;
-
-  /** Onboarding link the user needs to complete identity / banking. Caller
-   * must pass return / refresh URLs; Stripe enforces a short TTL.
-   */
   createOnboardingLink(
     legalEntityId: string,
     returnUrl: string,
     refreshUrl: string,
   ): Promise<AccountLink>;
-
-  /** One-time login link to the Stripe Express dashboard (admin / member). */
   createDashboardLink(legalEntityId: string): Promise<AccountLink>;
-
-  /** Process a verified Connect account event (Connected accounts scope). */
   handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }>;
+}
 
-  /** Process a verified platform transfer event (Your account scope). */
+/** Embedded Connect sessions + client bootstrap config. */
+export interface IConnectSessionProvider {
+  isConfigured(): boolean;
+  getClientConfig(): ConnectClientConfig;
+  createAccountSession(
+    legalEntityId: string,
+    role: string,
+    surface: ConnectSessionSurface,
+  ): Promise<{ clientSecret: string }>;
+}
+
+/** Payout transfer initiation + transfer webhooks. */
+export interface IConnectTransferInitiator {
   handleTransferEvent(event: Stripe.Event): Promise<{ processed: boolean }>;
-
-  /** Initiate a Stripe Connect transfer for a payout.
-   * Called after settlement creation. Handles retry logic internally.
-   * On success, emits `payout.transfer_initiated` and updates payout row.
-   * On final failure, emits `payout.transfer_failed` (see opts for status).
-   */
   initiateTransfer(
     payoutId: string,
     opts?: { keepScheduledOnTransferFailure?: boolean },
   ): Promise<InitiateTransferResult>;
 }
+
+export interface IStripeConnectService
+  extends IConnectAccountSync,
+    IConnectSessionProvider,
+    IConnectTransferInitiator {}

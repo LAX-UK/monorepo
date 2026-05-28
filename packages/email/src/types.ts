@@ -146,6 +146,7 @@ export type TemplateVarsByName = {
     failureReason: string;
     supportContactEmail: string;
     adminPayoutsUrl: string;
+    sellerPayoutSetupUrl?: string | null;
   };
   /** notify finance-role members when a payout cannot start because Connect is not payout-ready. */
   "payout-transfer-blocked-notice": {

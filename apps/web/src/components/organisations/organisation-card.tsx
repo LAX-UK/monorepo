@@ -1,3 +1,5 @@
+import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
+import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, LegalEntitySubkind } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@auction/ui/components/card";
@@ -20,12 +22,16 @@ export type OrganisationCardProps = {
 };
 
 export function OrganisationCard({ summary, detail, isActing }: OrganisationCardProps) {
-  const reqDue = detail?.stripeConnectRequirementsCurrentlyDue?.length ?? 0;
-  const resumeHref = `/onboarding/organisation/step/type?entityId=${encodeURIComponent(summary.id)}`;
+  const gap = detail ? getConnectGapState(detail) : null;
+  const resumeHref =
+    summary.status === "connect_pending"
+      ? `/dashboard/organisations/${summary.id}/connect`
+      : `/onboarding/organisation/step/type?entityId=${encodeURIComponent(summary.id)}`;
   const showResume =
     summary.status === "lead" ||
     summary.status === "docs_requested" ||
-    summary.status === "docs_received";
+    summary.status === "docs_received" ||
+    summary.status === "connect_pending";
 
   return (
     <Card className="transition-shadow hover:ring-1 hover:ring-primary/20">
@@ -48,24 +54,15 @@ export function OrganisationCard({ summary, detail, isActing }: OrganisationCard
           </p>
         </div>
       </CardHeader>
-      {detail ? (
+      {gap ? (
         <CardContent className="space-y-2 pb-4 pt-0">
           <div className="flex flex-wrap gap-1.5">
-            <StatusBadge
-              variant={detail.stripeConnectChargesEnabled ? "success" : "neutral"}
-              size="sm"
-            >
-              Charges {detail.stripeConnectChargesEnabled ? "on" : "off"}
+            <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)} size="sm">
+              {connectGapStageLabel(gap.stage)}
             </StatusBadge>
-            <StatusBadge
-              variant={detail.stripeConnectPayoutsEnabled ? "success" : "neutral"}
-              size="sm"
-            >
-              Payouts {detail.stripeConnectPayoutsEnabled ? "on" : "off"}
-            </StatusBadge>
-            {reqDue > 0 ? (
+            {gap.missing.length > 0 ? (
               <StatusBadge variant="warning" size="sm">
-                {reqDue} Connect req{reqDue === 1 ? "" : "s"}
+                {gap.missing.length} req{gap.missing.length === 1 ? "" : "s"}
               </StatusBadge>
             ) : null}
           </div>
@@ -86,7 +83,7 @@ export function OrganisationCard({ summary, detail, isActing }: OrganisationCard
         {showResume ? (
           <Button asChild size="sm" variant="outline">
             <Link href={resumeHref} prefetch>
-              Continue setup
+              {summary.status === "connect_pending" ? "Finish payout setup" : "Continue setup"}
             </Link>
           </Button>
         ) : null}

@@ -942,6 +942,7 @@ export type AdminStripeConnectRequirementRow = {
   id: string;
   displayName: string;
   status: LegalEntityStatus;
+  stripeConnectRequirementsCurrentlyDue: string[];
 };
 
 export async function getAdminLegalEntitiesWithStripeConnectRequirements(): Promise<
@@ -951,8 +952,15 @@ export async function getAdminLegalEntitiesWithStripeConnectRequirements(): Prom
   if (!res.ok) {
     throw new Error(`Failed to load legal entities with Stripe requirements: ${res.status}`);
   }
-  const body = (await res.json()) as { data: AdminStripeConnectRequirementRow[] };
-  return body.data;
+  const body = (await res.json()) as { data: Record<string, unknown>[] };
+  return body.data.map((row) => ({
+    id: String(row.id ?? ""),
+    displayName: String(row.displayName ?? ""),
+    status: row.status as LegalEntityStatus,
+    stripeConnectRequirementsCurrentlyDue: Array.isArray(row.stripeConnectRequirementsCurrentlyDue)
+      ? row.stripeConnectRequirementsCurrentlyDue.map(String)
+      : [],
+  }));
 }
 
 /** Narrow row for admin picker UIs (matches GET /admin/legal-entities/browse). */

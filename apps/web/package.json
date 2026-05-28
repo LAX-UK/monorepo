@@ -16,6 +16,7 @@
   "dependencies": {
     "@auction/api": "workspace:*",
     "@auction/branding": "workspace:*",
+    "@auction/connect": "workspace:*",
     "@auction/http-headers": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/observability": "workspace:*",
@@ -28,6 +29,8 @@
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-slot": "^1.2.4",
     "@sentry/nextjs": "^10.51.0",
+    "@stripe/connect-js": "^3.3.31",
+    "@stripe/react-connect-js": "^3.3.31",
     "@tanstack/react-table": "^8.21.3",
     "@veriff/incontext-sdk": "^2.5.0",
     "better-auth": "^1.6.9",

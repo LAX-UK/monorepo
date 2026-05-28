@@ -19,9 +19,10 @@ export function AdminLotConnectRequiredBanner({ sellerLegalEntityId, detail }: P
       <AlertTitle>{connectPublishBlockedTitle()}</AlertTitle>
       <AlertDescription className="space-y-3 text-pretty">
         <p>
-          This lot is assigned to a seller whose Stripe Connect account is not ready (charges and
-          payouts must both be enabled). Ask the consignor to sign in and finish Connect onboarding
-          from their account area, then retry <span className="font-medium">Publish</span>.
+          This lot is assigned to a seller whose payout account is not ready (Stripe Connect payouts
+          enabled with no outstanding requirements, and seller approved). Ask the consignor to sign
+          in and finish payout setup from their account area, then retry{" "}
+          <span className="font-medium">Publish</span>.
         </p>
         {sellerLegalEntityId ? (
           <p>

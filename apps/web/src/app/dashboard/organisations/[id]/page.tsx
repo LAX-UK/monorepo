@@ -1,3 +1,4 @@
+import { ConnectWorkspace } from "@/components/connect/connect-workspace";
 import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
@@ -10,12 +11,19 @@ import {
 import { MembersAvatarStack } from "@/components/organisations/members-avatar-stack";
 import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
+import {
+  getServerStripeConnectClientConfig,
+  syncServerStripeConnectStatus,
+} from "@/lib/data/http/stripe-connect.server";
 import {
   type ILegalEntityMemberListGateway,
   createLegalEntityMemberListGateway,
 } from "@/lib/legal-entity/member-list.gateway.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
+import { getConnectGapState, isSellerConnectReady } from "@auction/connect";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -65,7 +73,16 @@ export default async function OrganisationOverviewPage({
   const memberCount = fetched.ok ? fetched.data.length : 0;
 
   const reqDue = entity?.stripeConnectRequirementsCurrentlyDue?.length ?? 0;
-  const reqs = entity?.stripeConnectRequirementsCurrentlyDue ?? [];
+  const gap = entity ? getConnectGapState(entity) : null;
+
+  const [clientConfig, connectRes] = entity
+    ? await Promise.all([getServerStripeConnectClientConfig(), syncServerStripeConnectStatus(id)])
+    : [null, null];
+
+  const showConnectBanner =
+    clientConfig?.connectEnforced === true &&
+    entity != null &&
+    !isSellerConnectReady({ ...entity, status: entity.status });
 
   return (
     <div className="space-y-8">
@@ -73,6 +90,18 @@ export default async function OrganisationOverviewPage({
         kicker={<LabelCaps>Overview</LabelCaps>}
         heading={<DisplayHeading as="h2">At a glance</DisplayHeading>}
       />
+
+      {showConnectBanner ? (
+        <Alert>
+          <AlertTitle>Payout setup incomplete</AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>Finish Stripe Connect verification to receive settlement transfers.</span>
+            <Button asChild variant="cta" size="sm">
+              <Link href={`/dashboard/organisations/${id}/connect`}>Open payout setup</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <SplitDetailLayout
         mediaSlot={
@@ -110,18 +139,15 @@ export default async function OrganisationOverviewPage({
               },
               { id: "members", label: "Members", value: String(memberCount) },
               {
-                id: "charges",
-                label: "Stripe charges",
-                value: entity ? (entity.stripeConnectChargesEnabled ? "On" : "Off") : "—",
-              },
-              {
-                id: "payouts",
-                label: "Stripe payouts",
-                value: entity ? (entity.stripeConnectPayoutsEnabled ? "On" : "Off") : "—",
+                id: "connect",
+                label: "Payout setup",
+                value: gap ? connectGapStageLabel(gap.stage) : "—",
+                semanticTone:
+                  gap?.stage === "ready" ? "emphasis" : reqDue > 0 ? "warning" : "default",
               },
               {
                 id: "reqs",
-                label: "Connect reqs",
+                label: "Requirements",
                 value: String(reqDue),
                 semanticTone: reqDue > 0 ? "warning" : "default",
               },
@@ -192,53 +218,45 @@ export default async function OrganisationOverviewPage({
       </DashboardSection>
 
       <DashboardSection
-        title="Stripe Connect"
-        description="Payout readiness for this organisation."
+        title="Payout setup"
+        description="Manage bank details and Stripe requirements in-app."
         action={
           <Button asChild variant="outline" size="sm">
             <Link href={`/dashboard/organisations/${id}/connect`} prefetch>
-              Open Connect
+              Full-page view
             </Link>
           </Button>
         }
       >
-        {entity ? (
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge
-                variant={entity.stripeConnectChargesEnabled ? "success" : "neutral"}
-                size="sm"
-              >
-                Charges {entity.stripeConnectChargesEnabled ? "on" : "off"}
+        {entity && clientConfig && connectRes?.ok ? (
+          <div className="space-y-4">
+            {gap ? (
+              <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)} size="sm">
+                {connectGapStageLabel(gap.stage)}
               </StatusBadge>
-              <StatusBadge
-                variant={entity.stripeConnectPayoutsEnabled ? "success" : "neutral"}
-                size="sm"
-              >
-                Payouts {entity.stripeConnectPayoutsEnabled ? "on" : "off"}
-              </StatusBadge>
-              {reqDue > 0 ? (
-                <StatusBadge variant="warning" size="sm">
-                  {reqDue} requirement{reqDue === 1 ? "" : "s"} due
-                </StatusBadge>
-              ) : null}
-            </div>
-            {reqs.length > 0 ? (
-              <ul className="list-inside list-disc space-y-1 text-sm text-on-surface-variant">
-                {reqs.slice(0, 8).map((r) => (
-                  <li key={r} className="font-mono text-xs">
-                    {r}
-                  </li>
-                ))}
-                {reqs.length > 8 ? (
-                  <li className="list-none text-xs">+{reqs.length - 8} more in Stripe</li>
-                ) : null}
-              </ul>
-            ) : (
-              <p className="text-sm text-on-surface-variant">
-                No outstanding Connect requirements.
-              </p>
-            )}
+            ) : null}
+            <ConnectWorkspace
+              publishableKey={clientConfig.publishableKey}
+              connectEnforced={clientConfig.connectEnforced}
+              status={connectRes.data}
+              syncDegraded={Boolean(connectRes.data.syncDegraded)}
+              legalEntityId={id}
+              memberRole={member.role}
+              entityStatus={entity.status}
+              kycApproved
+              isLaxManaged={entity.isLaxManaged}
+              returnPath={`/dashboard/organisations/${id}`}
+            />
+          </div>
+        ) : entity && clientConfig && connectRes && !connectRes.ok ? (
+          <div className="space-y-4">
+            <p className="text-sm text-on-surface-variant">
+              We could not refresh payout status from Stripe. Open the full payout setup page to try
+              again.
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/dashboard/organisations/${id}/connect`}>Open payout setup</Link>
+            </Button>
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant">

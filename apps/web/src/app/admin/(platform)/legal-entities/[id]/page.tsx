@@ -1,5 +1,6 @@
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminStripeConnectActions } from "@/components/admin/admin-stripe-connect-actions";
 import { CopyUuidButton } from "@/components/admin/copy-uuid-button";
 import {
   LegalEntityArchiveForm,
@@ -10,6 +11,7 @@ import { legalEntityLifecycleSimpleAction } from "@/lib/admin/legal-entity-lifec
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
+import { labelForRequirement } from "@auction/connect";
 import type { LegalEntityStatus } from "@auction/types";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -137,7 +139,9 @@ export default async function AdminLegalEntityDetailPage({
                     <dt className="text-on-surface-variant">Stripe Connect</dt>
                     <dd className="text-on-surface">
                       {entity.stripeConnectAccountId
-                        ? `${entity.stripeConnectChargesEnabled ? "charges" : "no charges"} · ${entity.stripeConnectPayoutsEnabled ? "payouts" : "no payouts"}`
+                        ? entity.stripeConnectPayoutsEnabled
+                          ? "Payouts enabled"
+                          : "Payout setup in progress"
                         : "—"}
                     </dd>
                   </div>
@@ -162,12 +166,6 @@ export default async function AdminLegalEntityDetailPage({
                     </dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-on-surface-variant">Charges enabled</dt>
-                    <dd className="text-on-surface">
-                      {entity.stripeConnectChargesEnabled ? "Yes" : "No"}
-                    </dd>
-                  </div>
-                  <div className="space-y-1">
                     <dt className="text-on-surface-variant">Payouts enabled</dt>
                     <dd className="text-on-surface">
                       {entity.stripeConnectPayoutsEnabled ? "Yes" : "No"}
@@ -177,10 +175,21 @@ export default async function AdminLegalEntityDetailPage({
                     <dt className="text-on-surface-variant">Currently due requirements</dt>
                     <dd className="text-on-surface">
                       {entity.stripeConnectRequirementsCurrentlyDue.length > 0 ? (
-                        <ul className="mt-2 list-inside list-disc space-y-1 font-mono text-xs">
-                          {entity.stripeConnectRequirementsCurrentlyDue.map((req) => (
-                            <li key={req}>{req}</li>
-                          ))}
+                        <ul className="mt-2 space-y-2">
+                          {entity.stripeConnectRequirementsCurrentlyDue.map((req) => {
+                            const label = labelForRequirement(req);
+                            return (
+                              <li key={req} className="text-sm">
+                                <span className="font-medium">{label.label}</span>
+                                <span className="block text-xs text-on-surface-variant">
+                                  {label.hint}
+                                </span>
+                                <span className="font-mono text-[10px] text-on-surface-variant">
+                                  {req}
+                                </span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
                         "None outstanding"
@@ -188,6 +197,7 @@ export default async function AdminLegalEntityDetailPage({
                     </dd>
                   </div>
                 </dl>
+                <AdminStripeConnectActions entity={entity} />
               </Surface>
             ),
           },
