@@ -14,7 +14,7 @@ import {
   kycInitialPhase,
 } from "@/components/kyc";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
-import { getSiteUrl } from "@/lib/site-url";
+import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -50,7 +50,9 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
   }, [kycSummary]);
 
   const kycApproved = kycSummary?.status === "approved";
-  const returnUrl = `${getSiteUrl()}/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=complete`;
+  const returnUrl = normalizeKycReturnUrl(
+    `/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=complete`,
+  );
 
   const onSubmit = () => {
     setError(null);
