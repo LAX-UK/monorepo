@@ -44,6 +44,7 @@ export default async function OrganisationLayout({
       <DashboardPage>
         <div className="mx-auto max-w-5xl space-y-6">
           <DashboardDetailHeader
+            compactOnMobile
             sticky
             backHref="/dashboard/organisations"
             backLabel="Organisations"
@@ -64,6 +65,7 @@ export default async function OrganisationLayout({
     <DashboardPage>
       <div className="mx-auto max-w-5xl space-y-6">
         <DashboardDetailHeader
+          compactOnMobile
           sticky
           backHref="/dashboard/organisations"
           backLabel="Organisations"

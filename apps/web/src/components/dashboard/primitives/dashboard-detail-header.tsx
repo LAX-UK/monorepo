@@ -19,6 +19,8 @@ export type DashboardDetailHeaderProps = {
   actions?: ReactNode;
   description?: string;
   sticky?: boolean;
+  /** Hide back/title on mobile — shell MobileShellTitle owns navigation. */
+  compactOnMobile?: boolean;
   track?: AccentTrack;
   className?: string;
 };
@@ -33,15 +35,20 @@ export function DashboardDetailHeader({
   actions,
   description,
   sticky = false,
+  compactOnMobile = false,
   track = "buying",
   className,
 }: DashboardDetailHeaderProps) {
+  const compact = compactOnMobile;
+
   return (
     <header
       className={cn(
-        "z-20 -mx-4 border-b border-border-hairline bg-surface/95 px-4 py-4 backdrop-blur-sm md:-mx-8 md:px-8",
+        "z-20 -mx-4 border-b border-border-hairline bg-surface/95 px-4 py-4 backdrop-blur-sm lg:-mx-8 lg:px-8",
         sticky &&
-          "sticky top-[var(--header-height-mobile,56px)] md:top-[var(--header-height-shell,52px)]",
+          !compact &&
+          "sticky top-[var(--header-height-mobile,56px)] lg:top-[var(--header-height-shell,52px)]",
+        sticky && compact && "lg:sticky lg:top-[var(--header-height-shell,52px)]",
         className,
       )}
     >
@@ -55,6 +62,7 @@ export function DashboardDetailHeader({
             className={cn(
               "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
               accentLinkClass(track),
+              compact && "hidden lg:inline-flex",
             )}
           >
             <Link href={backHref}>
@@ -70,16 +78,30 @@ export function DashboardDetailHeader({
                 className={cn(
                   "font-label text-xs font-semibold uppercase tracking-[0.22em]",
                   accentEyebrowClass(track),
+                  compact && "hidden lg:block",
                 )}
               >
                 {eyebrow}
               </p>
             ) : null}
-            <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl">
+            <h1
+              className={cn(
+                "font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl",
+                compact &&
+                  "sr-only lg:not-sr-only lg:static lg:h-auto lg:w-auto lg:overflow-visible lg:clip-auto lg:whitespace-normal",
+              )}
+            >
               {title}
             </h1>
             {description ? (
-              <p className="font-body text-sm text-on-surface-variant">{description}</p>
+              <p
+                className={cn(
+                  "font-body text-sm text-on-surface-variant",
+                  compact && "hidden lg:block",
+                )}
+              >
+                {description}
+              </p>
             ) : null}
             {badges ? <div className="flex flex-wrap items-center gap-2 pt-1">{badges}</div> : null}
           </div>

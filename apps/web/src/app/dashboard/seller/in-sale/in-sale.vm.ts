@@ -25,6 +25,8 @@ export type InSaleDisplayRow = {
   currentPriceLabel: string;
   endTimeIso: string;
   endTimeLabel: string;
+  startTimeIso: string;
+  imageUrl: string | null;
 };
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
@@ -100,6 +102,8 @@ export function toInSaleDisplayRows(
       currentPriceLabel: formatMoney(lot.currentPrice),
       endTimeIso: lot.endTime.toISOString(),
       endTimeLabel: formatDateTime(lot.endTime),
+      startTimeIso: lot.startTime.toISOString(),
+      imageUrl: lot.images[0] ?? null,
     };
   });
 }

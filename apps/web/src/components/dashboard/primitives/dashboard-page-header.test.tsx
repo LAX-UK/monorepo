@@ -21,13 +21,34 @@ describe("DashboardPageHeader", () => {
     render(<DashboardPageHeader title="Portfolio" />);
     const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
     expect(heading.className).toMatch(/text-2xl/);
-    expect(heading.className).toMatch(/md:text-3xl/);
+    expect(heading.className).toMatch(/lg:text-3xl/);
   });
 
   it("uses display title scale for overview hero", () => {
     render(<DashboardPageHeader title="Welcome back" titleScale="display" />);
     const heading = screen.getByRole("heading", { level: 1, name: "Welcome back" });
     expect(heading.className).toMatch(/text-3xl/);
-    expect(heading.className).toMatch(/md:text-4xl/);
+    expect(heading.className).toMatch(/lg:text-4xl/);
+  });
+
+  it("visually hides title on mobile when hideTitleOnMobile is set", () => {
+    render(<DashboardPageHeader title="Portfolio" hideTitleOnMobile />);
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
+    expect(heading.className).toMatch(/sr-only/);
+    expect(heading.className).toMatch(/lg:not-sr-only/);
+  });
+
+  it("visually hides description on mobile when hideDescriptionOnMobile is set", () => {
+    render(
+      <DashboardPageHeader
+        title="Portfolio"
+        hideDescriptionOnMobile
+        description="Your acquired lots and settlement status."
+      />,
+    );
+
+    const description = screen.getByText("Your acquired lots and settlement status.");
+    expect(description.className).toMatch(/hidden lg:block/);
   });
 });

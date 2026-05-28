@@ -1,31 +1,23 @@
 "use client";
 
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
+import { WatchlistMobileList } from "@/components/dashboard/list/watchlist-mobile-list";
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
+import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
-import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
 import { BulkActionBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
 import type { WatchlistBoardRow } from "./watchlist-board-rows";
 
 export type { WatchlistBoardRow } from "./watchlist-board-rows";
@@ -98,7 +90,7 @@ function watchlistColumns(artistNameById: Record<string, string>): ColumnDef<Wat
       header: "Closes",
       cell: ({ row }) =>
         row.original.status === "active" || row.original.status === "scheduled" ? (
-          <LotStatusTimer
+          <DashboardLotCountdown
             status={row.original.status}
             startTime={row.original.startTime}
             endTime={row.original.endTime}
@@ -134,24 +126,22 @@ export function WatchlistBoard({
   rows,
   artistNameById = {},
   initialQ = "",
+  clearSearchHref,
 }: {
   rows: WatchlistBoardRow[];
   artistNameById?: Record<string, string>;
   initialQ?: string;
+  /** Clears client title search only — preserves server-side status/category/sort filters. */
+  clearSearchHref?: string;
 }) {
   const router = useRouter();
   const [selection, setSelection] = useState<RowSelectionState>({});
   const [removing, setRemoving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const searchForm = useForm<{ q: string }>({
-    resolver: zodResolver(urlTitleSearchSchema),
-    defaultValues: { q: initialQ },
-  });
-
-  const filterQuery = searchForm.watch("q") ?? "";
-  const filtered = useMemo(() => filterRows(rows, filterQuery), [rows, filterQuery]);
-  const hasActiveFilters = filterQuery.trim().length > 0;
+  const filtered = useMemo(() => filterRows(rows, initialQ), [rows, initialQ]);
+  // Board handles client-side title search only; page handles server-filtered empty states.
+  const hasTitleFilter = initialQ.trim().length > 0;
 
   const columns = useMemo(() => watchlistColumns(artistNameById), [artistNameById]);
 
@@ -191,40 +181,45 @@ export function WatchlistBoard({
     }
   }, [removing, router, selectedIds]);
 
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const toggleRowSelection = useCallback((lotId: string, checked: boolean) => {
+    setSelection((prev) => {
+      const next = { ...prev };
+      if (checked) next[lotId] = true;
+      else delete next[lotId];
+      return next;
+    });
+  }, []);
+
+  const emptyState = hasTitleFilter ? (
+    <FilterEmptyState
+      segment="dashboard"
+      entity="watched lots"
+      title="No title matches"
+      description="Nothing in your current watchlist matches that phrase. Try another search or clear the title filter."
+      {...(clearSearchHref ? { clearFiltersHref: clearSearchHref } : {})}
+      browseHref="/search"
+      browseLabel="Browse catalogue"
+    />
+  ) : (
+    <DashboardEmptyState
+      context="noResults"
+      title="No watched lots"
+      description="There is nothing to show in this view yet."
+      action={
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/search">Browse catalogue</Link>
+        </Button>
+      }
+    />
+  );
+
   return (
     <div className="space-y-4">
-      <Form {...searchForm}>
-        <form
-          className="flex flex-col gap-3 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:items-end"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <FormField
-            control={searchForm.control}
-            name="q"
-            render={({ field }) => (
-              <FormItem className="flex-1 space-y-2">
-                <FormLabel
-                  htmlFor="watchlist-q"
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
-                >
-                  Filter by lot title
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    id="watchlist-q"
-                    placeholder="e.g. oil on canvas"
-                    className="max-w-md bg-surface-container-low"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </form>
-      </Form>
+      <DashboardFilterResultsAnnouncer count={filtered.length} entityLabel="lots" />
 
-      <BulkActionBar count={selectedIds.length}>
+      <BulkActionBar count={selectedIds.length} offsetBottomChrome>
         <Button
           variant="destructive"
           size="sm"
@@ -252,27 +247,29 @@ export function WatchlistBoard({
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
-        <DataTable
-          columns={columns}
-          data={filtered}
-          emptyComponent={
-            <FilterEmptyState
-              entity="watched lots"
-              segment="dashboard"
-              hasActiveFilters={hasActiveFilters}
-              onClearFilters={() => searchForm.setValue("q", "")}
-              browseHref="/search"
-              browseLabel="Browse catalogue"
+      {filtered.length === 0 ? (
+        emptyState
+      ) : (
+        <>
+          <WatchlistMobileList
+            rows={filtered}
+            artistNameById={artistNameById}
+            selectedIds={selectedIdSet}
+            onToggleRow={toggleRowSelection}
+          />
+          <DashboardDesktopList>
+            <DataTable
+              columns={columns}
+              data={filtered}
+              density="compact"
+              enableRowSelection
+              getRowId={(row) => row.lotId}
+              rowSelection={selection}
+              onRowSelectionChange={setSelection}
             />
-          }
-          density="compact"
-          enableRowSelection
-          getRowId={(row) => row.lotId}
-          rowSelection={selection}
-          onRowSelectionChange={setSelection}
-        />
-      </div>
+          </DashboardDesktopList>
+        </>
+      )}
     </div>
   );
 }

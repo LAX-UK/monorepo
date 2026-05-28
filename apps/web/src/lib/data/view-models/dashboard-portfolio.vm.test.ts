@@ -102,6 +102,32 @@ describe("buildPortfolioAnalytics", () => {
     expect(a.totalSpentFormatted).toContain("350");
     expect(a.outstandingFormatted).toContain("100");
   });
+
+  it("reflects filtered subset when analytics run on filtered rows", () => {
+    const rows = [
+      makeRow({
+        id: "1",
+        endYear: 2023,
+        checkout: checkout("200", "50", "250"),
+        payment: { id: "p1", status: "captured" },
+      }),
+      makeRow({
+        id: "2",
+        endYear: 2024,
+        checkout: checkout("100", "0", "100"),
+        payment: { id: "p2", status: "pending" },
+      }),
+    ];
+    const filtered = filterPortfolioRows(rows, { qLower: "", payment: "all", year: 2024 });
+    const full = buildPortfolioAnalytics(rows);
+    const scoped = buildPortfolioAnalytics(filtered);
+
+    expect(full.totalRows).toBe(2);
+    expect(scoped.totalRows).toBe(1);
+    expect(scoped.totalSpentFormatted).toContain("100");
+    expect(scoped.outstandingFormatted).toContain("100");
+    expect(scoped.wonThisYear).toBeLessThanOrEqual(full.wonThisYear);
+  });
 });
 
 describe("toPortfolioLotCards", () => {

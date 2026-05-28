@@ -9,11 +9,21 @@ export type SettingsFormHeaderProps = Omit<DashboardPageHeaderProps, "meta"> & {
   track?: AccentTrack;
 };
 
-/** Settings sub-pages — eyebrow + title; optional description and actions. */
+/** Settings sub-pages — eyebrow + title; mobile shell owns visible title below lg. */
 export function SettingsFormHeader({
   title,
   eyebrow = "Settings",
+  hideTitleOnMobile = true,
+  hideDescriptionOnMobile = true,
   ...props
 }: SettingsFormHeaderProps) {
-  return <DashboardPageHeader meta={eyebrow} title={title} {...props} />;
+  return (
+    <DashboardPageHeader
+      meta={eyebrow}
+      title={title}
+      hideTitleOnMobile={hideTitleOnMobile}
+      hideDescriptionOnMobile={hideDescriptionOnMobile}
+      {...props}
+    />
+  );
 }

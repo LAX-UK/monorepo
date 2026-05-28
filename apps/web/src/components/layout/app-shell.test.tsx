@@ -1,5 +1,5 @@
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
@@ -174,5 +174,35 @@ describe("AppShell", () => {
     expect(
       screen.queryByRole("navigation", { name: /primary mobile dashboard navigation/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders mobile shell title in the header region", () => {
+    render(
+      <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+  });
+
+  it("does not render the mobile hamburger and keeps display settings desktop-only", () => {
+    render(
+      <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /open dashboard navigation/i }),
+    ).not.toBeInTheDocument();
+
+    const header = screen.getByRole("banner");
+    const displaySettings = within(header).getByRole("button", { name: /open display settings/i });
+    const themeToggle = within(header).getByRole("button", {
+      name: /switch to (light|dark) theme/i,
+    });
+    expect(displaySettings.closest(".hidden")).not.toBeNull();
+    expect(themeToggle.closest(".hidden")).not.toBeNull();
   });
 });

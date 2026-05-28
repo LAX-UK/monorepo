@@ -1,12 +1,9 @@
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 
-/** Canonical dashboard meta labels (page headers). */
+/** Canonical dashboard meta labels (page headers). Aliases for workspace helpers — prefer `clientWorkspacePageMeta` / `clientWorkspaceOverviewMeta`. */
 export const DASHBOARD_META = {
-  buying: "Buying",
-  selling: "Selling",
   settings: "Settings",
   organisation: "Organisation",
-  overview: "Your dashboard",
 } as const;
 
 /** Shared CTA labels — use everywhere for consistency. */

@@ -14,6 +14,8 @@ export type LotCardTimerProps = LotTimerInputs & {
   layout?: "overlay" | "inline";
 };
 
+/** Default `layout="overlay"` is for image cards only; tables/lists must use `layout="inline"` or `DashboardLotCountdown`. */
+
 export function LotCardTimer({
   pillSurfaceClassName,
   variant,

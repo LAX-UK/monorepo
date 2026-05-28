@@ -1,3 +1,4 @@
+import { coerceToDate } from "@/lib/data/http/parse";
 import type { UserNotification } from "@auction/types";
 import {
   BellRing,
@@ -90,8 +91,9 @@ export const DATE_BANDS = ["Today", "Yesterday", "This week", "Earlier"] as cons
 export type DateBand = (typeof DATE_BANDS)[number];
 
 /** Returns the band a given date belongs to, relative to `now`. Pure. */
-export function dateBand(date: Date, now: Date = new Date()): DateBand {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "Earlier";
+export function dateBand(date: Date | string | number, now: Date = new Date()): DateBand {
+  const resolved = coerceToDate(date);
+  if (Number.isNaN(resolved.getTime())) return "Earlier";
   const start = (d: Date) => {
     const c = new Date(d);
     c.setHours(0, 0, 0, 0);
@@ -103,7 +105,7 @@ export function dateBand(date: Date, now: Date = new Date()): DateBand {
   const weekFloor = new Date(today);
   weekFloor.setDate(weekFloor.getDate() - 7);
 
-  const ts = date.getTime();
+  const ts = resolved.getTime();
   if (ts >= today.getTime()) return "Today";
   if (ts >= yesterday.getTime()) return "Yesterday";
   if (ts >= weekFloor.getTime()) return "This week";

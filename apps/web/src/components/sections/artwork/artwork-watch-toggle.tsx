@@ -12,9 +12,12 @@ type Props = {
   isAuthenticated: boolean;
   /** `outlined-block` — saleroom lot card: 40px, light border #A3A3A3, 4px radius.
    * `default` — existing card / detail rail (unchanged for LSP).
+   * `list-action` — compact outline button for dashboard mobile list cards.
    */
-  appearance?: "default" | "outlined-block";
+  appearance?: "default" | "outlined-block" | "list-action";
   loginNextPath: string;
+  /** Used for accessible labels when `appearance="list-action"`. */
+  lotTitle?: string;
   /** Alternate copy for scheduled / no-sale marketing CTAs (still toggles the same watchlist). */
   marketingCta?: "watchLot" | "notifyWhenOpens" | "notifyIfRelisted";
 };
@@ -28,6 +31,7 @@ export function ArtworkWatchToggle({
   isAuthenticated,
   appearance = "default",
   loginNextPath,
+  lotTitle,
   marketingCta = "watchLot",
 }: Props) {
   const { watching, busy, error, announce, toggle, loginHref } = useWatchlistToggle({
@@ -55,6 +59,14 @@ export function ArtworkWatchToggle({
 
   const outlinedActiveLabel = marketingCta === "notifyIfRelisted" ? "Saved" : "Following";
 
+  const listActionIdleLabel = "Watch";
+  const listActionActiveLabel = "Unwatch";
+
+  const listActionAriaLabel = (watching: boolean) => {
+    const verb = watching ? listActionActiveLabel : listActionIdleLabel;
+    return lotTitle ? `${verb} ${lotTitle}` : verb;
+  };
+
   const liveRegion = (
     <output className="sr-only" aria-live="polite">
       {error ?? announce ?? ""}
@@ -62,6 +74,17 @@ export function ArtworkWatchToggle({
   );
 
   if (!isAuthenticated) {
+    if (appearance === "list-action") {
+      return (
+        <Link
+          href={loginHref}
+          className="inline-flex min-h-9 items-center gap-2 rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 py-2 text-xs font-medium text-on-surface shadow-sm transition-colors hover:bg-surface-container-low"
+        >
+          <LogIn className="size-4 shrink-0" aria-hidden />
+          {signInLabel}
+        </Link>
+      );
+    }
     if (appearance === "outlined-block") {
       return (
         <Link
@@ -117,6 +140,40 @@ export function ArtworkWatchToggle({
             </span>
           )}
           {watching ? outlinedActiveLabel : outlinedFollowLabel}
+        </Button>
+      </>
+    );
+  }
+
+  if (appearance === "list-action") {
+    return (
+      <>
+        {liveRegion}
+        <Button
+          type="button"
+          variant="secondaryOutline"
+          size="sm"
+          disabled={busy}
+          aria-pressed={watching}
+          aria-label={listActionAriaLabel(watching)}
+          onClick={handleToggle}
+        >
+          {busy ? (
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <span
+              key={bumpKey}
+              className="inline-flex motion-safe:[animation:tick_var(--motion-duration-md,_320ms)_var(--motion-ease-emphasize)]"
+              aria-hidden
+            >
+              {watching ? (
+                <BookmarkCheck className="size-4 shrink-0" />
+              ) : (
+                <Bookmark className="size-4 shrink-0" />
+              )}
+            </span>
+          )}
+          {watching ? listActionActiveLabel : listActionIdleLabel}
         </Button>
       </>
     );

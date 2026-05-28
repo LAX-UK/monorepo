@@ -1,5 +1,6 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
-import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -38,12 +39,16 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
       </div>
       <div>
         {activeBidLots.length === 0 ? (
-          <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40 p-5 text-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
-            <span>No active bid positions right now. Browse live lots to place your next bid.</span>
-            <Button size="sm" variant="outline" asChild className="shrink-0">
-              <Link href="/search?status=active">Browse live lots</Link>
-            </Button>
-          </div>
+          <DashboardEmptyState
+            variant="quiet"
+            title="No active bids"
+            description="Browse live lots to place your next bid."
+            action={
+              <Button size="sm" variant="outline" asChild className="shrink-0">
+                <Link href="/search?status=active">Browse live lots</Link>
+              </Button>
+            }
+          />
         ) : (
           <ul className="divide-y divide-outline-variant/10">
             {activeBidLots.slice(0, 5).map((lot) => {
@@ -81,10 +86,10 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                       </span>
                     </span>
                     <span className="justify-self-start sm:justify-self-end">
-                      <LotStatusBadge
+                      <DashboardLotCountdown
                         status={lot.status}
-                        startTime={lot.startTime.toISOString()}
-                        endTime={lot.endTime.toISOString()}
+                        startTime={lot.startTime}
+                        endTime={lot.endTime}
                       />
                     </span>
                   </Link>

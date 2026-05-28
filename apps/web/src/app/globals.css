@@ -215,7 +215,8 @@
   /* Mobile-first shell */
   --tap-target-min: 44px;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --header-height-mobile: 56px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --header-height-mobile: calc(56px + var(--safe-area-top));
   --header-height-shell: 52px;
   --bottom-nav-height: 64px;
   --shell-gutter-sm: 1rem;
