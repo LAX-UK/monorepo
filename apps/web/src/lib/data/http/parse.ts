@@ -17,6 +17,11 @@ function toDate(value: unknown): Date {
   return new Date(Number.NaN);
 }
 
+/** Coerce serialized or unknown values to a Date (RSC props, JSON payloads). */
+export function coerceToDate(value: unknown): Date {
+  return toDate(value);
+}
+
 function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {
   const v = typeof raw === "string" ? raw : "";
   if (v === "online" || v === "onsite") return v;

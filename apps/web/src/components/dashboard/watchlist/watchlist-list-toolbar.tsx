@@ -10,6 +10,7 @@ import {
   DashboardMultiSelectSection,
   DashboardSearchField,
   DashboardSortSelect,
+  useFilterSheetDraft,
 } from "@/components/dashboard/filters";
 import {
   WATCHLIST_BASE_PATH,
@@ -26,7 +27,17 @@ import {
 } from "@/lib/dashboard/filters/watchlist/watchlist-filters";
 import { FilterChip } from "@auction/ui";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+type WatchlistDraft = {
+  categoryIds: string[];
+  sort: WatchlistSortOption;
+};
+
+const WATCHLIST_DRAFT_DEFAULTS: WatchlistDraft = {
+  categoryIds: [],
+  sort: "addedDesc",
+};
 
 type Category = { id: string; name: string };
 
@@ -39,15 +50,16 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
   const router = useRouter();
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [desktopSheetOpen, setDesktopSheetOpen] = useState(false);
-  const [draftCategoryIds, setDraftCategoryIds] = useState<string[]>(filters.categoryIds);
-  const [draftSort, setDraftSort] = useState<WatchlistSortOption>(filters.sort);
-
-  useEffect(() => {
-    if (!mobileSheetOpen && !desktopSheetOpen) {
-      setDraftCategoryIds(filters.categoryIds);
-      setDraftSort(filters.sort);
-    }
-  }, [desktopSheetOpen, filters.categoryIds, filters.sort, mobileSheetOpen]);
+  const fromFilters = useCallback(
+    (): WatchlistDraft => ({ categoryIds: filters.categoryIds, sort: filters.sort }),
+    [filters.categoryIds, filters.sort],
+  );
+  const { draft, setDraft, resetDraft } = useFilterSheetDraft({
+    mobileOpen: mobileSheetOpen,
+    desktopOpen: desktopSheetOpen,
+    fromFilters,
+    defaultDraft: WATCHLIST_DRAFT_DEFAULTS,
+  });
 
   const categoryNames = useMemo(
     () => Object.fromEntries(categories.map((c) => [c.id, c.name])),
@@ -85,38 +97,33 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
 
   const applyMobileDraft = useCallback(() => {
     router.replace(
-      buildWatchlistHref(filters, { categoryIds: draftCategoryIds, sort: draftSort }),
+      buildWatchlistHref(filters, { categoryIds: draft.categoryIds, sort: draft.sort }),
       { scroll: false },
     );
     setMobileSheetOpen(false);
-  }, [draftCategoryIds, draftSort, filters, router]);
-
-  const resetMobileDraft = useCallback(() => {
-    setDraftCategoryIds([]);
-    setDraftSort("addedDesc");
-  }, []);
+  }, [draft.categoryIds, draft.sort, filters, router]);
 
   const applyCategoryDraft = useCallback(() => {
-    router.replace(buildWatchlistHref(filters, { categoryIds: draftCategoryIds }), {
+    router.replace(buildWatchlistHref(filters, { categoryIds: draft.categoryIds }), {
       scroll: false,
     });
     setDesktopSheetOpen(false);
-  }, [draftCategoryIds, filters, router]);
-
-  const resetCategoryDraft = useCallback(() => {
-    setDraftCategoryIds([]);
-  }, []);
+  }, [draft.categoryIds, filters, router]);
 
   const categoryMultiSelect =
     categories.length > 0 ? (
       <DashboardMultiSelectSection
         label="Category"
         options={categories.map((c) => ({ id: c.id, label: c.name }))}
-        selectedIds={draftCategoryIds}
+        selectedIds={draft.categoryIds}
         onToggle={(id) =>
-          setDraftCategoryIds(
-            (prev) => toggleWatchlistCategory({ ...filters, categoryIds: prev }, id).categoryIds,
-          )
+          setDraft((current) => ({
+            ...current,
+            categoryIds: toggleWatchlistCategory(
+              { ...filters, categoryIds: current.categoryIds },
+              id,
+            ).categoryIds,
+          }))
         }
       />
     ) : null;
@@ -127,8 +134,8 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
         {WATCHLIST_SORT_OPTIONS.map((opt) => (
           <FilterChip
             key={opt.value}
-            pressed={draftSort === opt.value}
-            onClick={() => setDraftSort(opt.value)}
+            pressed={draft.sort === opt.value}
+            onClick={() => setDraft((current) => ({ ...current, sort: opt.value }))}
           >
             {opt.label}
           </FilterChip>
@@ -143,7 +150,7 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
       onOpenChange={setMobileSheetOpen}
       title="Watchlist filters"
       onApply={applyMobileDraft}
-      onReset={resetMobileDraft}
+      onReset={resetDraft}
       trigger={<DashboardFilterTrigger activeCount={mobileSheetCount} />}
     >
       <div className="space-y-6">
@@ -161,7 +168,7 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
         onOpenChange={setDesktopSheetOpen}
         title="Watchlist filters"
         onApply={applyCategoryDraft}
-        onReset={resetCategoryDraft}
+        onReset={resetDraft}
         trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
       >
         {categoryMultiSelect}

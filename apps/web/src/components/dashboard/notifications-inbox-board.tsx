@@ -1,5 +1,6 @@
 "use client";
 
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
@@ -8,6 +9,7 @@ import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
+  buildNotificationsHref,
   hasNotificationsActiveFilters,
   parseNotificationsParams,
 } from "@/lib/dashboard/filters/notifications/notifications-filters";
@@ -16,9 +18,10 @@ import type { UserNotification } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle, BulkActionBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Button as ShadButton } from "@auction/ui/components/button";
+import { Surface } from "@auction/ui/components/surface";
 import { CheckCheck, RefreshCcw } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   countByType,
@@ -55,7 +58,6 @@ export function NotificationsInboxBoard({
     hasMore: boolean;
   };
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
@@ -113,26 +115,6 @@ export function NotificationsInboxBoard({
       return next.size === current.size ? current : next;
     });
   }, [items, selected.size]);
-
-  const writeParam = useCallback(
-    (mutate: (p: URLSearchParams) => void) => {
-      const next = new URLSearchParams(searchParams.toString());
-      mutate(next);
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-
-  const setTypeFilter = useCallback(
-    (next: string) => {
-      writeParam((p) => {
-        if (next) p.set("type", next);
-        else p.delete("type");
-      });
-    },
-    [writeParam],
-  );
 
   const groups = useMemo(() => groupByDateBand(items), [items]);
   const typeCounts = useMemo(() => countByType(items), [items]);
@@ -250,12 +232,14 @@ export function NotificationsInboxBoard({
       ) : (
         <>
           <div className="mt-8">
-            <SectionTabsNav
-              variant="underline"
-              ariaLabel="Notification filters"
-              sticky={false}
-              items={tabs}
-            />
+            <Surface variant="inset" padding="sm">
+              <SectionTabsNav
+                variant="underline"
+                ariaLabel="Notification filters"
+                sticky={false}
+                items={tabs}
+              />
+            </Surface>
           </div>
 
           <div className="mt-4">
@@ -349,35 +333,33 @@ export function NotificationsInboxBoard({
             {loading ? (
               <NotificationsSkeleton rows={6} />
             ) : items.length === 0 ? (
-              <InboxEmptyState
-                tab={tab}
-                filters={notificationFilters}
-                onClearType={() => setTypeFilter("")}
-              />
+              <InboxEmptyState tab={tab} filters={notificationFilters} />
             ) : (
-              <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
+              <div className="space-y-6">
                 {groups.map((group) => (
                   <section key={group.band} aria-labelledby={`band-${group.band}`}>
                     <h2
                       id={`band-${group.band}`}
-                      className="sticky top-[var(--header-height-mobile,56px)] z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur lg:top-[var(--header-height-shell,52px)]"
+                      className="mb-2 px-1 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
                     >
                       {group.band}
                     </h2>
-                    <ul className="divide-y divide-outline-variant/10">
-                      {group.items.map((item) => (
-                        <NotificationRow
-                          key={item.id}
-                          item={item}
-                          presentation={notificationTypePresenter(item.type)}
-                          selected={selected.has(item.id)}
-                          selectionActive={selected.size > 0}
-                          onToggleSelect={toggleSelect}
-                          onMarkRead={handleMarkRead}
-                          onArchive={(id) => void handleArchive(id)}
-                        />
-                      ))}
-                    </ul>
+                    <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
+                      <ul className="divide-y divide-outline-variant/10">
+                        {group.items.map((item) => (
+                          <NotificationRow
+                            key={item.id}
+                            item={item}
+                            presentation={notificationTypePresenter(item.type)}
+                            selected={selected.has(item.id)}
+                            selectionActive={selected.size > 0}
+                            onToggleSelect={toggleSelect}
+                            onMarkRead={handleMarkRead}
+                            onArchive={(id) => void handleArchive(id)}
+                          />
+                        ))}
+                      </ul>
+                    </div>
                   </section>
                 ))}
               </div>
@@ -416,20 +398,15 @@ export function NotificationsInboxBoard({
 type InboxEmptyStateProps = {
   tab: InboxTab;
   filters: ReturnType<typeof parseNotificationsParams>;
-  onClearType: () => void;
 };
 
-function InboxEmptyState({ tab, filters, onClearType }: InboxEmptyStateProps) {
+function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
   if (hasNotificationsActiveFilters(filters) && filters.type) {
     return (
-      <DashboardEmptyState
-        title="Nothing matches that type"
-        description="Try clearing the type filter to see all notifications in this tab."
-        action={
-          <Button type="button" variant="secondaryOutline" onClick={onClearType}>
-            Show all types
-          </Button>
-        }
+      <FilterEmptyState
+        segment="dashboard"
+        entity="notifications"
+        clearFiltersHref={buildNotificationsHref(filters, { type: null })}
       />
     );
   }

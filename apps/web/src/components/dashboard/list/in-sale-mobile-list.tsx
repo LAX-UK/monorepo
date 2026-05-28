@@ -2,12 +2,14 @@
 
 import type { InSaleDisplayRow } from "@/app/dashboard/seller/in-sale/in-sale.vm";
 import {
+  DashboardDesktopList,
   DashboardListRowCard,
   DashboardMobileList,
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { MediaImage } from "@/components/ui/media-image";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 function badgeVariant(tone: InSaleDisplayRow["statusTone"]) {
@@ -111,5 +113,67 @@ export function InSaleMobileList({ rows }: Props) {
         </li>
       ))}
     </DashboardMobileList>
+  );
+}
+
+function InSaleDesktopRowCard({ row }: { row: InSaleDisplayRow }) {
+  return (
+    <li className="lift-row">
+      <Surface variant="card" padding="md">
+        <div className="grid gap-3 text-sm sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center">
+          <div className="font-mono text-xs text-on-surface-variant tabular-nums sm:min-w-12">
+            {row.lotNumberLabel}
+          </div>
+          <div className="min-w-0">
+            <Link
+              href={row.lotHref}
+              className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              {row.title}
+            </Link>
+            {row.saleTitle && row.saleHref ? (
+              <p className="text-xs text-on-surface-variant">
+                In{" "}
+                <Link
+                  href={row.saleHref}
+                  className="underline underline-offset-2 hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  {row.saleTitle}
+                </Link>
+                {" · ends "}
+                <time dateTime={row.endTimeIso}>{row.endTimeLabel}</time>
+              </p>
+            ) : (
+              <p className="text-xs text-on-surface-variant">
+                Ends <time dateTime={row.endTimeIso}>{row.endTimeLabel}</time>
+              </p>
+            )}
+          </div>
+          <div className="text-right text-base font-semibold tabular-nums">
+            {row.currentPriceLabel}
+          </div>
+          <div className="flex items-center justify-end">
+            <ReserveBadge row={row} />
+          </div>
+          <div className="flex items-center justify-end">
+            <StatusBadge variant={badgeVariant(row.statusTone)} size="sm">
+              {row.statusLabel}
+            </StatusBadge>
+          </div>
+        </div>
+      </Surface>
+    </li>
+  );
+}
+
+export function InSaleDesktopList({ rows }: Props) {
+  return (
+    <DashboardDesktopList className="overflow-visible border-0 bg-transparent shadow-none ring-0">
+      <ul className="space-y-3">
+        {rows.map((row) => (
+          <InSaleDesktopRowCard key={row.id} row={row} />
+        ))}
+      </ul>
+    </DashboardDesktopList>
   );
 }

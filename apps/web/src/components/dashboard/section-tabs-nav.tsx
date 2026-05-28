@@ -1,9 +1,15 @@
 "use client";
 
-import type { DashboardSectionTab } from "@/components/dashboard/dashboard-section-tabs";
 import { type SectionTabItem, SectionTabs } from "@auction/ui/components/section-tabs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+export type DashboardSectionTab = {
+  href: string;
+  label: string;
+  badge?: string | number;
+  isActive?: boolean;
+};
 
 type SectionTabsNavProps = {
   items: readonly DashboardSectionTab[];
@@ -13,12 +19,12 @@ type SectionTabsNavProps = {
   sticky?: boolean;
 };
 
-/** Next.js adapter for `SectionTabs` — replaces `DashboardSectionTabs`. */
+/** Next.js adapter for `SectionTabs` — replaces pill `DashboardSectionTabs`. */
 export function SectionTabsNav({
   items,
   ariaLabel,
   className,
-  variant = "pill",
+  variant = "underline",
   sticky = true,
 }: SectionTabsNavProps) {
   const pathname = usePathname();

@@ -99,6 +99,6 @@ describe("DashboardSortSelect", () => {
     );
 
     const label = screen.getByText("Sort");
-    expect(label.className).toContain("max-md:sr-only");
+    expect(label.className).toContain("max-lg:sr-only");
   });
 });
