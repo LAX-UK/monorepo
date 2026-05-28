@@ -69,7 +69,7 @@ const BottomSheetContent = React.forwardRef<
           )}
           <div className="flex w-full items-center justify-end px-3 pb-2">
             <DrawerPrimitive.Close
-              className="inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="inline-flex size-11 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm transition-colors hover:bg-surface-container-highest focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               aria-label="Close"
             >
               <X className="size-5" aria-hidden />

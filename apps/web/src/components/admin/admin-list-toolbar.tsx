@@ -31,7 +31,7 @@ export function AdminListToolbar({
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3">
         {filters ? (
           <>
-            <div className="hidden min-w-0 flex-wrap gap-2 md:flex">{filters}</div>
+            <div className="hidden min-w-0 flex-wrap gap-2 lg:flex">{filters}</div>
             <AdminListFilterSheet activeCount={hasFilters ? 1 : 0}>{filters}</AdminListFilterSheet>
           </>
         ) : null}

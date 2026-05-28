@@ -1,4 +1,5 @@
 import { subkindLabel } from "@/components/organisations/labels";
+import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
@@ -22,14 +23,17 @@ export default async function OrganisationProfilePage({
   if (!ctx) notFound();
   const { member, entity } = ctx;
 
-  const href = `/onboarding/organisation/step/details?entityId=${encodeURIComponent(id)}`;
+  const returnTo = `/dashboard/organisations/${id}/profile`;
+  const href = `/onboarding/organisation/step/details?entityId=${encodeURIComponent(id)}&returnTo=${encodeURIComponent(returnTo)}`;
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        kicker={<LabelCaps>Legal</LabelCaps>}
-        heading={<DisplayHeading as="h2">Organisation profile</DisplayHeading>}
-      />
+      <OrgTabSectionHeader>
+        <SectionHeader
+          kicker={<LabelCaps>Legal</LabelCaps>}
+          heading={<DisplayHeading as="h2">Organisation profile</DisplayHeading>}
+        />
+      </OrgTabSectionHeader>
 
       <Surface variant="section" padding="md" className="space-y-4">
         <div className="space-y-1">

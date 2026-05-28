@@ -6,6 +6,8 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { DensityTweakSection } from "@/components/layout/tweaks-popover";
+import { MediaImage } from "@/components/ui/media-image";
+import type { SessionUser } from "@/lib/data/contracts";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import {
@@ -14,7 +16,7 @@ import {
   BottomSheetHeader,
   BottomSheetTitle,
 } from "@auction/ui/components/bottom-sheet";
-import { Compass } from "lucide-react";
+import { ChevronRight, Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -24,6 +26,7 @@ type Props = {
   variant: "client" | "staff";
   items: AppShellNavItem[];
   clientWorkspaceMode?: ClientWorkspaceMode;
+  user?: Pick<SessionUser, "name" | "email" | "image"> | null;
 };
 
 function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): string {
@@ -64,12 +67,69 @@ function isNavItemActive(pathname: string, item: AppShellNavItem): boolean {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
+function profileInitials(name: string, email: string): string {
+  const source = name.trim() || email;
+  const parts = source.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  const fromEmail = email[0] ?? "";
+  return (first + second).toUpperCase() || fromEmail.toUpperCase() || "?";
+}
+
+function MobileProfileStrip({
+  user,
+  onNavigate,
+}: {
+  user: Pick<SessionUser, "name" | "email" | "image">;
+  onNavigate: () => void;
+}) {
+  const displayName = user.name.trim() || user.email;
+
+  return (
+    <div className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
+      <div className="flex items-center gap-3">
+        <MediaImage
+          src={user.image ?? null}
+          alt={displayName}
+          label={profileInitials(user.name, user.email)}
+          shape="circle"
+          sizes="40px"
+          className="size-10 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-on-surface">{displayName}</p>
+          <p className="truncate text-xs text-on-surface-variant">{user.email}</p>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2">
+        <Link
+          href="/dashboard/settings/profile"
+          onClick={onNavigate}
+          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
+        >
+          Profile
+          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+        </Link>
+        <Link
+          href="/dashboard/settings/account"
+          onClick={onNavigate}
+          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
+        >
+          Account settings
+          <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function MobileMoreSheet({
   open,
   onOpenChange,
   variant,
   items,
   clientWorkspaceMode = "buying",
+  user,
 }: Props) {
   const pathname = usePathname();
   const grouped = groupNavItems(items, variant);
@@ -83,6 +143,9 @@ export function MobileMoreSheet({
           </BottomSheetTitle>
         </BottomSheetHeader>
         <div className="space-y-5 px-6 pt-4 pb-6">
+          {variant === "client" && user ? (
+            <MobileProfileStrip user={user} onNavigate={() => onOpenChange(false)} />
+          ) : null}
           <button
             type="button"
             onClick={() => {

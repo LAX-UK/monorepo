@@ -1,5 +1,6 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -41,11 +42,11 @@ export function WatchlistPreviewCard({
         {items.length === 0 ? (
           <DashboardEmptyState
             variant="quiet"
-            title="Nothing saved yet"
-            description="Save lots from artwork pages to build a personal watchlist."
+            title={DASHBOARD_EMPTY.watchlist.title}
+            description={DASHBOARD_EMPTY.watchlist.description}
             action={
               <Button size="sm" variant="outline" asChild className="shrink-0">
-                <Link href="/search">Browse auctions</Link>
+                <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
               </Button>
             }
           />

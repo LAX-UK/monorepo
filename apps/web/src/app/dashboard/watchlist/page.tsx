@@ -102,7 +102,7 @@ export default async function DashboardWatchlistPage({
         description="Track lots and artists you are following from the saleroom."
       />
 
-      <Surface variant="inset" padding="sm">
+      <Surface variant="inset" padding="sm" className="mb-5">
         <SectionTabsNav
           variant="underline"
           ariaLabel="Watchlist sections"

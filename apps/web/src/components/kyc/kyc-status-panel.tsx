@@ -58,7 +58,7 @@ export function KycStatusPanel({ summary, phase = "idle", className }: Props) {
       <div className="flex items-start gap-3">
         <Icon className="mt-0.5 size-5 shrink-0 opacity-80" aria-hidden />
         <div className="space-y-1">
-          <p className="font-headline text-sm font-semibold">{label}</p>
+          <h2 className="font-headline text-sm font-semibold">{label}</h2>
           <p className="text-sm text-on-surface-variant">{hint}</p>
           {phase === "idle" && (feedback.action === "start" || isKycSessionContinuable(summary)) ? (
             <p className="text-sm text-on-surface-variant">{KYC_VERIFY_DESCRIPTION}</p>

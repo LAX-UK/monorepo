@@ -1,5 +1,6 @@
+import type { ActingContext } from "@/lib/auth/capabilities";
 import type { DashboardDensity } from "@/lib/preferences/density";
-import type { CapabilityRequirement } from "@auction/types";
+import type { CapabilityRequirement, LegalEntitySummary } from "@auction/types";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -52,6 +53,12 @@ export type ShellConfig = {
   clientWorkspaceMode?: "buying" | "selling";
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
+  /** Client dashboard mobile header identity (acting entity + org context). */
+  mobileHeader?: {
+    acting: LegalEntitySummary | null;
+    actingContext: ActingContext;
+    userDisplayName?: string;
+  };
 };
 
 export const SHELL_BREAKPOINTS = {

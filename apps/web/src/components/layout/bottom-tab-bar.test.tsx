@@ -52,7 +52,7 @@ function renderBottomTabBar() {
   const config = buildShellConfig({ user: clientUser, role: "client" });
   return render(
     <ShellConfigProvider config={config}>
-      <BottomTabBar />
+      <BottomTabBar user={clientUser} />
     </ShellConfigProvider>,
   );
 }

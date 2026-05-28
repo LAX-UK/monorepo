@@ -2,6 +2,8 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
+import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout-lot-mobile-chrome";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { MediaImage } from "@/components/ui/media-image";
@@ -59,8 +61,9 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
   return (
     <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
+      <SetMobileShellTitle title={auction.title} />
       <div className="flex min-h-[calc(100vh-8rem)] flex-col lg:flex-row">
-        <div className="relative h-[50vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-0 lg:h-screen lg:w-1/2 lg:max-w-none">
+        <div className="relative h-[30vh] w-full overflow-hidden bg-surface-container-low sm:h-[40vh] lg:sticky lg:top-0 lg:h-screen lg:w-1/2 lg:max-w-none">
           <MediaImage
             src={img}
             alt={`${auction.title} — artwork for checkout`}
@@ -152,23 +155,10 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
       </div>
 
       {hasPricing ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-container-lowest/95 px-4 py-3 shadow-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md supports-[backdrop-filter]:bg-surface-container-lowest/90 lg:hidden">
-          <div>
-            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Total due
-            </p>
-            <p className="font-headline text-lg tabular-nums text-primary">
-              {formatMoney(total.toFixed(2))}
-            </p>
-          </div>
-          <Button
-            variant="cta"
-            asChild
-            className="min-h-11 min-w-[10rem] font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <Link href="#checkout-complete-purchase">Complete purchase</Link>
-          </Button>
-        </div>
+        <CheckoutLotMobileChrome
+          totalLabel={formatMoney(total.toFixed(2))}
+          formId="checkout-purchase-form"
+        />
       ) : null}
     </DashboardPage>
   );

@@ -12,7 +12,7 @@ import { LogoutButton } from "./logout-button";
 type HeaderAuthChipVariant = "account" | "notifications" | "full";
 
 const loginPillClassSolid =
-  "inline-flex items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors duration-300 hover:bg-brand-900 hover:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface dark:hover:text-brand-900";
+  "inline-flex min-h-11 items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors duration-300 hover:bg-brand-900 hover:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface dark:hover:text-brand-900";
 
 type HeaderAuthChipProps = {
   variant?: HeaderAuthChipVariant;
@@ -40,10 +40,18 @@ function HeaderAuthSkeleton({ variant }: { variant: HeaderAuthChipVariant }) {
 }
 
 function LoginPill() {
+  const registerClass =
+    "inline-flex min-h-11 items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors duration-300 hover:bg-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface/10";
+
   return (
-    <Link href="/login" className={loginPillClassSolid}>
-      Log in
-    </Link>
+    <div className="flex items-center gap-2">
+      <Link href="/register" className={registerClass}>
+        Sign up
+      </Link>
+      <Link href="/login" className={loginPillClassSolid}>
+        Log in
+      </Link>
+    </div>
   );
 }
 
@@ -83,8 +91,15 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
     return (
       <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
         <Link
+          href="/register"
+          className="block min-h-11 w-full rounded-md border border-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface/10"
+          onClick={onNavigate}
+        >
+          Sign up
+        </Link>
+        <Link
           href="/login"
-          className="block w-full rounded-md border border-brand-900 bg-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-surface transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:bg-on-surface dark:text-brand-900 dark:hover:bg-brand-200"
+          className="block min-h-11 w-full rounded-md border border-brand-900 bg-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-surface transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:bg-on-surface dark:text-brand-900 dark:hover:bg-brand-200"
           onClick={onNavigate}
         >
           Log in
@@ -112,7 +127,7 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
             <Link
               href={item.href}
               className={cn(
-                "block py-2 font-label text-sm font-medium uppercase tracking-wide",
+                "block min-h-11 py-2 font-label text-sm font-medium uppercase tracking-wide",
                 "text-brand-900 transition-colors hover:text-brand-800 dark:text-on-surface",
               )}
               onClick={onNavigate}
