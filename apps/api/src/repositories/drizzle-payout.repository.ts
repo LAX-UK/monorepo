@@ -149,6 +149,18 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
     return rows.map(rowToPayout);
   }
 
+  async countMatching(filter: Omit<ListPayoutsFilter, "limit" | "offset">): Promise<number> {
+    const conditions = [
+      filter.legalEntityId ? eq(payout.legalEntityId, filter.legalEntityId) : undefined,
+      filter.status ? eq(payout.status, filter.status) : undefined,
+    ].filter((c): c is NonNullable<typeof c> => c !== undefined);
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const [row] = await (where
+      ? this.db.select({ n: sql<number>`count(*)::int` }).from(payout).where(where)
+      : this.db.select({ n: sql<number>`count(*)::int` }).from(payout));
+    return row?.n ?? 0;
+  }
+
   async findById(payoutId: string): Promise<Payout | null> {
     const rows = await this.db.select().from(payout).where(eq(payout.id, payoutId)).limit(1);
     return rows[0] ? rowToPayout(rows[0]) : null;

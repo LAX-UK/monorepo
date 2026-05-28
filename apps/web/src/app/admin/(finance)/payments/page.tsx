@@ -1,7 +1,6 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminListSearchGet } from "@/components/admin/admin-list-search";
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
@@ -9,6 +8,7 @@ import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-dat
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { AdminManualReviewBoard } from "@/components/admin/manual-review-board";
+import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { paymentStatusesForChip, paymentsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
@@ -244,7 +244,17 @@ export default async function AdminPaymentsPage({
         ) : null
       }
       chips={statusChips}
-      listToolbarEnd={<AdminListExportLink />}
+      listToolbarEnd={
+        <ExportButton
+          entityType="payments"
+          disabled={Boolean(query.q?.trim())}
+          disabledReason="Clear search to export all payments matching the status filters"
+          filters={{
+            ...(query.status ? { status: query.status } : {}),
+            ...(manualReviewQueue ? { manualReview: true } : {}),
+          }}
+        />
+      }
       view={view}
       empty={empty}
       pagination={

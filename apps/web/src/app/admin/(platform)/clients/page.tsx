@@ -2,10 +2,10 @@ import { AdminClientsBoard } from "@/components/admin/admin-clients-board";
 import { AdminClientsSearchForm } from "@/components/admin/admin-clients-search-form";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { usersListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
@@ -143,7 +143,16 @@ export default async function AdminClientsPage({
         ) : null
       }
       chips={suspendedChip}
-      listToolbarEnd={<AdminListExportLink />}
+      listToolbarEnd={
+        <ExportButton
+          entityType="clients"
+          filters={{
+            role: "client",
+            ...(q ? { q } : {}),
+            ...(suspendedOnly ? { suspendedOnly: true } : {}),
+          }}
+        />
+      }
       filters={
         !loadError ? <AdminClientsSearchForm initialQ={q} suspendedOnly={suspendedOnly} /> : null
       }

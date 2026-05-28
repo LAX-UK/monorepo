@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
 import { redactDomainEventPayload } from "@auction/types";
-import { and, asc, desc, eq, like } from "drizzle-orm";
+import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 import { formatDomainEventsExportCsv } from "../../lib/domain-event-export-csv.js";
 import type {
   IAdminDomainEventQueryService,
@@ -69,6 +69,23 @@ export class AdminDomainEventQueryService implements IAdminDomainEventQueryServi
     }
     const rows = await q.orderBy(desc(domainEvent.id)).offset(offset).limit(input.limit);
     return redactRows(rows, input.includePii);
+  }
+
+  async countForExport(input: {
+    aggregateType?: string;
+    aggregateId?: string;
+  }): Promise<number> {
+    const aggType = input.aggregateType?.trim();
+    const aggId = input.aggregateId?.trim();
+    if (aggType && aggId) {
+      const [row] = await this.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(domainEvent)
+        .where(and(eq(domainEvent.aggregateType, aggType), eq(domainEvent.aggregateId, aggId)));
+      return row?.n ?? 0;
+    }
+    const [row] = await this.db.select({ n: sql<number>`count(*)::int` }).from(domainEvent);
+    return row?.n ?? 0;
   }
 
   async listForExport(input: {

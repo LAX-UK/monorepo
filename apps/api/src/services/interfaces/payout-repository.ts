@@ -62,6 +62,7 @@ export interface IPayoutRepository {
 
   /** List payouts (admin or per-entity), newest first. */
   list(filter: ListPayoutsFilter): Promise<Payout[]>;
+  countMatching(filter: Omit<ListPayoutsFilter, "limit" | "offset">): Promise<number>;
 
   /** Find a payout by id (any entity). */
   findById(payoutId: string): Promise<Payout | null>;

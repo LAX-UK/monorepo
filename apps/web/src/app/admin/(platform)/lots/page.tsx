@@ -1,6 +1,5 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
@@ -10,6 +9,7 @@ import { CatalogLotsFilterToolbar } from "@/components/admin/catalog/catalog-lot
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { LotFilterOptionsLoader } from "@/components/admin/lot-filter-options-loader";
 import { AdminWithdrawalsBoard } from "@/components/admin/withdrawals-board";
+import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { lotsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
@@ -275,7 +275,17 @@ export default async function AdminLotsPage({
           >
             Public catalog
           </Link>
-          <AdminListExportLink />
+          <ExportButton
+            entityType="lots"
+            filters={{
+              ...(query.status ? { status: query.status } : {}),
+              ...(q ? { q } : {}),
+              ...(artistId ? { artistId } : {}),
+              ...(saleId ? { saleId } : {}),
+              ...(categoryId ? { categoryId } : {}),
+              ...(sort ? { sort } : {}),
+            }}
+          />
         </>
       }
       errorAlert={

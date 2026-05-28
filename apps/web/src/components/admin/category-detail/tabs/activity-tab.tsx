@@ -25,15 +25,12 @@ async function ActivityContent({ categoryId }: { categoryId: string }) {
     limit: 100,
   }).catch(() => []);
 
-  if (events.length === 0) {
-    return (
-      <p className="font-body text-sm text-on-surface-variant">
-        No activity recorded yet. Changes to this category will appear here after staff edits.
-      </p>
-    );
-  }
-
-  return <CatalogDomainEventsTimeline events={events} />;
+  return (
+    <CatalogDomainEventsTimeline
+      events={events}
+      exportFilters={{ aggregateType: "category", aggregateId: categoryId }}
+    />
+  );
 }
 
 export function categoryActivityTabHref(categoryId: string): string {
