@@ -40,6 +40,11 @@ export type PaymentRecord = {
   xeroLastError?: string | null;
 };
 
+export type ListPaymentsExportFilter = {
+  status?: PaymentRecord["status"];
+  manualReview?: boolean;
+};
+
 export interface IPaymentWriteRepository {
   create(row: CreatePaymentRow): Promise<PaymentRecord>;
   findById(id: string): Promise<PaymentRecord | null>;
@@ -51,6 +56,11 @@ export interface IPaymentWriteRepository {
   findByStripePaymentIntentId(stripePaymentIntentId: string): Promise<PaymentRecord | null>;
   /** All payments (admin listing). */
   listAll(): Promise<PaymentRecord[]>;
+  /** Paginated admin export with optional status / manual-review filters. */
+  listForExport(
+    filter: ListPaymentsExportFilter & { limit: number; offset: number },
+  ): Promise<PaymentRecord[]>;
+  countForExport(filter: ListPaymentsExportFilter): Promise<number>;
   /** Payments where the user is the buyer (portfolio). */
   listByBuyerId(buyerId: string): Promise<PaymentRecord[]>;
   /** Pending rows created at least `hours` ago (admin SLA). */

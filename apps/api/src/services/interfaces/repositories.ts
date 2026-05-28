@@ -117,6 +117,7 @@ export interface ISaleRepository {
   findByIds(ids: string[]): Promise<Sale[]>;
   create(input: CreateSaleInput): Promise<Sale>;
   list(filter: ListSalesFilter): Promise<Sale[]>;
+  countMatching(filter: Omit<ListSalesFilter, "limit" | "offset" | "sort">): Promise<number>;
   /** Sales that may need status sync after lot transitions. */
   findWithStatuses(statuses: SaleStatus[]): Promise<Sale[]>;
   update(id: string, patch: Partial<CreateSaleInput>): Promise<Sale>;

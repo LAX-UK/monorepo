@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@auction/db": "workspace:*",
+    "@auction/exports": "workspace:*",
     "@auction/observability": "workspace:*",
     "bullmq": "^5.74.1",
     "drizzle-orm": "^0.41.0"

@@ -1,3 +1,4 @@
+import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { AdminShellHeaderActions } from "@/components/admin/admin-shell-header-actions";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { ImpersonationEndWarningListener } from "@/components/admin/impersonation-end-warning-listener";
@@ -117,11 +118,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   );
 
   return (
-    <div
-      className={
-        showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
-      }
-    >
+    <ExportShellClient>
+      <div
+        className={
+          showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
+        }
+      >
       <ImpersonationEndWarningListener />
       {impersonation && showImpersonationBanner ? (
         <ImpersonationBanner
@@ -156,6 +158,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           {children}
         </StaffShell>
       )}
-    </div>
+      </div>
+    </ExportShellClient>
   );
 }

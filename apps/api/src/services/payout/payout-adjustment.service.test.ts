@@ -54,6 +54,7 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       insertLine: vi.fn(),
       tryInsertSaleLine: vi.fn(),
       list: vi.fn(),
+      countMatching: vi.fn().mockResolvedValue(0),
       findByStripeTransferId: vi.fn(),
       findUnlinkedCapturedPayments: vi.fn(),
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),

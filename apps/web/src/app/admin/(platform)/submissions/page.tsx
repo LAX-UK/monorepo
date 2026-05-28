@@ -1,6 +1,6 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { ExportButton } from "@/components/exports/export-button";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
@@ -213,7 +213,16 @@ export default async function AdminSubmissionsPage({
           />
         </Suspense>
       }
-      toolbarEnd={<AdminListExportLink />}
+      toolbarEnd={
+        <ExportButton
+          entityType="submissions"
+          filters={{
+            ...(activeQueue ? { queue: activeQueue } : {}),
+            ...(initialQ ? { q: initialQ } : {}),
+            ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+          }}
+        />
+      }
       errorAlert={errorAlert}
       mobileSummary={
         !loadError && submissionRows.length > 0 ? (

@@ -1,6 +1,6 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { ExportButton } from "@/components/exports/export-button";
 import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
@@ -204,7 +204,14 @@ export default async function AdminSalesPage({
           >
             Public sales
           </Link>
-          <AdminListExportLink />
+          <ExportButton
+            entityType="sales"
+            filters={{
+              ...(statusFilter ? { status: statusFilter } : {}),
+              ...(q ? { q } : {}),
+              ...(deliveryFilter ? { deliveryMode: deliveryFilter } : {}),
+            }}
+          />
         </>
       }
       kpiStrip={

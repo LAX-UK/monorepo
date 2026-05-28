@@ -28,6 +28,7 @@ import { requireSuperAdminStaffRole } from "./middleware/require-staff-role.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
+import { createExportRoutes } from "./routes/exports.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createArtistRoutes } from "./routes/artists.js";
 import { createAuthRoutes } from "./routes/auth.js";
@@ -213,6 +214,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/submissions", createSubmissionRoutes(container, authenticator))
     .route("/submissions", createSubmissionDocumentRoutes(container, authenticator))
     .route("/uploads", createUploadRoutes(container, authenticator))
+    .route("/exports", createExportRoutes(container, authenticator))
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))
     .route("/webhooks", createXeroWebhookRoutes(container));

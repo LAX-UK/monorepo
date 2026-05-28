@@ -10,6 +10,7 @@ import {
 import { captureBackgroundError, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import {
   DEAD_LETTER_QUEUE_NAME,
+  DATA_EXPORT_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
   GC_PENDING_UPLOADS_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
@@ -34,7 +35,7 @@ import {
 } from "@auction/queues";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
-import { Queue, Worker } from "bullmq";
+import { Queue, Worker, type Job } from "bullmq";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { Redis } from "ioredis";
@@ -43,6 +44,10 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
 import { runBulkPayoutSettlementJob } from "./jobs/bulk-payout-settlement.js";
+import { createExportProviderDeps } from "@auction/api/exports";
+import type { DataExportJobPayload } from "@auction/queues";
+import { dataExportJob } from "./jobs/data-export.js";
+import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import {
   type GeneratePayoutStatementJobData,
   generatePayoutStatementJob,
@@ -465,6 +470,44 @@ const payoutStatementWorker = new Worker<PayoutStatementJobData>(
 );
 payoutStatementWorker.on("completed", () => void heartbeat("payout-statements"));
 
+const exportProviderDeps = createExportProviderDeps(db);
+const dataExportQueue = new Queue(
+  DATA_EXPORT_QUEUE_NAME,
+  queueOpts(DATA_EXPORT_QUEUE_NAME),
+);
+const dataExportWorker = new Worker(
+  DATA_EXPORT_QUEUE_NAME,
+  async (job) => {
+    if (job.name === "purge-expired") {
+      await purgeExpiredExportsJob({ db, storage: uploadStorage, log });
+      return;
+    }
+    await dataExportJob(
+      { db, redis, storage: uploadStorage, providerDeps: exportProviderDeps, log },
+      job as Job<DataExportJobPayload>,
+    );
+    await heartbeat("data-export");
+  },
+  {
+    ...bullConnection,
+    concurrency: 2,
+    limiter: { max: 10, duration: 1000 },
+  },
+);
+dataExportWorker.on("completed", () => void heartbeat("data-export"));
+dataExportWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure(DATA_EXPORT_QUEUE_NAME, job, err);
+});
+void dataExportQueue.add(
+  "purge-expired",
+  {},
+  {
+    jobId: "purge-expired-exports-daily",
+    repeat: { every: 24 * 60 * 60 * 1000 },
+    removeOnComplete: 5,
+  },
+);
+
 type LegalEntityArchiveJobData = { legalEntityId: string };
 const legalEntityArchiveQueue = new Queue<LegalEntityArchiveJobData>(
   LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
@@ -748,6 +791,8 @@ function shutdown(signal: NodeJS.Signals) {
         marketingSyncQueue.close(),
         payoutStatementWorker.close(),
         payoutStatementQueue.close(),
+        dataExportWorker.close(),
+        dataExportQueue.close(),
         legalEntityArchiveWorker.close(),
         legalEntityArchiveQueue.close(),
         impersonationSweeperWorker.close(),
