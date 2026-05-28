@@ -1,6 +1,5 @@
 "use server";
 
-import { mapKycSessionStartError } from "@/components/kyc/kyc-copy";
 import {
   createStripeConnectOnboardingLinkAction,
   ensureStripeConnectAccountAction,
@@ -8,8 +7,9 @@ import {
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { postServerKycSession } from "@/lib/data/http/kyc.server";
+import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
-import { getSiteUrl } from "@/lib/site-url";
 import type { OrganizationOnboardingProfileInput } from "@auction/validators";
 
 function entityHeaders(entityId: string): HeadersInit {
@@ -119,23 +119,10 @@ export async function startKycForOrganisationOnboardingAction(
   entityId: string,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   return instrumentServerAction("startKycForOrganisationOnboardingAction", async () => {
-    const site = getSiteUrl();
-    const returnUrl = `${site}/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=complete`;
-    const res = await authedServerFetch("/kyc/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...entityHeaders(entityId) },
-      body: JSON.stringify({ returnUrl }),
-    });
-    const body = (await res.json().catch(() => ({}))) as {
-      data?: { verificationUrl?: string | null; hostedUrl?: string | null };
-      error?: string;
-    };
-    if (!res.ok) {
-      return { ok: false, error: mapKycSessionStartError(body.error, res.status) };
-    }
-    const url = body.data?.verificationUrl ?? body.data?.hostedUrl;
-    if (!url) return { ok: false, error: "Verification link unavailable." };
-    return { ok: true, url };
+    const returnUrl = normalizeKycReturnUrl(
+      `/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=complete`,
+    );
+    return postServerKycSession(returnUrl, { entityId });
   });
 }
 
