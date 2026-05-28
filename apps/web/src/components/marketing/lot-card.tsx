@@ -351,9 +351,9 @@ export function LotCardEditorialCalm({
           </div>
         </AdaptiveMediaFrameContainer>
         <div className="space-y-2 p-6">
-          {title}
-          {description}
-          {footer}
+          {title != null ? <Fragment key="title">{title}</Fragment> : null}
+          {description != null ? <Fragment key="description">{description}</Fragment> : null}
+          {footer != null ? <Fragment key="footer">{footer}</Fragment> : null}
         </div>
       </Link>
       {topRight ? (

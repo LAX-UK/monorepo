@@ -1,3 +1,4 @@
+import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketing-catalog-toolbar-skeleton";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
@@ -61,6 +62,8 @@ export default async function SalesIndexLoading() {
                   ))}
                 </div>
               </div>
+
+              <MarketingCatalogToolbarSkeleton />
 
               <div className="pt-2 sm:pt-4">
                 <div className="flex flex-col gap-8 lg:flex-row lg:gap-0">

@@ -1,4 +1,5 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
+import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
 import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
 import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
@@ -34,7 +35,11 @@ import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
-import { saleCatalogBackHref } from "@/lib/marketing/catalog-links";
+import {
+  catalogLotLinkParamsFromSearchParams,
+  lotCatalogBackHref,
+  lotCatalogBackLabel,
+} from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
@@ -141,7 +146,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
   const parentSale = saleBundle ? { id: saleBundle.sale.id, title: saleBundle.sale.title } : null;
-  const saleBackHref = parentSale ? saleCatalogBackHref(parentSale, sp) : null;
+  const catalogLinkParams = catalogLotLinkParamsFromSearchParams(sp);
+  const catalogBackHref = lotCatalogBackHref(sp, parentSale);
+  const catalogBackLabel = lotCatalogBackLabel(sp, parentSale);
   const saleLots = saleBundle?.lots ?? null;
   const sellerName = seller?.name ?? "Private seller";
   const shareUrl = `${getSiteUrl()}${lotPath(auction)}`;
@@ -154,8 +161,13 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     initialHistory,
     documents: lotDocuments,
   });
-  const rail = mapSiblingsToRailVM(auction, parentSale, saleLots, relatedRaw, (l) =>
-    l.sellerId === auction.sellerId ? sellerName : "Seller",
+  const rail = mapSiblingsToRailVM(
+    auction,
+    parentSale,
+    saleLots,
+    relatedRaw,
+    (l) => (l.sellerId === auction.sellerId ? sellerName : "Seller"),
+    catalogLinkParams,
   );
 
   const crumbs = breadcrumbJsonLd(
@@ -186,8 +198,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const kycApprovedForCr = session?.kycStatus === "approved";
   const kycFeedbackForCr = kycApprovedForCr ? null : (kycSummary?.feedback ?? null);
 
-  const queueVMs = mapSaleLotsToQueueVMs(auction, saleLots, (l) =>
-    l.sellerId === auction.sellerId ? sellerName : "Seller",
+  const queueVMs = mapSaleLotsToQueueVMs(
+    auction,
+    saleLots,
+    (l) => (l.sellerId === auction.sellerId ? sellerName : "Seller"),
+    catalogLinkParams,
   );
 
   const sessionHeaderVM = mapAuctionSessionHeaderVM({
@@ -293,11 +308,10 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
 
   return (
     <main id="main-content" className="pt-[calc(var(--header-height)+8px)]">
-      {saleBackHref ? (
-        <div className={cn(MARKETING_PAGE_SHELL, "pb-2 md:hidden")}>
-          <MarketingMobileBackLink href={saleBackHref} label="Back to sale" />
-        </div>
-      ) : null}
+      <SetMarketingHeaderTitle title={auction.title} />
+      <div className={cn(MARKETING_PAGE_SHELL, "pb-2 md:hidden")}>
+        <MarketingMobileBackLink href={catalogBackHref} label={catalogBackLabel} />
+      </div>
       <ViewItemTracker
         lotId={auction.id}
         title={auction.title}

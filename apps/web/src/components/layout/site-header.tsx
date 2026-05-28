@@ -4,6 +4,7 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { cn } from "@auction/ui";
 import { Menu, Search, X } from "lucide-react";
 import Link from "next/link";
@@ -62,6 +63,7 @@ function SiteHeaderShell({
   const pathname = usePathname();
   const searchKey = searchParams == null ? "" : searchParams.toString();
   const headerRef = useRef<HTMLElement>(null);
+  const { title: marketingPageTitle } = useMarketingHeaderTitle();
 
   const resolvedVariant: SiteHeaderChromeVariant =
     chromeVariant ??
@@ -149,6 +151,13 @@ function SiteHeaderShell({
               </div>
             }
           />
+          {marketingPageTitle ? (
+            <div className="border-t border-nav-border px-2 pb-2 pt-1 lg:hidden">
+              <p className="truncate text-center font-headline text-sm font-semibold text-on-surface">
+                {marketingPageTitle}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <MobileNavDrawer

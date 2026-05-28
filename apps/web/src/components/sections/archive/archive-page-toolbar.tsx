@@ -28,21 +28,26 @@ export function ArchivePageToolbar({
   const resultCountLabel = resultCount === 1 ? "Show 1 lot" : `Show ${resultCount} lots`;
 
   return (
-    <>
-      <MarketingListToolbar
-        countLabel={countLabel}
-        mobileFilterTrigger={
-          <ArchiveFilterSheet
-            query={query}
-            categories={categories}
-            resultCountLabel={resultCountLabel}
-            layoutView={layoutView}
-          />
-        }
-        filters={<ArchiveFilterChips categories={categories} />}
-        trailing={<CatalogViewSwitcher routeKey="archive" value={layoutView} />}
-      />
-      <ArchiveActiveFilters query={query} categories={categories} layoutView={layoutView} />
-    </>
+    <MarketingListToolbar
+      countLabel={countLabel}
+      mobileFilterTrigger={
+        <ArchiveFilterSheet
+          query={query}
+          categories={categories}
+          resultCountLabel={resultCountLabel}
+          layoutView={layoutView}
+        />
+      }
+      trailing={<CatalogViewSwitcher routeKey="archive" value={layoutView} />}
+      secondaryRow={<ArchiveFilterChips categories={categories} />}
+      activeFiltersRow={
+        <ArchiveActiveFilters
+          query={query}
+          categories={categories}
+          layoutView={layoutView}
+          className="mb-0"
+        />
+      }
+    />
   );
 }

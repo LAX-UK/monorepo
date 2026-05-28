@@ -1,6 +1,7 @@
 "use client";
 
-import { MarketingPagination } from "@auction/ui";
+import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
+import { MarketingPagination, cn } from "@auction/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -42,7 +43,12 @@ export function ArchivePagination({ page, totalPages }: Props) {
       : null;
 
   return (
-    <div className="mx-auto mt-32 flex max-w-screen-2xl justify-center border-t border-border-hairline pt-16">
+    <div
+      className={cn(
+        MARKETING_PAGE_INNER,
+        "mt-32 flex justify-center border-t border-border-hairline pt-16",
+      )}
+    >
       <MarketingPagination
         aria-label="Archive pagination"
         prev={{

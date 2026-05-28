@@ -11,7 +11,6 @@ import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { formatMoney } from "@/lib/format-currency";
 import { EDITORIAL_BOLD_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { lotPath } from "@/lib/seo/url";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -29,6 +28,7 @@ export type ArchiveLotHeroRow = {
 
 type Props = {
   row: ArchiveLotHeroRow;
+  href: string;
   isOwner?: boolean;
 };
 
@@ -37,17 +37,19 @@ function ArchiveHeroCardInner({
   isOwner,
   chip,
   img,
+  href,
 }: {
   row: ArchiveLotHeroRow;
   isOwner: boolean;
   chip: string;
   img: string | undefined;
+  href: string;
 }) {
   const a = row.auction;
   return (
     <article className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm ring-1 ring-outline-variant/10 transition-shadow hover:shadow-md">
       <Link
-        href={lotPath(a)}
+        href={href}
         className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg"
       >
         <AdaptiveMediaFrameContainer className="relative aspect-[16/10] overflow-hidden bg-surface-container-low">
@@ -118,7 +120,7 @@ function ArchiveStatusChip({ children }: { children: ReactNode }) {
 }
 
 /** Editorial single-column card — distinct from staggered grid `PastAuctionCard`. */
-export function ArchiveLotCardHero({ row, isOwner = false }: Props) {
+export function ArchiveLotCardHero({ row, href, isOwner = false }: Props) {
   const a = row.auction;
   const img = a.images[0];
   const chip =
@@ -126,7 +128,9 @@ export function ArchiveLotCardHero({ row, isOwner = false }: Props) {
       ? `Ended · ${closingSeason(a.endTime)}`
       : `${a.status.replace(/_/g, " ")} · ${closingSeason(a.endTime)}`;
 
-  const inner = <ArchiveHeroCardInner row={row} isOwner={isOwner} chip={chip} img={img} />;
+  const inner = (
+    <ArchiveHeroCardInner row={row} isOwner={isOwner} chip={chip} img={img} href={href} />
+  );
 
   if (!img) return inner;
 

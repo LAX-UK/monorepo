@@ -35,12 +35,21 @@ const auction: Lot = {
 
 describe("PastAuctionCard", () => {
   it("shows owner badge when isOwner", () => {
-    render(<PastAuctionCard auction={auction} sellerName="Artist" isOwner />);
+    render(
+      <PastAuctionCard auction={auction} sellerName="Artist" href="/lot/past-work/a1" isOwner />,
+    );
     expect(screen.getByLabelText(/your listing/i)).toBeInTheDocument();
   });
 
   it("hides owner badge when not owner", () => {
-    render(<PastAuctionCard auction={auction} sellerName="Artist" isOwner={false} />);
+    render(
+      <PastAuctionCard
+        auction={auction}
+        sellerName="Artist"
+        href="/lot/past-work/a1"
+        isOwner={false}
+      />,
+    );
     expect(screen.queryByLabelText(/your listing/i)).not.toBeInTheDocument();
   });
 });
