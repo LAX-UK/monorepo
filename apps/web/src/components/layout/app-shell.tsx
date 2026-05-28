@@ -22,17 +22,15 @@ import { ShellChromeProvider, useShellChrome } from "@/lib/shell/shell-chrome-co
 import { ShellConfigProvider } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui/components/sheet";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@auction/ui/components/tooltip";
-import { ChevronLeft, ChevronRight, ExternalLink, Menu, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Search } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 type Props = {
   user: SessionUser;
@@ -53,17 +51,11 @@ function AppShellFrame({ user, config, children }: Props) {
   const headerRightSlot = config.header.rightSlot;
   const contextBanner = config.contextBanner;
   const topSlot = config.topSlot;
-  const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { density } = useDashboardDensity();
   const { collapsed, peeking, setPeeking, toggleCollapsed } = useSidebarState();
   const sidebarShellRef = useRef<HTMLDivElement | null>(null);
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isPeekOpen = collapsed && peeking;
-
-  useEffect(() => {
-    if (pathname.length > 0 && mobileOpen) setMobileOpen(false);
-  }, [mobileOpen, pathname]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -110,16 +102,7 @@ function AppShellFrame({ user, config, children }: Props) {
     <AppShellSidebar
       user={user}
       role={shellRole}
-      onNavigate={() => setMobileOpen(false)}
       collapsible
-      {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
-    />
-  );
-  const mobileSidebar = (
-    <AppShellSidebar
-      user={user}
-      role={shellRole}
-      onNavigate={() => setMobileOpen(false)}
       {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
     />
   );
@@ -168,72 +151,53 @@ function AppShellFrame({ user, config, children }: Props) {
         </aside>
       </div>
 
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent
-          side="left"
-          overlayClassName="z-[var(--z-overlay,60)]"
-          className="z-[var(--z-overlay,60)] w-[min(100vw-1.5rem,14rem)] max-w-none border-outline-variant bg-surface-container-lowest p-0"
-        >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Dashboard navigation</SheetTitle>
-          </SheetHeader>
-          {mobileSidebar}
-        </SheetContent>
-      </Sheet>
-
       <div className="flex h-[100dvh] flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-[var(--header-height-shell,52px)] min-h-[var(--tap-target-min,44px)] shrink-0 items-center justify-between border-b border-border-soft bg-surface-container-lowest/80 px-4 shadow-[var(--shadow-glass)] backdrop-blur-md md:px-8 max-lg:min-h-[var(--header-height-mobile,56px)]">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="min-h-10 min-w-10 text-on-surface-variant lg:hidden"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Open dashboard navigation"
-            >
-              <Menu className="size-5" aria-hidden />
-            </Button>
-            <AppShellBreadcrumbs
-              role={shellRole}
-              sessionUser={user}
-              {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
-            />
-            {shellRole === "client" ? (
-              <Link
-                href="/"
-                prefetch
-                aria-label="View public LAX site"
-                className="hidden min-h-11 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:inline-flex"
+        <header className="sticky top-0 z-30 shrink-0 border-b border-border-soft bg-surface-container-lowest/80 pt-[env(safe-area-inset-top,0px)] shadow-[var(--shadow-glass)] backdrop-blur-md">
+          <div className="flex min-h-[var(--header-height-mobile,56px)] flex-nowrap items-center justify-between gap-2 px-3 sm:px-4 md:px-8 lg:min-h-[var(--header-height-shell,52px)]">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <AppShellBreadcrumbs
+                role={shellRole}
+                sessionUser={user}
+                {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
+              />
+              {shellRole === "client" ? (
+                <Link
+                  href="/"
+                  prefetch
+                  aria-label="View public LAX site"
+                  className="hidden min-h-11 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:inline-flex"
+                >
+                  <ExternalLink className="size-3.5" aria-hidden />
+                  <span>View site</span>
+                </Link>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-1 border-l border-border-hairline pl-2 lg:border-l-0 lg:pl-0">
+              {headerRightSlot}
+              {headerLeftSlot}
+              {shellRole === "platform" || shellRole === "finance" ? <HeaderSearchTrigger /> : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary lg:hidden"
+                onClick={openCommandPalette}
+                aria-label="Open command palette"
               >
-                <ExternalLink className="size-3.5" aria-hidden />
-                <span>View site</span>
-              </Link>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {headerRightSlot}
-            {headerLeftSlot}
-            {shellRole === "platform" || shellRole === "finance" ? <HeaderSearchTrigger /> : null}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary lg:hidden"
-              onClick={openCommandPalette}
-              aria-label="Open command palette"
-            >
-              <Search className="size-4" aria-hidden />
-            </Button>
-            <ThemeToggle />
-            <TweaksPopover />
+                <Search className="size-4" aria-hidden />
+              </Button>
+              <div className="hidden items-center gap-1 lg:flex">
+                <ThemeToggle />
+                <TweaksPopover />
+              </div>
+            </div>
           </div>
         </header>
 
         <main
           id="main-content"
           className={cn(
-            "min-h-0 flex-1 scroll-mt-[52px] overflow-y-auto overflow-x-hidden",
+            "min-h-0 flex-1 scroll-mt-[var(--header-height-mobile,56px)] overflow-y-auto overflow-x-hidden lg:scroll-mt-[var(--header-height-shell,52px)]",
             config.mobileNav.length > 0 &&
               !hideBottomTabBar &&
               "pb-[var(--page-bottom-padding)] lg:pb-0",

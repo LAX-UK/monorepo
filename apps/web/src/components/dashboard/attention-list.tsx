@@ -1,3 +1,4 @@
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { cn } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -25,7 +26,14 @@ export function AttentionList({
   className,
 }: AttentionListProps) {
   if (items.length === 0) {
-    return <p className="text-sm text-on-surface-variant">{emptyLabel}</p>;
+    return (
+      <DashboardEmptyState
+        variant="quiet"
+        title="All clear"
+        description={emptyLabel}
+        headingLevel="h3"
+      />
+    );
   }
 
   return (

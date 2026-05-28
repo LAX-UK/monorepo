@@ -4,6 +4,7 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import Link from "next/link";
 
 export default async function NewSubmissionPage({
@@ -15,12 +16,15 @@ export default async function NewSubmissionPage({
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const c = await getServerDataContainer();
   const categories = await c.categories.tree();
+  const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
     <DashboardPage className="mx-auto max-w-3xl space-y-6">
       <DashboardPageHeader
-        meta="Selling"
+        meta={workspaceMeta}
         title="New submission"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Tell our specialists about an artwork or collectible. Your progress is saved when you continue later."
         actions={
           <Link

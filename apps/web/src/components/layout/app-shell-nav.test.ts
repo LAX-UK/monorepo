@@ -7,7 +7,7 @@ describe("getClientMobileBottomTabs", () => {
       "overview",
       "bids",
       "watchlist",
-      "notifications",
+      "portfolio",
       "more",
     ]);
   });

@@ -55,6 +55,8 @@ export default async function InvitationsInboxPage() {
         <DashboardPageHeader
           meta="Invitation"
           title="Invitations"
+          hideTitleOnMobile
+          hideDescriptionOnMobile
           description="Pending organisation invitations for your account email."
           actions={
             <Button asChild variant="outline" size="sm">

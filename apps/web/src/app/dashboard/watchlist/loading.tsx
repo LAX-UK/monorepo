@@ -4,7 +4,7 @@ import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-s
 export default function DashboardWatchlistLoading() {
   return (
     <DashboardPage>
-      <DashboardSkeleton variant="list" />
+      <DashboardSkeleton variant="listWithToolbar" />
     </DashboardPage>
   );
 }

@@ -12,6 +12,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { ActivityItem } from "@/lib/data/view-models/dashboard-activity.vm";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -23,6 +24,7 @@ type Props = {
   orgModuleEnabled?: boolean;
   addressesCount?: number;
   activity?: readonly ActivityItem[];
+  clientWorkspaceMode?: ClientWorkspaceMode;
 };
 
 export function DashboardOverviewView({
@@ -45,6 +47,8 @@ export function DashboardOverviewView({
               meta="Your dashboard"
               titleScale="display"
               title={`Welcome back, ${vm.firstName}`}
+              hideTitleOnMobile
+              hideDescriptionOnMobile
               description={buildOverviewDescription(vm)}
               actions={
                 <Button variant="outline" asChild>

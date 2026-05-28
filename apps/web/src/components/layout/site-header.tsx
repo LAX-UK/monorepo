@@ -97,7 +97,7 @@ function SiteHeaderShell({
         data-chrome-variant={resolvedVariant}
         data-at-top={atTop ? "true" : "false"}
         className={cn(
-          "fixed top-0 z-50 w-full border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
+          "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
           isTransparent
             ? "border-transparent bg-transparent"
             : cn(
@@ -106,7 +106,7 @@ function SiteHeaderShell({
               ),
         )}
       >
-        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-6 px-6 pt-3 pb-4 md:px-10">
+        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-6 px-4 py-2 md:px-6 lg:px-10 lg:pt-3 lg:pb-4">
           <div className="hidden lg:block">
             <HeaderUtilityBar />
           </div>
@@ -125,9 +125,11 @@ function SiteHeaderShell({
               </Link>
             }
             trailing={
-              <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:max-w-[420px] lg:flex-none">
+              <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:max-w-[420px] lg:gap-3 lg:flex-none">
                 <HeaderSearchTrigger />
-                <ThemeToggle />
+                <div className="hidden lg:flex">
+                  <ThemeToggle />
+                </div>
                 <HeaderAuthChip variant="notifications" />
                 <div className="lg:hidden">
                   <HeaderAuthChip variant="account" />

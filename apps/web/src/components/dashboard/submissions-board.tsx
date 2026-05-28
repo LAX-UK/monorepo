@@ -1,29 +1,26 @@
 "use client";
 
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
+import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
+import { SubmissionsMobileList } from "@/components/dashboard/list/submissions-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
+import { SubmissionsListToolbar } from "@/components/dashboard/submissions/submissions-list-toolbar";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import {
+  buildSubmissionsHref,
+  hasSubmissionsActiveFilters,
+  parseSubmissionsParams,
+} from "@/lib/dashboard/filters/submissions/submissions-filters";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
-import { Toolbar } from "@auction/ui/components/toolbar";
-import { type SubmissionListFilterValues, submissionListFilterSchema } from "@auction/validators";
-import { zodResolver } from "@hookform/resolvers/zod";
+import type { SubmissionListFilterValues } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo } from "react";
 
 export type SubmissionTableRow = {
   id: string;
@@ -56,12 +53,8 @@ const statusTabs: readonly SubmissionListFilterValues["status"][] = [
   "converted",
 ];
 
-function statusHref(pathname: string, status: SubmissionListFilterValues["status"], q: string) {
-  const next = new URLSearchParams();
-  if (status !== "all") next.set("status", status);
-  if (q) next.set("q", q);
-  const qs = next.toString();
-  return qs ? `${pathname}?${qs}` : pathname;
+function statusHref(status: SubmissionListFilterValues["status"], q: string) {
+  return buildSubmissionsHref(parseSubmissionsParams({ status, q }), { status, q });
 }
 
 function tabLabel(
@@ -156,103 +149,41 @@ export function SubmissionsBoard({
   statusCounts,
 }: Props) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const columns = useMemo(() => submissionColumns(), []);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const form = useForm<SubmissionListFilterValues>({
-    resolver: zodResolver(submissionListFilterSchema),
-    defaultValues: { status: initialStatus, q: initialQ },
+  const filters = parseSubmissionsParams({
+    status: initialStatus,
+    q: initialQ,
   });
 
-  useEffect(() => {
-    form.reset({ status: initialStatus, q: initialQ });
-  }, [form, initialStatus, initialQ]);
-
-  const watchedQ = form.watch("q");
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      const trimmed = watchedQ.trim().slice(0, 200);
-      if (trimmed === initialQ) return;
-      const next = new URLSearchParams(searchParams.toString());
-      if (trimmed) next.set("q", trimmed);
-      else next.delete("q");
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname);
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [initialQ, pathname, router, searchParams, watchedQ]);
-
   const clearTitleSearch = useCallback(() => {
-    const next = new URLSearchParams(searchParams.toString());
-    next.delete("q");
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname);
-  }, [pathname, router, searchParams]);
+    router.replace(buildSubmissionsHref(filters, { q: null }), { scroll: false });
+  }, [filters, router]);
 
   return (
     <div className="space-y-6">
       <SectionTabsNav
         ariaLabel="Submission status"
-        className="rounded-xl border border-border-hairline bg-surface-container-lowest px-3"
+        sticky={false}
+        className="rounded-xl border border-border-hairline bg-surface-container-lowest px-3 max-md:[&_nav]:overflow-x-auto max-md:[&_nav]:flex-nowrap"
         items={statusTabs.map((status) => ({
-          href: statusHref(pathname, status, initialQ),
+          href: statusHref(status, filters.q),
           label: tabLabel(status, statusCounts),
           isActive: initialStatus === status,
         }))}
       />
 
-      <Toolbar
-        className="flex-col gap-4 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-between"
-        filters={
-          <Form {...form}>
-            <form className="flex w-full min-w-0 flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
-              <FormField
-                control={form.control}
-                name="q"
-                render={({ field }) => (
-                  <FormItem className="min-w-0 flex-1 space-y-2 lg:max-w-md">
-                    <FormLabel
-                      htmlFor="submissions-q"
-                      className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
-                    >
-                      Title contains
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        id="submissions-q"
-                        placeholder="Filter loaded rows by title…"
-                        className="bg-surface-container-low"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </form>
-          </Form>
-        }
-      />
+      <SubmissionsListToolbar filters={filters} />
+
+      <DashboardFilterResultsAnnouncer count={rows.length} entityLabel="submissions" />
 
       {rows.length === 0 ? (
-        fetchedCount > 0 ? (
-          <DashboardEmptyState
+        fetchedCount > 0 && hasSubmissionsActiveFilters(filters) ? (
+          <FilterEmptyState
+            segment="dashboard"
+            entity="submissions"
             title="No title matches"
             description="Nothing in the current list matches that title. Try another phrase or clear the title filter."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" variant="secondaryOutline" onClick={() => clearTitleSearch()}>
-                  Clear title search
-                </Button>
-                <StartSubmissionAction />
-              </div>
-            }
+            onClearFilters={clearTitleSearch}
           />
         ) : initialStatus !== "all" ? (
           <DashboardEmptyState
@@ -275,14 +206,12 @@ export function SubmissionsBoard({
           />
         )
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
-          <DataTable
-            columns={columns}
-            data={rows}
-            emptyMessage="No submissions match this filter."
-            density="compact"
-          />
-        </div>
+        <>
+          <SubmissionsMobileList rows={rows} />
+          <div className="hidden overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm lg:block">
+            <DataTable columns={columns} data={rows} density="compact" />
+          </div>
+        </>
       )}
     </div>
   );

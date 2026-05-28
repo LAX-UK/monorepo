@@ -2,6 +2,7 @@
 
 import { Breadcrumbs } from "@/components/dashboard/primitives/breadcrumbs";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
+import { MobileShellTitle } from "@/components/layout/mobile-shell-title";
 import type { SessionUser } from "@/lib/data/contracts";
 import { buildAdminBreadcrumbTrail } from "@/lib/navigation/admin-breadcrumb-trail";
 import { buildClientBreadcrumbTrail } from "@/lib/navigation/client-breadcrumb-trail";
@@ -22,17 +23,27 @@ export function AppShellBreadcrumbs({
   if (role === "client") {
     const items = buildClientBreadcrumbTrail(pathname, clientWorkspaceMode);
     return (
-      <nav aria-label="Breadcrumb" className="min-w-0">
-        <Breadcrumbs items={items} className="text-xs" />
-      </nav>
+      <>
+        <div className="min-w-0 flex-1 lg:hidden">
+          <MobileShellTitle items={items} />
+        </div>
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
+          <Breadcrumbs items={items} className="text-xs" inline />
+        </nav>
+      </>
     );
   }
 
   const items = buildAdminBreadcrumbTrail(pathname, role, sessionUser, clientWorkspaceMode);
 
   return (
-    <nav aria-label="Breadcrumb" className="min-w-0">
-      <Breadcrumbs items={items} className="text-xs" />
-    </nav>
+    <>
+      <div className="min-w-0 flex-1 lg:hidden">
+        <MobileShellTitle items={items} />
+      </div>
+      <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
+        <Breadcrumbs items={items} className="text-xs" inline />
+      </nav>
+    </>
   );
 }

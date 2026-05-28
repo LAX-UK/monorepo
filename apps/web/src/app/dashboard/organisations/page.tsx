@@ -94,6 +94,8 @@ export default async function OrganisationsHubPage() {
         <DashboardPageHeader
           meta="Workspaces"
           title="Organisations"
+          hideTitleOnMobile
+          hideDescriptionOnMobile
           description="Manage organisations you belong to, respond to invitations, and continue setup."
           actions={
             <Button asChild variant="outline" size="sm">

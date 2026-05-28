@@ -1,77 +1,27 @@
+import { NotificationsInboxContent } from "@/app/dashboard/notifications/notifications-inbox-content";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { NotificationsInboxBoard } from "@/components/dashboard/notifications-inbox-board";
-import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
-import { NOTIFICATIONS_PAGE_SIZE } from "@/components/dashboard/notifications/notifications-inbox.constants";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
-import {
-  type DashboardSliceFailure,
-  describeDashboardSliceFailure,
-} from "@/lib/dashboard/dashboard-fetch-errors";
-import { getServerDataContainer } from "@/lib/data/container.server";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import { Suspense } from "react";
 
-function parseTab(raw: string | undefined): InboxTab {
-  if (raw === "unread" || raw === "archived") return raw;
-  return "all";
-}
-
-async function NotificationsInboxContent({
+export default async function NotificationsPage({
   searchParams,
 }: {
   searchParams: Promise<{ tab?: string; type?: string }>;
 }) {
-  const sp = await searchParams;
-  const tab = parseTab(sp.tab);
-  const type = (sp.type ?? "").trim();
-  const c = await getServerDataContainer();
-  let items: Awaited<ReturnType<typeof c.notifications.listMine>> = [];
-  let loadFailure: DashboardSliceFailure | null = null;
-  try {
-    items = await c.notifications.listMine({
-      tab,
-      limit: NOTIFICATIONS_PAGE_SIZE,
-      offset: 0,
-      ...(type ? { type } : {}),
-    });
-  } catch (e) {
-    loadFailure = describeDashboardSliceFailure(
-      e,
-      "notifications",
-      "Could not load notifications.",
-    );
-  }
-  const hasMore = !loadFailure && items.length === NOTIFICATIONS_PAGE_SIZE;
-  return (
-    <NotificationsInboxBoard
-      loadFailure={loadFailure}
-      {...(loadFailure
-        ? {}
-        : {
-            initialPage: {
-              tab,
-              type,
-              items,
-              hasMore,
-            },
-          })}
-    />
-  );
-}
+  const workspaceMeta = await readClientWorkspacePageMeta();
 
-export default function NotificationsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string; type?: string }>;
-}) {
   return (
     <DashboardPage>
-      <Suspense
-        fallback={
-          <div className="mx-auto max-w-5xl px-4 py-10">
-            <DashboardSkeleton variant="list" />
-          </div>
-        }
-      >
+      <DashboardPageHeader
+        meta={workspaceMeta}
+        title="Notifications"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
+        description="Bids, wins, payments, and saved-lot updates. Live when you are online."
+      />
+      <Suspense fallback={<DashboardSkeleton variant="listWithToolbar" />}>
         <NotificationsInboxContent searchParams={searchParams} />
       </Suspense>
     </DashboardPage>

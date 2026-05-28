@@ -244,8 +244,8 @@ export function HeaderMegaNav({
         scheduleCloseHover();
       }}
     >
-      <div className="flex items-center justify-between gap-2 sm:gap-4">
-        <div className="flex shrink-0 items-center gap-9">
+      <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-4">
+        <div className="flex min-w-0 shrink items-center gap-9">
           {logo}
 
           <nav className="hidden items-center gap-9 lg:flex" aria-label="Primary">

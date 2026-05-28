@@ -95,7 +95,7 @@ export function KpiTile({
   return (
     <div
       className={cn(
-        "relative flex flex-col justify-between rounded-xl border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
+        "relative flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
         semanticToneClass[semanticTone],
         clickable &&
           "cursor-pointer hover:shadow-[var(--shadow-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -123,11 +123,11 @@ export function KpiTile({
 
 function KpiTileHeader({ label, icon }: { label: React.ReactNode; icon?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-2">
-      <p className="font-label text-xs font-normal uppercase tracking-widest text-secondary">
+    <div className="flex min-w-0 items-start justify-between gap-2">
+      <p className="min-w-0 truncate font-label text-xs font-normal uppercase tracking-widest text-secondary">
         {label}
       </p>
-      {icon ? <div className="text-primary [&_svg]:size-5">{icon}</div> : null}
+      {icon ? <div className="shrink-0 text-primary [&_svg]:size-5">{icon}</div> : null}
     </div>
   );
 }
@@ -149,19 +149,22 @@ function KpiTileBody({
   trendTone: KpiTileTone;
   trendSlot?: React.ReactNode;
 }) {
+  const valueTitle = typeof value === "string" ? value : undefined;
+
   return (
-    <div className="mt-3 flex items-end justify-between gap-2">
+    <div className="mt-3 flex min-w-0 items-end justify-between gap-2">
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "font-headline text-[length:var(--text-display-kpi,2.25rem)] font-bold tabular-nums text-on-surface",
+            "truncate font-headline text-xl font-bold tabular-nums text-on-surface sm:text-2xl lg:text-[length:var(--text-display-kpi,2.25rem)]",
             emphasize && "border-b-2 border-primary pb-0.5",
           )}
           style={{ fontFeatureSettings: "var(--font-feature-tabular)" }}
+          {...(valueTitle ? { title: valueTitle } : {})}
         >
           {value}
         </p>
-        {resolvedDelta ? <div className="mt-1">{resolvedDelta}</div> : null}
+        {resolvedDelta ? <div className="mt-1 min-w-0 truncate">{resolvedDelta}</div> : null}
         {compareHint ? (
           <p className="mt-0.5 font-body text-[10px] text-on-surface-variant">{compareHint}</p>
         ) : null}

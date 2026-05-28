@@ -1,4 +1,4 @@
-import { consentOffset, pageBottomPadding } from "@/lib/layout/bottom-chrome";
+import { bulkBarBottomOffset, consentOffset, pageBottomPadding } from "@/lib/layout/bottom-chrome";
 import { describe, expect, it } from "vitest";
 
 describe("bottom-chrome", () => {
@@ -14,5 +14,10 @@ describe("bottom-chrome", () => {
       marketingBidBarRoute: true,
     });
     expect(padding).toContain("4.5rem");
+  });
+
+  it("computes bulk bar offset when dashboard tab bar is active", () => {
+    expect(bulkBarBottomOffset(true)).toContain("--bottom-nav-height");
+    expect(bulkBarBottomOffset(false)).toBe("0px");
   });
 });
