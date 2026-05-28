@@ -1,21 +1,31 @@
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
+import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MediaImage } from "@/components/ui/media-image";
+import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
+import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { lotStatusMarketingShortLabel } from "@/lib/marketing/lot-status-labels";
-import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import Link from "next/link";
 
 type Props = {
   lots: Lot[];
+  catalogLinkParams?: CatalogLinkParams;
 };
 
+function resolveLotHref(lot: Lot, catalogLinkParams?: CatalogLinkParams): string {
+  return lotCatalogHref(lot, catalogLinkParams);
+}
+
 /** New lots tab — recent catalog lots (`GET /lots` contract). */
-export function SalesNewLotsGrid({ lots }: Props) {
+export function SalesNewLotsGrid({ lots, catalogLinkParams }: Props) {
   if (lots.length === 0) {
     return (
-      <p className="font-body text-sm text-on-surface-variant">
-        No new lots are listed yet. Check back soon.
-      </p>
+      <MarketingEmptyState
+        variant="marketing"
+        context="noResults"
+        title="No new lots yet"
+        description="Check back soon for recently listed works."
+      />
     );
   }
 
@@ -25,7 +35,7 @@ export function SalesNewLotsGrid({ lots }: Props) {
         <li key={lot.id} className="flex min-w-0 flex-col">
           <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition-shadow duration-200 motion-safe:hover:shadow-md dark:border-outline-variant/30 dark:bg-surface-container-low/40">
             <Link
-              href={lotPath(lot)}
+              href={resolveLotHref(lot, catalogLinkParams)}
               className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container dark:bg-surface-container-low"
             >
               <MediaImage
@@ -50,7 +60,7 @@ export function SalesNewLotsGrid({ lots }: Props) {
                 />
               </div>
               <Link
-                href={lotPath(lot)}
+                href={resolveLotHref(lot, catalogLinkParams)}
                 className="line-clamp-2 min-h-[2.5rem] font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 hover:underline dark:text-on-surface"
               >
                 {lot.title}

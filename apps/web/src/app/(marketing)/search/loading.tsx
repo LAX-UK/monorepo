@@ -1,5 +1,10 @@
+import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketing-catalog-toolbar-skeleton";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
-import { MARKETING_PAGE_INNER, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import {
+  MARKETING_CATALOG_PT,
+  MARKETING_PAGE_INNER,
+  MARKETING_PAGE_SHELL,
+} from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { cn } from "@auction/ui";
 
@@ -9,7 +14,7 @@ export default async function SearchLoading() {
   return (
     <main
       id="main-content"
-      className="bg-surface pb-[var(--page-bottom-padding)] pt-[var(--section-pt)]"
+      className={cn("bg-surface pb-[var(--page-bottom-padding)]", MARKETING_CATALOG_PT)}
       aria-busy="true"
       aria-label="Loading search"
     >
@@ -27,23 +32,7 @@ export default async function SearchLoading() {
           <div className="mt-2 h-11 rounded border-b-2 border-border-hairline bg-surface-container-high/50" />
         </div>
 
-        <div className="-mx-8 animate-pulse border-b border-border-hairline bg-surface/85 py-3 md:-mx-10 lg:-mx-14">
-          <div className="flex flex-col gap-2 md:gap-0">
-            <div className="flex h-12 min-w-0 items-center gap-3">
-              <div className="h-4 w-16 shrink-0 rounded bg-surface-container-high" />
-              <div className="h-10 w-24 shrink-0 rounded bg-surface-container-high md:hidden" />
-              <div className="hidden h-8 flex-1 gap-2 md:flex">
-                <div className="h-8 w-16 rounded-full bg-surface-container-high" />
-                <div className="h-8 w-20 rounded-full bg-surface-container-high" />
-                <div className="h-8 w-24 rounded-full bg-surface-container-high" />
-              </div>
-              <div className="ml-auto hidden h-10 w-28 shrink-0 rounded bg-surface-container-high md:block" />
-            </div>
-            <div className="flex items-center justify-end gap-2 border-t border-border-hairline pt-2 md:hidden">
-              <div className="h-10 w-24 rounded bg-surface-container-high" />
-            </div>
-          </div>
-        </div>
+        <MarketingCatalogToolbarSkeleton />
 
         <div className="mt-8">
           <MarketingListSkeleton view={view} />

@@ -28,20 +28,25 @@ export function SaleroomCatalogLotsByView({
   clearFiltersHref,
 }: Props) {
   const resolvedEmpty =
-    lots.length === 0 && clearFiltersHref ? (
+    lots.length === 0 ? (
       <MarketingEmptyState
         variant="marketing"
+        context={clearFiltersHref ? "filtered" : "noResults"}
         title={emptyMessage ?? "No lots match these filters"}
-        description="Try clearing filters to see all lots in this sale."
+        description={
+          clearFiltersHref
+            ? "Try clearing filters to see all lots in this sale."
+            : "Lots will appear here when they are published to this sale."
+        }
         action={
-          <Button variant="outline" asChild>
-            <Link href={clearFiltersHref}>Clear filters</Link>
-          </Button>
+          clearFiltersHref ? (
+            <Button variant="outline" asChild>
+              <Link href={clearFiltersHref}>Clear filters</Link>
+            </Button>
+          ) : undefined
         }
       />
-    ) : (
-      (emptyMessage ?? "No lots in this section yet.")
-    );
+    ) : null;
 
   return (
     <CatalogByView

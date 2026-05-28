@@ -1,7 +1,6 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
-import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import Link from "next/link";
 
@@ -16,6 +15,7 @@ function closingCaption(endTime: Date): string {
 type Props = {
   auction: Lot;
   sellerName: string;
+  href: string;
   gridOffsetClass?: string;
   isOwner?: boolean;
 };
@@ -23,13 +23,14 @@ type Props = {
 export function PastAuctionCard({
   auction,
   sellerName,
+  href,
   gridOffsetClass = "",
   isOwner = false,
 }: Props) {
   const img = auction.images[0];
   return (
     <div className={`group ${gridOffsetClass}`}>
-      <Link href={lotPath(auction)} className="block">
+      <Link href={href} className="block">
         <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-surface-container-low md:mb-8">
           <MediaImage
             src={img}

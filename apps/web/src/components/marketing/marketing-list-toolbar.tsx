@@ -14,8 +14,12 @@ export type MarketingListToolbarProps = {
   trailing?: ReactNode;
   /** Mobile-only filter sheet trigger (`md:hidden`). */
   mobileFilterTrigger?: ReactNode;
-  /** When false, trailing controls stay on the primary row on mobile. */
+  /** When true, trailing controls move to a second row on mobile (use sparingly). */
   stackTrailingOnMobile?: boolean;
+  /** Full-width row below the primary toolbar (e.g. archive year + medium chips). */
+  secondaryRow?: ReactNode;
+  /** Full-width removable active filter chips inside the sticky shell. */
+  activeFiltersRow?: ReactNode;
   className?: string;
 };
 
@@ -26,11 +30,16 @@ export function MarketingListToolbar({
   sort,
   trailing,
   mobileFilterTrigger,
-  stackTrailingOnMobile = true,
+  stackTrailingOnMobile = false,
+  secondaryRow,
+  activeFiltersRow,
   className,
 }: MarketingListToolbarProps) {
   const stackTrailing = stackTrailingOnMobile && Boolean(mobileFilterTrigger && trailing);
   const hideFiltersOnMobile = Boolean(mobileFilterTrigger);
+  const countClassName = hideFiltersOnMobile
+    ? "min-w-0 flex-1 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-none md:max-w-[10rem] md:flex-none"
+    : "max-w-[6rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-[10rem]";
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
 
@@ -72,15 +81,8 @@ export function MarketingListToolbar({
           )}
         >
           <div className="flex flex-col gap-2 md:gap-0">
-            <div className="flex min-w-0 h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
-              {countLabel ? (
-                <p className="max-w-[6rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-[10rem]">
-                  {countLabel}
-                </p>
-              ) : null}
-              {mobileFilterTrigger ? (
-                <div className="shrink-0 md:hidden">{mobileFilterTrigger}</div>
-              ) : null}
+            <div className="flex min-w-0 min-h-12 items-center gap-2 md:min-h-14 md:gap-3">
+              {countLabel ? <p className={countClassName}>{countLabel}</p> : null}
               {filters ? (
                 <div
                   className={cn(
@@ -91,7 +93,15 @@ export function MarketingListToolbar({
                   {filters}
                 </div>
               ) : null}
-              <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
+              <div
+                className={cn(
+                  "flex shrink-0 items-center gap-2 md:gap-3",
+                  countLabel || filters ? "ml-auto" : "",
+                )}
+              >
+                {mobileFilterTrigger ? (
+                  <div className="shrink-0 md:hidden">{mobileFilterTrigger}</div>
+                ) : null}
                 {sort ? <div className="shrink-0">{sort}</div> : null}
                 {trailing ? (
                   <div
@@ -113,6 +123,12 @@ export function MarketingListToolbar({
                 {trailing}
               </div>
             ) : null}
+            {secondaryRow ? (
+              <div className="hidden border-t border-border-hairline/60 pt-2 md:block">
+                {secondaryRow}
+              </div>
+            ) : null}
+            {activeFiltersRow ? <div className="pt-2">{activeFiltersRow}</div> : null}
           </div>
         </div>
       </div>

@@ -1,10 +1,11 @@
 "use client";
 
+import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import {
   type CalendarSalesUrlState,
   calendarSalesHrefFromState,
 } from "@/lib/marketing/sales-calendar-params";
-import { MarketingPagination } from "@auction/ui";
+import { MarketingPagination, cn } from "@auction/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -41,7 +42,12 @@ export function SalesCalendarPagination({ state, page, hasMore }: Props) {
       : null;
 
   return (
-    <div className="mx-auto mt-10 flex max-w-screen-2xl justify-center border-t border-border-hairline pt-10">
+    <div
+      className={cn(
+        MARKETING_PAGE_INNER,
+        "mt-10 flex justify-center border-t border-border-hairline pt-10",
+      )}
+    >
       <MarketingPagination
         aria-label="Sales calendar pagination"
         prev={{

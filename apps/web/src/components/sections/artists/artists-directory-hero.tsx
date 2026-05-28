@@ -1,9 +1,11 @@
 import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb";
+import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
 import { ArtistsDirectoryLetterCollapsible } from "@/components/sections/artists/artists-directory-letter-collapsible";
 import type { ArtistDirectoryPreset } from "@/lib/artists/directory-presets";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { Button, DisplayHeading, LabelCaps, cn } from "@auction/ui";
+import { Button, cn } from "@auction/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -47,18 +49,26 @@ export function ArtistsDirectoryHero({
   );
 
   return (
-    <section className="border-b border-border-hairline bg-surface-container-lowest/40 px-4 py-8 sm:px-6 sm:py-12 md:px-10 md:py-14">
+    <section
+      className={cn(
+        "border-b border-border-hairline bg-surface-container-lowest/40 py-8 sm:py-12 md:py-14",
+        MARKETING_PAGE_SHELL,
+      )}
+    >
       <MarketingPageShell variant="inner" className="!max-w-7xl !px-0">
-        <MarketingBreadcrumb
-          items={[...breadcrumbItems]}
-          className="mb-4 font-label text-[10px] uppercase tracking-[0.2em] text-secondary"
+        <MarketingPageHero
+          breadcrumb={
+            <MarketingBreadcrumb
+              items={[...breadcrumbItems]}
+              className="font-label text-[10px] uppercase tracking-[0.2em] text-secondary"
+            />
+          }
+          eyebrow="Catalogue"
+          title={preset.heroTitle}
+          titleSize="lg"
+          description={preset.heroDescription}
+          className="!py-0"
         />
-
-        <LabelCaps className="text-primary">Catalogue</LabelCaps>
-        <DisplayHeading as="h1" size="lg" className="mt-3 font-semibold tracking-tight md:text-5xl">
-          {preset.heroTitle}
-        </DisplayHeading>
-        <p className="mt-4 max-w-2xl font-body text-on-surface-variant">{preset.heroDescription}</p>
 
         <form
           method="get"

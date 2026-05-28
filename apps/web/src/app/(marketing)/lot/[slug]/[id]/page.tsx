@@ -1,4 +1,6 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
+import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
+import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
 import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
@@ -33,15 +35,23 @@ import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
+import {
+  catalogLotLinkParamsFromSearchParams,
+  lotCatalogBackHref,
+  lotCatalogBackLabel,
+} from "@/lib/marketing/catalog-links";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function ensureCanonicalLotSlug(slug: string, lot: { id: string; title: string }) {
@@ -56,8 +66,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return metadataForLot(auction);
 }
 
-export default async function ArtworkPage({ params }: PageProps) {
+export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const { id, slug } = await params;
+  const sp = await searchParams;
   const serverNow = Date.now();
   const reader = await getServerLotReader();
   const [auction, session, publicReader] = await Promise.all([
@@ -135,6 +146,9 @@ export default async function ArtworkPage({ params }: PageProps) {
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
   const parentSale = saleBundle ? { id: saleBundle.sale.id, title: saleBundle.sale.title } : null;
+  const catalogLinkParams = catalogLotLinkParamsFromSearchParams(sp);
+  const catalogBackHref = lotCatalogBackHref(sp, parentSale);
+  const catalogBackLabel = lotCatalogBackLabel(sp, parentSale);
   const saleLots = saleBundle?.lots ?? null;
   const sellerName = seller?.name ?? "Private seller";
   const shareUrl = `${getSiteUrl()}${lotPath(auction)}`;
@@ -147,8 +161,13 @@ export default async function ArtworkPage({ params }: PageProps) {
     initialHistory,
     documents: lotDocuments,
   });
-  const rail = mapSiblingsToRailVM(auction, parentSale, saleLots, relatedRaw, (l) =>
-    l.sellerId === auction.sellerId ? sellerName : "Seller",
+  const rail = mapSiblingsToRailVM(
+    auction,
+    parentSale,
+    saleLots,
+    relatedRaw,
+    (l) => (l.sellerId === auction.sellerId ? sellerName : "Seller"),
+    catalogLinkParams,
   );
 
   const crumbs = breadcrumbJsonLd(
@@ -179,8 +198,11 @@ export default async function ArtworkPage({ params }: PageProps) {
   const kycApprovedForCr = session?.kycStatus === "approved";
   const kycFeedbackForCr = kycApprovedForCr ? null : (kycSummary?.feedback ?? null);
 
-  const queueVMs = mapSaleLotsToQueueVMs(auction, saleLots, (l) =>
-    l.sellerId === auction.sellerId ? sellerName : "Seller",
+  const queueVMs = mapSaleLotsToQueueVMs(
+    auction,
+    saleLots,
+    (l) => (l.sellerId === auction.sellerId ? sellerName : "Seller"),
+    catalogLinkParams,
   );
 
   const sessionHeaderVM = mapAuctionSessionHeaderVM({
@@ -286,6 +308,10 @@ export default async function ArtworkPage({ params }: PageProps) {
 
   return (
     <main id="main-content" className="pt-[calc(var(--header-height)+8px)]">
+      <SetMarketingHeaderTitle title={auction.title} />
+      <div className={cn(MARKETING_PAGE_SHELL, "pb-2 md:hidden")}>
+        <MarketingMobileBackLink href={catalogBackHref} label={catalogBackLabel} />
+      </div>
       <ViewItemTracker
         lotId={auction.id}
         title={auction.title}

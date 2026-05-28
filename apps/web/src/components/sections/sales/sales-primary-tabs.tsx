@@ -1,33 +1,28 @@
 "use client";
 
 import {
-  type CalendarPrimaryTab,
   type CalendarSalesUrlState,
   calendarSalesHrefFromState,
+  getCalendarPrimaryTabDefinitions,
 } from "@/lib/marketing/sales-calendar-params";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
-const TABS: { id: CalendarPrimaryTab; label: string }[] = [
-  { id: "upcoming", label: "Upcoming" },
-  { id: "live", label: "Live Now" },
-  { id: "results", label: "Auction Results" },
-  { id: "newLots", label: "New Lots" },
-  { id: "privateSales", label: "Private Sales" },
-];
-
 type Props = {
   state: CalendarSalesUrlState;
+  hasLiveSales?: boolean;
 };
 
-export function SalesPrimaryTabs({ state }: Props) {
+export function SalesPrimaryTabs({ state, hasLiveSales = false }: Props) {
+  const tabs = getCalendarPrimaryTabDefinitions(hasLiveSales);
+
   return (
     <div className="w-full overflow-x-auto scroll-pl-4 scroll-pr-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <nav
         aria-label="Calendar sections"
         className="inline-flex min-w-full items-start gap-5 border-b border-outline-variant pb-0 sm:gap-8 lg:min-w-0 lg:gap-12"
       >
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const isActive = state.tab === t.id;
           const href = calendarSalesHrefFromState(state, { tab: t.id });
           return (

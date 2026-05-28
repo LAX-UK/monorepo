@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import { cn } from "@auction/ui";
@@ -24,6 +25,7 @@ const triggerClass = cn(
   "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg",
 );
 
+/** Desktop quick filters for delivery, category, and location (toolbar strip). */
 export function SalesFilterChips({ state, categories }: Props) {
   const categoryLabel = state.categoryId
     ? (categories.find((c) => c.id === state.categoryId)?.name ?? "Category")
@@ -40,69 +42,83 @@ export function SalesFilterChips({ state, categories }: Props) {
     state.location === "all" ? "Location" : state.location === "online" ? "Online" : state.location;
 
   return (
-    <div className="w-full overflow-x-auto snap-x snap-mandatory scroll-pl-1 scroll-pr-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:overflow-visible">
-      <div className="inline-flex min-w-full flex-nowrap items-center gap-2 border-b border-outline-variant pb-2 md:flex-wrap md:gap-3 lg:min-w-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger type="button" className={triggerClass}>
-            {deliveryLabel}
-            <ChevronDown className="size-5 shrink-0 opacity-90" aria-hidden />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-44">
-            <DropdownMenuItem asChild>
-              <Link href={calendarSalesHrefFromState(state, { deliveryMode: "all" })}>
-                All types
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={calendarSalesHrefFromState(state, { deliveryMode: "online" })}>
-                Online
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={calendarSalesHrefFromState(state, { deliveryMode: "onsite" })}>Live</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <MarketingChipStrip aria-label="Quick filters">
+      <DropdownMenu>
+        <DropdownMenuTrigger type="button" className={triggerClass}>
+          {deliveryLabel}
+          <ChevronDown className="size-5 shrink-0 opacity-90" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-44">
+          <DropdownMenuItem asChild>
+            <Link
+              href={calendarSalesHrefFromState(state, { deliveryMode: "all", page: undefined })}
+            >
+              All types
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              href={calendarSalesHrefFromState(state, { deliveryMode: "online", page: undefined })}
+            >
+              Online
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              href={calendarSalesHrefFromState(state, { deliveryMode: "onsite", page: undefined })}
+            >
+              Live
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger type="button" className={triggerClass}>
-            {categoryLabel}
-            <ChevronDown className="size-5 shrink-0 opacity-90" aria-hidden />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-48 max-h-72 overflow-y-auto">
-            <DropdownMenuItem asChild>
-              <Link href={calendarSalesHrefFromState(state, { categoryId: undefined })}>
-                All categories
+      <DropdownMenu>
+        <DropdownMenuTrigger type="button" className={triggerClass}>
+          {categoryLabel}
+          <ChevronDown className="size-5 shrink-0 opacity-90" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-48 max-h-72 overflow-y-auto">
+          <DropdownMenuItem asChild>
+            <Link
+              href={calendarSalesHrefFromState(state, { categoryId: undefined, page: undefined })}
+            >
+              All categories
+            </Link>
+          </DropdownMenuItem>
+          {categories.map((c) => (
+            <DropdownMenuItem key={c.id} asChild>
+              <Link href={calendarSalesHrefFromState(state, { categoryId: c.id, page: undefined })}>
+                {c.name}
               </Link>
             </DropdownMenuItem>
-            {categories.map((c) => (
-              <DropdownMenuItem key={c.id} asChild>
-                <Link href={calendarSalesHrefFromState(state, { categoryId: c.id })}>{c.name}</Link>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger type="button" className={triggerClass}>
-            {locationLabel}
-            <ChevronDown className="size-5 shrink-0 opacity-90" aria-hidden />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-44">
-            <DropdownMenuItem asChild>
-              <Link href={calendarSalesHrefFromState(state, { location: "all" })}>
-                All locations
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={calendarSalesHrefFromState(state, { location: "online" })}>Online</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={calendarSalesHrefFromState(state, { location: "london" })}>London</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger type="button" className={triggerClass}>
+          {locationLabel}
+          <ChevronDown className="size-5 shrink-0 opacity-90" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-44">
+          <DropdownMenuItem asChild>
+            <Link href={calendarSalesHrefFromState(state, { location: "all", page: undefined })}>
+              All locations
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={calendarSalesHrefFromState(state, { location: "online", page: undefined })}>
+              Online
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={calendarSalesHrefFromState(state, { location: "london", page: undefined })}>
+              London
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </MarketingChipStrip>
   );
 }

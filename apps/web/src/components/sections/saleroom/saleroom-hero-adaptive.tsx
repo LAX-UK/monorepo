@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import {
   AdaptiveMediaFrame,
@@ -19,9 +20,19 @@ type Props = {
   toolbar: ReactNode;
   actions: ReactNode;
   isAuthenticated?: boolean;
+  /** Mobile-only link back to the sales calendar. */
+  backHref?: string;
+  backLabel?: string;
 };
 
-export function SaleroomHeroAdaptive({ hero, toolbar, actions, isAuthenticated = false }: Props) {
+export function SaleroomHeroAdaptive({
+  hero,
+  toolbar,
+  actions,
+  isAuthenticated = false,
+  backHref,
+  backLabel = "Back to calendar",
+}: Props) {
   const statusLabel = hero.isLive ? "Auction in progress" : (hero.statusBadge?.label ?? "Auction");
   const liveTrailing =
     hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0
@@ -63,6 +74,16 @@ export function SaleroomHeroAdaptive({ hero, toolbar, actions, isAuthenticated =
 
         <div className="relative z-[1] mx-auto flex min-h-[min(60vh,520px)] max-w-[var(--container-max,1440px)] flex-col justify-end px-6 pb-12 pt-[calc(var(--header-height)+2rem)] md:px-10 md:pb-14 lg:px-12">
           <div className="max-w-[760px]" data-overlay-content-block>
+            {backHref ? (
+              <div className="fade-up mb-4 md:hidden">
+                <MarketingMobileBackLink
+                  href={backHref}
+                  label={backLabel}
+                  variant="overlay"
+                  className="!block"
+                />
+              </div>
+            ) : null}
             <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.22em]">
               {hero.isLive ? <LiveDot className="live-dot-pulse h-2 w-2" /> : null}
               <OverlayToneText>{statusLabel}</OverlayToneText>

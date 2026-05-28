@@ -1,13 +1,20 @@
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { cn } from "@auction/ui";
+
 export default function ArtistLoading() {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[var(--container-max,1440px)] bg-surface px-6 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-16"
+      className={cn(
+        "bg-surface pb-[var(--page-bottom-padding)]",
+        MARKETING_CATALOG_PT,
+        MARKETING_PAGE_SHELL,
+      )}
       aria-busy="true"
       aria-label="Loading artist"
     >
       <div className="animate-pulse space-y-10">
-        <div className="h-4 w-72 rounded bg-surface-container-high" />
+        <div className="h-4 w-40 rounded bg-surface-container-high md:hidden" />
         <div className="grid grid-cols-1 gap-8 md:grid-cols-[5fr_7fr]">
           <div className="aspect-[4/5] w-full rounded bg-surface-container-high" />
           <div className="space-y-4">

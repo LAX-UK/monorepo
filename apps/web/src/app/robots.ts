@@ -1,9 +1,10 @@
+import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
   const base = getSiteUrl();
-  return {
+  const rules: MetadataRoute.Robots = {
     rules: [
       {
         userAgent: "*",
@@ -11,7 +12,12 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/dashboard", "/dashboard/", "/admin", "/admin/", "/api/", "/api"],
       },
     ],
-    sitemap: `${base}/sitemap.xml`,
-    host: base,
   };
+
+  if (isIndexingAllowedAtBuildTime()) {
+    rules.sitemap = `${base}/sitemap.xml`;
+    rules.host = base;
+  }
+
+  return rules;
 }

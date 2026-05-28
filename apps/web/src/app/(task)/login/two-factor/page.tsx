@@ -11,10 +11,6 @@ const description =
 
 export const metadata: Metadata = metadataForPrivate("Two-step verification", description);
 
-function TwoFactorFallback() {
-  return <div className="h-48 animate-pulse rounded-md bg-surface-container-high" aria-hidden />;
-}
-
 export default async function LoginTwoFactorPage({
   searchParams,
 }: {
@@ -28,7 +24,7 @@ export default async function LoginTwoFactorPage({
   return (
     <main id="main-content">
       <AuthLayout chrome="task" title="Two-step verification" description={description}>
-        <Suspense fallback={<TwoFactorFallback />}>
+        <Suspense fallback={null}>
           <TwoFactorVerifyForm nextHref={next} />
         </Suspense>
       </AuthLayout>

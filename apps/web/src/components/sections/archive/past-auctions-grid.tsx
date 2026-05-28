@@ -1,43 +1,53 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
+import { archiveClearFiltersHref } from "@/lib/archive/build-archive-params";
+import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 export type { ArchiveLotVM } from "./catalog-archive-views";
 
 /** Empty state when no archive rows match filters. */
-export function PastAuctionsEmpty() {
+export function PastAuctionsEmpty({
+  hasActiveFilters = false,
+  layoutView = "grid",
+}: {
+  hasActiveFilters?: boolean;
+  layoutView?: CatalogLayoutView;
+}) {
+  const clearHref = archiveClearFiltersHref(layoutView === "list" ? "list" : undefined);
+
   return (
     <MarketingEmptyState
       variant="panel"
-      title="No past auctions match these filters."
+      context={hasActiveFilters ? "filtered" : "noResults"}
+      title={
+        hasActiveFilters ? "No past auctions match these filters." : "No past auction results yet."
+      }
       description={
-        <p className="mb-6 font-body text-on-surface-variant">
-          Try adjusting filters or browse the full catalogue.
-        </p>
+        hasActiveFilters
+          ? "Try adjusting filters or browse the full catalogue."
+          : "Check back after upcoming sales close, or browse live and upcoming lots."
       }
       action={
-        <>
-          <Link
-            href="/search"
-            className="inline-flex items-center justify-center border-b-2 border-primary pb-1 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary transition-opacity hover:opacity-80"
-          >
-            Browse all lots
-          </Link>
-          <Link
-            href="/archive"
-            className="inline-flex items-center justify-center border-b-2 border-primary pb-1 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary transition-opacity hover:opacity-80"
-          >
-            View full archive
-          </Link>
-          <span className="hidden text-on-surface-variant sm:inline" aria-hidden>
-            ·
-          </span>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant underline-offset-4 transition-colors hover:text-primary hover:underline"
-          >
-            Back to upcoming auctions
-          </Link>
-        </>
+        hasActiveFilters ? (
+          <>
+            <Button variant="cta" asChild>
+              <Link href={clearHref}>Clear filters</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/search">Browse all lots</Link>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="cta" asChild>
+              <Link href="/search">Browse all lots</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/sales">View upcoming sales</Link>
+            </Button>
+          </>
+        )
       }
     />
   );

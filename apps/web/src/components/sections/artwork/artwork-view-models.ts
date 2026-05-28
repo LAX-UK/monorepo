@@ -1,6 +1,8 @@
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import type { PublicUser } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
+import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
+import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Bid, Lot, LotMarketingDetails } from "@auction/types";
 import type { ReactNode } from "react";
@@ -74,12 +76,17 @@ function sortSaleLotsForNav(lots: Lot[]): Lot[] {
   });
 }
 
+function resolveLotHref(lot: Lot, catalogLinkParams?: CatalogLinkParams): string {
+  return catalogLinkParams ? lotCatalogHref(lot, catalogLinkParams) : lotPath(lot);
+}
+
 /** Breadcrumb + prev/next within the current sale (when `saleId` and lots are known).
  */
 export function mapLotToHeroVM(
   lot: Lot,
   parentSale: { id: string; title: string } | null,
   saleLots: Lot[] | null,
+  catalogLinkParams?: CatalogLinkParams,
 ): LotHeroVM {
   const firstSegmentHref = "/sales";
   const firstSegmentLabel = "Auctions";
@@ -115,8 +122,8 @@ export function mapLotToHeroVM(
       lot.lotNumber != null
         ? `LOT ${lot.lotNumber}`
         : `LOT ${lot.id.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
-    prevHref: prev ? lotPath(prev) : null,
-    nextHref: next ? lotPath(next) : null,
+    prevHref: prev ? resolveLotHref(prev, catalogLinkParams) : null,
+    nextHref: next ? resolveLotHref(next, catalogLinkParams) : null,
     positionLabel,
     homeSegment,
   };
@@ -234,11 +241,15 @@ export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): Ac
   ];
 }
 
-function lotToRailCard(lot: Lot, artistName: string): LotRailCardVM {
+function lotToRailCard(
+  lot: Lot,
+  artistName: string,
+  catalogLinkParams?: CatalogLinkParams,
+): LotRailCardVM {
   const est = lot.marketingDetails.estimate;
   return {
     id: lot.id,
-    href: lotPath(lot),
+    href: resolveLotHref(lot, catalogLinkParams),
     imageUrl: lot.images[0] ?? null,
     lotNumber: lot.lotNumber,
     title: lot.title,
@@ -262,6 +273,7 @@ export function mapSiblingsToRailVM(
   saleLots: Lot[] | null,
   sellerRelated: Lot[],
   resolveSellerName: (l: Lot) => string,
+  catalogLinkParams?: CatalogLinkParams,
 ): LotRelatedRailVM {
   const saleSiblings = (saleLots ?? []).filter((l) => l.id !== lot.id);
   const useSale =
@@ -279,7 +291,7 @@ export function mapSiblingsToRailVM(
     mode: useSale ? "sale" : "seller",
     heading: useSale && parentSale ? `More from ${parentSale.title}` : "More from this seller",
     viewAuctionHref: useSale && parentSale ? salePath(parentSale) : null,
-    cards: source.map((l) => lotToRailCard(l, resolveSellerName(l))),
+    cards: source.map((l) => lotToRailCard(l, resolveSellerName(l), catalogLinkParams)),
   };
 }
 
@@ -357,11 +369,12 @@ function lotToQueueCardVM(
   lot: Lot,
   artistName: string,
   flags: { isCurrentLot: boolean; isUpNext: boolean },
+  catalogLinkParams?: CatalogLinkParams,
 ): LotQueueCardVM {
   const est = lot.marketingDetails.estimate;
   return {
     id: lot.id,
-    href: lotPath(lot),
+    href: resolveLotHref(lot, catalogLinkParams),
     lotNumber: lot.lotNumber,
     title: lot.title,
     artistName,
@@ -385,38 +398,64 @@ export function mapSaleLotsToQueueVMs(
   currentLot: Lot,
   saleLots: Lot[] | null,
   resolveArtistName: (l: Lot) => string,
+  catalogLinkParams?: CatalogLinkParams,
 ): { current: LotQueueCardVM; upNext: LotQueueCardVM | null; queue: LotQueueCardVM[] } {
   const ordered = sortSaleLotsForNav(saleLots?.filter((l) => l.saleId === currentLot.saleId) ?? []);
   const idx = ordered.findIndex((l) => l.id === currentLot.id);
   if (idx < 0) {
-    const solo = lotToQueueCardVM(currentLot, resolveArtistName(currentLot), {
-      isCurrentLot: true,
-      isUpNext: false,
-    });
+    const solo = lotToQueueCardVM(
+      currentLot,
+      resolveArtistName(currentLot),
+      {
+        isCurrentLot: true,
+        isUpNext: false,
+      },
+      catalogLinkParams,
+    );
     return { current: solo, upNext: null, queue: [] };
   }
   const cur = ordered[idx];
   if (!cur) {
-    const solo = lotToQueueCardVM(currentLot, resolveArtistName(currentLot), {
-      isCurrentLot: true,
-      isUpNext: false,
-    });
+    const solo = lotToQueueCardVM(
+      currentLot,
+      resolveArtistName(currentLot),
+      {
+        isCurrentLot: true,
+        isUpNext: false,
+      },
+      catalogLinkParams,
+    );
     return { current: solo, upNext: null, queue: [] };
   }
-  const current = lotToQueueCardVM(cur, resolveArtistName(cur), {
-    isCurrentLot: true,
-    isUpNext: false,
-  });
+  const current = lotToQueueCardVM(
+    cur,
+    resolveArtistName(cur),
+    {
+      isCurrentLot: true,
+      isUpNext: false,
+    },
+    catalogLinkParams,
+  );
   const afterCurrent = ordered.slice(idx + 1);
   const upcoming = afterCurrent.filter((l) => isQueueEligibleStatus(l.status));
   const nextLot = upcoming[0] ?? null;
   const upNext = nextLot
-    ? lotToQueueCardVM(nextLot, resolveArtistName(nextLot), { isCurrentLot: false, isUpNext: true })
+    ? lotToQueueCardVM(
+        nextLot,
+        resolveArtistName(nextLot),
+        { isCurrentLot: false, isUpNext: true },
+        catalogLinkParams,
+      )
     : null;
   const queue = upcoming
     .slice(1)
     .map((l) =>
-      lotToQueueCardVM(l, resolveArtistName(l), { isCurrentLot: false, isUpNext: false }),
+      lotToQueueCardVM(
+        l,
+        resolveArtistName(l),
+        { isCurrentLot: false, isUpNext: false },
+        catalogLinkParams,
+      ),
     );
   return { current, upNext, queue };
 }

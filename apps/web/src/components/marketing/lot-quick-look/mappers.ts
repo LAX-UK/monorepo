@@ -3,7 +3,8 @@ import type { EditorsPickLotCardVM, LotCardVM } from "@/components/sections/home
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
-import { lotPath } from "@/lib/seo/url";
+import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
+import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import type { Lot } from "@auction/types";
 import type { LotQuickLookVM } from "./types";
 
@@ -68,7 +69,10 @@ export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
   };
 }
 
-export function lotQuickLookFromLot(lot: Lot): LotQuickLookVM {
+export function lotQuickLookFromLot(
+  lot: Lot,
+  catalogLinkParams?: CatalogLinkParams,
+): LotQuickLookVM {
   const price = lotPriceDisplay(lot);
   const est = lotEstimateLine(lot);
   const startTime =
@@ -77,7 +81,7 @@ export function lotQuickLookFromLot(lot: Lot): LotQuickLookVM {
   const subtitle = lot.medium?.trim() || "Contemporary";
   return {
     id: lot.id,
-    href: lotPath(lot),
+    href: lotCatalogHref(lot, catalogLinkParams),
     title: lot.title,
     subtitle,
     imageUrl: lot.images[0] ?? null,
