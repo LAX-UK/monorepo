@@ -4,11 +4,13 @@ import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import { SubmissionsMobileList } from "@/components/dashboard/list/submissions-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { SubmissionsListToolbar } from "@/components/dashboard/submissions/submissions-list-toolbar";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
+  SUBMISSIONS_BASE_PATH,
   buildSubmissionsHref,
   hasSubmissionsActiveFilters,
   parseSubmissionsParams,
@@ -16,8 +18,10 @@ import {
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
+import { Surface } from "@auction/ui/components/surface";
 import type { SubmissionListFilterValues } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
+import { FileStack } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
@@ -161,23 +165,25 @@ export function SubmissionsBoard({
 
   return (
     <div className="space-y-6">
-      <SectionTabsNav
-        ariaLabel="Submission status"
-        sticky={false}
-        className="rounded-xl border border-border-hairline bg-surface-container-lowest px-3 max-md:[&_nav]:overflow-x-auto max-md:[&_nav]:flex-nowrap"
-        items={statusTabs.map((status) => ({
-          href: statusHref(status, filters.q),
-          label: tabLabel(status, statusCounts),
-          isActive: initialStatus === status,
-        }))}
-      />
+      <Surface variant="inset" padding="sm">
+        <SectionTabsNav
+          variant="underline"
+          ariaLabel="Submission status"
+          sticky={false}
+          items={statusTabs.map((status) => ({
+            href: statusHref(status, filters.q),
+            label: tabLabel(status, statusCounts),
+            isActive: initialStatus === status,
+          }))}
+        />
+      </Surface>
 
       <SubmissionsListToolbar filters={filters} />
 
       <DashboardFilterResultsAnnouncer count={rows.length} entityLabel="submissions" />
 
       {rows.length === 0 ? (
-        fetchedCount > 0 && hasSubmissionsActiveFilters(filters) ? (
+        fetchedCount > 0 && filters.q ? (
           <FilterEmptyState
             segment="dashboard"
             entity="submissions"
@@ -185,21 +191,16 @@ export function SubmissionsBoard({
             description="Nothing in the current list matches that title. Try another phrase or clear the title filter."
             onClearFilters={clearTitleSearch}
           />
-        ) : initialStatus !== "all" ? (
-          <DashboardEmptyState
-            title="Nothing in this status"
-            description="Try a different status or start a new submission for specialist review."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" variant="secondaryOutline" asChild>
-                  <Link href={DASHBOARD_ROUTES.submissions}>Show all</Link>
-                </Button>
-                <StartSubmissionAction />
-              </div>
-            }
+        ) : hasSubmissionsActiveFilters(filters) ? (
+          <FilterEmptyState
+            segment="dashboard"
+            entity="submissions"
+            clearFiltersHref={SUBMISSIONS_BASE_PATH}
           />
         ) : (
           <DashboardEmptyState
+            variant="hero"
+            icon={<FileStack aria-hidden />}
             title={DASHBOARD_EMPTY.submissions.title}
             description={DASHBOARD_EMPTY.submissions.description}
             action={<StartSubmissionAction />}
@@ -208,9 +209,9 @@ export function SubmissionsBoard({
       ) : (
         <>
           <SubmissionsMobileList rows={rows} />
-          <div className="hidden overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm lg:block">
+          <DashboardDesktopList>
             <DataTable columns={columns} data={rows} density="compact" />
-          </div>
+          </DashboardDesktopList>
         </>
       )}
     </div>

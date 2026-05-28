@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export type DashboardOverviewSlots = {
-  header: ReactNode;
+  header?: ReactNode;
   kpis: ReactNode;
   activity: ReactNode;
   watchlist: ReactNode;

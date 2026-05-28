@@ -10,6 +10,8 @@ import {
   DashboardListToolbar,
   DashboardSearchField,
   DashboardSortSelect,
+  YearFilterSection,
+  useFilterSheetDraft,
 } from "@/components/dashboard/filters";
 import {
   PAYMENTS_BASE_PATH,
@@ -24,7 +26,17 @@ import {
 import type { PaymentsSort } from "@/lib/data/view-models/dashboard-payments.vm";
 import { FilterChip } from "@auction/ui";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+type PaymentsDraft = {
+  year: number | null;
+  sort: PaymentsSort;
+};
+
+const PAYMENTS_DRAFT_DEFAULTS: PaymentsDraft = {
+  year: null,
+  sort: "date-desc",
+};
 
 type Props = {
   filters: PaymentsFilters;
@@ -35,19 +47,16 @@ export function PaymentsListToolbar({ filters, years }: Props) {
   const router = useRouter();
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [desktopSheetOpen, setDesktopSheetOpen] = useState(false);
-  const [draftYear, setDraftYear] = useState<number | null>(filters.year);
-  const [draftSort, setDraftSort] = useState<PaymentsSort>(filters.sort);
-
-  useEffect(() => {
-    if (!mobileSheetOpen) {
-      setDraftYear(filters.year);
-      setDraftSort(filters.sort);
-    }
-  }, [filters.sort, filters.year, mobileSheetOpen]);
-
-  useEffect(() => {
-    if (!desktopSheetOpen) setDraftYear(filters.year);
-  }, [desktopSheetOpen, filters.year]);
+  const fromFilters = useCallback(
+    (): PaymentsDraft => ({ year: filters.year, sort: filters.sort }),
+    [filters.sort, filters.year],
+  );
+  const { draft, setDraft, resetDraft } = useFilterSheetDraft({
+    mobileOpen: mobileSheetOpen,
+    desktopOpen: desktopSheetOpen,
+    fromFilters,
+    defaultDraft: PAYMENTS_DRAFT_DEFAULTS,
+  });
 
   const activeFilters = useMemo(() => getPaymentsActiveFilters(filters), [filters]);
   const mobileSheetCount = countPaymentsMobileSheetFilters(filters);
@@ -71,41 +80,21 @@ export function PaymentsListToolbar({ filters, years }: Props) {
   );
 
   const applyMobileDraft = useCallback(() => {
-    router.replace(buildPaymentsHref(filters, { sort: draftSort, year: draftYear }), {
+    router.replace(buildPaymentsHref(filters, { sort: draft.sort, year: draft.year }), {
       scroll: false,
     });
     setMobileSheetOpen(false);
-  }, [draftSort, draftYear, filters, router]);
-
-  const resetMobileDraft = useCallback(() => {
-    setDraftSort("date-desc");
-    setDraftYear(null);
-  }, []);
+  }, [draft.sort, draft.year, filters, router]);
 
   const applyDesktopYearDraft = useCallback(() => {
-    router.replace(buildPaymentsHref(filters, { year: draftYear }), { scroll: false });
+    router.replace(buildPaymentsHref(filters, { year: draft.year }), { scroll: false });
     setDesktopSheetOpen(false);
-  }, [draftYear, filters, router]);
-
-  const resetDesktopYearDraft = useCallback(() => {
-    setDraftYear(null);
-  }, []);
+  }, [draft.year, filters, router]);
 
   const statusFilterRow = <DashboardFilterChipRow label="Status" items={statusItems} />;
 
   const yearChipSection = (year: number | null, onYear: (y: number | null) => void) => (
-    <DashboardFilterSection label="Year">
-      <div className="flex flex-wrap gap-2">
-        <FilterChip pressed={year == null} onClick={() => onYear(null)}>
-          All years
-        </FilterChip>
-        {years.map((y) => (
-          <FilterChip key={y} pressed={year === y} onClick={() => onYear(y)}>
-            {y}
-          </FilterChip>
-        ))}
-      </div>
-    </DashboardFilterSection>
+    <YearFilterSection years={years} selectedYear={year} onSelectYear={onYear} />
   );
 
   const mobileFilterSheet = (
@@ -114,7 +103,7 @@ export function PaymentsListToolbar({ filters, years }: Props) {
       onOpenChange={setMobileSheetOpen}
       title="Payment filters"
       onApply={applyMobileDraft}
-      onReset={resetMobileDraft}
+      onReset={resetDraft}
       trigger={<DashboardFilterTrigger activeCount={mobileSheetCount} />}
     >
       <div className="space-y-6">
@@ -124,15 +113,17 @@ export function PaymentsListToolbar({ filters, years }: Props) {
             {PAYMENTS_SORT_OPTIONS.map((opt) => (
               <FilterChip
                 key={opt.value}
-                pressed={draftSort === opt.value}
-                onClick={() => setDraftSort(opt.value)}
+                pressed={draft.sort === opt.value}
+                onClick={() => setDraft((current) => ({ ...current, sort: opt.value }))}
               >
                 {opt.label}
               </FilterChip>
             ))}
           </div>
         </DashboardFilterSection>
-        {years.length > 0 ? yearChipSection(draftYear, setDraftYear) : null}
+        {years.length > 0
+          ? yearChipSection(draft.year, (year) => setDraft((c) => ({ ...c, year })))
+          : null}
       </div>
     </DashboardFilterSheet>
   );
@@ -144,10 +135,10 @@ export function PaymentsListToolbar({ filters, years }: Props) {
         onOpenChange={setDesktopSheetOpen}
         title="Payment filters"
         onApply={applyDesktopYearDraft}
-        onReset={resetDesktopYearDraft}
+        onReset={resetDraft}
         trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
       >
-        {yearChipSection(draftYear, setDraftYear)}
+        {yearChipSection(draft.year, (year) => setDraft((c) => ({ ...c, year })))}
       </DashboardFilterSheet>
     ) : null;
 

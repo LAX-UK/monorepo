@@ -2,6 +2,8 @@ import { DashboardOverviewView } from "@/components/dashboard/dashboard-overview
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { OrgSubmittedAlert } from "@/components/dashboard/org-submitted-alert";
+import { buildOverviewDescription } from "@/components/dashboard/overview/overview-presenters";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import {
@@ -22,10 +24,13 @@ import { formatMoney } from "@/lib/format-currency";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import {
   CLIENT_WORKSPACE_COOKIE,
+  clientWorkspaceOverviewMeta,
   parseClientWorkspaceMode,
 } from "@/lib/workspace/client-workspace-mode";
 import type { ItemSubmission, Lot, PortfolioRow, UserNotification } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { Suspense } from "react";
 
 function takeSettledSlice<T>(
@@ -206,6 +211,21 @@ async function DashboardHomeContent({
       {sessionsFailure && userR.status !== "rejected" ? (
         <DashboardSliceErrorAlert failure={sessionsFailure} />
       ) : null}
+      <DashboardPageHeader
+        meta={clientWorkspaceOverviewMeta(clientWorkspaceMode)}
+        titleScale="display"
+        title={`Welcome back, ${vm.firstName}`}
+        hideTitleOnMobile
+        hideDescriptionOnMobile
+        description={buildOverviewDescription(vm, clientWorkspaceMode)}
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={vm.primaryCta?.href ?? "/search"}>
+              {vm.primaryCta?.label ?? "Browse auctions"}
+            </Link>
+          </Button>
+        }
+      />
       <DashboardOverviewView
         vm={vm}
         user={
