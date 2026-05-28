@@ -1,6 +1,9 @@
+import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketing-catalog-toolbar-skeleton";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { Skeleton } from "@auction/ui";
+import { cn } from "@auction/ui";
 
 const CHIP_KEYS = ["chip-a", "chip-b", "chip-c", "chip-d", "chip-e"];
 const RAIL_KEYS = ["rail-a", "rail-b", "rail-c", "rail-d"];
@@ -8,9 +11,9 @@ const RAIL_KEYS = ["rail-a", "rail-b", "rail-c", "rail-d"];
 export default async function PublicArtistsDirectoryLoading() {
   const view = await readSkeletonView("artists", "grid");
   return (
-    <main id="main-content" className="pt-[var(--header-height)]">
-      <section className="border-b border-border-hairline bg-surface-container-lowest/40 px-6 py-14 md:px-12">
-        <div className="mx-auto max-w-7xl">
+    <main id="main-content" className={cn("overflow-x-clip", MARKETING_CATALOG_PT)}>
+      <section className="border-b border-border-hairline bg-surface-container-lowest/40 py-14">
+        <div className={MARKETING_PAGE_SHELL}>
           <Skeleton className="h-3 w-40" />
           <Skeleton className="mt-3 h-10 w-72" />
           <Skeleton className="mt-4 h-4 w-2/3" />
@@ -22,15 +25,16 @@ export default async function PublicArtistsDirectoryLoading() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-6 py-12 md:px-12">
+      <section className={cn(MARKETING_PAGE_SHELL, "py-8 sm:py-12 md:py-12")}>
         <div className="grid gap-10 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
-          <div className="space-y-6">
+          <div className="hidden space-y-6 lg:block">
             <Skeleton className="h-3 w-24" />
             {RAIL_KEYS.map((k) => (
               <Skeleton key={k} className="h-7 w-full" />
             ))}
           </div>
           <div className="min-w-0">
+            <MarketingCatalogToolbarSkeleton showDesktopFilters={false} />
             <MarketingListSkeleton view={view} count={9} />
           </div>
         </div>

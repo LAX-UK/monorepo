@@ -4,6 +4,7 @@ import { MarketingEmptyState } from "@/components/marketing/marketing-empty-stat
 import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-sidebar";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
+import { ArtistDirectoryActiveFilters } from "@/components/sections/artists/artist-directory-active-filters";
 import { ArtistDirectoryFilters } from "@/components/sections/artists/artist-directory-filters";
 import { ArtistFiltersSheet } from "@/components/sections/artists/artist-filters-sheet";
 import { ArtistsDirectoryHero } from "@/components/sections/artists/artists-directory-hero";
@@ -20,6 +21,7 @@ import { artistDirectoryWithQuery, parseArtistDirectoryOffset } from "@/lib/arti
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { fetchPublicArtistBrowse } from "@/lib/data/http/artist.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -375,7 +377,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
     total > 0 ? `Show ${total} artist${total === 1 ? "" : "s"}` : "Show results";
 
   return (
-    <main id="main-content" className="overflow-x-clip pt-[var(--header-height)]">
+    <main id="main-content" className={cn("overflow-x-clip", MARKETING_CATALOG_PT)}>
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdScript(crumbsLd)}
       </script>
@@ -396,7 +398,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
         letterBar={letterBar}
       />
 
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 md:px-10 md:py-12">
+      <section className={`${MARKETING_PAGE_SHELL} py-8 sm:py-12 md:py-12`}>
         <link rel="canonical" href={canonicalUrl} />
 
         <div className="grid gap-10 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
@@ -467,6 +469,21 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               trailing={<CatalogViewSwitcher routeKey="artists" value={layoutView} />}
             />
 
+            <ArtistDirectoryActiveFilters
+              state={{
+                canonicalPath: preset.canonicalPath,
+                searchParams: sp,
+                layoutView,
+                ...(q ? { q } : {}),
+                ...(nationalityFromQuery && !nationalityIsLocked ? { nationalityFromQuery } : {}),
+                nationalityIsLocked,
+                ...(decadeFromQuery && !decadeIsLocked ? { decadeFromQuery } : {}),
+                decadeIsLocked,
+                hasUpcoming,
+                sort,
+              }}
+            />
+
             {rows.length === 0 ? (
               <MarketingEmptyState
                 variant="panel"
@@ -494,6 +511,11 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                 rows={rows}
                 watchSet={watchSet}
                 isAuthenticated={isAuthenticated}
+                profileLinkContext={{
+                  fromPath: preset.canonicalPath,
+                  searchParams: sp,
+                  layoutView,
+                }}
               />
             )}
 

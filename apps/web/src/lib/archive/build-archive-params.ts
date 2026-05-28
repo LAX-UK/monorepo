@@ -68,3 +68,119 @@ export function buildArchivePageQuery(
     categoryId,
   };
 }
+
+export type ArchiveActiveFilterChip = {
+  key: string;
+  label: string;
+  removeHref: string;
+};
+
+/** Recent years for archive year chips (matches filter bar). */
+export function buildArchiveYearRange(): number[] {
+  const current = new Date().getFullYear();
+  const start = Math.max(current - 12, 2000);
+  const years: number[] = [];
+  for (let y = current; y >= start; y -= 1) years.push(y);
+  return years;
+}
+
+export function archiveSortLabel(sortMode: ArchiveSortMode): string {
+  if (sortMode === "recent") return "Most recent";
+  if (sortMode === "artist") return "Artist name (A to Z)";
+  return "Hammer price (high to low)";
+}
+
+/** Count non-default filters for mobile “Filters (N)” badge. */
+export function countActiveArchiveFilters(
+  q: Pick<ArchivePageQuery, "endYear" | "categoryId" | "sortMode">,
+): number {
+  let n = 0;
+  if (q.endYear !== undefined) n += 1;
+  if (q.categoryId !== undefined) n += 1;
+  if (q.sortMode !== "hammer") n += 1;
+  return n;
+}
+
+/** Drop all facet filters; preserve view preference when present. */
+export function archiveClearFiltersHref(view?: "grid" | "list"): string {
+  if (view === "list") return "/archive?view=list";
+  return "/archive";
+}
+
+export type ArchiveQueryPatch = {
+  endYear?: number | null;
+  categoryId?: string | null;
+  sortMode?: ArchiveSortMode | null;
+  view?: "grid" | "list";
+};
+
+/** Merge archive facet updates into a shareable `/archive` URL. */
+export function buildArchiveHrefFromQuery(
+  current: Pick<ArchivePageQuery, "endYear" | "categoryId" | "sortMode">,
+  patch: ArchiveQueryPatch,
+  view?: "grid" | "list",
+): string {
+  const endYear =
+    patch.endYear !== undefined
+      ? patch.endYear === null
+        ? undefined
+        : patch.endYear
+      : current.endYear;
+  const categoryId =
+    patch.categoryId !== undefined
+      ? patch.categoryId === null
+        ? undefined
+        : patch.categoryId
+      : current.categoryId;
+  const sortMode =
+    patch.sortMode !== undefined
+      ? patch.sortMode === null || patch.sortMode === "hammer"
+        ? "hammer"
+        : patch.sortMode
+      : current.sortMode;
+
+  const q = new URLSearchParams();
+  if (endYear !== undefined) q.set("year", String(endYear));
+  if (categoryId !== undefined) q.set("categoryId", categoryId);
+  if (sortMode !== "hammer") q.set("sort", sortMode);
+  const resolvedView = patch.view ?? view;
+  if (resolvedView === "list") q.set("view", "list");
+  const qs = q.toString();
+  return qs ? `/archive?${qs}` : "/archive";
+}
+
+/** Removable active filter chips for the archive toolbar strip. */
+export function buildArchiveActiveFilterChips(
+  q: Pick<ArchivePageQuery, "endYear" | "categoryId" | "sortMode">,
+  categories: ReadonlyArray<{ id: string; name: string }>,
+  view?: "grid" | "list",
+): ArchiveActiveFilterChip[] {
+  const chips: ArchiveActiveFilterChip[] = [];
+
+  if (q.endYear !== undefined) {
+    chips.push({
+      key: "year",
+      label: String(q.endYear),
+      removeHref: buildArchiveHrefFromQuery(q, { endYear: null }, view),
+    });
+  }
+
+  if (q.categoryId !== undefined) {
+    const name = categories.find((c) => c.id === q.categoryId)?.name ?? "Medium";
+    chips.push({
+      key: "categoryId",
+      label: name,
+      removeHref: buildArchiveHrefFromQuery(q, { categoryId: null }, view),
+    });
+  }
+
+  if (q.sortMode !== "hammer") {
+    chips.push({
+      key: "sort",
+      label: archiveSortLabel(q.sortMode),
+      removeHref: buildArchiveHrefFromQuery(q, { sortMode: null }, view),
+    });
+  }
+
+  return chips;
+}

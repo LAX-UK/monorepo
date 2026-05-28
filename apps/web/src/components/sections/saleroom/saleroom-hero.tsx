@@ -7,6 +7,8 @@ type Props = {
   toolbar: ReactNode;
   actions: ReactNode;
   isAuthenticated?: boolean;
+  backHref?: string;
+  backLabel?: string;
 };
 
 export function SaleroomHero(props: Props) {

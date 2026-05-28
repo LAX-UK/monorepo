@@ -1,9 +1,13 @@
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { HomeSectionToolbar } from "@/components/marketing/home-section-toolbar";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
+import { catalogViewCarryParams, lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -46,13 +50,19 @@ function urgencySwitcherValue(v: CatalogLayoutView): CatalogLayoutView {
   return v === "list" ? "list" : "grid";
 }
 
-function UrgencySectionHeader({
-  variant,
-  switcherValue,
-}: {
-  variant: UrgencySectionVariant;
-  switcherValue: CatalogLayoutView;
-}) {
+function urgencyLotHref(item: LotCardVM, layoutView: CatalogLayoutView): string {
+  return lotCatalogHref(
+    { id: item.id, title: item.title },
+    catalogViewCarryParams(urgencySwitcherValue(layoutView)),
+  );
+}
+
+function urgencyCountLabel(count: number): string {
+  if (count === 1) return "1 lot";
+  return `${count} lots`;
+}
+
+function UrgencySectionHeader({ variant }: { variant: UrgencySectionVariant }) {
   const c = COPY[variant];
   return (
     <MarketingSectionHeader
@@ -67,22 +77,15 @@ function UrgencySectionHeader({
         </DisplayHeading>
       }
       action={
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <CatalogViewSwitcher
-            routeKey="home-urgency"
-            value={switcherValue}
-            supportedModes={["grid", "list"]}
-          />
-          <Button variant="chevron" asChild>
-            <Link href={c.viewAllHref} className="inline-flex items-center gap-[11px] py-[18px]">
-              <span className="text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface">
-                View all
-              </span>
-              <span className="sr-only"> {c.srAction}</span>
-              <ChevronRight className="size-5 shrink-0" aria-hidden />
-            </Link>
-          </Button>
-        </div>
+        <Button variant="chevron" asChild>
+          <Link href={c.viewAllHref} className="inline-flex items-center gap-[11px] py-[18px]">
+            <span className="text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface">
+              View all
+            </span>
+            <span className="sr-only"> {c.srAction}</span>
+            <ChevronRight className="size-5 shrink-0" aria-hidden />
+          </Link>
+        </Button>
       }
     />
   );
@@ -106,12 +109,9 @@ export function LaxUrgencySection({
 
   if (items.length === 0) {
     return (
-      <section
-        aria-labelledby={headingId}
-        className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-10 md:px-10 lg:px-14"
-      >
+      <section aria-labelledby={headingId} className={cn("cv-auto", MARKETING_PAGE_SHELL, "pt-10")}>
         <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
-          <UrgencySectionHeader variant={variant} switcherValue={switcherValue} />
+          <UrgencySectionHeader variant={variant} />
           <MarketingEmptyState
             variant="marketing"
             title={`No ${COPY[variant].heading.toLowerCase()} right now`}
@@ -128,19 +128,26 @@ export function LaxUrgencySection({
   }
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-10 md:px-10 lg:px-14"
-    >
-      <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
-        <UrgencySectionHeader variant={variant} switcherValue={switcherValue} />
+    <section aria-labelledby={headingId} className={cn("cv-auto", MARKETING_PAGE_SHELL, "pt-10")}>
+      <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
+        <UrgencySectionHeader variant={variant} />
+        <HomeSectionToolbar
+          countLabel={urgencyCountLabel(items.length)}
+          trailing={
+            <CatalogViewSwitcher
+              routeKey="home-urgency"
+              value={switcherValue}
+              supportedModes={["grid", "list"]}
+            />
+          }
+        />
         {isList ? (
           <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:gap-4">
             {items.map((item) => (
               <li key={item.id}>
                 <UrgencyLotRow
                   variant={variant}
-                  item={item}
+                  item={{ ...item, href: urgencyLotHref(item, layoutView) }}
                   isAuthenticated={isAuthenticated}
                   watchedLotIds={watchedLotIds}
                   loginNextPath={loginNextPath}
@@ -153,7 +160,7 @@ export function LaxUrgencySection({
             {items.map((item, index) => (
               <UrgencyLotCard
                 key={item.id}
-                item={item}
+                item={{ ...item, href: urgencyLotHref(item, layoutView) }}
                 index={index}
                 isAuthenticated={isAuthenticated}
                 watchedLotIds={watchedLotIds}

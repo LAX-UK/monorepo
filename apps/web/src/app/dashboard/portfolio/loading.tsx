@@ -4,7 +4,7 @@ import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-s
 export default function DashboardPortfolioLoading() {
   return (
     <DashboardPage className="space-y-8">
-      <DashboardSkeleton variant="grid" />
+      <DashboardSkeleton variant="portfolio" />
     </DashboardPage>
   );
 }

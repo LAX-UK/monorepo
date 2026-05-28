@@ -3,7 +3,8 @@ import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { MediaImage } from "@/components/ui/media-image";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
-import { artistPath } from "@/lib/seo/url";
+import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
+import { artistProfileHref } from "@/lib/marketing/catalog-links";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
 import Link from "next/link";
@@ -12,11 +13,17 @@ type Props = {
   artist: PublicArtistDirectoryRow;
   watching: boolean;
   isAuthenticated: boolean;
+  profileLinkContext?: ArtistProfileLinkContext;
 };
 
 /** Public artist directory card — composes `ArtistCard.Grid`. */
-export function ArtistDirectoryCard({ artist, watching, isAuthenticated }: Props) {
-  const href = artistPath({ id: artist.id, name: artist.displayName });
+export function ArtistDirectoryCard({
+  artist,
+  watching,
+  isAuthenticated,
+  profileLinkContext,
+}: Props) {
+  const href = artistProfileHref({ id: artist.id, name: artist.displayName }, profileLinkContext);
   const kindBadge = artist.kind ? artistKindMeta(artist.kind).badge : null;
   const lifespanRaw = formatArtistLifespan({
     birthYear: artist.birthYear,

@@ -1,11 +1,12 @@
 "use client";
 
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { HomeSectionToolbar } from "@/components/marketing/home-section-toolbar";
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { DisplayHeading } from "@auction/ui";
@@ -60,7 +61,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
   return (
     <section
       aria-labelledby="home-upcoming-auctions-heading"
-      className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-10 lg:px-14"
+      className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
     >
       <div className="flex w-full flex-col gap-12">
         <div className={`${innerMax} flex flex-col gap-6`}>
@@ -79,7 +80,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
           />
         </div>
 
-        <MarketingListToolbar
+        <HomeSectionToolbar
           countLabel={countLabel}
           filters={
             <MarketingChipStrip aria-label="Filter auctions" className="min-w-0">

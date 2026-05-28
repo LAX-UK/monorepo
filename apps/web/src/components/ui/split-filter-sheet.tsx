@@ -19,7 +19,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@auction/ui/components/sheet";
-import type { ReactNode } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useRef,
+} from "react";
 
 export type SplitFilterSheetFooterProps = {
   onReset?: () => void;
@@ -80,6 +88,25 @@ export type SplitFilterSheetProps = {
   className?: string;
 };
 
+function mergeRefs<T>(...refs: Array<Ref<T> | undefined>) {
+  return (value: T) => {
+    for (const ref of refs) {
+      if (typeof ref === "function") ref(value);
+      else if (ref && typeof ref === "object") {
+        (ref as { current: T | null }).current = value;
+      }
+    }
+  };
+}
+
+function attachTriggerRef(node: ReactNode, ref: Ref<HTMLElement>): ReactNode {
+  if (!node || !isValidElement(node)) return node;
+  const el = node as ReactElement<{ ref?: Ref<HTMLElement> }>;
+  return cloneElement(el, {
+    ref: mergeRefs(ref, el.props.ref),
+  });
+}
+
 /** Bottom sheet below `lg`, right drawer at `lg+` — aligns with shell chrome breakpoint. */
 export function SplitFilterSheet({
   open,
@@ -95,6 +122,17 @@ export function SplitFilterSheet({
   resetLabel = "Reset",
   className,
 }: SplitFilterSheetProps) {
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next) {
+        requestAnimationFrame(() => triggerRef.current?.focus());
+      }
+      onOpenChange?.(next);
+    },
+    [onOpenChange],
+  );
+
   const resolvedDescription =
     description ??
     (onApply
@@ -110,14 +148,15 @@ export function SplitFilterSheet({
     />
   );
 
-  const { mobile, desktop } = useSplitOverlayOpenLg(open, onOpenChange);
+  const { mobile, desktop } = useSplitOverlayOpenLg(open, handleOpenChange);
+  const wrappedTrigger = trigger ? attachTriggerRef(trigger, triggerRef) : null;
 
   return (
     <>
       <BottomSheet {...mobile}>
-        {trigger ? (
+        {wrappedTrigger ? (
           <BottomSheetTrigger asChild className="lg:hidden">
-            {trigger}
+            {wrappedTrigger}
           </BottomSheetTrigger>
         ) : null}
         <BottomSheetContent
@@ -143,9 +182,9 @@ export function SplitFilterSheet({
       </BottomSheet>
 
       <Sheet {...desktop}>
-        {trigger ? (
+        {wrappedTrigger ? (
           <SheetTrigger asChild className="hidden lg:inline-flex">
-            {trigger}
+            {wrappedTrigger}
           </SheetTrigger>
         ) : null}
         <SheetContent

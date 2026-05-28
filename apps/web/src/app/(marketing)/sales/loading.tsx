@@ -1,4 +1,5 @@
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { cn } from "@auction/ui";
 
@@ -14,7 +15,7 @@ export default async function SalesIndexLoading() {
       aria-busy="true"
       aria-label="Loading sales"
     >
-      <div className="mx-auto w-full max-w-[var(--container-max,1440px)] px-4 sm:px-6 md:px-8 lg:px-8">
+      <div className={MARKETING_PAGE_SHELL}>
         <section className="pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-10">
           <div className="flex flex-col gap-8 sm:gap-10 lg:gap-12">
             <div className="space-y-3">

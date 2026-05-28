@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import {
   DropdownMenu,
@@ -80,7 +79,8 @@ export type DashboardFilterTriggerProps = {
   className?: string;
 };
 
-/** Filters button with active-count badge for mobile/sheet triggers. */
+/** Filters button with active-count badge for mobile/sheet triggers.
+ * Aligned with `MarketingFilterTrigger` pill styling for visual parity. */
 export function DashboardFilterTrigger({
   activeCount,
   onClick,
@@ -89,20 +89,23 @@ export function DashboardFilterTrigger({
   return (
     <Button
       type="button"
-      variant="secondaryOutline"
-      className={cn("relative min-h-11 shrink-0 gap-2 px-4", className)}
+      variant="ghost"
+      className={cn(
+        "inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface transition-colors hover:border-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        className,
+      )}
       onClick={onClick}
       aria-label={activeCount > 0 ? `Filters, ${activeCount} applied` : "Filters"}
     >
-      <SlidersHorizontal className="size-4" aria-hidden />
-      Filters
+      <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
+      <span>Filters</span>
       {activeCount > 0 ? (
-        <Badge
-          variant="default"
-          className="ml-0.5 min-h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px] tabular-nums"
+        <span
+          className="inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1 font-label text-[0.6rem] font-bold leading-none text-on-primary"
+          aria-label={`${activeCount} active filters`}
         >
-          {activeCount}
-        </Badge>
+          {activeCount > 9 ? "9+" : activeCount}
+        </span>
       ) : null}
     </Button>
   );
