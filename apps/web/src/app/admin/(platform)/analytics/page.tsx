@@ -3,9 +3,9 @@ import {
   type AdminAnalyticsChartsData,
 } from "@/components/admin/admin-analytics-charts";
 import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
-import { AdminAnalyticsExport } from "@/components/admin/admin-analytics-export";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
+import { ExportButton } from "@/components/exports/export-button";
 import {
   Table,
   TableBody,
@@ -77,9 +77,34 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
     <AdminPanelPage
       title="Analytics"
       description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."
-      actions={<AdminAnalyticsControls days={days} />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <AdminAnalyticsControls days={days} />
+          {data ? (
+            <>
+              <ExportButton
+                entityType="analytics"
+                label="Export revenue CSV"
+                variant="secondary"
+                filters={{ days, series: "revenue" }}
+              />
+              <ExportButton
+                entityType="analytics"
+                label="Export lots CSV"
+                variant="secondary"
+                filters={{ days, series: "ended_lots" }}
+              />
+              <ExportButton
+                entityType="analytics"
+                label="Export registrations CSV"
+                variant="secondary"
+                filters={{ days, series: "registrations" }}
+              />
+            </>
+          ) : null}
+        </div>
+      }
     >
-      {data ? <AdminAnalyticsExport data={toChartsData(data)} days={days} /> : null}
       {loadError ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load analytics</AlertTitle>

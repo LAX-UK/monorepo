@@ -32,5 +32,10 @@ async function ActivityContent({ lotId }: { lotId: string }) {
     limit: 100,
   }).catch(() => []);
 
-  return <CatalogDomainEventsTimeline events={events} />;
+  return (
+    <CatalogDomainEventsTimeline
+      events={events}
+      exportFilters={{ aggregateType: "lot", aggregateId: lotId }}
+    />
+  );
 }

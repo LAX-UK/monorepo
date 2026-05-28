@@ -1,3 +1,4 @@
+import { createReadStream } from "node:fs";
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
@@ -11,6 +12,11 @@ import type { WorkerEnv } from "../env.js";
 
 export type UploadStorage = {
   putObject(key: string, body: Buffer, contentType: string): Promise<{ url: string }>;
+  putObjectFromFile(
+    key: string,
+    filePath: string,
+    contentType: string,
+  ): Promise<{ url: string; byteLength: number }>;
   headObject(key: string): Promise<{ contentType: string; byteSize: number; etag: string } | null>;
   getObjectBytes(key: string, maxBytes: number): Promise<Buffer | null>;
   deleteObject(key: string): Promise<void>;
@@ -57,6 +63,24 @@ class WorkerS3UploadStorage implements UploadStorage {
       }),
     );
     return { url: `${this.publicBaseUrl}/${key}` };
+  }
+
+  async putObjectFromFile(
+    key: string,
+    filePath: string,
+    contentType: string,
+  ): Promise<{ url: string; byteLength: number }> {
+    const info = await stat(filePath);
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: createReadStream(filePath),
+        ContentType: contentType,
+        ContentLength: info.size,
+      }),
+    );
+    return { url: `${this.publicBaseUrl}/${key}`, byteLength: info.size };
   }
 
   async headObject(
@@ -117,6 +141,21 @@ class WorkerLocalUploadStorage implements UploadStorage {
     const base = this.publicUrlPrefix.replace(/\/$/, "");
     const path = key.startsWith("/") ? key : `/${key}`;
     return { url: `${base}${path}` };
+  }
+
+  async putObjectFromFile(
+    key: string,
+    filePath: string,
+    contentType: string,
+  ): Promise<{ url: string; byteLength: number }> {
+    void contentType;
+    const fullPath = join(this.rootDir, key);
+    await mkdir(dirname(fullPath), { recursive: true });
+    const bytes = await readFile(filePath);
+    await writeFile(fullPath, bytes);
+    const base = this.publicUrlPrefix.replace(/\/$/, "");
+    const path = key.startsWith("/") ? key : `/${key}`;
+    return { url: `${base}${path}`, byteLength: bytes.byteLength };
   }
 
   async headObject(

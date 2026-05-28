@@ -169,6 +169,14 @@ export class DrizzleSaleRepository implements ISaleRepository {
     return this.withCategoryIds(rows);
   }
 
+  async countMatching(filter: Omit<ListSalesFilter, "limit" | "offset" | "sort">): Promise<number> {
+    const whereClause = listWhere(filter);
+    const [row] = await (whereClause
+      ? this.db.select({ n: sql<number>`count(*)::int` }).from(sale).where(whereClause)
+      : this.db.select({ n: sql<number>`count(*)::int` }).from(sale));
+    return row?.n ?? 0;
+  }
+
   async findWithStatuses(statuses: SaleStatus[]): Promise<Sale[]> {
     if (statuses.length === 0) return [];
     const rows = await this.db

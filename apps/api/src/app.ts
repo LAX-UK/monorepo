@@ -34,6 +34,7 @@ import { createAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
 import { createCategoryRoutes } from "./routes/categories.js";
 import { createEmailRoutes } from "./routes/email.js";
+import { createExportRoutes } from "./routes/exports.js";
 import { createInternalCronRoutes } from "./routes/internal-cron.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
@@ -213,6 +214,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/submissions", createSubmissionRoutes(container, authenticator))
     .route("/submissions", createSubmissionDocumentRoutes(container, authenticator))
     .route("/uploads", createUploadRoutes(container, authenticator))
+    .route("/exports", createExportRoutes(container, authenticator))
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))
     .route("/webhooks", createXeroWebhookRoutes(container));

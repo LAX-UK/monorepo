@@ -13,6 +13,7 @@ import {
 } from "@auction/marketing-events";
 import { getBullMqTelemetry } from "@auction/observability";
 import {
+  DATA_EXPORT_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
   LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
@@ -23,9 +24,12 @@ import {
   VALIDATE_UPLOAD_QUEUE_NAME,
   createBullQueueOptions,
 } from "@auction/queues";
+import type { DataExportJobPayload } from "@auction/queues";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
+import { createExportProviderDeps } from "./exports/deps.js";
+import { createExportProviders } from "./exports/registry.js";
 import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authenticator.js";
 import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
 import { BullmqMarketingEventQueue } from "./infrastructure/bullmq-marketing-event.queue.js";
@@ -154,6 +158,7 @@ import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
 import { EntityDocumentService } from "./services/entity-document.service.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
+import { ExportService } from "./services/export/export.service.js";
 import { ImageCleanupService } from "./services/image-cleanup.service.js";
 import { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
 import { ImpersonationSessionService } from "./services/impersonation-session.service.js";
@@ -387,6 +392,9 @@ export type Container = {
   imageCleanupQueue: Queue;
   marketingSyncQueue: Queue;
   /** BullMQ queue consumed by worker to render payout PDFs to Spaces. */
+  /** Async CSV export jobs (worker-generated files in object storage). */
+  dataExportQueue: Queue<DataExportJobPayload>;
+  exportService: ExportService;
   payoutStatementQueue: Queue<{ payoutId: string }>;
   /** cascade work when a legal entity is archived (proxies, lots flag, member email). */
   legalEntityArchiveQueue: Queue<{ legalEntityId: string }>;
@@ -723,6 +731,24 @@ export function createContainer(env: Env): Container {
   const payoutStatementQueue = new Queue<{ payoutId: string }>(
     PAYOUT_STATEMENTS_QUEUE_NAME,
     queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
+  );
+  const dataExportQueue = new Queue<DataExportJobPayload>(
+    DATA_EXPORT_QUEUE_NAME,
+    queueOpts(DATA_EXPORT_QUEUE_NAME),
+  );
+  const exportProviderDeps = createExportProviderDeps(db);
+  const exportProviders = createExportProviders(exportProviderDeps);
+  const exportService = new ExportService(
+    db,
+    redis,
+    objectStorage,
+    dataExportQueue,
+    exportProviders,
+    {
+      syncMaxRows: env.EXPORT_SYNC_MAX_ROWS,
+      staleProcessingMs: env.EXPORT_STALE_PROCESSING_MS,
+    },
+    domainEventPublisher,
   );
   const mediaUrlResolver = new MediaUrlResolver(
     objectStorage,
@@ -1171,6 +1197,7 @@ export function createContainer(env: Env): Container {
       marketingSyncQueue.close(),
       marketingEventsBullQueue.close(),
       payoutStatementQueue.close(),
+      dataExportQueue.close(),
       queueAdmin.close(),
     ]);
   };
@@ -1305,6 +1332,8 @@ export function createContainer(env: Env): Container {
     imageCleanupQueue,
     marketingSyncQueue,
     payoutStatementQueue,
+    dataExportQueue,
+    exportService,
     legalEntityArchiveQueue,
     stripePaymentWebhookService: stripePaymentWebhookServiceResolved,
     stripeClientFactory,

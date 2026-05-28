@@ -11,6 +11,10 @@
     "./app": {
       "types": "./dist/app.d.ts",
       "default": "./dist/app.js"
+    },
+    "./exports": {
+      "types": "./dist/exports/index.d.ts",
+      "default": "./dist/exports/index.js"
     }
   },
   "scripts": {
@@ -27,6 +31,7 @@
     "@auction/auth": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/db": "workspace:*",
+    "@auction/exports": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
     "@auction/email": "workspace:^",

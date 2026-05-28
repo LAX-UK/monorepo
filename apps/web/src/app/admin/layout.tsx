@@ -2,6 +2,7 @@ import { AdminShellHeaderActions } from "@/components/admin/admin-shell-header-a
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { ImpersonationEndWarningListener } from "@/components/admin/impersonation-end-warning-listener";
 import { PlatformStaffContextBanners } from "@/components/admin/platform-staff-context-banners";
+import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
@@ -117,45 +118,47 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   );
 
   return (
-    <div
-      className={
-        showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
-      }
-    >
-      <ImpersonationEndWarningListener />
-      {impersonation && showImpersonationBanner ? (
-        <ImpersonationBanner
-          entityName={impersonation.displayName}
-          expiresAtIso={impersonation.expiresAtIso}
-        />
-      ) : null}
-      {role === "finance" ? (
-        <FinanceShell
-          user={user}
-          pendingSubmissionCount={pendingSubmissionCount}
-          navCounts={navCounts}
-          cookieDensity={cookieDensity}
-          acting={acting}
-          headerRightSlot={headerRightSlot}
-          topSlot={<WelcomeBackToast />}
-        >
-          {children}
-        </FinanceShell>
-      ) : (
-        <StaffShell
-          user={user}
-          pendingSubmissionCount={pendingSubmissionCount}
-          pendingArtistCount={pendingArtistCount}
-          navCounts={navCounts}
-          cookieDensity={cookieDensity}
-          acting={acting}
-          headerRightSlot={headerRightSlot}
-          contextBanner={<PlatformStaffContextBanners />}
-          topSlot={<WelcomeBackToast />}
-        >
-          {children}
-        </StaffShell>
-      )}
-    </div>
+    <ExportShellClient>
+      <div
+        className={
+          showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
+        }
+      >
+        <ImpersonationEndWarningListener />
+        {impersonation && showImpersonationBanner ? (
+          <ImpersonationBanner
+            entityName={impersonation.displayName}
+            expiresAtIso={impersonation.expiresAtIso}
+          />
+        ) : null}
+        {role === "finance" ? (
+          <FinanceShell
+            user={user}
+            pendingSubmissionCount={pendingSubmissionCount}
+            navCounts={navCounts}
+            cookieDensity={cookieDensity}
+            acting={acting}
+            headerRightSlot={headerRightSlot}
+            topSlot={<WelcomeBackToast />}
+          >
+            {children}
+          </FinanceShell>
+        ) : (
+          <StaffShell
+            user={user}
+            pendingSubmissionCount={pendingSubmissionCount}
+            pendingArtistCount={pendingArtistCount}
+            navCounts={navCounts}
+            cookieDensity={cookieDensity}
+            acting={acting}
+            headerRightSlot={headerRightSlot}
+            contextBanner={<PlatformStaffContextBanners />}
+            topSlot={<WelcomeBackToast />}
+          >
+            {children}
+          </StaffShell>
+        )}
+      </div>
+    </ExportShellClient>
   );
 }

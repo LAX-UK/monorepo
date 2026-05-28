@@ -5,10 +5,21 @@ import type { InferSelectModel } from "drizzle-orm";
 import type {
   CreatePaymentRow,
   IPaymentWriteRepository,
+  ListPaymentsExportFilter,
   PaymentRecord,
 } from "../services/interfaces/payment-write.js";
 
 type Row = InferSelectModel<typeof payment>;
+
+function exportWhere(filter: ListPaymentsExportFilter) {
+  const conditions = [];
+  if (filter.manualReview === true) {
+    conditions.push(eq(payment.status, "requires_manual_review"));
+  } else if (filter.status) {
+    conditions.push(eq(payment.status, filter.status));
+  }
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
 
 function mapRow(
   row: Row,
@@ -150,7 +161,14 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   }
 
   async listAll(): Promise<PaymentRecord[]> {
-    const rows = await this.db
+    return this.listForExport({ limit: Number.MAX_SAFE_INTEGER, offset: 0 });
+  }
+
+  async listForExport(
+    filter: ListPaymentsExportFilter & { limit: number; offset: number },
+  ): Promise<PaymentRecord[]> {
+    const where = exportWhere(filter);
+    const base = this.db
       .select({
         payment,
         refInvoiceNumber: paymentExternalRef.xeroInvoiceNumber,
@@ -159,8 +177,11 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         refLastError: paymentExternalRef.lastError,
       })
       .from(payment)
-      .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId))
-      .orderBy(desc(payment.createdAt));
+      .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId));
+    const rows = await (where ? base.where(where) : base)
+      .orderBy(desc(payment.createdAt))
+      .limit(filter.limit)
+      .offset(filter.offset);
     return rows.map((r) =>
       mapRow(r.payment, {
         xeroInvoiceNumber: r.refInvoiceNumber ?? null,
@@ -169,6 +190,14 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         xeroLastError: r.refLastError ?? null,
       }),
     );
+  }
+
+  async countForExport(filter: ListPaymentsExportFilter): Promise<number> {
+    const where = exportWhere(filter);
+    const [row] = await (where
+      ? this.db.select({ n: sql<number>`count(*)::int` }).from(payment).where(where)
+      : this.db.select({ n: sql<number>`count(*)::int` }).from(payment));
+    return row?.n ?? 0;
   }
 
   async listByBuyerId(buyerId: string): Promise<PaymentRecord[]> {
