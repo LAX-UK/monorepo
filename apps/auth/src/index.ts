@@ -12,8 +12,8 @@ import {
 import { createDb } from "@auction/db";
 import { session } from "@auction/db/schema";
 import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
-import { createBullQueueOptions, EMAIL_QUEUE_NAME } from "@auction/queues";
-import { getBullMqTelemetry, initNodeSentry, Sentry } from "@auction/observability";
+import { Sentry, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
+import { EMAIL_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
 import { serve } from "@hono/node-server";
 import { Queue } from "bullmq";
 import { eq, sql } from "drizzle-orm";

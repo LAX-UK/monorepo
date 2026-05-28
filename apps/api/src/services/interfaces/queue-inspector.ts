@@ -1,10 +1,4 @@
-export type QueueJobStatus =
-  | "waiting"
-  | "active"
-  | "completed"
-  | "failed"
-  | "delayed"
-  | "paused";
+export type QueueJobStatus = "waiting" | "active" | "completed" | "failed" | "delayed" | "paused";
 
 export type QueueOverview = {
   name: string;

@@ -12,20 +12,12 @@ describe("jobAttemptsExhausted", () => {
   const emailDef = QUEUE_REGISTRY.email;
 
   it("uses registry default attempts when job opts omit attempts", () => {
-    expect(
-      jobAttemptsExhausted({ attemptsMade: 4, opts: {} }, emailDef),
-    ).toBe(false);
-    expect(
-      jobAttemptsExhausted({ attemptsMade: 5, opts: {} }, emailDef),
-    ).toBe(true);
+    expect(jobAttemptsExhausted({ attemptsMade: 4, opts: {} }, emailDef)).toBe(false);
+    expect(jobAttemptsExhausted({ attemptsMade: 5, opts: {} }, emailDef)).toBe(true);
   });
 
   it("respects explicit job opts attempts", () => {
-    expect(
-      jobAttemptsExhausted({ attemptsMade: 2, opts: { attempts: 3 } }, emailDef),
-    ).toBe(false);
-    expect(
-      jobAttemptsExhausted({ attemptsMade: 3, opts: { attempts: 3 } }, emailDef),
-    ).toBe(true);
+    expect(jobAttemptsExhausted({ attemptsMade: 2, opts: { attempts: 3 } }, emailDef)).toBe(false);
+    expect(jobAttemptsExhausted({ attemptsMade: 3, opts: { attempts: 3 } }, emailDef)).toBe(true);
   });
 });

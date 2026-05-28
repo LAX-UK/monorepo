@@ -196,11 +196,10 @@ const envSchema = z
      */
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
     /** Mount Bull Board at /admin/system/job-queues (super_admin only). Default false in production. */
-    ENABLE_BULL_BOARD: z
-      .preprocess((v) => {
-        if (v === undefined || v === "") return undefined;
-        return v === "true" || v === true;
-      }, z.boolean().optional()),
+    ENABLE_BULL_BOARD: z.preprocess((v) => {
+      if (v === undefined || v === "") return undefined;
+      return v === "true" || v === true;
+    }, z.boolean().optional()),
     /** Days before `pending` buyer payments auto-expire (cron). */
     PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
     /** Emergency: reject new bids with 503. */

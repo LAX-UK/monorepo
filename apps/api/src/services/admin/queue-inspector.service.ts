@@ -1,16 +1,16 @@
 import {
-  createBullQueueOptions,
   DEAD_LETTER_QUEUE_NAME,
+  type QueueName,
+  createBullQueueOptions,
   heartbeatRedisKey,
   isQueueName,
   listEnabledQueues,
   redactPayload,
   truncatePayloadJson,
-  type QueueName,
 } from "@auction/queues";
-import { Queue, type ConnectionOptions } from "bullmq";
-import type { Redis } from "ioredis";
 import type { QueueRuntimeEnv } from "@auction/queues";
+import { type ConnectionOptions, Queue } from "bullmq";
+import type { Redis } from "ioredis";
 import type {
   IQueueInspector,
   JobDetail,

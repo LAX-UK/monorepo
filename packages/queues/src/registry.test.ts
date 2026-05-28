@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { redactPayload } from "./redaction.js";
 import {
   ALL_QUEUE_NAMES,
   DEAD_LETTER_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
+  QUEUE_REGISTRY,
   listBullBoardQueues,
   listDlqSourceQueues,
   listEnabledQueues,
-  QUEUE_REGISTRY,
 } from "./registry.js";
-import { redactPayload } from "./redaction.js";
 
 describe("QUEUE_REGISTRY", () => {
   it("includes all expected BullMQ queue names", () => {

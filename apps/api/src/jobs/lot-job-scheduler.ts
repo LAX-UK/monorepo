@@ -1,7 +1,4 @@
-import {
-  createBullQueueOptions,
-  LOT_LIFECYCLE_QUEUE_NAME,
-} from "@auction/queues";
+import { LOT_LIFECYCLE_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
 import { type ConnectionOptions, type Job, Queue, Worker } from "bullmq";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 
