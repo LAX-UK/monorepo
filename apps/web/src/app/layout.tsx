@@ -26,6 +26,7 @@ import {
   THEME_COOKIE_NAME,
   parseThemeCookie,
 } from "@/lib/preferences/theme-cookie";
+import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import { cn } from "@auction/ui";
@@ -83,7 +84,9 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const hdrs = await headers();
   const nonce = hdrs.get("x-nonce") ?? "";
-  const rootJsonLd = jsonLdScript(organizationJsonLd(), websiteJsonLd());
+  const rootJsonLd = isIndexingAllowedAtBuildTime()
+    ? jsonLdScript(organizationJsonLd(), websiteJsonLd())
+    : null;
   const cookieStore = await cookies();
   const cookieHeader = hdrs.get("cookie") ?? "";
   const existingTheme = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
@@ -120,9 +123,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             })}
           />
           <ThemeSystemListener />
-          <script type="application/ld+json" suppressHydrationWarning {...(nonce ? { nonce } : {})}>
-            {rootJsonLd}
-          </script>
+          {rootJsonLd ? (
+            <script
+              type="application/ld+json"
+              suppressHydrationWarning
+              {...(nonce ? { nonce } : {})}
+            >
+              {rootJsonLd}
+            </script>
+          ) : null}
           <a href="#main-content" className="skip-link">
             Skip to main content
           </a>

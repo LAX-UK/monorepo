@@ -1,4 +1,9 @@
 import { SITE_LOGO_PATH, SITE_NAME, SITE_SEO_NAME, SITE_TAGLINE } from "@/lib/brand";
+import {
+  isIndexingAllowedAtBuildTime,
+  noindexRobotsMetadata,
+  withIndexingPolicy,
+} from "@/lib/seo/is-indexing-allowed";
 import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot, Sale } from "@auction/types";
@@ -28,7 +33,9 @@ export function rootMetadataBase(): Metadata {
       description: SITE_TAGLINE,
       images: defaultOgImage(base),
     },
-    robots: { index: true, follow: true },
+    robots: isIndexingAllowedAtBuildTime()
+      ? { index: true, follow: true }
+      : noindexRobotsMetadata(),
   };
 }
 
@@ -42,7 +49,7 @@ export function metadataForStatic(opts: {
   const path = opts.path.startsWith("/") ? opts.path : `/${opts.path}`;
   const url = `${base}${path}`;
   const fullTitle = `${opts.title} · ${SITE_NAME}`;
-  return {
+  return withIndexingPolicy({
     title: opts.title,
     description: opts.description,
     alternates: { canonical: url },
@@ -59,7 +66,7 @@ export function metadataForStatic(opts: {
       description: opts.description,
       images: defaultOgImage(base),
     },
-  };
+  });
 }
 
 /** Faceted listing pages (search, future faceted catalog) — `noIndex` mirrors thin-URL hygiene. */
@@ -77,7 +84,7 @@ export function metadataForListing(opts: {
   if (opts.noIndex) {
     return { ...base, robots: { index: false, follow: true } };
   }
-  return base;
+  return withIndexingPolicy(base);
 }
 
 /** Sale catalog page */
@@ -88,7 +95,7 @@ export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">
     sale.description?.trim().slice(0, 160) ??
     `Browse lots and bidding in ${sale.title} — ${SITE_NAME}.`;
   const fullTitle = `${sale.title} · ${SITE_NAME}`;
-  return {
+  return withIndexingPolicy({
     title: sale.title,
     description: desc,
     alternates: { canonical: url },
@@ -105,7 +112,7 @@ export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">
       description: desc,
       images: defaultOgImage(base),
     },
-  };
+  });
 }
 
 export function metadataForLot(auction: Lot): Metadata {
@@ -114,7 +121,7 @@ export function metadataForLot(auction: Lot): Metadata {
   const title = `${auction.title}`;
   const description =
     auction.description?.slice(0, 160) ?? `Bid on ${auction.title} — curated fine art auction.`;
-  return {
+  return withIndexingPolicy({
     title,
     description,
     alternates: { canonical: url },
@@ -131,7 +138,7 @@ export function metadataForLot(auction: Lot): Metadata {
       description,
       images: auction.images[0] ? [auction.images[0]] : defaultOgImage(base),
     },
-  };
+  });
 }
 
 export function metadataForNotFound(title: string, description?: string): Metadata {
@@ -157,7 +164,7 @@ export function metadataForPrivate(title: string, description?: string): Metadat
 export function metadataForSeller(seller: { id: string; name: string }): Metadata {
   const base = getSiteUrl();
   const url = `${base}${artistPath(seller)}`;
-  return {
+  return withIndexingPolicy({
     title: `${seller.name} · Seller`,
     description: `Lots and auctions from ${seller.name}.`,
     alternates: { canonical: url },
@@ -174,5 +181,5 @@ export function metadataForSeller(seller: { id: string; name: string }): Metadat
       description: `Seller profile — ${seller.name}`,
       images: defaultOgImage(base),
     },
-  };
+  });
 }
