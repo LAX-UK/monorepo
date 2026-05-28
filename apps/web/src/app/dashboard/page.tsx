@@ -20,7 +20,12 @@ import { buildDashboardActivityVm } from "@/lib/data/view-models/dashboard-activ
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import {
+  CLIENT_WORKSPACE_COOKIE,
+  parseClientWorkspaceMode,
+} from "@/lib/workspace/client-workspace-mode";
 import type { ItemSubmission, Lot, PortfolioRow, UserNotification } from "@auction/types";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
 
 function takeSettledSlice<T>(
@@ -39,10 +44,12 @@ async function DashboardHomeContent({
   orgSubmitted,
   sessionsFailure,
   orgModuleEnabled,
+  clientWorkspaceMode,
 }: {
   orgSubmitted: boolean;
   sessionsFailure: ReturnType<typeof describeSessionsOverviewError> | null;
   orgModuleEnabled: boolean;
+  clientWorkspaceMode: ReturnType<typeof parseClientWorkspaceMode>;
 }) {
   const c = await getServerDataContainer();
 
@@ -214,6 +221,7 @@ async function DashboardHomeContent({
         orgModuleEnabled={orgModuleEnabled}
         addressesCount={addresses.length}
         activity={activity}
+        clientWorkspaceMode={clientWorkspaceMode}
       />
     </DashboardPage>
   );
@@ -229,12 +237,15 @@ export default async function DashboardHomePage({
   const sessionsFailure =
     sp.error === "sessions" ? describeSessionsOverviewError(sp.code ?? null) : null;
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  const jar = await cookies();
+  const clientWorkspaceMode = parseClientWorkspaceMode(jar.get(CLIENT_WORKSPACE_COOKIE)?.value);
   return (
     <Suspense fallback={<DashboardSkeleton variant="dashboard" />}>
       <DashboardHomeContent
         orgSubmitted={orgSubmitted}
         sessionsFailure={sessionsFailure}
         orgModuleEnabled={orgModuleEnabled}
+        clientWorkspaceMode={clientWorkspaceMode}
       />
     </Suspense>
   );

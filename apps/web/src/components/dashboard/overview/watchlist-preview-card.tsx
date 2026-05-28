@@ -1,4 +1,5 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -38,12 +39,16 @@ export function WatchlistPreviewCard({
       </div>
       <div>
         {items.length === 0 ? (
-          <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-outline-variant/25 bg-surface-container-low/40 p-5 text-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
-            <span>Save lots from artwork pages to build a personal watchlist.</span>
-            <Button size="sm" variant="outline" asChild className="shrink-0">
-              <Link href="/search">Browse auctions</Link>
-            </Button>
-          </div>
+          <DashboardEmptyState
+            variant="quiet"
+            title="Nothing saved yet"
+            description="Save lots from artwork pages to build a personal watchlist."
+            action={
+              <Button size="sm" variant="outline" asChild className="shrink-0">
+                <Link href="/search">Browse auctions</Link>
+              </Button>
+            }
+          />
         ) : variant === "tile-grid" ? (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {items.map((row) => {

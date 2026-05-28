@@ -1,11 +1,10 @@
 "use client";
 
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav";
-import { ClientMobileMoreSheet } from "@/components/layout/client-mobile-more-sheet";
+import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -29,6 +28,9 @@ export function BottomTabBar() {
   const workspace = config.clientWorkspaceMode ?? "buying";
 
   if (tabs.length === 0) return null;
+
+  const moreSheetVariant = config.role === "client" ? "client" : "staff";
+  const hasMoreTab = tabs.some((item) => item.id === "more");
 
   return (
     <>
@@ -59,28 +61,29 @@ export function BottomTabBar() {
                 <span className="mt-1 max-w-full truncate text-[10px]">{item.label}</span>
               </>
             );
+            const tabClassName = cn(
+              "flex min-h-[var(--tap-target-min,44px)] w-full flex-col items-center justify-center rounded-lg px-1 font-label transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              active
+                ? "bg-primary-container/20 text-primary"
+                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
+            );
+
             return (
               <li key={item.id} className="min-w-0">
                 {more ? (
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    className="flex h-auto min-h-[var(--tap-target-min,44px)] w-full flex-col items-center justify-center rounded-lg px-1 font-label font-normal text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className={tabClassName}
                     onClick={() => setMoreOpen(true)}
                     aria-label="Open more dashboard actions"
                   >
                     {content}
-                  </Button>
+                  </button>
                 ) : (
                   <Link
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex min-h-[var(--tap-target-min,44px)] flex-col items-center justify-center rounded-lg px-1 font-label transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                      active
-                        ? "bg-primary-container/20 text-primary"
-                        : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
-                    )}
+                    className={tabClassName}
                   >
                     {content}
                   </Link>
@@ -90,10 +93,11 @@ export function BottomTabBar() {
           })}
         </ul>
       </nav>
-      {moreItems.length > 0 ? (
-        <ClientMobileMoreSheet
+      {hasMoreTab ? (
+        <MobileMoreSheet
           open={moreOpen}
           onOpenChange={setMoreOpen}
+          variant={moreSheetVariant}
           clientWorkspaceMode={workspace}
           items={moreItems}
         />

@@ -1,14 +1,19 @@
 "use client";
 
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
+import { NotificationsTypeFilterToolbar } from "@/components/dashboard/notifications/notifications-type-filter-toolbar";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { type UnderlineTab, UnderlineTabs } from "@/components/ui/underline-tabs";
+import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import {
+  hasNotificationsActiveFilters,
+  parseNotificationsParams,
+} from "@/lib/dashboard/filters/notifications/notifications-filters";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
-import { Alert, AlertDescription, AlertTitle, BulkActionBar, cn } from "@auction/ui";
+import { Alert, AlertDescription, AlertTitle, BulkActionBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Button as ShadButton } from "@auction/ui/components/button";
 import { CheckCheck, RefreshCcw } from "lucide-react";
@@ -23,16 +28,6 @@ import {
 import { NotificationRow } from "./notifications/notification-row";
 import { NotificationsSkeleton } from "./notifications/notifications-skeleton";
 import { useNotificationsInbox } from "./notifications/use-notifications-inbox";
-
-const TYPE_CHIPS: ReadonlyArray<{ key: string; label: string }> = [
-  { key: "", label: "All types" },
-  { key: "outbid", label: "Outbid" },
-  { key: "lot_won", label: "Won" },
-  { key: "lot_lost", label: "Lost" },
-  { key: "payment_due", label: "Payment" },
-  { key: "ending_soon", label: "Ending soon" },
-  { key: "watchlist", label: "Watchlist" },
-];
 
 function parseTab(raw: string | null): InboxTab {
   if (raw === "unread" || raw === "archived") return raw;
@@ -64,7 +59,13 @@ export function NotificationsInboxBoard({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
-  const typeFilter = (searchParams.get("type") ?? "").trim();
+  const tabParam = searchParams.get("tab");
+  const typeParam = searchParams.get("type");
+  const notificationFilters = parseNotificationsParams({
+    ...(tabParam ? { tab: tabParam } : {}),
+    ...(typeParam ? { type: typeParam } : {}),
+  });
+  const typeFilter = notificationFilters.type;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [liveMessage, setLiveMessage] = useState<string>("");
@@ -207,31 +208,23 @@ export function NotificationsInboxBoard({
     });
   }, [archiveMany, selected]);
 
-  const tabs = useMemo<ReadonlyArray<UnderlineTab<InboxTab>>>(
+  const tabs = useMemo(
     () => [
       {
-        id: "all",
-        label: "All",
         href: tabHref(pathname, searchParams, "all"),
+        label: "All",
+        isActive: tab === "all",
       },
       {
-        id: "unread",
-        label: "Unread",
         href: tabHref(pathname, searchParams, "unread"),
-        ...(unreadCount > 0 && tab === "unread"
-          ? {
-              badge: (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 font-label text-[10px] font-semibold tracking-normal text-on-primary">
-                  {unreadCount}
-                </span>
-              ),
-            }
-          : {}),
+        label: "Unread",
+        isActive: tab === "unread",
+        ...(unreadCount > 0 ? { badge: unreadCount } : {}),
       },
       {
-        id: "archived",
-        label: "Archived",
         href: tabHref(pathname, searchParams, "archived"),
+        label: "Archived",
+        isActive: tab === "archived",
       },
     ],
     [pathname, searchParams, tab, unreadCount],
@@ -245,23 +238,7 @@ export function NotificationsInboxBoard({
   }, [items.length, loading, unreadCount]);
 
   return (
-    <div
-      className={cn(
-        "mx-auto max-w-5xl py-10 pb-[var(--page-bottom-padding)] md:pb-10",
-        selected.size > 0 && "pb-[calc(var(--page-bottom-padding)+3.5rem)]",
-      )}
-    >
-      <DashboardPageHeader
-        meta="Buying"
-        title="Notifications"
-        description="Bids, wins, payments, and saved-lot updates. Live when you are online."
-        actions={
-          <Button type="button" variant="tertiary" asChild>
-            <Link href="/dashboard/settings/notifications">Alert settings</Link>
-          </Button>
-        }
-      />
-
+    <div className="min-w-0 pb-[var(--page-bottom-padding)] lg:pb-0">
       <output className="sr-only" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </output>
@@ -273,45 +250,31 @@ export function NotificationsInboxBoard({
       ) : (
         <>
           <div className="mt-8">
-            <UnderlineTabs<InboxTab> ariaLabel="Notification filters" active={tab} tabs={tabs} />
+            <SectionTabsNav
+              variant="underline"
+              ariaLabel="Notification filters"
+              sticky={false}
+              items={tabs}
+            />
           </div>
 
-          <div className="-mx-1 mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-            {TYPE_CHIPS.map((chip) => {
-              const isActive = typeFilter === chip.key;
-              const count = chip.key ? (typeCounts[chip.key] ?? 0) : items.length;
-              return (
-                <ShadButton
-                  key={chip.label}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTypeFilter(chip.key)}
-                  aria-pressed={isActive}
-                  className={cn(
-                    "h-auto shrink-0 snap-start gap-2 rounded-full px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors",
-                    isActive
-                      ? "bg-primary text-on-primary ring-primary hover:bg-primary hover:text-on-primary"
-                      : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
-                  )}
-                >
-                  <span>{chip.label}</span>
-                  {!loading && count > 0 ? (
-                    <span
-                      className={cn(
-                        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] tabular-nums",
-                        isActive
-                          ? "bg-on-primary/15 text-on-primary"
-                          : "bg-on-surface/10 text-on-surface",
-                      )}
-                    >
-                      {count}
-                    </span>
-                  ) : null}
-                </ShadButton>
-              );
-            })}
+          <div className="mt-4">
+            <NotificationsTypeFilterToolbar
+              filters={notificationFilters}
+              typeCounts={typeCounts}
+              totalCount={items.length}
+              loading={loading}
+              actions={
+                <Button type="button" variant="tertiary" asChild>
+                  <Link href="/dashboard/settings/notifications">Notification settings</Link>
+                </Button>
+              }
+            />
           </div>
+
+          {!loading ? (
+            <DashboardFilterResultsAnnouncer count={items.length} entityLabel="notifications" />
+          ) : null}
 
           {error ? (
             <Alert
@@ -354,7 +317,7 @@ export function NotificationsInboxBoard({
           </div>
 
           <div className="mt-3">
-            <BulkActionBar count={selected.size}>
+            <BulkActionBar count={selected.size} offsetBottomChrome>
               <Button
                 type="button"
                 variant="primary"
@@ -388,7 +351,7 @@ export function NotificationsInboxBoard({
             ) : items.length === 0 ? (
               <InboxEmptyState
                 tab={tab}
-                typeFilter={typeFilter}
+                filters={notificationFilters}
                 onClearType={() => setTypeFilter("")}
               />
             ) : (
@@ -397,7 +360,7 @@ export function NotificationsInboxBoard({
                   <section key={group.band} aria-labelledby={`band-${group.band}`}>
                     <h2
                       id={`band-${group.band}`}
-                      className="sticky top-[var(--header-height-shell,52px)] z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur"
+                      className="sticky top-[var(--header-height-mobile,56px)] z-10 border-b border-border-hairline bg-surface-container-low/95 px-4 py-2 font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant backdrop-blur lg:top-[var(--header-height-shell,52px)]"
                     >
                       {group.band}
                     </h2>
@@ -440,7 +403,7 @@ export function NotificationsInboxBoard({
               href="/dashboard/settings/notifications"
               className="text-primary underline-offset-2 hover:underline"
             >
-              alert settings
+              notification settings
             </Link>
             .
           </p>
@@ -452,12 +415,12 @@ export function NotificationsInboxBoard({
 
 type InboxEmptyStateProps = {
   tab: InboxTab;
-  typeFilter: string;
+  filters: ReturnType<typeof parseNotificationsParams>;
   onClearType: () => void;
 };
 
-function InboxEmptyState({ tab, typeFilter, onClearType }: InboxEmptyStateProps) {
-  if (typeFilter) {
+function InboxEmptyState({ tab, filters, onClearType }: InboxEmptyStateProps) {
+  if (hasNotificationsActiveFilters(filters) && filters.type) {
     return (
       <DashboardEmptyState
         title="Nothing matches that type"

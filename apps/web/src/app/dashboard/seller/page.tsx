@@ -17,6 +17,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { formatMoney } from "@/lib/format-currency";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
@@ -206,11 +207,15 @@ export default async function SellerOverviewPage() {
     },
   ];
 
+  const workspaceMeta = await readClientWorkspacePageMeta();
+
   return (
     <DashboardPage className="space-y-8">
       <DashboardPageHeader
-        meta="Selling"
+        meta={workspaceMeta}
         title="Seller workspace"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Track consignments from first submission through cataloguing, sale, and settlement."
       />
 
@@ -229,6 +234,7 @@ export default async function SellerOverviewPage() {
 
       {!submissionsFailure && rows.length === 0 ? (
         <DashboardEmptyState
+          variant="hero"
           title={DASHBOARD_EMPTY.seller.title}
           description={DASHBOARD_EMPTY.seller.description}
           action={
@@ -249,7 +255,7 @@ export default async function SellerOverviewPage() {
             id: card.title,
             label: card.title,
             value: String(card.value),
-            delta: card.hint,
+            compareHint: card.hint,
             semanticTone: card.value > 0 ? "emphasis" : "default",
             trendSlot: (
               <Link href={card.href} className="text-xs font-semibold text-primary hover:underline">
@@ -270,10 +276,12 @@ export default async function SellerOverviewPage() {
               </h2>
             </header>
             {upcomingSales.length === 0 ? (
-              <p className="font-body text-sm text-on-surface-variant">
-                No live or scheduled lots yet — once specialists assign your work to a sale, it will
-                appear here.
-              </p>
+              <DashboardEmptyState
+                variant="quiet"
+                title="No upcoming sales"
+                description="Once specialists assign your work to a sale, it will appear here."
+                headingLevel="h3"
+              />
             ) : (
               <ul className="divide-y divide-border-hairline">
                 {upcomingSales.map((row) => (
@@ -311,22 +319,28 @@ export default async function SellerOverviewPage() {
               </p>
             ) : (
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <div>
+                <div className="min-w-0">
                   <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     Reserved floor
                   </dt>
-                  <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
+                  <dd
+                    className="mt-1 truncate font-headline text-xl tabular-nums text-primary"
+                    title={formatMoney(forecast.reservedFloor)}
+                  >
                     {formatMoney(forecast.reservedFloor)}
                   </dd>
                   <p className="mt-1 text-xs text-on-surface-variant">
                     Hammer floor if every reserved lot just meets reserve.
                   </p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                     Current best case
                   </dt>
-                  <dd className="mt-1 font-headline text-xl tabular-nums text-primary">
+                  <dd
+                    className="mt-1 truncate font-headline text-xl tabular-nums text-primary"
+                    title={formatMoney(forecast.bestCaseHammer)}
+                  >
                     {formatMoney(forecast.bestCaseHammer)}
                   </dd>
                   <p className="mt-1 text-xs text-on-surface-variant">

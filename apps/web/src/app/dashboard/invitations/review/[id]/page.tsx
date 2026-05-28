@@ -40,6 +40,7 @@ export default async function InvitationReviewPage({
   return (
     <DashboardPage className="mx-auto max-w-lg space-y-6">
       <DashboardDetailHeader
+        compactOnMobile
         backHref="/dashboard/invitations"
         backLabel="Invitations"
         eyebrow="Invitation"

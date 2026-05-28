@@ -17,6 +17,7 @@ import {
 } from "@/lib/data/http/stripe-connect.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import Link from "next/link";
 
 export default async function SellerStripeConnectPage() {
@@ -61,12 +62,15 @@ export default async function SellerStripeConnectPage() {
   }
 
   const kycApproved = kycSummary?.status === "approved";
+  const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
     <DashboardPage className="mx-auto max-w-3xl space-y-8">
       <DashboardPageHeader
-        meta="Selling"
+        meta={workspaceMeta}
         title="Payout setup"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Complete Stripe Express verification in-app so approved lots can be scheduled once finance enables settlement."
       />
 

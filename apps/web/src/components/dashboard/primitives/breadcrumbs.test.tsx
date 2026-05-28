@@ -52,4 +52,32 @@ describe("Breadcrumbs", () => {
 
     expect(screen.getByText("Lot 42")).toHaveAttribute("aria-current", "page");
   });
+
+  it("renders a single-line compact trail with root link and truncated current page", () => {
+    const { container } = render(
+      <Breadcrumbs
+        compact
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Seller", href: "/dashboard/seller" },
+          { label: "Watchlist" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByText("Watchlist")).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("link", { name: "Seller" })).not.toBeInTheDocument();
+
+    const list = container.querySelector("ol");
+    expect(list?.className).toMatch(/flex-nowrap/);
+    expect(list?.className).not.toMatch(/flex-wrap/);
+  });
+
+  it("renders only the current label in compact mode when the trail is a single page", () => {
+    render(<Breadcrumbs compact items={[{ label: "Dashboard" }]} />);
+
+    expect(screen.getByText("Dashboard")).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });

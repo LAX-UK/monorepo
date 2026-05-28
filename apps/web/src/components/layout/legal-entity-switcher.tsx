@@ -85,19 +85,29 @@ export function LegalEntitySwitcher({
           type="button"
           variant="secondary"
           size="sm"
-          aria-label="Switch acting legal entity"
-          className="h-auto min-h-11 w-full max-w-[min(22rem,calc(100vw-2rem))] justify-between gap-2 py-2"
+          aria-label={`Switch acting legal entity (${acting.displayName})`}
+          className="h-auto min-h-10 min-w-10 justify-center gap-0 p-1 lg:min-h-11 lg:min-w-0 lg:w-full lg:max-w-[min(22rem,calc(100vw-2rem))] lg:justify-between lg:gap-2 lg:py-2"
           data-testid="legal-entity-switcher"
           disabled={pending}
         >
-          <span className="flex min-w-0 flex-1 items-center gap-2">
-            {pending && <Loader2 className="size-4 shrink-0 animate-spin" />}
-            <Avatar size="sm" className="size-9 shrink-0">
-              <AvatarFallback className="bg-primary-container font-semibold text-on-primary-container">
-                {initials(acting.displayName)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="min-w-0 flex-1 text-left">
+          <span className="flex min-w-0 flex-1 items-center gap-2 lg:flex-1">
+            {pending && <Loader2 className="size-4 shrink-0 animate-spin lg:block" />}
+            <span className="relative shrink-0">
+              <Avatar size="sm" className="size-9 shrink-0">
+                <AvatarFallback className="bg-primary-container font-semibold text-on-primary-container">
+                  {initials(acting.displayName)}
+                </AvatarFallback>
+              </Avatar>
+              {pendingInvitesCount > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 font-label text-[10px] font-bold text-on-warning lg:hidden">
+                  {pendingInvitesCount > 9 ? "9+" : pendingInvitesCount}
+                </span>
+              ) : null}
+            </span>
+            <span className="min-w-0 max-w-[4.5rem] truncate text-left text-[10px] font-medium leading-tight text-on-surface lg:hidden">
+              {acting.displayName}
+            </span>
+            <span className="hidden min-w-0 flex-1 text-left lg:block">
               <span className="block truncate font-medium leading-tight">{acting.displayName}</span>
               <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
                 <StatusBadge variant={statusBadgeVariant(acting.status)} size="sm">
@@ -109,9 +119,11 @@ export function LegalEntitySwitcher({
                 </span>
               </span>
             </span>
-            <PendingInvitationsBadge count={pendingInvitesCount} />
+            <span className="hidden lg:inline-flex">
+              <PendingInvitationsBadge count={pendingInvitesCount} />
+            </span>
           </span>
-          <ChevronsUpDown className="size-4 shrink-0 opacity-60" />
+          <ChevronsUpDown className="hidden size-4 shrink-0 opacity-60 lg:block" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] p-0">

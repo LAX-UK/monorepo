@@ -8,11 +8,12 @@ import {
   type DashboardSliceFailure,
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
+import { parseSubmissionsParams } from "@/lib/dashboard/filters/submissions/submissions-filters";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import type { SubmissionListFilterValues } from "@auction/validators";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -24,19 +25,9 @@ export default async function DashboardSubmissionsPage({
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
-  const initialQ = (sp.q ?? "").trim().slice(0, 200);
-  const status =
-    sp.status === "draft" ||
-    sp.status === "submitted" ||
-    sp.status === "under_review" ||
-    sp.status === "approved" ||
-    sp.status === "rejected" ||
-    sp.status === "withdrawn" ||
-    sp.status === "converted"
-      ? (sp.status as ItemSubmissionStatus)
-      : undefined;
-
-  const initialStatus: SubmissionListFilterValues["status"] = status ?? "all";
+  const filters = parseSubmissionsParams(sp);
+  const initialQ = filters.q;
+  const initialStatus = filters.status;
 
   const c = await getServerDataContainer();
   let rows: ItemSubmission[] = [];
@@ -45,7 +36,9 @@ export default async function DashboardSubmissionsPage({
   try {
     const [filtered, all] = await Promise.all([
       c.submissions.listMine(
-        status !== undefined ? { status, limit: 50, offset: 0 } : { limit: 50, offset: 0 },
+        initialStatus !== "all"
+          ? { status: initialStatus, limit: 50, offset: 0 }
+          : { limit: 50, offset: 0 },
       ),
       c.submissions.listMine({ limit: 100, offset: 0 }),
     ]);
@@ -82,12 +75,15 @@ export default async function DashboardSubmissionsPage({
     initialQ.length === 0 ? mapped : mapped.filter((r) => r.title.toLowerCase().includes(qLower));
 
   const hasBlockingError = Boolean(queryFailure || loadFailure);
+  const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
     <DashboardPage>
       <DashboardPageHeader
-        meta="Selling"
+        meta={workspaceMeta}
         title="Your submissions"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
         actions={
           <Button variant="primary" asChild>

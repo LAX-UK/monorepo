@@ -1,24 +1,24 @@
-import {
-  DashboardComplianceStrip,
-  DashboardComplianceStripSkeleton,
-} from "@/components/dashboard/dashboard-compliance-strip";
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import {
-  type PortfolioFilterValue,
-  PortfolioFilters,
-} from "@/components/dashboard/portfolio-filters";
+import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import { PortfolioLotGrid } from "@/components/dashboard/portfolio-lot-grid";
 import { PortfolioNoticeToast } from "@/components/dashboard/portfolio-notice-toast";
+import { PortfolioListToolbar } from "@/components/dashboard/portfolio/portfolio-list-toolbar";
 import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import {
   type DashboardSliceFailure,
   describeDashboardSliceFailure,
 } from "@/lib/dashboard/dashboard-fetch-errors";
+import {
+  PORTFOLIO_BASE_PATH,
+  hasPortfolioActiveFilters,
+  parsePortfolioParams,
+} from "@/lib/dashboard/filters/portfolio/portfolio-filters";
+import { kpiCompareHint } from "@/lib/dashboard/kpi-slot-conventions";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
@@ -26,32 +26,10 @@ import {
   filterPortfolioRows,
   toPortfolioLotCards,
 } from "@/lib/data/view-models/dashboard-portfolio.vm";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import { Button } from "@auction/ui/components/button";
 import { Inbox } from "lucide-react";
 import Link from "next/link";
-import { Suspense } from "react";
-
-const PAYMENT_VALUES: ReadonlyArray<PortfolioFilterValue> = [
-  "all",
-  "due",
-  "paid",
-  "authorized",
-  "refunded",
-];
-
-function parsePaymentFilter(raw: string | undefined): PortfolioFilterValue {
-  if (raw && (PAYMENT_VALUES as readonly string[]).includes(raw)) {
-    return raw as PortfolioFilterValue;
-  }
-  return "all";
-}
-
-function parseYearFilter(raw: string | undefined): number | null {
-  if (!raw) return null;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 1900 || n > 3000) return null;
-  return n;
-}
 
 type PageProps = {
   searchParams: Promise<{ q?: string; payment?: string; year?: string }>;
@@ -59,9 +37,10 @@ type PageProps = {
 
 export default async function DashboardPortfolioPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-  const qRaw = (sp.q ?? "").trim().toLowerCase();
-  const payment = parsePaymentFilter(sp.payment);
-  const year = parseYearFilter(sp.year);
+  const filters = parsePortfolioParams(sp);
+  const qRaw = filters.q.trim().toLowerCase();
+  const payment = filters.payment;
+  const year = filters.year;
 
   const container = await getServerDataContainer();
   let won: Awaited<ReturnType<typeof container.portfolio.listMine>> = [];
@@ -78,19 +57,18 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   const artistIds = filtered.map((row) => row.lot.artistId ?? null);
   const artistNameById = await resolveArtistNames(artistIds);
   const portfolioCards = toPortfolioLotCards(filtered, { artistNameById });
+  const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
     <DashboardPage className="space-y-8">
       <PortfolioNoticeToast />
       <DashboardPageHeader
-        meta="Buying"
-        title="Private Collection"
+        meta={workspaceMeta}
+        title="Collection"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Lots where you are the winning bidder after the hammer fell."
       />
-
-      <Suspense fallback={<DashboardComplianceStripSkeleton />}>
-        <DashboardComplianceStrip loginNext="/dashboard/portfolio" />
-      </Suspense>
 
       {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
@@ -117,48 +95,46 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
               id: "year",
               label: "This year",
               value: String(analytics.wonThisYear),
+              ...kpiCompareHint(
+                filtered.length !== analytics.totalRows
+                  ? `${filtered.length} shown`
+                  : "Acquired lots",
+              ),
             },
           ]}
         />
       ) : null}
 
+      {!loadFailure ? <PortfolioListToolbar filters={filters} years={analytics.years} /> : null}
+
       {!loadFailure ? (
-        <DashboardToolbar
-          search={
-            <PortfolioFilters
-              initialQ={sp.q ?? ""}
-              payment={payment}
-              year={year}
-              years={analytics.years}
-            />
-          }
-        />
+        <DashboardFilterResultsAnnouncer count={filtered.length} entityLabel="works" />
       ) : null}
 
       {!loadFailure ? (
         <DashboardSection id="portfolio-grid" title="Acquired works">
           {filtered.length === 0 ? (
-            <DashboardEmptyState
-              variant={!qRaw && payment === "all" && year == null ? "hero" : "quiet"}
-              icon={!qRaw && payment === "all" && year == null ? <Inbox aria-hidden /> : undefined}
-              title={
-                qRaw || payment !== "all" || year != null
-                  ? "No matches"
-                  : DASHBOARD_EMPTY.portfolio.title
-              }
-              description={
-                qRaw || payment !== "all" || year != null
-                  ? "Try a different search term or clear the filters."
-                  : DASHBOARD_EMPTY.portfolio.description
-              }
-              action={
-                !qRaw && payment === "all" && year == null ? (
+            hasPortfolioActiveFilters(filters) ? (
+              <FilterEmptyState
+                segment="dashboard"
+                entity="works"
+                clearFiltersHref={PORTFOLIO_BASE_PATH}
+                browseHref="/search"
+                browseLabel={DASHBOARD_CTA.browseLiveAuctions}
+              />
+            ) : (
+              <DashboardEmptyState
+                variant="hero"
+                icon={<Inbox aria-hidden />}
+                title={DASHBOARD_EMPTY.portfolio.title}
+                description={DASHBOARD_EMPTY.portfolio.description}
+                action={
                   <Button variant="primary" asChild>
                     <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
                   </Button>
-                ) : undefined
-              }
-            />
+                }
+              />
+            )
           ) : (
             <div className="min-w-0">
               <PortfolioLotGrid items={portfolioCards} variant="stacked" />

@@ -1,39 +1,34 @@
 "use client";
 
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
+import { BidsListToolbar } from "@/components/dashboard/bids/bids-list-toolbar";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
+import { BidsMobileList } from "@/components/dashboard/list/bids-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
+import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
-import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import {
+  buildBidsTabHref,
+  hasBidsActiveFilters,
+  parseBidsParams,
+} from "@/lib/dashboard/filters/bids/bids-filters";
 import { formatMoney } from "@/lib/format-currency";
-import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { Button as UiButton } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download, History } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-import { type BidBoardRow, type BidTab, parseBidTab } from "./bid-board-rows";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
+import type { BidBoardRow, BidTab } from "./bid-board-rows";
 
 function filterBidRows(rows: BidBoardRow[], q: string): BidBoardRow[] {
   const t = q.trim().toLowerCase();
@@ -44,12 +39,8 @@ function filterBidRows(rows: BidBoardRow[], q: string): BidBoardRow[] {
   });
 }
 
-function tabHref(pathname: string, tab: BidTab, q: string) {
-  const params = new URLSearchParams();
-  if (tab !== "active") params.set("tab", tab);
-  if (q) params.set("q", q);
-  const qs = params.toString();
-  return qs ? `${pathname}?${qs}` : pathname;
+function tabHref(tab: BidTab, q: string) {
+  return buildBidsTabHref(tab, q);
 }
 
 function statusVariant(row: BidBoardRow) {
@@ -149,10 +140,10 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
         if (!lot || lot.status !== "active")
           return <span className="text-on-surface-variant">—</span>;
         return (
-          <LotStatusTimer
+          <DashboardLotCountdown
             status={lot.status}
-            startTime={lot.startTime.toISOString()}
-            endTime={lot.endTime.toISOString()}
+            startTime={lot.startTime}
+            endTime={lot.endTime}
           />
         );
       },
@@ -219,9 +210,12 @@ function BoardTable({
   );
   if (rows.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
-      <DataTable columns={columns} data={rows} density="compact" />
-    </div>
+    <>
+      <BidsMobileList rows={rows} artistNameById={artistNameById} onOpenHistory={onOpenHistory} />
+      <div className="hidden overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm lg:block">
+        <DataTable columns={columns} data={rows} density="compact" />
+      </div>
+    </>
   );
 }
 
@@ -295,19 +289,14 @@ export function BidsBoard({
   initialQ: string;
   artistNameById?: Record<string, string>;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const searchForm = useForm<{ q: string }>({
-    resolver: zodResolver(urlTitleSearchSchema),
-    defaultValues: { q: initialQ },
-  });
-  useEffect(() => {
-    searchForm.reset({ q: initialQ });
-  }, [initialQ, searchForm]);
 
-  const tab = parseBidTab(searchParams.get("tab"), initialTab);
-  const appliedQ = (searchParams.get("q") ?? "").trim().slice(0, 200);
+  const filters = parseBidsParams({
+    tab: searchParams.get("tab") ?? initialTab,
+    q: searchParams.get("q") ?? initialQ,
+  });
+  const tab = filters.tab;
+  const appliedQ = filters.q.trim().slice(0, 200);
 
   const filteredActive = useMemo(() => filterBidRows(active, appliedQ), [active, appliedQ]);
   const filteredWon = useMemo(() => filterBidRows(won, appliedQ), [won, appliedQ]);
@@ -318,47 +307,12 @@ export function BidsBoard({
     setHistory({ lotId, title });
   }, []);
 
-  const replaceQuery = useCallback(
-    (mutate: (p: URLSearchParams) => void) => {
-      const next = new URLSearchParams(searchParams.toString());
-      mutate(next);
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-
-  const applySearch = useCallback(
-    (q: string) => {
-      replaceQuery((p) => {
-        const trimmed = q.trim().slice(0, 200);
-        if (trimmed) p.set("q", trimmed);
-        else p.delete("q");
-        if (tab !== "active") p.set("tab", tab);
-        else p.delete("tab");
-      });
-    },
-    [replaceQuery, tab],
-  );
-
   const currentRows =
     tab === "won"
       ? { all: won, filtered: filteredWon }
       : tab === "lost"
         ? { all: lost, filtered: filteredLost }
         : { all: active, filtered: filteredActive };
-
-  const clearSearch = useCallback(
-    (nextTab: BidTab = tab) => {
-      searchForm.setValue("q", "");
-      replaceQuery((p) => {
-        p.delete("q");
-        if (nextTab === "active") p.delete("tab");
-        else p.set("tab", nextTab);
-      });
-    },
-    [replaceQuery, searchForm, tab],
-  );
 
   const exportCurrentTab = useCallback(() => {
     const rows = tab === "won" ? filteredWon : tab === "lost" ? filteredLost : filteredActive;
@@ -376,24 +330,6 @@ export function BidsBoard({
 
   return (
     <div className="min-w-0 max-w-[var(--container-inner,1376px)]">
-      <DashboardPageHeader
-        meta="Bidding"
-        title="My Bids"
-        description="Track active, won, and lost lots with your latest bid values."
-        actions={
-          <Button
-            type="button"
-            variant="secondaryOutline"
-            onClick={exportCurrentTab}
-            disabled={!currentTabHasRows}
-            aria-label="Download current tab as CSV"
-          >
-            <Download className="mr-1 size-4" aria-hidden />
-            Export CSV
-          </Button>
-        }
-      />
-
       {sessionFailure ? <DashboardSliceErrorAlert failure={sessionFailure} /> : null}
       {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
@@ -401,22 +337,23 @@ export function BidsBoard({
         <>
           <SectionTabsNav
             ariaLabel="Bid status"
+            sticky={false}
             className="mb-5 rounded-xl border border-border-hairline bg-surface-container-lowest px-3"
             items={[
               {
-                href: tabHref(pathname, "active", appliedQ),
+                href: tabHref("active", appliedQ),
                 label: "Active",
                 badge: active.length,
                 isActive: tab === "active",
               },
               {
-                href: tabHref(pathname, "won", appliedQ),
+                href: tabHref("won", appliedQ),
                 label: "Won",
                 badge: won.length,
                 isActive: tab === "won",
               },
               {
-                href: tabHref(pathname, "lost", appliedQ),
+                href: tabHref("lost", appliedQ),
                 label: "Lost",
                 badge: lost.length,
                 isActive: tab === "lost",
@@ -424,51 +361,23 @@ export function BidsBoard({
             ]}
           />
 
-          <DashboardToolbar
-            search={
-              <Form {...searchForm}>
-                <form
-                  className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                  onSubmit={searchForm.handleSubmit((v) => {
-                    applySearch(v.q);
-                  })}
-                >
-                  <FormField
-                    control={searchForm.control}
-                    name="q"
-                    render={({ field }) => (
-                      <FormItem className="min-w-0 flex-1 space-y-2">
-                        <FormLabel
-                          htmlFor="bids-q"
-                          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
-                        >
-                          Filter by lot title
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            id="bids-q"
-                            placeholder="e.g. oil on canvas"
-                            className="max-w-md bg-surface-container-low"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" variant="secondaryOutline">
-                    Apply
-                  </Button>
-                </form>
-              </Form>
-            }
-            filters={
-              <p className="font-body text-xs text-on-surface-variant">
-                Latest bid per lot · URL shares <span className="font-mono">tab</span> and{" "}
-                <span className="font-mono">q</span>
-              </p>
+          <BidsListToolbar
+            filters={filters}
+            actions={
+              <Button
+                type="button"
+                variant="secondaryOutline"
+                onClick={exportCurrentTab}
+                disabled={!currentTabHasRows}
+                aria-label="Download current tab as CSV"
+              >
+                <Download className="mr-1 size-4" aria-hidden />
+                Export CSV
+              </Button>
             }
           />
+
+          <DashboardFilterResultsAnnouncer count={currentRows.filtered.length} entityLabel="bids" />
 
           {currentRows.all.length === 0 ? (
             <DashboardEmptyState
@@ -494,15 +403,13 @@ export function BidsBoard({
                 ) : undefined
               }
             />
-          ) : currentRows.filtered.length === 0 ? (
-            <DashboardEmptyState
-              title="No matches"
-              description="Nothing in this tab matches your search. Clear the filter or try another title."
-              action={
-                <Button type="button" variant="secondaryOutline" onClick={() => clearSearch(tab)}>
-                  Clear search
-                </Button>
-              }
+          ) : currentRows.filtered.length === 0 && hasBidsActiveFilters(filters) ? (
+            <FilterEmptyState
+              segment="dashboard"
+              entity="bids"
+              clearFiltersHref={buildBidsTabHref(tab, "")}
+              browseHref="/search"
+              browseLabel={DASHBOARD_CTA.browseLiveAuctions}
             />
           ) : (
             <BoardTable

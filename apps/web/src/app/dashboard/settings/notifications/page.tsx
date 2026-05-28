@@ -55,7 +55,7 @@ export default async function NotificationSettingsPage({
       >
         Back to inbox
       </Link>
-      <SettingsFormHeader title="Alert settings" />
+      <SettingsFormHeader title="Notifications" />
 
       {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 

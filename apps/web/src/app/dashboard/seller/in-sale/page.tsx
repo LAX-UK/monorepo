@@ -1,23 +1,30 @@
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { FilterRowNav } from "@/components/dashboard/filter-row-nav";
+import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
+import { InSaleMobileList } from "@/components/dashboard/list/in-sale-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { DashboardToolbar } from "@/components/dashboard/primitives/dashboard-toolbar";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import {
   SellerOrgContextBanner,
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
+import { InSaleListToolbar } from "@/components/dashboard/seller/in-sale-list-toolbar";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   type DashboardSliceFailure,
   describeDashboardSliceFailure,
 } from "@/lib/dashboard/dashboard-fetch-errors";
+import {
+  hasInSaleActiveFilters,
+  parseInSaleParams,
+} from "@/lib/dashboard/filters/in-sale/in-sale-filters";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { DashboardSalesReader } from "@/lib/data/readers/dashboard-readers";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -26,11 +33,7 @@ import Link from "next/link";
 import { buildInSaleKpiTiles } from "./in-sale-metrics";
 import {
   type InSaleDisplayRow,
-  SELLER_LOT_FILTER_OPTIONS,
-  type SellerLotStatusFilter,
   filterInSaleRows,
-  inSaleFilterHref,
-  parseSellerLotStatusFilter,
   sortInSaleRows,
   toInSaleDisplayRows,
 } from "./in-sale.vm";
@@ -52,21 +55,6 @@ function badgeVariant(tone: InSaleDisplayRow["statusTone"]) {
     case "neutral":
       return "neutral" as const;
   }
-}
-
-function FilterChips({ active }: { active: SellerLotStatusFilter }) {
-  return (
-    <FilterRowNav
-      label="Filter lots by status"
-      scroll={false}
-      items={SELLER_LOT_FILTER_OPTIONS.map((opt) => ({
-        id: opt.value,
-        label: opt.label,
-        href: inSaleFilterHref(PAGE_PATH, opt.value),
-        active: opt.value === active,
-      }))}
-    />
-  );
 }
 
 function ReserveBadge({ row }: { row: InSaleDisplayRow }) {
@@ -160,8 +148,9 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
   const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
 
   const sp = await searchParams;
-  const filter = parseSellerLotStatusFilter(sp.status);
-  const rawQ = typeof sp.q === "string" ? sp.q.trim().slice(0, 200) : "";
+  const filters = parseInSaleParams(sp);
+  const filter = filters.status;
+  const rawQ = filters.q;
   const qLower = rawQ.toLowerCase();
 
   const c = await getServerDataContainer();
@@ -192,11 +181,15 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
             (row.saleTitle?.toLowerCase().includes(qLower) ?? false),
         );
 
+  const workspaceMeta = await readClientWorkspacePageMeta();
+
   return (
     <DashboardPage className="screen w-full space-y-6">
       <DashboardPageHeader
-        meta="Selling"
+        meta={workspaceMeta}
         title="Items in sale"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Lots from your submissions across every catalogue. Status, reserve, and end time at a glance — bidder identities are never shown."
       />
 
@@ -207,34 +200,15 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         <KpiRow track="selling" columns={4} tiles={buildInSaleKpiTiles(allDisplay)} />
       ) : null}
 
-      <DashboardToolbar
-        chips={<FilterChips active={filter} />}
-        search={
-          <form
-            action={PAGE_PATH}
-            method="get"
-            aria-label="Filter lots by title"
-            className="flex w-full items-center gap-2"
-          >
-            {filter !== "live" ? <input type="hidden" name="status" value={filter} /> : null}
-            <label htmlFor="in-sale-q" className="sr-only">
-              Filter by lot or sale title
-            </label>
-            <input
-              id="in-sale-q"
-              name="q"
-              type="search"
-              defaultValue={rawQ}
-              placeholder="Search by lot or sale title"
-              className="h-10 w-full rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            />
-          </form>
-        }
-      />
+      {!loadFailure ? <InSaleListToolbar filters={filters} /> : null}
+
+      {!loadFailure ? (
+        <DashboardFilterResultsAnnouncer count={filtered.length} entityLabel="lots" />
+      ) : null}
 
       {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
-      <section aria-live="polite" aria-busy="false">
+      <section>
         {!loadFailure && allDisplay.length === 0 ? (
           <DashboardEmptyState
             title={DASHBOARD_EMPTY.sellerInSale.title}
@@ -248,27 +222,25 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         ) : null}
 
         {!loadFailure && allDisplay.length > 0 && filtered.length === 0 ? (
-          <DashboardEmptyState
-            title={rawQ ? "No lots match this search" : "No lots match this filter"}
-            description={
-              rawQ
-                ? "Try a different keyword or clear the search to see every lot."
-                : "Your approved submissions will appear here once we schedule them into a sale."
-            }
-            action={
-              <Button variant="secondaryOutline" asChild>
-                <Link href={PAGE_PATH}>Show live & scheduled</Link>
-              </Button>
-            }
-          />
+          hasInSaleActiveFilters(filters) ? (
+            <FilterEmptyState segment="dashboard" entity="lots" clearFiltersHref={PAGE_PATH} />
+          ) : (
+            <DashboardEmptyState
+              title="No lots match this filter"
+              description="Your approved submissions will appear here once we schedule them into a sale."
+            />
+          )
         ) : null}
 
         {filtered.length > 0 ? (
-          <ul className="space-y-3">
-            {filtered.map((row) => (
-              <InSaleRowCard key={row.id} row={row} />
-            ))}
-          </ul>
+          <>
+            <InSaleMobileList rows={filtered} />
+            <ul className="hidden space-y-3 lg:block">
+              {filtered.map((row) => (
+                <InSaleRowCard key={row.id} row={row} />
+              ))}
+            </ul>
+          </>
         ) : null}
       </section>
     </DashboardPage>

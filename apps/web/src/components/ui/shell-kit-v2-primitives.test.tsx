@@ -97,6 +97,17 @@ describe("KpiRow (v3)", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
   });
+
+  it("renders long currency values without breaking layout", () => {
+    render(
+      <div className="w-48">
+        <KpiRow
+          tiles={[{ label: "Portfolio value", value: "£123,456.78", semanticTone: "emphasis" }]}
+        />
+      </div>,
+    );
+    expect(screen.getByTitle("£123,456.78")).toBeInTheDocument();
+  });
 });
 
 describe("DashboardDetailHeader (v3)", () => {

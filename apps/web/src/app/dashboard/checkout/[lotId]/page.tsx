@@ -58,7 +58,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
   return (
     <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
-      <div className="mb-8 px-4 sm:px-0 lg:mb-10">
+      <div className="mb-8 hidden px-4 sm:px-0 lg:mb-10 lg:block">
         <Link
           href="/dashboard/portfolio"
           className="inline-flex min-h-10 items-center gap-2 rounded-md font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -87,7 +87,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             <h1 className="mb-3 font-headline text-3xl tracking-tight text-on-surface sm:text-4xl lg:text-5xl">
               {auction.title}
             </h1>
-            <p className="mb-8 font-body text-sm leading-relaxed text-on-surface-variant lg:mb-10">
+            <p className="mb-8 hidden font-body text-sm leading-relaxed text-on-surface-variant lg:mb-10 lg:block">
               Lot settled in your favor. Complete purchase below to open secure Stripe Checkout
               (card or UK bank transfer). High-value lots may require finance review before checkout
               is issued.
