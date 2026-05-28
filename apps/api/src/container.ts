@@ -11,15 +11,24 @@ import {
   MetaCapiMarketingEventPublisher,
   SgtmMarketingEventPublisher,
 } from "@auction/marketing-events";
+import { getBullMqTelemetry } from "@auction/observability";
+import {
+  EMAIL_QUEUE_NAME,
+  IMAGE_CLEANUP_QUEUE_NAME,
+  LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
+  MARKETING_EVENTS_QUEUE_NAME,
+  MARKETING_SYNC_QUEUE_NAME,
+  PAYOUT_STATEMENTS_QUEUE_NAME,
+  type QueueName,
+  VALIDATE_UPLOAD_QUEUE_NAME,
+  createBullQueueOptions,
+} from "@auction/queues";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
 import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authenticator.js";
 import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
-import {
-  BullmqMarketingEventQueue,
-  MARKETING_EVENTS_QUEUE_NAME,
-} from "./infrastructure/bullmq-marketing-event.queue.js";
+import { BullmqMarketingEventQueue } from "./infrastructure/bullmq-marketing-event.queue.js";
 import { CachedClickIdStore } from "./infrastructure/cached-click-id.store.js";
 import { CompositeAuthenticator } from "./infrastructure/composite-authenticator.js";
 import { CompositeErrorClassifier } from "./infrastructure/composite-error.classifier.js";
@@ -56,6 +65,7 @@ import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
 import { type OrgModuleGate, createOrgModuleGate } from "./lib/org-module-gate.js";
 import { createPlatformCatalogLegalEntityIdProvider } from "./lib/platform-catalog-legal-entity.js";
+import { queueRuntimeEnvFromApiEnv } from "./lib/queue-runtime-env.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import type { IStripeClientFactory } from "./lib/stripe-client.js";
 import { StripeClientFactory } from "./lib/stripe-client.js";
@@ -125,6 +135,9 @@ import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
+import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
+import { BullMQQueueInspector } from "./services/admin/queue-inspector.service.js";
+import { BullMQQueueMutator } from "./services/admin/queue-mutator.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
 import { ArtistProfileService } from "./services/artist-profile.service.js";
 import { ArtistRegistryService } from "./services/artist-registry.service.js";
@@ -388,6 +401,13 @@ export type Container = {
   clickIdStore: IClickIdStore;
   /** Platform-admin HTTP orchestration (SOLID application layer for `routes/admin*`). Keep route files on `container.admin` only; run `pnpm --filter @auction/api check:admin-dip` in CI. */
   admin: AdminRouteServices;
+  /** Engineering-only BullMQ inspection and mutations (super_admin). */
+  queueAdmin: {
+    inspector: BullMQQueueInspector;
+    mutator: BullMQQueueMutator;
+    close: () => Promise<void>;
+  };
+  closeBullQueues: () => Promise<void>;
 };
 
 export function createContainer(env: Env): Container {
@@ -395,7 +415,13 @@ export function createContainer(env: Env): Container {
   const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
   const redis = new Redis(env.REDIS_URL);
   const bullConnection = connectionOptionsFromRedisUrl(env.REDIS_URL);
-  const emailQueue = new Queue<{ outboxId: string }>("email", { connection: bullConnection });
+  const bullTelemetry = getBullMqTelemetry("auction-api");
+  const bullQueueBase = {
+    connection: bullConnection,
+    ...(bullTelemetry ? { telemetry: bullTelemetry } : {}),
+  };
+  const queueOpts = (name: QueueName) => createBullQueueOptions(name, bullQueueBase);
+  const emailQueue = new Queue<{ outboxId: string }>(EMAIL_QUEUE_NAME, queueOpts(EMAIL_QUEUE_NAME));
   const emailService: IEmailService =
     env.EMAIL_PROVIDER === "postmark"
       ? new PostmarkEmailService(db, emailQueue)
@@ -458,9 +484,10 @@ export function createContainer(env: Env): Container {
   const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher);
   const organizationOnboardingService: IOrganizationOnboardingService =
     new OrganizationOnboardingService(db, domainEventPublisher);
-  const legalEntityArchiveQueue = new Queue<{ legalEntityId: string }>("legal-entity-archive", {
-    connection: bullConnection,
-  });
+  const legalEntityArchiveQueue = new Queue<{ legalEntityId: string }>(
+    LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
+    queueOpts(LEGAL_ENTITY_ARCHIVE_QUEUE_NAME),
+  );
   const impersonationAuditService = new ImpersonationAuditService(db, domainEventPublisher);
   const impersonationSessionService = new ImpersonationSessionService(db);
   const legalEntityAccessService = new LegalEntityAccessService(
@@ -633,9 +660,18 @@ export function createContainer(env: Env): Container {
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
 
-  const uploadValidationQueue = new Queue("validate-upload", { connection: bullConnection });
-  const imageCleanupQueue = new Queue("image-cleanup", { connection: bullConnection });
-  const marketingSyncQueue = new Queue("marketing-sync", { connection: bullConnection });
+  const uploadValidationQueue = new Queue(
+    VALIDATE_UPLOAD_QUEUE_NAME,
+    queueOpts(VALIDATE_UPLOAD_QUEUE_NAME),
+  );
+  const imageCleanupQueue = new Queue(
+    IMAGE_CLEANUP_QUEUE_NAME,
+    queueOpts(IMAGE_CLEANUP_QUEUE_NAME),
+  );
+  const marketingSyncQueue = new Queue(
+    MARKETING_SYNC_QUEUE_NAME,
+    queueOpts(MARKETING_SYNC_QUEUE_NAME),
+  );
   const marketingConfig = getMarketingEventsConfig(env);
   const marketingEnabled = marketingConfig !== undefined;
   const clickIdStore: IClickIdStore = marketingEnabled
@@ -645,9 +681,10 @@ export function createContainer(env: Env): Container {
     ? new DrizzleMarketingEventOutboxRepository(db)
     : new NoopMarketingEventOutboxRepository();
   const marketingConsentGate = new EventMarketingConsentGate();
-  const marketingEventsBullQueue = new Queue(MARKETING_EVENTS_QUEUE_NAME, {
-    connection: bullConnection,
-  });
+  const marketingEventsBullQueue = new Queue(
+    MARKETING_EVENTS_QUEUE_NAME,
+    queueOpts(MARKETING_EVENTS_QUEUE_NAME),
+  );
   const marketingEventQueue = marketingEnabled
     ? new BullmqMarketingEventQueue(marketingEventsBullQueue)
     : new NoopMarketingEventQueue();
@@ -683,9 +720,10 @@ export function createContainer(env: Env): Container {
     notificationWriteRepo,
     env.WEB_ORIGIN,
   );
-  const payoutStatementQueue = new Queue<{ payoutId: string }>("payout-statements", {
-    connection: bullConnection,
-  });
+  const payoutStatementQueue = new Queue<{ payoutId: string }>(
+    PAYOUT_STATEMENTS_QUEUE_NAME,
+    queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
+  );
   const mediaUrlResolver = new MediaUrlResolver(
     objectStorage,
     env.STORAGE_READ_MODE,
@@ -1109,6 +1147,34 @@ export function createContainer(env: Env): Container {
     new JsonErrorResponseBuilder(),
   );
 
+  const queueAudit = new StructuredQueueAuditService(createBaseLogger(env));
+  const queueInspector = new BullMQQueueInspector(
+    bullConnection,
+    redis,
+    queueRuntimeEnvFromApiEnv(env),
+  );
+  const queueMutator = new BullMQQueueMutator(bullConnection, redis, db, queueAudit, env.APP_ENV);
+  const queueAdmin = {
+    inspector: queueInspector,
+    mutator: queueMutator,
+    close: async () => {
+      await Promise.allSettled([queueInspector.close(), queueMutator.close()]);
+    },
+  };
+
+  const closeBullQueues = async () => {
+    await Promise.allSettled([
+      emailQueue.close(),
+      legalEntityArchiveQueue.close(),
+      uploadValidationQueue.close(),
+      imageCleanupQueue.close(),
+      marketingSyncQueue.close(),
+      marketingEventsBullQueue.close(),
+      payoutStatementQueue.close(),
+      queueAdmin.close(),
+    ]);
+  };
+
   const admin = createAdminRouteServices({
     db,
     domainEventPublisher,
@@ -1247,5 +1313,7 @@ export function createContainer(env: Env): Container {
     marketingEventPublisher,
     clickIdStore,
     admin,
+    queueAdmin,
+    closeBullQueues,
   };
 }

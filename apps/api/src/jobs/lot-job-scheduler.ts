@@ -1,3 +1,4 @@
+import { LOT_LIFECYCLE_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
 import { type ConnectionOptions, type Job, Queue, Worker } from "bullmq";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 
@@ -16,18 +17,21 @@ export class LotJobScheduler implements ILotJobScheduler {
     private readonly onActivate: (lotId: string) => Promise<void>,
     private readonly onEnd: (lotId: string) => Promise<void>,
   ) {
-    this.queue = new Queue<LotJobData>("lot-lifecycle", { connection });
+    this.queue = new Queue<LotJobData>(
+      LOT_LIFECYCLE_QUEUE_NAME,
+      createBullQueueOptions(LOT_LIFECYCLE_QUEUE_NAME, { connection }),
+    );
   }
 
   createWorker(): Worker<LotJobData> {
     return new Worker<LotJobData>(
-      "lot-lifecycle",
+      LOT_LIFECYCLE_QUEUE_NAME,
       async (job: Job<LotJobData>) => {
         const id = job.data.lotId;
         if (job.name === "activate") await this.onActivate(id);
         if (job.name === "end") await this.onEnd(id);
       },
-      { connection: this.connection },
+      createBullQueueOptions(LOT_LIFECYCLE_QUEUE_NAME, { connection: this.connection }),
     );
   }
 

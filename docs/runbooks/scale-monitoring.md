@@ -35,6 +35,12 @@ Observability targets derived from the Round 3 scale audit. These are **investig
 - **Alert:** any single `generate-payout-statement` job **> 30s** wall time or repeated **OOM** kills.
 - **Why:** Large line-item sets are CPU/memory heavy; concurrency is intentionally low (`concurrency: 2`).
 
+### Dead-letter queue (`dead-letter`)
+
+- **Alert:** **> 10** waiting jobs in `dead-letter`, or any new DLQ entry on a **high-criticality** queue (`email`, `payout-statements`, `lot-lifecycle`, `payout-settlement`).
+- **Why:** Exhausted retries indicate a bug or dependency outage; Sentry fires on DLQ insert. Inspect via `GET /admin/system/job-queues` (super_admin) or Bull Board when `ENABLE_BULL_BOARD=true`.
+- **Check:** `failed_jobs` table for audit trail; replay only after root cause fix (`POST /admin/system/job-queues/dead-letter/:jobId/replay` with `confirmIdempotency: true`).
+
 ## BullMQ rollback controls
 
 During code or database rollback, pause queues before destructive SQL and resume
@@ -44,10 +50,9 @@ Recommended pause order:
 
 1. `payout-settlement`
 2. `payout-statements`
-3. `archive-cascade`
+3. `legal-entity-archive`
 4. `impersonation-sweeper`
-5. `notification-fanout`
-6. `email`
+5. `email`
 
 Use the BullMQ admin API/UI where available:
 
