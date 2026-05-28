@@ -27,6 +27,7 @@ async function ActivityContent({ saleId }: { saleId: string }) {
   return (
     <CatalogDomainEventsTimeline
       events={events}
+      exportFilters={{ aggregateType: "sale", aggregateId: saleId }}
       emptyMessage="No sale activity recorded yet. Events appear when the sale is published, cancelled, or ended."
     />
   );

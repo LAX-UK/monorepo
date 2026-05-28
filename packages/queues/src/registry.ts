@@ -20,6 +20,7 @@ export const PURGE_SOFT_DELETED_USERS_QUEUE_NAME = "purge-soft-deleted-users" as
 export const PAYOUT_SETTLEMENT_QUEUE_NAME = "payout-settlement" as const;
 export const PAYOUT_STATEMENTS_QUEUE_NAME = "payout-statements" as const;
 export const LEGAL_ENTITY_ARCHIVE_QUEUE_NAME = "legal-entity-archive" as const;
+export const DATA_EXPORT_QUEUE_NAME = "data-export" as const;
 
 const marketingEnabled = (env: QueueRuntimeEnv) => env.marketingEventsEnabled;
 const cronEnabled = (env: QueueRuntimeEnv) => Boolean(env.cronInternalSecret?.trim());
@@ -339,6 +340,24 @@ export const QUEUE_REGISTRY = {
       removeOnFail: 500,
     },
     description: "Legal entity archive cascade",
+  },
+  [DATA_EXPORT_QUEUE_NAME]: {
+    producers: ["api"],
+    consumer: "worker",
+    criticality: "normal",
+    pauseOrder: null,
+    heartbeatKey: "data-export",
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: true,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+      removeOnComplete: { age: 7 * 24 * 3600, count: 500 },
+      removeOnFail: 200,
+    },
+    description: "Async CSV data exports",
   },
   [DEAD_LETTER_QUEUE_NAME]: {
     producers: ["api", "worker"],

@@ -44,6 +44,7 @@ export * from "./impersonation-sessions.js";
 export * from "./upload-objects.js";
 export * from "./email.js";
 export * from "./failed-jobs.js";
+export * from "./data-exports.js";
 /** Legal Entity Model */
 export * from "./legal-entities.js";
 export * from "./legal-entity-members.js";

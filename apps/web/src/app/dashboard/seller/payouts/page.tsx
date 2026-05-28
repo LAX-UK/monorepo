@@ -4,7 +4,7 @@ import {
   PayoutsDesktopList,
   PayoutsMobileList,
 } from "@/components/dashboard/list/payouts-mobile-list";
-import { PayoutsExportButton } from "@/components/dashboard/payouts-export-button";
+import { ExportButton } from "@/components/exports/export-button";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import {
@@ -87,19 +87,11 @@ export default async function SellerPayoutsPage() {
         hideDescriptionOnMobile
         description="Hammer prices, buyer premiums collected by LAX, seller commissions, and adjustments roll into each settlement batch."
         actions={
-          payouts.length > 0 ? (
-            <PayoutsExportButton
-              rows={payouts.map((p) => ({
-                id: p.id,
-                periodStart: new Date(p.periodStart).toISOString(),
-                periodEnd: new Date(p.periodEnd).toISOString(),
-                grossAmount: p.grossAmount,
-                platformFee: p.platformFee,
-                stripeFee: p.stripeFee,
-                netAmount: p.netAmount,
-                currency: p.currency,
-                status: p.status,
-              }))}
+          payouts.length > 0 && sellerEntityId ? (
+            <ExportButton
+              entityType="payouts"
+              label="Export CSV"
+              filters={{ legalEntityId: sellerEntityId }}
             />
           ) : null
         }

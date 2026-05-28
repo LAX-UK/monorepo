@@ -1,7 +1,7 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { ExportButton } from "@/components/exports/export-button";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminListSearchGet } from "@/components/admin/admin-list-search";
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
@@ -244,7 +244,17 @@ export default async function AdminPaymentsPage({
         ) : null
       }
       chips={statusChips}
-      listToolbarEnd={<AdminListExportLink />}
+      listToolbarEnd={
+        <ExportButton
+          entityType="payments"
+          disabled={Boolean(query.q?.trim())}
+          disabledReason="Clear search to export all payments matching the status filters"
+          filters={{
+            ...(query.status ? { status: query.status } : {}),
+            ...(manualReviewQueue ? { manualReview: true } : {}),
+          }}
+        />
+      }
       view={view}
       empty={empty}
       pagination={

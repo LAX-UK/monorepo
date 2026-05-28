@@ -1,3 +1,4 @@
+import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { DashboardBannerStackClient } from "@/components/dashboard/dashboard-banner-stack-client";
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
 import { ActingAsBanner } from "@/components/layout/acting-as-banner";
@@ -85,7 +86,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const { acting, safeActing } = deriveActingContext({ actingContext, orgModuleEnabled });
 
   return (
-    <ClientShell
+    <ExportShellClient>
+      <ClientShell
       user={user}
       orgModuleEnabled={orgModuleEnabled}
       clientWorkspaceMode={clientWorkspaceMode}
@@ -122,5 +124,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     >
       {children}
     </ClientShell>
+    </ExportShellClient>
   );
 }
