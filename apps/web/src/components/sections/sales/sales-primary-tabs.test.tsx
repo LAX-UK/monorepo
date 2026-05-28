@@ -37,4 +37,11 @@ describe("SalesPrimaryTabs", () => {
     render(<SalesPrimaryTabs state={baseState} />);
     expect(screen.getByRole("link", { name: /^Upcoming$/i })).toHaveClass("snap-start");
   });
+
+  it("puts Live Now first when hasLiveSales is true", () => {
+    render(<SalesPrimaryTabs state={{ ...baseState, tab: "live" }} hasLiveSales />);
+    const links = screen.getAllByRole("link");
+    expect(links[0]).toHaveTextContent("Live Now");
+    expect(links[1]).toHaveTextContent("Upcoming");
+  });
 });

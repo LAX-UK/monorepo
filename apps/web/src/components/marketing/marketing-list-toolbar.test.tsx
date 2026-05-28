@@ -25,10 +25,25 @@ describe("MarketingListToolbar", () => {
     expect(sticky).not.toBeNull();
   });
 
-  it("renders a second mobile row for trailing when mobileFilterTrigger and trailing are set", () => {
+  it("keeps filter trigger and trailing on the same row by default", () => {
     render(
       <MarketingListToolbar
         countLabel="24 lots"
+        mobileFilterTrigger={<button type="button">Filters</button>}
+        trailing={<span data-testid="view-switcher">View</span>}
+      />,
+    );
+
+    expect(screen.queryByTestId("mobile-trailing-row")).not.toBeInTheDocument();
+    expect(screen.getByTestId("view-switcher")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+  });
+
+  it("can stack trailing on a second mobile row when explicitly enabled", () => {
+    render(
+      <MarketingListToolbar
+        countLabel="24 lots"
+        stackTrailingOnMobile
         mobileFilterTrigger={<button type="button">Filters</button>}
         trailing={<span data-testid="view-switcher">View</span>}
       />,

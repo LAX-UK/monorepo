@@ -10,6 +10,19 @@ export const CALENDAR_PRIMARY_TABS = [
 ] as const;
 export type CalendarPrimaryTab = (typeof CALENDAR_PRIMARY_TABS)[number];
 
+export type CalendarPrimaryTabDefinition = {
+  id: CalendarPrimaryTab;
+  label: string;
+};
+
+const CALENDAR_PRIMARY_TAB_DEFINITIONS: readonly CalendarPrimaryTabDefinition[] = [
+  { id: "upcoming", label: "Upcoming" },
+  { id: "live", label: "Live Now" },
+  { id: "results", label: "Auction Results" },
+  { id: "newLots", label: "New Lots" },
+  { id: "privateSales", label: "Private Sales" },
+];
+
 export type CalendarSalesUrlParams = {
   tab?: CalendarPrimaryTab;
   /** Legacy filter still supported for deep links; tab wins when both set. */
@@ -45,6 +58,34 @@ export function parseCalendarPrimaryTab(
   if (legacy === "live" || legacy === "active") return "live";
   if (legacy === "scheduled") return "upcoming";
   return "upcoming";
+}
+
+/** True when the URL explicitly selects a calendar section (tab or legacy filter). */
+export function hasExplicitCalendarTab(sp: Record<string, string | string[] | undefined>): boolean {
+  const raw = firstString(sp.tab)?.toLowerCase();
+  if (raw && (CALENDAR_PRIMARY_TABS as readonly string[]).includes(raw)) {
+    return true;
+  }
+  const legacy = firstString(sp.filter)?.toLowerCase();
+  if (!legacy) return false;
+  return legacy === "ended" || legacy === "live" || legacy === "active" || legacy === "scheduled";
+}
+
+/** Default landing tab when no explicit tab is in the URL. */
+export function resolveDefaultCalendarPrimaryTab(hasLiveSales: boolean): CalendarPrimaryTab {
+  return hasLiveSales ? "live" : "upcoming";
+}
+
+/** Tab nav definitions; Live Now leads when active sales exist. */
+export function getCalendarPrimaryTabDefinitions(
+  hasLiveSales: boolean,
+): CalendarPrimaryTabDefinition[] {
+  if (!hasLiveSales) {
+    return [...CALENDAR_PRIMARY_TAB_DEFINITIONS];
+  }
+  const live = CALENDAR_PRIMARY_TAB_DEFINITIONS.find((t) => t.id === "live");
+  if (!live) return [...CALENDAR_PRIMARY_TAB_DEFINITIONS];
+  return [live, ...CALENDAR_PRIMARY_TAB_DEFINITIONS.filter((t) => t.id !== "live")];
 }
 
 export function parseDeliveryMode(
@@ -194,4 +235,124 @@ export function countActiveCalendarFilters(state: CalendarSalesUrlState): number
   if (state.minPrice != null) n += 1;
   if (state.maxPrice != null) n += 1;
   return n;
+}
+
+/** Preserve tab + view; drop facet filters (shareable reset for active chips + sheet). */
+export function calendarClearFiltersHref(state: CalendarSalesUrlState): string {
+  return calendarSalesHref({
+    tab: state.tab,
+    view: state.view,
+  });
+}
+
+const MONTH_LABELS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+export function calendarDeliveryLabel(mode: SaleDeliveryMode | "all"): string | null {
+  if (mode === "online") return "Online";
+  if (mode === "onsite") return "Live";
+  return null;
+}
+
+export function calendarLocationLabel(location: "all" | "online" | string): string | null {
+  if (location === "all") return null;
+  if (location === "online") return "Online";
+  return location.charAt(0).toUpperCase() + location.slice(1);
+}
+
+export function calendarMonthLabel(month: number): string {
+  return MONTH_LABELS[month - 1] ?? String(month);
+}
+
+export function calendarPriceRangeLabel(state: CalendarSalesUrlState): string | null {
+  if (state.minPrice != null && state.maxPrice != null) {
+    return `£${state.minPrice.toLocaleString()}–£${state.maxPrice.toLocaleString()}`;
+  }
+  if (state.minPrice != null) return `From £${state.minPrice.toLocaleString()}`;
+  if (state.maxPrice != null) return `Up to £${state.maxPrice.toLocaleString()}`;
+  return null;
+}
+
+export type CalendarActiveFilterChip = {
+  key: string;
+  label: string;
+  removeHref: string;
+};
+
+/** Removable active filter chips for the sales calendar toolbar strip. */
+export function buildCalendarActiveFilterChips(
+  state: CalendarSalesUrlState,
+  categories: ReadonlyArray<{ id: string; name: string }>,
+): CalendarActiveFilterChip[] {
+  const chips: CalendarActiveFilterChip[] = [];
+
+  const delivery = calendarDeliveryLabel(state.deliveryMode);
+  if (delivery) {
+    chips.push({
+      key: "delivery",
+      label: delivery,
+      removeHref: calendarSalesHrefFromState(state, { deliveryMode: "all", page: undefined }),
+    });
+  }
+
+  const location = calendarLocationLabel(state.location);
+  if (location) {
+    chips.push({
+      key: "location",
+      label: location,
+      removeHref: calendarSalesHrefFromState(state, { location: "all", page: undefined }),
+    });
+  }
+
+  if (state.categoryId) {
+    const name = categories.find((c) => c.id === state.categoryId)?.name ?? "Department";
+    chips.push({
+      key: "categoryId",
+      label: name,
+      removeHref: calendarSalesHrefFromState(state, { categoryId: undefined, page: undefined }),
+    });
+  }
+
+  if (state.month != null) {
+    chips.push({
+      key: "month",
+      label: calendarMonthLabel(state.month),
+      removeHref: calendarSalesHrefFromState(state, { month: undefined, page: undefined }),
+    });
+  }
+
+  if (state.year != null) {
+    chips.push({
+      key: "year",
+      label: String(state.year),
+      removeHref: calendarSalesHrefFromState(state, { year: undefined, page: undefined }),
+    });
+  }
+
+  const priceLabel = calendarPriceRangeLabel(state);
+  if (priceLabel) {
+    chips.push({
+      key: "price",
+      label: priceLabel,
+      removeHref: calendarSalesHrefFromState(state, {
+        minPrice: undefined,
+        maxPrice: undefined,
+        page: undefined,
+      }),
+    });
+  }
+
+  return chips;
 }
