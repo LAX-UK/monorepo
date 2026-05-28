@@ -50,6 +50,9 @@ jobs:
       - name: Biome root check
         run: pnpm exec biome check .
 
+      - name: Queue registry lint
+        run: node scripts/lint-queue-registry.mjs
+
       # OSS binary — avoids gitleaks/gitleaks-action@v2 org license requirement (GITLEAKS_LICENSE).
       - name: Gitleaks secret scan
         run: |

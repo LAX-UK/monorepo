@@ -7,7 +7,31 @@ import {
   SgtmMarketingEventPublisher,
   Sha256PiiHasher,
 } from "@auction/marketing-events";
-import { captureBackgroundError, initNodeSentry } from "@auction/observability";
+import { captureBackgroundError, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
+import {
+  createBullQueueOptions,
+  DEAD_LETTER_QUEUE_NAME,
+  EMAIL_QUEUE_NAME,
+  GC_PENDING_UPLOADS_QUEUE_NAME,
+  IMAGE_CLEANUP_QUEUE_NAME,
+  IMPERSONATION_SWEEPER_QUEUE_NAME,
+  LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
+  listWorkerHeartbeatKeys,
+  MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME,
+  MARKETING_EVENTS_QUEUE_NAME,
+  MARKETING_OUTBOX_POLLER_QUEUE_NAME,
+  MARKETING_SYNC_QUEUE_NAME,
+  PAYOUT_SETTLEMENT_QUEUE_NAME,
+  PAYOUT_STATEMENTS_QUEUE_NAME,
+  PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME,
+  PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
+  PURGE_SOFT_DELETED_USERS_QUEUE_NAME,
+  QUEUE_REGISTRY,
+  registerDlqHandlers,
+  type QueueName,
+  VALIDATE_UPLOAD_QUEUE_NAME,
+  WEBHOOK_EVENTS_QUEUE_NAME,
+} from "@auction/queues";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
 import { Queue, Worker } from "bullmq";
@@ -49,6 +73,7 @@ import {
 } from "./lib/marketing-events-enabled.js";
 import { loadSentryMonitorSlugs, withSentryCronMonitor } from "./lib/sentry-cron.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
+import { queueRuntimeEnvFromWorkerEnv } from "./lib/queue-runtime-env.js";
 import { CachedClickIdStore } from "./marketing/cached-click-id.store.js";
 import { DrizzleProfileMarketingReader } from "./marketing/drizzle-profile.reader.js";
 import {
@@ -81,6 +106,15 @@ const log = pino({
 });
 const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+redis.on("error", (err: Error) => {
+  log.error({ err }, "redis connection error");
+  captureBackgroundError("redis", err);
+});
+const bullTelemetry = getBullMqTelemetry("auction-worker");
+const bullConnection = bullTelemetry
+  ? { connection: redis, telemetry: bullTelemetry }
+  : { connection: redis };
+const queueOpts = (name: QueueName) => createBullQueueOptions(name, bullConnection);
 const uploadStorage = createUploadStorage(env);
 const publicUploadBase =
   env.STORAGE_DRIVER === "s3" && env.S3_BUCKET && env.S3_REGION
@@ -111,40 +145,26 @@ function nextBulkPayoutSettlementRunUtc(from = new Date()): Date {
   return candidate;
 }
 
-const heartbeatKeys = [
-  "worker:heartbeat:webhook-events",
-  "worker:heartbeat:domain-events",
-  "worker:heartbeat:validate-upload",
-  "worker:heartbeat:image-cleanup",
-  "worker:heartbeat:gc-pending-uploads",
-  "worker:heartbeat:email",
-  "worker:heartbeat:marketing-sync",
-  "worker:heartbeat:payout-statements",
-  ...(env.CRON_INTERNAL_SECRET ? ["worker:heartbeat:payout-settlement"] : []),
-  "worker:heartbeat:legal-entity-archive",
-  "worker:heartbeat:impersonation-sweeper",
-  "worker:heartbeat:purge-expired-verifications",
-  ...(isMarketingEventsEnabled(env) ? ["worker:heartbeat:marketing-events"] : []),
-];
+const heartbeatKeys = listWorkerHeartbeatKeys(queueRuntimeEnvFromWorkerEnv(env));
 async function heartbeat(queue: string) {
   await redis.set(`worker:heartbeat:${queue}`, String(Date.now()), "EX", 600);
 }
 
 const webhookWorker = new Worker(
-  "webhook-events",
+  WEBHOOK_EVENTS_QUEUE_NAME,
   async (job) => {
     log.info({ jobId: job.id, name: job.name }, "processed webhook job");
     await heartbeat("webhook-events");
   },
-  { connection: redis },
+  bullConnection,
 );
 webhookWorker.on("completed", () => void heartbeat("webhook-events"));
 webhookWorker.on("failed", (job, err) => {
-  reportWorkerJobFailure("webhook-events", job, err);
+  reportWorkerJobFailure(WEBHOOK_EVENTS_QUEUE_NAME, job, err);
 });
 
 const validateUploadWorker = new Worker(
-  "validate-upload",
+  VALIDATE_UPLOAD_QUEUE_NAME,
   async (job) => {
     const uploadId = String((job.data as { uploadId?: unknown }).uploadId ?? "");
     if (!uploadId) {
@@ -153,7 +173,7 @@ const validateUploadWorker = new Worker(
     await validateUploadJob({ db, storage: uploadStorage, uploadId, log });
     await heartbeat("validate-upload");
   },
-  { connection: redis },
+  bullConnection,
 );
 validateUploadWorker.on("completed", () => void heartbeat("validate-upload"));
 validateUploadWorker.on("failed", (job, err) => {
@@ -161,7 +181,7 @@ validateUploadWorker.on("failed", (job, err) => {
 });
 
 const imageCleanupWorker = new Worker(
-  "image-cleanup",
+  IMAGE_CLEANUP_QUEUE_NAME,
   async (job) => {
     const key = String((job.data as { key?: unknown }).key ?? "");
     if (!key) {
@@ -176,20 +196,23 @@ const imageCleanupWorker = new Worker(
     });
     await heartbeat("image-cleanup");
   },
-  { connection: redis },
+  bullConnection,
 );
 imageCleanupWorker.on("completed", () => void heartbeat("image-cleanup"));
+imageCleanupWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure(IMAGE_CLEANUP_QUEUE_NAME, job, err);
+});
 
-const gcUploadQueue = new Queue("gc-pending-uploads", { connection: redis });
+const gcUploadQueue = new Queue(GC_PENDING_UPLOADS_QUEUE_NAME, queueOpts(GC_PENDING_UPLOADS_QUEUE_NAME));
 const gcPendingUploadsWorker = new Worker(
-  "gc-pending-uploads",
+  GC_PENDING_UPLOADS_QUEUE_NAME,
   async () => {
     await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
       await gcPendingUploads({ db, storage: uploadStorage, log });
       await heartbeat("gc-pending-uploads");
     });
   },
-  { connection: redis },
+  bullConnection,
 );
 gcPendingUploadsWorker.on("completed", () => void heartbeat("gc-pending-uploads"));
 void gcUploadQueue.add(
@@ -210,14 +233,14 @@ const emailSender =
     : new ConsoleEmailSender();
 
 type EmailQueueJobData = SendEmailJobData | Record<string, never>;
-const emailQueue = new Queue<EmailQueueJobData>("email", { connection: redis });
+const emailQueue = new Queue<EmailQueueJobData>(EMAIL_QUEUE_NAME, queueOpts(EMAIL_QUEUE_NAME));
 
 const emailOutboxService: IEmailService =
   env.EMAIL_PROVIDER === "postmark"
     ? new PostmarkEmailService(db, emailQueue as Queue<{ outboxId: string }>)
     : new ConsoleEmailService(db, emailQueue as Queue<{ outboxId: string }>);
 const emailWorker = new Worker<EmailQueueJobData>(
-  "email",
+  EMAIL_QUEUE_NAME,
   async (job) => {
     if (job.name === "outbox-drain") {
       await withSentryCronMonitor("email-outbox-drain", sentryMonitorSlugs, async () => {
@@ -231,7 +254,7 @@ const emailWorker = new Worker<EmailQueueJobData>(
     await heartbeat("email");
   },
   {
-    connection: redis,
+    ...bullConnection,
     concurrency: 10,
     limiter: { max: 50, duration: 1000 },
   },
@@ -246,11 +269,12 @@ void emailQueue.add(
   { jobId: "email-outbox-drain", repeat: { every: 60_000 }, removeOnComplete: 100 },
 );
 
-const marketingSyncQueue = new Queue<ZohoCampaignsSyncJobData>("marketing-sync", {
-  connection: redis,
-});
+const marketingSyncQueue = new Queue<ZohoCampaignsSyncJobData>(
+  MARKETING_SYNC_QUEUE_NAME,
+  queueOpts(MARKETING_SYNC_QUEUE_NAME),
+);
 const marketingSyncWorker = new Worker<ZohoCampaignsSyncJobData>(
-  "marketing-sync",
+  MARKETING_SYNC_QUEUE_NAME,
   async (job) => {
     if (job.name === "zoho-campaigns-sync") {
       await zohoCampaignsSyncJob({ db, env, log, data: job.data });
@@ -259,7 +283,7 @@ const marketingSyncWorker = new Worker<ZohoCampaignsSyncJobData>(
     }
     await heartbeat("marketing-sync");
   },
-  { connection: redis, concurrency: 3, limiter: { max: 10, duration: 1000 } },
+  { ...bullConnection, concurrency: 3, limiter: { max: 10, duration: 1000 } },
 );
 marketingSyncWorker.on("completed", () => void heartbeat("marketing-sync"));
 
@@ -295,9 +319,10 @@ if (marketingConfig) {
     marketingConfig.metaGraphApiVersion,
   );
 
-  marketingCapiBatchQueue = new Queue<ResolvedMarketingEvent>("marketing-events-capi-batch", {
-    connection: redis,
-  });
+  marketingCapiBatchQueue = new Queue<ResolvedMarketingEvent>(
+    MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME,
+    queueOpts(MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME),
+  );
   const capiBatchQueue = marketingCapiBatchQueue;
   const metaCircuitBreaker = new InMemoryCircuitBreaker();
   marketingCapiBatchCollector = new MetaCapiBatchCollector(
@@ -313,11 +338,11 @@ if (marketingConfig) {
   const batchCollector = marketingCapiBatchCollector;
 
   marketingCapiBatchWorker = new Worker<ResolvedMarketingEvent>(
-    "marketing-events-capi-batch",
+    MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME,
     async (job) => {
       await batchCollector.add(job.data);
     },
-    { connection: redis, concurrency: 1 },
+    { ...bullConnection, concurrency: 1 },
   );
 
   const marketingProcessorDeps = {
@@ -337,25 +362,31 @@ if (marketingConfig) {
     },
   };
 
-  marketingEventsQueue = new Queue<MarketingEvent>("marketing-events", { connection: redis });
+  marketingEventsQueue = new Queue<MarketingEvent>(
+    MARKETING_EVENTS_QUEUE_NAME,
+    queueOpts(MARKETING_EVENTS_QUEUE_NAME),
+  );
   const concurrency = env.MARKETING_EVENT_WORKER_CONCURRENCY ?? 5;
   marketingEventsWorker = new Worker<MarketingEvent>(
-    "marketing-events",
+    MARKETING_EVENTS_QUEUE_NAME,
     async (job) => {
       await processMarketingEventJob(marketingProcessorDeps, job.data);
       await heartbeat("marketing-events");
     },
     {
-      connection: redis,
+      ...bullConnection,
       concurrency,
       limiter: { max: 200, duration: 1000 },
     },
   );
   marketingEventsWorker.on("completed", () => void heartbeat("marketing-events"));
 
-  marketingOutboxPollerQueue = new Queue("marketing-outbox-poller", { connection: redis });
+  marketingOutboxPollerQueue = new Queue(
+    MARKETING_OUTBOX_POLLER_QUEUE_NAME,
+    queueOpts(MARKETING_OUTBOX_POLLER_QUEUE_NAME),
+  );
   marketingOutboxPollerWorker = new Worker(
-    "marketing-outbox-poller",
+    MARKETING_OUTBOX_POLLER_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("marketing-outbox-poller", sentryMonitorSlugs, async () => {
         const eventsQueue = marketingEventsQueue;
@@ -364,12 +395,16 @@ if (marketingConfig) {
           db,
           log,
           enqueue: async (event) => {
-            await eventsQueue.add("publish", event, { jobId: event.eventId });
+            await eventsQueue.add("publish", event, {
+              jobId: event.eventId,
+              attempts: QUEUE_REGISTRY[MARKETING_EVENTS_QUEUE_NAME].defaultJobOptions.attempts,
+              backoff: QUEUE_REGISTRY[MARKETING_EVENTS_QUEUE_NAME].defaultJobOptions.backoff,
+            });
           },
         });
       });
     },
-    { connection: redis },
+    bullConnection,
   );
   void marketingOutboxPollerQueue.add(
     "poll",
@@ -380,18 +415,19 @@ if (marketingConfig) {
     reportWorkerJobFailure("marketing-outbox-poller", job, err);
   });
 
-  purgeMarketingClickIdsQueue = new Queue("purge-marketing-click-ids", {
-    connection: redis,
-  });
+  purgeMarketingClickIdsQueue = new Queue(
+    PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
+    queueOpts(PURGE_MARKETING_CLICK_IDS_QUEUE_NAME),
+  );
   purgeMarketingClickIdsWorker = new Worker(
-    "purge-marketing-click-ids",
+    PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("purge-marketing-click-ids", sentryMonitorSlugs, async () => {
         await purgeStaleMarketingClickIds({ db, log });
         await purgeStaleMarketingOutbox({ db, log });
       });
     },
-    { connection: redis },
+    bullConnection,
   );
   void purgeMarketingClickIdsQueue.add(
     "purge",
@@ -408,17 +444,18 @@ if (marketingConfig) {
 }
 
 type PayoutStatementJobData = GeneratePayoutStatementJobData;
-const payoutStatementQueue = new Queue<PayoutStatementJobData>("payout-statements", {
-  connection: redis,
-});
+const payoutStatementQueue = new Queue<PayoutStatementJobData>(
+  PAYOUT_STATEMENTS_QUEUE_NAME,
+  queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
+);
 const payoutStatementWorker = new Worker<PayoutStatementJobData>(
-  "payout-statements",
+  PAYOUT_STATEMENTS_QUEUE_NAME,
   async (job) => {
     await generatePayoutStatementJob({ db, storage: uploadStorage, env, log, job });
     await heartbeat("payout-statements");
   },
   {
-    connection: redis,
+    ...bullConnection,
     concurrency: 2,
     limiter: { max: 20, duration: 1000 },
   },
@@ -426,11 +463,12 @@ const payoutStatementWorker = new Worker<PayoutStatementJobData>(
 payoutStatementWorker.on("completed", () => void heartbeat("payout-statements"));
 
 type LegalEntityArchiveJobData = { legalEntityId: string };
-const legalEntityArchiveQueue = new Queue<LegalEntityArchiveJobData>("legal-entity-archive", {
-  connection: redis,
-});
+const legalEntityArchiveQueue = new Queue<LegalEntityArchiveJobData>(
+  LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
+  queueOpts(LEGAL_ENTITY_ARCHIVE_QUEUE_NAME),
+);
 const legalEntityArchiveWorker = new Worker<LegalEntityArchiveJobData>(
-  "legal-entity-archive",
+  LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
   async (job) => {
     const legalEntityId = String(job.data?.legalEntityId ?? "");
     if (!legalEntityId) {
@@ -446,20 +484,23 @@ const legalEntityArchiveWorker = new Worker<LegalEntityArchiveJobData>(
     });
     await heartbeat("legal-entity-archive");
   },
-  { connection: redis },
+  bullConnection,
 );
 legalEntityArchiveWorker.on("completed", () => void heartbeat("legal-entity-archive"));
 
-const impersonationSweeperQueue = new Queue("impersonation-sweeper", { connection: redis });
+const impersonationSweeperQueue = new Queue(
+  IMPERSONATION_SWEEPER_QUEUE_NAME,
+  queueOpts(IMPERSONATION_SWEEPER_QUEUE_NAME),
+);
 const impersonationSweeperWorker = new Worker(
-  "impersonation-sweeper",
+  IMPERSONATION_SWEEPER_QUEUE_NAME,
   async () => {
     await withSentryCronMonitor("impersonation-sweeper", sentryMonitorSlugs, async () => {
       await runImpersonationSweeperJob({ db, log });
       await heartbeat("impersonation-sweeper");
     });
   },
-  { connection: redis },
+  bullConnection,
 );
 impersonationSweeperWorker.on("completed", () => void heartbeat("impersonation-sweeper"));
 void impersonationSweeperQueue.add(
@@ -472,9 +513,12 @@ void impersonationSweeperQueue.add(
   },
 );
 
-const purgeVerificationsQueue = new Queue("purge-expired-verifications", { connection: redis });
+const purgeVerificationsQueue = new Queue(
+  PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME,
+  queueOpts(PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME),
+);
 const purgeVerificationsWorker = new Worker(
-  "purge-expired-verifications",
+  PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME,
   async () => {
     await withSentryCronMonitor("purge-expired-verifications", sentryMonitorSlugs, async () => {
       const { deleted } = await purgeExpiredVerifications(db, { log });
@@ -482,7 +526,7 @@ const purgeVerificationsWorker = new Worker(
       await heartbeat("purge-expired-verifications");
     });
   },
-  { connection: redis },
+  bullConnection,
 );
 purgeVerificationsWorker.on("completed", () => void heartbeat("purge-expired-verifications"));
 void purgeVerificationsQueue.add(
@@ -495,16 +539,19 @@ void purgeVerificationsQueue.add(
   },
 );
 
-const purgeSoftDeletedUsersQueue = new Queue("purge-soft-deleted-users", { connection: redis });
+const purgeSoftDeletedUsersQueue = new Queue(
+  PURGE_SOFT_DELETED_USERS_QUEUE_NAME,
+  queueOpts(PURGE_SOFT_DELETED_USERS_QUEUE_NAME),
+);
 const purgeSoftDeletedUsersWorker = new Worker(
-  "purge-soft-deleted-users",
+  PURGE_SOFT_DELETED_USERS_QUEUE_NAME,
   async () => {
     await withSentryCronMonitor("purge-soft-deleted-users", sentryMonitorSlugs, async () => {
       const { processed } = await purgeSoftDeletedUsers(db, { log });
       log.info({ processed }, "purge-soft-deleted-users: done");
     });
   },
-  { connection: redis },
+  bullConnection,
 );
 purgeSoftDeletedUsersWorker.on("failed", (job, err) => {
   reportWorkerJobFailure("purge-soft-deleted-users", job, err);
@@ -524,9 +571,9 @@ let payoutSettlementQueue: Queue | undefined;
 let payoutSettlementWorker: Worker | undefined;
 if (env.CRON_INTERNAL_SECRET) {
   const cronSecret = env.CRON_INTERNAL_SECRET;
-  payoutSettlementQueue = new Queue("payout-settlement", { connection: redis });
+  payoutSettlementQueue = new Queue(PAYOUT_SETTLEMENT_QUEUE_NAME, queueOpts(PAYOUT_SETTLEMENT_QUEUE_NAME));
   payoutSettlementWorker = new Worker(
-    "payout-settlement",
+    PAYOUT_SETTLEMENT_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("payout-settlement", sentryMonitorSlugs, async () => {
         await runBulkPayoutSettlementJob({
@@ -537,7 +584,7 @@ if (env.CRON_INTERNAL_SECRET) {
         await heartbeat("payout-settlement");
       });
     },
-    { connection: redis },
+    bullConnection,
   );
   payoutSettlementWorker.on("completed", () => void heartbeat("payout-settlement"));
   void payoutSettlementQueue.add(
@@ -559,6 +606,27 @@ if (env.CRON_INTERNAL_SECRET) {
     `payout-settlement repeat registered; next run at [${nextAt.toISOString()}] (Monday 09:00 UTC)`,
   );
 }
+
+const deadLetterQueue = new Queue(DEAD_LETTER_QUEUE_NAME, queueOpts(DEAD_LETTER_QUEUE_NAME));
+registerDlqHandlers(
+  [
+    { name: EMAIL_QUEUE_NAME, worker: emailWorker },
+    { name: PAYOUT_STATEMENTS_QUEUE_NAME, worker: payoutStatementWorker },
+    { name: LEGAL_ENTITY_ARCHIVE_QUEUE_NAME, worker: legalEntityArchiveWorker },
+    ...(marketingEventsWorker
+      ? [{ name: MARKETING_EVENTS_QUEUE_NAME, worker: marketingEventsWorker }]
+      : []),
+    ...(payoutSettlementWorker
+      ? [{ name: PAYOUT_SETTLEMENT_QUEUE_NAME, worker: payoutSettlementWorker }]
+      : []),
+  ],
+  (name) => QUEUE_REGISTRY[name],
+  {
+    dlqQueue: deadLetterQueue,
+    db,
+    logError: (message, context) => log.error(context, message),
+  },
+);
 
 void Promise.all([
   heartbeat("webhook-events"),
@@ -684,6 +752,7 @@ function shutdown(signal: NodeJS.Signals) {
         purgeSoftDeletedUsersQueue.close(),
         ...(payoutSettlementWorker ? [payoutSettlementWorker.close()] : []),
         ...(payoutSettlementQueue ? [payoutSettlementQueue.close()] : []),
+        deadLetterQueue.close(),
         projectorRunner.stop(),
       ]),
     )

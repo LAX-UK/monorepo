@@ -2,7 +2,6 @@ import type { MarketingEvent } from "@auction/types";
 import type { Queue } from "bullmq";
 import type { IMarketingEventQueue } from "../services/interfaces/marketing-event-queue.js";
 
-export const MARKETING_EVENTS_QUEUE_NAME = "marketing-events";
 export const MARKETING_EVENTS_MAX_ATTEMPTS = 10;
 
 export class BullmqMarketingEventQueue implements IMarketingEventQueue {

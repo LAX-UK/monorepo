@@ -16,6 +16,7 @@
     "@auction/db": "workspace:*",
     "@auction/email": "workspace:^",
     "@auction/observability": "workspace:*",
+    "@auction/queues": "workspace:*",
     "@hono/node-server": "^1.13.7",
     "@sentry/node": "^10.51.0",
     "bullmq": "^5.74.1",
