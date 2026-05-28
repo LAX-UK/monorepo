@@ -5,6 +5,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import type { EntityDocument } from "@auction/types";
+import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 
 type AttachPayload = {
@@ -26,9 +27,9 @@ export async function adminAttachSaleDocumentResultAction(
     });
     const payload = (await res.json().catch(() => ({}))) as {
       data?: EntityDocument;
-      error?: string;
+      error?: unknown;
     };
-    if (!res.ok) return actionFailure(payload.error ?? "attach_failed");
+    if (!res.ok) return actionFailure(normalizeApiErrorMessage(payload.error, "attach_failed"));
     if (!payload.data) return actionFailure("invalid_response");
     revalidatePath(`/admin/sales/${saleId}/edit`);
     revalidatePath(`/admin/sales/${saleId}`);
@@ -47,7 +48,7 @@ export async function adminRemoveSaleDocumentResultAction(
     });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(body.error ?? "remove_failed");
+      return actionFailure(normalizeApiErrorMessage(body.error, "remove_failed"));
     }
     revalidatePath(`/admin/sales/${saleId}/edit`);
     revalidatePath(`/admin/sales/${saleId}`);
@@ -76,9 +77,9 @@ export async function adminAttachLotDocumentResultAction(
     });
     const payload = (await res.json().catch(() => ({}))) as {
       data?: EntityDocument;
-      error?: string;
+      error?: unknown;
     };
-    if (!res.ok) return actionFailure(payload.error ?? "attach_failed");
+    if (!res.ok) return actionFailure(normalizeApiErrorMessage(payload.error, "attach_failed"));
     if (!payload.data) return actionFailure("invalid_response");
     revalidateAdminLotEdit(lotId);
     return actionSuccess(payload.data);
@@ -96,7 +97,7 @@ export async function adminRemoveLotDocumentResultAction(
     });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(body.error ?? "remove_failed");
+      return actionFailure(normalizeApiErrorMessage(body.error, "remove_failed"));
     }
     revalidateAdminLotEdit(lotId);
     return actionSuccess(undefined);
@@ -116,9 +117,9 @@ export async function adminAttachSubmissionDocumentResultAction(
     });
     const payload = (await res.json().catch(() => ({}))) as {
       data?: EntityDocument;
-      error?: string;
+      error?: unknown;
     };
-    if (!res.ok) return actionFailure(payload.error ?? "attach_failed");
+    if (!res.ok) return actionFailure(normalizeApiErrorMessage(payload.error, "attach_failed"));
     if (!payload.data) return actionFailure("invalid_response");
     revalidatePath(`/admin/submissions/${submissionId}`);
     return actionSuccess(payload.data);
@@ -136,7 +137,7 @@ export async function adminRemoveSubmissionDocumentResultAction(
     });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(body.error ?? "remove_failed");
+      return actionFailure(normalizeApiErrorMessage(body.error, "remove_failed"));
     }
     revalidatePath(`/admin/submissions/${submissionId}`);
     return actionSuccess(undefined);

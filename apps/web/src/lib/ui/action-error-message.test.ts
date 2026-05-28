@@ -1,5 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { actionResultNotifyMessage } from "./action-error-message";
+import {
+  actionResultNotifyMessage,
+  normalizeApiErrorMessage,
+  normalizeFetchErrorMessage,
+} from "./action-error-message";
+
+describe("normalizeApiErrorMessage", () => {
+  it("re-exports the shared validators helper", () => {
+    expect(normalizeApiErrorMessage("stripe_connect_failed", "fallback")).toBe(
+      "stripe_connect_failed",
+    );
+  });
+
+  it("maps Zod validation objects to the first issue message", () => {
+    expect(
+      normalizeApiErrorMessage(
+        {
+          name: "ZodError",
+          issues: [{ message: "Country is required" }],
+        },
+        "fallback",
+      ),
+    ).toBe("Country is required");
+  });
+
+  it("returns fallback for unknown object shapes", () => {
+    expect(normalizeApiErrorMessage({ code: "unknown" }, "fallback")).toBe("fallback");
+  });
+});
+
+describe("normalizeFetchErrorMessage", () => {
+  it("normalizes error from a response body", () => {
+    expect(normalizeFetchErrorMessage({ error: "sync_failed" }, "fallback")).toBe("sync_failed");
+  });
+});
 
 describe("actionResultNotifyMessage", () => {
   it("maps session_required", () => {

@@ -4,12 +4,12 @@ import {
   requestEmailChangeSchema,
   setupPasswordBodySchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
 import { createAppLogger } from "../lib/logger.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
+import { zValidator } from "../lib/z-validator.js";
 import {
   createConfirmEmailChangeRateLimitMiddleware,
   createForgotPasswordRateLimitMiddleware,

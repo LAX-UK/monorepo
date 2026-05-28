@@ -22,6 +22,7 @@ import { getConnectGapState, shouldSkipConnect } from "@auction/connect";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import { normalizeApiErrorMessage } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
@@ -261,7 +262,7 @@ export function ConnectWorkspace({
 
       {error ? (
         <p className="font-body text-sm text-error" role="alert">
-          {error}
+          {normalizeApiErrorMessage(error, "Something went wrong.")}
         </p>
       ) : null}
 
@@ -302,7 +303,7 @@ export function ConnectWorkspace({
           {ensureError ? (
             <div className="mt-3 space-y-2">
               <p className="font-body text-sm text-error" role="alert">
-                {ensureError}
+                {normalizeApiErrorMessage(ensureError, "Could not create Connect account.")}
               </p>
               <Button
                 type="button"

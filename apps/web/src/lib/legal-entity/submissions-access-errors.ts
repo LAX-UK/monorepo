@@ -5,6 +5,7 @@ import {
   describeDashboardSliceFailure,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { buildLegalEntityAccessFailure } from "@/lib/legal-entity/legal-entity-access-errors";
+import { parseApiErrorCodeFromBody } from "@auction/validators";
 
 /** @deprecated Use DashboardSliceFailure from dashboard-fetch-errors */
 export type SubmissionsAccessFailure = DashboardSliceFailure;
@@ -34,8 +35,12 @@ export function buildSubmissionsAccessFailure(
 
 /** Reads a failed submissions API response into structured dashboard copy. */
 export async function parseSubmissionsAccessFailure(res: Response): Promise<DashboardSliceFailure> {
-  const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-  const code = body.code ?? body.error ?? null;
+  const body = (await res.json().catch(() => ({}))) as {
+    error?: unknown;
+    errorCode?: string;
+    code?: string;
+  };
+  const code = parseApiErrorCodeFromBody(body);
   return buildSubmissionsAccessFailure(res.status, code);
 }
 

@@ -1,10 +1,10 @@
 import crypto from "node:crypto";
 import { newsletterSignupLog } from "@auction/db/schema";
 import { newsletterSubscribeSchema } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
+import { zValidator } from "../lib/z-validator.js";
 
 export type ZohoCampaignsSyncJobData = {
   signupLogId: string;

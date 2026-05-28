@@ -1,6 +1,6 @@
 import { xeroOAuthCompleteBodySchema } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import type { Hono } from "hono";
+import { zValidator } from "../lib/z-validator.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 
 export function attachXeroAdminRoutes(

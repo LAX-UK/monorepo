@@ -15,7 +15,6 @@ import {
   updateLotStatusBodySchema,
   updateSaleSchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
@@ -28,6 +27,7 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";

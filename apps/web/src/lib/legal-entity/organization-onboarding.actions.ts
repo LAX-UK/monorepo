@@ -1,6 +1,7 @@
 "use server";
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { normalizeApiErrorMessage } from "@auction/validators";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import type { CreateOrganizationInput } from "@auction/validators";
@@ -47,11 +48,11 @@ export async function createOrganizationAction(
             nextSteps: string[];
           };
         }
-      | { error: string };
+      | { error: unknown };
     if (!res.ok) {
       return {
         ok: false,
-        error: "error" in body ? body.error : "create_failed",
+        error: normalizeApiErrorMessage("error" in body ? body.error : undefined, "create_failed"),
       };
     }
     if (!("data" in body)) return { ok: false, error: "create_failed" };
