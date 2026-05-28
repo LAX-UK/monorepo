@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import {
   AdaptiveMediaFrame,
@@ -75,12 +76,12 @@ export function SaleroomHeroAdaptive({
           <div className="max-w-[760px]" data-overlay-content-block>
             {backHref ? (
               <div className="fade-up mb-4 md:hidden">
-                <Link
+                <MarketingMobileBackLink
                   href={backHref}
-                  className="inline-flex min-h-11 items-center font-label text-[0.65rem] font-semibold uppercase tracking-[0.22em] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  <OverlayToneText variant="muted">← {backLabel}</OverlayToneText>
-                </Link>
+                  label={backLabel}
+                  variant="overlay"
+                  className="!block"
+                />
               </div>
             ) : null}
             <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.22em]">

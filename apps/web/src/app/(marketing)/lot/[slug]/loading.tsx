@@ -14,7 +14,8 @@ export default function LotLoading() {
       aria-label="Loading lot"
     >
       <div className="animate-pulse space-y-10">
-        <div className="h-4 w-72 rounded bg-surface-container-high" />
+        <div className="h-4 w-40 rounded bg-surface-container-high md:hidden" />
+        <div className="hidden h-4 w-72 rounded bg-surface-container-high md:block" />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,440px)] lg:items-start lg:gap-6">
           <div className="hidden space-y-4 lg:block">
             <div className="h-3 w-16 rounded bg-surface-container-high" />
@@ -37,7 +38,7 @@ export default function LotLoading() {
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-hairline bg-surface/95 p-4 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-hairline bg-surface/95 p-4 backdrop-blur-md md:hidden"
         aria-hidden
       >
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">

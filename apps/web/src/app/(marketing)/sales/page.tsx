@@ -7,6 +7,7 @@ import { SalesCalendarGrid } from "@/components/sections/sales/sales-calendar-gr
 import { SalesCalendarPagination } from "@/components/sections/sales/sales-calendar-pagination";
 import { SalesHeroHeader } from "@/components/sections/sales/sales-hero-header";
 import { SalesNewLotsGrid } from "@/components/sections/sales/sales-new-lots-grid";
+import { SalesNewLotsToolbar } from "@/components/sections/sales/sales-new-lots-toolbar";
 import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
 import {
   mapSaleToAuctionRowVM,
@@ -18,6 +19,7 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
 import { fetchHasLiveSales } from "@/lib/marketing/sales-calendar-live.server";
@@ -187,6 +189,7 @@ export default async function SalesListPage({
     ...(maxPrice != null ? { maxPrice } : {}),
     ...(calendarPage > 1 ? { page: calendarPage } : {}),
   };
+  const newLotsCatalogLinkParams = catalogViewCarryParams(calendarView);
 
   let saleRows: SaleListRow[] = [];
   let calendarHasMore = false;
@@ -343,12 +346,18 @@ export default async function SalesListPage({
                       }
                     />
                   ) : null}
+                  <SalesNewLotsToolbar resultCount={newLots.length} />
                   <ViewItemListTracker
                     listId="sales_hub"
                     listName="New lots"
                     itemIds={newLots.map((l) => l.id)}
                   />
-                  <SalesNewLotsGrid lots={newLots} />
+                  <SalesNewLotsGrid
+                    lots={newLots}
+                    {...(newLotsCatalogLinkParams
+                      ? { catalogLinkParams: newLotsCatalogLinkParams }
+                      : {})}
+                  />
                 </div>
               ) : null}
 

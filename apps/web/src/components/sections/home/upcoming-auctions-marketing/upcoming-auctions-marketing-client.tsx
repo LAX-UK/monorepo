@@ -44,8 +44,6 @@ function homeSwitcherValue(v: CatalogLayoutView): CatalogLayoutView {
   return v === "list" ? "list" : "grid";
 }
 
-const innerMax = "mx-auto w-full max-w-[var(--container-inner,1376px)]";
-
 export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthenticated }: Props) {
   const [filter, setFilter] = useState<UpcomingAuctionsMarketingFilter>("all");
   const visible = useMemo(() => tiles.filter((t) => matchesFilter(t, filter)), [tiles, filter]);
@@ -63,25 +61,33 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
       aria-labelledby="home-upcoming-auctions-heading"
       className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
     >
-      <div className="flex w-full flex-col gap-12">
-        <div className={`${innerMax} flex flex-col gap-6`}>
-          <MarketingSectionHeader
-            heading={
-              <DisplayHeading
-                as="h2"
-                id="home-upcoming-auctions-heading"
-                size="section"
-                className="font-semibold text-on-surface"
-              >
-                Upcoming Auctions
-              </DisplayHeading>
-            }
-            subtitle="Scheduled and live sales curated by LAX specialists"
-          />
-        </div>
+      <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
+        <MarketingSectionHeader
+          heading={
+            <DisplayHeading
+              as="h2"
+              id="home-upcoming-auctions-heading"
+              size="section"
+              className="font-semibold text-on-surface"
+            >
+              Upcoming Auctions
+            </DisplayHeading>
+          }
+          subtitle="Scheduled and live sales curated by LAX specialists"
+          action={
+            <Button variant="chevron" asChild>
+              <Link href="/sales" className="inline-flex items-center gap-2 py-[18px]">
+                View All
+                <span className="sr-only"> auctions and sales</span>
+                <ChevronRight className="size-5 shrink-0" aria-hidden />
+              </Link>
+            </Button>
+          }
+        />
 
         <HomeSectionToolbar
           countLabel={countLabel}
+          stackControlsOnMobile
           filters={
             <MarketingChipStrip aria-label="Filter auctions" className="min-w-0">
               <div
@@ -112,76 +118,58 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
             </MarketingChipStrip>
           }
           trailing={
-            <>
-              <CatalogViewSwitcher
-                routeKey="home-upcoming"
-                value={switcherValue}
-                supportedModes={["grid", "list"]}
-              />
-              <Button
-                variant="chevron"
-                asChild
-                className="h-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent dark:hover:bg-transparent"
-              >
-                <Link
-                  href="/sales"
-                  className="inline-flex items-center gap-[11px] py-[18px] font-headline text-base font-semibold leading-6 tracking-[0.05em] text-on-surface"
-                >
-                  View All
-                  <span className="sr-only"> auctions and sales</span>
-                  <ChevronRight className="size-5 shrink-0" aria-hidden />
-                </Link>
-              </Button>
-            </>
+            <CatalogViewSwitcher
+              routeKey="home-upcoming"
+              value={switcherValue}
+              supportedModes={["grid", "list"]}
+            />
           }
         />
 
-        <div className={`${innerMax} flex flex-col gap-4`}>
-          {visible.length === 0 ? (
-            <MarketingEmptyState
-              variant="marketing"
-              icon={<Calendar aria-hidden />}
-              title="No auctions match this filter"
-              description="Try another filter or browse the full catalogue."
-              action={
-                <Button variant="outline" asChild>
-                  <Link href="/sales">View all auctions</Link>
-                </Button>
-              }
-            />
-          ) : isList ? (
-            <ul className="m-0 flex w-full list-none flex-col gap-3 p-0 sm:gap-4">
-              {visible.map((tile) => (
-                <li key={tile.id}>
-                  <UpcomingAuctionMarketingCard
-                    tile={tile}
-                    variant="list"
-                    isAuthenticated={isAuthenticated}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div
-              className={cn(
-                "w-full auto-rows-fr items-stretch gap-3 sm:gap-5 md:gap-5 lg:gap-6 xl:gap-6",
-                sparseGridClasses(visible.length, {
-                  multi:
-                    "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:gap-5 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4",
-                }),
-              )}
-            >
-              {visible.map((tile) => (
+        {visible.length === 0 ? (
+          <MarketingEmptyState
+            variant="marketing"
+            icon={<Calendar aria-hidden />}
+            title="No auctions match this filter"
+            description="Try another filter or browse the full catalogue."
+            action={
+              <Button variant="outline" asChild>
+                <Link href="/sales">View all auctions</Link>
+              </Button>
+            }
+          />
+        ) : isList ? (
+          <ul className="m-0 flex w-full list-none flex-col gap-3 p-0 sm:gap-4">
+            {visible.map((tile) => (
+              <li key={tile.id}>
                 <UpcomingAuctionMarketingCard
-                  key={tile.id}
                   tile={tile}
-                  variant="grid"
+                  variant="list"
                   isAuthenticated={isAuthenticated}
                 />
-              ))}
-            </div>
-          )}
-        </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div
+            className={cn(
+              "w-full auto-rows-fr items-stretch gap-3 sm:gap-5 md:gap-5 lg:gap-6 xl:gap-6",
+              sparseGridClasses(visible.length, {
+                multi:
+                  "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:gap-5 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4",
+              }),
+            )}
+          >
+            {visible.map((tile) => (
+              <UpcomingAuctionMarketingCard
+                key={tile.id}
+                tile={tile}
+                variant="grid"
+                isAuthenticated={isAuthenticated}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

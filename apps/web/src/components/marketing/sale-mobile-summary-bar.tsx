@@ -1,6 +1,7 @@
 "use client";
 
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
+import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { Countdown } from "@auction/ui";
 import Link from "next/link";
 
@@ -19,7 +20,7 @@ type Props = {
 export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCount }: Props) {
   if (status === "ended" || status === "cancelled") {
     return (
-      <MarketingStickyBidBar innerClassName="max-w-screen-2xl">
+      <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
         <div className="min-w-0">
           <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Sale {status === "ended" ? "ended" : "cancelled"}
@@ -43,7 +44,7 @@ export function SaleMobileSummaryBar({ start, end, status, saleTitle, liveLotsCo
   const ctaLabel = isUpcoming ? "Register" : "View lots";
 
   return (
-    <MarketingStickyBidBar innerClassName="max-w-screen-2xl">
+    <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
       <div className="min-w-0">
         <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           {kicker}

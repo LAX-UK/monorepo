@@ -1,5 +1,3 @@
-import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
-import { HomeSectionToolbar } from "@/components/marketing/home-section-toolbar";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
@@ -24,7 +22,7 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
         aria-labelledby="home-upcoming-auctions-heading"
         className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
       >
-        <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
+        <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
           <MarketingSectionHeader
             heading={
               <DisplayHeading
@@ -45,17 +43,6 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
                   <ChevronRight className="size-5 shrink-0" aria-hidden />
                 </Link>
               </Button>
-            }
-          />
-          <HomeSectionToolbar
-            className="mb-2"
-            countLabel="0 auctions"
-            trailing={
-              <CatalogViewSwitcher
-                routeKey="home-upcoming"
-                value={layoutView === "list" ? "list" : "grid"}
-                supportedModes={["grid", "list"]}
-              />
             }
           />
           <MarketingEmptyState
