@@ -10,7 +10,9 @@ import { DEAD_LETTER_QUEUE_NAME } from "./registry.js";
 describe("mutation policy", () => {
   it("blocks retry on high-criticality queues in production", () => {
     expect(isQueueMutationAllowed("email", "retry", "production")).toBe(false);
-    expect(() => assertQueueMutationAllowed("email", "retry", "production")).toThrow("retries_disabled");
+    expect(() => assertQueueMutationAllowed("email", "retry", "production")).toThrow(
+      "retries_disabled",
+    );
   });
 
   it("allows retry on low-criticality queues outside production", () => {
@@ -36,8 +38,8 @@ describe("mutation policy", () => {
   });
 
   it("throws pause_not_allowed when resuming a non-pausable queue", () => {
-    expect(() => assertQueueMutationAllowed(DEAD_LETTER_QUEUE_NAME, "resume", "development")).toThrow(
-      "pause_not_allowed",
-    );
+    expect(() =>
+      assertQueueMutationAllowed(DEAD_LETTER_QUEUE_NAME, "resume", "development"),
+    ).toThrow("pause_not_allowed");
   });
 });

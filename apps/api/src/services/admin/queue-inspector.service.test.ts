@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BullMQQueueInspector } from "./queue-inspector.service.js";
 
 const mockDlq = {
@@ -24,7 +24,14 @@ describe("BullMQQueueInspector dlqDepth", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockQueue.getJobCounts.mockResolvedValue({ waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0, paused: 0 });
+    mockQueue.getJobCounts.mockResolvedValue({
+      waiting: 0,
+      active: 0,
+      completed: 0,
+      failed: 0,
+      delayed: 0,
+      paused: 0,
+    });
     mockDlq.getJobs.mockImplementation(async (statuses: string[]) => {
       if (statuses.includes("waiting")) {
         return [

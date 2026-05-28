@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
-import { describe, expect, it, vi } from "vitest";
 import type { Worker } from "bullmq";
+import { describe, expect, it, vi } from "vitest";
 import { attachDlq } from "./dlq.js";
 import { EMAIL_QUEUE_NAME, QUEUE_REGISTRY } from "./registry.js";
 
@@ -22,13 +22,17 @@ describe("attachDlq", () => {
       logError: vi.fn(),
     });
 
-    worker.emit("failed", {
-      id: "job-42",
-      name: "send",
-      attemptsMade: 5,
-      opts: {},
-      data: { outboxId: "abc", email: "secret@example.com" },
-    }, new Error("smtp down"));
+    worker.emit(
+      "failed",
+      {
+        id: "job-42",
+        name: "send",
+        attemptsMade: 5,
+        opts: {},
+        data: { outboxId: "abc", email: "secret@example.com" },
+      },
+      new Error("smtp down"),
+    );
 
     await vi.waitFor(() => {
       expect(dlqAdd).toHaveBeenCalledOnce();

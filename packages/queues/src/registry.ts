@@ -372,14 +372,18 @@ export function getQueueDefinition(name: QueueName): QueueDefinition {
   return QUEUE_REGISTRY[name];
 }
 
-export function listEnabledQueues(env: QueueRuntimeEnv): Array<{ name: QueueName; def: QueueDefinition }> {
+export function listEnabledQueues(
+  env: QueueRuntimeEnv,
+): Array<{ name: QueueName; def: QueueDefinition }> {
   return ALL_QUEUE_NAMES.filter((name) => {
     const def = getQueueDefinition(name);
     return def.enabledWhen?.(env) ?? true;
   }).map((name) => ({ name, def: getQueueDefinition(name) }));
 }
 
-export function listBullBoardQueues(env: QueueRuntimeEnv): Array<{ name: QueueName; def: QueueDefinition }> {
+export function listBullBoardQueues(
+  env: QueueRuntimeEnv,
+): Array<{ name: QueueName; def: QueueDefinition }> {
   return listEnabledQueues(env).filter(({ def }) => def.showInUi);
 }
 
