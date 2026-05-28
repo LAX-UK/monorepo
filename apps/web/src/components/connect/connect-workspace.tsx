@@ -17,6 +17,7 @@ import {
 import { connectGapStageSummary } from "@/lib/connect/connect-gap-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
+import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { getConnectGapState, shouldSkipConnect } from "@auction/connect";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -119,6 +120,8 @@ export function ConnectWorkspace({
     if (!canOnboard(memberRole)) return "management";
     return "onboarding";
   }, [gap.stage, memberRole]);
+
+  const kycReturnUrl = useMemo(() => normalizeKycReturnUrl(returnPath), [returnPath]);
 
   const fetchClientSecret = useCallback(async () => {
     const result = await createStripeConnectAccountSessionAction(surface, legalEntityId);
@@ -224,7 +227,7 @@ export function ConnectWorkspace({
           </p>
           {onStartKyc ? (
             <KycVerificationLauncher
-              returnUrl={returnPath}
+              returnUrl={kycReturnUrl}
               onStartSession={onStartKyc}
               kycSummary={kycSummary}
             />
