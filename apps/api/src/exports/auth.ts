@@ -38,10 +38,7 @@ export function requireFinanceRead(ctx: ExportAuthContext): void {
 export function requirePayoutRead(ctx: ExportAuthContext): void {
   const role = normalizeUserRoleOrClient(ctx.userRole) as UserRole;
   const staff = normalizeUserStaffRole(ctx.userStaffRole ?? undefined);
-  if (
-    roleHasCapability(role, "payout.read", staff) ||
-    canAccessPlatformAdminRoutes(role, staff)
-  ) {
+  if (roleHasCapability(role, "payout.read", staff) || canAccessPlatformAdminRoutes(role, staff)) {
     return;
   }
   if (role === "client") return;

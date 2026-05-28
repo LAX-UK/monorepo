@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import {
   DeleteObjectCommand,
   GetObjectCommand,

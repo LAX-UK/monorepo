@@ -1,7 +1,7 @@
+import { z } from "zod";
+import { listSubmissionsQuerySchema } from "./item-submission.js";
 import { listLotsQuerySchema } from "./lot.js";
 import { listSalesQuerySchema } from "./sale.js";
-import { listSubmissionsQuerySchema } from "./item-submission.js";
-import { z } from "zod";
 
 const aggregateTypeField = z
   .string()
@@ -22,15 +22,16 @@ export const exportEntityTypeSchema = z.enum([
 ]);
 export const exportFormatSchema = z.enum(["csv"]);
 
-const exportLotsFiltersSchema = listLotsQuerySchema
-  .omit({ limit: true, offset: true })
-  .extend({
-    q: z.string().trim().max(200).optional(),
-  });
+const exportLotsFiltersSchema = listLotsQuerySchema.omit({ limit: true, offset: true }).extend({
+  q: z.string().trim().max(200).optional(),
+});
 
 const exportSalesFiltersSchema = listSalesQuerySchema.omit({ limit: true, offset: true });
 
-const exportSubmissionsFiltersSchema = listSubmissionsQuerySchema.omit({ limit: true, offset: true });
+const exportSubmissionsFiltersSchema = listSubmissionsQuerySchema.omit({
+  limit: true,
+  offset: true,
+});
 
 const exportClientsFiltersSchema = z.object({
   q: z.string().trim().max(200).optional(),

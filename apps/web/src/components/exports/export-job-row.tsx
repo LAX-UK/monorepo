@@ -3,6 +3,7 @@
 import type { ExportJobView } from "@/lib/exports/types";
 import { exportPhaseLabel } from "@/lib/ui/export-error-message";
 import { Button } from "@auction/ui/components/button";
+import { Progress } from "@auction/ui/components/progress";
 import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
@@ -48,11 +49,10 @@ export function ExportJobRow({ job, onCancel, onDownload }: Props) {
       </div>
 
       {inProgress ? (
-        <div className="mt-2 space-y-1" role="status" aria-live="polite">
-          <progress
-            className="h-2 w-full overflow-hidden rounded-full accent-lot-orange"
+        <output className="mt-2 block space-y-1" aria-live="polite">
+          <Progress
             value={job.progress}
-            max={100}
+            className="bg-outline-variant/30 [&_[data-slot=progress-indicator]]:bg-lot-orange"
             aria-label="Export progress"
           />
           <p className="font-body text-xs text-on-surface-variant">
@@ -61,7 +61,7 @@ export function ExportJobRow({ job, onCancel, onDownload }: Props) {
               ? ` · ${job.processedRows.toLocaleString()} / ${job.totalRows.toLocaleString()}`
               : null}
           </p>
-        </div>
+        </output>
       ) : null}
 
       {failed && job.errorMessage ? (

@@ -40,35 +40,37 @@ export function CatalogDomainEventsTimeline({
         </div>
       ) : null}
       <ol className="relative space-y-0 border-l border-border-hairline pl-4">
-      {events.map((event) => (
-        <li key={event.id} className="relative pb-6 last:pb-0">
-          <span
-            className="absolute -left-[5px] top-1.5 size-2 rounded-full bg-primary ring-2 ring-surface"
-            aria-hidden
-          />
-          <div className="rounded-lg border border-border-hairline/60 bg-surface-container-low/40 px-4 py-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="font-body text-sm font-medium text-on-surface">
-                {domainEventLabel(event.eventType)}
+        {events.map((event) => (
+          <li key={event.id} className="relative pb-6 last:pb-0">
+            <span
+              className="absolute -left-[5px] top-1.5 size-2 rounded-full bg-primary ring-2 ring-surface"
+              aria-hidden
+            />
+            <div className="rounded-lg border border-border-hairline/60 bg-surface-container-low/40 px-4 py-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-body text-sm font-medium text-on-surface">
+                  {domainEventLabel(event.eventType)}
+                </p>
+                <time
+                  dateTime={event.occurredAt.toISOString()}
+                  className="font-body text-xs text-on-surface-variant"
+                >
+                  {relativeFromIso(event.occurredAt.toISOString())}
+                </time>
+              </div>
+              <p className="mt-1 font-mono text-[10px] text-on-surface-variant">
+                {event.eventType}
               </p>
-              <time
-                dateTime={event.occurredAt.toISOString()}
-                className="font-body text-xs text-on-surface-variant"
-              >
-                {relativeFromIso(event.occurredAt.toISOString())}
-              </time>
+              {event.actorUserId ? (
+                <p className="mt-1 font-body text-xs text-on-surface-variant">
+                  Actor: {event.actorUserId.slice(0, 8)}…
+                </p>
+              ) : null}
+              <EventPayload payload={event.payload} />
             </div>
-            <p className="mt-1 font-mono text-[10px] text-on-surface-variant">{event.eventType}</p>
-            {event.actorUserId ? (
-              <p className="mt-1 font-body text-xs text-on-surface-variant">
-                Actor: {event.actorUserId.slice(0, 8)}…
-              </p>
-            ) : null}
-            <EventPayload payload={event.payload} />
-          </div>
-        </li>
-      ))}
-    </ol>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

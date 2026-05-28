@@ -1,6 +1,6 @@
-import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { DashboardBannerStackClient } from "@/components/dashboard/dashboard-banner-stack-client";
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
+import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { ClientShell } from "@/components/shell/client-shell";
@@ -88,42 +88,42 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <ExportShellClient>
       <ClientShell
-      user={user}
-      orgModuleEnabled={orgModuleEnabled}
-      clientWorkspaceMode={clientWorkspaceMode}
-      cookieDensity={cookieDensity}
-      hideEmailStatusBanner
-      acting={acting}
-      safeActing={safeActing}
-      headerRightSlot={
-        <ActingAsBanner
-          hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
-          userRole={user.role}
-          userStaffRole={user.staffRole ?? null}
-          prefetchedActingContext={actingContext}
-          pendingInvitesCount={orgModuleEnabled ? pendingInvites.length : 0}
-          orgModuleEnabled={orgModuleEnabled}
-        />
-      }
-      contextBanner={
-        <>
-          <ContextBanner acting={acting} />
-          {layoutWarnings.map((w) => (
-            <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
-          ))}
-          <DashboardBannerStackClient
-            user={user}
-            acting={safeActing}
-            kycSummary={kycSummary}
-            orgOnboardingResume={orgModuleEnabled ? orgOnboardingResume : null}
+        user={user}
+        orgModuleEnabled={orgModuleEnabled}
+        clientWorkspaceMode={clientWorkspaceMode}
+        cookieDensity={cookieDensity}
+        hideEmailStatusBanner
+        acting={acting}
+        safeActing={safeActing}
+        headerRightSlot={
+          <ActingAsBanner
+            hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
+            userRole={user.role}
+            userStaffRole={user.staffRole ?? null}
+            prefetchedActingContext={actingContext}
+            pendingInvitesCount={orgModuleEnabled ? pendingInvites.length : 0}
             orgModuleEnabled={orgModuleEnabled}
           />
-        </>
-      }
-      topSlot={<WelcomeBackToast />}
-    >
-      {children}
-    </ClientShell>
+        }
+        contextBanner={
+          <>
+            <ContextBanner acting={acting} />
+            {layoutWarnings.map((w) => (
+              <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
+            ))}
+            <DashboardBannerStackClient
+              user={user}
+              acting={safeActing}
+              kycSummary={kycSummary}
+              orgOnboardingResume={orgModuleEnabled ? orgOnboardingResume : null}
+              orgModuleEnabled={orgModuleEnabled}
+            />
+          </>
+        }
+        topSlot={<WelcomeBackToast />}
+      >
+        {children}
+      </ClientShell>
     </ExportShellClient>
   );
 }

@@ -26,9 +26,9 @@ function buildSelectChain(results: {
   finalRow?: unknown;
 }) {
   let whereCalls = 0;
-  const limit = vi.fn().mockImplementation(async () =>
-    results.existingRow ? [results.existingRow] : [],
-  );
+  const limit = vi
+    .fn()
+    .mockImplementation(async () => (results.existingRow ? [results.existingRow] : []));
   const orderBy = vi.fn().mockReturnValue({ limit });
   const where = vi.fn().mockImplementation(() => {
     whereCalls += 1;
@@ -271,7 +271,11 @@ describe("ExportService", () => {
     };
 
     const insertValues = vi.fn().mockResolvedValue(undefined);
-    const { service, db } = createService({ existingRow, syncMaxRows: 10, staleProcessingMs: 1_800_000 });
+    const { service, db } = createService({
+      existingRow,
+      syncMaxRows: 10,
+      staleProcessingMs: 1_800_000,
+    });
     db.insert = vi.fn().mockReturnValue({ values: insertValues });
 
     const result = await service.createExport({

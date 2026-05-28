@@ -1,5 +1,6 @@
 "use client";
 
+import { previewExport } from "@/lib/exports/export-api";
 import type { ExportEntityType } from "@auction/exports";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -16,7 +17,6 @@ import {
 } from "@auction/ui/components/tooltip";
 import { ChevronDown, Download, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { previewExport } from "@/lib/exports/export-api";
 import { ExportConfirmSheet } from "./export-confirm-sheet";
 import { useExportJobs } from "./export-jobs-provider";
 
@@ -155,7 +155,11 @@ export function ExportButton({
         filters={filters}
         {...(estimatedRows !== undefined ? { estimatedRows } : {})}
         {...(syncMaxRows !== undefined ? { syncMaxRows } : {})}
-        {...(forceAsync !== undefined ? { forceAsync } : runsInBackground ? { forceAsync: true } : {})}
+        {...(forceAsync !== undefined
+          ? { forceAsync }
+          : runsInBackground
+            ? { forceAsync: true }
+            : {})}
         previewLoading={previewLoading}
         onConfirm={() => void onExportCsv()}
         loading={loading}
