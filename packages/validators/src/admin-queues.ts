@@ -1,4 +1,4 @@
-import { ALL_QUEUE_NAMES } from "@auction/queues";
+import { ALL_QUEUE_NAMES } from "@auction/queues/registry";
 import { z } from "zod";
 
 const queueNameSchema = z.enum(ALL_QUEUE_NAMES as [string, ...string[]]);
