@@ -96,7 +96,9 @@
     "INTERNAL_API_URL",
     "SENTRY_DSN_WEB",
     "PLAYWRIGHT_E2E",
-    "PLAYWRIGHT_BASE_URL"
+    "PLAYWRIGHT_BASE_URL",
+    "ENABLE_BULL_BOARD",
+    "BULLMQ_OTEL_ENABLED"
   ],
   "tasks": {
     "build": {

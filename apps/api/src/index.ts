@@ -1,6 +1,9 @@
+import { attachDlq, createBullQueueOptions, DEAD_LETTER_QUEUE_NAME, LOT_LIFECYCLE_QUEUE_NAME, QUEUE_REGISTRY } from "@auction/queues";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
+import { Queue } from "bullmq";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
+import { closeBullBoardQueues } from "./lib/bull-board.js";
 import { createContainer } from "./container.js";
 import { loadEnv } from "./env.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
@@ -31,6 +34,15 @@ lotJobs.queue.on("error", (err: Error) => {
   reportBackground("lot-queue", err);
 });
 const lotWorker = lotJobs.createWorker();
+const deadLetterQueue = new Queue(
+  DEAD_LETTER_QUEUE_NAME,
+  createBullQueueOptions(DEAD_LETTER_QUEUE_NAME, { connection: container.redis }),
+);
+attachDlq(lotWorker, LOT_LIFECYCLE_QUEUE_NAME, QUEUE_REGISTRY[LOT_LIFECYCLE_QUEUE_NAME], {
+  dlqQueue: deadLetterQueue,
+  db: container.db,
+  logError: (message, context) => console.error(message, context),
+});
 lotWorker.on("error", (err: Error) => {
   reportBackground("lot-worker", err);
 });
@@ -82,7 +94,10 @@ function shutdown(signal: NodeJS.Signals) {
     }
     void Promise.allSettled([
       lotWorker.close(),
-      container.uploadValidationQueue.close(),
+      lotJobs.queue.close(),
+      deadLetterQueue.close(),
+      container.closeBullQueues(),
+      closeBullBoardQueues(),
       container.redis.quit(),
     ]).finally(() => {
       clearTimeout(timeout);

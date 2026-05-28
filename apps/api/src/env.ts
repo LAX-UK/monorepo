@@ -195,6 +195,12 @@ const envSchema = z
      * Optional until bulk jobs are enabled in deploy.
      */
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /** Mount Bull Board at /admin/system/job-queues (super_admin only). Default false in production. */
+    ENABLE_BULL_BOARD: z
+      .preprocess((v) => {
+        if (v === undefined || v === "") return undefined;
+        return v === "true" || v === true;
+      }, z.boolean().optional()),
     /** Days before `pending` buyer payments auto-expire (cron). */
     PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
     /** Emergency: reject new bids with 503. */
@@ -447,5 +453,9 @@ export function loadEnv(): Env {
     console.error(parsed.error.flatten());
     throw new Error("Invalid environment variables");
   }
-  return parsed.data;
+  const env = parsed.data;
+  return {
+    ...env,
+    ENABLE_BULL_BOARD: env.ENABLE_BULL_BOARD ?? env.APP_ENV !== "production",
+  };
 }

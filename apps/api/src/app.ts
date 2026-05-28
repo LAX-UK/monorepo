@@ -19,6 +19,10 @@ import { createMarketingConsentMiddleware } from "./middleware/marketing-consent
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
+import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
+import { requireSuperAdminStaffRole } from "./middleware/require-staff-role.js";
+import { assertBullBoardProductionSafety, mountBullBoard } from "./lib/bull-board.js";
+import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
 import { requirePlatformAdmin } from "./middleware/require-capability.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
@@ -212,6 +216,14 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))
     .route("/webhooks", createXeroWebhookRoutes(container));
+
+  assertBullBoardProductionSafety(env);
+  mountBullBoard(app, connectionOptionsFromRedisUrl(env.REDIS_URL), env, {
+    requireAuth,
+    requirePlatformAdmin,
+    requireSuperAdminStaffRole,
+    auditAccess: createAuditAccessMiddleware(appLogger),
+  });
 
   return routed;
 }

@@ -77,6 +77,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
+import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
 import { attachXeroAdminRoutes } from "./xero-admin.js";
 
@@ -1286,6 +1287,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   attachAdminInvitationRoutes(platform, container.admin.invitations);
 
   attachAdminMarketingEventsRoutes(platform, container);
+
+  attachAdminQueuesRoutes(platform, container);
 
   const finance = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };

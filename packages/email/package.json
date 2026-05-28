@@ -19,6 +19,7 @@
   "dependencies": {
     "@auction/branding": "workspace:^",
     "@auction/db": "workspace:^",
+    "@auction/queues": "workspace:^",
     "@auction/types": "workspace:^",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",

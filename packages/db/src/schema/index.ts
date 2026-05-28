@@ -43,6 +43,7 @@ export * from "./domain-events.js";
 export * from "./impersonation-sessions.js";
 export * from "./upload-objects.js";
 export * from "./email.js";
+export * from "./failed-jobs.js";
 /** Legal Entity Model */
 export * from "./legal-entities.js";
 export * from "./legal-entity-members.js";
