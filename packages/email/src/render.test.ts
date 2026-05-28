@@ -78,10 +78,12 @@ describe("renderEmail", () => {
       failureReason: "No account",
       supportContactEmail: "support@lax.bid",
       adminPayoutsUrl: "https://lax.bid/admin/payouts",
+      sellerPayoutSetupUrl: "https://lax.bid/dashboard/seller/connect",
     });
     expect(rendered.html).toContain("Amount");
     expect(rendered.html).toContain("No account");
     expect(rendered.html).toContain("po_123");
+    expect(rendered.html).toContain("https://lax.bid/dashboard/seller/connect");
   });
 
   it("applies category accent colours from design tokens", async () => {

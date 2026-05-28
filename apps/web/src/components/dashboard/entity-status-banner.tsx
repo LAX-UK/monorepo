@@ -54,7 +54,7 @@ function copyForStatus(acting: LegalEntitySummary): {
       };
     case "connect_pending":
       return {
-        title: "Stripe verification",
+        title: "Finish payout setup",
         body: (
           <>
             Stripe verification in progress.{" "}

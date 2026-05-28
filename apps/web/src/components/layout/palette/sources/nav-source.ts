@@ -41,6 +41,7 @@ const dashboardSellingSections: PaletteSection[] = [
       { id: "s-submissions", href: "/dashboard/submissions", label: "My submissions" },
       { id: "s-in-sale", href: "/dashboard/seller/in-sale", label: "Items in sale" },
       { id: "s-payouts", href: "/dashboard/seller/payouts", label: "Sold & payouts" },
+      { id: "s-connect", href: "/dashboard/seller/connect", label: "Payout setup" },
       { id: "s-artist", href: "/dashboard/seller/artist", label: "Artist profile" },
       { id: "s-search", href: "/search", label: "Search lots" },
     ],

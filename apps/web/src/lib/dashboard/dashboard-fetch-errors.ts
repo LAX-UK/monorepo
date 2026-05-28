@@ -332,12 +332,34 @@ export function buildSellerPayoutFailure(
   );
 }
 
-/** Stripe connect enum errors. */
+/** Stripe connect enum errors (embedded Connect surfaces). */
 export function buildSellerConnectFailure(
-  error: "unauthorized" | "forbidden" | "server_error" | string,
+  error: "unauthorized" | "forbidden" | "server_error" | "not_connected" | string,
 ): DashboardSliceFailure {
-  const status = error === "unauthorized" ? 401 : error === "forbidden" ? 403 : 500;
-  return buildDashboardSliceFailure("sellerConnect", status, null);
+  const status =
+    error === "unauthorized"
+      ? 401
+      : error === "forbidden"
+        ? 403
+        : error === "not_connected"
+          ? 404
+          : 500;
+  const failure = buildDashboardSliceFailure("sellerConnect", status, null);
+  if (error === "not_connected") {
+    return {
+      ...failure,
+      title: "Payout setup unavailable",
+      message: "We could not load your payout account yet. Use the form below to get started.",
+    };
+  }
+  if (error === "forbidden") {
+    return {
+      ...failure,
+      title: "Cannot manage payout setup",
+      message: "You may need an organisation owner or admin to complete payout verification.",
+    };
+  }
+  return failure;
 }
 
 export { supportMailto };

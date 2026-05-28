@@ -298,33 +298,17 @@ test.describe("sale detail connect banner", () => {
 });
 
 test.describe("lot detail proactive connect", () => {
+  const connectBlockedLotId = "b1000017-0000-4000-8000-000000000017";
+
   test("shows connect banner on draft lot when seller connect is blocked", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!process.env.STRIPE_SECRET_KEY?.trim(), "Requires Stripe Connect enforcement in API");
     await staffLogin(page);
-    await page.goto("/admin/lots?status=draft");
-    const rows = page.locator("table tbody tr");
-    const rowCount = await rows.count();
-    if (rowCount === 0) {
-      test.skip(true, "No draft lots in seed data");
-      return;
-    }
-    for (let i = 0; i < Math.min(rowCount, 10); i++) {
-      const link = rows.nth(i).getByRole("link").first();
-      if (!(await link.isVisible().catch(() => false))) continue;
-      await link.click();
-      await page.waitForURL(/\/admin\/lots\/[^/]+$/);
-      const banner = page.getByTestId("admin-lot-connect-required-banner");
-      const publish = page.getByRole("button", { name: /^publish$/i });
-      const hasBanner = await banner.isVisible({ timeout: 2000 }).catch(() => false);
-      const publishDisabled = await publish.isDisabled().catch(() => false);
-      if (hasBanner && publishDisabled) {
-        await expect(banner).toBeVisible();
-        return;
-      }
-      await page.goto("/admin/lots?status=draft");
-    }
-    test.skip(true, "No draft lot with blocked seller Connect in seed data");
+    await page.goto(`/admin/lots/${connectBlockedLotId}`);
+    await expect(page.getByTestId("admin-lot-connect-required-banner")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByRole("button", { name: /^publish$/i })).toBeDisabled();
   });
 });
 

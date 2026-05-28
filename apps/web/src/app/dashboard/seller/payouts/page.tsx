@@ -12,9 +12,13 @@ import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboar
 import { buildSellerPayoutFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.server";
+import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
+import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { getPayoutStatusView } from "@/lib/presenters/payment-status";
+import { isSellerConnectReady } from "@auction/connect";
 import type { Payout } from "@auction/types";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
@@ -40,11 +44,15 @@ export default async function SellerPayoutsPage() {
   let payouts: Payout[] = [];
   let listFailure = null;
   let preview: SellerPayoutPendingPreview | null = null;
+  let showConnectBanner = false;
 
   if (sellerEntityId) {
-    const [listRes, previewRes] = await Promise.all([
+    const hub = createOrganisationHubGateway();
+    const [listRes, previewRes, clientConfig, entity] = await Promise.all([
       c.sellerPayouts.listForLegalEntity(sellerEntityId),
       c.sellerPayouts.previewNextForLegalEntity(sellerEntityId),
+      getServerStripeConnectClientConfig(),
+      hub.getEntityDetail(sellerEntityId).catch(() => null),
     ]);
     if (listRes.ok) {
       payouts = listRes.payouts;
@@ -53,6 +61,13 @@ export default async function SellerPayoutsPage() {
     }
     if (previewRes.ok) {
       preview = previewRes.data;
+    }
+    if (
+      clientConfig.connectEnforced &&
+      entity &&
+      !isSellerConnectReady({ ...entity, status: entity.status })
+    ) {
+      showConnectBanner = true;
     }
   }
 
@@ -83,6 +98,18 @@ export default async function SellerPayoutsPage() {
 
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
       {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
+
+      {showConnectBanner ? (
+        <Alert>
+          <AlertTitle>Payout setup incomplete</AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>Finish Stripe Connect verification to receive settlement transfers.</span>
+            <Button asChild variant="cta" size="sm">
+              <Link href="/dashboard/seller/connect">Open payout setup</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {listFailure ? <DashboardSliceErrorAlert failure={listFailure} /> : null}
 

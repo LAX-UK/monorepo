@@ -1,9 +1,11 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
+import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import type { AdminPaymentRow } from "@/lib/data/http/admin.server";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
+import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, Lot } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
@@ -126,26 +128,31 @@ export function AdminUserLegalEntitiesPanel({ legalEntities }: { legalEntities: 
                 <AdminStatusBadge domain="legalEntity" status={entity.status} size="sm" />
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                <AdminStatusBadge
-                  domain="legalEntity"
-                  status={entity.stripeConnectChargesEnabled ? "approved" : "under_review"}
-                  label={`Charges ${entity.stripeConnectChargesEnabled ? "on" : "off"}`}
-                  size="sm"
-                />
-                <AdminStatusBadge
-                  domain="legalEntity"
-                  status={entity.stripeConnectPayoutsEnabled ? "approved" : "under_review"}
-                  label={`Payouts ${entity.stripeConnectPayoutsEnabled ? "on" : "off"}`}
-                  size="sm"
-                />
-                {entity.stripeConnectRequirementsCurrentlyDue.length > 0 ? (
-                  <AdminStatusBadge
-                    domain="legalEntity"
-                    status="restricted"
-                    label={`${entity.stripeConnectRequirementsCurrentlyDue.length} requirement(s) due`}
-                    size="sm"
-                  />
-                ) : null}
+                {(() => {
+                  const gap = getConnectGapState(entity);
+                  return (
+                    <>
+                      <AdminStatusBadge
+                        domain="legalEntity"
+                        status={
+                          gap.stage === "ready" || gap.stage === "managed_by_lax"
+                            ? "approved"
+                            : "under_review"
+                        }
+                        label={connectGapStageLabel(gap.stage)}
+                        size="sm"
+                      />
+                      {gap.missing.length > 0 ? (
+                        <AdminStatusBadge
+                          domain="legalEntity"
+                          status="restricted"
+                          label={`${gap.missing.length} requirement(s) due`}
+                          size="sm"
+                        />
+                      ) : null}
+                    </>
+                  );
+                })()}
               </div>
             </li>
           ))}

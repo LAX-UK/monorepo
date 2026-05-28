@@ -6,30 +6,34 @@ import {
 } from "@/lib/admin/connect-readiness-shared";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
+import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
+import {
+  isSellerConnectReady as isSellerConnectReadyFromPackage,
+  shouldSkipConnect,
+} from "@auction/connect";
 import type { LegalEntity, Lot } from "@auction/types";
 import { cache } from "react";
 
 export type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
 export { lotConnectRequired } from "@/lib/admin/connect-readiness-shared";
+export { shouldSkipConnect } from "@auction/connect";
 
-/** Mirrors {@link isSellerConnectReady} in apps/api/src/lib/seller-connect-readiness.ts */
+/** Business gate for publish + settlement (shared with API via @auction/connect). */
 export function isSellerConnectReady(entity: LegalEntity): boolean {
-  return (
-    entity.status === "approved" &&
-    entity.stripeConnectPayoutsEnabled &&
-    (entity.stripeConnectRequirementsCurrentlyDue ?? []).length === 0
-  );
+  return isSellerConnectReadyFromPackage(entity);
 }
 
 /** When Stripe Connect enforcement is active in the API (stripeConnectService.isConfigured). */
-export function isStripeConnectEnforcedOnPublish(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
-}
-
-/** Lots without sellerLegalEntityId skip Connect checks (see docs/runbooks/monitoring-alerts.md). */
+export const isStripeConnectEnforcedOnPublish = cache(
+  async function isStripeConnectEnforcedOnPublish(): Promise<boolean> {
+    const config = await getServerStripeConnectClientConfig();
+    return config.connectEnforced;
+  },
+);
 
 function isConnectBlockedForSeller(seller: LegalEntity | null | undefined): boolean {
   if (!seller) return true;
+  if (shouldSkipConnect(seller)) return false;
   return !isSellerConnectReady(seller);
 }
 
@@ -37,7 +41,7 @@ export async function buildConnectRequiredByLotId(
   lots: readonly Lot[],
 ): Promise<ConnectRequiredByLotId> {
   const record: ConnectRequiredByLotId = {};
-  if (!isStripeConnectEnforcedOnPublish()) {
+  if (!(await isStripeConnectEnforcedOnPublish())) {
     for (const lot of lots) {
       record[lot.id] = false;
     }

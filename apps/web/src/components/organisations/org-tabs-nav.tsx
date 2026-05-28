@@ -16,7 +16,7 @@ const TAB_SUFFIXES: { suffix: string; label: string }[] = [
   { suffix: "/members", label: "Members" },
   { suffix: "/profile", label: "Profile" },
   { suffix: "/documents", label: "Documents" },
-  { suffix: "/connect", label: "Connect" },
+  { suffix: "/connect", label: "Payout setup" },
 ];
 
 /** Per-org secondary navigation using `@auction/ui` `SectionNav` + Next `Link`. */
