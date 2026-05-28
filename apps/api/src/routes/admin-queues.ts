@@ -38,12 +38,10 @@ export function attachAdminQueuesRoutes(
   container: Container,
 ) {
   const auditAccess = createAuditAccessMiddleware(createBaseLogger(container.env));
-  platform.use("/system/job-queues", requireSuperAdminStaffRole);
   platform.use("/system/job-queues/*", requireSuperAdminStaffRole);
-  platform.use("/system/job-queues", auditAccess);
   platform.use("/system/job-queues/*", auditAccess);
 
-  platform.get("/system/job-queues", async (c) => {
+  platform.get("/system/job-queues/summary", async (c) => {
     const data = await container.queueAdmin.inspector.list();
     return c.json({ data });
   });
