@@ -25,9 +25,9 @@ function createQueueTestApp(staffRole: string | null) {
 }
 
 describe("admin queue routes", () => {
-  it("GET /system/job-queues returns inspector list for super_admin", async () => {
+  it("GET /system/job-queues/summary returns inspector list for super_admin", async () => {
     const { app, list } = createQueueTestApp("super_admin");
-    const res = await app.request("http://test/system/job-queues");
+    const res = await app.request("http://test/system/job-queues/summary");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: Array<{ name: string }> };
     expect(body.data[0]?.name).toBe("email");
@@ -36,7 +36,7 @@ describe("admin queue routes", () => {
 
   it("returns 403 for non-super-admin staff", async () => {
     const { app } = createQueueTestApp("auction_manager");
-    const res = await app.request("http://test/system/job-queues");
+    const res = await app.request("http://test/system/job-queues/summary");
     expect(res.status).toBe(403);
   });
 
