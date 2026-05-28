@@ -83,9 +83,15 @@ export function mountBullBoard(
 
   serverAdapter.setBasePath("/admin/system/job-queues");
 
-  parent.use("/admin/system/job-queues/*", middleware.requireAuth);
-  parent.use("/admin/system/job-queues/*", middleware.requirePlatformAdmin);
-  parent.use("/admin/system/job-queues/*", middleware.requireSuperAdminStaffRole);
-  parent.use("/admin/system/job-queues/*", middleware.auditAccess);
-  parent.route("/admin/system/job-queues", serverAdapter.registerPlugin());
+  const boardPath = "/admin/system/job-queues";
+  for (const mw of [
+    middleware.requireAuth,
+    middleware.requirePlatformAdmin,
+    middleware.requireSuperAdminStaffRole,
+    middleware.auditAccess,
+  ]) {
+    parent.use(boardPath, mw);
+    parent.use(`${boardPath}/*`, mw);
+  }
+  parent.route(boardPath, serverAdapter.registerPlugin());
 }

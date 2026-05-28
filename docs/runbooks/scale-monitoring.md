@@ -38,7 +38,7 @@ Observability targets derived from the Round 3 scale audit. These are **investig
 ### Dead-letter queue (`dead-letter`)
 
 - **Alert:** **> 10** waiting jobs in `dead-letter`, or any new DLQ entry on a **high-criticality** queue (`email`, `payout-statements`, `lot-lifecycle`, `payout-settlement`).
-- **Why:** Exhausted retries indicate a bug or dependency outage; Sentry fires on DLQ insert. Inspect via `GET /admin/system/job-queues` (super_admin) or Bull Board when `ENABLE_BULL_BOARD=true`.
+- **Why:** Exhausted retries indicate a bug or dependency outage; Sentry fires on DLQ insert. Inspect via `GET /admin/system/job-queues/summary` (super_admin) or Bull Board when `ENABLE_BULL_BOARD=true`.
 - **Check:** `failed_jobs` table for audit trail; replay only after root cause fix (`POST /admin/system/job-queues/dead-letter/:jobId/replay` with `confirmIdempotency: true`).
 
 ## BullMQ rollback controls

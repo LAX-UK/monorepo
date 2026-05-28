@@ -22,7 +22,7 @@ When `ENABLE_BULL_BOARD=true`, open **Bull Board** at:
 
 Programmatic inspection (same auth — super_admin session):
 
-- `GET /admin/system/job-queues`
+- `GET /admin/system/job-queues/summary`
 - `GET /admin/system/job-queues/:name/jobs?status=failed&limit=50`
 
 Email payloads are hidden from Bull Board; use `GET /admin/email/outbox` for PII-safe email observability.
