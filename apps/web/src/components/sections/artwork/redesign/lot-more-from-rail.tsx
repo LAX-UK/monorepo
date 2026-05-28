@@ -52,8 +52,8 @@ export function LotMoreFromRail({
     <section className="mt-20 w-full border-t border-border-hairline pt-16">
       <div className="mb-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-base leading-4 text-[#474747] dark:text-brand-400">More from</p>
-          <h2 className="mt-1 text-2xl font-semibold leading-6 text-[#050505] dark:text-on-surface">
+          <p className="text-base leading-4 text-on-surface-variant">More from</p>
+          <h2 className="mt-1 text-2xl font-semibold leading-6 text-on-surface">
             {rail.heading.startsWith("More from ")
               ? rail.heading.slice("More from ".length)
               : rail.heading}
@@ -63,7 +63,7 @@ export function LotMoreFromRail({
           <Button
             variant="link"
             asChild
-            className="h-auto min-h-0 p-0 text-base font-semibold text-[#050505] dark:text-on-surface"
+            className="h-auto min-h-0 p-0 text-base font-semibold text-on-surface"
           >
             <Link
               href={rail.viewAuctionHref}
@@ -158,40 +158,34 @@ export function LotMoreFromRail({
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    <p
-                      className="text-sm font-bold uppercase leading-4 text-[#E17100] dark:text-orange-500"
-                      style={{ color: "#E17100" }}
-                    >
+                    <p className="text-sm font-bold uppercase leading-4 text-warning">
                       {c.lotNumber != null ? `LOT ${c.lotNumber}` : "LOT"}
                     </p>
                     <div>
                       <p className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 group-hover:underline">
                         {c.title}
                       </p>
-                      <p className="mt-1 text-sm font-light text-[#191919] dark:text-on-surface-variant">
+                      <p className="mt-1 text-sm font-light text-on-surface-variant">
                         {c.artistOrSellerName}
                       </p>
                     </div>
                     {c.estimateLine ? (
                       <div>
-                        <p className="text-xs text-[#474747] dark:text-brand-400">Estimate</p>
-                        <p className="text-sm font-medium text-[#474747] dark:text-brand-400">
+                        <p className="text-xs text-on-surface-variant">Estimate</p>
+                        <p className="text-sm font-medium text-on-surface-variant">
                           {c.estimateLine}
                         </p>
                       </div>
                     ) : null}
                     <div>
-                      <p className="text-xs text-[#474747] dark:text-brand-400">Current bid</p>
-                      <p className="text-sm font-semibold text-[#050505] dark:text-on-surface">
+                      <p className="text-xs text-on-surface-variant">Current bid</p>
+                      <p className="text-sm font-semibold text-on-surface">
                         {formatMoney(c.currentPrice)}
                       </p>
                     </div>
-                    <p className="text-sm text-[#474747] dark:text-on-surface">
+                    <p className="text-sm text-on-surface-variant">
                       <span className="text-xs">Closing: </span>
-                      <span
-                        className="font-semibold text-[#050505] dark:text-on-surface"
-                        suppressHydrationWarning
-                      >
+                      <span className="font-semibold text-on-surface" suppressHydrationWarning>
                         {closing ?? "\u00A0"}
                       </span>
                     </p>
@@ -199,7 +193,7 @@ export function LotMoreFromRail({
                       <Button
                         variant="outline"
                         asChild
-                        className="h-10 min-h-10 flex-1 rounded border-[#A3A3A3] text-base font-semibold text-[#0A0A0A] dark:border-neutral-500 dark:text-on-surface"
+                        className="h-10 min-h-10 flex-1 rounded border-outline-variant text-base font-semibold text-on-surface"
                       >
                         <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
                       </Button>

@@ -27,7 +27,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 type Props = {
   sessionUser: SessionUser;
@@ -93,6 +93,12 @@ export function CheckoutPurchasePanel({
     resolver: zodResolver(checkoutTermsAcceptanceSchema),
     defaultValues: { addressId: defaultAddress?.id ?? "", termsAccepted: false },
   });
+  const addressId = useWatch({ control: form.control, name: "addressId" });
+  const termsAccepted = useWatch({ control: form.control, name: "termsAccepted" });
+  const canSubmit =
+    Boolean(termsAccepted) &&
+    Boolean(addressId) &&
+    checkoutAddresses.some((address) => address.id === addressId);
 
   useEffect(() => {
     if (totalMinor != null && totalMinor > 0) {
@@ -192,6 +198,7 @@ export function CheckoutPurchasePanel({
       <BuyerGate user={sessionUser}>
         <Form {...form}>
           <form
+            id="checkout-purchase-form"
             className="space-y-6"
             onSubmit={form.handleSubmit(async (values) => {
               form.clearErrors("root");
@@ -255,7 +262,24 @@ export function CheckoutPurchasePanel({
                         </Button>
                       </div>
                     ) : (
-                      <div className="grid gap-3" aria-label="Select shipping or invoice address">
+                      <div
+                        className="grid gap-3"
+                        role="radiogroup"
+                        aria-label="Select shipping or invoice address"
+                        onKeyDown={(event) => {
+                          const currentIndex = checkoutAddresses.findIndex(
+                            (address) => address.id === field.value,
+                          );
+                          if (currentIndex < 0) return;
+                          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                          event.preventDefault();
+                          const delta = event.key === "ArrowDown" ? 1 : -1;
+                          const nextIndex =
+                            (currentIndex + delta + checkoutAddresses.length) %
+                            checkoutAddresses.length;
+                          field.onChange(checkoutAddresses[nextIndex]?.id ?? "");
+                        }}
+                      >
                         {checkoutAddresses.map((address) => {
                           const selected = field.value === address.id;
                           return (
@@ -263,7 +287,10 @@ export function CheckoutPurchasePanel({
                               key={address.id}
                               type="button"
                               variant="ghost"
-                              aria-pressed={selected}
+                              // biome-ignore lint/a11y/useSemanticElements: address picker uses button radios for keyboard roving tabindex
+                              role="radio"
+                              aria-checked={selected}
+                              tabIndex={selected ? 0 : -1}
                               onClick={() => field.onChange(address.id)}
                               className={`w-full justify-start rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                                 selected
@@ -330,8 +357,8 @@ export function CheckoutPurchasePanel({
             ) : null}
             <Button
               type="submit"
-              disabled={form.formState.isSubmitting}
-              className="h-auto min-h-11 w-full py-5"
+              disabled={form.formState.isSubmitting || !canSubmit}
+              className="hidden h-auto min-h-11 w-full py-5 lg:flex"
             >
               {form.formState.isSubmitting ? "Processing…" : "Complete purchase"}
             </Button>

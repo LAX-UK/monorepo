@@ -41,8 +41,19 @@ export function VerifyIdentityClient({ initialStatus }: Props) {
 
   useEffect(() => {
     if (initialStatus?.status !== "approved" || !safeNext) return;
-    router.replace(safeNext);
+    const timer = window.setTimeout(() => router.replace(safeNext), 1500);
+    return () => window.clearTimeout(timer);
   }, [initialStatus?.status, router, safeNext]);
+
+  if (initialStatus?.status === "approved" && safeNext) {
+    return (
+      <KycStatusPanel
+        summary={initialStatus}
+        phase="approved"
+        className="border-success/30 bg-success-container/20"
+      />
+    );
+  }
 
   const returnUrl = normalizeKycReturnUrl(
     `/dashboard/verify-identity?kyc=complete${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`,

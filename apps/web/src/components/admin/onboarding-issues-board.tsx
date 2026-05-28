@@ -6,9 +6,10 @@ import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminOnboardingIssuesPayload } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
-import { Badge } from "@auction/ui/components/badge";
+import { EntityList, StatusBadge } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 function linkColumn<T extends { id: string }>(
@@ -31,22 +32,45 @@ function IssuesTable<T extends { id: string }>({
   rows,
   columns,
   emptyTitle,
+  renderCard,
 }: {
   rows: T[];
   columns: ColumnDef<T>[];
   emptyTitle: string;
+  renderCard?: (row: T) => ReactNode;
 }) {
   const { density } = useTableDensity();
   if (rows.length === 0) {
     return <AdminEmptyState title="Clear" description={emptyTitle} />;
   }
+
+  const cards = renderCard ? (
+    <ul className="space-y-3 lg:hidden">
+      {rows.map((row) => (
+        <li
+          key={row.id}
+          className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4"
+        >
+          {renderCard(row)}
+        </li>
+      ))}
+    </ul>
+  ) : null;
+
   return (
-    <AdminDataTable
-      ariaLabel={emptyTitle}
-      columns={columns}
-      data={rows}
+    <EntityList
+      responsiveMode="auto"
       density={density}
-      getRowId={(r) => r.id}
+      table={
+        <AdminDataTable
+          ariaLabel={emptyTitle}
+          columns={columns}
+          data={rows}
+          density={density}
+          getRowId={(r) => r.id}
+        />
+      }
+      cards={cards}
     />
   );
 }
@@ -134,13 +158,31 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       value: "entities",
       label: "Entities",
       ...(data.entitiesPendingReview.length > 0
-        ? { badge: <Badge variant="secondary">{data.entitiesPendingReview.length}</Badge> }
+        ? {
+            badge: (
+              <StatusBadge variant="info" size="sm">
+                {data.entitiesPendingReview.length}
+              </StatusBadge>
+            ),
+          }
         : {}),
       content: (
         <IssuesTable
           rows={data.entitiesPendingReview}
           columns={entityColumns}
           emptyTitle="No entities in review."
+          renderCard={(r) => (
+            <>
+              <p className="font-medium">{r.displayName}</p>
+              <p className="mt-1 text-xs text-on-surface-variant">{r.status}</p>
+              <Link
+                href={`/admin/legal-entities/${r.id}`}
+                className="mt-2 inline-block text-sm text-primary underline"
+              >
+                Open
+              </Link>
+            </>
+          )}
         />
       ),
     },
@@ -148,13 +190,30 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       value: "artists",
       label: "Artists",
       ...(data.artistsPendingApproval.length > 0
-        ? { badge: <Badge variant="secondary">{data.artistsPendingApproval.length}</Badge> }
+        ? {
+            badge: (
+              <StatusBadge variant="info" size="sm">
+                {data.artistsPendingApproval.length}
+              </StatusBadge>
+            ),
+          }
         : {}),
       content: (
         <IssuesTable
           rows={data.artistsPendingApproval}
           columns={artistColumns}
           emptyTitle="No pending artists."
+          renderCard={(r) => (
+            <>
+              <p className="font-medium">{r.displayName}</p>
+              <Link
+                href={`/admin/artists/${r.id}/edit`}
+                className="mt-2 inline-block text-sm text-primary underline"
+              >
+                Review
+              </Link>
+            </>
+          )}
         />
       ),
     },
@@ -162,13 +221,34 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       value: "kyc",
       label: "KYC sessions",
       ...(data.staleKycSessions.length > 0
-        ? { badge: <Badge variant="secondary">{data.staleKycSessions.length}</Badge> }
+        ? {
+            badge: (
+              <StatusBadge variant="info" size="sm">
+                {data.staleKycSessions.length}
+              </StatusBadge>
+            ),
+          }
         : {}),
       content: (
         <IssuesTable
           rows={data.staleKycSessions}
           columns={kycColumns}
           emptyTitle="No stale verification sessions."
+          renderCard={(r) => (
+            <>
+              <p className="font-mono text-xs">{r.userId}</p>
+              <p className="mt-1 text-xs text-on-surface-variant">
+                {r.provider} · {r.status}
+              </p>
+              <p className="mt-1 text-xs text-on-surface-variant">{formatDateTime(r.createdAt)}</p>
+              <Link
+                href={`/admin/clients/${encodeURIComponent(r.userId)}`}
+                className="mt-2 inline-block text-sm text-primary underline"
+              >
+                User
+              </Link>
+            </>
+          )}
         />
       ),
     },
@@ -176,13 +256,33 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       value: "orgs",
       label: "Lead orgs",
       ...(data.staleLeadOrganisations.length > 0
-        ? { badge: <Badge variant="secondary">{data.staleLeadOrganisations.length}</Badge> }
+        ? {
+            badge: (
+              <StatusBadge variant="info" size="sm">
+                {data.staleLeadOrganisations.length}
+              </StatusBadge>
+            ),
+          }
         : {}),
       content: (
         <IssuesTable
           rows={data.staleLeadOrganisations}
           columns={orgColumns}
           emptyTitle="No stale lead organisations."
+          renderCard={(r) => (
+            <>
+              <p className="font-medium">{r.displayName}</p>
+              <p className="mt-1 text-xs text-on-surface-variant">
+                Created {new Date(r.createdAt).toLocaleDateString("en-GB")}
+              </p>
+              <Link
+                href={`/admin/legal-entities/${r.id}`}
+                className="mt-2 inline-block text-sm text-primary underline"
+              >
+                Open entity
+              </Link>
+            </>
+          )}
         />
       ),
     },
@@ -190,13 +290,31 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       value: "documents",
       label: "Documents",
       ...(data.documentsAwaitingReview.length > 0
-        ? { badge: <Badge variant="secondary">{data.documentsAwaitingReview.length}</Badge> }
+        ? {
+            badge: (
+              <StatusBadge variant="info" size="sm">
+                {data.documentsAwaitingReview.length}
+              </StatusBadge>
+            ),
+          }
         : {}),
       content: (
         <IssuesTable
           rows={data.documentsAwaitingReview}
           columns={docColumns}
           emptyTitle="No pending entity documents."
+          renderCard={(r) => (
+            <>
+              <p className="font-medium">{r.entityDisplayName}</p>
+              <p className="mt-1 font-mono text-xs text-on-surface-variant">{r.uploadObjectId}</p>
+              <Link
+                href={`/admin/legal-entities/${r.legalEntityId}`}
+                className="mt-2 inline-block text-sm text-primary underline"
+              >
+                Entity
+              </Link>
+            </>
+          )}
         />
       ),
     },

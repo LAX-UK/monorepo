@@ -10,7 +10,7 @@ import { LotCardTimer, type LotCardTimerProps } from "@/components/lot-timer";
 import { type LotTimerInputs, classifyLotTimerState } from "@/components/lot-timer/classify";
 import { formatRemaining } from "@/components/lot-timer/format";
 import { useNow } from "@/hooks/use-now";
-import { cn } from "@auction/ui";
+import { LiveBadge, StatusBadge, cn } from "@auction/ui";
 
 export { LotCardTimer as LotStatusTimer, LotCardTimer, type LotCardTimerProps };
 
@@ -30,18 +30,11 @@ export function LotStatusBadge({ closingShort, ...inputs }: LotStatusBadgeProps)
   if (state.kind === "live") {
     const clock = formatRemaining(state.msLeft);
     return (
-      <span
-        className={cn(
-          "inline-flex max-w-full items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-900 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-100",
-          pillLabelClass,
-        )}
-      >
-        <span
-          className="size-1.5 shrink-0 rounded-full bg-red-600 motion-safe:animate-pulse"
-          aria-hidden
-        />
-        Live
-        <span className="tabular-nums font-medium normal-case">{clock}</span>
+      <span className="inline-flex max-w-full items-center gap-1.5">
+        <LiveBadge />
+        <span className={cn(pillLabelClass, "tabular-nums font-medium normal-case text-live-red")}>
+          {clock}
+        </span>
       </span>
     );
   }
@@ -49,57 +42,33 @@ export function LotStatusBadge({ closingShort, ...inputs }: LotStatusBadgeProps)
   if (state.kind === "opensSoon") {
     const clock = formatRemaining(state.msLeft);
     return (
-      <span
-        className={cn(
-          "inline-flex max-w-full items-center rounded-full border border-neutral-300 bg-neutral-100 text-neutral-800 dark:border-outline dark:bg-surface-container-high dark:text-on-surface-variant",
-          pillLabelClass,
-          "px-2 py-0.5",
-        )}
-      >
-        Opens in <span className="ml-1 tabular-nums normal-case">{clock}</span>
-      </span>
+      <StatusBadge variant="info" size="sm" className="max-w-full normal-case">
+        Opens in <span className="ml-1 tabular-nums">{clock}</span>
+      </StatusBadge>
     );
   }
 
   if (state.kind === "closed") {
     return (
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface-variant",
-          pillLabelClass,
-          "px-2 py-0.5",
-        )}
-      >
+      <StatusBadge variant="neutral" size="sm">
         Closed
-      </span>
+      </StatusBadge>
     );
   }
 
   if (state.kind === "cancelled") {
     return (
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface-variant",
-          pillLabelClass,
-          "px-2 py-0.5",
-        )}
-      >
+      <StatusBadge variant="neutral" size="sm">
         Cancelled
-      </span>
+      </StatusBadge>
     );
   }
 
   if (closingShort?.trim()) {
     return (
-      <span
-        className={cn(
-          "inline-flex max-w-full items-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface-variant",
-          pillLabelClass,
-          "px-2 py-0.5",
-        )}
-      >
-        <span className="truncate normal-case">{closingShort}</span>
-      </span>
+      <StatusBadge variant="neutral" size="sm" className="max-w-full normal-case">
+        <span className="truncate">{closingShort}</span>
+      </StatusBadge>
     );
   }
 

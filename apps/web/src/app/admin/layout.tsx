@@ -117,7 +117,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   );
 
   return (
-    <div className={showImpersonationBanner ? "pt-14" : undefined}>
+    <div
+      className={
+        showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
+      }
+    >
       <ImpersonationEndWarningListener />
       {impersonation && showImpersonationBanner ? (
         <ImpersonationBanner

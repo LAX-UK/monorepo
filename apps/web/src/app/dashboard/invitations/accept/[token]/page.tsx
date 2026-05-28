@@ -96,7 +96,7 @@ export default async function AcceptInvitationTokenPage({
           </Button>
         </div>
         <Button asChild variant="ghost" size="sm">
-          <Link href={DASHBOARD_ROUTES.invitations}>Back to invitations</Link>
+          <Link href={`/login?next=${next}`}>Back to sign in</Link>
         </Button>
       </Surface>
     </DashboardPage>

@@ -4,6 +4,11 @@ import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 export const DASHBOARD_META = {
   settings: "Settings",
   organisation: "Organisation",
+  buying: "Buying",
+  selling: "Selling",
+  collectorHome: "Collector home",
+  sellerHome: "Seller home",
+  actingAsOrg: "Acting as organisation",
 } as const;
 
 /** Shared CTA labels — use everywhere for consistency. */

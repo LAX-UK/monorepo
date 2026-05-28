@@ -83,6 +83,7 @@ export function AdminListPage({
       {bulkBar}
       <EntityList
         responsiveMode={mobileCards ? "auto" : "scroll"}
+        {...(mobileCards ? { cards: mobileCards, table: view } : { table: view })}
         filters={
           showToolbar ? (
             <AdminListToolbar
@@ -100,16 +101,6 @@ export function AdminListPage({
               resetHref={resetHref ?? ""}
             />
           ) : undefined
-        }
-        table={
-          mobileCards ? (
-            <>
-              <div className="hidden md:block">{view}</div>
-              <div className="md:hidden">{mobileCards}</div>
-            </>
-          ) : (
-            view
-          )
         }
         {...(errorAlert ? { error: errorAlert } : {})}
       />

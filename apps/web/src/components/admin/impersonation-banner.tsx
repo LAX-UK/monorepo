@@ -34,7 +34,8 @@ export function ImpersonationBanner({ entityName, expiresAtIso }: Props) {
 
   return (
     <div
-      className="fixed inset-x-0 top-0 z-[200] border-b border-red-900/40 bg-red-600 px-4 py-2 text-white shadow-md"
+      className="fixed inset-x-0 top-0 z-[200] border-b border-error/40 bg-error px-4 py-2 text-on-error shadow-md"
+      style={{ height: "var(--impersonation-banner-height, 3.5rem)" }}
       // biome-ignore lint/a11y/useSemanticElements: status role on a fixed banner div is intentional
       role="status"
       aria-live="polite"
@@ -42,16 +43,16 @@ export function ImpersonationBanner({ entityName, expiresAtIso }: Props) {
       <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <p className="text-sm font-medium sm:text-base">
           Impersonating <span className="font-semibold">{entityName}</span>
-          <span className="ml-2 text-red-100">
+          <span className="ml-2 text-on-error/80">
             · Session ends in <span className="tabular-nums">{formatRemaining(remainingSec)}</span>
           </span>
         </p>
         <form id="end-impersonation-form" action={endAdminImpersonationAction} className="shrink-0">
           <ConfirmFormSubmit
             formId="end-impersonation-form"
-            size="sm"
+            size="md"
             variant="secondary"
-            className="w-full bg-white text-red-700 hover:bg-red-50 dark:bg-surface-container-highest dark:text-red-300 dark:hover:bg-red-950/40 sm:w-auto"
+            className="w-full bg-on-error text-error hover:bg-error-container dark:bg-surface-container-highest dark:text-error dark:hover:bg-error/10 sm:w-auto"
             confirmTitle="End impersonation?"
             confirmBody="You will return to your staff session immediately."
             confirmLabel="End now"

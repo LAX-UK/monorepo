@@ -49,6 +49,7 @@ export function MemberList({
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<PendingDialog | null>(null);
   const [simpleRemove, setSimpleRemove] = useState<{ memberId: string; memberName: string } | null>(
     null,
@@ -56,9 +57,14 @@ export function MemberList({
 
   function handleRoleChange(memberId: string, role: LegalEntityMemberRole) {
     setError(null);
+    setRowErrors((prev) => {
+      const next = { ...prev };
+      delete next[memberId];
+      return next;
+    });
     startTransition(async () => {
       const res = await updateMemberRoleAction(legalEntityId, memberId, role);
-      if (!res.ok) setError(res.error);
+      if (!res.ok) setRowErrors((prev) => ({ ...prev, [memberId]: res.error }));
     });
   }
 
@@ -87,14 +93,18 @@ export function MemberList({
   return (
     <div className="space-y-3">
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <ul className="divide-y rounded-md border bg-surface">
+      <ul className="space-y-3 lg:divide-y lg:rounded-md lg:border lg:bg-surface lg:space-y-0">
         {members.map((m) => {
           const isSelf = m.userId === viewerUserId;
           const canEdit = viewerIsAdmin && !m.isPrimaryAdmin && !isSelf;
           const canTransfer = viewerIsPrimaryAdmin && !m.isPrimaryAdmin;
           const pendingInvitation = !m.acceptedAt;
+          const rowError = rowErrors[m.id];
           return (
-            <li key={m.id} className="flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap">
+            <li
+              key={m.id}
+              className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-3 lg:flex lg:flex-wrap lg:items-center lg:gap-3"
+            >
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{m.user.name}</p>
                 <p className="truncate text-xs text-on-surface-variant">
@@ -144,6 +154,7 @@ export function MemberList({
                   </Button>
                 )}
               </div>
+              {rowError ? <p className="mt-2 w-full text-sm text-destructive">{rowError}</p> : null}
             </li>
           );
         })}

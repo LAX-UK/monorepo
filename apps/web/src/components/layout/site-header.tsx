@@ -1,10 +1,11 @@
 "use client";
 
+import { openCommandPalette } from "@/components/layout/command-palette-events";
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { cn } from "@auction/ui";
-import { Menu, X } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type RefObject, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -126,6 +127,16 @@ function SiteHeaderShell({
             }
             trailing={
               <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:max-w-[420px] lg:gap-3 lg:flex-none">
+                <ChromeIconButton
+                  label="Open search"
+                  className={cn(
+                    "lg:hidden",
+                    "text-brand-800 hover:bg-page-bg dark:text-on-surface",
+                  )}
+                  onClick={openCommandPalette}
+                >
+                  <Search aria-hidden />
+                </ChromeIconButton>
                 <HeaderSearchTrigger />
                 <div className="hidden lg:flex">
                   <ThemeToggle />

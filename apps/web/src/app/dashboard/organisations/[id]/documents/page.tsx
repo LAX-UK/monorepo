@@ -1,5 +1,6 @@
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { documentReviewStatusBadgeVariant } from "@/components/organisations/labels";
+import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import type { LegalEntity, LegalEntityDocument } from "@auction/types";
@@ -35,14 +36,17 @@ export default async function OrganisationDocumentsPage({
 
   const entity = ctx.entity as EntityWithDocs | null;
   const docs = entity?.documents ?? [];
-  const href = `/onboarding/organisation/step/documents?entityId=${encodeURIComponent(id)}`;
+  const returnTo = `/dashboard/organisations/${id}/documents`;
+  const href = `/onboarding/organisation/step/documents?entityId=${encodeURIComponent(id)}&returnTo=${encodeURIComponent(returnTo)}`;
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        kicker={<LabelCaps>KYB</LabelCaps>}
-        heading={<DisplayHeading as="h2">Documents</DisplayHeading>}
-      />
+      <OrgTabSectionHeader>
+        <SectionHeader
+          kicker={<LabelCaps>KYB</LabelCaps>}
+          heading={<DisplayHeading as="h2">Documents</DisplayHeading>}
+        />
+      </OrgTabSectionHeader>
 
       <Surface variant="section" padding="md" className="space-y-4">
         <div className="space-y-1">

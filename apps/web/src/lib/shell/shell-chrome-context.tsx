@@ -13,19 +13,30 @@ import {
 type ShellChromeContextValue = {
   hideBottomTabBar: boolean;
   setHideBottomTabBar: (hide: boolean) => void;
+  mobileTitleOverride: string | null;
+  setMobileTitleOverride: (title: string | null) => void;
 };
 
 const ShellChromeContext = createContext<ShellChromeContextValue | null>(null);
 
 export function ShellChromeProvider({ children }: { children: ReactNode }) {
   const [hideBottomTabBar, setHideBottomTabBarState] = useState(false);
+  const [mobileTitleOverride, setMobileTitleOverrideState] = useState<string | null>(null);
   const setHideBottomTabBar = useCallback((hide: boolean) => {
     setHideBottomTabBarState(hide);
   }, []);
+  const setMobileTitleOverride = useCallback((title: string | null) => {
+    setMobileTitleOverrideState(title);
+  }, []);
 
   const value = useMemo(
-    () => ({ hideBottomTabBar, setHideBottomTabBar }),
-    [hideBottomTabBar, setHideBottomTabBar],
+    () => ({
+      hideBottomTabBar,
+      setHideBottomTabBar,
+      mobileTitleOverride,
+      setMobileTitleOverride,
+    }),
+    [hideBottomTabBar, setHideBottomTabBar, mobileTitleOverride, setMobileTitleOverride],
   );
 
   return <ShellChromeContext.Provider value={value}>{children}</ShellChromeContext.Provider>;
