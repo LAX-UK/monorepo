@@ -1,93 +1,52 @@
 "use client";
 
-import { SalesFilterChips } from "@/components/sections/sales/sales-filter-chips";
-import {
-  SalesFilterSheetProvider,
-  useSalesFilterSheet,
-} from "@/components/sections/sales/sales-filter-context";
+import { SalesCalendarToolbar } from "@/components/sections/sales/sales-calendar-toolbar";
 import { SalesFilterSidebar } from "@/components/sections/sales/sales-filter-sidebar";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
-import { countActiveCalendarFilters } from "@/lib/marketing/sales-calendar-params";
-import { CALENDAR_FILTERS_PANEL_ID } from "@/lib/marketing/sales-filter-scroll";
-import {
-  BottomSheet,
-  BottomSheetContent,
-  BottomSheetHeader,
-  BottomSheetTitle,
-  Button,
-} from "@auction/ui";
 import type { ReactNode } from "react";
 
 type Category = { id: string; name: string };
 
-type InnerProps = {
+type Props = {
   state: CalendarSalesUrlState;
   resultCount: number;
   categories: Category[];
   years: number[];
+  calendarView: "grid" | "list";
   children: ReactNode;
 };
 
-function SalesCalendarBrowseInner({ state, resultCount, categories, years, children }: InnerProps) {
-  const { mobileFiltersOpen, setMobileFiltersOpen, openMobileFilters } = useSalesFilterSheet();
-  const filterCount = countActiveCalendarFilters(state);
-
+export function SalesCalendarBrowse({
+  state,
+  resultCount,
+  categories,
+  years,
+  calendarView,
+  children,
+}: Props) {
   return (
     <div className="relative flex w-full flex-col gap-6">
-      <SalesFilterChips state={state} categories={categories} />
+      <SalesCalendarToolbar
+        state={state}
+        resultCount={resultCount}
+        categories={categories}
+        years={years}
+        calendarView={calendarView}
+      />
 
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        className="fixed bottom-4 right-4 z-40 min-h-[44px] shadow-md lg:hidden"
-        onClick={openMobileFilters}
-      >
-        Filters{filterCount > 0 ? ` (${filterCount})` : ""}
-      </Button>
-
-      <BottomSheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-        <BottomSheetContent className="max-h-[85vh]">
-          <BottomSheetHeader className="px-6 pt-2 text-left">
-            <BottomSheetTitle className="font-headline text-lg">Filters</BottomSheetTitle>
-          </BottomSheetHeader>
-          <div className="px-6 pb-6">
-            <SalesFilterSidebar
-              state={state}
-              resultCount={resultCount}
-              categories={categories}
-              years={years}
-            />
-          </div>
-        </BottomSheetContent>
-      </BottomSheet>
-
-      <div className="pt-2 sm:pt-4">
-        <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start lg:gap-0">
-          <div
-            id={CALENDAR_FILTERS_PANEL_ID}
-            className="hidden shrink-0 lg:block lg:w-[min(100%,441px)] lg:max-w-[441px] lg:pr-8"
-          >
-            <SalesFilterSidebar
-              state={state}
-              resultCount={resultCount}
-              categories={categories}
-              years={years}
-            />
-          </div>
-          <div className="min-w-0 flex-1 pb-[var(--page-bottom-padding)] lg:max-w-[989px] lg:pb-0 lg:pl-8">
-            {children}
-          </div>
+      <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start lg:gap-0">
+        <div className="hidden shrink-0 lg:block lg:w-[min(100%,441px)] lg:max-w-[441px] lg:pr-8">
+          <SalesFilterSidebar
+            state={state}
+            resultCount={resultCount}
+            categories={categories}
+            years={years}
+          />
+        </div>
+        <div className="min-w-0 flex-1 pb-[var(--page-bottom-padding)] lg:max-w-[989px] lg:pb-0 lg:pl-8">
+          {children}
         </div>
       </div>
     </div>
-  );
-}
-
-export function SalesCalendarBrowse(props: InnerProps) {
-  return (
-    <SalesFilterSheetProvider>
-      <SalesCalendarBrowseInner {...props} />
-    </SalesFilterSheetProvider>
   );
 }

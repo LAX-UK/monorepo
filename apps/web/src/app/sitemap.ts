@@ -6,6 +6,7 @@ import {
 import { fetchArtistsForSitemap } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { fetchSalesForSitemap } from "@/lib/data/http/sales.server";
+import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
@@ -30,6 +31,8 @@ const STATIC_PATHS = [
 const LETTER_SEGMENTS = "abcdefghijklmnopqrstuvwxyz".split("").concat(["other"]);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (!isIndexingAllowedAtBuildTime()) return [];
+
   const base = getSiteUrl();
   const now = new Date();
 

@@ -200,9 +200,15 @@ export function LotCardList({
       </span>
       <div className="relative z-[1] min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <LotCardNavLink lotId={lotId} href={href} className="min-w-0">
-            {title}
-            {subtitle}
+          <LotCardNavLink lotId={lotId} href={href} className="min-w-0 block">
+            {subtitle != null ? (
+              <div className="min-w-0">
+                {title}
+                {subtitle}
+              </div>
+            ) : (
+              title
+            )}
           </LotCardNavLink>
           {trailing ? (
             <div className="pointer-events-auto relative z-[2] shrink-0">{trailing}</div>
@@ -345,9 +351,9 @@ export function LotCardEditorialCalm({
           </div>
         </AdaptiveMediaFrameContainer>
         <div className="space-y-2 p-6">
-          {title}
-          {description}
-          {footer}
+          {title != null ? <Fragment key="title">{title}</Fragment> : null}
+          {description != null ? <Fragment key="description">{description}</Fragment> : null}
+          {footer != null ? <Fragment key="footer">{footer}</Fragment> : null}
         </div>
       </Link>
       {topRight ? (

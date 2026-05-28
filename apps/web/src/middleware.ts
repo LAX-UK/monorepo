@@ -7,6 +7,7 @@ import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
 import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
 import { seedDefaultThemeCookieIfNeeded } from "@/lib/preferences/seed-theme-cookie";
+import { X_ROBOTS_TAG_NOINDEX, isIndexingAllowedForHost } from "@/lib/seo/is-indexing-allowed";
 import { type NextRequest, NextResponse } from "next/server";
 
 /** Generate a cryptographically random nonce string for CSP. */
@@ -143,6 +144,10 @@ export async function middleware(request: NextRequest) {
   }
 
   applyClientHintHeaders(baseResponse);
+
+  if (!isIndexingAllowedForHost(hostname)) {
+    baseResponse.headers.set("X-Robots-Tag", X_ROBOTS_TAG_NOINDEX);
+  }
 
   return baseResponse;
 }

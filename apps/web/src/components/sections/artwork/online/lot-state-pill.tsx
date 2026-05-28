@@ -4,6 +4,7 @@ import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import {
   type LifecycleBadgeTone,
+  type LotLifecycle,
   classifyLotLifecycle,
   lifecycleBadge,
 } from "@/lib/lot/lot-lifecycle";
@@ -46,6 +47,22 @@ function toneClasses(tone: LifecycleBadgeTone): string {
   }
 }
 
+function lifecycleDetail(lifecycle: LotLifecycle): string | null {
+  switch (lifecycle.kind) {
+    case "preLaunch":
+      return "This lot is in preview — bidding has not opened yet.";
+    case "scheduled":
+      return "Bidding opens soon — register to bid before the lot goes live.";
+    case "endedSold":
+    case "endedNoSale":
+    case "cancelled":
+    case "withdrawn":
+      return "Bidding is closed for this lot.";
+    default:
+      return null;
+  }
+}
+
 /** Live-updating pill + short countdown for scheduled / live / extended. */
 export function LotStatePill({
   lot,
@@ -73,6 +90,7 @@ export function LotStatePill({
     [lot, sale, now, recentlyExtended],
   );
   const badge = useMemo(() => lifecycleBadge(lifecycle), [lifecycle]);
+  const detail = useMemo(() => lifecycleDetail(lifecycle), [lifecycle]);
 
   const countdown =
     now != null &&
@@ -82,33 +100,43 @@ export function LotStatePill({
       : null;
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      <span
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-label font-bold uppercase tracking-wide",
-          compact ? "text-[10px]" : "text-xs",
-          toneClasses(badge.tone),
-        )}
-      >
-        {badge.pulse ? (
-          <span className="relative flex h-3 w-3 shrink-0 items-center justify-center" aria-hidden>
-            <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-current/60 motion-reduce:animate-none" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
-          </span>
-        ) : null}
-        <span>{badge.label}</span>
-      </span>
-      {countdown && !suppressCountdown ? (
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <div className="flex flex-wrap items-center gap-2">
         <span
           className={cn(
-            "font-body tabular-nums text-on-surface-variant",
-            compact ? "text-xs" : "text-sm",
-            hideCountdownOnMobile && "hidden lg:inline",
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-label font-bold uppercase tracking-wide",
+            compact ? "text-[10px]" : "text-xs",
+            toneClasses(badge.tone),
           )}
-          suppressHydrationWarning
         >
-          {countdown}
+          {badge.pulse ? (
+            <span
+              className="relative flex h-3 w-3 shrink-0 items-center justify-center"
+              aria-hidden
+            >
+              <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-current/60 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
+            </span>
+          ) : null}
+          <span>{badge.label}</span>
         </span>
+        {countdown && !suppressCountdown ? (
+          <span
+            className={cn(
+              "font-body tabular-nums text-on-surface-variant",
+              compact ? "text-xs" : "text-sm",
+              hideCountdownOnMobile && "hidden lg:inline",
+            )}
+            suppressHydrationWarning
+          >
+            {countdown}
+          </span>
+        ) : null}
+      </div>
+      {detail ? (
+        <p className={cn("font-body text-on-surface-variant", compact ? "text-xs" : "text-sm")}>
+          {detail}
+        </p>
       ) : null}
     </div>
   );

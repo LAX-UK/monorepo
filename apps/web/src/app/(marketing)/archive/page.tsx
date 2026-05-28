@@ -1,19 +1,22 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
-import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
-import { ArchiveFilterBar } from "@/components/sections/archive/archive-filter-bar";
+import { ArchivePageToolbar } from "@/components/sections/archive/archive-page-toolbar";
 import { ArchivePagination } from "@/components/sections/archive/archive-pagination";
 import { CatalogArchiveView } from "@/components/sections/archive/catalog-archive-view";
 import type { ArchiveLotVM } from "@/components/sections/archive/catalog-archive-views";
 import { PastAuctionsEmpty } from "@/components/sections/archive/past-auctions-grid";
 import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-header";
-import { buildArchivePageQuery } from "@/lib/archive/build-archive-params";
+import {
+  buildArchivePageQuery,
+  countActiveArchiveFilters,
+} from "@/lib/archive/build-archive-params";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
+import { archiveLotLinkParams } from "@/lib/marketing/catalog-links";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -22,6 +25,7 @@ import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
 import { Button } from "@auction/ui";
+import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -48,10 +52,7 @@ function formatArchiveVolume(totalHammer: string): string {
 
 function filtersFallback() {
   return (
-    <div
-      className="mx-auto mb-16 h-24 max-w-screen-2xl animate-pulse rounded-md bg-surface-container-high"
-      aria-hidden
-    />
+    <div className="mb-8 h-14 animate-pulse rounded-md bg-surface-container-high" aria-hidden />
   );
 }
 
@@ -121,6 +122,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     }));
 
     const totalPages = Math.max(1, Math.ceil(totalCount / q.pageSize));
+    const hasActiveFilters = countActiveArchiveFilters(q) > 0;
 
     const base = getSiteUrl();
     const crumbs = breadcrumbJsonLd([
@@ -136,21 +138,25 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     return (
       <main
         id="main-content"
-        className="bg-surface px-8 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] text-on-surface md:px-20"
+        className={cn(
+          MARKETING_PAGE_SHELL,
+          MARKETING_CATALOG_PT,
+          "bg-surface pb-[var(--page-bottom-padding)] text-on-surface",
+        )}
       >
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
         </script>
         <PastAuctionsHeader totalVolumeLabel={formatArchiveVolume(totalHammer)} />
-        <Suspense fallback={filtersFallback()}>
-          <ArchiveFilterBar categories={categories} />
-        </Suspense>
 
-        <MarketingListToolbar
-          className="mb-8"
-          countLabel={`${totalCount} lot${totalCount === 1 ? "" : "s"}`}
-          trailing={<CatalogViewSwitcher routeKey="archive" value={layoutView} />}
-        />
+        <Suspense fallback={filtersFallback()}>
+          <ArchivePageToolbar
+            query={q}
+            resultCount={totalCount}
+            categories={categories}
+            layoutView={layoutView}
+          />
+        </Suspense>
 
         <ViewItemListTracker
           listId="archive"
@@ -158,9 +164,14 @@ export default async function ArchivePage({ searchParams }: PageProps) {
           itemIds={items.map((i) => i.auction.id)}
         />
         {items.length === 0 ? (
-          <PastAuctionsEmpty />
+          <PastAuctionsEmpty hasActiveFilters={hasActiveFilters} layoutView={layoutView} />
         ) : (
-          <CatalogArchiveView view={layoutView} items={items} currentUserId={currentUserId} />
+          <CatalogArchiveView
+            view={layoutView}
+            items={items}
+            currentUserId={currentUserId}
+            catalogLinkParams={archiveLotLinkParams(layoutView)}
+          />
         )}
 
         <Suspense fallback={null}>
@@ -173,14 +184,19 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     return (
       <main
         id="main-content"
-        className="bg-surface px-8 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-20"
+        className={cn(
+          MARKETING_PAGE_SHELL,
+          MARKETING_CATALOG_PT,
+          "bg-surface pb-[var(--page-bottom-padding)]",
+        )}
       >
         <PastAuctionsHeader totalVolumeLabel="—" />
         <Suspense fallback={filtersFallback()}>
-          <ArchiveFilterBar categories={[]} />
+          <ArchivePageToolbar query={q} resultCount={0} categories={[]} layoutView="grid" />
         </Suspense>
         <MarketingEmptyState
           variant="marketing"
+          context="error"
           title="Archive temporarily unavailable"
           description="We couldn't load past auction results right now. Please try again in a moment."
           action={

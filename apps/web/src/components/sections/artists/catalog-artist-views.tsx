@@ -3,7 +3,8 @@ import { ArtistDirectoryCard } from "@/components/sections/artists/artist-direct
 import { MediaImage } from "@/components/ui/media-image";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
-import { artistPath } from "@/lib/seo/url";
+import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
+import { artistProfileHref } from "@/lib/marketing/catalog-links";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
@@ -14,10 +15,12 @@ export function ArtistBrowseGrid({
   rows,
   watchSet,
   isAuthenticated,
+  profileLinkContext,
 }: {
   rows: PublicArtistDirectoryRow[];
   watchSet: ReadonlySet<string>;
   isAuthenticated: boolean;
+  profileLinkContext?: ArtistProfileLinkContext;
 }) {
   return (
     <ul
@@ -34,6 +37,7 @@ export function ArtistBrowseGrid({
           artist={a}
           watching={watchSet.has(a.id)}
           isAuthenticated={isAuthenticated}
+          {...(profileLinkContext ? { profileLinkContext } : {})}
         />
       ))}
     </ul>
@@ -45,15 +49,20 @@ export function ArtistBrowseCard({
   rows,
   watchSet,
   isAuthenticated,
+  profileLinkContext,
 }: {
   rows: PublicArtistDirectoryRow[];
   watchSet: ReadonlySet<string>;
   isAuthenticated: boolean;
+  profileLinkContext?: ArtistProfileLinkContext;
 }) {
   return (
     <ul className="mx-auto grid max-w-4xl list-none gap-8 p-0 lg:max-w-none lg:grid-cols-2 lg:gap-10">
       {rows.map((artist) => {
-        const href = artistPath({ id: artist.id, name: artist.displayName });
+        const href = artistProfileHref(
+          { id: artist.id, name: artist.displayName },
+          profileLinkContext,
+        );
         const kindBadge = artist.kind ? artistKindMeta(artist.kind).badge : null;
         const lifespanRaw = formatArtistLifespan({
           birthYear: artist.birthYear,
@@ -141,15 +150,17 @@ export function ArtistBrowseList({
   rows,
   watchSet,
   isAuthenticated,
+  profileLinkContext,
 }: {
   rows: PublicArtistDirectoryRow[];
   watchSet: ReadonlySet<string>;
   isAuthenticated: boolean;
+  profileLinkContext?: ArtistProfileLinkContext;
 }) {
   return (
     <ul className="divide-y divide-outline-variant/15 rounded-xl border border-border-hairline bg-surface-container-lowest">
       {rows.map((a) => {
-        const href = artistPath({ id: a.id, name: a.displayName });
+        const href = artistProfileHref({ id: a.id, name: a.displayName }, profileLinkContext);
         return (
           <li key={a.id} className="relative">
             <div className="absolute right-3 top-1/2 z-10 -translate-y-1/2">

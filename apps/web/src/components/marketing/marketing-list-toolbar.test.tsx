@@ -25,10 +25,25 @@ describe("MarketingListToolbar", () => {
     expect(sticky).not.toBeNull();
   });
 
-  it("renders a second mobile row for trailing when mobileFilterTrigger and trailing are set", () => {
+  it("keeps filter trigger and trailing on the same row by default", () => {
     render(
       <MarketingListToolbar
         countLabel="24 lots"
+        mobileFilterTrigger={<button type="button">Filters</button>}
+        trailing={<span data-testid="view-switcher">View</span>}
+      />,
+    );
+
+    expect(screen.queryByTestId("mobile-trailing-row")).not.toBeInTheDocument();
+    expect(screen.getByTestId("view-switcher")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+  });
+
+  it("can stack trailing on a second mobile row when explicitly enabled", () => {
+    render(
+      <MarketingListToolbar
+        countLabel="24 lots"
+        stackTrailingOnMobile
         mobileFilterTrigger={<button type="button">Filters</button>}
         trailing={<span data-testid="view-switcher">View</span>}
       />,
@@ -44,5 +59,20 @@ describe("MarketingListToolbar", () => {
     const filterSlot = screen.getByTestId("inline-filters").parentElement;
     expect(filterSlot?.className).toMatch(/\bflex\b/);
     expect(filterSlot?.className).not.toContain("hidden md:flex");
+  });
+
+  it("renders secondaryRow and activeFiltersRow inside the sticky shell", () => {
+    const { container } = render(
+      <MarketingListToolbar
+        countLabel="24 lots"
+        secondaryRow={<span data-testid="secondary-row">Secondary</span>}
+        activeFiltersRow={<span data-testid="active-filters-row">Active</span>}
+      />,
+    );
+
+    const sticky = container.querySelector(".sticky");
+    expect(sticky).not.toBeNull();
+    expect(sticky).toContainElement(screen.getByTestId("secondary-row"));
+    expect(sticky).toContainElement(screen.getByTestId("active-filters-row"));
   });
 });

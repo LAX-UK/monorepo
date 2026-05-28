@@ -21,13 +21,14 @@ export function HomeSkeleton() {
         </div>
       </div>
       <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-8 pt-10 md:px-10 lg:px-14">
-        <div className="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <Skeleton className="h-[60px] w-[min(100%,420px)] rounded-sm shimmer-sweep" />
           <div className="flex flex-wrap gap-4">
             <Skeleton className="h-8 w-48 rounded-lg shimmer-sweep" />
             <Skeleton className="h-6 w-24 rounded-sm shimmer-sweep" />
           </div>
         </div>
+        <Skeleton className="mb-8 h-12 w-full rounded-lg border border-border-hairline shimmer-sweep" />
         <div className="flex flex-col gap-8">
           {["a", "b"].map((slot) => (
             <div key={slot} className="flex flex-row gap-6">
@@ -42,14 +43,13 @@ export function HomeSkeleton() {
         </div>
       </div>
       <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-8 pt-10 md:px-10 lg:px-14">
-        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">
             <Skeleton className="h-[60px] w-[min(100%,360px)] rounded-sm shimmer-sweep" />
             <Skeleton className="h-9 w-[min(100%,520px)] rounded-sm shimmer-sweep" />
           </div>
           <Skeleton className="h-6 w-28 rounded-sm shimmer-sweep" />
         </div>
-        <Skeleton className="mb-6 h-14 w-full rounded-sm border border-border-hairline shimmer-sweep" />
         <div className="flex gap-4 overflow-hidden pb-2">
           {["e1", "e2", "e3"].map((slot) => (
             <div key={slot} className="flex w-[280px] shrink-0 flex-col gap-4">

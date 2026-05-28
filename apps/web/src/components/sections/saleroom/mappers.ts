@@ -1,6 +1,8 @@
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
-import { lotPath, salePath } from "@/lib/seo/url";
+import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
+import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import {
   formatPostalAddressLines,
@@ -170,7 +172,12 @@ function lotSubtitle(lot: Lot): string | null {
 
 export function mapLotToCardVM(
   lot: Lot,
-  opts: { viewerUserId: string | null; now: Date; initialWatching?: boolean },
+  opts: {
+    viewerUserId: string | null;
+    now: Date;
+    initialWatching?: boolean;
+    catalogLinkParams?: CatalogLinkParams;
+  },
 ): SaleLotCardVM {
   const estimate = lotEstimateLine(lot);
   // Server-rendered relative phrase used as a non-ticking secondary line.
@@ -183,7 +190,7 @@ export function mapLotToCardVM(
         : null;
   return {
     id: lot.id,
-    href: lotPath(lot),
+    href: lotCatalogHref(lot, opts.catalogLinkParams),
     lotLabel: lot.lotNumber != null ? `Lot ${lot.lotNumber}` : null,
     title: lot.title,
     imageUrl: lot.images[0] ?? null,

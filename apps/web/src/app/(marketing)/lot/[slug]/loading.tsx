@@ -1,13 +1,21 @@
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { cn } from "@auction/ui";
+
 export default function LotLoading() {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[var(--container-max,1440px)] bg-surface px-6 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-16"
+      className={cn(
+        MARKETING_PAGE_SHELL,
+        MARKETING_CATALOG_PT,
+        "bg-surface pb-[calc(var(--page-bottom-padding)+4rem)] md:pb-[var(--page-bottom-padding)]",
+      )}
       aria-busy="true"
       aria-label="Loading lot"
     >
       <div className="animate-pulse space-y-10">
-        <div className="h-4 w-72 rounded bg-surface-container-high" />
+        <div className="h-4 w-40 rounded bg-surface-container-high md:hidden" />
+        <div className="hidden h-4 w-72 rounded bg-surface-container-high md:block" />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,440px)] lg:items-start lg:gap-6">
           <div className="hidden space-y-4 lg:block">
             <div className="h-3 w-16 rounded bg-surface-container-high" />
@@ -17,14 +25,28 @@ export default function LotLoading() {
           </div>
           <div className="space-y-6 lg:col-start-2">
             <div className="aspect-[786/502] w-full max-w-[786px] rounded-lg bg-surface-container-high" />
+            <div className="h-10 w-full max-w-[786px] rounded-full bg-surface-container-high lg:hidden" />
             <div className="h-10 w-full max-w-[786px] rounded bg-surface-container-high" />
             <div className="h-32 w-full max-w-[786px] rounded bg-surface-container-high" />
           </div>
-          <div className="space-y-4 lg:col-start-3">
+          <div className="hidden space-y-4 lg:block lg:col-start-3">
             <div className="h-10 w-full rounded-full bg-surface-container-high" />
             <div className="h-48 w-full rounded bg-surface-container-high" />
             <div className="h-12 w-full rounded bg-surface-container-high" />
           </div>
+        </div>
+      </div>
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-hairline bg-surface/95 p-4 backdrop-blur-md md:hidden"
+        aria-hidden
+      >
+        <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
+          <div className="space-y-2">
+            <div className="h-3 w-20 rounded bg-surface-container-high" />
+            <div className="h-5 w-28 rounded bg-surface-container-high" />
+          </div>
+          <div className="h-11 w-28 rounded bg-surface-container-high" />
         </div>
       </div>
     </main>

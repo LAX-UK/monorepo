@@ -1,5 +1,7 @@
 "use client";
 
+import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
+import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
@@ -79,14 +81,6 @@ function WorkFilterControls({
   );
 }
 
-function WorksEmptyState() {
-  return (
-    <p className="rounded-xl border border-border-hairline bg-surface-container-low/50 p-10 text-center font-body text-on-surface-variant ring-1 ring-outline-variant/10">
-      No works match this filter yet.
-    </p>
-  );
-}
-
 function lotYearMedium(lot: Lot): string | null {
   const year = lot.createdAt instanceof Date ? lot.createdAt.getUTCFullYear() : null;
   const medium = lot.medium?.trim() || null;
@@ -160,22 +154,26 @@ export function ArtistWorksGrid({ lots, currentUserId }: Props) {
   }, [lots]);
   const [filter, setFilter] = useState<WorkFilter>(initial);
   const visibleLots = useMemo(() => lots.filter(getFilter(filter).matches), [filter, lots]);
+  const countLabel = `${visibleLots.length} lot${visibleLots.length === 1 ? "" : "s"}`;
 
   return (
     <section aria-labelledby="artist-works-heading">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-divider-soft pb-4">
-        <h2
-          id="artist-works-heading"
-          className="font-headline text-2xl font-semibold tracking-tight text-on-surface"
-        >
-          Lots
-        </h2>
-        <WorkFilterControls value={filter} onChange={setFilter} />
-      </div>
+      <h2 id="artist-works-heading" className="sr-only">
+        Lots
+      </h2>
+      <MarketingListToolbar
+        countLabel={countLabel}
+        trailing={<WorkFilterControls value={filter} onChange={setFilter} />}
+      />
       {visibleLots.length === 0 ? (
-        <WorksEmptyState />
+        <MarketingEmptyState
+          variant="panel"
+          context="filtered"
+          title="No works match this filter"
+          description="Try another filter to browse this artist's catalogue."
+        />
       ) : (
-        <ul className="grid auto-rows-fr grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-8 grid auto-rows-fr grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
           {visibleLots.map((lot) => (
             <LotCatalogCard key={lot.id} lot={lot} currentUserId={currentUserId} />
           ))}

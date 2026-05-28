@@ -7,6 +7,12 @@ import { cn } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import type { ReactNode } from "react";
 
+/**
+ * Marketing catalogue empty-state recipe:
+ * - Filtered miss: title + "Clear filters" button + optional browse link (`context="filtered"`)
+ * - Unfiltered empty: title + description only (`context="noResults"`)
+ * - Fetch error: alert panel + retry/home CTAs (`context="error"`, `role="alert"`)
+ */
 export type MarketingEmptyStateProps = {
   icon?: ReactNode;
   title: string;
@@ -21,7 +27,7 @@ export type MarketingEmptyStateProps = {
 };
 
 const panelShell =
-  "mx-auto max-w-screen-2xl rounded-xl border border-border-hairline bg-surface-container-low/50 px-8 py-12 text-center ring-1 ring-outline-variant/10";
+  "mx-auto max-w-[var(--container-inner,1376px)] rounded-xl border border-border-hairline bg-surface-container-low/50 px-8 py-12 text-center ring-1 ring-outline-variant/10";
 
 const marketingShell =
   "border border-dashed border-outline-variant/30 bg-white py-12 dark:border-outline-variant/30 dark:bg-surface-container-low/40";
