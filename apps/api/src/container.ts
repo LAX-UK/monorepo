@@ -13,15 +13,15 @@ import {
 } from "@auction/marketing-events";
 import { getBullMqTelemetry } from "@auction/observability";
 import {
-  createBullQueueOptions,
   EMAIL_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
   LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
   MARKETING_EVENTS_QUEUE_NAME,
   MARKETING_SYNC_QUEUE_NAME,
   PAYOUT_STATEMENTS_QUEUE_NAME,
-  VALIDATE_UPLOAD_QUEUE_NAME,
   type QueueName,
+  VALIDATE_UPLOAD_QUEUE_NAME,
+  createBullQueueOptions,
 } from "@auction/queues";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
@@ -65,8 +65,8 @@ import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
 import { type OrgModuleGate, createOrgModuleGate } from "./lib/org-module-gate.js";
 import { createPlatformCatalogLegalEntityIdProvider } from "./lib/platform-catalog-legal-entity.js";
-import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { queueRuntimeEnvFromApiEnv } from "./lib/queue-runtime-env.js";
+import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import type { IStripeClientFactory } from "./lib/stripe-client.js";
 import { StripeClientFactory } from "./lib/stripe-client.js";
 import { StripeWebhookVerifier } from "./lib/stripe-webhook-verifier.js";
@@ -660,9 +660,18 @@ export function createContainer(env: Env): Container {
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
 
-  const uploadValidationQueue = new Queue(VALIDATE_UPLOAD_QUEUE_NAME, queueOpts(VALIDATE_UPLOAD_QUEUE_NAME));
-  const imageCleanupQueue = new Queue(IMAGE_CLEANUP_QUEUE_NAME, queueOpts(IMAGE_CLEANUP_QUEUE_NAME));
-  const marketingSyncQueue = new Queue(MARKETING_SYNC_QUEUE_NAME, queueOpts(MARKETING_SYNC_QUEUE_NAME));
+  const uploadValidationQueue = new Queue(
+    VALIDATE_UPLOAD_QUEUE_NAME,
+    queueOpts(VALIDATE_UPLOAD_QUEUE_NAME),
+  );
+  const imageCleanupQueue = new Queue(
+    IMAGE_CLEANUP_QUEUE_NAME,
+    queueOpts(IMAGE_CLEANUP_QUEUE_NAME),
+  );
+  const marketingSyncQueue = new Queue(
+    MARKETING_SYNC_QUEUE_NAME,
+    queueOpts(MARKETING_SYNC_QUEUE_NAME),
+  );
   const marketingConfig = getMarketingEventsConfig(env);
   const marketingEnabled = marketingConfig !== undefined;
   const clickIdStore: IClickIdStore = marketingEnabled
@@ -672,7 +681,10 @@ export function createContainer(env: Env): Container {
     ? new DrizzleMarketingEventOutboxRepository(db)
     : new NoopMarketingEventOutboxRepository();
   const marketingConsentGate = new EventMarketingConsentGate();
-  const marketingEventsBullQueue = new Queue(MARKETING_EVENTS_QUEUE_NAME, queueOpts(MARKETING_EVENTS_QUEUE_NAME));
+  const marketingEventsBullQueue = new Queue(
+    MARKETING_EVENTS_QUEUE_NAME,
+    queueOpts(MARKETING_EVENTS_QUEUE_NAME),
+  );
   const marketingEventQueue = marketingEnabled
     ? new BullmqMarketingEventQueue(marketingEventsBullQueue)
     : new NoopMarketingEventQueue();
@@ -1136,7 +1148,11 @@ export function createContainer(env: Env): Container {
   );
 
   const queueAudit = new StructuredQueueAuditService(createBaseLogger(env));
-  const queueInspector = new BullMQQueueInspector(bullConnection, redis, queueRuntimeEnvFromApiEnv(env));
+  const queueInspector = new BullMQQueueInspector(
+    bullConnection,
+    redis,
+    queueRuntimeEnvFromApiEnv(env),
+  );
   const queueMutator = new BullMQQueueMutator(bullConnection, redis, db, queueAudit, env.APP_ENV);
   const queueAdmin = {
     inspector: queueInspector,

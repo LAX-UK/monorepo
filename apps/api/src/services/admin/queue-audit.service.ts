@@ -4,13 +4,16 @@ import type { ActorContext } from "../interfaces/queue-inspector.js";
 export type QueueAuditAction = "retry" | "pause" | "resume" | "replay_dlq";
 
 export interface IQueueAuditService {
-  log(action: QueueAuditAction, input: {
-    actor: ActorContext;
-    queue?: string;
-    jobId?: string;
-    success: boolean;
-    errorMessage?: string;
-  }): void;
+  log(
+    action: QueueAuditAction,
+    input: {
+      actor: ActorContext;
+      queue?: string;
+      jobId?: string;
+      success: boolean;
+      errorMessage?: string;
+    },
+  ): void;
 }
 
 export class StructuredQueueAuditService implements IQueueAuditService {

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BullMQQueueMutator, dlqReplayJobId } from "./queue-mutator.service.js";
 
 const mockQueue = {
@@ -29,22 +29,40 @@ describe("BullMQQueueMutator production policy", () => {
   });
 
   it("blocks pause on high-criticality queues in production", async () => {
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "production");
-    await expect(mutator.pause("email", { userId: "u1", staffRole: "super_admin" })).rejects.toThrow(
-      "mutations_disabled_in_prod",
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "production",
     );
+    await expect(
+      mutator.pause("email", { userId: "u1", staffRole: "super_admin" }),
+    ).rejects.toThrow("mutations_disabled_in_prod");
     expect(mockQueue.pause).not.toHaveBeenCalled();
   });
 
   it("blocks retry in production even when allowUiRetries is true", async () => {
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "production");
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "production",
+    );
     await expect(
       mutator.retry("validate-upload", "job-1", { userId: "u1", staffRole: "super_admin" }),
     ).rejects.toThrow("retries_disabled");
   });
 
   it("allows pause on non-high-criticality queues in production", async () => {
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "production");
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "production",
+    );
     await mutator.pause("impersonation-sweeper", { userId: "u1", staffRole: "super_admin" });
     expect(mockQueue.pause).toHaveBeenCalledOnce();
   });
@@ -79,7 +97,13 @@ describe("BullMQQueueMutator DLQ replay", () => {
       }),
       update: vi.fn(),
     };
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "development");
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "development",
+    );
     await expect(
       mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRole: "super_admin" }, true),
     ).rejects.toThrow("already_replayed");
@@ -111,7 +135,13 @@ describe("BullMQQueueMutator DLQ replay", () => {
         }),
       }),
     };
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "development");
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "development",
+    );
     await expect(
       mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRole: "super_admin" }, true),
     ).rejects.toThrow("already_replayed");
@@ -138,7 +168,13 @@ describe("BullMQQueueMutator DLQ replay", () => {
       }),
       update: vi.fn(),
     };
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "development");
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "development",
+    );
     await expect(
       mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRole: "super_admin" }, true),
     ).rejects.toThrow("invalid_payload");
@@ -147,9 +183,9 @@ describe("BullMQQueueMutator DLQ replay", () => {
   it("claims replay before enqueue and uses stable job id", async () => {
     mockQueue.add.mockResolvedValue(undefined);
     mockQueue.getJobs.mockResolvedValue([]);
-    const claimReturning = vi.fn().mockResolvedValue([
-      { id: "dlq:email:1", originalQueue: "email", replayedAt: new Date() },
-    ]);
+    const claimReturning = vi
+      .fn()
+      .mockResolvedValue([{ id: "dlq:email:1", originalQueue: "email", replayedAt: new Date() }]);
     const db = {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -176,7 +212,13 @@ describe("BullMQQueueMutator DLQ replay", () => {
       }),
     };
 
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "development");
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "development",
+    );
     await mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRole: "super_admin" }, true);
 
     expect(mockQueue.add).toHaveBeenCalledWith(
@@ -194,9 +236,9 @@ describe("BullMQQueueMutator DLQ replay", () => {
     mockQueue.add.mockRejectedValue(new Error("redis down"));
     mockQueue.getJobs.mockResolvedValue([]);
     const revertWhere = vi.fn().mockResolvedValue(undefined);
-    const claimReturning = vi.fn().mockResolvedValue([
-      { id: "dlq:email:1", originalQueue: "email", replayedAt: new Date() },
-    ]);
+    const claimReturning = vi
+      .fn()
+      .mockResolvedValue([{ id: "dlq:email:1", originalQueue: "email", replayedAt: new Date() }]);
     const revertSet = vi.fn().mockReturnValue({ where: revertWhere });
     const db = {
       select: vi.fn().mockReturnValue({
@@ -229,7 +271,13 @@ describe("BullMQQueueMutator DLQ replay", () => {
         }),
     };
 
-    const mutator = new BullMQQueueMutator({} as never, redis as never, db as never, audit, "development");
+    const mutator = new BullMQQueueMutator(
+      {} as never,
+      redis as never,
+      db as never,
+      audit,
+      "development",
+    );
     await expect(
       mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRole: "super_admin" }, true),
     ).rejects.toThrow("redis down");

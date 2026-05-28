@@ -1,17 +1,17 @@
+import type { createDb } from "@auction/db";
+import { failedJobs } from "@auction/db/schema";
 import {
+  type AppEnv,
+  DEAD_LETTER_QUEUE_NAME,
+  QUEUE_REGISTRY,
+  type QueueName,
   assertQueueMutationAllowed,
   createBullQueueOptions,
-  DEAD_LETTER_QUEUE_NAME,
   isQueueName,
-  QUEUE_REGISTRY,
-  type AppEnv,
-  type QueueName,
 } from "@auction/queues";
-import { failedJobs } from "@auction/db/schema";
-import { Queue, type ConnectionOptions } from "bullmq";
+import { type ConnectionOptions, Queue } from "bullmq";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Redis } from "ioredis";
-import type { createDb } from "@auction/db";
 import type { ActorContext, IQueueMutator } from "../interfaces/queue-inspector.js";
 import type { IQueueAuditService } from "./queue-audit.service.js";
 
@@ -66,7 +66,13 @@ export class BullMQQueueMutator implements IQueueMutator {
       this.audit.log("retry", { actor, queue: queueName, jobId, success: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "retry_failed";
-      this.audit.log("retry", { actor, queue: queueName, jobId, success: false, errorMessage: message });
+      this.audit.log("retry", {
+        actor,
+        queue: queueName,
+        jobId,
+        success: false,
+        errorMessage: message,
+      });
       throw err;
     }
   }
@@ -178,7 +184,12 @@ export class BullMQQueueMutator implements IQueueMutator {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "replay_failed";
-      this.audit.log("replay_dlq", { actor, jobId: dlqJobId, success: false, errorMessage: message });
+      this.audit.log("replay_dlq", {
+        actor,
+        jobId: dlqJobId,
+        success: false,
+        errorMessage: message,
+      });
       throw err;
     }
   }

@@ -9,14 +9,12 @@ import {
 } from "@auction/marketing-events";
 import { captureBackgroundError, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import {
-  createBullQueueOptions,
   DEAD_LETTER_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
   GC_PENDING_UPLOADS_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
   IMPERSONATION_SWEEPER_QUEUE_NAME,
   LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
-  listWorkerHeartbeatKeys,
   MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME,
   MARKETING_EVENTS_QUEUE_NAME,
   MARKETING_OUTBOX_POLLER_QUEUE_NAME,
@@ -27,10 +25,12 @@ import {
   PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
   PURGE_SOFT_DELETED_USERS_QUEUE_NAME,
   QUEUE_REGISTRY,
-  registerDlqHandlers,
   type QueueName,
   VALIDATE_UPLOAD_QUEUE_NAME,
   WEBHOOK_EVENTS_QUEUE_NAME,
+  createBullQueueOptions,
+  listWorkerHeartbeatKeys,
+  registerDlqHandlers,
 } from "@auction/queues";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
@@ -71,9 +71,9 @@ import {
   getMarketingEventsConfig,
   isMarketingEventsEnabled,
 } from "./lib/marketing-events-enabled.js";
+import { queueRuntimeEnvFromWorkerEnv } from "./lib/queue-runtime-env.js";
 import { loadSentryMonitorSlugs, withSentryCronMonitor } from "./lib/sentry-cron.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
-import { queueRuntimeEnvFromWorkerEnv } from "./lib/queue-runtime-env.js";
 import { CachedClickIdStore } from "./marketing/cached-click-id.store.js";
 import { DrizzleProfileMarketingReader } from "./marketing/drizzle-profile.reader.js";
 import {
@@ -203,7 +203,10 @@ imageCleanupWorker.on("failed", (job, err) => {
   reportWorkerJobFailure(IMAGE_CLEANUP_QUEUE_NAME, job, err);
 });
 
-const gcUploadQueue = new Queue(GC_PENDING_UPLOADS_QUEUE_NAME, queueOpts(GC_PENDING_UPLOADS_QUEUE_NAME));
+const gcUploadQueue = new Queue(
+  GC_PENDING_UPLOADS_QUEUE_NAME,
+  queueOpts(GC_PENDING_UPLOADS_QUEUE_NAME),
+);
 const gcPendingUploadsWorker = new Worker(
   GC_PENDING_UPLOADS_QUEUE_NAME,
   async () => {
@@ -571,7 +574,10 @@ let payoutSettlementQueue: Queue | undefined;
 let payoutSettlementWorker: Worker | undefined;
 if (env.CRON_INTERNAL_SECRET) {
   const cronSecret = env.CRON_INTERNAL_SECRET;
-  payoutSettlementQueue = new Queue(PAYOUT_SETTLEMENT_QUEUE_NAME, queueOpts(PAYOUT_SETTLEMENT_QUEUE_NAME));
+  payoutSettlementQueue = new Queue(
+    PAYOUT_SETTLEMENT_QUEUE_NAME,
+    queueOpts(PAYOUT_SETTLEMENT_QUEUE_NAME),
+  );
   payoutSettlementWorker = new Worker(
     PAYOUT_SETTLEMENT_QUEUE_NAME,
     async () => {

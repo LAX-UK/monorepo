@@ -1,10 +1,10 @@
-import { captureBackgroundError } from "@auction/observability";
-import { failedJobs } from "@auction/db/schema";
-import type { Queue, Worker } from "bullmq";
 import type { createDb } from "@auction/db";
+import { failedJobs } from "@auction/db/schema";
+import { captureBackgroundError } from "@auction/observability";
+import type { Queue, Worker } from "bullmq";
 import { redactPayload, safeSerializePayload } from "./redaction.js";
-import type { QueueDefinition } from "./types.js";
 import type { QueueName } from "./registry.js";
+import type { QueueDefinition } from "./types.js";
 
 export type DlqDeps = {
   dlqQueue: Queue;

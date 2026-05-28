@@ -18,5 +18,7 @@ export const failedJobs = pgTable(
     replayedAt: timestamp("replayed_at", { mode: "date", withTimezone: true }),
     replayedBy: text("replayed_by"),
   },
-  (table) => [index("failed_jobs_original_queue_failed_at_idx").on(table.originalQueue, table.failedAt)],
+  (table) => [
+    index("failed_jobs_original_queue_failed_at_idx").on(table.originalQueue, table.failedAt),
+  ],
 );

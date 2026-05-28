@@ -1,12 +1,18 @@
-import { attachDlq, createBullQueueOptions, DEAD_LETTER_QUEUE_NAME, LOT_LIFECYCLE_QUEUE_NAME, QUEUE_REGISTRY } from "@auction/queues";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
-import { Queue } from "bullmq";
+import {
+  DEAD_LETTER_QUEUE_NAME,
+  LOT_LIFECYCLE_QUEUE_NAME,
+  QUEUE_REGISTRY,
+  attachDlq,
+  createBullQueueOptions,
+} from "@auction/queues";
 import { serve } from "@hono/node-server";
+import { Queue } from "bullmq";
 import { createApp } from "./app.js";
-import { closeBullBoardQueues } from "./lib/bull-board.js";
 import { createContainer } from "./container.js";
 import { loadEnv } from "./env.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
+import { closeBullBoardQueues } from "./lib/bull-board.js";
 
 const env = loadEnv();
 if (env.SENTRY_DSN_API) {
