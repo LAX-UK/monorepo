@@ -80,8 +80,11 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="label"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              Label
+            </FormLabel>
             <FormControl>
-              <UnderlineInput {...field} placeholder="Label" />
+              <UnderlineInput {...field} placeholder="Home, office, etc." />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -92,8 +95,11 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="line1"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              Address line 1
+            </FormLabel>
             <FormControl>
-              <UnderlineInput {...field} placeholder="Address line 1" />
+              <UnderlineInput {...field} placeholder="Street address" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -104,8 +110,11 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="line2"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              Address line 2
+            </FormLabel>
             <FormControl>
-              <UnderlineInput {...field} placeholder="Line 2" />
+              <UnderlineInput {...field} placeholder="Apartment, suite, etc. (optional)" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -116,6 +125,9 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="city"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              City
+            </FormLabel>
             <FormControl>
               <UnderlineInput {...field} placeholder="City" />
             </FormControl>
@@ -128,8 +140,11 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="state"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              State / region
+            </FormLabel>
             <FormControl>
-              <UnderlineInput {...field} placeholder="State / region" />
+              <UnderlineInput {...field} placeholder="State or region (optional)" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -140,6 +155,9 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="postalCode"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              Postal code
+            </FormLabel>
             <FormControl>
               <UnderlineInput {...field} placeholder="Postal code" />
             </FormControl>
@@ -152,6 +170,9 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="country"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              Country
+            </FormLabel>
             <FormControl>
               <UnderlineInput {...field} placeholder="Country" />
             </FormControl>
@@ -164,6 +185,9 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
         name="addressType"
         render={({ field }) => (
           <FormItem>
+            <FormLabel className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              Address type
+            </FormLabel>
             <RhfSelect
               value={field.value ?? "both"}
               onValueChange={field.onChange}

@@ -4,6 +4,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getSiteUrl } from "@/lib/site-url";
+import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 
 export async function adminSyncStripeConnectAction(
@@ -16,7 +17,7 @@ export async function adminSyncStripeConnectAction(
     );
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, error: body.error ?? "sync_failed" };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "sync_failed") };
     }
     revalidatePath(`/admin/legal-entities/${legalEntityId}`);
     return { ok: true };
@@ -47,7 +48,7 @@ export async function adminCreateStripeConnectOnboardingLinkAction(
       error?: string;
     };
     if (!res.ok) {
-      return { ok: false, error: body.error ?? "onboarding_link_failed" };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "onboarding_link_failed") };
     }
     const url = body.data?.url;
     if (!url) return { ok: false, error: "missing_url" };

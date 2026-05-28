@@ -2,6 +2,7 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
+import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
@@ -49,10 +50,12 @@ export default async function OrganisationMembersPage({
     const failure = buildDashboardSliceFailure("orgMembers", fetched.status, fetched.errorCode);
     return (
       <div className="space-y-6">
-        <SectionHeader
-          kicker={<LabelCaps>Team</LabelCaps>}
-          heading={<DisplayHeading as="h2">Members</DisplayHeading>}
-        />
+        <OrgTabSectionHeader>
+          <SectionHeader
+            kicker={<LabelCaps>Team</LabelCaps>}
+            heading={<DisplayHeading as="h2">Members</DisplayHeading>}
+          />
+        </OrgTabSectionHeader>
         <DashboardSliceErrorAlert failure={failure} />
       </div>
     );
@@ -66,15 +69,17 @@ export default async function OrganisationMembersPage({
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        kicker={<LabelCaps>Team</LabelCaps>}
-        heading={<DisplayHeading as="h2">Members</DisplayHeading>}
-        action={
-          <p className="max-w-md text-right text-sm text-on-surface-variant">
-            {acting.displayName}
-          </p>
-        }
-      />
+      <OrgTabSectionHeader>
+        <SectionHeader
+          kicker={<LabelCaps>Team</LabelCaps>}
+          heading={<DisplayHeading as="h2">Members</DisplayHeading>}
+          action={
+            <p className="max-w-md text-right text-sm text-on-surface-variant">
+              {acting.displayName}
+            </p>
+          }
+        />
+      </OrgTabSectionHeader>
 
       {missingSelfInList ? (
         <DashboardErrorAlert

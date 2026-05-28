@@ -43,7 +43,9 @@ const buttonVariants = cva(
         sm: "min-h-9 rounded-md px-4 py-2 text-xs",
         md: "min-h-11 rounded-md px-6 py-3 text-xs",
         lg: "min-h-12 rounded-md px-8 py-3.5 text-sm",
-        icon: "h-9 w-9",
+        icon: "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] h-[var(--tap-target-min,44px)] w-[var(--tap-target-min,44px)]",
+        /** Touch-friendly icon button */
+        touch: "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] px-3",
         /** Link-shaped controls — no block tap target */
         link: "h-auto min-h-0 p-0",
         /** Full-width auth / hero primary button */

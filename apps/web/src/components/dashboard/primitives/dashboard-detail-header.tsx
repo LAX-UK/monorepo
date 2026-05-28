@@ -40,11 +40,13 @@ export function DashboardDetailHeader({
   className,
 }: DashboardDetailHeaderProps) {
   const compact = compactOnMobile;
+  const mobileHidden = compact && !crumbs;
 
   return (
     <header
       className={cn(
         "z-20 -mx-4 border-b border-border-hairline bg-surface/95 px-4 py-4 backdrop-blur-sm lg:-mx-8 lg:px-8",
+        mobileHidden && "hidden lg:block",
         sticky &&
           !compact &&
           "sticky top-[var(--header-height-mobile,56px)] lg:top-[var(--header-height-shell,52px)]",
@@ -84,15 +86,15 @@ export function DashboardDetailHeader({
                 {eyebrow}
               </p>
             ) : null}
-            <h1
-              className={cn(
-                "font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl",
-                compact &&
-                  "sr-only lg:not-sr-only lg:static lg:h-auto lg:w-auto lg:overflow-visible lg:clip-auto lg:whitespace-normal",
-              )}
-            >
-              {title}
-            </h1>
+            {compact ? (
+              <h1 className="hidden font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl lg:block">
+                {title}
+              </h1>
+            ) : (
+              <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl">
+                {title}
+              </h1>
+            )}
             {description ? (
               <p
                 className={cn(
@@ -103,10 +105,26 @@ export function DashboardDetailHeader({
                 {description}
               </p>
             ) : null}
-            {badges ? <div className="flex flex-wrap items-center gap-2 pt-1">{badges}</div> : null}
+            {badges ? (
+              <div
+                className={cn(
+                  "flex flex-wrap items-center gap-2 pt-1",
+                  compact && "hidden lg:flex",
+                )}
+              >
+                {badges}
+              </div>
+            ) : null}
           </div>
           {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+            <div
+              className={cn(
+                "flex shrink-0 flex-wrap items-center gap-2",
+                compact && "hidden lg:flex",
+              )}
+            >
+              {actions}
+            </div>
           ) : null}
         </div>
       </div>

@@ -29,7 +29,6 @@ import {
   watchlistLotIdParamSchema,
   watchlistQuerySchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -40,6 +39,7 @@ import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
+import { zValidator } from "../lib/z-validator.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
 import { createRequireAuth } from "../middleware/require-auth.js";

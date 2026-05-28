@@ -30,6 +30,7 @@ export function OverviewHeroBand({
     orgOnboarding,
     orgModuleEnabled,
     skipFirstSettlement: Boolean(firstSettlement),
+    suppressKycAttention: Boolean(kyc && kyc.requiresKyc !== true),
   });
   const hasAttention = attentionItems.length > 0;
 

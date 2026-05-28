@@ -1,4 +1,10 @@
-import { bulkBarBottomOffset, consentOffset, pageBottomPadding } from "@/lib/layout/bottom-chrome";
+import {
+  bulkBarBottomOffset,
+  consentOffset,
+  isFixedPayBarRoute,
+  isHideDashboardTabBarRoute,
+  pageBottomPadding,
+} from "@/lib/layout/bottom-chrome";
 import { describe, expect, it } from "vitest";
 
 describe("bottom-chrome", () => {
@@ -12,8 +18,28 @@ describe("bottom-chrome", () => {
       consentBannerVisible: false,
       dashboardTabBarActive: false,
       marketingBidBarRoute: true,
+      fixedPayBarRoute: false,
+      hideDashboardTabBar: false,
     });
     expect(padding).toContain("4.5rem");
+  });
+
+  it("detects lot checkout pay bar routes", () => {
+    expect(isFixedPayBarRoute("/dashboard/checkout/abc-123")).toBe(true);
+    expect(isFixedPayBarRoute("/dashboard/checkout")).toBe(false);
+    expect(isHideDashboardTabBarRoute("/dashboard/submissions/new")).toBe(true);
+  });
+
+  it("uses pay bar padding on lot checkout routes", () => {
+    const padding = pageBottomPadding({
+      consentBannerVisible: false,
+      dashboardTabBarActive: true,
+      marketingBidBarRoute: false,
+      fixedPayBarRoute: true,
+      hideDashboardTabBar: true,
+    });
+    expect(padding).toContain("4.5rem");
+    expect(padding).not.toContain("--bottom-nav-height");
   });
 
   it("computes bulk bar offset when dashboard tab bar is active", () => {

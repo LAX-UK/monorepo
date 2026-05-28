@@ -7,6 +7,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import type { LegalEntitySummary } from "@auction/types";
 import { type ReactNode, useMemo } from "react";
 
 type Props = {
@@ -18,6 +19,7 @@ type Props = {
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   acting?: ActingContext;
+  safeActing?: LegalEntitySummary | null;
   orgModuleEnabled?: boolean;
   children: ReactNode;
 };
@@ -32,6 +34,7 @@ export function ClientShell({
   contextBanner,
   topSlot,
   acting = { kind: "self" },
+  safeActing = null,
   orgModuleEnabled = true,
   children,
 }: Props) {
@@ -43,6 +46,11 @@ export function ClientShell({
         clientWorkspaceMode,
         orgModuleEnabled,
         headerRightSlot,
+        mobileHeader: {
+          acting: safeActing,
+          actingContext: acting,
+          userDisplayName: user.name,
+        },
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
@@ -55,6 +63,8 @@ export function ClientShell({
       contextBanner,
       topSlot,
       hideEmailStatusBanner,
+      acting,
+      safeActing,
     ],
   );
 

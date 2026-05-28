@@ -4,9 +4,9 @@ import {
   invitationIdUuidParamSchema,
   invitationPreviewQuerySchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { asHttpStatus } from "../lib/http-status.js";
+import { zValidator } from "../lib/z-validator.js";
 import type { IAdminInvitationApplicationService } from "../services/interfaces/admin-routes.js";
 
 export function attachAdminInvitationRoutes(

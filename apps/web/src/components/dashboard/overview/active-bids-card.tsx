@@ -1,6 +1,7 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -41,11 +42,11 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
         {activeBidLots.length === 0 ? (
           <DashboardEmptyState
             variant="quiet"
-            title="No active bids"
-            description="Browse live lots to place your next bid."
+            title={DASHBOARD_EMPTY.bids.title}
+            description={DASHBOARD_EMPTY.bids.description}
             action={
               <Button size="sm" variant="outline" asChild className="shrink-0">
-                <Link href="/search?status=active">Browse live lots</Link>
+                <Link href="/search?status=active">{DASHBOARD_CTA.browseLiveAuctions}</Link>
               </Button>
             }
           />

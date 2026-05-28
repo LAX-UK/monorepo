@@ -3,11 +3,11 @@ import {
   adminMarketingEventsReplayBodySchema,
   adminMarketingEventsStatsQuerySchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Hono } from "hono";
 import type { Container } from "../container.js";
 import { isMarketingEventsEnabled } from "../lib/marketing-events-enabled.js";
+import { zValidator } from "../lib/z-validator.js";
 
 const FAILED_ALERT_THRESHOLD = 10;
 const FAILED_ALERT_WINDOW_MS = 60 * 60 * 1000;

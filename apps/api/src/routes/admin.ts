@@ -55,7 +55,6 @@ import {
   updateProfileSchema,
   userIdParamSchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
@@ -63,6 +62,7 @@ import type { Container } from "../container.js";
 import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-browse.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { presentLotImages } from "../lib/media-presenters.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   createRequireCapability,

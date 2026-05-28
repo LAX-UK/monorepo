@@ -1,8 +1,8 @@
-import { zValidator } from "@hono/zod-validator";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { asHttpStatus } from "../lib/http-status.js";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
 import type { IAdminLegalEntityLifecycleApplicationService } from "../services/interfaces/admin-routes.js";
 

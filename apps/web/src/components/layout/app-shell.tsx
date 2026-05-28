@@ -112,12 +112,6 @@ function AppShellFrame({ user, config, children }: Props) {
       className="flex min-h-[100dvh] bg-page-bg font-body text-on-surface"
       style={{ ["--sidebar-width" as string]: collapsed ? "4.5rem" : "14rem" }}
     >
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-on-primary focus:outline-none"
-      >
-        Skip to main content
-      </a>
       <CommandPaletteLazy
         variant={shellRole === "client" ? "dashboard" : "admin"}
         sessionUser={user}
@@ -176,16 +170,18 @@ function AppShellFrame({ user, config, children }: Props) {
               {headerRightSlot}
               {headerLeftSlot}
               {shellRole === "platform" || shellRole === "finance" ? <HeaderSearchTrigger /> : null}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary lg:hidden"
-                onClick={openCommandPalette}
-                aria-label="Open command palette"
-              >
-                <Search className="size-4" aria-hidden />
-              </Button>
+              {shellRole !== "client" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary lg:hidden"
+                  onClick={openCommandPalette}
+                  aria-label="Open command palette"
+                >
+                  <Search className="size-4" aria-hidden />
+                </Button>
+              ) : null}
               <div className="hidden items-center gap-1 lg:flex">
                 <ThemeToggle />
                 <TweaksPopover />
@@ -198,9 +194,7 @@ function AppShellFrame({ user, config, children }: Props) {
           id="main-content"
           className={cn(
             "min-h-0 flex-1 scroll-mt-[var(--header-height-mobile,56px)] overflow-y-auto overflow-x-hidden lg:scroll-mt-[var(--header-height-shell,52px)]",
-            config.mobileNav.length > 0 &&
-              !hideBottomTabBar &&
-              "pb-[var(--page-bottom-padding)] lg:pb-0",
+            config.mobileNav.length > 0 && "pb-[var(--page-bottom-padding)] lg:pb-0",
           )}
         >
           <div
@@ -217,7 +211,7 @@ function AppShellFrame({ user, config, children }: Props) {
           </div>
         </main>
       </div>
-      {config.mobileNav.length > 0 && !hideBottomTabBar ? <BottomTabBar /> : null}
+      {config.mobileNav.length > 0 && !hideBottomTabBar ? <BottomTabBar user={user} /> : null}
     </div>
   );
 }

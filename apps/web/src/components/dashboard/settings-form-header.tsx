@@ -15,6 +15,7 @@ export function SettingsFormHeader({
   eyebrow = "Settings",
   hideTitleOnMobile = true,
   hideDescriptionOnMobile = true,
+  hideMetaOnMobile = true,
   ...props
 }: SettingsFormHeaderProps) {
   return (
@@ -23,6 +24,7 @@ export function SettingsFormHeader({
       title={title}
       hideTitleOnMobile={hideTitleOnMobile}
       hideDescriptionOnMobile={hideDescriptionOnMobile}
+      hideMetaOnMobile={hideMetaOnMobile}
       {...props}
     />
   );

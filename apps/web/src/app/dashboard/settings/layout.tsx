@@ -7,7 +7,7 @@ import { Suspense } from "react";
 
 export default function DashboardSettingsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="screen w-full space-y-8">
+    <div className="screen w-full space-y-6">
       <Suspense
         fallback={
           <div

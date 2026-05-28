@@ -5,6 +5,7 @@ import {
   scrubSentryTransaction,
   shouldDropBrowserExtensionNoise,
   shouldDropSentryEvent,
+  shouldDropThirdPartyClientNoise,
 } from "./sentry-shared.js";
 
 describe("scrubSentryEvent", () => {
@@ -143,6 +144,54 @@ describe("shouldDropSentryEvent", () => {
       transaction: "GET /api/auth/callback/google",
     } as ErrorEvent;
     expect(shouldDropSentryEvent(event)).toBe(true);
+  });
+
+  it("drops state mismatch when message is only in console capture arguments", () => {
+    const event = {
+      logger: "console",
+      transaction: "GET /api/auth/callback/google",
+      extra: {
+        arguments: [
+          "[Filtered]",
+          {
+            code: "state_mismatch",
+            message: "State mismatch: verification not found",
+          },
+        ],
+      },
+    } as ErrorEvent;
+    expect(shouldDropSentryEvent(event)).toBe(true);
+  });
+});
+
+describe("shouldDropThirdPartyClientNoise", () => {
+  it("drops GTM server-side container fetch failures", () => {
+    const event = {
+      message: "TypeError: Failed to fetch (gtm.lax.bid)",
+    } as ErrorEvent;
+    expect(shouldDropThirdPartyClientNoise(event)).toBe(true);
+  });
+
+  it("drops Instagram in-app browser bridge errors", () => {
+    const event = {
+      message: "TypeError: undefined is not an object (evaluating 'window.webkit.messageHandlers')",
+    } as ErrorEvent;
+    expect(shouldDropThirdPartyClientNoise(event)).toBe(true);
+  });
+
+  it("drops stale Next.js server action errors after deploy", () => {
+    const event = {
+      message:
+        'UnrecognizedActionError: Server Action "40c1678acd9e71b377f83bba4fa218029459887ea1" was not found on the server.',
+    } as ErrorEvent;
+    expect(shouldDropThirdPartyClientNoise(event)).toBe(true);
+  });
+
+  it("keeps first-party application errors", () => {
+    const event = {
+      message: "TypeError: Cannot read properties of undefined (reading 'id')",
+    } as ErrorEvent;
+    expect(shouldDropThirdPartyClientNoise(event)).toBe(false);
   });
 });
 

@@ -73,16 +73,22 @@ describe("mobile viewport matrix (320/390px)", () => {
         consentBannerVisible: false,
         dashboardTabBarActive: false,
         marketingBidBarRoute: false,
+        fixedPayBarRoute: false,
+        hideDashboardTabBar: false,
       });
       const withConsent = pageBottomPadding({
         consentBannerVisible: true,
         dashboardTabBarActive: false,
         marketingBidBarRoute: false,
+        fixedPayBarRoute: false,
+        hideDashboardTabBar: false,
       });
       const dashboard = pageBottomPadding({
         consentBannerVisible: false,
         dashboardTabBarActive: true,
         marketingBidBarRoute: false,
+        fixedPayBarRoute: false,
+        hideDashboardTabBar: false,
       });
 
       expect(base).toContain("1.5rem");

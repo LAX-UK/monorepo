@@ -99,18 +99,31 @@ export function OrgOnboardingShell({ children }: Props) {
             stages={timelineStages}
             activeIndex={activeIndex >= 0 ? activeIndex : 0}
           />
-          <nav aria-label="Jump to step" className="flex flex-wrap gap-2 pt-2">
-            {STEPS.map((s) => (
-              <Link
-                key={s.key}
-                href={withQuery(`/onboarding/organisation/step/${s.key}`, querySuffix)}
-                className={`rounded-full px-2 py-1 text-xs font-medium underline-offset-2 hover:underline ${
-                  segment === s.key ? "text-primary" : "text-on-surface-variant"
-                }`}
-              >
-                {s.label}
-              </Link>
-            ))}
+          <nav aria-label="Jump to step" className="hidden flex-wrap gap-2 pt-2 sm:flex">
+            {STEPS.map((s, index) => {
+              const isFuture = index > activeIndex;
+              const className = `rounded-full px-2 py-1 text-xs font-medium ${
+                segment === s.key
+                  ? "text-primary underline underline-offset-2"
+                  : "text-on-surface-variant"
+              } ${isFuture ? "cursor-not-allowed opacity-50" : "hover:underline"}`;
+              if (isFuture) {
+                return (
+                  <span key={s.key} className={className} aria-disabled="true">
+                    {s.label}
+                  </span>
+                );
+              }
+              return (
+                <Link
+                  key={s.key}
+                  href={withQuery(`/onboarding/organisation/step/${s.key}`, querySuffix)}
+                  className={className}
+                >
+                  {s.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
         <Button asChild variant="ghost" size="sm" className="shrink-0 self-start sm:self-auto">

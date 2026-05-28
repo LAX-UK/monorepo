@@ -13,9 +13,10 @@ describe("buildClientBreadcrumbTrail", () => {
     ]);
   });
 
-  it("labels verify-identity", () => {
+  it("labels verify-identity with settings parent", () => {
     expect(buildClientBreadcrumbTrail("/dashboard/verify-identity")).toEqual([
       { label: "Dashboard", href: "/dashboard" },
+      { label: "Settings", href: "/dashboard/settings" },
       { label: "Verify identity" },
     ]);
   });

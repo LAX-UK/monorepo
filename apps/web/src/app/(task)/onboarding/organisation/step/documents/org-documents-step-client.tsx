@@ -79,6 +79,9 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [otherLabel, setOtherLabel] = useState("");
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  const slotKey = (slot: DocumentSlot) => `${slot.kind}-${slot.label ?? slot.title}`;
 
   const buildQuery = () => {
     const qs = new URLSearchParams({ entityId });
@@ -88,7 +91,9 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
 
   const onUpload = (slot: DocumentSlot, file: File | null) => {
     if (!file) return;
+    const key = slotKey(slot);
     setError(null);
+    setUploadingKey(key);
     startTransition(async () => {
       try {
         const uploadId = await uploadLegalEntityDocument(file);
@@ -116,6 +121,8 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Upload failed");
+      } finally {
+        setUploadingKey(null);
       }
     });
   };
@@ -155,27 +162,33 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
         </div>
       ) : null}
       <ul className="space-y-4">
-        {slots.map((slot) => (
-          <li
-            key={`${slot.kind}-${slot.label ?? slot.title}`}
-            className="rounded-lg border border-outline-variant/30 p-4"
-          >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-medium">{slot.title}</p>
-                {slot.label ? (
-                  <p className="text-xs text-on-surface-variant">Label: {slot.label}</p>
-                ) : null}
+        {slots.map((slot) => {
+          const key = slotKey(slot);
+          const isUploading = uploadingKey === key;
+          return (
+            <li key={key} className="rounded-lg border border-outline-variant/30 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium">{slot.title}</p>
+                  {slot.label ? (
+                    <p className="text-xs text-on-surface-variant">Label: {slot.label}</p>
+                  ) : null}
+                  {isUploading ? (
+                    <p className="mt-1 text-xs text-primary" aria-live="polite">
+                      Uploading…
+                    </p>
+                  ) : null}
+                </div>
+                <FileUploadTrigger
+                  disabled={pending && !isUploading}
+                  busy={isUploading}
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  onFilesSelected={(files) => onUpload(slot, files[0] ?? null)}
+                />
               </div>
-              <FileUploadTrigger
-                disabled={pending}
-                busy={pending}
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-                onFilesSelected={(files) => onUpload(slot, files[0] ?? null)}
-              />
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
       {error ? (
         <p className="text-sm text-destructive" role="alert">

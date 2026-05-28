@@ -31,12 +31,11 @@ describe("DashboardPageHeader", () => {
     expect(heading.className).toMatch(/lg:text-4xl/);
   });
 
-  it("visually hides title on mobile when hideTitleOnMobile is set", () => {
+  it("omits page h1 below lg when hideTitleOnMobile is set", () => {
     render(<DashboardPageHeader title="Portfolio" hideTitleOnMobile />);
 
     const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
-    expect(heading.className).toMatch(/sr-only/);
-    expect(heading.className).toMatch(/lg:not-sr-only/);
+    expect(heading.className).toMatch(/hidden lg:block/);
   });
 
   it("visually hides description on mobile when hideDescriptionOnMobile is set", () => {

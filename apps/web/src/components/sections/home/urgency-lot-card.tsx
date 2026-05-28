@@ -61,11 +61,11 @@ export function UrgencyLotCard({
             <LotViewTransitionLink
               lotId={item.id}
               href={item.href}
-              className="line-clamp-2 min-h-12 text-[20px] font-semibold leading-6 text-[#050505] underline-offset-2 hover:underline dark:text-on-surface"
+              className="line-clamp-2 min-h-12 text-[20px] font-semibold leading-6 text-on-surface underline-offset-2 hover:underline"
             >
               {item.title}
             </LotViewTransitionLink>
-            <p className="line-clamp-1 min-h-4 text-sm font-light leading-4 text-[#191919] dark:text-on-surface-variant">
+            <p className="line-clamp-1 min-h-4 text-sm font-light leading-4 text-on-surface-variant">
               {item.artistName}
             </p>
           </div>
@@ -73,28 +73,28 @@ export function UrgencyLotCard({
           {rows ? (
             <>
               <div key="estimate" className="flex min-w-0 flex-col gap-1">
-                <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
+                <span className="text-xs font-normal leading-4 text-on-surface-variant">
                   {rows.estimate.label}
                 </span>
-                <span className="line-clamp-1 text-sm font-semibold leading-6 text-[#050505] dark:text-on-surface">
+                <span className="line-clamp-1 text-sm font-semibold leading-6 text-on-surface">
                   {rows.estimate.value}
                 </span>
               </div>
               <div key="current" className="flex min-w-0 flex-col gap-1">
-                <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
+                <span className="text-xs font-normal leading-4 text-on-surface-variant">
                   {rows.current.label}
                 </span>
-                <span className="line-clamp-1 text-sm font-medium leading-6 text-[#474747] dark:text-on-surface-variant">
+                <span className="line-clamp-1 text-sm font-medium leading-6 text-on-surface-variant">
                   {rows.current.value}
                 </span>
               </div>
             </>
           ) : (
             <div key="price" className="flex min-w-0 flex-col gap-1">
-              <span className="text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
+              <span className="text-xs font-normal leading-4 text-on-surface-variant">
                 {item.priceLabel}
               </span>
-              <span className="line-clamp-1 text-sm font-semibold leading-6 text-[#050505] dark:text-on-surface">
+              <span className="line-clamp-1 text-sm font-semibold leading-6 text-on-surface">
                 {item.priceFormatted}
               </span>
             </div>
@@ -105,7 +105,7 @@ export function UrgencyLotCard({
               key="bid"
               lotId={item.id}
               href={item.href}
-              className="flex h-10 flex-1 items-center justify-center rounded border border-[#A3A3A3] bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-[#0A0A0A] outline-offset-2 hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:border-neutral-500 dark:text-on-surface dark:hover:bg-white/[0.06]"
+              className="flex h-10 flex-1 items-center justify-center rounded border border-outline-variant bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface outline-offset-2 hover:bg-on-surface/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             >
               Bid
             </LotViewTransitionLink>
@@ -113,7 +113,7 @@ export function UrgencyLotCard({
               key="quick-look"
               vm={lotQuickLookFromLotCardVM(item)}
               layout="inline"
-              className="h-10 w-10 rounded border-0 bg-transparent px-2.5 text-[#0A0A0A] hover:bg-black/[0.03] dark:text-on-surface dark:hover:bg-white/[0.06]"
+              className="h-10 w-10 rounded border-0 bg-transparent px-2.5 text-on-surface hover:bg-on-surface/5"
               options={{
                 isAuthenticated,
                 watchedLotIds,

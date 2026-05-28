@@ -11,7 +11,7 @@ type Props = {
   title?: string;
 };
 
-/** Mobile filter drawer for staff list pages; filters stay visible on `md+`. */
+/** Mobile filter drawer for staff list pages; filters stay visible on `lg+`. */
 export function AdminListFilterSheet({ children, activeCount = 0, title = "Filters" }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -33,7 +33,7 @@ function AdminListFilterTrigger({
   onOpen: () => void;
 }) {
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <MarketingFilterTrigger onClick={onOpen} activeCount={activeCount} />
     </div>
   );

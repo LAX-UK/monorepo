@@ -48,9 +48,33 @@ function columns(): ColumnDef<AdminArtistDuplicateHit>[] {
 
 export function AdminArtistDuplicatesTable({ rows }: { rows: AdminArtistDuplicateHit[] }) {
   const cols = useMemo(() => columns(), []);
+
+  const cards = (
+    <ul className="space-y-3 lg:hidden">
+      {rows.map((row) => (
+        <li
+          key={row.id}
+          className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4"
+        >
+          <p className="font-medium text-on-surface">{row.displayName}</p>
+          <p className="mt-1 text-xs text-on-surface-variant">{artistKindMeta(row.kind).badge}</p>
+          <div className="mt-2">
+            <AdminStatusBadge domain="artist" status={row.status} />
+          </div>
+          <Link
+            href={`/admin/artists/${row.id}`}
+            className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+          >
+            View
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <EntityList
-      responsiveMode="scroll"
+      responsiveMode="auto"
       table={
         <AdminDataTable
           ariaLabel="Artist duplicate candidates"
@@ -59,6 +83,7 @@ export function AdminArtistDuplicatesTable({ rows }: { rows: AdminArtistDuplicat
           emptyMessage="No duplicate candidates."
         />
       }
+      cards={cards}
     />
   );
 }

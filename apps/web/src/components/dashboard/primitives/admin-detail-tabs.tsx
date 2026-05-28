@@ -33,8 +33,7 @@ type Props = {
   onTabControl?: (control: { goTo: (value: string) => void }) => void;
 };
 
-/** Sticky, horizontally scrollable admin detail tabs. */
-export function AdminDetailTabs({
+function AdminDetailTabsInner({
   defaultValue,
   tabs,
   className,
@@ -113,5 +112,14 @@ export function AdminDetailTabs({
         </TabsContent>
       ))}
     </Tabs>
+  );
+}
+
+/** Sticky, horizontally scrollable admin detail tabs. */
+export function AdminDetailTabs(props: Props) {
+  return (
+    <Suspense fallback={<TabContentFallback />}>
+      <AdminDetailTabsInner {...props} />
+    </Suspense>
   );
 }

@@ -2,14 +2,14 @@
 
 import { CatalogInfoAsideCopyId } from "@/components/admin/catalog/catalog-info-aside-copy-id";
 import { formatDateTime } from "@/lib/ui/format";
-import { Button } from "@auction/ui/components/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@auction/ui/components/sheet";
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetTitle,
+  BottomSheetTrigger,
+} from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
 import { ExternalLink, Info } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -62,18 +62,18 @@ export function CatalogDetailMobileMeta({
         ))}
       </div>
       {hasSheetContent ? (
-        <Sheet>
-          <SheetTrigger asChild>
+        <BottomSheet>
+          <BottomSheetTrigger asChild>
             <Button type="button" variant="secondary" size="sm" className="shrink-0 gap-1.5">
               <Info className="size-4" aria-hidden />
               Context
             </Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
-            <SheetHeader>
-              <SheetTitle>Context</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4 space-y-4 text-sm">
+          </BottomSheetTrigger>
+          <BottomSheetContent className="max-h-[85vh] rounded-t-2xl">
+            <BottomSheetHeader className="px-6 pt-0 text-left">
+              <BottomSheetTitle>Context</BottomSheetTitle>
+            </BottomSheetHeader>
+            <div className="space-y-4 px-6 pb-6 text-sm">
               {primaryAction ? <div>{primaryAction}</div> : null}
               {status ? (
                 <div>
@@ -112,8 +112,8 @@ export function CatalogDetailMobileMeta({
               ) : null}
               {children}
             </div>
-          </SheetContent>
-        </Sheet>
+          </BottomSheetContent>
+        </BottomSheet>
       ) : null}
     </div>
   );
