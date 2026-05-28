@@ -1,9 +1,9 @@
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { publicArtistBrowseQuerySchema } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {

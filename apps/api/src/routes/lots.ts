@@ -19,7 +19,6 @@ import {
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -33,6 +32,7 @@ import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
 import { presentLotImages } from "../lib/media-presenters.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";

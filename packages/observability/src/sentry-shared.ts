@@ -31,10 +31,37 @@ function shouldScrubBody(url: string | undefined): boolean {
   return BODY_SCRUB_PATHS.some((segment) => url.includes(segment));
 }
 
+function messageFromExtraArguments(extra: ErrorEvent["extra"]): string {
+  const args = extra?.arguments;
+  if (!Array.isArray(args)) return "";
+
+  let fallback = "";
+
+  for (const arg of args) {
+    if (typeof arg === "string") {
+      if (arg.length > 0 && arg !== "[Filtered]") return arg;
+      continue;
+    }
+    if (arg && typeof arg === "object") {
+      const record = arg as Record<string, unknown>;
+      if (record.code === "state_mismatch") return "State mismatch";
+      if (typeof record.message === "string" && record.message.length > 0) {
+        fallback = record.message;
+      }
+    }
+  }
+
+  return fallback;
+}
+
 function eventMessage(event: ErrorEvent): string {
-  if (typeof event.message === "string") return event.message;
+  if (typeof event.message === "string" && event.message.length > 0) return event.message;
   if (event.logentry?.message) return event.logentry.message;
-  return "";
+
+  const exceptionValue = event.exception?.values?.[0]?.value;
+  if (typeof exceptionValue === "string" && exceptionValue.length > 0) return exceptionValue;
+
+  return messageFromExtraArguments(event.extra);
 }
 
 function isConsoleLoggerEvent(event: ErrorEvent): boolean {
@@ -74,6 +101,17 @@ export function shouldDropBrowserExtensionNoise(event: ErrorEvent): boolean {
       frame.filename?.startsWith("app:///") === true ||
       frame.abs_path?.startsWith("app:///") === true,
   );
+}
+
+/** Drop third-party client noise (GTM, in-app browsers, deploy stale server actions). */
+export function shouldDropThirdPartyClientNoise(event: ErrorEvent): boolean {
+  const message = eventMessage(event);
+
+  if (/Failed to fetch.*gtm\.lax\.bid/i.test(message)) return true;
+  if (/webkit\.messageHandlers/i.test(message)) return true;
+  if (/UnrecognizedActionError|failed-to-find-server-action/i.test(message)) return true;
+
+  return false;
 }
 
 /** Strip sensitive headers and webhook/cron bodies before events leave the process. */

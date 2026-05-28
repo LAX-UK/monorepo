@@ -13,4 +13,8 @@ describe("mapKycSessionStartError", () => {
     expect(typeof message).toBe("string");
     expect(message).toContain("Could not start verification");
   });
+
+  it("maps API string validation messages on 400 to friendly KYC copy", () => {
+    expect(mapKycSessionStartError("Invalid url", 400)).toContain("Could not start verification");
+  });
 });

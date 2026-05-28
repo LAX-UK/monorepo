@@ -1,7 +1,7 @@
-import { zValidator } from "@hono/zod-validator";
 import type { Hono } from "hono";
 import { z } from "zod";
 import { assertConnectUrlAllowed } from "../lib/stripe-connect-return-url.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import { StripeConnectNotConfiguredError } from "../services/interfaces/stripe-connect.js";

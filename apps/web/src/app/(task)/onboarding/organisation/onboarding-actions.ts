@@ -5,6 +5,7 @@ import {
   ensureStripeConnectAccountAction,
 } from "@/lib/actions/stripe-connect.actions";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { normalizeApiErrorMessage } from "@auction/validators";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { postServerKycSession } from "@/lib/data/http/kyc.server";
@@ -30,8 +31,12 @@ export async function patchOrgOnboardingProfileAction(
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, status: res.status, error: body.error ?? "request_failed" };
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+      return {
+        ok: false,
+        status: res.status,
+        error: normalizeApiErrorMessage(body.error, "request_failed"),
+      };
     }
     return { ok: true, status: res.status };
   });
@@ -51,8 +56,12 @@ export async function postOrgOnboardingDocumentAction(
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, status: res.status, error: body.error ?? "request_failed" };
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+      return {
+        ok: false,
+        status: res.status,
+        error: normalizeApiErrorMessage(body.error, "request_failed"),
+      };
     }
     return { ok: true, status: res.status };
   });
@@ -71,8 +80,12 @@ export async function postOrgOnboardingStepCompleteAction(
       },
     );
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, status: res.status, error: body.error ?? "request_failed" };
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+      return {
+        ok: false,
+        status: res.status,
+        error: normalizeApiErrorMessage(body.error, "request_failed"),
+      };
     }
     return { ok: true, status: res.status };
   });
@@ -87,14 +100,14 @@ export async function postOrgSubmitForReviewAction(
       headers: entityHeaders(entityId),
     });
     const body = (await res.json().catch(() => ({}))) as {
-      error?: string;
+      error?: unknown;
       missingSteps?: string[];
     };
     if (!res.ok) {
       return {
         ok: false,
         status: res.status,
-        error: body.error ?? "request_failed",
+        error: normalizeApiErrorMessage(body.error, "request_failed"),
         ...(body.missingSteps ? { missingSteps: body.missingSteps } : {}),
       };
     }

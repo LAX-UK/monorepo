@@ -4,6 +4,7 @@ import {
   X_LEGAL_ENTITY_ID_HEADER,
 } from "@/lib/legal-entity/client-acting-context";
 import type { MemberRow } from "@/lib/legal-entity/member-management.actions";
+import { parseApiErrorCodeFromBody, type ApiErrorBody } from "@auction/validators";
 
 export type MemberListFetchResult =
   | { ok: true; data: MemberRow[] }
@@ -18,13 +19,10 @@ type AuthedFetch = typeof authedServerFetch;
 
 async function parseErrorCodeFromResponse(res: Response): Promise<string | null> {
   try {
-    const body = (await res.clone().json()) as {
-      error?: unknown;
-      code?: unknown;
-      message?: unknown;
-    };
-    const candidate = body.code ?? body.error ?? body.message;
-    return typeof candidate === "string" ? candidate : null;
+    const body = (await res.clone().json()) as ApiErrorBody & { message?: unknown };
+    const candidate =
+      parseApiErrorCodeFromBody(body) ?? (typeof body.message === "string" ? body.message : null);
+    return candidate;
   } catch {
     return null;
   }

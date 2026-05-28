@@ -1,4 +1,7 @@
 import { missingCapabilityNotifyMessage } from "@/lib/ui/missing-capability-message";
+import { normalizeApiErrorMessage } from "@auction/validators";
+
+export { normalizeApiErrorMessage };
 
 export type ActionErrorNotifyInput = {
   fallback: string;
@@ -38,4 +41,9 @@ export function actionFailureNotifyMessage(
   },
 ): string {
   return actionResultNotifyMessage({ fallback: error, ...opts });
+}
+
+/** Normalizes `{ error }` from a failed fetch body for user-facing copy. */
+export function normalizeFetchErrorMessage(body: { error?: unknown }, fallback: string): string {
+  return normalizeApiErrorMessage(body.error, fallback);
 }

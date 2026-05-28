@@ -1,6 +1,7 @@
 "use server";
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { normalizeApiErrorMessage } from "@auction/validators";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { revalidatePath } from "next/cache";
@@ -19,8 +20,8 @@ async function jsonOrError(res: Response, fallback: string): Promise<string | nu
   if (res.ok) return null;
   let message = fallback;
   try {
-    const body = (await res.json()) as { error?: string };
-    message = body.error ?? message;
+    const body = (await res.json()) as { error?: unknown };
+    message = normalizeApiErrorMessage(body.error, message);
   } catch {
     // Keep fallback when the API did not return JSON.
   }

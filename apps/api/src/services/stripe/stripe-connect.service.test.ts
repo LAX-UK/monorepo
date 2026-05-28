@@ -539,12 +539,12 @@ describe("StripeConnectService.ensureAccount", () => {
 
     expect(accountsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: "express",
         country: "GB",
         business_type: "individual",
         controller: {
           fees: { payer: "application" },
           losses: { payments: "application" },
+          stripe_dashboard: { type: "express" },
         },
         individual: {
           first_name: "Ada",

@@ -11,6 +11,7 @@ export {
   sentryTracesSampler,
   shouldDropBrowserExtensionNoise,
   shouldDropSentryEvent,
+  shouldDropThirdPartyClientNoise,
 } from "./sentry-shared.js";
 export {
   resolveSentryEnvironmentFromEnv,
