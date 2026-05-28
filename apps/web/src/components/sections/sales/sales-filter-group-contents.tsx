@@ -6,6 +6,7 @@ import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-param
 import type { SalesFilterSidebarGroupValue } from "@/lib/marketing/sales-filter-sidebar-catalog";
 import { cn } from "@auction/ui";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 const MONTHS = [
   { n: 1, label: "January" },
@@ -29,10 +30,42 @@ export type SalesFilterGroupContentsProps = {
   state: CalendarSalesUrlState;
   categories: Category[];
   years: number[];
+  onLinkClick?: () => void;
 };
+
+const linkClass = (active: boolean) =>
+  cn(
+    "font-body text-sm text-on-surface-variant hover:underline",
+    active && "font-semibold text-on-surface",
+  );
+
+function FilterLink({
+  href,
+  active,
+  children,
+  onLinkClick,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+  onLinkClick?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      className={linkClass(active)}
+      {...(onLinkClick ? { onClick: onLinkClick } : {})}
+    >
+      {children}
+    </Link>
+  );
+}
 
 /** AccordionContent `className` per group (layout scroll / spacing). */
 export const salesFilterAccordionContentClass: Record<SalesFilterSidebarGroupValue, string> = {
+  delivery: "flex flex-col gap-2 pb-4",
+  location: "flex flex-col gap-2 pb-4",
   sort: "flex flex-col gap-2 pb-4",
   price: "pb-4",
   department: "flex max-h-60 flex-col gap-2 overflow-y-auto pb-4",
@@ -45,29 +78,78 @@ export function SalesFilterGroupContents({
   state,
   categories,
   years,
+  onLinkClick,
 }: SalesFilterGroupContentsProps) {
   switch (group) {
+    case "delivery":
+      return (
+        <>
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { deliveryMode: "all", page: undefined })}
+            active={state.deliveryMode === "all"}
+            {...(onLinkClick ? { onLinkClick } : {})}
+          >
+            All types
+          </FilterLink>
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { deliveryMode: "online", page: undefined })}
+            active={state.deliveryMode === "online"}
+            {...(onLinkClick ? { onLinkClick } : {})}
+          >
+            Online
+          </FilterLink>
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { deliveryMode: "onsite", page: undefined })}
+            active={state.deliveryMode === "onsite"}
+            {...(onLinkClick ? { onLinkClick } : {})}
+          >
+            Live
+          </FilterLink>
+        </>
+      );
+    case "location":
+      return (
+        <>
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { location: "all", page: undefined })}
+            active={state.location === "all"}
+            {...(onLinkClick ? { onLinkClick } : {})}
+          >
+            All locations
+          </FilterLink>
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { location: "online", page: undefined })}
+            active={state.location === "online"}
+            {...(onLinkClick ? { onLinkClick } : {})}
+          >
+            Online
+          </FilterLink>
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { location: "london", page: undefined })}
+            active={state.location === "london"}
+            {...(onLinkClick ? { onLinkClick } : {})}
+          >
+            London
+          </FilterLink>
+        </>
+      );
     case "sort":
       return (
         <>
-          <Link
-            href={calendarSalesHrefFromState(state, { sort: "startAsc" })}
-            className={cn(
-              "font-body text-sm text-on-surface-variant hover:underline",
-              state.sort === "startAsc" && "font-semibold text-on-surface",
-            )}
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { sort: "startAsc", page: undefined })}
+            active={state.sort === "startAsc"}
+            {...(onLinkClick ? { onLinkClick } : {})}
           >
             Start date (soonest first)
-          </Link>
-          <Link
-            href={calendarSalesHrefFromState(state, { sort: "createdDesc" })}
-            className={cn(
-              "font-body text-sm text-on-surface-variant hover:underline",
-              state.sort === "createdDesc" && "font-semibold text-on-surface",
-            )}
+          </FilterLink>
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { sort: "createdDesc", page: undefined })}
+            active={state.sort === "createdDesc"}
+            {...(onLinkClick ? { onLinkClick } : {})}
           >
             Newly listed
-          </Link>
+          </FilterLink>
         </>
       );
     case "price":
@@ -75,78 +157,66 @@ export function SalesFilterGroupContents({
     case "department":
       return (
         <>
-          <Link
-            href={calendarSalesHrefFromState(state, { categoryId: undefined })}
-            className={cn(
-              "font-body text-sm text-on-surface-variant hover:underline",
-              !state.categoryId && "font-semibold text-on-surface",
-            )}
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { categoryId: undefined, page: undefined })}
+            active={!state.categoryId}
+            {...(onLinkClick ? { onLinkClick } : {})}
           >
             All departments
-          </Link>
+          </FilterLink>
           {categories.map((c) => (
-            <Link
+            <FilterLink
               key={c.id}
-              href={calendarSalesHrefFromState(state, { categoryId: c.id })}
-              className={cn(
-                "font-body text-sm text-on-surface-variant hover:underline",
-                state.categoryId === c.id && "font-semibold text-on-surface",
-              )}
+              href={calendarSalesHrefFromState(state, { categoryId: c.id, page: undefined })}
+              active={state.categoryId === c.id}
+              {...(onLinkClick ? { onLinkClick } : {})}
             >
               {c.name}
-            </Link>
+            </FilterLink>
           ))}
         </>
       );
     case "month":
       return (
         <>
-          <Link
-            href={calendarSalesHrefFromState(state, { month: undefined })}
-            className={cn(
-              "font-body text-sm text-on-surface-variant hover:underline",
-              state.month == null && "font-semibold text-on-surface",
-            )}
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { month: undefined, page: undefined })}
+            active={state.month == null}
+            {...(onLinkClick ? { onLinkClick } : {})}
           >
             Any month
-          </Link>
+          </FilterLink>
           {MONTHS.map((m) => (
-            <Link
+            <FilterLink
               key={m.n}
-              href={calendarSalesHrefFromState(state, { month: m.n })}
-              className={cn(
-                "font-body text-sm text-on-surface-variant hover:underline",
-                state.month === m.n && "font-semibold text-on-surface",
-              )}
+              href={calendarSalesHrefFromState(state, { month: m.n, page: undefined })}
+              active={state.month === m.n}
+              {...(onLinkClick ? { onLinkClick } : {})}
             >
               {m.label}
-            </Link>
+            </FilterLink>
           ))}
         </>
       );
     case "year":
       return (
         <>
-          <Link
-            href={calendarSalesHrefFromState(state, { year: undefined })}
-            className={cn(
-              "font-body text-sm text-on-surface-variant hover:underline",
-              state.year == null && "font-semibold text-on-surface",
-            )}
+          <FilterLink
+            href={calendarSalesHrefFromState(state, { year: undefined, page: undefined })}
+            active={state.year == null}
+            {...(onLinkClick ? { onLinkClick } : {})}
           >
             Any year
-          </Link>
+          </FilterLink>
           {years.map((y) => (
-            <Link
+            <FilterLink
               key={y}
-              href={calendarSalesHrefFromState(state, { year: y })}
-              className={cn(
-                "font-body text-sm text-on-surface-variant hover:underline",
-                state.year === y && "font-semibold text-on-surface",
-              )}
+              href={calendarSalesHrefFromState(state, { year: y, page: undefined })}
+              active={state.year === y}
+              {...(onLinkClick ? { onLinkClick } : {})}
             >
               {y}
-            </Link>
+            </FilterLink>
           ))}
         </>
       );

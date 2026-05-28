@@ -17,13 +17,23 @@ type Props = {
   categories: Category[];
   years: number[];
   className?: string;
+  showResultCount?: boolean;
+  onLinkClick?: () => void;
 };
 
 const itemBorderClass = "border-b border-outline-variant dark:border-outline-variant/30";
 const triggerClass =
   "py-4 font-body text-base font-medium text-on-surface hover:no-underline dark:text-on-surface";
 
-export function SalesFilterSidebar({ state, resultCount, categories, years, className }: Props) {
+export function SalesFilterSidebar({
+  state,
+  resultCount,
+  categories,
+  years,
+  className,
+  showResultCount = true,
+  onLinkClick,
+}: Props) {
   const [openSections, setOpenSections] = useState<string[]>([]);
 
   return (
@@ -34,15 +44,17 @@ export function SalesFilterSidebar({ state, resultCount, categories, years, clas
       )}
     >
       <div className="flex flex-col gap-2.5">
-        <div className="flex items-center gap-2.5 border-b border-outline-variant pb-4 dark:border-outline-variant/30">
-          <p
-            className="flex-1 font-body text-sm font-normal uppercase leading-6 text-on-surface-variant"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            Showing {resultCount} Result{resultCount === 1 ? "" : "s"}
-          </p>
-        </div>
+        {showResultCount ? (
+          <div className="flex items-center gap-2.5 border-b border-outline-variant pb-4 dark:border-outline-variant/30">
+            <p
+              className="flex-1 font-body text-sm font-normal uppercase leading-6 text-on-surface-variant"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              Showing {resultCount} Result{resultCount === 1 ? "" : "s"}
+            </p>
+          </div>
+        ) : null}
 
         <Accordion
           type="multiple"
@@ -59,6 +71,7 @@ export function SalesFilterSidebar({ state, resultCount, categories, years, clas
                   state={state}
                   categories={categories}
                   years={years}
+                  {...(onLinkClick ? { onLinkClick } : {})}
                 />
               </AccordionContent>
             </AccordionItem>

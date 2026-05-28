@@ -1,7 +1,5 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
-import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
 import { SalesAuctionList } from "@/components/sections/sales/sales-auction-list";
 import { SalesCalendarBrowse } from "@/components/sections/sales/sales-calendar-browse";
@@ -21,9 +19,12 @@ import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
+import { fetchHasLiveSales } from "@/lib/marketing/sales-calendar-live.server";
 import {
   type CalendarPrimaryTab,
   type CalendarSalesUrlState,
+  calendarSalesHref,
+  hasExplicitCalendarTab,
   parseCalendarPage,
   parseCalendarPrimaryTab,
   parseDeliveryMode,
@@ -32,6 +33,7 @@ import {
   parsePriceRange,
   parseSort,
   parseYear,
+  resolveDefaultCalendarPrimaryTab,
 } from "@/lib/marketing/sales-calendar-params";
 import { parseSalesCategoryId } from "@/lib/marketing/sales-filters";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
@@ -134,19 +136,40 @@ export default async function SalesListPage({
   });
   const calendarView: "grid" | "list" = salesLayoutResolved === "list" ? "list" : "grid";
 
-  const categories = await getServerCategoryReader()
-    .then((r) => r.list())
-    .catch(() => []);
+  const [categories, hasLiveSales] = await Promise.all([
+    getServerCategoryReader()
+      .then((r) => r.list())
+      .catch(() => []),
+    fetchHasLiveSales(),
+  ]);
   const categoryId = parseSalesCategoryId(sp, categories);
-
-  const tab = parseCalendarPrimaryTab(sp);
-  const calendarPage = parseCalendarPage(sp);
   const deliveryMode = parseDeliveryMode(sp);
   const location = parseLocationFilter(sp);
   const sort = parseSort(sp);
   const month = parseMonth(sp);
   const year = parseYear(sp);
   const { minPrice, maxPrice } = parsePriceRange(sp);
+  const calendarPage = parseCalendarPage(sp);
+
+  if (!hasExplicitCalendarTab(sp) && resolveDefaultCalendarPrimaryTab(hasLiveSales) === "live") {
+    redirect(
+      calendarSalesHref({
+        tab: "live",
+        ...(categoryId ? { categoryId } : {}),
+        ...(deliveryMode !== "all" ? { deliveryMode } : {}),
+        ...(location !== "all" ? { location } : {}),
+        ...(sort !== "startAsc" ? { sort } : {}),
+        ...(month != null ? { month } : {}),
+        ...(year != null ? { year } : {}),
+        ...(minPrice != null ? { minPrice } : {}),
+        ...(maxPrice != null ? { maxPrice } : {}),
+        ...(calendarView === "list" ? { view: "list" } : {}),
+        ...(calendarPage > 1 ? { page: calendarPage } : {}),
+      }),
+    );
+  }
+
+  const tab = parseCalendarPrimaryTab(sp);
 
   const calendarState: CalendarSalesUrlState = {
     tab,
@@ -256,11 +279,13 @@ export default async function SalesListPage({
           <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
             <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
               <SalesHeroHeader />
-              <FeaturedAuctionsGrid vms={featuredVms} />
+              <div className="hidden md:block">
+                <FeaturedAuctionsGrid vms={featuredVms} />
+              </div>
             </div>
 
             <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10">
-              <SalesPrimaryTabs state={calendarState} />
+              <SalesPrimaryTabs state={calendarState} hasLiveSales={hasLiveSales} />
 
               {err ? (
                 <p className="text-sm text-error" role="alert">
@@ -315,18 +340,8 @@ export default async function SalesListPage({
                   resultCount={filteredSales.length}
                   categories={categories}
                   years={yearOptions}
+                  calendarView={calendarView}
                 >
-                  <MarketingListToolbar
-                    className="mb-4 rounded-lg border border-border-hairline bg-white/80 dark:bg-surface-container-low/40"
-                    countLabel={`${filteredSales.length} sale${filteredSales.length === 1 ? "" : "s"}`}
-                    trailing={
-                      <CatalogViewSwitcher
-                        routeKey="sales"
-                        value={calendarView === "list" ? "list" : "grid"}
-                        supportedModes={["grid", "list"]}
-                      />
-                    }
-                  />
                   {!session ? (
                     <SectionCta
                       className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"

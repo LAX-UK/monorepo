@@ -334,6 +334,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
               ? `${lotVMs.length} matching · ${lotsPage.total} in sale`
               : `${lotsPage.total} lots`
           }
+          resultCountLabel={lotVMs.length === 1 ? "Show 1 lot" : `Show ${lotVMs.length} lots`}
         />
         <SaleroomCatalogLotsByView
           view={layoutView}
