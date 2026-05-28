@@ -23,6 +23,7 @@ describe("admin impersonation routes", () => {
     });
 
     const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
       admin: {
         requestLifecycle: {
           isSuspended: vi.fn().mockResolvedValue(false),
