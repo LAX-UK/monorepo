@@ -1,6 +1,7 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { getAdminLegalEntitiesWithStripeConnectRequirements } from "@/lib/data/http/admin.server";
+import { labelForRequirement } from "@auction/connect";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
@@ -46,11 +47,25 @@ export async function LegalEntityStripeRequirementsSection() {
                 key={r.id}
                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-on-surface">{r.displayName}</p>
                   <p className="text-xs text-on-surface-variant">
                     <AdminStatusBadge domain="legalEntity" status={r.status} size="sm" /> · {r.id}
                   </p>
+                  {r.stripeConnectRequirementsCurrentlyDue.length > 0 ? (
+                    <ul className="mt-2 space-y-1 text-xs text-on-surface-variant">
+                      {r.stripeConnectRequirementsCurrentlyDue.slice(0, 3).map((req) => {
+                        const label = labelForRequirement(req);
+                        return (
+                          <li key={req}>
+                            <span className="font-medium text-on-surface">{label.label}</span>
+                            {" · "}
+                            {label.hint}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
                 </div>
                 <Button variant="chevron" size="sm" asChild>
                   <Link

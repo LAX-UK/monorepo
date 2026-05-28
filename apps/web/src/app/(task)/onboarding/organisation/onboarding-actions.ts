@@ -1,6 +1,10 @@
 "use server";
 
 import { mapKycSessionStartError } from "@/components/kyc/kyc-copy";
+import {
+  createStripeConnectOnboardingLinkAction,
+  ensureStripeConnectAccountAction,
+} from "@/lib/actions/stripe-connect.actions";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
@@ -101,49 +105,14 @@ export async function postOrgSubmitForReviewAction(
 export async function stripeConnectEnsureOrgAction(
   entityId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  return instrumentServerAction("stripeConnectEnsureOrgAction", async () => {
-    const res = await authedServerFetch("/stripe-connect/account", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...entityHeaders(entityId),
-      },
-      body: JSON.stringify({ country: "GB" }),
-    });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, error: body.error ?? "stripe_connect_failed" };
-    }
-    return { ok: true };
-  });
+  return ensureStripeConnectAccountAction(entityId);
 }
 
 export async function stripeConnectOnboardingLinkOrgAction(
   entityId: string,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  return instrumentServerAction("stripeConnectOnboardingLinkOrgAction", async () => {
-    const site = getSiteUrl();
-    const returnUrl = `${site}/onboarding/organisation/step/connect?entityId=${encodeURIComponent(entityId)}`;
-    const refreshUrl = returnUrl;
-    const res = await authedServerFetch("/stripe-connect/onboarding-link", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...entityHeaders(entityId),
-      },
-      body: JSON.stringify({ returnUrl, refreshUrl }),
-    });
-    const body = (await res.json().catch(() => ({}))) as {
-      data?: { url?: string };
-      error?: string;
-    };
-    if (!res.ok) {
-      return { ok: false, error: body.error ?? `stripe_onboarding_link_${res.status}` };
-    }
-    const url = body.data?.url;
-    if (!url) return { ok: false, error: "missing_url" };
-    return { ok: true, url };
-  });
+  const returnPath = `/onboarding/organisation/step/connect?entityId=${encodeURIComponent(entityId)}`;
+  return createStripeConnectOnboardingLinkAction(returnPath, entityId);
 }
 
 export async function startKycForOrganisationOnboardingAction(

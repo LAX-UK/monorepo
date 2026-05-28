@@ -16,6 +16,10 @@ const linkBodySchema = z.object({
   refreshUrl: z.string().url(),
 });
 
+const sessionBodySchema = z.object({
+  surface: z.enum(["onboarding", "management"]).default("onboarding"),
+});
+
 export function createStripeConnectRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -29,18 +33,69 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
     };
   }>();
 
-  /** GET /stripe-connect/status — Connect status for the acting legal entity.
-   * Available to any active member of the entity.
-   */
+  r.get("/client-config", requireAuth, async (c) => {
+    try {
+      return c.json({ data: container.stripeConnectService.getClientConfig() });
+    } catch (err) {
+      if (err instanceof StripeConnectNotConfiguredError) {
+        return c.json({ data: { publishableKey: null, connectEnforced: false } });
+      }
+      throw err;
+    }
+  });
+
   r.get("/status", requireAuth, requireContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
     const status = await container.stripeConnectService.getStatus(ctx.legalEntityId);
     return c.json({ data: status });
   });
 
-  /** POST /stripe-connect/account — create (or look up) the Express account.
-   * Owner / admin only.
-   */
+  r.post("/sync", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "finance") {
+      return c.json({ error: "insufficient_role" }, 403);
+    }
+    try {
+      const status = await container.stripeConnectService.syncAccountFromStripe(ctx.legalEntityId);
+      return c.json({ data: status });
+    } catch (err) {
+      if (err instanceof StripeConnectNotConfiguredError) {
+        return c.json({ error: "stripe_not_configured" }, 503);
+      }
+      throw err;
+    }
+  });
+
+  r.post(
+    "/account-session",
+    requireAuth,
+    requireContext,
+    zValidator("json", sessionBodySchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const body = c.req.valid("json");
+      try {
+        const session = await container.stripeConnectService.createAccountSession(
+          ctx.legalEntityId,
+          ctx.role,
+          body.surface,
+        );
+        return c.json({ data: session });
+      } catch (err) {
+        if (err instanceof StripeConnectNotConfiguredError) {
+          return c.json({ error: "stripe_not_configured" }, 503);
+        }
+        if (err instanceof Error && err.message === "insufficient_role") {
+          return c.json({ error: "insufficient_role" }, 403);
+        }
+        if (err instanceof Error && err.message === "stripe_account_missing") {
+          return c.json({ error: "stripe_account_missing" }, 400);
+        }
+        throw err;
+      }
+    },
+  );
+
   r.post(
     "/account",
     requireAuth,
@@ -70,7 +125,6 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
     },
   );
 
-  /** POST /stripe-connect/onboarding-link — short-lived hosted onboarding URL. */
   r.post(
     "/onboarding-link",
     requireAuth,
@@ -101,7 +155,6 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
     },
   );
 
-  /** POST /stripe-connect/dashboard-link — short-lived Stripe Express dashboard URL. */
   r.post("/dashboard-link", requireAuth, requireContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
     if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "finance") {

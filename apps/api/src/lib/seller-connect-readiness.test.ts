@@ -61,4 +61,21 @@ describe("findLotsMissingSellerConnect", () => {
 
     expect(findById).toHaveBeenCalledTimes(1);
   });
+
+  it("skips LAX-managed sellers", async () => {
+    const findById = vi.fn().mockResolvedValue({
+      status: "approved",
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: [],
+      isLaxManaged: true,
+    });
+    const repo = { findById } as unknown as ILegalEntityRepository;
+
+    const blocked = await findLotsMissingSellerConnect(
+      [{ id: "lot-1", title: "One", sellerLegalEntityId: "seller-a" }],
+      repo,
+    );
+
+    expect(blocked).toEqual([]);
+  });
 });

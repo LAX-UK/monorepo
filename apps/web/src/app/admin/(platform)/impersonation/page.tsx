@@ -20,7 +20,7 @@ export default async function AdminImpersonationPage() {
   return (
     <AdminPanelPage
       title="Impersonate organisation"
-      description="Search for a legal entity you are not a member of. A four-hour support session starts; owners and admins are emailed automatically."
+      description="Search for a legal entity you are not a member of. A four-hour support session starts; owners and admins are emailed automatically. Sellers complete payout setup in-app at Payout setup — no hosted Stripe redirect required."
       actions={
         <div className="flex flex-wrap gap-2">
           <Button variant="ctaLink" asChild>

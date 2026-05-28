@@ -132,7 +132,12 @@ export interface IAdminDashboardQueryService {
   getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot>;
   getOnboardingIssues(): Promise<AdminOnboardingIssues>;
   listStripeConnectRequirementEntities(): Promise<
-    { id: string; displayName: string; status: string }[]
+    {
+      id: string;
+      displayName: string;
+      status: string;
+      stripeConnectRequirementsCurrentlyDue: string[];
+    }[]
   >;
   listManualReviewPayments(): Promise<AdminManualReviewPaymentRow[]>;
   listPendingAdminReviewTasks(

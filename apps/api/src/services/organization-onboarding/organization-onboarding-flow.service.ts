@@ -25,7 +25,7 @@ import {
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
-import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
+import type { IConnectAccountSync, IConnectSessionProvider } from "../interfaces/stripe-connect.js";
 
 const ESTATE_CANONICAL_LABELS = ["Probate document", "Executor ID", "Beneficiary list"] as const;
 
@@ -105,7 +105,9 @@ export class OrganizationOnboardingFlowService {
     private readonly legalEntityRepository: ILegalEntityRepository,
     private readonly organizationOnboardingService: IOrganizationOnboardingService,
     private readonly domainEventPublisher: DomainEventPublisher,
-    private readonly stripeConnect: IStripeConnectService | null = null,
+    private readonly stripeConnect:
+      | (IConnectAccountSync & Pick<IConnectSessionProvider, "isConfigured">)
+      | null = null,
   ) {}
 
   async getOnboarding(
@@ -296,6 +298,7 @@ export class OrganizationOnboardingFlowService {
           | "documents_incomplete"
           | "connect_not_started"
           | "connect_not_complete"
+          | "connect_sync_failed"
           | "connect_requirements_pending"
           | "type_incomplete"
           | "address_required";
@@ -333,13 +336,27 @@ export class OrganizationOnboardingFlowService {
     }
 
     if (step === "connect") {
-      if (!row.stripeConnectAccountId) {
+      if (this.stripeConnect?.isConfigured()) {
+        try {
+          await this.stripeConnect.syncAccountFromStripe(entityId);
+        } catch {
+          return { ok: false, code: "connect_sync_failed" };
+        }
+      }
+      const refreshed = await this.db
+        .select()
+        .from(legalEntity)
+        .where(eq(legalEntity.id, entityId))
+        .limit(1);
+      const connectRow = refreshed[0];
+      if (!connectRow) return { ok: false, code: "not_found" };
+      if (!connectRow.stripeConnectAccountId) {
         return { ok: false, code: "connect_not_started" };
       }
-      if (!row.stripeConnectPayoutsEnabled) {
+      if (!connectRow.stripeConnectPayoutsEnabled) {
         return { ok: false, code: "connect_not_complete" };
       }
-      if ((row.stripeConnectRequirementsCurrentlyDue ?? []).length > 0) {
+      if ((connectRow.stripeConnectRequirementsCurrentlyDue ?? []).length > 0) {
         return { ok: false, code: "connect_requirements_pending" };
       }
     }
@@ -377,6 +394,7 @@ export class OrganizationOnboardingFlowService {
           | "type_incomplete"
           | "connect_not_started"
           | "connect_not_complete"
+          | "connect_sync_failed"
           | "connect_requirements_pending"
           | "address_required";
       }

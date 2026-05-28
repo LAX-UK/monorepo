@@ -69,11 +69,16 @@ export async function processPayoutTransferFailedNotify(options: {
 
     try {
       const [entityRow] = await db
-        .select({ displayName: legalEntity.displayName })
+        .select({ displayName: legalEntity.displayName, kind: legalEntity.kind })
         .from(legalEntity)
         .where(eq(legalEntity.id, payload.legalEntityId))
         .limit(1);
       const entityName = entityRow?.displayName ?? "Unknown Organisation";
+      const webOrigin = process.env.WEB_ORIGIN?.replace(/\/$/, "") ?? "https://lax.bid";
+      const sellerPayoutSetupUrl =
+        entityRow?.kind === "organisation"
+          ? `${webOrigin}/dashboard/organisations/${payload.legalEntityId}/connect`
+          : `${webOrigin}/dashboard/seller/connect`;
 
       const [payoutRow] = await db
         .select({ netAmount: payout.netAmount, currency: payout.currency })
@@ -122,6 +127,7 @@ export async function processPayoutTransferFailedNotify(options: {
             failureReason,
             supportContactEmail,
             adminPayoutsUrl,
+            sellerPayoutSetupUrl,
           },
           category: "transactional",
           idempotencyKey: `payout-transfer-failed-notice:${row.aggregateId}:${m.userId}`,

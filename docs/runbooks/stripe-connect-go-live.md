@@ -16,7 +16,13 @@ Stripe allows **one scope per destination** ([Connect webhooks](https://docs.str
 
 Optional (subscribe only if you add handlers later): `account.application.deauthorized` (Connect), `radar.early_fraud_warning.created` (Payments), `payout.failed` (Connected accounts).
 
-- [ ] **Connect** application settings: UK capabilities, branding, and redirect URLs include production `WEB_ORIGIN` paths (`/dashboard/seller/connect`, team flows if applicable).
+- [ ] **Connect** integration profile: platform collects payments → pays sellers (separate charges & transfers); individual payouts; embedded onboarding + Express dashboard fallback.
+- [ ] **Connect → Onboarding**: **GB** enabled; upfront requirements preferred for auction sellers.
+- [ ] **Settings → Branding** and **Connect → Express Dashboard → Branding** (platform name/icon/color).
+- [ ] **Connect → Emails**: requirement URLs point to in-app Connect surfaces:
+  - Individuals: `https://lax.bid/dashboard/seller/connect`
+  - Organisations: `https://lax.bid/dashboard/organisations` (entity connect tab)
+- [ ] **Restricted API key** scoped to **Account Sessions** write (optional; platform secret key also works).
 - [ ] All four destinations send **Test** events → API returns `200` with `{ ok: true }`.
 - [ ] **Restricted keys** or live secret key stored only in secrets manager / Terraform, not in repo.
 
@@ -25,7 +31,7 @@ Optional (subscribe only if you add handlers later): `account.application.deauth
 | Variable | Purpose |
 |----------|---------|
 | `STRIPE_SECRET_KEY` | Live secret (`sk_live_…`) |
-| `STRIPE_PUBLISHABLE_KEY` | Live publishable (`pk_live_…`) |
+| `STRIPE_PUBLISHABLE_KEY` | Live publishable (`pk_live_…`) — API + web (embedded Connect.js bootstrap) |
 | `VERIFF_API_KEY` | Veriff Live integration API key |
 | `VERIFF_SHARED_SECRET` | Veriff Live integration shared secret (webhook HMAC) |
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | Connect (Connected accounts) destination |
@@ -50,14 +56,20 @@ Optional (subscribe only if you add handlers later): `account.application.deauth
 - [ ] Veriff decision webhook → `user.kyc_status=approved`, `processed_webhook_events` row `source=veriff_decision`.
 - [ ] Replay decision from Veriff portal → idempotent (no duplicate marketing outbox / retry increment).
 
-### Connect onboarding
+### Connect onboarding (embedded components)
 
+- [ ] `GET /stripe-connect/client-config` returns `{ publishableKey, connectEnforced }`.
 - [ ] `POST /stripe-connect/account` (individual) → same account id on second call (idempotency).
-- [ ] Onboarding link → Express complete → `account.updated` updates entity, may set `status=approved`.
+- [ ] New Express accounts are created with `controller.fees.payer=application`, `controller.losses.payments=application`, and `transfers` capability only — **existing `acct_*` IDs in DB are not retrofitted** (Stripe Express controller settings are immutable after creation).
+- [ ] `POST /stripe-connect/account-session` returns `clientSecret` for owner/admin (onboarding + management + notification_banner).
+- [ ] Embedded onboarding on `/dashboard/seller/connect` completes without leaving LAX; `onExit` → `POST /stripe-connect/sync` → requirements clear.
 - [ ] `GET /stripe-connect/status` live-syncs from Stripe (`accounts.retrieve`) when configured — not cache-only.
+- [ ] Org wizard connect step embeds onboarding; auto-advances only after sync confirms payout-ready.
 - [ ] Org admin **approve** when Connect already complete during onboarding → entity promotes to `approved` without waiting for a new webhook.
 - [ ] Org **submit for review** re-syncs Connect when the connect onboarding step is marked complete.
-- [ ] `POST /stripe-connect/dashboard-link` returns Express login URL.
+- [ ] `POST /stripe-connect/dashboard-link` returns Express login URL (secondary fallback).
+- [ ] `POST /stripe-connect/onboarding-link` still works for ops email recovery.
+- [ ] CSP report-only shows no violations for `js.stripe.com`, `api.stripe.com`, `m.stripe.network` on Connect pages.
 
 ### Buyer payment + refund
 
@@ -85,6 +97,7 @@ Optional (subscribe only if you add handlers later): `account.application.deauth
 
 - [ ] Finance knows how to use **Legal entities → Stripe Connect requirements** admin queue.
 - [ ] Support macro for “Connect incomplete” links sellers to `/dashboard/seller/connect` (individuals) or team onboarding for organisations.
+- [ ] Primary seller/org flows use **embedded Connect** (`ConnectWorkspace`); hosted redirect onboarding is **admin fallback only** (`POST /admin/legal-entities/:id/stripe-connect/onboarding-link`).
 
 ## 5. Cutover sequence
 
