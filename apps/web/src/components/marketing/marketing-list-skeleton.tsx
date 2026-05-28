@@ -1,3 +1,4 @@
+import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { cn } from "@auction/ui";
 
@@ -15,12 +16,7 @@ export function MarketingListSkeleton({ view, count = 9, className }: Props) {
 
   if (view === "list") {
     return (
-      <div
-        className={cn(
-          "-mx-4 max-w-none border-y border-border-hairline bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-border-hairline",
-          className,
-        )}
-      >
+      <div className={cn(MARKETING_CATALOG_LIST_SHELL, className)}>
         <ul className="m-0 list-none divide-y divide-outline-variant/15 p-0 sm:rounded-xl">
           {keys.map((k) => (
             <li key={k} className="flex gap-4 p-4 sm:gap-5 sm:p-5">

@@ -27,7 +27,7 @@ export type MarketingEmptyStateProps = {
 };
 
 const panelShell =
-  "mx-auto max-w-screen-2xl rounded-xl border border-border-hairline bg-surface-container-low/50 px-8 py-12 text-center ring-1 ring-outline-variant/10";
+  "mx-auto max-w-[var(--container-inner,1376px)] rounded-xl border border-border-hairline bg-surface-container-low/50 px-8 py-12 text-center ring-1 ring-outline-variant/10";
 
 const marketingShell =
   "border border-dashed border-outline-variant/30 bg-white py-12 dark:border-outline-variant/30 dark:bg-surface-container-low/40";

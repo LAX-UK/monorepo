@@ -60,4 +60,19 @@ describe("MarketingListToolbar", () => {
     expect(filterSlot?.className).toMatch(/\bflex\b/);
     expect(filterSlot?.className).not.toContain("hidden md:flex");
   });
+
+  it("renders secondaryRow and activeFiltersRow inside the sticky shell", () => {
+    const { container } = render(
+      <MarketingListToolbar
+        countLabel="24 lots"
+        secondaryRow={<span data-testid="secondary-row">Secondary</span>}
+        activeFiltersRow={<span data-testid="active-filters-row">Active</span>}
+      />,
+    );
+
+    const sticky = container.querySelector(".sticky");
+    expect(sticky).not.toBeNull();
+    expect(sticky).toContainElement(screen.getByTestId("secondary-row"));
+    expect(sticky).toContainElement(screen.getByTestId("active-filters-row"));
+  });
 });

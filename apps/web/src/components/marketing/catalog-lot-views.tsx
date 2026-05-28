@@ -1,3 +1,4 @@
+import { CatalogLotEditorialCalmCaption } from "@/components/marketing/catalog-lot-editorial-calm-caption";
 import { LotCardEditorialCalm, LotCardGrid, LotCardList } from "@/components/marketing/lot-card";
 import { CatalogLotQuickLookCorner } from "@/components/marketing/lot-quick-look/catalog-lot-quick-look-corner";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
@@ -8,6 +9,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
 import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotPath } from "@/lib/seo/url";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
@@ -167,8 +169,11 @@ export function CatalogLotCardView({
               href={resolveLotHref(a, catalogLinkParams)}
               topRight={
                 <div className="flex flex-col items-end gap-2">
-                  {owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
+                  {owned ? (
+                    <OwnerBadge key="owner-badge" owned className="pointer-events-auto" />
+                  ) : null}
                   <LotWatchlistHeart
+                    key="watchlist"
                     lot={a}
                     isAuthenticated={isAuthenticated}
                     watchedLotIds={watchedLotIds}
@@ -185,29 +190,12 @@ export function CatalogLotCardView({
                 label: "Lot artwork",
               }}
               title={
-                <h2 className="font-headline text-2xl font-light leading-tight text-on-surface group-hover:text-primary">
-                  {a.title}
-                </h2>
-              }
-              description={
-                <>
-                  {subtitle ? (
-                    <p className="font-body text-sm text-on-surface-variant">{subtitle}</p>
-                  ) : null}
-                  <LotStatusOverlay lot={a} />
-                </>
-              }
-              footer={
-                <div className="flex flex-wrap items-baseline justify-between gap-4 pt-2">
-                  <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
-                    {formatMoney(a.currentPrice)}
-                  </p>
-                  {est ? (
-                    <p className="font-label text-[length:var(--text-label-2)] uppercase tracking-wider text-on-surface-variant">
-                      Est. {est}
-                    </p>
-                  ) : null}
-                </div>
+                <CatalogLotEditorialCalmCaption
+                  lot={a}
+                  title={a.title}
+                  subtitle={subtitle}
+                  estimate={est}
+                />
               }
             />
           </li>
@@ -226,7 +214,7 @@ export function CatalogLotListView({
   catalogLinkParams,
 }: CatalogLotViewsProps) {
   return (
-    <div className="-mx-4 max-w-none border-y border-border-hairline bg-surface-container-lowest sm:mx-auto sm:max-w-screen-2xl sm:rounded-xl sm:border sm:border-border-hairline">
+    <div className={MARKETING_CATALOG_LIST_SHELL}>
       <ul className="divide-y divide-outline-variant/15 sm:rounded-xl">
         {lots.map((a) => {
           const img = a.images[0];

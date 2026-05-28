@@ -50,4 +50,19 @@ describe("ArchivePageToolbar", () => {
     render(<ArchivePageToolbar {...baseProps} />);
     expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
   });
+
+  it("keeps desktop filter rows and active chips inside the sticky shell", () => {
+    const { container } = render(
+      <ArchivePageToolbar
+        {...baseProps}
+        query={{ endYear: 2024, categoryId: "cat-1", sortMode: "recent" }}
+      />,
+    );
+
+    const sticky = container.querySelector(".sticky");
+    expect(sticky).not.toBeNull();
+    expect(sticky).toContainElement(screen.getByLabelText("Active filters"));
+    expect(sticky).toContainElement(screen.getByLabelText("Lot year"));
+    expect(sticky).toContainElement(screen.getByLabelText("Medium"));
+  });
 });

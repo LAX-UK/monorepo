@@ -16,6 +16,10 @@ export type MarketingListToolbarProps = {
   mobileFilterTrigger?: ReactNode;
   /** When true, trailing controls move to a second row on mobile (use sparingly). */
   stackTrailingOnMobile?: boolean;
+  /** Full-width row below the primary toolbar (e.g. archive year + medium chips). */
+  secondaryRow?: ReactNode;
+  /** Full-width removable active filter chips inside the sticky shell. */
+  activeFiltersRow?: ReactNode;
   className?: string;
 };
 
@@ -27,6 +31,8 @@ export function MarketingListToolbar({
   trailing,
   mobileFilterTrigger,
   stackTrailingOnMobile = false,
+  secondaryRow,
+  activeFiltersRow,
   className,
 }: MarketingListToolbarProps) {
   const stackTrailing = stackTrailingOnMobile && Boolean(mobileFilterTrigger && trailing);
@@ -75,7 +81,7 @@ export function MarketingListToolbar({
           )}
         >
           <div className="flex flex-col gap-2 md:gap-0">
-            <div className="flex min-w-0 h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
+            <div className="flex min-w-0 min-h-12 items-center gap-2 md:min-h-14 md:gap-3">
               {countLabel ? <p className={countClassName}>{countLabel}</p> : null}
               {filters ? (
                 <div
@@ -117,6 +123,12 @@ export function MarketingListToolbar({
                 {trailing}
               </div>
             ) : null}
+            {secondaryRow ? (
+              <div className="hidden border-t border-border-hairline/60 pt-2 md:block">
+                {secondaryRow}
+              </div>
+            ) : null}
+            {activeFiltersRow ? <div className="pt-2">{activeFiltersRow}</div> : null}
           </div>
         </div>
       </div>

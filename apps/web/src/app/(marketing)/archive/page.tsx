@@ -15,6 +15,7 @@ import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/data/ht
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
+import { archiveLotLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
@@ -165,7 +166,12 @@ export default async function ArchivePage({ searchParams }: PageProps) {
         {items.length === 0 ? (
           <PastAuctionsEmpty hasActiveFilters={hasActiveFilters} layoutView={layoutView} />
         ) : (
-          <CatalogArchiveView view={layoutView} items={items} currentUserId={currentUserId} />
+          <CatalogArchiveView
+            view={layoutView}
+            items={items}
+            currentUserId={currentUserId}
+            catalogLinkParams={archiveLotLinkParams(layoutView)}
+          />
         )}
 
         <Suspense fallback={null}>

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  archiveCatalogBackHref,
+  archiveLotLinkParams,
   artistDirectoryBackHref,
   artistProfileHref,
+  catalogLotLinkParamsFromSearchParams,
   catalogViewCarryParams,
+  lotCatalogBackHref,
+  lotCatalogBackLabel,
   lotCatalogHref,
   saleCatalogBackHref,
   saleroomLotLinkParams,
@@ -92,5 +97,31 @@ describe("view persistence matrix", () => {
   it("home urgency → lot preserves list view", () => {
     const href = lotCatalogHref(lot, catalogViewCarryParams("list"));
     expect(href).toContain("view=list");
+  });
+
+  it("archive → lot carries archive context and list view", () => {
+    const href = lotCatalogHref(lot, archiveLotLinkParams("list"));
+    expect(href).toBe("/lot/blue-period/lot-1?from=archive&view=list");
+  });
+
+  it("intra-sale next lot preserves saleroom filters", () => {
+    const params = catalogLotLinkParamsFromSearchParams({
+      from: "sale",
+      view: "list",
+      status: "live",
+    });
+    expect(lotCatalogHref(lot, params)).toBe(
+      "/lot/blue-period/lot-1?from=sale&view=list&status=live",
+    );
+  });
+
+  it("lot back restores archive list view", () => {
+    expect(archiveCatalogBackHref({ from: "archive", view: "list" })).toBe("/archive?view=list");
+  });
+
+  it("lot back label reflects origin", () => {
+    expect(lotCatalogBackLabel({ from: "archive" })).toBe("Back to archive");
+    expect(lotCatalogBackLabel({ from: "sale" }, { id: "s1", title: "Sale" })).toBe("Back to sale");
+    expect(lotCatalogBackHref({ view: "list" })).toBe("/search?view=list");
   });
 });

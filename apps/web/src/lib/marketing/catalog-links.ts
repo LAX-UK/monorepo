@@ -44,6 +44,81 @@ export function catalogViewCarryParams(
   return { view: String(view) };
 }
 
+/** Params to carry when linking from archive to lot detail. */
+export function archiveLotLinkParams(layoutView: CatalogLayoutView): CatalogLinkParams {
+  const params: CatalogLinkParams = { from: "archive" };
+  if (layoutView !== "grid") params.view = layoutView;
+  return params;
+}
+
+/** Back link to archive with preserved view. */
+export function archiveCatalogBackHref(
+  searchParams: Record<string, string | string[] | undefined>,
+): string {
+  const view = firstString(searchParams.view);
+  return mergeCatalogQueryParams("/archive", view && view !== "grid" ? { view } : undefined);
+}
+
+/** Back link to search with preserved view. */
+export function searchCatalogBackHref(
+  searchParams: Record<string, string | string[] | undefined>,
+): string {
+  const view = firstString(searchParams.view);
+  return mergeCatalogQueryParams("/search", view && view !== "grid" ? { view } : undefined);
+}
+
+function parseSaleroomStatusFilter(raw: string | undefined): "live" | "upcoming" | "ended" | null {
+  if (raw === "live" || raw === "upcoming" || raw === "ended") return raw;
+  return null;
+}
+
+/** Resolve lot link carry params from lot detail query string. */
+export function catalogLotLinkParamsFromSearchParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): CatalogLinkParams | undefined {
+  const from = firstString(searchParams.from);
+  const viewRaw = firstString(searchParams.view);
+  const layoutView = (
+    viewRaw === "list" || viewRaw === "grid" || viewRaw === "card" ? viewRaw : "grid"
+  ) as CatalogLayoutView;
+
+  if (from === "sale") {
+    return saleroomLotLinkParams(
+      layoutView,
+      parseSaleroomStatusFilter(firstString(searchParams.status)),
+    );
+  }
+  if (from === "archive") {
+    return archiveLotLinkParams(layoutView);
+  }
+  return catalogViewCarryParams(layoutView);
+}
+
+/** Mobile back label from lot detail query string. */
+export function lotCatalogBackLabel(
+  searchParams: Record<string, string | string[] | undefined>,
+  sale?: SaleUrlFields | null,
+): string {
+  const from = firstString(searchParams.from);
+  if (sale && (from === "sale" || !from)) return "Back to sale";
+  if (from === "archive") return "Back to archive";
+  return "Back to catalogue";
+}
+
+/** Mobile back href from lot detail query string. */
+export function lotCatalogBackHref(
+  searchParams: Record<string, string | string[] | undefined>,
+  sale?: SaleUrlFields | null,
+): string {
+  const from = firstString(searchParams.from);
+  if (sale && (from === "sale" || !from)) {
+    return saleCatalogBackHref(sale, searchParams);
+  }
+  if (from === "archive") return archiveCatalogBackHref(searchParams);
+  if (from === "search") return searchCatalogBackHref(searchParams);
+  return searchCatalogBackHref(searchParams);
+}
+
 /** Params to carry when linking from a saleroom catalogue to lot detail. */
 export function saleroomLotLinkParams(
   layoutView: CatalogLayoutView,

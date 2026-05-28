@@ -16,3 +16,7 @@ export const MARKETING_CATALOG_GUTTER = MARKETING_PAGE_GUTTER;
 
 /** Top padding for catalogue hubs with sticky toolbars (aligns with site header). */
 export const MARKETING_CATALOG_PT = "pt-[var(--header-height)]";
+
+/** Shared list-view band shell (search, archive, catalogue list). */
+export const MARKETING_CATALOG_LIST_SHELL =
+  "mx-auto max-w-[var(--container-inner,1376px)] border-y border-border-hairline bg-surface-container-lowest sm:rounded-xl sm:border sm:border-border-hairline";
