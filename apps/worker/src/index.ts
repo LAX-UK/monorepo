@@ -1,3 +1,4 @@
+import { createExportProviderDeps } from "@auction/api/exports";
 import { createDb } from "@auction/db";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import {
@@ -9,8 +10,8 @@ import {
 } from "@auction/marketing-events";
 import { captureBackgroundError, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import {
-  DEAD_LETTER_QUEUE_NAME,
   DATA_EXPORT_QUEUE_NAME,
+  DEAD_LETTER_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
   GC_PENDING_UPLOADS_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
@@ -33,9 +34,10 @@ import {
   listWorkerHeartbeatKeys,
   registerDlqHandlers,
 } from "@auction/queues";
+import type { DataExportJobPayload } from "@auction/queues";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
-import { Queue, Worker, type Job } from "bullmq";
+import { type Job, Queue, Worker } from "bullmq";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { Redis } from "ioredis";
@@ -44,10 +46,7 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
 import { runBulkPayoutSettlementJob } from "./jobs/bulk-payout-settlement.js";
-import { createExportProviderDeps } from "@auction/api/exports";
-import type { DataExportJobPayload } from "@auction/queues";
 import { dataExportJob } from "./jobs/data-export.js";
-import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import {
   type GeneratePayoutStatementJobData,
   generatePayoutStatementJob,
@@ -61,6 +60,7 @@ import {
   processMarketingEventJob,
   runMarketingEventOutboxPoller,
 } from "./jobs/marketing-event-processor.js";
+import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
 import { purgeSoftDeletedUsers } from "./jobs/purge-soft-deleted-users.js";
 import { purgeStaleMarketingClickIds } from "./jobs/purge-stale-marketing-click-ids.js";
@@ -471,10 +471,7 @@ const payoutStatementWorker = new Worker<PayoutStatementJobData>(
 payoutStatementWorker.on("completed", () => void heartbeat("payout-statements"));
 
 const exportProviderDeps = createExportProviderDeps(db);
-const dataExportQueue = new Queue(
-  DATA_EXPORT_QUEUE_NAME,
-  queueOpts(DATA_EXPORT_QUEUE_NAME),
-);
+const dataExportQueue = new Queue(DATA_EXPORT_QUEUE_NAME, queueOpts(DATA_EXPORT_QUEUE_NAME));
 const dataExportWorker = new Worker(
   DATA_EXPORT_QUEUE_NAME,
   async (job) => {

@@ -45,8 +45,7 @@ export function ExportConfirmSheet({
 }: Props) {
   const asyncThreshold = syncMaxRows ?? 5000;
   const runsInBackground =
-    forceAsync === true ||
-    (estimatedRows != null && estimatedRows > asyncThreshold);
+    forceAsync === true || (estimatedRows != null && estimatedRows > asyncThreshold);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -81,7 +80,12 @@ export function ExportConfirmSheet({
           )}
         </div>
         <SheetFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button type="button" onClick={onConfirm} disabled={loading || previewLoading}>

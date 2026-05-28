@@ -139,7 +139,6 @@ import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
-import { ExportService } from "./services/export/export.service.js";
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
 import { BullMQQueueInspector } from "./services/admin/queue-inspector.service.js";
 import { BullMQQueueMutator } from "./services/admin/queue-mutator.service.js";
@@ -159,6 +158,7 @@ import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
 import { EntityDocumentService } from "./services/entity-document.service.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
+import { ExportService } from "./services/export/export.service.js";
 import { ImageCleanupService } from "./services/image-cleanup.service.js";
 import { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
 import { ImpersonationSessionService } from "./services/impersonation-session.service.js";

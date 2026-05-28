@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError } from "../lib/errors.js";
 import { resolveIncludePii } from "./auth.js";
-import { createExportProviders, type ExportProviderDeps } from "./registry.js";
+import { type ExportProviderDeps, createExportProviders } from "./registry.js";
 
 function baseDeps(overrides: Partial<ExportProviderDeps> = {}): ExportProviderDeps {
   return {
@@ -69,10 +69,7 @@ describe("createExportProviders", () => {
     const providers = createExportProviders(deps);
     const payments = providers.get("payments");
     expect(() =>
-      payments?.authorize(
-        { userId: "u1", userRole: "staff", userStaffRole: "finance_ops" },
-        {},
-      ),
+      payments?.authorize({ userId: "u1", userRole: "staff", userStaffRole: "finance_ops" }, {}),
     ).not.toThrow();
   });
 
@@ -165,8 +162,10 @@ describe("createExportProviders", () => {
     const deps = baseDeps();
     const providers = createExportProviders(deps);
     const analytics = providers.get("analytics");
+    expect(analytics).toBeDefined();
+    if (!analytics) return;
     const rows: Array<Record<string, string>> = [];
-    for await (const row of analytics!.streamRows(
+    for await (const row of analytics.streamRows(
       { userId: "u1", userRole: "staff", userStaffRole: "super_admin" },
       { days: 30, series: "revenue" },
     )) {
@@ -201,8 +200,10 @@ describe("createExportProviders", () => {
     });
     const providers = createExportProviders(deps);
     const payouts = providers.get("payouts");
+    expect(payouts).toBeDefined();
+    if (!payouts) return;
     const rows: Array<Record<string, string>> = [];
-    for await (const row of payouts!.streamRows(
+    for await (const row of payouts.streamRows(
       { userId: "u1", userRole: "client", userStaffRole: null },
       { legalEntityId: "11111111-1111-4111-8111-111111111111" },
     )) {
