@@ -3,6 +3,7 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav";
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
+import type { SessionUser } from "@/lib/data/contracts";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -15,7 +16,7 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 /** Mobile bottom tab bar driven by ShellConfig.mobileNav (lg:hidden). */
-export function BottomTabBar() {
+export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email" | "image"> }) {
   const config = useShellConfig();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -100,6 +101,7 @@ export function BottomTabBar() {
           variant={moreSheetVariant}
           clientWorkspaceMode={workspace}
           items={moreItems}
+          user={user}
         />
       ) : null}
     </>

@@ -8,11 +8,12 @@ import {
   getStaffNavGroups,
   getStaffNavItems,
 } from "@/components/layout/staff-nav";
+import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { LegalEntitySummary, UserRole, UserStaffRole } from "@auction/types";
 import type { ReactNode } from "react";
 import type { ShellConfig } from "./contracts";
 import { appShellNavItemsToNavItems, staffNavGroupsToNavEntries } from "./nav-adapters";
@@ -31,6 +32,11 @@ export type BuildShellConfigInput = {
   pendingArtistCount?: number;
   navCounts?: AdminNavCounts;
   orgModuleEnabled?: boolean;
+  mobileHeader?: {
+    acting: LegalEntitySummary | null;
+    actingContext: ActingContext;
+    userDisplayName?: string;
+  };
 };
 
 export function buildShellConfig({
@@ -47,6 +53,7 @@ export function buildShellConfig({
   pendingArtistCount = 0,
   navCounts,
   orgModuleEnabled = true,
+  mobileHeader,
 }: BuildShellConfigInput): ShellConfig {
   const navItems = getAppShellNavItems(
     role,
@@ -117,5 +124,6 @@ export function buildShellConfig({
     ...(role === "client" ? { clientWorkspaceMode } : {}),
     pendingSubmissionCount,
     pendingArtistCount,
+    ...(mobileHeader ? { mobileHeader } : {}),
   };
 }

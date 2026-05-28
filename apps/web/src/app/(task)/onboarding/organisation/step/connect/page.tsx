@@ -1,4 +1,5 @@
 import { OrgConnectStepClient } from "@/app/(task)/onboarding/organisation/step/connect/org-connect-step-client";
+import { redirectIfOrgOnboardingStepBlocked } from "@/lib/data/http/org-onboarding-step-guard.server";
 import {
   getServerStripeConnectClientConfig,
   getServerStripeConnectStatus,
@@ -16,6 +17,7 @@ export default async function OrgOnboardingConnectStepPage({
   const fresh = sp.fresh === "1";
   const entityId = fresh ? undefined : sp.entityId;
   if (!entityId) redirect("/onboarding/organisation/step/type");
+  await redirectIfOrgOnboardingStepBlocked(entityId, "connect");
 
   const hub = createOrganisationHubGateway();
   const entity = await hub.getEntityDetail(entityId).catch(() => null);

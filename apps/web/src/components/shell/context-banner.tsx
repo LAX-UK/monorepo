@@ -24,7 +24,12 @@ export function ContextBanner({ acting, className, children }: ContextBannerProp
   }
 
   return (
-    <Alert className={cn("border-primary/30 bg-primary-container/20 text-on-surface", className)}>
+    <Alert
+      className={cn(
+        "hidden border-primary/30 bg-primary-container/20 text-on-surface lg:flex",
+        className,
+      )}
+    >
       <Building2 className="size-4" aria-hidden />
       <AlertTitle className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
         Acting as organisation

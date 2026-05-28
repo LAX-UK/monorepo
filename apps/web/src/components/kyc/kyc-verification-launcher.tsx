@@ -1,6 +1,7 @@
 "use client";
 
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
+import { mapKycSessionStartError } from "@/lib/kyc/kyc-session-errors";
 import { Button } from "@auction/ui/components/button";
 import { MESSAGES, createVeriffFrame } from "@veriff/incontext-sdk";
 import { useRouter } from "next/navigation";
@@ -101,11 +102,7 @@ export function KycVerificationLauncher({
     const result = await onStartSession(returnUrl);
     if (!result.ok) {
       setPhaseAndNotify(kycInitialPhase(kycSummary));
-      setError(
-        typeof result.error === "string"
-          ? result.error
-          : "Could not start verification. Please try again.",
-      );
+      setError(mapKycSessionStartError(result.error, 400));
       return;
     }
 

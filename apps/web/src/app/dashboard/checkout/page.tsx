@@ -6,16 +6,15 @@ import {
 } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
+import { CheckoutBasketPanel } from "@/components/sections/checkout/checkout-basket-panel";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
-import { lotPath } from "@/lib/seo/url";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import { Surface } from "@auction/ui/components/surface";
-import { ArrowRight, Gavel, ShoppingBag } from "lucide-react";
+import { Gavel, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -187,7 +186,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           <KpiRow
             variant="hero"
             columns={4}
-            className="xl:grid-cols-1"
+            className="hidden lg:grid xl:grid-cols-1"
             aria-label="Basket total"
             tiles={[
               {
@@ -199,54 +198,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
               },
             ]}
           />
-          <Surface variant="section" padding="md" className="mt-4">
-            <div className="space-y-5">
-              <header className="flex items-center gap-3">
-                <ShoppingBag className="size-5 text-primary" aria-hidden />
-                <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-                  Basket
-                </p>
-              </header>
-              <ul className="divide-y divide-outline-variant/15">
-                {rows.map((row) => (
-                  <li key={row.lot.id} className="flex flex-wrap items-center gap-3 py-4">
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={lotPath(row.lot)}
-                        className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                      >
-                        {row.lot.title}
-                      </Link>
-                      <p className="text-xs text-on-surface-variant">
-                        Hammer {formatMoney(row.hammer.toFixed(2))} · Premium{" "}
-                        {row.premiumPercentLabel} ({formatMoney(row.premium.toFixed(2))})
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                        Lot total
-                      </p>
-                      <p className="font-headline text-base tabular-nums text-on-surface">
-                        {formatMoney(row.total.toFixed(2))}
-                      </p>
-                    </div>
-                    <Button variant="secondaryOutline" asChild>
-                      <Link
-                        href={`/dashboard/checkout/${row.lot.id}`}
-                        className="inline-flex items-center gap-2"
-                      >
-                        Pay this lot <ArrowRight className="size-4" aria-hidden />
-                      </Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-              <p className="font-body text-xs text-on-surface-variant">
-                We invoice and settle each lot individually for now. When finance enables basket
-                invoicing, payment will consolidate into a single Xero invoice from this screen.
-              </p>
-            </div>
-          </Surface>
+          <CheckoutBasketPanel rows={rows} grandTotal={grandTotal} />
         </DashboardSection>
       ) : null}
     </DashboardPage>

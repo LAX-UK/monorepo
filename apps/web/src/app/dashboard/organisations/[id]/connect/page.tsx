@@ -1,4 +1,5 @@
 import { ConnectWorkspace } from "@/components/connect/connect-workspace";
+import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   getServerStripeConnectClientConfig,
@@ -30,10 +31,12 @@ export default async function OrganisationConnectPage({
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        kicker={<LabelCaps>Payouts</LabelCaps>}
-        heading={<DisplayHeading as="h2">Payout setup</DisplayHeading>}
-      />
+      <OrgTabSectionHeader>
+        <SectionHeader
+          kicker={<LabelCaps>Payouts</LabelCaps>}
+          heading={<DisplayHeading as="h2">Payout setup</DisplayHeading>}
+        />
+      </OrgTabSectionHeader>
       <p className="font-body text-sm text-on-surface-variant">
         Manage bank details and Stripe requirements without leaving LAX.
       </p>

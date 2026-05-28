@@ -11,6 +11,8 @@ export type DashboardPageHeaderProps = Omit<PageHeaderProps, "title"> & {
   hideTitleOnMobile?: boolean;
   /** Hide description below lg to reduce vertical stack on list pages. */
   hideDescriptionOnMobile?: boolean;
+  /** Hide meta eyebrow below lg when shell title already shows parent context. */
+  hideMetaOnMobile?: boolean;
 };
 
 /** Opinionated dashboard page header — single h1 source per page. */
@@ -20,6 +22,7 @@ export function DashboardPageHeader({
   titleScale = "default",
   hideTitleOnMobile = false,
   hideDescriptionOnMobile = false,
+  hideMetaOnMobile = false,
   className,
   description,
   breadcrumbs,
@@ -53,16 +56,18 @@ export function DashboardPageHeader({
             {breadcrumbs}
           </div>
         ) : null}
-        {metaNode ? <div className="mb-2 text-on-surface-variant">{metaNode}</div> : null}
-        <h1
-          className={cn(
-            titleClass,
-            hideTitleOnMobile &&
-              "sr-only lg:not-sr-only lg:static lg:h-auto lg:w-auto lg:overflow-visible lg:clip-auto lg:whitespace-normal",
-          )}
-        >
-          {title}
-        </h1>
+        {metaNode ? (
+          <div
+            className={cn("mb-2 text-on-surface-variant", hideMetaOnMobile && "hidden lg:block")}
+          >
+            {metaNode}
+          </div>
+        ) : null}
+        {hideTitleOnMobile ? (
+          <h1 className={cn(titleClass, "hidden lg:block")}>{title}</h1>
+        ) : (
+          <h1 className={titleClass}>{title}</h1>
+        )}
         {description ? (
           <p
             className={cn(

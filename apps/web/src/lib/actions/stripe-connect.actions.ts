@@ -5,6 +5,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
 import { getSiteUrl } from "@/lib/site-url";
+import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 
 export type StripeConnectSessionSurface = "onboarding" | "management";
@@ -26,8 +27,8 @@ export async function ensureStripeConnectAccountAction(
       body: JSON.stringify({ country: "GB" }),
     });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, error: body.error ?? "stripe_connect_failed" };
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "stripe_connect_failed") };
     }
     revalidateConnectPaths(entityId);
     return { ok: true };
@@ -51,10 +52,10 @@ export async function syncStripeConnectAction(
         payoutsEnabled?: boolean;
         requirementsCurrentlyDue?: string[];
       };
-      error?: string;
+      error?: unknown;
     };
     if (!res.ok) {
-      return { ok: false, error: body.error ?? "stripe_sync_failed" };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "stripe_sync_failed") };
     }
     revalidateConnectPaths(entityId);
     return {
@@ -81,10 +82,10 @@ export async function createStripeConnectAccountSessionAction(
     });
     const body = (await res.json().catch(() => ({}))) as {
       data?: { clientSecret?: string };
-      error?: string;
+      error?: unknown;
     };
     if (!res.ok) {
-      return { ok: false, error: body.error ?? "account_session_failed" };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "account_session_failed") };
     }
     const clientSecret = body.data?.clientSecret;
     if (!clientSecret) {
@@ -104,10 +105,10 @@ export async function openStripeDashboardLinkAction(
     });
     const body = (await res.json().catch(() => ({}))) as {
       data?: { url?: string };
-      error?: string;
+      error?: unknown;
     };
     if (!res.ok) {
-      return { ok: false, error: body.error ?? "dashboard_link_failed" };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "dashboard_link_failed") };
     }
     const url = body.data?.url;
     if (!url) return { ok: false, error: "missing_dashboard_url" };
@@ -133,10 +134,10 @@ export async function createStripeConnectOnboardingLinkAction(
     });
     const body = (await res.json().catch(() => ({}))) as {
       data?: { url?: string };
-      error?: string;
+      error?: unknown;
     };
     if (!res.ok) {
-      return { ok: false, error: body.error ?? "stripe_onboarding_failed" };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "stripe_onboarding_failed") };
     }
     const url = body.data?.url;
     if (!url) return { ok: false, error: "missing_onboarding_url" };

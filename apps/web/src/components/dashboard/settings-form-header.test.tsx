@@ -12,8 +12,8 @@ describe("SettingsFormHeader", () => {
     );
 
     const heading = screen.getByRole("heading", { level: 1, name: "Profile" });
-    expect(heading.className).toMatch(/sr-only/);
-    expect(heading.className).toMatch(/lg:not-sr-only/);
+    expect(heading.className).toMatch(/\bhidden\b/);
+    expect(heading.className).toMatch(/\blg:block\b/);
 
     const description = screen.getByText("Update your display name and contact details.");
     expect(description.className).toMatch(/hidden lg:block/);

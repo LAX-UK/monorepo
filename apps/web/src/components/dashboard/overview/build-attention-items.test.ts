@@ -10,6 +10,33 @@ const emptyVm = {
 } as unknown as DashboardOverviewVm;
 
 describe("buildAttentionItems KYC", () => {
+  it("suppresses KYC attention when compliance strip already shows identity", () => {
+    const items = buildAttentionItems({
+      vm: emptyVm,
+      kyc: {
+        status: "pending",
+        verifiedAt: null,
+        latestSessionId: "s1",
+        latestSessionStatus: "processing",
+        feedback: {
+          headline: "In review",
+          detail: null,
+          action: "wait",
+          reasonCode: null,
+          decisionStatus: null,
+          needsResubmit: false,
+        },
+        pendingExposure: { total: 0, currency: "GBP" },
+        thresholdAmount: 1000,
+        thresholdCurrency: "GBP",
+        requiresKyc: false,
+      },
+      orgOnboarding: null,
+      suppressKycAttention: true,
+    });
+    expect(items.some((i) => i.id === "kyc-pending")).toBe(false);
+  });
+
   it("includes pending KYC attention item when truly in review", () => {
     const items = buildAttentionItems({
       vm: emptyVm,

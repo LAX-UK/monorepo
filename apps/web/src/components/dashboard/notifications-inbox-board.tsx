@@ -232,7 +232,7 @@ export function NotificationsInboxBoard({
       ) : (
         <>
           <div className="mt-8">
-            <Surface variant="inset" padding="sm">
+            <Surface variant="inset" padding="sm" className="mb-5">
               <SectionTabsNav
                 variant="underline"
                 ariaLabel="Notification filters"

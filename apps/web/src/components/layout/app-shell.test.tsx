@@ -186,6 +186,36 @@ describe("AppShell", () => {
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
   });
 
+  it("renders personalized overview title when mobile header context is provided", () => {
+    render(
+      <AppShell
+        user={clientUser}
+        config={buildShellConfig({
+          user: clientUser,
+          role: "client",
+          mobileHeader: {
+            acting: {
+              id: "le-1",
+              displayName: "Client User",
+              kind: "individual",
+              subkind: "private_collector",
+              status: "approved",
+              role: "owner",
+              isPrimaryAdmin: true,
+            },
+            actingContext: { kind: "self" },
+            userDisplayName: "Client User",
+          },
+        })}
+      >
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Welcome, Client" })).toBeInTheDocument();
+    expect(screen.getByText(/Client User · Private collector/i)).toBeInTheDocument();
+  });
+
   it("does not render the mobile hamburger and keeps display settings desktop-only", () => {
     render(
       <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>

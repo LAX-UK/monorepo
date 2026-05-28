@@ -18,6 +18,8 @@ export type BuildAttentionItemsOptions = {
   orgModuleEnabled?: boolean;
   /** If true, the urgent first settlement is already shown by ActionRequiredBanner. */
   skipFirstSettlement?: boolean;
+  /** When true, skip KYC items — compliance strip already surfaces identity state. */
+  suppressKycAttention?: boolean;
 };
 
 /** Aggregates attention items for overview hero band and attention panel. */
@@ -27,10 +29,11 @@ export function buildAttentionItems({
   orgOnboarding,
   orgModuleEnabled = true,
   skipFirstSettlement = false,
+  suppressKycAttention = false,
 }: BuildAttentionItemsOptions): AttentionListItem[] {
   const items: AttentionListItem[] = [];
 
-  if (kyc) {
+  if (kyc && !suppressKycAttention) {
     const feedback = resolveKycFeedback(kyc);
     if (kyc.feedback?.needsResubmit) {
       items.push({

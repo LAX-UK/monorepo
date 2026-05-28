@@ -4,9 +4,9 @@ import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
-import { TableScroll } from "@/components/ui/table-scroll";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import type { Bid } from "@auction/types";
+import { EntityList } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -105,6 +105,39 @@ export function AdminLotBidsTable({ lotId, bids, capped = false }: Props) {
   const tableColumns = useMemo(() => columns(), []);
   const high = highestBidAmount(sortedBids);
 
+  const cards = (
+    <ul className="space-y-3 lg:hidden">
+      {sortedBids.map((bid) => (
+        <li
+          key={bid.id}
+          className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4"
+        >
+          <p className="font-medium tabular-nums text-on-surface">
+            {formatMoney(bid.amount)}
+            {bid.isWinning ? (
+              <span className="ml-2 rounded bg-success/10 px-1.5 py-0.5 font-label text-[10px] uppercase text-success">
+                Winning
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            {bid.isAutoBid ? "Auto" : "Manual"}
+            {bid.maxAutoBidAmount ? ` · Max ${formatMoney(bid.maxAutoBidAmount)}` : ""}
+          </p>
+          <p className="mt-1 text-xs text-on-surface-variant">{formatDateTime(bid.createdAt)}</p>
+          {bid.bidderId ? (
+            <Link
+              href={`/admin/clients/${bid.bidderId}`}
+              className="mt-2 inline-block font-mono text-xs text-primary hover:underline"
+            >
+              {bid.bidderId.slice(0, 8)}…
+            </Link>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+
   if (sortedBids.length === 0) {
     return (
       <CatalogDetailTabPanel title="Bids" description="Bid history for this lot.">
@@ -135,14 +168,18 @@ export function AdminLotBidsTable({ lotId, bids, capped = false }: Props) {
             </>
           ) : null}
         </p>
-        <TableScroll>
-          <AdminDataTable
-            ariaLabel="Lot bids"
-            columns={tableColumns}
-            data={sortedBids}
-            getRowId={(b) => b.id}
-          />
-        </TableScroll>
+        <EntityList
+          responsiveMode="auto"
+          table={
+            <AdminDataTable
+              ariaLabel="Lot bids"
+              columns={tableColumns}
+              data={sortedBids}
+              getRowId={(b) => b.id}
+            />
+          }
+          cards={cards}
+        />
         <p className="font-body text-xs text-on-surface-variant">
           <Link href={lotDetailTabHref(lotId, "activity")} className="text-primary hover:underline">
             View bid-related activity in the Activity tab →
