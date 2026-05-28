@@ -6,7 +6,7 @@ export type MarketingFilterSheetProps = Omit<SplitFilterSheetProps, "description
   description?: string;
 };
 
-/** Bottom sheet on mobile, right drawer on `md+` — shared marketing filter surface. */
+/** Bottom sheet on mobile, right drawer on `lg+` — shared marketing filter surface. */
 export function MarketingFilterSheet({
   description = "Refine catalogue results. Changes apply when you confirm.",
   ...props

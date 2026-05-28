@@ -1,10 +1,15 @@
+import { isDashboardListRoute, isDashboardOrgDetailRoute } from "@/lib/dashboard/list-routes";
 import { describe, expect, it } from "vitest";
-import { isDashboardListRoute } from "./list-routes";
 
-describe("isDashboardListRoute", () => {
-  it("matches primary dashboard list pages", () => {
-    expect(isDashboardListRoute("/dashboard/watchlist")).toBe(true);
-    expect(isDashboardListRoute("/dashboard/bids")).toBe(true);
-    expect(isDashboardListRoute("/dashboard/settings/profile")).toBe(false);
+describe("list-routes", () => {
+  it("treats verify-identity and checkout as compact banner routes", () => {
+    expect(isDashboardListRoute("/dashboard/verify-identity")).toBe(true);
+    expect(isDashboardListRoute("/dashboard/checkout")).toBe(true);
+    expect(isDashboardListRoute("/dashboard/checkout/lot-id")).toBe(true);
+  });
+
+  it("detects org detail routes for banner suppression", () => {
+    expect(isDashboardOrgDetailRoute("/dashboard/organisations/abc/members")).toBe(true);
+    expect(isDashboardOrgDetailRoute("/dashboard/organisations")).toBe(false);
   });
 });

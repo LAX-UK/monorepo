@@ -219,6 +219,7 @@
   --header-height-mobile: calc(56px + var(--safe-area-top));
   --header-height-shell: 52px;
   --bottom-nav-height: 64px;
+  --impersonation-banner-height: 3.5rem;
   --shell-gutter-sm: 1rem;
   --shell-gutter-md: 2rem;
   --shell-gutter-lg: 3.5rem;

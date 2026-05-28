@@ -170,6 +170,14 @@ export function buildClientBreadcrumbTrail(
 
   const segments = pathname.split("/").filter(Boolean);
 
+  if (segments[1] === "verify-identity") {
+    return [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Settings", href: "/dashboard/settings" },
+      { label: "Verify identity" },
+    ];
+  }
+
   const orgTrail = buildOrganisationTrail(segments);
   if (orgTrail) return orgTrail;
 

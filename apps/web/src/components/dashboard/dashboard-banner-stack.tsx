@@ -36,6 +36,10 @@ type StackProps = {
   orgModuleEnabled?: boolean;
   maxVisible?: number;
   compactOverflow?: boolean;
+  /** Skip org entity status banner (e.g. org detail layout renders its own). */
+  suppressOrgStatusBanner?: boolean;
+  /** Skip KYC banner on overview when ComplianceStatusStrip covers it. */
+  suppressKycOnOverview?: boolean;
 };
 
 export type DashboardBannerStackProps = StackProps;
@@ -49,10 +53,12 @@ export function DashboardBannerStack({
   orgModuleEnabled = true,
   maxVisible = 2,
   compactOverflow = false,
+  suppressOrgStatusBanner = false,
+  suppressKycOnOverview = false,
 }: StackProps) {
   const candidates: DashboardBannerCandidate[] = [];
 
-  if (kycSummary?.requiresKyc) {
+  if (kycSummary?.requiresKyc && !suppressKycOnOverview) {
     candidates.push({
       id: "kyc",
       priority: DASHBOARD_BANNER_PRIORITIES.kyc,
@@ -68,7 +74,7 @@ export function DashboardBannerStack({
     });
   }
 
-  if (orgModuleEnabled && isEntityStatusBannerVisible(acting)) {
+  if (orgModuleEnabled && !suppressOrgStatusBanner && isEntityStatusBannerVisible(acting)) {
     candidates.push({
       id: "org-status",
       priority: DASHBOARD_BANNER_PRIORITIES.org,

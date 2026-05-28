@@ -1,7 +1,8 @@
 "use client";
 
 import type { BreadcrumbItem } from "@/components/dashboard/primitives/breadcrumbs";
-import { resolveMobileShellTitle } from "@/lib/navigation/mobile-shell-title";
+import { resolveMobileHeaderTitleModel } from "@/lib/navigation/mobile-header-context";
+import type { MobileShellTitleModel } from "@/lib/navigation/mobile-shell-title";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronLeft } from "lucide-react";
@@ -9,12 +10,13 @@ import Link from "next/link";
 
 type Props = {
   items: readonly BreadcrumbItem[];
+  model?: MobileShellTitleModel;
   className?: string;
 };
 
 /** Route-aware mobile page title for AppShell (below lg). */
-export function MobileShellTitle({ items, className }: Props) {
-  const model = resolveMobileShellTitle(items);
+export function MobileShellTitle({ items, model: modelOverride, className }: Props) {
+  const model = modelOverride ?? { title: items[items.length - 1]?.label ?? "Dashboard" };
 
   return (
     <div className={cn("flex min-w-0 flex-1 items-center gap-1", className)}>
@@ -40,7 +42,14 @@ export function MobileShellTitle({ items, className }: Props) {
         <h1 className="truncate font-headline text-base font-semibold leading-tight text-on-surface">
           {model.title}
         </h1>
+        {model.contextLine ? (
+          <p className="truncate font-body text-[11px] leading-tight text-on-surface-variant">
+            {model.contextLine}
+          </p>
+        ) : null}
       </div>
     </div>
   );
 }
+
+export { resolveMobileHeaderTitleModel };

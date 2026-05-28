@@ -11,10 +11,35 @@ import {
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+
+const COUNTRY_OPTIONS = [
+  "United Kingdom",
+  "Ireland",
+  "France",
+  "Germany",
+  "Italy",
+  "Spain",
+  "Netherlands",
+  "Belgium",
+  "Switzerland",
+  "United States",
+  "Canada",
+  "Australia",
+  "United Arab Emirates",
+  "Hong Kong",
+  "Singapore",
+] as const;
 
 type Address = NonNullable<CreateOrganizationInput["primaryAddress"]>;
 
@@ -238,12 +263,21 @@ export function OrgDetailsStepClient({
           </div>
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
-            <Input
-              id="country"
-              value={address.country}
-              onChange={(e) => setAddress({ ...address, country: e.target.value })}
-              required
-            />
+            <Select
+              value={address.country || COUNTRY_OPTIONS[0]}
+              onValueChange={(value) => setAddress({ ...address, country: value })}
+            >
+              <SelectTrigger id="country" className="min-h-11 w-full">
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRY_OPTIONS.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    {country}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </fieldset>

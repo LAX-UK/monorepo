@@ -165,7 +165,7 @@ export function SubmissionsBoard({
 
   return (
     <div className="space-y-6">
-      <Surface variant="inset" padding="sm">
+      <Surface variant="inset" padding="sm" className="mb-5">
         <SectionTabsNav
           variant="underline"
           ariaLabel="Submission status"

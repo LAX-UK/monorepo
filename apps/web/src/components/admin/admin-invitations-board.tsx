@@ -15,7 +15,7 @@ import {
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
 import type { UserRole } from "@auction/types";
-import { Button } from "@auction/ui";
+import { Button, EntityList } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -108,17 +108,80 @@ export function AdminInvitationsBoard({ rows }: { rows: AdminInvitationSummary[]
   const tableColumns = useMemo(() => columns(), []);
   const bulkOperations = useMemo(() => getInvitationBulkOperations(), []);
 
+  const cards = (
+    <ul className="space-y-3 lg:hidden">
+      {rows.map((r) => {
+        const expiresAt = coerceDate(r.expiresAt);
+        const openedAt = r.openedAt ? coerceDate(r.openedAt) : null;
+        const display = invitationLifecycleDisplay({
+          status: r.status,
+          expiresAt,
+          openedAt,
+          inviteEmailLastStatus: r.inviteEmailLastStatus,
+        });
+        const canMutate = invitationCanResendOrRevoke({
+          status: r.status,
+          expiresAt,
+          openedAt,
+          inviteEmailLastStatus: r.inviteEmailLastStatus,
+        });
+        return (
+          <li
+            key={r.id}
+            className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4"
+          >
+            <p className="truncate font-medium text-on-surface">{r.email}</p>
+            <p className="mt-1 text-xs text-on-surface-variant">{roleLabel(r.targetRole)}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {display.kind === "revoked" ? (
+                <AdminStatusBadge domain="invitation" status="revoked" />
+              ) : (
+                <AdminStatusBadge domain="inviteLifecycle" status={display.pill} size="sm" />
+              )}
+              <InvitationExpiryCountdown
+                expiresAt={expiresAt}
+                active={r.status === "pending" && expiresAt.getTime() > Date.now()}
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <form action={adminResendInvitationAction}>
+                <input type="hidden" name="invitationId" value={r.id} />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  disabled={!canMutate}
+                  className="font-label text-[10px] uppercase"
+                >
+                  Resend
+                </Button>
+              </form>
+              <InvitationRevokeButton invitationId={r.id} disabled={!canMutate} />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <div className="space-y-4">
-      <AdminDataTable
-        ariaLabel="Invitations"
-        columns={tableColumns}
-        data={rows}
+      <EntityList
+        responsiveMode="auto"
         density={density}
-        enableRowSelection
-        getRowId={(row) => row.id}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
+        table={
+          <AdminDataTable
+            ariaLabel="Invitations"
+            columns={tableColumns}
+            data={rows}
+            density={density}
+            enableRowSelection
+            getRowId={(row) => row.id}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+          />
+        }
+        cards={cards}
       />
       <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
     </div>

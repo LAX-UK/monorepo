@@ -21,26 +21,47 @@ type Props = {
 
 const DEFAULT_ROLE: LegalEntityMemberRole = "consignor";
 
+function memberRoleLabel(role: LegalEntityMemberRole): string {
+  const labels: Record<LegalEntityMemberRole, string> = {
+    owner: "Owner",
+    admin: "Admin",
+    consignor: "Consignor",
+    finance: "Finance",
+    buyer_agent: "Buyer agent",
+    viewer: "Viewer",
+    specialist: "Specialist",
+    staff: "Staff",
+  };
+  return labels[role];
+}
+
 export function InviteMemberForm({ legalEntityId }: Props) {
   const [pending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<LegalEntityMemberRole>(DEFAULT_ROLE);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setToken(null);
+    setEmailError(null);
+    setSent(false);
+    const trimmed = email.trim();
+    if (!trimmed.includes("@")) {
+      setEmailError("Enter a valid email address.");
+      return;
+    }
     startTransition(async () => {
-      const res = await inviteMemberAction(legalEntityId, email.trim(), role);
+      const res = await inviteMemberAction(legalEntityId, trimmed, role);
       if (!res.ok) {
         setError(res.error);
         return;
       }
       setEmail("");
       setRole(DEFAULT_ROLE);
-      setToken(res.data.invitationToken);
+      setSent(true);
     });
   }
 
@@ -54,10 +75,20 @@ export function InviteMemberForm({ legalEntityId }: Props) {
             id="invite-email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setEmailError(null);
+            }}
             required
             autoComplete="email"
+            aria-invalid={emailError ? true : undefined}
+            aria-describedby={emailError ? "invite-email-error" : undefined}
           />
+          {emailError ? (
+            <p id="invite-email-error" className="text-sm text-destructive">
+              {emailError}
+            </p>
+          ) : null}
         </div>
         <div className="space-y-1">
           <Label htmlFor="invite-role">Role</Label>
@@ -68,7 +99,7 @@ export function InviteMemberForm({ legalEntityId }: Props) {
             <SelectContent>
               {legalEntityMemberRoles.map((r) => (
                 <SelectItem key={r} value={r}>
-                  {r}
+                  {memberRoleLabel(r)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -79,12 +110,11 @@ export function InviteMemberForm({ legalEntityId }: Props) {
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {token && (
-        <p className="text-xs text-on-surface-variant">
-          Invite created. Share this link with the invitee:{" "}
-          <code className="rounded bg-surface-container px-1 py-0.5">/register?invite={token}</code>
+      {sent ? (
+        <p className="rounded-md border border-success/30 bg-success-container/20 px-3 py-2 text-sm text-on-surface">
+          Invitation sent. They will receive an email with instructions to join.
         </p>
-      )}
+      ) : null}
     </form>
   );
 }

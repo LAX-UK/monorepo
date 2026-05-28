@@ -5,6 +5,8 @@ import {
   type BottomChromeState,
   consentOffset,
   isDashboardTabBarRoute,
+  isFixedPayBarRoute,
+  isHideDashboardTabBarRoute,
   isMarketingBidBarRoute,
   pageBottomPadding,
 } from "@/lib/layout/bottom-chrome";
@@ -20,6 +22,8 @@ export function useBottomChromeState(): BottomChromeState {
       consentBannerVisible: showBanner,
       dashboardTabBarActive: isDashboardTabBarRoute(pathname),
       marketingBidBarRoute: isMarketingBidBarRoute(pathname),
+      fixedPayBarRoute: isFixedPayBarRoute(pathname),
+      hideDashboardTabBar: isHideDashboardTabBarRoute(pathname),
     }),
     [pathname, showBanner],
   );

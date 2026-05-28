@@ -1,14 +1,14 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@auction/ui/components/sheet";
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetTitle,
+  BottomSheetTrigger,
+} from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -65,8 +65,8 @@ export function CatalogMobileActionBar({
         </div>
         {trailing ? <div className="flex shrink-0 items-center gap-1">{trailing}</div> : null}
         {overflow.length > 0 ? (
-          <Sheet>
-            <SheetTrigger asChild>
+          <BottomSheet>
+            <BottomSheetTrigger asChild>
               <Button
                 type="button"
                 variant="secondary"
@@ -76,18 +76,18 @@ export function CatalogMobileActionBar({
                 <MoreHorizontal className="size-5" aria-hidden />
                 <span className="sr-only">More actions</span>
               </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="rounded-t-2xl">
-              <SheetHeader>
-                <SheetTitle>Actions</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 flex flex-col gap-2">
+            </BottomSheetTrigger>
+            <BottomSheetContent className="rounded-t-2xl">
+              <BottomSheetHeader className="px-6 pt-0 text-left">
+                <BottomSheetTitle>Actions</BottomSheetTitle>
+              </BottomSheetHeader>
+              <div className="flex flex-col gap-2 px-6 pb-6">
                 {overflow.map((action) => (
                   <CatalogMobileActionButton key={action.id} action={action} className="w-full" />
                 ))}
               </div>
-            </SheetContent>
-          </Sheet>
+            </BottomSheetContent>
+          </BottomSheet>
         ) : null}
       </div>
     </div>

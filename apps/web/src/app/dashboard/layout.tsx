@@ -92,6 +92,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       cookieDensity={cookieDensity}
       hideEmailStatusBanner
       acting={acting}
+      safeActing={safeActing}
       headerRightSlot={
         <ActingAsBanner
           hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
