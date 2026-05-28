@@ -4,3 +4,4 @@ export * from "./redaction.js";
 export * from "./dlq.js";
 export * from "./mutation-policy.js";
 export * from "./queue-options.js";
+export * from "./exports.js";

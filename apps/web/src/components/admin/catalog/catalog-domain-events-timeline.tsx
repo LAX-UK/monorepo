@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportButton } from "@/components/exports/export-button";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
@@ -10,18 +11,35 @@ import { useState } from "react";
 type Props = {
   events: readonly AdminDomainEventRow[];
   emptyMessage?: string;
+  exportFilters?: { aggregateType: string; aggregateId: string };
 };
 
 export function CatalogDomainEventsTimeline({
   events,
   emptyMessage = "No activity recorded yet.",
+  exportFilters,
 }: Props) {
   if (events.length === 0) {
-    return <p className="font-body text-sm text-on-surface-variant">{emptyMessage}</p>;
+    return (
+      <div className="space-y-3">
+        {exportFilters ? (
+          <div className="flex justify-end">
+            <ExportButton entityType="domain-events" filters={exportFilters} />
+          </div>
+        ) : null}
+        <p className="font-body text-sm text-on-surface-variant">{emptyMessage}</p>
+      </div>
+    );
   }
 
   return (
-    <ol className="relative space-y-0 border-l border-border-hairline pl-4">
+    <div className="space-y-3">
+      {exportFilters ? (
+        <div className="flex justify-end">
+          <ExportButton entityType="domain-events" filters={exportFilters} />
+        </div>
+      ) : null}
+      <ol className="relative space-y-0 border-l border-border-hairline pl-4">
       {events.map((event) => (
         <li key={event.id} className="relative pb-6 last:pb-0">
           <span
@@ -51,6 +69,7 @@ export function CatalogDomainEventsTimeline({
         </li>
       ))}
     </ol>
+    </div>
   );
 }
 

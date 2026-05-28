@@ -1,6 +1,6 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListExportLink } from "@/components/admin/admin-list-export-link";
+import { ExportButton } from "@/components/exports/export-button";
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
 import type { AdminLotTableRow } from "@/components/admin/admin-lots-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
@@ -275,7 +275,17 @@ export default async function AdminLotsPage({
           >
             Public catalog
           </Link>
-          <AdminListExportLink />
+          <ExportButton
+            entityType="lots"
+            filters={{
+              ...(query.status ? { status: query.status } : {}),
+              ...(q ? { q } : {}),
+              ...(artistId ? { artistId } : {}),
+              ...(saleId ? { saleId } : {}),
+              ...(categoryId ? { categoryId } : {}),
+              ...(sort ? { sort } : {}),
+            }}
+          />
         </>
       }
       errorAlert={

@@ -50,6 +50,9 @@ importers:
       '@auction/email':
         specifier: workspace:^
         version: link:../../packages/email
+      '@auction/exports':
+        specifier: workspace:*
+        version: link:../../packages/exports
       '@auction/http-headers':
         specifier: workspace:*
         version: link:../../packages/http-headers
@@ -229,6 +232,9 @@ importers:
       '@auction/connect':
         specifier: workspace:*
         version: link:../../packages/connect
+      '@auction/exports':
+        specifier: workspace:*
+        version: link:../../packages/exports
       '@auction/http-headers':
         specifier: workspace:*
         version: link:../../packages/http-headers
@@ -399,12 +405,18 @@ importers:
 
   apps/worker:
     dependencies:
+      '@auction/api':
+        specifier: workspace:*
+        version: link:../api
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@auction/email':
         specifier: workspace:^
         version: link:../../packages/email
+      '@auction/exports':
+        specifier: workspace:*
+        version: link:../../packages/exports
       '@auction/marketing-events':
         specifier: workspace:*
         version: link:../../packages/marketing-events
@@ -655,6 +667,18 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
 
+  packages/exports:
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
   packages/http-headers:
     devDependencies:
       '@auction/config-ts':
@@ -710,6 +734,9 @@ importers:
       '@auction/db':
         specifier: workspace:*
         version: link:../db
+      '@auction/exports':
+        specifier: workspace:*
+        version: link:../exports
       '@auction/observability':
         specifier: workspace:*
         version: link:../observability
