@@ -15,6 +15,8 @@ export function DashboardToolbar({
   filters,
   views,
   actions,
+  searchLandmark,
+  searchLabel,
   ...props
 }: DashboardToolbarProps) {
   const chipRow = chips ?? filters;
@@ -27,6 +29,8 @@ export function DashboardToolbar({
       filters={chipRow ? <div className="min-w-0 flex-1 [&>*]:min-w-0">{chipRow}</div> : undefined}
       views={sortRow ? <div className="shrink-0">{sortRow}</div> : undefined}
       actions={actions}
+      {...(searchLandmark !== undefined ? { searchLandmark } : {})}
+      {...(searchLabel !== undefined ? { searchLabel } : {})}
       className={cn("mb-0 [&_search]:w-full [&_search]:md:max-w-md", className)}
     />
   );

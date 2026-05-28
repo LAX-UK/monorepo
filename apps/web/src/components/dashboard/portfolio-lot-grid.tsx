@@ -106,27 +106,36 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                 </div>
                 <div className="flex-1 pb-2">
                   <div className="grid grid-cols-3 gap-2 rounded-xl border border-border-hairline bg-surface-container-low/45 p-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Hammer
                       </p>
-                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
+                      <p
+                        className="mt-1 truncate font-headline text-sm tabular-nums text-on-surface sm:text-base"
+                        title={row.hammerLabel}
+                      >
                         {row.hammerLabel}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         Premium
                       </p>
-                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
+                      <p
+                        className="mt-1 truncate font-headline text-sm tabular-nums text-on-surface sm:text-base"
+                        title={row.premiumLabel}
+                      >
                         {row.premiumLabel}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
                         {row.dueLabel}
                       </p>
-                      <p className="mt-1 font-headline text-base tabular-nums text-on-surface">
+                      <p
+                        className="mt-1 truncate font-headline text-sm tabular-nums text-on-surface sm:text-base"
+                        title={row.totalLabel}
+                      >
                         {row.totalLabel}
                       </p>
                     </div>

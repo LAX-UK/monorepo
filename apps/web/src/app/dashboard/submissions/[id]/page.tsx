@@ -69,6 +69,7 @@ export default async function SubmissionDetailPage({
     return (
       <DashboardPage className="mx-auto max-w-4xl space-y-8">
         <DashboardDetailHeader
+          compactOnMobile
           track="selling"
           backHref="/dashboard/submissions"
           backLabel="Submissions"
@@ -90,6 +91,7 @@ export default async function SubmissionDetailPage({
   return (
     <DashboardPage className="mx-auto max-w-4xl space-y-8">
       <DashboardDetailHeader
+        compactOnMobile
         track="selling"
         backHref="/dashboard/submissions"
         backLabel="Submissions"

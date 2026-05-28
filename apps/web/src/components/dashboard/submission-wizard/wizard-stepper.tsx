@@ -11,7 +11,7 @@ import {
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
-import { ChevronLeft, ChevronRight, List } from "lucide-react";
+import { List } from "lucide-react";
 import { useState } from "react";
 
 type Props = {
@@ -84,9 +84,9 @@ export function WizardStepper({
   activeIndex,
   maxReachableIndex,
   onStepClick,
-  onPrev,
-  onNext,
-  canGoPrev = false,
+  onNext: _onNext,
+  onPrev: _onPrev,
+  canGoPrev: _canGoPrev = false,
   canGoNext = false,
 }: Props) {
   const [stepsOpen, setStepsOpen] = useState(false);
@@ -96,20 +96,8 @@ export function WizardStepper({
 
   return (
     <nav aria-label="Submission wizard progress" className="mb-6">
-      <div className="sm:hidden">
+      <div className="lg:hidden">
         <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="min-h-11 min-w-11 shrink-0"
-            disabled={!canGoPrev}
-            onClick={onPrev}
-            aria-label="Previous step"
-            data-testid="wizard-step-prev"
-          >
-            <ChevronLeft className="size-5" aria-hidden />
-          </Button>
           <div className="min-w-0 flex-1 px-1">
             <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
               Step {activeIndex + 1} of {WIZARD_STEPS.length}
@@ -151,18 +139,6 @@ export function WizardStepper({
               </ol>
             </BottomSheetContent>
           </BottomSheet>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="min-h-11 min-w-11 shrink-0"
-            disabled={!canGoNext}
-            onClick={onNext}
-            aria-label="Next step"
-            data-testid="wizard-step-next"
-          >
-            <ChevronRight className="size-5" aria-hidden />
-          </Button>
         </div>
         <div
           className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-container-high"
@@ -175,7 +151,7 @@ export function WizardStepper({
         </div>
       </div>
       <TimelineStages
-        className="hidden sm:flex"
+        className="hidden lg:flex"
         stages={WIZARD_STEPS.map((s) => ({ id: s.id, label: s.label }))}
         activeIndex={activeIndex}
       />

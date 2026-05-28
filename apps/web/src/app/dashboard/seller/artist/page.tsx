@@ -2,22 +2,20 @@ import { ArtistChangeRequestForm } from "@/components/dashboard/artist-change-re
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
-/** Read-only seller-facing view of the canonical artist profile.
- *
- * In this auction model the catalogue identity (artist / maker / brand) is
- * an admin-curated entity, decoupled from the consigning user. Sellers do
- * not edit their own artist profile here — the admin team owns the registry
- * end-to-end. We surface a structured "Request changes" form that drafts a
- * curated email to the catalogue team so the seller knows exactly what
- * information we need to action the change. */
-export default function SellerArtistProfilePage() {
+/** Read-only seller-facing view of the canonical artist profile. */
+export default async function SellerArtistProfilePage() {
+  const workspaceMeta = await readClientWorkspacePageMeta();
+
   return (
     <DashboardPage>
       <DashboardPageHeader
-        meta="Selling"
+        meta={workspaceMeta}
         title="Artist profile"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Your catalogue artist profile is managed by the admin team."
       />
       <Alert>

@@ -4,6 +4,7 @@ import {
   getRouteLabel,
   getRouteParentLabel,
 } from "@/components/layout/app-shell-nav";
+import { settingsSectionLabel } from "@/lib/navigation/settings-section-labels";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 
 const CLIENT_SEGMENT_LABELS: Record<string, string> = {
@@ -18,6 +19,7 @@ const CLIENT_SEGMENT_LABELS: Record<string, string> = {
   payments: "My payments",
   watchlist: "Watchlist",
   bids: "My Bids",
+  "artist-follow": "Followed artists",
   notifications: "Notifications",
 };
 
@@ -29,7 +31,7 @@ function inferClientParentHref(pathname: string): string | undefined {
   if (!section) return "/dashboard";
 
   if (section === "settings" && segments.length > 2) {
-    return "/dashboard/settings/profile";
+    return "/dashboard/settings";
   }
   if (section === "organisations" && segments.length > 2) {
     return "/dashboard/organisations";
@@ -57,9 +59,19 @@ function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceM
   if (section === "organisations" && segments.length === 3) return "Organisation";
   if (section === "checkout" && segments.length === 3) return "Checkout";
   if (section === "submissions" && segments.length === 3) return "Submission";
+  if (section === "seller" && segments.length === 3) {
+    const sellerLeaf: Record<string, string> = {
+      connect: "Payout setup",
+      payouts: "Sold & payouts",
+      "in-sale": "Items in sale",
+      artist: "Artist profile",
+    };
+    const sub = segments[2] ?? "";
+    if (sellerLeaf[sub]) return sellerLeaf[sub];
+  }
   if (section === "settings" && segments.length >= 3) {
-    const leaf = segments[segments.length - 1] ?? "Settings";
-    return leaf.replace(/-/g, " ");
+    const leaf = segments[segments.length - 1] ?? "settings";
+    return settingsSectionLabel(leaf);
   }
 
   const fromNav = getRouteLabel(pathname, "client", workspace);

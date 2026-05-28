@@ -30,4 +30,28 @@ describe("buildClientBreadcrumbTrail", () => {
     const trail = buildClientBreadcrumbTrail("/dashboard/checkout/lot-abc");
     expect(trail.map((i) => i.label)).toEqual(["Dashboard", "Collection", "Checkout"]);
   });
+
+  it("title-cases settings leaf segments", () => {
+    expect(buildClientBreadcrumbTrail("/dashboard/settings/security/two-factor")).toEqual([
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Settings", href: "/dashboard/settings" },
+      { label: "Two-factor authentication" },
+    ]);
+  });
+
+  it("labels seller connect and payouts", () => {
+    expect(
+      buildClientBreadcrumbTrail("/dashboard/seller/connect", "selling").map((i) => i.label),
+    ).toEqual(["Dashboard", "Selling", "Payout setup"]);
+    expect(
+      buildClientBreadcrumbTrail("/dashboard/seller/payouts", "selling").map((i) => i.label),
+    ).toEqual(["Dashboard", "Selling", "Sold & payouts"]);
+  });
+
+  it("labels artist-follow route", () => {
+    expect(buildClientBreadcrumbTrail("/dashboard/artist-follow")).toEqual([
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Followed artists" },
+    ]);
+  });
 });

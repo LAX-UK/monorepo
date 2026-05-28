@@ -1,3 +1,4 @@
+import { kpiCompareHint } from "@/lib/dashboard/kpi-slot-conventions";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { lotTotalMajorUnits } from "@/lib/data/view-models/lot-pricing-helpers";
 import { formatMoney } from "@/lib/format-currency";
@@ -13,7 +14,7 @@ export type AccountEssentialLink = {
 
 export const accountEssentialLinks: readonly AccountEssentialLink[] = [
   { label: "Profile", href: "/dashboard/settings/profile" },
-  { label: "Alerts", href: "/dashboard/settings/notifications" },
+  { label: "Notifications", href: "/dashboard/settings/notifications" },
   { label: "Bidding", href: "/dashboard/settings/bidding" },
   { label: "Artists", href: "/dashboard/artist-follow" },
 ];
@@ -31,8 +32,13 @@ export function settlementStageIndex(row: SettlementRow): number {
 
 export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
   const activeBidsDelta = (() => {
-    if (vm.outbidCount > 0) return `${vm.outbidCount} outbid \u2014 needs attention`;
-    if (vm.kpi.activeBidsCount > 0) return "All positions still leading";
+    if (vm.outbidCount > 0) return `${vm.outbidCount} outbid`;
+    if (vm.kpi.activeBidsCount > 0) return "Leading";
+    return "Ready";
+  })();
+  const activeBidsCompareHint = (() => {
+    if (vm.outbidCount > 0) return "Needs attention";
+    if (vm.kpi.activeBidsCount > 0) return "All positions leading";
     return "Ready to bid";
   })();
   const activeBidsTone: "positive" | "negative" | "neutral" =
@@ -45,14 +51,16 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
           value: vm.kpi.portfolioValueFormatted,
           delta:
             vm.kpi.winRatePercent != null
-              ? `Win rate ${vm.kpi.winRatePercent}%`
+              ? `${vm.kpi.winRatePercent}% win rate`
               : vm.kpi.engagementLabel,
+          ...(vm.kpi.winRatePercent != null ? kpiCompareHint("All time") : {}),
           deltaTone: "neutral",
         }
       : {
           label: "Submissions",
           value: vm.submissionsCount > 0 ? String(vm.submissionsCount) : "\u2014",
-          delta: vm.submissionsCount > 0 ? "Specialist review" : "Submit an item",
+          delta: vm.submissionsCount > 0 ? "In review" : "Submit",
+          ...kpiCompareHint(vm.submissionsCount > 0 ? "Specialist review" : "Submit an item"),
           deltaTone: "neutral",
         };
 
@@ -61,6 +69,7 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
       label: "Active bids",
       value: String(vm.kpi.activeBidsCount),
       delta: activeBidsDelta,
+      ...kpiCompareHint(activeBidsCompareHint),
       deltaTone: activeBidsTone,
       emphasize: true,
     },

@@ -47,7 +47,12 @@ export default async function AcceptInvitationTokenPage({
     };
     return (
       <DashboardPage className="mx-auto max-w-lg space-y-4">
-        <DashboardPageHeader meta="Invitation" title={failure.title} />
+        <DashboardPageHeader
+          meta="Invitation"
+          title={failure.title}
+          hideTitleOnMobile
+          hideDescriptionOnMobile
+        />
         <DashboardSliceErrorAlert failure={failure} />
         <Button asChild variant="outline">
           <Link href={DASHBOARD_ROUTES.invitations}>Back to invitations</Link>
@@ -63,6 +68,8 @@ export default async function AcceptInvitationTokenPage({
       <DashboardPageHeader
         meta="Invitation"
         title="Accept invitation"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Sign in or create an account with the invited email to join this organisation."
       />
       <Surface variant="section" padding="md" className="space-y-4">

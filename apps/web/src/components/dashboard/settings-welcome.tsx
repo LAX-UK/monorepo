@@ -11,7 +11,7 @@ export function SettingsWelcome({ displayName, email }: SettingsWelcomeProps) {
   return (
     <Surface variant="section" padding="md" className="space-y-4">
       <div>
-        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+        <p className="hidden font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant lg:block">
           Settings
         </p>
         <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
