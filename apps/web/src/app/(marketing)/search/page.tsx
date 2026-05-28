@@ -17,7 +17,8 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import {
   parseSearchEnding,
   parseSearchStatus,
@@ -33,6 +34,7 @@ import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
 import { SectionCta } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -221,12 +223,13 @@ export default async function SearchPage({ searchParams }: PageProps) {
       : hasNext
         ? `Show ${filtered.length}+ results`
         : `Show ${filtered.length} results`;
+  const lotCatalogLinkParams = catalogViewCarryParams(layoutView);
 
   return (
     <SearchCatalogPendingProvider>
       <main
         id="main-content"
-        className="bg-surface pb-[var(--page-bottom-padding)] pt-[var(--section-pt)]"
+        className={cn("bg-surface pb-[var(--page-bottom-padding)]", MARKETING_CATALOG_PT)}
       >
         <script type="application/ld+json" suppressHydrationWarning>
           {listLdText}
@@ -345,6 +348,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                     isAuthenticated={isAuthenticated}
                     watchedLotIds={watchedLotIds}
                     loginNextPath={loginNextPath}
+                    {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
                   />
                 </div>
                 <SearchPaginationBar

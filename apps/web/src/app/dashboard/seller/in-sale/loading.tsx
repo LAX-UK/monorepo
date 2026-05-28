@@ -3,8 +3,8 @@ import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-s
 
 export default function SellerInSaleLoading() {
   return (
-    <DashboardPage>
-      <DashboardSkeleton variant="list" />
+    <DashboardPage className="space-y-6">
+      <DashboardSkeleton variant="listWithToolbar" />
     </DashboardPage>
   );
 }

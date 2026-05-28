@@ -1,35 +1,37 @@
+import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketing-catalog-toolbar-skeleton";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
+import { cn } from "@auction/ui";
+
+const pulse = "animate-pulse rounded bg-surface-container-high";
 
 export default async function SaleroomLoading() {
   const view = await readSkeletonView("sales-lot", "grid");
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[var(--container-max,1440px)] bg-surface px-6 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-16"
+      className={cn(
+        "bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background lg:pb-24",
+        MARKETING_CATALOG_PT,
+      )}
       aria-busy="true"
       aria-label="Loading sale"
     >
-      <div className="animate-pulse space-y-10">
-        <div className="aspect-[16/7] w-full rounded bg-surface-container-high" />
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <div className="space-y-3">
-            <div className="h-8 w-2/3 rounded bg-surface-container-high" />
-            <div className="h-4 w-full rounded bg-surface-container-high" />
-            <div className="h-4 w-5/6 rounded bg-surface-container-high" />
-          </div>
-          <div className="space-y-3 rounded border border-border-hairline bg-surface-container-low/40 p-5">
-            <div className="h-4 w-1/2 rounded bg-surface-container-high" />
-            <div className="h-4 w-3/4 rounded bg-surface-container-high" />
-            <div className="h-4 w-2/3 rounded bg-surface-container-high" />
-          </div>
+      <div className={cn(pulse, "h-12 w-full bg-surface-container-high lg:hidden")} aria-hidden />
+
+      <div className={cn(pulse, "aspect-[16/9] w-full min-h-[min(60vh,520px)] bg-brand-900/40")} />
+
+      <section className={cn(MARKETING_PAGE_SHELL, "pt-14")}>
+        <MarketingCatalogToolbarSkeleton showActiveChips />
+        <div className="mt-8">
+          <MarketingListSkeleton
+            view={view}
+            count={8}
+            className="gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          />
         </div>
-        <MarketingListSkeleton
-          view={view}
-          count={8}
-          className="gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        />
-      </div>
+      </section>
     </main>
   );
 }

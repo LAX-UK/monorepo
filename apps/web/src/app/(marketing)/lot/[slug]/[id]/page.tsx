@@ -1,4 +1,5 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
+import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
 import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
@@ -33,15 +34,19 @@ import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
+import { saleCatalogBackHref } from "@/lib/marketing/catalog-links";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function ensureCanonicalLotSlug(slug: string, lot: { id: string; title: string }) {
@@ -56,8 +61,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return metadataForLot(auction);
 }
 
-export default async function ArtworkPage({ params }: PageProps) {
+export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const { id, slug } = await params;
+  const sp = await searchParams;
   const serverNow = Date.now();
   const reader = await getServerLotReader();
   const [auction, session, publicReader] = await Promise.all([
@@ -135,6 +141,7 @@ export default async function ArtworkPage({ params }: PageProps) {
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
   const parentSale = saleBundle ? { id: saleBundle.sale.id, title: saleBundle.sale.title } : null;
+  const saleBackHref = parentSale ? saleCatalogBackHref(parentSale, sp) : null;
   const saleLots = saleBundle?.lots ?? null;
   const sellerName = seller?.name ?? "Private seller";
   const shareUrl = `${getSiteUrl()}${lotPath(auction)}`;
@@ -286,6 +293,11 @@ export default async function ArtworkPage({ params }: PageProps) {
 
   return (
     <main id="main-content" className="pt-[calc(var(--header-height)+8px)]">
+      {saleBackHref ? (
+        <div className={cn(MARKETING_PAGE_SHELL, "pb-2 md:hidden")}>
+          <MarketingMobileBackLink href={saleBackHref} label="Back to sale" />
+        </div>
+      ) : null}
       <ViewItemTracker
         lotId={auction.id}
         title={auction.title}

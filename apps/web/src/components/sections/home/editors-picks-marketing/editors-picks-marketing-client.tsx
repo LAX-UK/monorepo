@@ -3,6 +3,7 @@
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
@@ -114,7 +115,7 @@ export function EditorsPicksMarketingClient({
 
   return (
     <section
-      className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-10 lg:px-14"
+      className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
       aria-labelledby="home-editors-picks-heading"
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">

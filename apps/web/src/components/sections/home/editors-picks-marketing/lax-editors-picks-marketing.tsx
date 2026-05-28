@@ -1,5 +1,6 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { Button } from "@auction/ui";
 import Link from "next/link";
 import { EditorsPicksMarketingClient } from "./editors-picks-marketing-client";
@@ -22,7 +23,7 @@ export function LaxEditorsPicksMarketing({
     return (
       <section
         aria-labelledby="home-editors-picks-heading"
-        className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-10 lg:px-14"
+        className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
       >
         <MarketingEmptyState
           variant="marketing"

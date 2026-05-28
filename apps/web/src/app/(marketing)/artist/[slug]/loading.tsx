@@ -1,8 +1,15 @@
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { cn } from "@auction/ui";
+
 export default function ArtistLoading() {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[var(--container-max,1440px)] bg-surface px-6 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-16"
+      className={cn(
+        "bg-surface pb-[var(--page-bottom-padding)]",
+        MARKETING_CATALOG_PT,
+        MARKETING_PAGE_SHELL,
+      )}
       aria-busy="true"
       aria-label="Loading artist"
     >
