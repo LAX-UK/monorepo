@@ -407,7 +407,7 @@ function PreferencesMatrix({
 }) {
   return (
     <Surface variant="inset" padding="none" className="overflow-hidden shadow-none">
-      <div className="hidden overflow-x-auto md:block">
+      <div className="hidden overflow-x-auto lg:block">
         <table className="w-full min-w-[640px] table-fixed" aria-label="Notification preferences">
           <thead>
             <tr className="border-b border-border-hairline">
@@ -444,7 +444,7 @@ function PreferencesMatrix({
         </table>
       </div>
 
-      <Accordion type="multiple" className="md:hidden">
+      <Accordion type="multiple" className="lg:hidden">
         {events.map((event) => (
           <AccordionItem key={event.id} value={event.id} className="border-border-hairline px-4">
             <AccordionTrigger className="hover:no-underline">

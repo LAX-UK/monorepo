@@ -37,3 +37,9 @@ export function isMarketingBidBarRoute(pathname: string): boolean {
 export function isDashboardTabBarRoute(pathname: string): boolean {
   return pathname.startsWith("/dashboard");
 }
+
+/** Mobile bulk action bar bottom offset when dashboard tab bar is visible. */
+export function bulkBarBottomOffset(dashboardTabBarActive: boolean): string {
+  if (!dashboardTabBarActive) return "0px";
+  return "calc(var(--bottom-nav-height, 64px) + var(--bottom-tab-bar-bottom, 0px))";
+}

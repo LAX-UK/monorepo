@@ -8,7 +8,18 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/layout/header-mega-nav", () => ({
-  HeaderMegaNav: ({ logo }: { logo: React.ReactNode }) => <nav aria-label="Primary">{logo}</nav>,
+  HeaderMegaNav: ({
+    logo,
+    trailing,
+  }: {
+    logo: React.ReactNode;
+    trailing: React.ReactNode;
+  }) => (
+    <nav aria-label="Primary">
+      {logo}
+      {trailing}
+    </nav>
+  ),
 }));
 
 vi.mock("@/components/layout/header-utility-bar", () => ({
@@ -24,7 +35,7 @@ vi.mock("@/components/layout/header-auth-chip", () => ({
 }));
 
 vi.mock("@/components/layout/theme-toggle", () => ({
-  ThemeToggle: () => null,
+  ThemeToggle: () => <button type="button">Switch to dark theme</button>,
 }));
 
 vi.mock("@/components/layout/mobile-nav-drawer", () => ({
@@ -43,5 +54,12 @@ describe("SiteHeader", () => {
     expect(logos).toHaveLength(1);
     expect(logos[0]).toHaveAttribute("src", "/logo.svg");
     expect(logos[0]).toHaveAttribute("loading", "eager");
+  });
+
+  it("keeps theme toggle out of the mobile header bar", () => {
+    render(<SiteHeader />);
+
+    const themeToggle = screen.getByRole("button", { name: /switch to dark theme/i });
+    expect(themeToggle.closest(".hidden")).not.toBeNull();
   });
 });

@@ -11,6 +11,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
@@ -103,12 +104,15 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
   const notice = (sp.notice ?? "").trim();
 
   const grandTotal = rows.reduce((sum, row) => sum + row.total, 0);
+  const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
     <DashboardPage className="space-y-6">
       <DashboardPageHeader
-        meta="Buying"
+        meta={workspaceMeta}
         title="Basket checkout"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Review every lot in your basket. We currently process each lot through its own Xero invoice — basket-level invoicing is on the roadmap with finance."
       />
 

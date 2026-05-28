@@ -215,7 +215,7 @@ export function getClientMobileBottomTabs(
     buying.find((item) => item.id === "overview"),
     buying.find((item) => item.id === "bids"),
     buying.find((item) => item.id === "watchlist"),
-    buying.find((item) => item.id === "notifications"),
+    buying.find((item) => item.id === "portfolio"),
     more,
   ].filter((item): item is AppShellNavItem => item != null);
 }

@@ -1,8 +1,9 @@
 import "server-only";
 
-import { mapKycSessionStartError } from "@/components/kyc/kyc-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { mapKycSessionStartError, normalizeKycReturnUrl } from "@/lib/kyc";
+import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
 import { cache } from "react";
 
 export type { KycStatusSummaryDto };
@@ -19,16 +20,27 @@ export const getServerKycStatusSummary = cache(
 
 export type PostKycSessionResult = { ok: true; url: string } | { ok: false; error: string };
 
+type PostKycSessionOptions = {
+  entityId?: string;
+};
+
 /** Starts hosted KYC (`POST /kyc/session`). */
-export async function postServerKycSession(returnUrl: string): Promise<PostKycSessionResult> {
+export async function postServerKycSession(
+  returnUrl: string,
+  options?: PostKycSessionOptions,
+): Promise<PostKycSessionResult> {
+  const absoluteReturnUrl = normalizeKycReturnUrl(returnUrl);
   const res = await authedServerFetch("/kyc/session", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ returnUrl }),
+    headers: {
+      "Content-Type": "application/json",
+      ...(options?.entityId ? { [X_LEGAL_ENTITY_ID_HEADER]: options.entityId } : {}),
+    },
+    body: JSON.stringify({ returnUrl: absoluteReturnUrl }),
   });
   const body = (await res.json().catch(() => ({}))) as {
     data?: { verificationUrl?: string | null; hostedUrl?: string | null };
-    error?: string;
+    error?: unknown;
   };
   if (!res.ok) {
     return { ok: false, error: mapKycSessionStartError(body.error, res.status) };

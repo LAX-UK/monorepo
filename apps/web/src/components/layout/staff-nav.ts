@@ -405,7 +405,7 @@ export function getStaffMobileBottomTabs(
     pendingArtistCount,
     navCounts,
   ).filter((item) => allowed.has(item.id));
-  if (!financeOnly && !items.some((i) => i.id === "more")) {
+  if (!items.some((i) => i.id === "more")) {
     items.push({
       id: "more",
       href: "#more",

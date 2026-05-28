@@ -1,4 +1,4 @@
-import { DashboardBannerStack } from "@/components/dashboard/dashboard-banner-stack";
+import { DashboardBannerStackClient } from "@/components/dashboard/dashboard-banner-stack-client";
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
 import { ActingAsBanner } from "@/components/layout/acting-as-banner";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
@@ -108,7 +108,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           {layoutWarnings.map((w) => (
             <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
           ))}
-          <DashboardBannerStack
+          <DashboardBannerStackClient
             user={user}
             acting={safeActing}
             kycSummary={kycSummary}

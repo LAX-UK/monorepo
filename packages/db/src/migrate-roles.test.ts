@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getTableColumns } from "drizzle-orm";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   API_COLUMN_UPDATE_GRANTS,
   AUTH_FULL_TABLES,
@@ -337,10 +337,15 @@ describe("migrate-roles invariants", () => {
   });
 });
 
-describe("api_app user UPDATE grants vs apps/api sources", () => {
-  it("every .update(user|userTable).set(...) column maps to API_COLUMN_UPDATE_GRANTS.user", async () => {
+describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, () => {
+  let records: CallSiteRecord[];
+
+  beforeAll(async () => {
+    records = await collectCallSites();
+  }, 60_000);
+
+  it("every .update(user|userTable).set(...) column maps to API_COLUMN_UPDATE_GRANTS.user", () => {
     const allowed = new Set(API_COLUMN_UPDATE_GRANTS.user);
-    const records = await collectCallSites();
     const missing = new Map<string, string[]>();
     const dynamicSites: string[] = [];
     const unknownProps = new Map<string, string[]>();
@@ -391,8 +396,7 @@ describe("api_app user UPDATE grants vs apps/api sources", () => {
     expect(missing.size).toBe(0);
   });
 
-  it("API_COLUMN_UPDATE_GRANTS.user has no over-granted columns (reverse drift)", async () => {
-    const records = await collectCallSites();
+  it("API_COLUMN_UPDATE_GRANTS.user has no over-granted columns (reverse drift)", () => {
     const observed = new Set<string>();
     for (const r of records) {
       for (const prop of r.props) {

@@ -101,7 +101,11 @@ export function KycVerificationLauncher({
     const result = await onStartSession(returnUrl);
     if (!result.ok) {
       setPhaseAndNotify(kycInitialPhase(kycSummary));
-      setError(result.error);
+      setError(
+        typeof result.error === "string"
+          ? result.error
+          : "Could not start verification. Please try again.",
+      );
       return;
     }
 

@@ -6,12 +6,24 @@ export type ToolbarProps = React.HTMLAttributes<HTMLDivElement> & {
   filters?: React.ReactNode;
   views?: React.ReactNode;
   actions?: React.ReactNode;
+  /** When false, search slot renders as div (avoids nested search landmarks). */
+  searchLandmark?: boolean;
+  searchLabel?: string;
 };
 
 /** Unified list/toolbar chrome: search | filters | views | actions.
  * Slots are optional; layout wraps on small screens.
  */
-export function Toolbar({ className, search, filters, views, actions, ...props }: ToolbarProps) {
+export function Toolbar({
+  className,
+  search,
+  filters,
+  views,
+  actions,
+  searchLandmark = true,
+  searchLabel = "Filter list",
+  ...props
+}: ToolbarProps) {
   return (
     <div
       className={cn(
@@ -22,9 +34,13 @@ export function Toolbar({ className, search, filters, views, actions, ...props }
     >
       <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         {search ? (
-          <search className="min-w-0 flex-1 sm:max-w-md" aria-label="Filter list">
-            {search}
-          </search>
+          searchLandmark ? (
+            <search className="min-w-0 flex-1 sm:max-w-md" aria-label={searchLabel}>
+              {search}
+            </search>
+          ) : (
+            <div className="min-w-0 flex-1 sm:max-w-md">{search}</div>
+          )
         ) : null}
         {filters ? <div className="flex flex-wrap items-center gap-2">{filters}</div> : null}
       </div>

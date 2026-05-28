@@ -10,7 +10,7 @@ import {
   kycInitialPhase,
 } from "@/components/kyc";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
-import { getSiteUrl } from "@/lib/site-url";
+import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -44,7 +44,9 @@ export function VerifyIdentityClient({ initialStatus }: Props) {
     router.replace(safeNext);
   }, [initialStatus?.status, router, safeNext]);
 
-  const returnUrl = `${getSiteUrl()}/dashboard/verify-identity?kyc=complete${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`;
+  const returnUrl = normalizeKycReturnUrl(
+    `/dashboard/verify-identity?kyc=complete${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`,
+  );
 
   const onStartSession = useCallback(async (url: string) => startKycVerification(url), []);
 

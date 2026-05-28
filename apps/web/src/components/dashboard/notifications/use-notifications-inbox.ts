@@ -3,6 +3,7 @@
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { NOTIFICATIONS_PAGE_SIZE } from "@/components/dashboard/notifications/notifications-inbox.constants";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
+import { parseUserNotification } from "@/lib/data/http/parse";
 import {
   deleteNotification,
   fetchNotificationsInboxPage,
@@ -50,6 +51,11 @@ type UseNotificationsInboxOptions = {
 
 type BulkResult = { fulfilled: number; rejected: number };
 
+/** Re-parse SSR items so `createdAt` is a Date after the RSC boundary. */
+function hydrateNotifications(items: UserNotification[]): UserNotification[] {
+  return items.map((item) => parseUserNotification(item));
+}
+
 /** Single source of truth for the notifications inbox: list fetching,
  * pagination, mutations, real-time merging, and retry.
  *
@@ -64,7 +70,7 @@ export function useNotificationsInbox({
   const [state, setState] = useState<FetchState>(() =>
     initialPage
       ? {
-          items: initialPage.items,
+          items: hydrateNotifications(initialPage.items),
           loading: false,
           loadingMore: false,
           hasMore: initialPage.hasMore,

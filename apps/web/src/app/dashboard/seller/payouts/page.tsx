@@ -1,5 +1,9 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import {
+  PayoutsDesktopList,
+  PayoutsMobileList,
+} from "@/components/dashboard/list/payouts-mobile-list";
 import { PayoutsExportButton } from "@/components/dashboard/payouts-export-button";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
@@ -15,12 +19,13 @@ import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.
 import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { getPayoutStatusView } from "@/lib/presenters/payment-status";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import { isSellerConnectReady } from "@auction/connect";
 import type { Payout } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import { WalletCards } from "lucide-react";
 import Link from "next/link";
 
 function formatMoney(amount: string, currency: string): string {
@@ -71,11 +76,15 @@ export default async function SellerPayoutsPage() {
     }
   }
 
+  const workspaceMeta = await readClientWorkspacePageMeta();
+
   return (
     <DashboardPage>
       <DashboardPageHeader
-        meta="Selling"
+        meta={workspaceMeta}
         title="Sold & payouts"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
         description="Hammer prices, buyer premiums collected by LAX, seller commissions, and adjustments roll into each settlement batch."
         actions={
           payouts.length > 0 ? (
@@ -156,6 +165,8 @@ export default async function SellerPayoutsPage() {
 
       {payouts.length === 0 && !listFailure ? (
         <DashboardEmptyState
+          variant="hero"
+          icon={<WalletCards aria-hidden />}
           title={DASHBOARD_EMPTY.sellerPayouts.title}
           description={DASHBOARD_EMPTY.sellerPayouts.description}
           action={
@@ -169,54 +180,11 @@ export default async function SellerPayoutsPage() {
             </div>
           }
         />
-      ) : payouts.length > 0 ? (
-        <ul className="space-y-3">
-          {payouts.map((p) => {
-            const statusView = getPayoutStatusView(p.status);
-            return (
-              <li key={p.id}>
-                <Surface
-                  variant="section"
-                  padding="md"
-                  interactive
-                  className="grid gap-3 text-sm sm:grid-cols-[1fr_auto_auto_auto] sm:items-center"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {new Date(p.periodStart).toLocaleDateString("en-GB")} →{" "}
-                      {new Date(p.periodEnd).toLocaleDateString("en-GB")}
-                    </p>
-                    <p className="text-xs tabular-nums text-on-surface-variant">
-                      Gross {formatMoney(p.grossAmount, p.currency)} · Fees{" "}
-                      {formatMoney(p.platformFee, p.currency)}
-                      {Number.parseFloat(p.stripeFee) > 0
-                        ? ` + ${formatMoney(p.stripeFee, p.currency)} transfer`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="text-right text-base font-semibold tabular-nums text-on-surface">
-                    {formatMoney(p.netAmount, p.currency)}
-                  </div>
-                  <div className="flex items-center justify-end">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusView.badgeClassName}`}
-                    >
-                      {statusView.label}
-                    </span>
-                  </div>
-                  <div className="flex justify-end sm:justify-center">
-                    <a
-                      href={`/dashboard/legal-entities/${encodeURIComponent(sellerEntityId ?? "")}/payouts/${encodeURIComponent(p.id)}/statement`}
-                      className="text-xs font-semibold text-primary underline underline-offset-2"
-                    >
-                      Statement PDF
-                    </a>
-                  </div>
-                </Surface>
-              </li>
-            );
-          })}
-        </ul>
+      ) : payouts.length > 0 && sellerEntityId ? (
+        <>
+          <PayoutsMobileList payouts={payouts} sellerEntityId={sellerEntityId} />
+          <PayoutsDesktopList payouts={payouts} sellerEntityId={sellerEntityId} />
+        </>
       ) : null}
     </DashboardPage>
   );

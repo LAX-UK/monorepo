@@ -4,16 +4,13 @@ import { ComplianceStatusStrip } from "@/components/dashboard/overview/complianc
 import { DashboardOverviewLayout } from "@/components/dashboard/overview/dashboard-overview-layout";
 import { OverviewErrorsAlert } from "@/components/dashboard/overview/overview-errors-alert";
 import { OverviewHeroBand } from "@/components/dashboard/overview/overview-hero-band";
-import { buildOverviewDescription } from "@/components/dashboard/overview/overview-presenters";
 import { SellCtaBand } from "@/components/dashboard/overview/sell-cta-band";
 import { WatchlistPreviewCard } from "@/components/dashboard/overview/watchlist-preview-card";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { ActivityItem } from "@/lib/data/view-models/dashboard-activity.vm";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 
 type Props = {
   vm: DashboardOverviewVm;
@@ -23,6 +20,7 @@ type Props = {
   orgModuleEnabled?: boolean;
   addressesCount?: number;
   activity?: readonly ActivityItem[];
+  clientWorkspaceMode?: ClientWorkspaceMode;
 };
 
 export function DashboardOverviewView({
@@ -40,21 +38,6 @@ export function DashboardOverviewView({
       <DashboardOverviewLayout
         layout="focal"
         slots={{
-          header: (
-            <DashboardPageHeader
-              meta="Your dashboard"
-              titleScale="display"
-              title={`Welcome back, ${vm.firstName}`}
-              description={buildOverviewDescription(vm)}
-              actions={
-                <Button variant="outline" asChild>
-                  <Link href={vm.primaryCta?.href ?? "/search"}>
-                    {vm.primaryCta?.label ?? "Browse auctions"}
-                  </Link>
-                </Button>
-              }
-            />
-          ),
           compliance: (
             <ComplianceStatusStrip
               user={user}
