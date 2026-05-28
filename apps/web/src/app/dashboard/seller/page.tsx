@@ -17,7 +17,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { formatMoney } from "@/lib/format-currency";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
-import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
+import { readClientWorkspaceOverviewMeta } from "@/lib/workspace/client-workspace-mode";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
@@ -207,7 +207,7 @@ export default async function SellerOverviewPage() {
     },
   ];
 
-  const workspaceMeta = await readClientWorkspacePageMeta();
+  const workspaceMeta = await readClientWorkspaceOverviewMeta();
 
   return (
     <DashboardPage className="space-y-8">

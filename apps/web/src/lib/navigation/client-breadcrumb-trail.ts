@@ -23,6 +23,13 @@ const CLIENT_SEGMENT_LABELS: Record<string, string> = {
   notifications: "Notifications",
 };
 
+const ORG_TAB_LABELS: Record<string, string> = {
+  members: "Members",
+  profile: "Profile",
+  documents: "Documents",
+  connect: "Payout setup",
+};
+
 function inferClientParentHref(pathname: string): string | undefined {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length < 2 || segments[0] !== "dashboard") return undefined;
@@ -42,6 +49,9 @@ function inferClientParentHref(pathname: string): string | undefined {
   if (section === "seller" && segments.length > 2) {
     return "/dashboard/seller";
   }
+  if (section === "invitations" && segments.length > 2) {
+    return "/dashboard/invitations";
+  }
 
   const navHref = `/dashboard/${section}`;
   return navHref === pathname ? "/dashboard" : navHref;
@@ -56,8 +66,25 @@ function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceM
     return CLIENT_SEGMENT_LABELS[section] ?? getRouteLabel(pathname, "client", workspace);
   }
 
-  if (section === "organisations" && segments.length === 3) return "Organisation";
+  if (section === "organisations") {
+    if (segments.length === 3) return "Organisation";
+    const tab = segments[3] ?? "";
+    if (ORG_TAB_LABELS[tab]) return ORG_TAB_LABELS[tab];
+  }
+
+  if (section === "invitations") {
+    if (segments[2] === "review") return "Review invitation";
+    if (segments[2] === "accept") return "Accept invitation";
+  }
+
+  if (section === "legal-entities" && segments[segments.length - 1] === "statement") {
+    return "Statement";
+  }
+
   if (section === "checkout" && segments.length === 3) return "Checkout";
+  if (section === "submissions" && segments.length === 3 && segments[2] === "new") {
+    return "New submission";
+  }
   if (section === "submissions" && segments.length === 3) return "Submission";
   if (section === "seller" && segments.length === 3) {
     const sellerLeaf: Record<string, string> = {
@@ -80,6 +107,58 @@ function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceM
   return CLIENT_SEGMENT_LABELS[section] ?? "Detail";
 }
 
+function buildOrganisationTrail(segments: string[]): BreadcrumbItem[] | null {
+  if (segments[1] !== "organisations" || segments.length < 4) return null;
+  const orgId = segments[2];
+  const tab = segments[3] ?? "";
+  const tabLabel = ORG_TAB_LABELS[tab];
+  if (!orgId || !tabLabel) return null;
+
+  return [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Organisations", href: "/dashboard/organisations" },
+    { label: "Organisation", href: `/dashboard/organisations/${orgId}` },
+    { label: tabLabel },
+  ];
+}
+
+function buildInvitationsTrail(segments: string[]): BreadcrumbItem[] | null {
+  if (segments[1] !== "invitations" || segments.length < 3) return null;
+  const action = segments[2];
+  if (action === "review") {
+    return [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Invitations", href: "/dashboard/invitations" },
+      { label: "Review invitation" },
+    ];
+  }
+  if (action === "accept") {
+    return [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Invitations", href: "/dashboard/invitations" },
+      { label: "Accept invitation" },
+    ];
+  }
+  return null;
+}
+
+function buildLegalEntityStatementTrail(
+  segments: string[],
+  workspace: ClientWorkspaceMode,
+): BreadcrumbItem[] | null {
+  if (segments[1] !== "legal-entities" || segments[segments.length - 1] !== "statement") {
+    return null;
+  }
+
+  const items: BreadcrumbItem[] = [{ label: "Dashboard", href: "/dashboard" }];
+  if (workspace === "selling") {
+    items.push({ label: "Selling", href: "/dashboard/seller" });
+  }
+  items.push({ label: "Sold & payouts", href: "/dashboard/seller/payouts" });
+  items.push({ label: "Statement" });
+  return items;
+}
+
 /** Human-readable breadcrumb trail for signed-in client dashboard routes. */
 export function buildClientBreadcrumbTrail(
   pathname: string,
@@ -88,6 +167,17 @@ export function buildClientBreadcrumbTrail(
   if (pathname === "/dashboard") {
     return [{ label: "Dashboard" }];
   }
+
+  const segments = pathname.split("/").filter(Boolean);
+
+  const orgTrail = buildOrganisationTrail(segments);
+  if (orgTrail) return orgTrail;
+
+  const invitationsTrail = buildInvitationsTrail(segments);
+  if (invitationsTrail) return invitationsTrail;
+
+  const statementTrail = buildLegalEntityStatementTrail(segments, clientWorkspaceMode);
+  if (statementTrail) return statementTrail;
 
   const parent = getRouteParentLabel(pathname, "client" as AppShellRole, clientWorkspaceMode);
   const current = resolveClientCurrentLabel(pathname, clientWorkspaceMode);

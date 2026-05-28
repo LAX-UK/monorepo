@@ -54,6 +54,9 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
 
   const analytics = buildPortfolioAnalytics(won);
   const filtered = filterPortfolioRows(won, { qLower: qRaw, payment, year });
+  const hasActiveFilters = hasPortfolioActiveFilters(filters);
+  const kpiAnalytics = hasActiveFilters ? buildPortfolioAnalytics(filtered) : analytics;
+  const filteredHint = hasActiveFilters ? kpiCompareHint(`${filtered.length} shown`) : {};
   const artistIds = filtered.map((row) => row.lot.artistId ?? null);
   const artistNameById = await resolveArtistNames(artistIds);
   const portfolioCards = toPortfolioLotCards(filtered, { artistNameById });
@@ -82,24 +85,22 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
             {
               id: "spent",
               label: "Total spent",
-              value: analytics.totalSpentFormatted,
+              value: kpiAnalytics.totalSpentFormatted,
               semanticTone: "emphasis",
+              ...filteredHint,
             },
             {
               id: "outstanding",
               label: "Outstanding",
-              value: analytics.outstandingFormatted,
-              semanticTone: analytics.hasOutstanding ? "warning" : "default",
+              value: kpiAnalytics.outstandingFormatted,
+              semanticTone: kpiAnalytics.hasOutstanding ? "warning" : "default",
+              ...filteredHint,
             },
             {
               id: "year",
               label: "This year",
-              value: String(analytics.wonThisYear),
-              ...kpiCompareHint(
-                filtered.length !== analytics.totalRows
-                  ? `${filtered.length} shown`
-                  : "Acquired lots",
-              ),
+              value: String(kpiAnalytics.wonThisYear),
+              ...(hasActiveFilters ? filteredHint : kpiCompareHint("Acquired lots")),
             },
           ]}
         />

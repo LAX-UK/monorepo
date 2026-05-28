@@ -14,7 +14,7 @@ export function SettingsWelcome({ displayName, email }: SettingsWelcomeProps) {
         <p className="hidden font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant lg:block">
           Settings
         </p>
-        <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
+        <h1 className="sr-only font-headline text-2xl font-semibold tracking-tight text-on-surface lg:not-sr-only lg:static lg:h-auto lg:w-auto lg:overflow-visible lg:clip-auto lg:whitespace-normal">
           Hello, {displayName}
         </h1>
         <p className="mt-1 font-body text-sm text-on-surface-variant">{email}</p>

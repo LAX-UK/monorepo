@@ -61,9 +61,7 @@ describe("WatchlistBoard", () => {
   });
 
   it("announces displayed count after client q filter", async () => {
-    render(
-      <WatchlistBoard rows={sampleRows} initialQ="blue" clearSearchHref="/dashboard/watchlist" />,
-    );
+    render(<WatchlistBoard rows={sampleRows} initialQ="blue" />);
 
     await act(async () => {
       vi.advanceTimersByTime(400);
@@ -77,19 +75,19 @@ describe("WatchlistBoard", () => {
       <WatchlistBoard
         rows={sampleRows}
         initialQ="nonexistent"
-        clearSearchHref="/dashboard/watchlist"
+        clearSearchHref="/dashboard/watchlist?status=active&sort=addedDesc"
       />,
     );
 
-    expect(screen.getByText(/No watched lots match this filter/i)).toBeInTheDocument();
+    expect(screen.getByText(/No title matches/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Clear filters/i })).toHaveAttribute(
       "href",
-      "/dashboard/watchlist",
+      "/dashboard/watchlist?status=active&sort=addedDesc",
     );
   });
 
   it("renders a live countdown for each active row on mobile and desktop surfaces", () => {
-    render(<WatchlistBoard rows={sampleRows} initialQ="" clearSearchHref="/dashboard/watchlist" />);
+    render(<WatchlistBoard rows={sampleRows} initialQ="" />);
 
     expect(screen.getAllByText("Live").length).toBeGreaterThanOrEqual(2);
   });

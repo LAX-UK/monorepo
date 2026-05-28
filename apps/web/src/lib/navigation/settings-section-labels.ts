@@ -10,6 +10,7 @@ export const SETTINGS_SECTION_LABELS: Record<string, string> = {
   "payment-methods": "Payment methods",
   sessions: "Sessions",
   "two-factor": "Two-factor authentication",
+  confirm: "Confirm changes",
 };
 
 export function settingsSectionLabel(segment: string): string {

@@ -40,12 +40,12 @@ export function DashboardSortSelect({
   compactOnMobile = false,
 }: DashboardSortSelectProps) {
   return (
-    <div className={cn("shrink-0 space-y-2", compactOnMobile && "max-md:space-y-0", className)}>
+    <div className={cn("shrink-0 space-y-2", compactOnMobile && "max-lg:space-y-0", className)}>
       <label
         htmlFor={`sort-${label.replace(/\s+/g, "-").toLowerCase()}`}
         className={cn(
           "block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary",
-          compactOnMobile && "max-md:sr-only",
+          compactOnMobile && "max-lg:sr-only",
         )}
       >
         {label}
@@ -55,7 +55,7 @@ export function DashboardSortSelect({
           id={`sort-${label.replace(/\s+/g, "-").toLowerCase()}`}
           className={cn(
             "min-h-11 w-[min(100%,12rem)] bg-surface-container-low",
-            compactOnMobile && "max-md:w-[min(100%,9rem)]",
+            compactOnMobile && "max-lg:w-[min(100%,9rem)]",
             triggerClassName,
           )}
           aria-label={label}
@@ -158,10 +158,10 @@ export function DashboardListToolbar({
     <div className={cn("space-y-3", className)}>
       <div className={TOOLBAR_CARD_CLASS}>
         <div className="flex flex-col gap-3">
-          <div className="flex min-w-0 flex-wrap items-end gap-2 md:items-center md:gap-3">
+          <div className="flex min-w-0 flex-wrap items-end gap-2 lg:items-center lg:gap-3">
             {search ? (
               <search
-                className="min-w-0 flex-1 max-md:[&_.space-y-2]:space-y-0 max-md:[&_label]:sr-only md:max-w-md"
+                className="min-w-0 flex-1 max-lg:[&_.space-y-2]:space-y-0 max-lg:[&_label]:sr-only lg:max-w-md"
                 aria-label={searchLabel}
               >
                 {search}

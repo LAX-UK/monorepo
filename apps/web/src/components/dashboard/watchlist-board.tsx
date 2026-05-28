@@ -4,6 +4,7 @@ import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import { WatchlistMobileList } from "@/components/dashboard/list/watchlist-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
@@ -130,6 +131,7 @@ export function WatchlistBoard({
   rows: WatchlistBoardRow[];
   artistNameById?: Record<string, string>;
   initialQ?: string;
+  /** Clears client title search only — preserves server-side status/category/sort filters. */
   clearSearchHref?: string;
 }) {
   const router = useRouter();
@@ -194,6 +196,8 @@ export function WatchlistBoard({
     <FilterEmptyState
       segment="dashboard"
       entity="watched lots"
+      title="No title matches"
+      description="Nothing in your current watchlist matches that phrase. Try another search or clear the title filter."
       {...(clearSearchHref ? { clearFiltersHref: clearSearchHref } : {})}
       browseHref="/search"
       browseLabel="Browse catalogue"
@@ -253,7 +257,7 @@ export function WatchlistBoard({
             selectedIds={selectedIdSet}
             onToggleRow={toggleRowSelection}
           />
-          <div className="hidden overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm lg:block">
+          <DashboardDesktopList>
             <DataTable
               columns={columns}
               data={filtered}
@@ -263,7 +267,7 @@ export function WatchlistBoard({
               rowSelection={selection}
               onRowSelectionChange={setSelection}
             />
-          </div>
+          </DashboardDesktopList>
         </>
       )}
     </div>

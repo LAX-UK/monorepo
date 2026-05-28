@@ -3,11 +3,12 @@
 import {
   DashboardActiveFilters,
   DashboardFilterChipRow,
-  DashboardFilterSection,
   DashboardFilterSheet,
   DashboardFilterTrigger,
   DashboardListToolbar,
   DashboardSearchField,
+  YearFilterSection,
+  useFilterSheetDraft,
 } from "@/components/dashboard/filters";
 import {
   PORTFOLIO_BASE_PATH,
@@ -19,9 +20,12 @@ import {
   countPortfolioSheetFilters,
   getPortfolioActiveFilters,
 } from "@/lib/dashboard/filters/portfolio/portfolio-filters";
-import { FilterChip } from "@auction/ui";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+type PortfolioDraft = {
+  year: number | null;
+};
 
 type Props = {
   filters: PortfolioFilters;
@@ -32,11 +36,13 @@ export function PortfolioListToolbar({ filters, years }: Props) {
   const router = useRouter();
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [desktopSheetOpen, setDesktopSheetOpen] = useState(false);
-  const [draftYear, setDraftYear] = useState<number | null>(filters.year);
-
-  useEffect(() => {
-    if (!mobileSheetOpen && !desktopSheetOpen) setDraftYear(filters.year);
-  }, [desktopSheetOpen, filters.year, mobileSheetOpen]);
+  const fromFilters = useCallback((): PortfolioDraft => ({ year: filters.year }), [filters.year]);
+  const { draft, setDraft, resetDraft } = useFilterSheetDraft({
+    mobileOpen: mobileSheetOpen,
+    desktopOpen: desktopSheetOpen,
+    fromFilters,
+    defaultDraft: { year: null },
+  });
 
   const activeFilters = useMemo(() => getPortfolioActiveFilters(filters), [filters]);
   const mobileSheetCount = countPortfolioMobileSheetFilters(filters);
@@ -53,28 +59,18 @@ export function PortfolioListToolbar({ filters, years }: Props) {
   const paymentFilterRow = <DashboardFilterChipRow label="Payment" items={paymentItems} />;
 
   const applyYearDraft = useCallback(() => {
-    router.replace(buildPortfolioHref(filters, { year: draftYear }), { scroll: false });
+    router.replace(buildPortfolioHref(filters, { year: draft.year }), { scroll: false });
     setMobileSheetOpen(false);
     setDesktopSheetOpen(false);
-  }, [draftYear, filters, router]);
-
-  const resetYearDraft = useCallback(() => {
-    setDraftYear(null);
-  }, []);
+  }, [draft.year, filters, router]);
 
   const yearSection = (
-    <DashboardFilterSection label="Acquired in">
-      <div className="flex flex-wrap gap-2">
-        <FilterChip pressed={draftYear == null} onClick={() => setDraftYear(null)}>
-          All years
-        </FilterChip>
-        {years.map((y) => (
-          <FilterChip key={y} pressed={draftYear === y} onClick={() => setDraftYear(y)}>
-            {y}
-          </FilterChip>
-        ))}
-      </div>
-    </DashboardFilterSection>
+    <YearFilterSection
+      years={years}
+      selectedYear={draft.year}
+      onSelectYear={(year) => setDraft({ year })}
+      label="Acquired in"
+    />
   );
 
   const mobileFilterSheet = (
@@ -82,7 +78,7 @@ export function PortfolioListToolbar({ filters, years }: Props) {
       open={mobileSheetOpen}
       onOpenChange={setMobileSheetOpen}
       title="Collection filters"
-      {...(years.length > 0 ? { onApply: applyYearDraft, onReset: resetYearDraft } : {})}
+      {...(years.length > 0 ? { onApply: applyYearDraft, onReset: resetDraft } : {})}
       trigger={<DashboardFilterTrigger activeCount={mobileSheetCount} />}
     >
       <div className="space-y-6">
@@ -99,7 +95,7 @@ export function PortfolioListToolbar({ filters, years }: Props) {
         onOpenChange={setDesktopSheetOpen}
         title="Collection filters"
         onApply={applyYearDraft}
-        onReset={resetYearDraft}
+        onReset={resetDraft}
         trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
       >
         {yearSection}

@@ -1,6 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/primitives";
+import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { MediaImage } from "@/components/ui/media-image";
@@ -58,18 +59,6 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
   return (
     <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
-      <div className="mb-8 hidden px-4 sm:px-0 lg:mb-10 lg:block">
-        <Link
-          href="/dashboard/portfolio"
-          className="inline-flex min-h-10 items-center gap-2 rounded-md font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <span className="material-symbols-outlined text-sm" aria-hidden>
-            arrow_back
-          </span>
-          Back to collection
-        </Link>
-      </div>
-
       <div className="flex min-h-[calc(100vh-8rem)] flex-col lg:flex-row">
         <div className="relative h-[50vh] w-full overflow-hidden bg-surface-container-low lg:sticky lg:top-0 lg:h-screen lg:w-1/2 lg:max-w-none">
           <MediaImage
@@ -84,14 +73,15 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
 
         <div className="w-full flex-1 px-4 pb-[var(--page-bottom-padding)] pt-8 sm:px-6 lg:w-1/2 lg:px-16 lg:pb-20 lg:pt-16">
           <div className="mx-auto max-w-xl lg:mx-0">
-            <h1 className="mb-3 font-headline text-3xl tracking-tight text-on-surface sm:text-4xl lg:text-5xl">
-              {auction.title}
-            </h1>
-            <p className="mb-8 hidden font-body text-sm leading-relaxed text-on-surface-variant lg:mb-10 lg:block">
-              Lot settled in your favor. Complete purchase below to open secure Stripe Checkout
-              (card or UK bank transfer). High-value lots may require finance review before checkout
-              is issued.
-            </p>
+            <DashboardDetailHeader
+              title={auction.title}
+              backHref="/dashboard/portfolio"
+              backLabel="Back to collection"
+              compactOnMobile
+              sticky={false}
+              className="mb-8 border-0 bg-transparent px-0 py-0 backdrop-blur-none lg:mb-10"
+              description="Lot settled in your favor. Complete purchase below to open secure Stripe Checkout (card or UK bank transfer). High-value lots may require finance review before checkout is issued."
+            />
 
             <DashboardSection id="checkout-flow" title="Invoice and payment">
               <div className="rounded-xl border border-border-hairline bg-surface-container-lowest/90 p-6 shadow-sm backdrop-blur-sm sm:p-8">

@@ -7,6 +7,7 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import { BidsMobileList } from "@/components/dashboard/list/bids-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
+import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { MediaImage } from "@/components/ui/media-image";
@@ -23,8 +24,9 @@ import { Button } from "@auction/ui/components/button";
 import { Button as UiButton } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Surface } from "@auction/ui/components/surface";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Download, History } from "lucide-react";
+import { Download, Gavel, History } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -212,9 +214,9 @@ function BoardTable({
   return (
     <>
       <BidsMobileList rows={rows} artistNameById={artistNameById} onOpenHistory={onOpenHistory} />
-      <div className="hidden overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm lg:block">
+      <DashboardDesktopList>
         <DataTable columns={columns} data={rows} density="compact" />
-      </div>
+      </DashboardDesktopList>
     </>
   );
 }
@@ -335,31 +337,33 @@ export function BidsBoard({
 
       {!loadFailure ? (
         <>
-          <SectionTabsNav
-            ariaLabel="Bid status"
-            sticky={false}
-            className="mb-5 rounded-xl border border-border-hairline bg-surface-container-lowest px-3"
-            items={[
-              {
-                href: tabHref("active", appliedQ),
-                label: "Active",
-                badge: active.length,
-                isActive: tab === "active",
-              },
-              {
-                href: tabHref("won", appliedQ),
-                label: "Won",
-                badge: won.length,
-                isActive: tab === "won",
-              },
-              {
-                href: tabHref("lost", appliedQ),
-                label: "Lost",
-                badge: lost.length,
-                isActive: tab === "lost",
-              },
-            ]}
-          />
+          <Surface variant="inset" padding="sm" className="mb-5">
+            <SectionTabsNav
+              variant="underline"
+              ariaLabel="Bid status"
+              sticky={false}
+              items={[
+                {
+                  href: tabHref("active", appliedQ),
+                  label: "Active",
+                  badge: active.length,
+                  isActive: tab === "active",
+                },
+                {
+                  href: tabHref("won", appliedQ),
+                  label: "Won",
+                  badge: won.length,
+                  isActive: tab === "won",
+                },
+                {
+                  href: tabHref("lost", appliedQ),
+                  label: "Lost",
+                  badge: lost.length,
+                  isActive: tab === "lost",
+                },
+              ]}
+            />
+          </Surface>
 
           <BidsListToolbar
             filters={filters}
@@ -381,6 +385,8 @@ export function BidsBoard({
 
           {currentRows.all.length === 0 ? (
             <DashboardEmptyState
+              variant="hero"
+              icon={<Gavel aria-hidden />}
               title={
                 tab === "active"
                   ? DASHBOARD_EMPTY.bids.title

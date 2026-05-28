@@ -3,6 +3,7 @@ import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overv
 import { lotTotalMajorUnits } from "@/lib/data/view-models/lot-pricing-helpers";
 import { formatMoney } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
+import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { KpiTileProps } from "@auction/ui";
 
 export type SettlementRow = DashboardOverviewVm["settlementsDue"][number];
@@ -92,7 +93,23 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
   ];
 }
 
-export function buildOverviewDescription(vm: DashboardOverviewVm): string {
+export function buildOverviewDescription(
+  vm: DashboardOverviewVm,
+  mode: ClientWorkspaceMode = "buying",
+): string {
+  if (
+    mode === "selling" &&
+    vm.liveLotsPreviewCount === 0 &&
+    vm.acquiredCount === 0 &&
+    vm.kpi.activeBidsCount === 0
+  ) {
+    if (vm.submissionsCount > 0) {
+      const suffix = vm.submissionsCount === 1 ? "" : "s";
+      return `${vm.submissionsCount} submission${suffix} in your seller workspace.`;
+    }
+    return "Track submissions, active sales, and payouts from your seller workspace.";
+  }
+
   if (vm.liveLotsPreviewCount === 0 && vm.acquiredCount === 0 && vm.kpi.activeBidsCount === 0) {
     return "Here is your auction activity at a glance.";
   }
