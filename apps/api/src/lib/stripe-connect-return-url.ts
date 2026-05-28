@@ -1,7 +1,16 @@
 /** Restrict Connect onboarding return/refresh URLs to the trusted web origin. */
-export function assertConnectUrlAllowed(url: string, webOrigin: string | undefined): void {
+export function assertConnectUrlAllowed(
+  url: string,
+  webOrigin: string | undefined,
+  opts?: { failClosed?: boolean },
+): void {
   const trustedOrigin = webOrigin?.replace(/\/$/, "");
-  if (!trustedOrigin) return;
+  if (!trustedOrigin) {
+    if (opts?.failClosed) {
+      throw new Error("connect_url_origin_not_configured");
+    }
+    return;
+  }
 
   let parsed: URL;
   let trusted: URL;
