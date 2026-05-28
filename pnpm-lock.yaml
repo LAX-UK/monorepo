@@ -41,6 +41,9 @@ importers:
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@auction/connect':
+        specifier: workspace:*
+        version: link:../../packages/connect
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -211,6 +214,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/connect':
+        specifier: workspace:*
+        version: link:../../packages/connect
       '@auction/http-headers':
         specifier: workspace:*
         version: link:../../packages/http-headers
@@ -247,6 +253,12 @@ importers:
       '@sentry/nextjs':
         specifier: ^10.51.0
         version: 10.51.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.106.2)
+      '@stripe/connect-js':
+        specifier: ^3.3.31
+        version: 3.4.5
+      '@stripe/react-connect-js':
+        specifier: ^3.3.31
+        version: 3.4.3(@stripe/connect-js@3.4.5)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -538,6 +550,18 @@ importers:
   packages/config-biome: {}
 
   packages/config-ts: {}
+
+  packages/connect:
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
 
   packages/db:
     dependencies:
@@ -3709,6 +3733,16 @@ packages:
 
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
+
+  '@stripe/connect-js@3.4.5':
+    resolution: {integrity: sha512-2GZYc1pO2gYtq5rooZei483oSqeNROTD4XwnKXK8GXILvrLVJjMUCLDXi8Rmu8ojL5DWMnEOtXdnZxs8xxZecQ==}
+
+  '@stripe/react-connect-js@3.4.3':
+    resolution: {integrity: sha512-UNckvWpmVdkUQ4lhPmwAKpB8QD1LNnDz7SDz0qQabdTfk5sLhhOYnN/SRQGhAe57Z6PLuyidaIUzjvDSw2/pYA==}
+    peerDependencies:
+      '@stripe/connect-js': '>=3.4.5'
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
 
   '@swc/helpers@0.3.17':
     resolution: {integrity: sha512-tb7Iu+oZ+zWJZ3HJqwx8oNwSDIU440hmVMDPhpACWQWnrZHK99Bxs70gT1L2dnr5Hg50ZRWEFkQCAnOVVV0z1Q==}
@@ -10186,6 +10220,14 @@ snapshots:
   '@standard-schema/spec@1.1.0': {}
 
   '@standard-schema/utils@0.3.0': {}
+
+  '@stripe/connect-js@3.4.5': {}
+
+  '@stripe/react-connect-js@3.4.3(@stripe/connect-js@3.4.5)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+    dependencies:
+      '@stripe/connect-js': 3.4.5
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
 
   '@swc/helpers@0.3.17':
     dependencies:

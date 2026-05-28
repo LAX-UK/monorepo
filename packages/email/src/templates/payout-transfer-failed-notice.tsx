@@ -21,6 +21,7 @@ export default function PayoutTransferFailedNoticeEmail(
     failureReason,
     supportContactEmail,
     adminPayoutsUrl,
+    sellerPayoutSetupUrl,
   } = vars;
 
   return (
@@ -50,10 +51,21 @@ export default function PayoutTransferFailedNoticeEmail(
       </TextBlock>
       <TextBlock>
         Common causes include:
-        <br />• Stripe Connect account not fully verified
+        <br />• Stripe Connect payout account not fully verified
         <br />• Insufficient platform balance
         <br />• Invalid or closed bank account on the connected account
       </TextBlock>
+      {sellerPayoutSetupUrl ? (
+        <TextBlock>
+          Ask the seller to finish payout setup in-app:{" "}
+          <Link
+            href={sellerPayoutSetupUrl}
+            style={{ color: COLORS.link, textDecoration: "underline" }}
+          >
+            {sellerPayoutSetupUrl}
+          </Link>
+        </TextBlock>
+      ) : null}
       <HelpBlock email={supportContactEmail} />
     </Layout>
   );

@@ -195,6 +195,7 @@ const L = {
   futureStudy: "b1000014-0000-4000-8000-000000000014",
   paperThin: "b1000015-0000-4000-8000-000000000015",
   riverStudy: "b1000016-0000-4000-8000-000000000016",
+  connectBlockedDraft: "b1000017-0000-4000-8000-000000000017",
 } as const;
 
 const ARTIST = {
@@ -2690,6 +2691,8 @@ export async function runLegacyDemoSeed() {
   const lotRows: (Omit<typeof lot.$inferInsert, "sellerLegalEntityId"> & {
     categoryId: string;
     sellerId: string;
+    /** Override seller entity when it differs from the consignor's personal profile (e2e Connect block). */
+    sellerLegalEntityId?: string;
   })[] = [
     {
       id: L.ethereal,
@@ -3069,6 +3072,37 @@ export async function runLegacyDemoSeed() {
       ]),
     },
     {
+      id: L.connectBlockedDraft,
+      saleId: null,
+      lotNumber: null,
+      sellerId: GALLERY_ADMIN_ID,
+      sellerLegalEntityId: LE.restrictedDealer,
+      title: "Coastal Ledger (Connect blocked seed)",
+      description:
+        "Draft lot assigned to Cedar & Stone Fine Art — Connect payouts incomplete for admin publish gating e2e.",
+      medium: "Mixed media on paper",
+      dimensions: "18 × 24 in",
+      images: [IMG.c],
+      categoryId: CAT.contemporary,
+      auctionType: "english",
+      startingPrice: "8000.00",
+      reservePrice: "10000.00",
+      buyNowPrice: null,
+      currentPrice: "8000.00",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "25.00",
+      startTime: draftStart,
+      endTime: draftEnd,
+      status: "draft",
+      winnerId: null,
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      marketingDetails: lotMarketingDetails("8000.00", "12000.00", [
+        "Coastal Ledger — connect-blocked seller seed lot",
+      ]),
+    },
+    {
       id: L.cancelledLot,
       saleId: null,
       lotNumber: null,
@@ -3189,10 +3223,12 @@ export async function runLegacyDemoSeed() {
     },
   ];
   await db.insert(lot).values(
-    lotRows.map(({ categoryId: _categoryId, sellerId, ...row }) => ({
-      ...row,
-      sellerLegalEntityId: legalEntityIdForUser(sellerId),
-    })),
+    lotRows.map(
+      ({ categoryId: _categoryId, sellerId, sellerLegalEntityId: explicitSellerLe, ...row }) => ({
+        ...row,
+        sellerLegalEntityId: explicitSellerLe ?? legalEntityIdForUser(sellerId),
+      }),
+    ),
   );
   await db.insert(lotCategories).values(
     lotRows.map((row) => ({

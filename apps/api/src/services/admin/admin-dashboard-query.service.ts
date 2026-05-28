@@ -195,13 +195,19 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
   }
 
   async listStripeConnectRequirementEntities(): Promise<
-    { id: string; displayName: string; status: string }[]
+    {
+      id: string;
+      displayName: string;
+      status: string;
+      stripeConnectRequirementsCurrentlyDue: string[];
+    }[]
   > {
     return this.db
       .select({
         id: legalEntity.id,
         displayName: legalEntity.displayName,
         status: legalEntity.status,
+        stripeConnectRequirementsCurrentlyDue: legalEntity.stripeConnectRequirementsCurrentlyDue,
       })
       .from(legalEntity)
       .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`)

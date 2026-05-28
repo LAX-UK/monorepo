@@ -19,6 +19,8 @@ function baseEnv(overrides: Partial<Env> = {}): Env {
     STRIPE_SECRET_KEY: "sk_test_dummy",
     STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_dummy",
     WEB_ORIGIN: "https://app.test",
+    LOG_LEVEL: "info",
+    NODE_ENV: "test",
     ...overrides,
   } as Env;
 }
@@ -81,8 +83,21 @@ function makeTransactionDb(inner: Database = {} as Database): Database {
 }
 
 function injectStripeOnService(service: StripeConnectService, stripe: Stripe): void {
-  (service as unknown as { stripeFactory: IStripeClientFactory }).stripeFactory =
-    makeStripeFactory(stripe);
+  const factory = makeStripeFactory(stripe);
+  const inner = service as unknown as {
+    accountService?: { stripeFactory: IStripeClientFactory };
+    sessionService?: { stripeFactory: IStripeClientFactory };
+    linkService?: { stripeFactory: IStripeClientFactory };
+    webhookHandler?: { stripeFactory: IStripeClientFactory };
+    transferService?: { stripeFactory: IStripeClientFactory };
+    stripeFactory?: IStripeClientFactory;
+  };
+  if (inner.accountService) inner.accountService.stripeFactory = factory;
+  if (inner.sessionService) inner.sessionService.stripeFactory = factory;
+  if (inner.linkService) inner.linkService.stripeFactory = factory;
+  if (inner.webhookHandler) inner.webhookHandler.stripeFactory = factory;
+  if (inner.transferService) inner.transferService.stripeFactory = factory;
+  if (inner.stripeFactory) inner.stripeFactory = factory;
 }
 
 describe("StripeConnectService.handleTransferEvent", () => {
@@ -527,6 +542,10 @@ describe("StripeConnectService.ensureAccount", () => {
         type: "express",
         country: "GB",
         business_type: "individual",
+        controller: {
+          fees: { payer: "application" },
+          losses: { payments: "application" },
+        },
         individual: {
           first_name: "Ada",
           last_name: "Lovelace",
