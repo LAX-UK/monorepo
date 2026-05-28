@@ -68,6 +68,7 @@ resource "cloudflare_zone_settings_override" "this" {
 locals {
   auth_host_expression = join(" ", [for host in var.auth_hosts : "\"${host}\""])
   api_host_expression  = join(" ", [for host in var.api_hosts : "\"${host}\""])
+  zone_name_regex      = replace(var.zone_name, ".", "\\.")
 
   # Free tier http_ratelimit: period must be 10 (not 60), mitigation_timeout must
   # be 10 (not 60). Map the intended per-minute cap (min of the two auth paths)
@@ -151,6 +152,33 @@ resource "cloudflare_ruleset" "www_redirect" {
           expression = "concat(\"https://${var.zone_name}\", http.request.uri.path)"
         }
         preserve_query_string = true
+      }
+    }
+  }
+}
+
+# Block search indexing on test subdomains (test.lax.bid, test-api.lax.bid, etc.).
+# App-layer noindex on web is the primary control; this covers API/auth HTML surfaces too.
+resource "cloudflare_ruleset" "test_noindex" {
+  count = var.manage_firewall_rulesets ? 1 : 0
+
+  zone_id     = data.cloudflare_zone.this.id
+  name        = "lax-test-noindex-headers"
+  description = "Set X-Robots-Tag on test subdomains to prevent search indexing."
+  kind        = "zone"
+  phase       = "http_response_headers_transform"
+
+  rules {
+    action      = "rewrite"
+    expression  = "(http.host matches \"^test(-.*)?\\\\.${local.zone_name_regex}$\")"
+    description = "Noindex all test subdomains"
+    enabled     = true
+
+    action_parameters {
+      headers {
+        name      = "X-Robots-Tag"
+        operation = "set"
+        value     = "noindex, nofollow, noarchive"
       }
     }
   }
