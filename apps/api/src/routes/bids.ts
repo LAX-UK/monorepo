@@ -1,10 +1,10 @@
 import { placeBidSchema } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import { createRequireKyc } from "../middleware/require-kyc.js";

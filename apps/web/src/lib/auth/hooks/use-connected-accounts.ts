@@ -2,6 +2,7 @@
 
 import { authClient } from "@/lib/auth-client";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { normalizeApiErrorMessage } from "@auction/validators";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 /** Provider identifiers we surface in the UI. */
@@ -180,10 +181,10 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
           body: JSON.stringify({ password }),
         });
         if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          const body = (await res.json().catch(() => ({}))) as { error?: unknown };
           return {
             ok: false,
-            error: body.error ?? `Could not set password (${res.status}).`,
+            error: normalizeApiErrorMessage(body.error, `Could not set password (${res.status}).`),
           };
         }
         await refresh();

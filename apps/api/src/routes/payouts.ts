@@ -4,10 +4,10 @@ import {
   listPayoutsQuerySchema,
   runSettlementSchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requirePayoutProcess,

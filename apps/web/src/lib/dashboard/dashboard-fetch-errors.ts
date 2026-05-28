@@ -8,6 +8,7 @@ import {
   buildLegalEntityAccessFailure,
   isLegalEntityAccessCode,
 } from "@/lib/legal-entity/legal-entity-access-errors";
+import { parseApiErrorCodeFromBody } from "@auction/validators";
 
 export type DashboardSlice =
   | "session"
@@ -231,10 +232,14 @@ export function buildDashboardSliceFailure(
   };
 }
 
-/** Parses `{ error, code }` from a failed API response body. */
+/** Parses `{ error, code, errorCode }` from a failed API response body. */
 export async function parseApiErrorCode(res: Response): Promise<string | null> {
-  const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-  return body.code ?? body.error ?? null;
+  const body = (await res.json().catch(() => ({}))) as {
+    error?: unknown;
+    errorCode?: string;
+    code?: string;
+  };
+  return parseApiErrorCodeFromBody(body);
 }
 
 /** Throws {@link DashboardFetchError} for a non-OK response. */

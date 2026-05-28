@@ -7,10 +7,10 @@ import {
   rejectSubmissionBodySchema,
   submissionIdParamSchema,
 } from "@auction/validators";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole, requireBuyerRoleUnlessStaff } from "../middleware/require-buyer-role.js";
 import { requirePlatformAdmin } from "../middleware/require-capability.js";

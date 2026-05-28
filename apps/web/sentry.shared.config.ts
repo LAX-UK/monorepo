@@ -2,6 +2,7 @@ import { createSharedSentryInitOptions } from "@auction/observability/sentry-ini
 import {
   scrubSentryEvent,
   shouldDropBrowserExtensionNoise,
+  shouldDropThirdPartyClientNoise,
 } from "@auction/observability/sentry-shared";
 import type * as Sentry from "@sentry/nextjs";
 
@@ -16,6 +17,7 @@ export function createWebSentryOptions(dsn: string): Parameters<typeof Sentry.in
       const scrubbed = scrubSentryEvent(event, hint);
       if (scrubbed === null) return null;
       if (shouldDropBrowserExtensionNoise(scrubbed)) return null;
+      if (shouldDropThirdPartyClientNoise(scrubbed)) return null;
       return scrubbed;
     },
   };

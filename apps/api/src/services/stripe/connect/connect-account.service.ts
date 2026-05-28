@@ -91,12 +91,12 @@ export class ConnectAccountService {
     const controller = {
       fees: { payer: "application" as const },
       losses: { payments: "application" as const },
+      stripe_dashboard: { type: "express" as const },
     };
 
     const accountCreateParams: Stripe.AccountCreateParams =
       row.kind === "organisation"
         ? {
-            type: "express",
             country,
             controller,
             capabilities: { transfers: { requested: true } },
@@ -120,7 +120,6 @@ export class ConnectAccountService {
               first ||
               "Individual";
             return {
-              type: "express" as const,
               country,
               controller,
               capabilities: { transfers: { requested: true } },

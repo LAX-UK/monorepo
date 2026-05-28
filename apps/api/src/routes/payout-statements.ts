@@ -1,8 +1,8 @@
-import { zValidator } from "@hono/zod-validator";
 import type { Queue } from "bullmq";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";

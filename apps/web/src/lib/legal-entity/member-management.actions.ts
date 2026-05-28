@@ -1,6 +1,7 @@
 "use server";
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { normalizeApiErrorMessage } from "@auction/validators";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
@@ -55,7 +56,10 @@ export async function inviteMemberAction(
     });
     const body = await res.json();
     if (!res.ok) {
-      return { ok: false, error: (body as { error?: string }).error ?? "invite_failed" };
+      return {
+        ok: false,
+        error: normalizeApiErrorMessage((body as { error?: unknown }).error, "invite_failed"),
+      };
     }
     revalidatePath("/dashboard/organisations");
     revalidatePath("/invitations");
@@ -79,8 +83,8 @@ export async function updateMemberRoleAction(
       body: JSON.stringify({ role }),
     });
     if (!res.ok) {
-      const body = (await res.json()) as { error?: string };
-      return { ok: false, error: body.error ?? "update_failed" };
+      const body = (await res.json()) as { error?: unknown };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "update_failed") };
     }
     revalidatePath("/dashboard/organisations");
     revalidatePath("/invitations");
@@ -107,8 +111,8 @@ export async function removeMemberAction(
     }
     const res = await authedServerFetch(`/legal-entities/members/${memberId}`, deleteInit);
     if (!res.ok) {
-      const body = (await res.json()) as { error?: string };
-      return { ok: false, error: body.error ?? "remove_failed" };
+      const body = (await res.json()) as { error?: unknown };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "remove_failed") };
     }
     revalidatePath("/dashboard/organisations");
     revalidatePath("/invitations");
@@ -130,7 +134,7 @@ export async function transferPrimaryAdminAction(
     });
     if (!res.ok) {
       const body = (await res.json()) as { error?: string };
-      return { ok: false, error: body.error ?? "transfer_failed" };
+      return { ok: false, error: normalizeApiErrorMessage(body.error, "transfer_failed") };
     }
     revalidatePath("/dashboard/organisations");
     revalidatePath("/invitations");
@@ -150,7 +154,10 @@ export async function acceptInvitationAction(
     });
     const body = await res.json();
     if (!res.ok) {
-      return { ok: false, error: (body as { error?: string }).error ?? "accept_failed" };
+      return {
+        ok: false,
+        error: normalizeApiErrorMessage((body as { error?: unknown }).error, "accept_failed"),
+      };
     }
     const legalEntityId = (body as { data: { legalEntityId: string } }).data.legalEntityId;
     await switchActingLegalEntity(legalEntityId);
