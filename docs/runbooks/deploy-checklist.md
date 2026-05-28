@@ -31,6 +31,8 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 - [ ] Smoke test the path you changed against `test.lax.bid`.
 - [ ] If you touched migrations, confirm the test migration job ran successfully — check its log in the DigitalOcean console.
 - [ ] If you touched OIDC or JWKS, fetch `/.well-known/openid-configuration` and `/.well-known/jwks.json` manually and confirm they still validate.
+- [ ] Confirm test is not indexable: `curl -sI https://test.lax.bid/ | grep -i x-robots-tag` returns `noindex`; `curl -s https://test.lax.bid/robots.txt` has no `Sitemap:` line; `curl -s https://test.lax.bid/sitemap.xml` is empty.
+- [ ] Confirm prod SEO is unchanged: `curl -s https://lax.bid/robots.txt | grep -i sitemap` returns the sitemap URL; prod responses do not send `X-Robots-Tag: noindex`.
 - [ ] Soak the change for at least a few hours before promoting to production unless it's an outright bugfix.
 
 ## Promoting to production
