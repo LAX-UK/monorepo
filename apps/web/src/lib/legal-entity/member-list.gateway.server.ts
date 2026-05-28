@@ -4,7 +4,7 @@ import {
   X_LEGAL_ENTITY_ID_HEADER,
 } from "@/lib/legal-entity/client-acting-context";
 import type { MemberRow } from "@/lib/legal-entity/member-management.actions";
-import { parseApiErrorCodeFromBody, type ApiErrorBody } from "@auction/validators";
+import { type ApiErrorBody, parseApiErrorCodeFromBody } from "@auction/validators";
 
 export type MemberListFetchResult =
   | { ok: true; data: MemberRow[] }
