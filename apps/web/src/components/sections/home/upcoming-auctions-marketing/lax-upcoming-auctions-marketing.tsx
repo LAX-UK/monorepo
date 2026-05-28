@@ -1,8 +1,9 @@
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { HomeSectionToolbar } from "@/components/marketing/home-section-toolbar";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -21,7 +22,7 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
     return (
       <section
         aria-labelledby="home-upcoming-auctions-heading"
-        className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-10 lg:px-14"
+        className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
       >
         <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
           <MarketingSectionHeader
@@ -46,8 +47,8 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
               </Button>
             }
           />
-          <MarketingListToolbar
-            className="mb-2 rounded-lg border border-border-hairline bg-white/80 dark:bg-surface-container-low/40"
+          <HomeSectionToolbar
+            className="mb-2"
             countLabel="0 auctions"
             trailing={
               <CatalogViewSwitcher

@@ -7,6 +7,12 @@ import { cn } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import type { ReactNode } from "react";
 
+/**
+ * Marketing catalogue empty-state recipe:
+ * - Filtered miss: title + "Clear filters" button + optional browse link (`context="filtered"`)
+ * - Unfiltered empty: title + description only (`context="noResults"`)
+ * - Fetch error: alert panel + retry/home CTAs (`context="error"`, `role="alert"`)
+ */
 export type MarketingEmptyStateProps = {
   icon?: ReactNode;
   title: string;

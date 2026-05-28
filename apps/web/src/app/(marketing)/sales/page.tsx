@@ -18,12 +18,15 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
 import { fetchHasLiveSales } from "@/lib/marketing/sales-calendar-live.server";
 import {
   type CalendarPrimaryTab,
   type CalendarSalesUrlState,
+  calendarClearFiltersHref,
   calendarSalesHref,
+  countActiveCalendarFilters,
   hasExplicitCalendarTab,
   parseCalendarPage,
   parseCalendarPrimaryTab,
@@ -260,10 +263,12 @@ export default async function SalesListPage({
     }),
   );
 
+  const hasActiveCalendarFilters = countActiveCalendarFilters(calendarState) > 0;
+
   return (
     <main
       id="main-content"
-      className="bg-page-bg pb-[var(--page-bottom-padding)] pt-[var(--header-height)] dark:bg-background"
+      className={`bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background ${MARKETING_CATALOG_PT}`}
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {crumbText}
@@ -274,7 +279,7 @@ export default async function SalesListPage({
         </script>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[var(--container-max,1440px)] px-4 sm:px-6 md:px-8 lg:px-8">
+      <div className={MARKETING_PAGE_SHELL}>
         <section className="pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-10">
           <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
             <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
@@ -288,9 +293,22 @@ export default async function SalesListPage({
               <SalesPrimaryTabs state={calendarState} hasLiveSales={hasLiveSales} />
 
               {err ? (
-                <p className="text-sm text-error" role="alert">
-                  {err}
-                </p>
+                <MarketingEmptyState
+                  variant="marketing"
+                  context="error"
+                  title="Calendar temporarily unavailable"
+                  description={err}
+                  action={
+                    <>
+                      <Button variant="cta" asChild>
+                        <Link href="/sales">Try again</Link>
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <Link href="/">Back to home</Link>
+                      </Button>
+                    </>
+                  }
+                />
               ) : null}
 
               {tab === "privateSales" ? (
@@ -363,8 +381,27 @@ export default async function SalesListPage({
                   {filteredSales.length === 0 && !err ? (
                     <MarketingEmptyState
                       variant="marketing"
+                      context={hasActiveCalendarFilters ? "filtered" : "noResults"}
                       title="No sales match this filter"
-                      description="Try another tab or adjust filters in the sidebar."
+                      description={
+                        hasActiveCalendarFilters
+                          ? "Try clearing filters or choose another calendar tab."
+                          : "Try another tab or check back when new sales are scheduled."
+                      }
+                      action={
+                        hasActiveCalendarFilters ? (
+                          <>
+                            <Button variant="cta" asChild>
+                              <Link href={calendarClearFiltersHref(calendarState)}>
+                                Clear filters
+                              </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                              <Link href="/sales">Browse all sales</Link>
+                            </Button>
+                          </>
+                        ) : undefined
+                      }
                     />
                   ) : calendarView === "grid" ? (
                     <SalesCalendarGrid vms={gridVms} />

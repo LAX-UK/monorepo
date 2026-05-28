@@ -28,6 +28,8 @@ import {
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
@@ -40,6 +42,7 @@ import {
 import { salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Sale } from "@auction/types";
+import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 
@@ -205,6 +208,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const preservedQuery: Array<[string, string]> = [["view", layoutView]];
   if (statusFilter) preservedQuery.push(["status", statusFilter]);
 
+  const lotLinkParams = saleroomLotLinkParams(layoutView, statusFilter);
+
   const accumulatedLotIds = new Set<string>();
   const lotVMs = lotsPage.items
     .filter((lot) => {
@@ -215,7 +220,14 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       if (statusFilter === "ended" && lot.status !== "ended") return false;
       return true;
     })
-    .map((lot) => mapLotToCardVM(lot, { viewerUserId, now, initialWatching: false }));
+    .map((lot) =>
+      mapLotToCardVM(lot, {
+        viewerUserId,
+        now,
+        initialWatching: false,
+        catalogLinkParams: lotLinkParams,
+      }),
+    );
 
   const relatedVMs = relatedSales.map((r) => mapSaleToRelatedVM(r.sale, r.lotCount));
 
@@ -278,10 +290,20 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         })()
       : null;
 
+  const calendarBackHref = (() => {
+    const qs = new URLSearchParams();
+    if (layoutView !== "grid") qs.set("view", layoutView);
+    const q = qs.toString();
+    return q ? `/sales?${q}` : "/sales";
+  })();
+
   return (
     <main
       id="main-content"
-      className="bg-page-bg pb-[var(--page-bottom-padding)] pt-(--section-pt-tight) dark:bg-background lg:pb-24"
+      className={cn(
+        "bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background lg:pb-24",
+        MARKETING_CATALOG_PT,
+      )}
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
@@ -297,6 +319,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       <SaleroomHero
         hero={heroVM}
         isAuthenticated={isAuthenticated}
+        backHref={calendarBackHref}
         toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
         actions={
           <SaleroomHeroActions
@@ -316,10 +339,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         }
       />
 
-      <section
-        id="catalog"
-        className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-0 pt-14 sm:px-6 md:px-8"
-      >
+      <section id="catalog" className={cn(MARKETING_PAGE_SHELL, "pb-0 pt-14")}>
         <ViewItemListTracker
           listId={`sale:${bundle.sale.id}`}
           listName={bundle.sale.title}
@@ -359,14 +379,14 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       </section>
 
       <section
-        className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-0 pt-16 sm:px-6 md:px-8"
+        className={cn(MARKETING_PAGE_SHELL, "pb-0 pt-16")}
         aria-label="Additional sale information"
       >
         <SaleroomOverviewPanel overview={overviewVM} />
       </section>
 
       {relatedVMs.length > 0 ? (
-        <section className="mx-auto mt-20 max-w-[var(--container-max,1440px)] px-4 sm:px-6 md:px-8">
+        <section className={cn(MARKETING_PAGE_SHELL, "mt-20")}>
           <SaleroomRelatedAuctions related={relatedVMs} />
         </section>
       ) : null}

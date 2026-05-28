@@ -2,6 +2,7 @@ import { ViewItemListTracker } from "@/components/analytics/view-item-list-track
 import { ArtistScenarioBadges } from "@/components/artists/artist-scenario-badge";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb";
+import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
 import { ShareButton } from "@/components/marketing/share-button";
 import { ArtistHero } from "@/components/sections/artists/artist-hero";
 import { ArtistStickyFollow } from "@/components/sections/artists/artist-sticky-follow";
@@ -18,6 +19,8 @@ import {
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
+import { artistDirectoryBackHref } from "@/lib/marketing/catalog-links";
+import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { metadataForNotFound, metadataForSeller } from "@/lib/seo/metadata-factory";
 import {
   brandOrOrganizationJsonLd,
@@ -31,12 +34,14 @@ import { artistPath, lotPath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot, ArtistProfile as RegistryArtist } from "@auction/types";
 import { Badge } from "@auction/ui";
+import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 async function loadSellerLots(sellerId: string): Promise<Lot[]> {
@@ -104,8 +109,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return metadataForSeller(user);
 }
 
-export default async function ArtistPage({ params }: PageProps) {
+export default async function ArtistPage({ params, searchParams }: PageProps) {
   const { id, slug } = await params;
+  const sp = await searchParams;
+  const directoryBackHref = artistDirectoryBackHref(sp);
   const reader = await getServerArtistReader();
   const [sellerLots, artist, registry, aliases, session, featured, watchedArtistIds] =
     await Promise.all([
@@ -151,11 +158,20 @@ export default async function ArtistPage({ params }: PageProps) {
     return (
       <main
         id="main-content"
-        className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-10 xl:px-20"
+        className={cn(
+          "pb-[var(--page-bottom-padding)]",
+          MARKETING_CATALOG_PT,
+          MARKETING_PAGE_SHELL,
+        )}
       >
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
         </script>
+        <MarketingMobileBackLink
+          href={directoryBackHref}
+          label="Back to artists"
+          className="mb-4"
+        />
         <MarketingBreadcrumb
           className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
           items={[
@@ -365,13 +381,14 @@ export default async function ArtistPage({ params }: PageProps) {
   return (
     <main
       id="main-content"
-      className="mx-auto max-w-[var(--container-max,1440px)] px-5 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-10 xl:px-20"
+      className={cn("pb-[var(--page-bottom-padding)]", MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL)}
     >
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
       {shouldNoIndex(registry) ? <meta name="robots" content="noindex,follow" /> : null}
 
+      <MarketingMobileBackLink href={directoryBackHref} label="Back to artists" className="mb-4" />
       <MarketingBreadcrumb
         className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
         items={[

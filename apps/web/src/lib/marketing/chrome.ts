@@ -13,3 +13,6 @@ export const MARKETING_PAGE_INNER = `${MARKETING_PAGE_GUTTER} max-w-[var(--conta
 
 /** Catalogue toolbar / rail horizontal rhythm (matches page inner). */
 export const MARKETING_CATALOG_GUTTER = MARKETING_PAGE_GUTTER;
+
+/** Top padding for catalogue hubs with sticky toolbars (aligns with site header). */
+export const MARKETING_CATALOG_PT = "pt-[var(--header-height)]";

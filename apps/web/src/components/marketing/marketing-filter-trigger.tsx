@@ -10,7 +10,8 @@ export type MarketingFilterTriggerProps = {
   className?: string;
 } & React.ComponentPropsWithoutRef<"button">;
 
-/** Compact “Filters” control for mobile marketing toolbars (pairs with MarketingFilterSheet). */
+/** Compact “Filters” control for mobile marketing toolbars (pairs with MarketingFilterSheet).
+ * Dashboard uses `DashboardFilterTrigger` — intentionally denser for workspace toolbars. */
 export const MarketingFilterTrigger = forwardRef<HTMLButtonElement, MarketingFilterTriggerProps>(
   function MarketingFilterTrigger({ activeCount = 0, className, ...props }, ref) {
     return (

@@ -6,6 +6,7 @@ import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters"
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { NotificationsTypeFilterToolbar } from "@/components/dashboard/notifications/notifications-type-filter-toolbar";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
@@ -15,9 +16,8 @@ import {
 } from "@/lib/dashboard/filters/notifications/notifications-filters";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
-import { Alert, AlertDescription, AlertTitle, BulkActionBar } from "@auction/ui";
+import { BulkActionBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Button as ShadButton } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { CheckCheck, RefreshCcw } from "lucide-react";
 import Link from "next/link";
@@ -261,33 +261,21 @@ export function NotificationsInboxBoard({
           ) : null}
 
           {error ? (
-            <Alert
-              role="alert"
-              variant="destructive"
-              className="mt-6 rounded-xl border-error/40 shadow-sm"
-            >
-              <AlertTitle>Could not load notifications</AlertTitle>
-              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span>{error}</span>
-                <ShadButton
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void retry()}
-                  className="gap-2"
-                >
-                  <RefreshCcw className="size-3.5" aria-hidden />
+            <div className="mt-6">
+              <DashboardErrorAlert title="Could not load notifications" message={error}>
+                <Button type="button" variant="outline" size="sm" onClick={() => void retry()}>
+                  <RefreshCcw className="mr-2 size-3.5" aria-hidden />
                   Try again
-                </ShadButton>
-              </AlertDescription>
-            </Alert>
+                </Button>
+              </DashboardErrorAlert>
+            </div>
           ) : null}
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <p className="font-body text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
               {counterLine}
             </p>
-            <ShadButton
+            <Button
               type="button"
               variant="ghost"
               size="sm"
@@ -297,7 +285,7 @@ export function NotificationsInboxBoard({
             >
               <CheckCheck className="size-3.5" aria-hidden />
               Mark all read
-            </ShadButton>
+            </Button>
           </div>
 
           <div className="mt-3">
