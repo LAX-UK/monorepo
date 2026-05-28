@@ -11,8 +11,8 @@ import {
   formatCsvHeader,
   formatCsvRow,
 } from "@auction/exports";
-import type { ExportPreviewBody } from "@auction/validators";
 import { DATA_EXPORT_QUEUE_NAME, type DataExportJobPayload } from "@auction/queues";
+import type { ExportPreviewBody } from "@auction/validators";
 import type { CreateExportBody } from "@auction/validators";
 import type { Queue } from "bullmq";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
@@ -52,9 +52,7 @@ export type ExportJobView = {
 };
 
 function filtersHash(entityType: string, format: string, filters: Record<string, unknown>): string {
-  return createHash("sha256")
-    .update(JSON.stringify({ entityType, format, filters }))
-    .digest("hex");
+  return createHash("sha256").update(JSON.stringify({ entityType, format, filters })).digest("hex");
 }
 
 function exportObjectKey(exportId: string, format: ExportFormat): string {
@@ -71,10 +69,7 @@ function utcDayStart(): Date {
 }
 
 /** Reuse an existing export row only when in-flight or async file is still downloadable. */
-function isReusableExport(
-  row: typeof dataExport.$inferSelect,
-  staleProcessingMs: number,
-): boolean {
+function isReusableExport(row: typeof dataExport.$inferSelect, staleProcessingMs: number): boolean {
   if (row.status === "pending" || row.status === "processing") {
     return row.createdAt.getTime() > Date.now() - staleProcessingMs;
   }
@@ -361,7 +356,10 @@ export class ExportService {
     return updated ? this.toJobView(updated) : null;
   }
 
-  async getDownloadUrl(userId: string, exportId: string): Promise<{ url: string; filename: string } | null> {
+  async getDownloadUrl(
+    userId: string,
+    exportId: string,
+  ): Promise<{ url: string; filename: string } | null> {
     const [row] = await this.db
       .select()
       .from(dataExport)
@@ -390,7 +388,12 @@ export class ExportService {
       errorMessage?: string;
     },
   ): Promise<void> {
-    await this.redis.set(progressKey(exportId), JSON.stringify(snapshot), "EX", EXPORT_PROGRESS_TTL_SEC);
+    await this.redis.set(
+      progressKey(exportId),
+      JSON.stringify(snapshot),
+      "EX",
+      EXPORT_PROGRESS_TTL_SEC,
+    );
     await this.db
       .update(dataExport)
       .set({
@@ -405,7 +408,12 @@ export class ExportService {
       .where(eq(dataExport.id, exportId));
   }
 
-  async markCompleted(exportId: string, s3Key: string, fileSizeBytes: number, processedRows: number): Promise<void> {
+  async markCompleted(
+    exportId: string,
+    s3Key: string,
+    fileSizeBytes: number,
+    processedRows: number,
+  ): Promise<void> {
     const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
     await this.db
       .update(dataExport)

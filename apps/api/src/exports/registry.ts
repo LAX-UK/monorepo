@@ -9,28 +9,28 @@ import {
 import { AuthzError } from "../lib/errors.js";
 import type { AdminDomainEventQueryService } from "../services/admin/admin-domain-event-query.service.js";
 import type { IAdminUserReader } from "../services/interfaces/admin-user.js";
+import type { AdminUserListFilter } from "../services/interfaces/admin-user.js";
+import type { IAnalyticsService } from "../services/interfaces/analytics.js";
 import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import type {
   IPaymentWriteRepository,
   ListPaymentsExportFilter,
   PaymentRecord,
 } from "../services/interfaces/payment-write.js";
+import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
 import type {
-  ILotRepository,
   IItemSubmissionRepository,
+  ILotRepository,
   ISaleRepository,
   ListLotsFilter,
   ListSalesFilter,
   ListSubmissionsFilter,
 } from "../services/interfaces/repositories.js";
-import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
-import type { IAnalyticsService } from "../services/interfaces/analytics.js";
-import type { AdminUserListFilter } from "../services/interfaces/admin-user.js";
 import {
   requireCatalogueStaff,
   requireFinanceRead,
-  requirePlatformAdminAccess,
   requirePayoutRead,
+  requirePlatformAdminAccess,
   resolveIncludePii,
 } from "./auth.js";
 import type { ExportAuthContext, ExportProvider } from "./types.js";
@@ -117,7 +117,9 @@ export type ExportProviderDeps = {
   analytics: IAnalyticsService;
 };
 
-export function createExportProviders(deps: ExportProviderDeps): Map<ExportEntityType, ExportProvider> {
+export function createExportProviders(
+  deps: ExportProviderDeps,
+): Map<ExportEntityType, ExportProvider> {
   const lotsProvider: ExportProvider<ListLotsFilter> = {
     entityType: "lots",
     authorize(ctx) {
@@ -391,53 +393,55 @@ export function createExportProviders(deps: ExportProviderDeps): Map<ExportEntit
     filterSummary: (_ctx, filters) => summarizeFilters(filters as Record<string, unknown>),
   };
 
-  const analyticsProvider: ExportProvider<{ days: number; series: "revenue" | "ended_lots" | "registrations" }> =
-    {
-      entityType: "analytics",
-      authorize(ctx) {
-        requirePlatformAdminAccess(ctx);
-      },
-      columns(_ctx, filters) {
-        if (filters.series === "revenue") {
-          return [
-            { key: "date", header: "date" },
-            { key: "revenue", header: "revenue" },
-          ];
-        }
-        if (filters.series === "ended_lots") {
-          return [
-            { key: "date", header: "date" },
-            { key: "endedLots", header: "ended_lots" },
-          ];
-        }
+  const analyticsProvider: ExportProvider<{
+    days: number;
+    series: "revenue" | "ended_lots" | "registrations";
+  }> = {
+    entityType: "analytics",
+    authorize(ctx) {
+      requirePlatformAdminAccess(ctx);
+    },
+    columns(_ctx, filters) {
+      if (filters.series === "revenue") {
         return [
           { key: "date", header: "date" },
-          { key: "registrations", header: "registrations" },
+          { key: "revenue", header: "revenue" },
         ];
-      },
-      async estimateCount(_ctx, filters) {
-        return filters.days;
-      },
-      async *streamRows(_ctx, filters) {
-        const dashboard = await deps.analytics.getDashboard(analyticsDateRange(filters.days));
-        if (filters.series === "revenue") {
-          for (const row of dashboard.revenueSeries) {
-            yield { date: row.date, revenue: row.total };
-          }
-          return;
+      }
+      if (filters.series === "ended_lots") {
+        return [
+          { key: "date", header: "date" },
+          { key: "endedLots", header: "ended_lots" },
+        ];
+      }
+      return [
+        { key: "date", header: "date" },
+        { key: "registrations", header: "registrations" },
+      ];
+    },
+    async estimateCount(_ctx, filters) {
+      return filters.days;
+    },
+    async *streamRows(_ctx, filters) {
+      const dashboard = await deps.analytics.getDashboard(analyticsDateRange(filters.days));
+      if (filters.series === "revenue") {
+        for (const row of dashboard.revenueSeries) {
+          yield { date: row.date, revenue: row.total };
         }
-        if (filters.series === "ended_lots") {
-          for (const row of dashboard.lotCompletedSeries) {
-            yield { date: row.date, endedLots: String(row.count) };
-          }
-          return;
+        return;
+      }
+      if (filters.series === "ended_lots") {
+        for (const row of dashboard.lotCompletedSeries) {
+          yield { date: row.date, endedLots: String(row.count) };
         }
-        for (const row of dashboard.registrationSeries) {
-          yield { date: row.date, registrations: String(row.count) };
-        }
-      },
-      filterSummary: (_ctx, filters) => summarizeFilters(filters as Record<string, unknown>),
-    };
+        return;
+      }
+      for (const row of dashboard.registrationSeries) {
+        yield { date: row.date, registrations: String(row.count) };
+      }
+    },
+    filterSummary: (_ctx, filters) => summarizeFilters(filters as Record<string, unknown>),
+  };
 
   return new Map([
     ["lots", lotsProvider as ExportProvider],

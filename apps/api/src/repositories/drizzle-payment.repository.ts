@@ -178,10 +178,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       })
       .from(payment)
       .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId));
-    const rows = await (where
-      ? base.where(where)
-      : base
-    )
+    const rows = await (where ? base.where(where) : base)
       .orderBy(desc(payment.createdAt))
       .limit(filter.limit)
       .offset(filter.offset);

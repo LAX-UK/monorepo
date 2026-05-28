@@ -5,8 +5,8 @@ import { useExportJobs } from "@/components/exports/export-jobs-provider";
 import { Button } from "@auction/ui/components/button";
 import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
-import { ExportManagerSheet } from "./export-manager-sheet";
 import { useState } from "react";
+import { ExportManagerSheet } from "./export-manager-sheet";
 
 export function ExportTray() {
   const { jobs, trayOpen, setTrayOpen, activeCount, cancelJob, downloadJob } = useExportJobs();

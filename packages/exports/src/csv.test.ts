@@ -14,10 +14,7 @@ describe("escapeCsvCell", () => {
 
 describe("formatCsvDocument", () => {
   it("builds header and rows", () => {
-    const csv = formatCsvDocument(
-      [{ key: "id", header: "id" }],
-      [{ id: "1" }, { id: "2" }],
-    );
+    const csv = formatCsvDocument([{ key: "id", header: "id" }], [{ id: "1" }, { id: "2" }]);
     expect(csv).toBe("id\n1\n2");
   });
 });

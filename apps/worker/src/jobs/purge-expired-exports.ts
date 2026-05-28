@@ -38,7 +38,11 @@ export async function purgeExpiredExportsJob(input: {
     markedFailed += 1;
   }
 
-  const stale = await input.db.select().from(dataExport).where(lt(dataExport.expiresAt, now)).limit(200);
+  const stale = await input.db
+    .select()
+    .from(dataExport)
+    .where(lt(dataExport.expiresAt, now))
+    .limit(200);
 
   let deleted = 0;
   for (const row of stale) {
