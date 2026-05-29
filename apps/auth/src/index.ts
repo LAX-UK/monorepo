@@ -9,7 +9,7 @@ import {
   stampLastPasswordAuthFromSignInResponse,
   startJwksRetirementSchedule,
 } from "@auction/auth";
-import { createDb, closeDb } from "@auction/db";
+import { closeDb, createDb } from "@auction/db";
 import { session } from "@auction/db/schema";
 import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
 import { Sentry, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
