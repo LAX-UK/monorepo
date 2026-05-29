@@ -1,5 +1,5 @@
 import { createExportProviderDeps } from "@auction/api/exports";
-import { createDb } from "@auction/db";
+import { createDb, closeDb } from "@auction/db";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import {
   InMemoryCircuitBreaker,
@@ -110,10 +110,15 @@ const log = pino({
   timestamp: pino.stdTimeFunctions.isoTime,
 });
 const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
-const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+const redis = new Redis(env.REDIS_URL, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: true,
+  retryStrategy(times) {
+    return Math.min(times * 200, 5000);
+  },
+});
 redis.on("error", (err: Error) => {
   log.error({ err }, "redis connection error");
-  captureBackgroundError("redis", err);
 });
 const bullTelemetry = getBullMqTelemetry("auction-worker");
 const bullConnection = bullTelemetry
@@ -131,6 +136,14 @@ const sentryMonitorSlugs = loadSentryMonitorSlugs();
 function reportWorkerJobFailure(queue: string, job: { id?: string } | undefined, err: Error): void {
   log.warn({ jobId: job?.id, err, queue }, "worker job failed");
   captureBackgroundError(`worker-${queue}`, err, { extra: { jobId: job?.id } });
+}
+
+function registerWorkerErrorHandlers(workers: Array<{ worker: Worker; queue: string }>): void {
+  for (const { worker, queue } of workers) {
+    worker.on("error", (err: Error) => {
+      log.error({ err, queue }, "bullmq worker error");
+    });
+  }
 }
 
 /** BullMQ `repeat.pattern` uses cron-parser; Monday 09:00 UTC. */
@@ -653,6 +666,36 @@ if (env.CRON_INTERNAL_SECRET) {
   );
 }
 
+registerWorkerErrorHandlers([
+  { worker: webhookWorker, queue: WEBHOOK_EVENTS_QUEUE_NAME },
+  { worker: validateUploadWorker, queue: VALIDATE_UPLOAD_QUEUE_NAME },
+  { worker: imageCleanupWorker, queue: IMAGE_CLEANUP_QUEUE_NAME },
+  { worker: gcPendingUploadsWorker, queue: GC_PENDING_UPLOADS_QUEUE_NAME },
+  { worker: emailWorker, queue: EMAIL_QUEUE_NAME },
+  { worker: marketingSyncWorker, queue: MARKETING_SYNC_QUEUE_NAME },
+  { worker: payoutStatementWorker, queue: PAYOUT_STATEMENTS_QUEUE_NAME },
+  { worker: dataExportWorker, queue: DATA_EXPORT_QUEUE_NAME },
+  { worker: legalEntityArchiveWorker, queue: LEGAL_ENTITY_ARCHIVE_QUEUE_NAME },
+  { worker: impersonationSweeperWorker, queue: IMPERSONATION_SWEEPER_QUEUE_NAME },
+  { worker: purgeVerificationsWorker, queue: PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME },
+  { worker: purgeSoftDeletedUsersWorker, queue: PURGE_SOFT_DELETED_USERS_QUEUE_NAME },
+  ...(marketingCapiBatchWorker
+    ? [{ worker: marketingCapiBatchWorker, queue: MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME }]
+    : []),
+  ...(marketingEventsWorker
+    ? [{ worker: marketingEventsWorker, queue: MARKETING_EVENTS_QUEUE_NAME }]
+    : []),
+  ...(marketingOutboxPollerWorker
+    ? [{ worker: marketingOutboxPollerWorker, queue: MARKETING_OUTBOX_POLLER_QUEUE_NAME }]
+    : []),
+  ...(purgeMarketingClickIdsWorker
+    ? [{ worker: purgeMarketingClickIdsWorker, queue: PURGE_MARKETING_CLICK_IDS_QUEUE_NAME }]
+    : []),
+  ...(payoutSettlementWorker
+    ? [{ worker: payoutSettlementWorker, queue: PAYOUT_SETTLEMENT_QUEUE_NAME }]
+    : []),
+]);
+
 const deadLetterQueue = new Queue(DEAD_LETTER_QUEUE_NAME, queueOpts(DEAD_LETTER_QUEUE_NAME));
 registerDlqHandlers(
   [
@@ -805,6 +848,7 @@ function shutdown(signal: NodeJS.Signals) {
       ]),
     )
     .then(() => redis.quit())
+    .then(() => closeDb(db))
     .finally(() => {
       server.close(() => {
         clearTimeout(timeout);

@@ -9,7 +9,7 @@ import {
   stampLastPasswordAuthFromSignInResponse,
   startJwksRetirementSchedule,
 } from "@auction/auth";
-import { createDb } from "@auction/db";
+import { createDb, closeDb } from "@auction/db";
 import { session } from "@auction/db/schema";
 import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
 import { Sentry, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
@@ -232,7 +232,7 @@ function shutdown(signal: NodeJS.Signals) {
       log.error({ err }, "failed to close auth server");
       process.exit(1);
     }
-    void Promise.allSettled([emailQueue.close(), redis.quit()]).finally(() => {
+    void Promise.allSettled([emailQueue.close(), redis.quit(), closeDb(db)]).finally(() => {
       clearTimeout(timeout);
       process.exit(0);
     });
