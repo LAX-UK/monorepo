@@ -1,4 +1,5 @@
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
+import { closeDb } from "@auction/db";
 import {
   DEAD_LETTER_QUEUE_NAME,
   LOT_LIFECYCLE_QUEUE_NAME,
@@ -105,6 +106,8 @@ function shutdown(signal: NodeJS.Signals) {
       container.closeBullQueues(),
       closeBullBoardQueues(),
       container.redis.quit(),
+      closeDb(container.db),
+      closeDb(container.authDb),
     ]).finally(() => {
       clearTimeout(timeout);
       process.exit(0);
