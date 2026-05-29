@@ -95,10 +95,17 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
   const [resolved, setResolved] = React.useState<THit | null>(null);
   const [resolving, setResolving] = React.useState(false);
   const lastSearchId = React.useRef(0);
+  const lastSelectedIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!value) {
       setResolved(null);
+      setResolving(false);
+      lastSelectedIdRef.current = null;
+      return;
+    }
+    if (lastSelectedIdRef.current === value) {
+      lastSelectedIdRef.current = null;
       return;
     }
     let cancelled = false;
@@ -149,18 +156,23 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
   }, [query, minQueryLen, searchHits]);
 
   function handleSelect(row: THit) {
-    onChange(row.id, row);
+    setOpen(false);
     setQuery("");
     setHits([]);
-    setOpen(false);
+    setResolved(row);
+    setResolving(false);
+    lastSelectedIdRef.current = row.id;
+    onChange(row.id, row);
   }
 
   function handleClear() {
-    onChange(null);
+    setOpen(false);
     setQuery("");
     setHits([]);
     setResolved(null);
-    setOpen(false);
+    setResolving(false);
+    lastSelectedIdRef.current = null;
+    onChange(null);
   }
 
   const comboboxA11y = {
@@ -214,58 +226,50 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
       <p className="text-xs text-on-surface-variant">Selected id: {value}</p>
     ) : null;
 
-  if (value) {
-    return (
-      <div
-        className={cn(
+  const pickerTrigger = value ? (
+    <InlineActionButton {...comboboxA11y} disabled={disabled} aria-label={changeLabel}>
+      {changeLabel}
+    </InlineActionButton>
+  ) : (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={disabled}
+      className={cn(
+        "min-h-11 w-full justify-start px-3 font-body text-sm font-normal text-on-surface-variant",
+        !value ? className : undefined,
+      )}
+      {...comboboxA11y}
+    >
+      {placeholder}
+    </Button>
+  );
+
+  return (
+    <div
+      className={cn(
+        value &&
           "flex flex-wrap items-center gap-2 rounded-md border border-outline-variant/40 bg-surface-container-lowest p-3",
-          className,
-        )}
-      >
-        <div className="min-w-0 flex-1">{selectedSummary}</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ResponsivePickerShell
-            open={open}
-            onOpenChange={setOpen}
-            trigger={
-              <InlineActionButton {...comboboxA11y} disabled={disabled} aria-label={changeLabel}>
-                {changeLabel}
-              </InlineActionButton>
-            }
-            panel={searchPanel}
-            sheetTitle={searchPlaceholder}
-            popoverContentClassName="w-[var(--radix-popover-trigger-width)] p-0"
-          />
+        value ? className : undefined,
+      )}
+    >
+      {value ? <div className="min-w-0 flex-1">{selectedSummary}</div> : null}
+      <div className={cn("flex flex-wrap items-center gap-2", !value && "w-full")}>
+        <ResponsivePickerShell
+          open={open}
+          onOpenChange={setOpen}
+          trigger={pickerTrigger}
+          panel={searchPanel}
+          sheetTitle={searchPlaceholder}
+          popoverContentClassName="w-[var(--radix-popover-trigger-width)] p-0"
+        />
+        {value ? (
           <InlineActionButton onClick={handleClear} disabled={disabled} aria-label={clearLabel}>
             <X className="size-3.5" />
             {clearLabel}
           </InlineActionButton>
-        </div>
+        ) : null}
       </div>
-    );
-  }
-
-  return (
-    <ResponsivePickerShell
-      open={open}
-      onOpenChange={setOpen}
-      trigger={
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          className={cn(
-            "min-h-11 w-full justify-start px-3 font-body text-sm font-normal text-on-surface-variant",
-            className,
-          )}
-          {...comboboxA11y}
-        >
-          {placeholder}
-        </Button>
-      }
-      panel={searchPanel}
-      sheetTitle={searchPlaceholder}
-      popoverContentClassName="w-[var(--radix-popover-trigger-width)] p-0"
-    />
+    </div>
   );
 }

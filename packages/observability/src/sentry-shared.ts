@@ -70,6 +70,26 @@ function isConsoleLoggerEvent(event: ErrorEvent): boolean {
   return tags?.logger === "console";
 }
 
+function stackFrameTexts(event: ErrorEvent): string[] {
+  const frames = event.exception?.values?.[0]?.stacktrace?.frames ?? [];
+  return frames.flatMap((frame) =>
+    [frame.filename, frame.abs_path, frame.function].filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    ),
+  );
+}
+
+function hasStackFrameMatching(event: ErrorEvent, pattern: RegExp): boolean {
+  return stackFrameTexts(event).some((frame) => pattern.test(frame));
+}
+
+function browserName(event: ErrorEvent): string {
+  const contexts = event.contexts?.browser as { name?: string } | undefined;
+  if (typeof contexts?.name === "string") return contexts.name;
+  const tag = event.tags?.["browser.name"];
+  return typeof tag === "string" ? tag : "";
+}
+
 /** Drop expected noise: web-vitals misreported as errors, Better Auth user mistakes. */
 export function shouldDropSentryEvent(event: ErrorEvent): boolean {
   const message = eventMessage(event);
@@ -108,8 +128,40 @@ export function shouldDropThirdPartyClientNoise(event: ErrorEvent): boolean {
   const message = eventMessage(event);
 
   if (/Failed to fetch.*gtm\.lax\.bid/i.test(message)) return true;
+  if (/Load failed.*gtm\.lax\.bid/i.test(message)) return true;
   if (/webkit\.messageHandlers/i.test(message)) return true;
+  if (/callWebView|Java bridge method invocation error|Java object is gone/i.test(message)) {
+    return true;
+  }
   if (/UnrecognizedActionError|failed-to-find-server-action/i.test(message)) return true;
+
+  if (hasStackFrameMatching(event, /autofill_contact_enhanced/i)) return true;
+  if (
+    /Facebook/i.test(browserName(event)) &&
+    /reading 'value'/i.test(message) &&
+    (event.transaction?.includes("/dashboard/settings/addresses") ?? false)
+  ) {
+    return true;
+  }
+
+  if (/The object can not be found here/i.test(message) && hasStackFrameMatching(event, /removeChild/i)) {
+    return true;
+  }
+
+  if (/^TypeError: Load failed$/i.test(message)) return true;
+
+  return false;
+}
+
+/** Drop transient infrastructure noise (Postgres pool exhaustion, Redis blips, BullMQ lock loss). */
+export function shouldDropInfrastructureNoise(event: ErrorEvent): boolean {
+  const message = eventMessage(event);
+
+  if (/connect ETIMEDOUT/i.test(message)) return true;
+  if (/Missing lock for job/i.test(message)) return true;
+  if (/remaining connection slots are reserved for roles with the SUPERUSER attribute/i.test(message)) {
+    return true;
+  }
 
   return false;
 }
@@ -117,6 +169,7 @@ export function shouldDropThirdPartyClientNoise(event: ErrorEvent): boolean {
 /** Strip sensitive headers and webhook/cron bodies before events leave the process. */
 export function scrubSentryEvent<T extends ErrorEvent>(event: T, _hint?: EventHint): T | null {
   if (shouldDropSentryEvent(event)) return null;
+  if (shouldDropInfrastructureNoise(event)) return null;
 
   if (event.request?.headers) {
     event.request.headers = scrubRequestHeaders(event.request.headers as Record<string, string>);
