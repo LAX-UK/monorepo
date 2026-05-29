@@ -56,7 +56,7 @@ import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 type Props = {
   saleId: string;
@@ -141,6 +141,7 @@ function LotRowEditor({
   const isExisting = row.source === "existing";
   const inheritsTiming = saleModeInheritsLotTiming(ctx.deliveryMode);
   const lotStartValue = form.watch("startTime");
+  const sellerDisplayName = useWatch({ control: form.control, name: "sellerDisplayName" });
 
   useEffect(() => {
     form.reset(row);
@@ -396,7 +397,7 @@ function LotRowEditor({
                 </FormLabel>
                 <RhfLegalEntityPicker
                   value={field.value || null}
-                  displayLabel={form.watch("sellerDisplayName") ?? null}
+                  displayLabel={sellerDisplayName ?? null}
                   onChange={(id, entity) => {
                     field.onChange(id ?? "");
                     if (entity) form.setValue("sellerDisplayName", entity.displayName);

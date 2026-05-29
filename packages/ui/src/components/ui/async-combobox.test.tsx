@@ -33,6 +33,39 @@ describe("AsyncCombobox", () => {
     expect(trigger).toHaveAttribute("aria-describedby", "desc");
   });
 
+  it("selects from empty state without remounting the picker shell", async () => {
+    const onChange = vi.fn();
+    function Picker({ value }: { value: string | null }) {
+      return (
+        <AsyncCombobox<Hit>
+          value={value}
+          onChange={onChange}
+          searchHits={async () => hits}
+          resolveHit={async (id) => hits.find((h) => h.id === id) ?? null}
+          renderHit={(row) => row.label}
+          renderSelected={(row) => <span>{row.label}</span>}
+          placeholder="Pick one"
+          minQueryLen={0}
+        />
+      );
+    }
+
+    const { rerender } = render(<Picker value={null} />);
+
+    fireEvent.click(await screen.findByRole("combobox"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Alpha" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
+    expect(onChange).toHaveBeenCalledWith("a", hits[0]);
+
+    rerender(<Picker value="a" />);
+    expect(await screen.findByText("Alpha")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Change" })).toBeInTheDocument();
+  });
+
   it("allows changing selection without clearing first", async () => {
     const onChange = vi.fn();
     render(

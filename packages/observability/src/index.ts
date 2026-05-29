@@ -10,6 +10,7 @@ export {
   scrubSentryTransaction,
   sentryTracesSampler,
   shouldDropBrowserExtensionNoise,
+  shouldDropInfrastructureNoise,
   shouldDropSentryEvent,
   shouldDropThirdPartyClientNoise,
 } from "./sentry-shared.js";
