@@ -1,5 +1,5 @@
 import { createExportProviderDeps } from "@auction/api/exports";
-import { createDb, closeDb } from "@auction/db";
+import { closeDb, createDb } from "@auction/db";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import {
   InMemoryCircuitBreaker,

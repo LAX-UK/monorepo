@@ -1,5 +1,5 @@
-import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import { closeDb } from "@auction/db";
+import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import {
   DEAD_LETTER_QUEUE_NAME,
   LOT_LIFECYCLE_QUEUE_NAME,
