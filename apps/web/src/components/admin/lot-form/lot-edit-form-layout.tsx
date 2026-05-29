@@ -16,7 +16,6 @@ import {
   parseLotEditSectionFromPath,
 } from "@/components/admin/lot-form/lot-edit-types";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useMemo } from "react";
@@ -175,11 +174,8 @@ function LotEditFormLayoutBody({
           onSectionChange={handleSectionChange}
           aria-label="Edit sections"
         />
-        {canEditCore && auctionSection ? (
-          <section
-            className={cn("space-y-4", activeSection !== "auction" && "hidden")}
-            aria-hidden={activeSection !== "auction"}
-          >
+        {activeSection === "auction" && canEditCore && auctionSection ? (
+          <section className="space-y-4">
             <div>
               <h2 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                 Auction setup
@@ -192,24 +188,20 @@ function LotEditFormLayoutBody({
             {auctionSection}
           </section>
         ) : null}
-        <section
-          className={cn("space-y-4", activeSection !== "catalog" && "hidden")}
-          aria-hidden={activeSection !== "catalog"}
-        >
-          {!canEditCore ? (
-            <p className="font-body text-sm text-on-surface-variant">
-              Core auction fields are locked while the lot is live. Update estimate, condition,
-              provenance, and artist note here.
-            </p>
-          ) : null}
-          {catalogSection}
-        </section>
-        <section
-          className={cn("space-y-4", activeSection !== "documents" && "hidden")}
-          aria-hidden={activeSection !== "documents"}
-        >
-          {documentsSection}
-        </section>
+        {activeSection === "catalog" ? (
+          <section className="space-y-4">
+            {!canEditCore ? (
+              <p className="font-body text-sm text-on-surface-variant">
+                Core auction fields are locked while the lot is live. Update estimate, condition,
+                provenance, and artist note here.
+              </p>
+            ) : null}
+            {catalogSection}
+          </section>
+        ) : null}
+        {activeSection === "documents" ? (
+          <section className="space-y-4">{documentsSection}</section>
+        ) : null}
       </div>
     </CatalogFormShell>
   );

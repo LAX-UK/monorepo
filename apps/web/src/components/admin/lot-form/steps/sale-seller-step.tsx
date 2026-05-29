@@ -24,7 +24,7 @@ import {
 import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import Link from "next/link";
-import type { UseFormReturn } from "react-hook-form";
+import { type UseFormReturn, useWatch } from "react-hook-form";
 
 type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
 
@@ -65,7 +65,8 @@ function applySaleScheduleToLot(form: UseFormReturn<AdminLotFormValues>, sale: S
 }
 
 export function LotSaleSellerStep({ form, sales }: Props) {
-  const selectedSaleId = form.watch("saleId");
+  const selectedSaleId = useWatch({ control: form.control, name: "saleId" });
+  const sellerDisplayName = useWatch({ control: form.control, name: "sellerDisplayName" });
   const selectedSale = sales.find((s) => s.id === selectedSaleId) ?? null;
   const saleAssignmentLocked = selectedSale != null && selectedSale.status !== "draft";
 
@@ -92,7 +93,7 @@ export function LotSaleSellerStep({ form, sales }: Props) {
             </FormLabel>
             <RhfLegalEntityPicker
               value={field.value || null}
-              displayLabel={form.watch("sellerDisplayName") ?? null}
+              displayLabel={sellerDisplayName ?? null}
               onChange={(id, row) => {
                 field.onChange(id ?? "");
                 if (row) form.setValue("sellerDisplayName", row.displayName);
