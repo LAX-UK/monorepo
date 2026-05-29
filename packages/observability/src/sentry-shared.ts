@@ -144,7 +144,10 @@ export function shouldDropThirdPartyClientNoise(event: ErrorEvent): boolean {
     return true;
   }
 
-  if (/The object can not be found here/i.test(message) && hasStackFrameMatching(event, /removeChild/i)) {
+  if (
+    /The object can not be found here/i.test(message) &&
+    hasStackFrameMatching(event, /removeChild/i)
+  ) {
     return true;
   }
 
@@ -159,7 +162,9 @@ export function shouldDropInfrastructureNoise(event: ErrorEvent): boolean {
 
   if (/connect ETIMEDOUT/i.test(message)) return true;
   if (/Missing lock for job/i.test(message)) return true;
-  if (/remaining connection slots are reserved for roles with the SUPERUSER attribute/i.test(message)) {
+  if (
+    /remaining connection slots are reserved for roles with the SUPERUSER attribute/i.test(message)
+  ) {
     return true;
   }
 
