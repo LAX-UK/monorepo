@@ -7,17 +7,21 @@ import {
   CatalogDetailStickyMiniBar,
   CatalogDetailTabNav,
   type CatalogMobileAction,
+  CatalogPostCreateSessionRoot,
+  CatalogWhatsNextBanner,
 } from "@/components/admin/catalog";
 import { CategoryContextRail } from "@/components/admin/category-detail/category-context-rail";
 import {
   categoryDetailTabHref,
   categoryEditHref,
 } from "@/components/admin/category-detail/category-detail-types";
+import { buildCategoryTaxonomyReadiness } from "@/lib/admin/catalog-readiness";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import type { AdminCategory } from "@auction/types";
 import { Button } from "@auction/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 type Props = {
   categoryId: string;
@@ -82,104 +86,122 @@ export function CategoryDetailShell({
     },
   ];
 
+  const taxonomyReadiness = buildCategoryTaxonomyReadiness(
+    categoryId,
+    category,
+    resolvedDirectChildren,
+  );
+
   return (
-    <CatalogDetailShell
-      breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[{ label: "Categories", href: "/admin/categories" }, { label: category.name }]}
-        />
-      }
-      eyebrow="Category"
-      title={category.name}
-      description={category.description ?? undefined}
-      meta={
-        <div className="flex flex-wrap items-center gap-2">
-          {archivedStatusBadge}
-          <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            /{category.slug}
-          </span>
-        </div>
-      }
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <AdminPinPageButton label={category.name} />
-          <Button variant="outline" size="sm" asChild>
-            <Link href={categoryEditHref(categoryId)}>Edit</Link>
-          </Button>
-        </div>
-      }
-      mobileActions={mobileActions}
-      mobileMeta={
-        <CatalogDetailMobileMeta
-          entityId={categoryId}
-          updatedAt={category.updatedAt}
-          status={archivedStatusBadge}
-          quickLinks={[
-            ...(category.parentId
-              ? [
-                  {
-                    label: parentName ? `Parent: ${parentName}` : "Parent",
-                    href: `/admin/categories/${category.parentId}`,
-                  },
-                ]
-              : []),
-          ]}
-          primaryAction={
-            <Link
-              href={categoryEditHref(categoryId)}
-              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-            >
-              Edit category →
-            </Link>
-          }
-        />
-      }
-      aside={
-        <CategoryContextRail
-          categoryId={categoryId}
-          category={category}
-          directChildCount={resolvedDirectChildren}
-          status={archivedStatusBadge}
-          activityEvents={activityEvents}
-          parentName={parentName}
-        />
-      }
-      stickySubnav={
-        <>
-          <CatalogDetailTabNav
-            tabs={tabSpecs}
-            entityKind="category"
-            entityId={categoryId}
-            aria-label="Category sections"
-          />
-          <CatalogDetailStickyMiniBar
-            items={[
-              {
-                id: "children",
-                label: "Direct children",
-                value: String(resolvedDirectChildren),
-              },
-              {
-                id: "lots",
-                label: "Lots",
-                value: String(lotCount ?? category.usage.lots),
-              },
-              {
-                id: "sales",
-                label: "Sales",
-                value: String(resolvedSales),
-              },
-              {
-                id: "submissions",
-                label: "Submissions",
-                value: String(category.usage.submissions),
-              },
+    <CatalogPostCreateSessionRoot>
+      <CatalogDetailShell
+        breadcrumbs={
+          <CatalogBreadcrumbs
+            segments={[
+              { label: "Categories", href: "/admin/categories" },
+              { label: category.name },
             ]}
           />
-        </>
-      }
-    >
-      {children}
-    </CatalogDetailShell>
+        }
+        eyebrow="Category"
+        title={category.name}
+        description={category.description ?? undefined}
+        meta={
+          <div className="flex flex-wrap items-center gap-2">
+            {archivedStatusBadge}
+            <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              /{category.slug}
+            </span>
+          </div>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminPinPageButton label={category.name} />
+            <Button variant="outline" size="sm" asChild>
+              <Link href={categoryEditHref(categoryId)}>Edit</Link>
+            </Button>
+          </div>
+        }
+        mobileActions={mobileActions}
+        mobileMeta={
+          <CatalogDetailMobileMeta
+            entityId={categoryId}
+            updatedAt={category.updatedAt}
+            status={archivedStatusBadge}
+            quickLinks={[
+              ...(category.parentId
+                ? [
+                    {
+                      label: parentName ? `Parent: ${parentName}` : "Parent",
+                      href: `/admin/categories/${category.parentId}`,
+                    },
+                  ]
+                : []),
+            ]}
+            primaryAction={
+              <Link
+                href={categoryEditHref(categoryId)}
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+              >
+                Edit category →
+              </Link>
+            }
+          />
+        }
+        aside={
+          <CategoryContextRail
+            categoryId={categoryId}
+            category={category}
+            directChildCount={resolvedDirectChildren}
+            status={archivedStatusBadge}
+            activityEvents={activityEvents}
+            parentName={parentName}
+          />
+        }
+        stickySubnav={
+          <>
+            <CatalogDetailTabNav
+              tabs={tabSpecs}
+              entityKind="category"
+              entityId={categoryId}
+              aria-label="Category sections"
+            />
+            <CatalogDetailStickyMiniBar
+              items={[
+                {
+                  id: "children",
+                  label: "Direct children",
+                  value: String(resolvedDirectChildren),
+                },
+                {
+                  id: "lots",
+                  label: "Lots",
+                  value: String(lotCount ?? category.usage.lots),
+                },
+                {
+                  id: "sales",
+                  label: "Sales",
+                  value: String(resolvedSales),
+                },
+                {
+                  id: "submissions",
+                  label: "Submissions",
+                  value: String(category.usage.submissions),
+                },
+              ]}
+            />
+          </>
+        }
+      >
+        <Suspense fallback={null}>
+          <CatalogWhatsNextBanner
+            entityLabel="category"
+            readiness={taxonomyReadiness}
+            dismissKey={`category:${categoryId}`}
+          />
+        </Suspense>
+        {children}
+      </CatalogDetailShell>
+    </CatalogPostCreateSessionRoot>
   );
 }

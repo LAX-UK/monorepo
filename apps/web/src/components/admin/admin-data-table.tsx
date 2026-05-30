@@ -87,6 +87,8 @@ type AdminDataTableProps<TData, TValue> = {
   getRowHref?: (row: TData) => string | undefined;
   getRowEditHref?: (row: TData) => string | undefined;
   onRowActivate?: (row: TData) => void;
+  /** Applies CSS row virtualization when row count meets threshold (default 48). */
+  virtualizeRowThreshold?: number;
 };
 
 /** Staff list tables: server-driven sort, a11y caption, optional column picker + bulk selection. */
@@ -104,6 +106,7 @@ export function AdminDataTable<TData, TValue>({
   getRowHref,
   getRowEditHref,
   onRowActivate,
+  virtualizeRowThreshold = 48,
   enableRowSelection,
   rowSelection,
   onRowSelectionChange,
@@ -265,6 +268,7 @@ export function AdminDataTable<TData, TValue>({
   );
 
   const showToolbar = showColumnPicker || toolbarEnd;
+  const virtualizeRows = data.length >= virtualizeRowThreshold;
 
   return (
     <div ref={rootRef} className="space-y-2" tabIndex={enableKeyboardNav ? -1 : undefined}>
@@ -298,6 +302,7 @@ export function AdminDataTable<TData, TValue>({
           ? {
               className: [
                 "admin-data-table-stagger",
+                virtualizeRows && "admin-data-table-virtualized",
                 stickyHeader &&
                   "[&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-surface-container-lowest",
                 stickyFirstColumn &&
@@ -311,6 +316,7 @@ export function AdminDataTable<TData, TValue>({
           : {
               className: [
                 "admin-data-table-stagger",
+                virtualizeRows && "admin-data-table-virtualized",
                 enableKeyboardNav ? "[&_[data-focused=true]]:scroll-mt-16" : "",
               ]
                 .filter(Boolean)

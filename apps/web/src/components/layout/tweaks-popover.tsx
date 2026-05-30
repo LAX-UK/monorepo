@@ -1,6 +1,7 @@
 "use client";
 
 import { useDashboardDensity, useDensityToggle } from "@/components/layout/density-provider";
+import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -28,29 +29,47 @@ export function TweaksPopover({ sections }: TweaksPopoverProps = {}) {
     <ThemeTweakSection key="theme" />,
   ];
 
+  const trigger = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary"
+      aria-label="Open display settings"
+    >
+      <SlidersHorizontal className="size-4" aria-hidden />
+    </Button>
+  );
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <HydrationDeferred
+      fallback={
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary"
+          className="min-h-[44px] min-w-[44px] text-secondary"
           aria-label="Open display settings"
+          disabled
+          aria-busy
         >
           <SlidersHorizontal className="size-4" aria-hidden />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="w-72 border-outline-variant bg-surface-container-lowest"
-      >
-        <PopoverHeader>
-          <PopoverTitle>Display settings</PopoverTitle>
-        </PopoverHeader>
-        <div className="mt-4 flex flex-col gap-5">{resolved}</div>
-      </PopoverContent>
-    </Popover>
+      }
+    >
+      <Popover>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-72 border-outline-variant bg-surface-container-lowest"
+        >
+          <PopoverHeader>
+            <PopoverTitle>Display settings</PopoverTitle>
+          </PopoverHeader>
+          <div className="mt-4 flex flex-col gap-5">{resolved}</div>
+        </PopoverContent>
+      </Popover>
+    </HydrationDeferred>
   );
 }
 

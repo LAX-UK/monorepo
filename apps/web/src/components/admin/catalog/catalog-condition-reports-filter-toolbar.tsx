@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  type CatalogActiveFilterChip,
+  CatalogActiveFiltersRow,
+} from "@/components/admin/catalog/catalog-active-filters-row";
+import {
   CatalogFilterBar,
   type CatalogSegmentItem,
 } from "@/components/admin/catalog/catalog-filter-bar";
@@ -19,9 +23,14 @@ const LENSES: { id: ConditionReportLensId; label: string }[] = [
 type Props = {
   activeLensId: ConditionReportLensId;
   searchParams: Record<string, string | string[] | undefined>;
+  activeFilterChips?: readonly CatalogActiveFilterChip[];
 };
 
-export function CatalogConditionReportsFilterToolbar({ activeLensId, searchParams }: Props) {
+export function CatalogConditionReportsFilterToolbar({
+  activeLensId,
+  searchParams,
+  activeFilterChips = [],
+}: Props) {
   const lenses: CatalogSegmentItem[] = LENSES.map((lens) => ({
     id: lens.id,
     label: lens.label,
@@ -39,6 +48,7 @@ export function CatalogConditionReportsFilterToolbar({ activeLensId, searchParam
       sheetTitle="Condition report filters"
       sheetFilters={<span className="sr-only">No additional filters</span>}
       showFilterTrigger={false}
+      activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}
     />
   );
 }

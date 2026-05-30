@@ -2,6 +2,7 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
+import { CatalogVirtualizedList } from "@/components/admin/catalog/catalog-virtualized-list";
 import { adminSaleEditHref, adminSaleHref } from "@/lib/admin/catalog-route-helpers";
 import { Sparkline } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -23,7 +24,7 @@ export function SalesBoardMobileCards({
   onRowSelectionChange,
 }: Props) {
   return (
-    <ul className="space-y-3">
+    <CatalogVirtualizedList itemCount={rows.length}>
       {rows.map((r) => (
         <CatalogMobileCardShell
           key={r.saleId}
@@ -58,6 +59,6 @@ export function SalesBoardMobileCards({
           </p>
         </CatalogMobileCardShell>
       ))}
-    </ul>
+    </CatalogVirtualizedList>
   );
 }

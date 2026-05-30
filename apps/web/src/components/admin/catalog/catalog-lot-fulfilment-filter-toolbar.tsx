@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  type CatalogActiveFilterChip,
+  CatalogActiveFiltersRow,
+} from "@/components/admin/catalog/catalog-active-filters-row";
+import {
   CatalogFilterBar,
   type CatalogSegmentItem,
 } from "@/components/admin/catalog/catalog-filter-bar";
@@ -19,13 +23,18 @@ const FILTER_STATUSES = [
 type Props = {
   activeStatus: string | undefined;
   searchParams: Record<string, string | string[] | undefined>;
+  activeFilterChips?: readonly CatalogActiveFilterChip[];
 };
 
 function statusLabel(status: string): string {
   return status.replaceAll("_", " ");
 }
 
-export function CatalogLotFulfilmentFilterToolbar({ activeStatus, searchParams }: Props) {
+export function CatalogLotFulfilmentFilterToolbar({
+  activeStatus,
+  searchParams,
+  activeFilterChips = [],
+}: Props) {
   const lenses: CatalogSegmentItem[] = (["all", ...FILTER_STATUSES] as const).map((s) => ({
     id: s,
     label: s === "all" ? "All" : statusLabel(s),
@@ -45,6 +54,7 @@ export function CatalogLotFulfilmentFilterToolbar({ activeStatus, searchParams }
       sheetTitle="Fulfilment filters"
       sheetFilters={<span className="sr-only">No additional filters</span>}
       showFilterTrigger={false}
+      activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}
     />
   );
 }

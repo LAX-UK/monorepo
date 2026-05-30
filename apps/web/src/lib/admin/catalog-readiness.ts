@@ -9,7 +9,7 @@ import {
 } from "@/components/admin/lot-detail/lot-detail-types";
 import { saleDetailTabHref, saleEditHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { readinessLabel } from "@/lib/admin/sale-setup/field-copy";
-import type { AdminCategory, Lot, Sale } from "@auction/types";
+import type { AdminCategory, ArtistProfile, Lot, Sale } from "@auction/types";
 import { lotTimingViolationAgainstSale, saleModeInheritsLotTiming } from "@auction/validators";
 
 export type CatalogReadinessItem = {
@@ -193,6 +193,46 @@ export function buildSalePublishReadiness(
       ok: venueOk,
       severity: isOnsite ? "required" : "warning",
       href: saleEditHref(saleId),
+    },
+  ];
+
+  const completeCount = items.filter((i) => i.ok).length;
+  const firstFailing = items.find((i) => !i.ok);
+
+  return {
+    items,
+    completeCount,
+    totalCount: items.length,
+    percent: pct(completeCount, items.length),
+    ...(firstFailing ? { firstFailing } : {}),
+  };
+}
+
+export function buildArtistProfileReadiness(
+  artistId: string,
+  artist: ArtistProfile,
+): CatalogReadinessResult {
+  const items: CatalogReadinessItem[] = [
+    {
+      id: "bio",
+      label: "Profile description",
+      ok: Boolean(artist.shortBio?.trim() || artist.longBio?.trim()),
+      severity: "warning",
+      href: `/admin/artists/${artistId}/edit`,
+    },
+    {
+      id: "kind",
+      label: "Artist kind",
+      ok: Boolean(artist.kind),
+      severity: "warning",
+      href: `/admin/artists/${artistId}/edit`,
+    },
+    {
+      id: "review",
+      label: "Review status",
+      ok: artist.status !== "pending",
+      severity: "warning",
+      href: `/admin/artists/${artistId}/review`,
     },
   ];
 

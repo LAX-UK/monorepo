@@ -10,6 +10,7 @@ import {
   type FieldValues,
   FormProvider,
   useFormContext,
+  useFormState,
 } from "react-hook-form";
 import { cn } from "../../lib/utils.js";
 import { Label } from "./label.js";
@@ -40,7 +41,7 @@ FormField.displayName = "FormField";
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext);
   const itemContext = React.useContext(FormItemContext);
-  const { getFieldState, formState } = useFormContext();
+  const { control, getFieldState } = useFormContext();
 
   if (!fieldContext) {
     throw new Error("useFormField should be used within <FormField>");
@@ -49,6 +50,11 @@ const useFormField = () => {
     throw new Error("useFormField should be used within <FormItem>");
   }
 
+  const formState = useFormState({
+    control,
+    name: fieldContext.name,
+    exact: true,
+  });
   const fieldState = getFieldState(fieldContext.name, formState);
   const { id } = itemContext;
 

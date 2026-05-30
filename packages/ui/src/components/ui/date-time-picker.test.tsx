@@ -31,7 +31,7 @@ describe("DateTimePicker", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("uses bottom sheet on mobile", () => {
+  it("uses detached bottom sheet panel on mobile", () => {
     mockMatchMedia(false);
     const onChange = vi.fn();
 
@@ -39,6 +39,7 @@ describe("DateTimePicker", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Pick date and time" }));
 
-    expect(document.querySelector("[data-vaul-drawer]")).not.toBeNull();
+    expect(document.querySelector("[data-vaul-drawer]")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Pick date and time" })).toBeInTheDocument();
   });
 });

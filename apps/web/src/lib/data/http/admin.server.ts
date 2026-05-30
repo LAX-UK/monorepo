@@ -765,26 +765,47 @@ function parseAdminLotFulfilmentListRow(raw: unknown): AdminLotFulfilmentListRow
   };
 }
 
-async function fetchAdminLotFulfilmentListResponse(params?: { status?: string }): Promise<
-  | { kind: "ok"; rows: AdminLotFulfilmentListRow[] }
+async function fetchAdminLotFulfilmentListResponse(params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<
+  | {
+      kind: "ok";
+      rows: AdminLotFulfilmentListRow[];
+      total: number;
+      statusCounts: Record<string, number>;
+    }
   | { kind: "authz" }
   | { kind: "error"; message: string }
 > {
   const qs = new URLSearchParams();
   if (params?.status) qs.set("status", params.status);
+  if (params?.limit != null) qs.set("limit", String(params.limit));
+  if (params?.offset != null) qs.set("offset", String(params.offset));
   const suffix = qs.size ? `?${qs.toString()}` : "";
   const res = await authedServerFetch(`/admin/lot-fulfilment${suffix}`, { cache: "no-store" });
   if (res.status === 403 || res.status === 401) return { kind: "authz" };
   if (!res.ok) {
     return { kind: "error", message: `Failed to load lot fulfilment: ${res.status}` };
   }
-  const body = (await res.json()) as { data: unknown[] };
-  return { kind: "ok", rows: body.data.map(parseAdminLotFulfilmentListRow) };
+  const body = (await res.json()) as {
+    data: unknown[];
+    meta?: { total?: number; statusCounts?: Record<string, number> };
+  };
+  return {
+    kind: "ok",
+    rows: body.data.map(parseAdminLotFulfilmentListRow),
+    total: body.meta?.total ?? body.data.length,
+    statusCounts: body.meta?.statusCounts ?? {},
+  };
 }
 
 /** Operations fulfilment capability; returns empty when the user cannot access the queue. */
 export async function getAdminLotFulfilmentList(params?: {
   status?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<AdminLotFulfilmentListRow[]> {
   const r = await fetchAdminLotFulfilmentListResponse(params);
   if (r.kind === "authz") return [];
@@ -793,18 +814,25 @@ export async function getAdminLotFulfilmentList(params?: {
 }
 
 export type LotFulfilmentQueueLoadResult =
-  | { access: "ok"; rows: AdminLotFulfilmentListRow[] }
+  | {
+      access: "ok";
+      rows: AdminLotFulfilmentListRow[];
+      total: number;
+      statusCounts: Record<string, number>;
+    }
   | { access: "forbidden" }
   | { access: "error"; message: string };
 
 /** Same list as {@link getAdminLotFulfilmentList}, but distinguishes 403 from an empty queue. */
 export async function loadAdminLotFulfilmentQueue(params?: {
   status?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<LotFulfilmentQueueLoadResult> {
   const r = await fetchAdminLotFulfilmentListResponse(params);
   if (r.kind === "authz") return { access: "forbidden" };
   if (r.kind === "error") return { access: "error", message: r.message };
-  return { access: "ok", rows: r.rows };
+  return { access: "ok", rows: r.rows, total: r.total, statusCounts: r.statusCounts };
 }
 
 export type AdminConveyorPipelineRow = {
