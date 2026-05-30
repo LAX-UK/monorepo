@@ -1,10 +1,11 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
-import { artistAlias, artistProfile, lot, user } from "@auction/db/schema";
+import { artistAlias, artistProfile, artistWatchlist, lot, user } from "@auction/db/schema";
 import type {
   AdminArtistListResult,
   AdminArtistListRow,
   AdminArtistStats,
+  ArtistDeleteGuardCounts,
   ArtistKind,
   ArtistProfile,
   ArtistStatus,
@@ -16,6 +17,7 @@ import type { adminCreateArtistBodySchema, adminUpdateArtistBodySchema } from "@
 import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { AdminArtistListOptions } from "../admin/admin-route-dtos.js";
+import type { DbTransaction } from "../services/interfaces/artist-delete.js";
 
 export type CreateArtistInput = z.infer<typeof adminCreateArtistBodySchema> & {
   slug: string;
@@ -541,5 +543,55 @@ export class DrizzleArtistProfileRepository {
       .from(lot)
       .where(and(eq(lot.artistId, artistId), lotNotDeleted()));
     return Number(row?.value ?? 0);
+  }
+
+  async countDeleteGuards(artistId: string, tx?: DbTransaction): Promise<ArtistDeleteGuardCounts> {
+    const conn = tx ?? this.db;
+    const [lotRow, mergeRow, watchlistRow] = await Promise.all([
+      conn
+        .select({ value: count() })
+        .from(lot)
+        .where(eq(lot.artistId, artistId))
+        .then((rows) => rows[0]),
+      conn
+        .select({ value: count() })
+        .from(artistProfile)
+        .where(
+          and(
+            eq(artistProfile.mergedIntoArtistId, artistId),
+            eq(artistProfile.status, "merged_into"),
+          ),
+        )
+        .then((rows) => rows[0]),
+      conn
+        .select({ value: count() })
+        .from(artistWatchlist)
+        .where(eq(artistWatchlist.artistId, artistId))
+        .then((rows) => rows[0]),
+    ]);
+
+    return {
+      lotCount: Number(lotRow?.value ?? 0),
+      mergeDependentCount: Number(mergeRow?.value ?? 0),
+      watchlistCount: Number(watchlistRow?.value ?? 0),
+    };
+  }
+
+  async findByIdForUpdate(id: string, tx: DbTransaction): Promise<ArtistProfile | null> {
+    const [row] = await tx
+      .select()
+      .from(artistProfile)
+      .where(eq(artistProfile.id, id))
+      .for("update")
+      .limit(1);
+    return row ? mapArtist(row) : null;
+  }
+
+  async deleteById(id: string, tx: DbTransaction): Promise<boolean> {
+    const deleted = await tx
+      .delete(artistProfile)
+      .where(eq(artistProfile.id, id))
+      .returning({ id: artistProfile.id });
+    return deleted.length > 0;
   }
 }

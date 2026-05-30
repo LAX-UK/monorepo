@@ -1,11 +1,15 @@
 import { ArtistDetailShell } from "@/components/admin/artist-detail/artist-detail-shell";
 import {
   getAdminArtistById,
+  getAdminArtistDeleteEligibility,
   getAdminArtistDuplicateCandidates,
   getAdminDomainEventsForAggregate,
   getAdminLotList,
 } from "@/lib/data/http/admin.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { ARTIST_DELETE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { artistPath } from "@/lib/seo/url";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -26,6 +30,14 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
   ]);
   if (!artist) notFound();
 
+  const user = await getServerSessionUser();
+  const canManageDelete =
+    user != null &&
+    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_DELETE_ACCESS);
+  const deleteEligibility = canManageDelete
+    ? await getAdminArtistDeleteEligibility(id).catch(() => null)
+    : null;
+
   const publicHref = artistPath({ id: artist.id, name: artist.displayName });
 
   return (
@@ -36,6 +48,8 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
       duplicateCount={dupes.length}
       publicHref={publicHref}
       activityEvents={activityEvents}
+      deleteEligibility={deleteEligibility}
+      canManageDelete={canManageDelete}
     >
       {children}
     </ArtistDetailShell>

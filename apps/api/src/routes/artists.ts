@@ -1,12 +1,16 @@
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { publicArtistBrowseQuerySchema } from "@auction/validators";
+import { artistDeleteBodySchema } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { serviceErrorJsonBody } from "../lib/forbidden-response.js";
+import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
+  requireArtistDelete,
   requireArtistMerge,
   requireArtistRead,
   requireArtistReview,
@@ -266,6 +270,50 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
       const body = c.req.valid("json");
       const updated = await container.artistRegistryService.review(userId, id, body);
       return c.json({ data: updated });
+    },
+  );
+
+  /** GET /artists/:id/delete-eligibility — admin: evaluate hard-delete blockers. */
+  r.get(
+    `/${artistIdSegment}/delete-eligibility`,
+    requireAuth,
+    requireArtistDelete,
+    zValidator("param", idParam),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const eligibility = await container.artistDeleteService.getDeleteEligibility(id);
+      if (!eligibility) {
+        return c.json({ error: "Not found" }, 404);
+      }
+      return c.json({ data: eligibility });
+    },
+  );
+
+  /** DELETE /artists/:id — admin: permanently remove an unused artist profile. */
+  r.delete(
+    `/${artistIdSegment}`,
+    requireAuth,
+    requireArtistDelete,
+    zValidator("param", idParam),
+    zValidator("json", artistDeleteBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staffRole = c.get("userStaffRole") ?? null;
+      const { id } = c.req.valid("param");
+      const { confirmationPhrase } = c.req.valid("json");
+      const result = await container.artistDeleteService.delete(
+        userId,
+        role,
+        id,
+        confirmationPhrase,
+        staffRole,
+      );
+      if (result.isErr()) {
+        const error = result.error;
+        return c.json(serviceErrorJsonBody(error), asHttpStatus(error.status));
+      }
+      return c.body(null, 204);
     },
   );
 

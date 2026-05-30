@@ -1,3 +1,4 @@
+import { ArtistDestructivePanel } from "@/components/admin/artist-detail/artist-destructive-panel";
 import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
 import {
@@ -8,7 +9,7 @@ import {
 } from "@/components/admin/detail-rail";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
-import type { ArtistProfile } from "@auction/types";
+import type { ArtistDeleteEligibility, ArtistProfile } from "@auction/types";
 import { ExternalLink, GitMerge } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -20,6 +21,8 @@ type Props = {
   publicHref: string;
   status?: ReactNode;
   activityEvents?: readonly AdminDomainEventRow[];
+  deleteEligibility?: ArtistDeleteEligibility | null;
+  canManageDelete?: boolean;
 };
 
 export function ArtistContextRail({
@@ -30,6 +33,8 @@ export function ArtistContextRail({
   publicHref,
   status,
   activityEvents = [],
+  deleteEligibility = null,
+  canManageDelete = false,
 }: Props) {
   const related = [
     ...(artist.status === "merged_into" && artist.mergedIntoArtistId
@@ -114,6 +119,11 @@ export function ArtistContextRail({
             at: e.occurredAt.toISOString(),
             actor: e.actorUserId,
           }))}
+        />
+        <ArtistDestructivePanel
+          artist={artist}
+          deleteEligibility={deleteEligibility}
+          canManageDelete={canManageDelete}
         />
       </div>
     </div>

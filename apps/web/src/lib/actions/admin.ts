@@ -46,6 +46,7 @@ import {
   adminSuspendBodySchema,
   adminUpdateArtistBodySchema,
   adminUpdateCategoryBodySchema,
+  artistDeleteBodySchema,
   bulkLotsBodySchema,
   cancelLotBodySchema,
   createLotSchema,
@@ -73,6 +74,10 @@ const ARTIST_REVIEW_ACCESS: CapabilityRequirement = {
 
 const ARTIST_MERGE_ACCESS: CapabilityRequirement = {
   anyOf: ["artist.merge", "platform.admin.full"],
+};
+
+const ARTIST_DELETE_ACCESS: CapabilityRequirement = {
+  anyOf: ["artist.delete", "platform.admin.full"],
 };
 
 function revalidateAdminUserListPaths(): void {
@@ -624,6 +629,43 @@ export async function adminMergeArtistResultAction(
     revalidatePath(`/admin/artists/${fromId}/edit`);
     revalidatePath(`/admin/artists/${remainingId}/edit`);
     return actionSuccess({ remainingId });
+  });
+}
+
+export async function adminDeleteArtistResultAction(
+  artistId: string,
+  input: z.infer<typeof artistDeleteBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminDeleteArtistResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(ARTIST_DELETE_ACCESS);
+    if (denied) return denied;
+    const id = artistId.trim();
+    if (!id) return actionFailure("Missing artist");
+
+    const parsed = artistDeleteBodySchema.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+
+    const res = await authedServerFetch(`/artists/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed.data),
+    });
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        blockers?: string[];
+      };
+      const message = payload.blockers?.[0] ?? payload.message ?? payload.error ?? "Delete failed";
+      return actionFailure(message, undefined, res.status);
+    }
+
+    revalidatePath("/admin/artists");
+    revalidatePath(`/admin/artists/${id}`);
+    revalidatePath(`/admin/artists/${id}/edit`);
+    return actionSuccess();
   });
 }
 

@@ -1,6 +1,8 @@
 import { Hono } from "hono";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { ArtistError } from "../lib/errors.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createArtistRoutes } from "./artists.js";
 
@@ -21,10 +23,15 @@ function mountApp(role: string, staffRole?: string) {
   const artistProfileService = {
     listPublic: vi.fn().mockResolvedValue([]),
   };
+  const artistDeleteService = {
+    getDeleteEligibility: vi.fn(),
+    delete: vi.fn(),
+  };
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     artistRegistryService,
     artistProfileService,
+    artistDeleteService,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi
@@ -32,7 +39,7 @@ function mountApp(role: string, staffRole?: string) {
       .mockResolvedValue({ id: "u1", role, ...(staffRole ? { staffRole } : {}) }),
   };
   app.route("/artists", createArtistRoutes(container, authenticator));
-  return { app, artistRegistryService };
+  return { app, artistRegistryService, artistDeleteService };
 }
 
 describe("artist admin routes — platform administrator gate", () => {
@@ -273,5 +280,104 @@ describe("artist admin routes — platform administrator gate", () => {
       displayName: "New Artist",
       kind: "artist",
     });
+  });
+});
+
+describe("artist delete routes — artist.delete gate", () => {
+  it("returns 403 for DELETE /artists/:id when user is specialist", async () => {
+    const { app, artistDeleteService } = mountApp("staff", "specialist");
+
+    const res = await app.request(`/artists/${artistId}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ confirmationPhrase: "DELETE Test" }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(artistDeleteService.delete).not.toHaveBeenCalled();
+  });
+
+  it("allows DELETE /artists/:id for catalogue_manager", async () => {
+    const { app, artistDeleteService } = mountApp("staff", "catalogue_manager");
+    artistDeleteService.delete.mockResolvedValue(ok(undefined));
+
+    const res = await app.request(`/artists/${artistId}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ confirmationPhrase: "DELETE Test Artist" }),
+    });
+
+    expect(res.status).toBe(204);
+    expect(artistDeleteService.delete).toHaveBeenCalled();
+  });
+
+  it("returns 403 for GET delete-eligibility when user is staff_viewer", async () => {
+    const { app, artistDeleteService } = mountApp("staff", "staff_viewer");
+
+    const res = await app.request(`/artists/${artistId}/delete-eligibility`);
+
+    expect(res.status).toBe(403);
+    expect(artistDeleteService.getDeleteEligibility).not.toHaveBeenCalled();
+  });
+
+  it("allows GET delete-eligibility for super_admin", async () => {
+    const { app, artistDeleteService } = mountApp("staff", "super_admin");
+    artistDeleteService.getDeleteEligibility.mockResolvedValue({
+      canDelete: true,
+      blockers: [],
+      warnings: [],
+      confirmationPhrase: "DELETE Test",
+      guards: { lotCount: 0, mergeDependentCount: 0, watchlistCount: 0 },
+    });
+
+    const res = await app.request(`/artists/${artistId}/delete-eligibility`);
+
+    expect(res.status).toBe(200);
+    expect(artistDeleteService.getDeleteEligibility).toHaveBeenCalledWith(artistId);
+  });
+
+  it("returns 400 when delete confirmation phrase is wrong", async () => {
+    const { app, artistDeleteService } = mountApp("staff", "catalogue_manager");
+    artistDeleteService.delete.mockResolvedValue(
+      err(
+        new ArtistError(
+          "Type exactly: DELETE Canonical Name",
+          400,
+          "artist_delete_phrase_mismatch",
+        ),
+      ),
+    );
+
+    const res = await app.request(`/artists/${artistId}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ confirmationPhrase: "DELETE Wrong" }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("artist_delete_phrase_mismatch");
+  });
+
+  it("returns 422 when delete is blocked by policy", async () => {
+    const { app, artistDeleteService } = mountApp("staff", "super_admin");
+    artistDeleteService.delete.mockResolvedValue(
+      err(
+        new ArtistError("This artist is attributed to 2 lots", 422, "artist_delete_blocked", [
+          "This artist is attributed to 2 lots",
+        ]),
+      ),
+    );
+
+    const res = await app.request(`/artists/${artistId}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ confirmationPhrase: "DELETE Test Artist" }),
+    });
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { code?: string; blockers?: string[] };
+    expect(body.code).toBe("artist_delete_blocked");
+    expect(body.blockers).toEqual(["This artist is attributed to 2 lots"]);
   });
 });
