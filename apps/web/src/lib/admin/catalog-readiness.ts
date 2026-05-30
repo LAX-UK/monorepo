@@ -2,6 +2,12 @@ import {
   categoryDetailTabHref,
   categoryEditHref,
 } from "@/components/admin/category-detail/category-detail-types";
+import {
+  lotDetailTabHref,
+  lotEditCatalogHref,
+  lotEditHref,
+} from "@/components/admin/lot-detail/lot-detail-types";
+import { saleDetailTabHref, saleEditHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { readinessLabel } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminCategory, Lot, Sale } from "@auction/types";
 import { lotTimingViolationAgainstSale, saleModeInheritsLotTiming } from "@auction/validators";
@@ -62,6 +68,11 @@ export function lotPublishBlockedReason(result: CatalogReadinessResult): string 
   return first?.label ?? null;
 }
 
+/** Deep-link to the first incomplete publish check, or lot edit root. */
+export function lotEditResumeHref(lotId: string, readiness: CatalogReadinessResult): string {
+  return readiness.firstFailing?.href ?? lotEditHref(lotId);
+}
+
 export function buildLotPublishReadiness(
   lotId: string,
   auction: Lot,
@@ -78,49 +89,49 @@ export function buildLotPublishReadiness(
       label: "At least one image",
       ok: auction.images.length >= 1,
       severity: "required",
-      href: `/admin/lots/${lotId}/images`,
+      href: lotDetailTabHref(lotId, "images"),
     },
     {
       id: "description",
       label: "Catalogue description",
       ok: Boolean(auction.description?.trim()),
       severity: "required",
-      href: `/admin/lots/${lotId}/edit/catalog`,
+      href: lotEditCatalogHref(lotId),
     },
     {
       id: "seller",
       label: connectRequired ? readinessLabel("connect") : "Seller legal entity",
       ok: Boolean(auction.sellerLegalEntityId) && !connectRequired,
       severity: "required",
-      href: `/admin/lots/${lotId}`,
+      href: lotDetailTabHref(lotId, "overview"),
     },
     {
       id: "artist",
       label: "Artist assigned / review cleared",
       ok: !auction.artistReviewRequired,
       severity: "required",
-      href: `/admin/lots/${lotId}/edit`,
+      href: lotEditHref(lotId),
     },
     {
       id: "sale",
       label: "Assigned to a sale",
       ok: Boolean(auction.saleId),
       severity: "warning",
-      href: `/admin/lots/${lotId}`,
+      href: lotDetailTabHref(lotId, "overview"),
     },
     {
       id: "sale-window",
       label: "Lot schedule fits sale window",
       ok: saleWindowOk,
       severity: "required",
-      href: `/admin/lots/${lotId}/edit`,
+      href: lotEditHref(lotId),
     },
     {
       id: "schedule",
       label: "Valid schedule (end after start)",
       ok: scheduleValid,
       severity: "required",
-      href: `/admin/lots/${lotId}/edit`,
+      href: lotEditHref(lotId),
     },
   ];
 
@@ -160,28 +171,28 @@ export function buildSalePublishReadiness(
       label: "At least one lot attached",
       ok: hasLots,
       severity: "required",
-      href: `/admin/sales/${saleId}/lots`,
+      href: saleDetailTabHref(saleId, "lots"),
     },
     {
       id: "schedule",
       label: "Sale schedule set",
       ok: scheduleValid,
       severity: "required",
-      href: `/admin/sales/${saleId}/schedule`,
+      href: saleDetailTabHref(saleId, "schedule"),
     },
     {
       id: "registrations",
       label: "Registrations reviewed",
       ok: !liveish || pendingRegistrationCount === 0,
       severity: "warning",
-      href: `/admin/sales/${saleId}/registrations`,
+      href: saleDetailTabHref(saleId, "registrations"),
     },
     {
       id: "venue",
       label: "Onsite venue details",
       ok: venueOk,
       severity: isOnsite ? "required" : "warning",
-      href: `/admin/sales/${saleId}/edit`,
+      href: saleEditHref(saleId),
     },
   ];
 

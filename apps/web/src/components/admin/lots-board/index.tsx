@@ -3,6 +3,7 @@
 import { AdminAuctionPipeline } from "@/components/admin/admin-auction-pipeline";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { type AdminLotTableRow, lotColumns } from "@/components/admin/lots-board/columns";
 import { LotsLayoutToggle } from "@/components/admin/lots-board/layout-toggle";
@@ -14,6 +15,7 @@ import {
   bulkPublishPreflightWarning,
 } from "@/lib/admin/bulk-ops/lot-bulk-result";
 import { getLotBulkOperations } from "@/lib/admin/bulk-ops/lots";
+import { adminLotEditHref, adminLotHref, adminLotNewHref } from "@/lib/admin/catalog-route-helpers";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { Lot } from "@auction/types";
 import { EntityList } from "@auction/ui";
@@ -23,7 +25,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
-export type { AdminLotTableRow };
+export type { AdminLotTableRow } from "@/components/admin/lots-board/types";
 
 type Props = {
   rows: AdminLotTableRow[];
@@ -34,9 +36,15 @@ type Props = {
   statusChips?: ReactNode;
   /** Trimmed search query (?q=) for layout links; rendered only on the client. */
   searchQuery: string;
+  /** Serializable list URL params for layout toggle. */
+  listParams?: Record<string, string | undefined>;
   /** When false, bulk Cancel is hidden (requires auction.manage). */
   canManageAuction?: boolean;
+  /** When true, row menu includes publish for draft lots. */
+  canManageCatalog?: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
+  /** Server-driven column sort (list page passes href builder). */
+  columnSort?: import("@/components/admin/lots-board/columns").LotColumnSortConfig;
 };
 
 export function AdminLotsBoard({
@@ -44,17 +52,23 @@ export function AdminLotsBoard({
   fullLots,
   viewPipeline,
   listError,
-  urlError,
+  urlError: _urlError,
   statusChips,
-  searchQuery,
+  searchQuery: _searchQuery,
+  listParams = {},
   canManageAuction = false,
+  canManageCatalog = false,
   connectRequiredByLotId,
+  columnSort,
 }: Props) {
   const { density } = useTableDensity();
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
 
   const data = useMemo(() => rows.map((r) => ({ ...r, id: r.id })), [rows]);
-  const columns = useMemo(() => lotColumns(), []);
+  const columns = useMemo(
+    () => lotColumns(columnSort, { canManageCatalog, canManageAuction }),
+    [columnSort, canManageCatalog, canManageAuction],
+  );
   const bulkOperations = useMemo(() => getLotBulkOperations(canManageAuction), [canManageAuction]);
   const bulkPreflightWarning = useMemo(
     () => bulkPublishPreflightWarning(selectedIds, fullLots, connectRequiredByLotId),
@@ -64,20 +78,20 @@ export function AdminLotsBoard({
   if (viewPipeline) {
     return (
       <div className="space-y-8">
-        {listError || urlError ? (
+        {listError ? (
           <Alert variant="destructive">
             <AlertTitle>Could not load lots</AlertTitle>
-            <AlertDescription>{listError ?? urlError}</AlertDescription>
+            <AlertDescription>{listError}</AlertDescription>
           </Alert>
         ) : null}
-        <LotsLayoutToggle searchQuery={searchQuery} viewPipeline={viewPipeline} />
+        <LotsLayoutToggle listParams={listParams} viewPipeline={viewPipeline} />
         {fullLots.length === 0 && !listError ? (
           <AdminEmptyState
             title="No lots in the pipeline"
             description="Create draft lots to see them grouped by operational status."
             action={
               <Button variant="primary" asChild>
-                <Link href="/admin/lots/new">New lot</Link>
+                <Link href={adminLotNewHref()}>New lot</Link>
               </Button>
             }
           />
@@ -90,7 +104,7 @@ export function AdminLotsBoard({
 
   return (
     <div className="space-y-8">
-      {listError || urlError ? <p className="text-live-red">{listError ?? urlError}</p> : null}
+      {listError ? <AdminListAlert title="Could not load lots">{listError}</AdminListAlert> : null}
       <EntityList
         density={density}
         filters={
@@ -102,7 +116,7 @@ export function AdminLotsBoard({
                 aria-hidden
               />
             ) : null}
-            <LotsLayoutToggle searchQuery={searchQuery} viewPipeline={viewPipeline} />
+            <LotsLayoutToggle listParams={listParams} viewPipeline={viewPipeline} />
           </div>
         }
         responsiveMode="auto"
@@ -113,10 +127,11 @@ export function AdminLotsBoard({
               columns={columns}
               data={data}
               enableRowSelection
+              stickyHeader
               enableKeyboardNav
               getRowId={(r) => r.id}
-              getRowHref={(r) => `/admin/lots/${r.id}`}
-              getRowEditHref={(r) => `/admin/lots/${r.id}/edit`}
+              getRowHref={(r) => adminLotHref(r.id)}
+              getRowEditHref={(r) => adminLotEditHref(r.id)}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
               density={density}
@@ -125,7 +140,15 @@ export function AdminLotsBoard({
             />
           </TableScroll>
         }
-        cards={<LotsMobileCards rows={data} />}
+        cards={
+          <LotsMobileCards
+            rows={data}
+            canManageCatalog={canManageCatalog}
+            canManageAuction={canManageAuction}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+          />
+        }
       />
       <BulkActionsToolbar
         selectedIds={selectedIds}

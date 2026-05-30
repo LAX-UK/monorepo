@@ -38,6 +38,8 @@ export type ListLotsFilter = {
   endYear?: number | undefined;
   /** Case-insensitive substring match on title (public catalogue search). */
   search?: string | undefined;
+  /** When true, only lots with no images (draft triage). */
+  needsPhotos?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListLotsSort | undefined;
@@ -55,6 +57,8 @@ export type ListSalesFilter = {
   deliveryMode?: Sale["deliveryMode"] | undefined;
   /** Applies to ended sales — filters by buyer payment settlement on sold lots. */
   settlementStatus?: "settled" | "unsettled" | undefined;
+  /** Draft sales missing lots or onsite venue details. */
+  needsSetup?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListSalesSort | undefined;

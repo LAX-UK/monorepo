@@ -1061,6 +1061,20 @@ describe("LotService.listLotsForPublicApi", () => {
     expect(data).toHaveLength(1);
     expect(data[0]?.id).toBe(lotId);
   });
+
+  it("passes needsPhotos filter to the repository for attention lens", async () => {
+    const list = vi.fn().mockResolvedValue([]);
+    const lotRepo: ILotRepository = { list } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+    await svc.listLotsForPublicApi({ limit: 20, offset: 0, needsPhotos: true }, "staff");
+    expect(list).toHaveBeenCalledWith({ limit: 20, offset: 0, needsPhotos: true });
+  });
 });
 
 describe("LotService.bulkPublishOrCancel", () => {

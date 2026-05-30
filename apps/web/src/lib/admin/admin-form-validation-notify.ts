@@ -5,7 +5,7 @@ import type { ZodIssue } from "zod";
 
 const VALIDATION_FALLBACK = "Fix the highlighted fields before saving.";
 
-export function humanizeLotFormError(message: string): string {
+export function humanizeAdminFormError(message: string): string {
   return humanizeSetupError({ message });
 }
 
@@ -15,7 +15,7 @@ export function summarizeZodIssues(
 ): string {
   if (issues.length === 0) return VALIDATION_FALLBACK;
 
-  const humanized = issues.map((issue) => humanizeLotFormError(issue.message));
+  const humanized = issues.map((issue) => humanizeAdminFormError(issue.message));
   const shown = humanized.slice(0, maxShown);
   const first = shown[0] ?? VALIDATION_FALLBACK;
   const remaining = humanized.length - shown.length;
@@ -36,7 +36,7 @@ export function summarizeFieldErrors(fieldErrors: FieldErrorMap, maxShown = 1): 
   );
 }
 
-export function buildLotFormValidationMessage(input: {
+export function buildAdminFormValidationMessage(input: {
   issues?: readonly Pick<ZodIssue, "message">[];
   fieldErrors?: FieldErrorMap;
 }): string {
@@ -46,9 +46,9 @@ export function buildLotFormValidationMessage(input: {
 }
 
 /** Toast staff-friendly validation copy (never the generic "Check the form for errors"). */
-export function notifyLotFormValidationFailure(input: {
+export function notifyAdminFormValidationFailure(input: {
   issues?: readonly Pick<ZodIssue, "message">[];
   fieldErrors?: FieldErrorMap;
 }): void {
-  notify.error(buildLotFormValidationMessage(input));
+  notify.error(buildAdminFormValidationMessage(input));
 }

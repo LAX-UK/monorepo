@@ -14,9 +14,16 @@ type Props = {
   /** localStorage key for dismiss persistence */
   dismissKey?: string;
   compact?: boolean;
+  onDismiss?: () => void;
 };
 
-export function CatalogPublishReadiness({ title, readiness, dismissKey, compact = false }: Props) {
+export function CatalogPublishReadiness({
+  title,
+  readiness,
+  dismissKey,
+  compact = false,
+  onDismiss,
+}: Props) {
   const storageKey = dismissKey ? `catalog-readiness-dismiss:${dismissKey}` : null;
   const [dismissed, setDismissed] = useState(false);
 
@@ -30,7 +37,7 @@ export function CatalogPublishReadiness({ title, readiness, dismissKey, compact 
   }, [storageKey]);
 
   if (readiness.percent === 100) return null;
-  if (dismissed && !compact) return null;
+  if (dismissed) return null;
 
   const dismiss = () => {
     setDismissed(true);
@@ -41,6 +48,7 @@ export function CatalogPublishReadiness({ title, readiness, dismissKey, compact 
         // ignore
       }
     }
+    onDismiss?.();
   };
 
   if (compact) {

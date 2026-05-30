@@ -60,6 +60,26 @@ for (const file of files) {
   if (/type="file"/.test(text) && !ALLOWED_FILE_INPUT.has(base)) {
     violations.push(`${rel}: type="file" outside approved upload modules`);
   }
+
+  if (/window\.(?:confirm|alert|prompt)\(/.test(text)) {
+    violations.push(
+      `${rel}: native window dialog — use ConfirmDialog from '@auction/ui/components/confirm-dialog'`,
+    );
+  }
+
+  if (/(?:^|[^.\w])(?:confirm|alert|prompt)\(/.test(text)) {
+    violations.push(
+      `${rel}: native dialog — use ConfirmDialog from '@auction/ui/components/confirm-dialog'`,
+    );
+  }
+
+  if (rel.startsWith("components/admin/catalog/")) {
+    if (/MarketingFilterSheet/.test(text)) {
+      violations.push(
+        `${rel}: MarketingFilterSheet in admin catalog — use SplitFilterSheet from '@/components/ui/split-filter-sheet'`,
+      );
+    }
+  }
 }
 
 if (violations.length > 0) {
