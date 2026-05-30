@@ -94,6 +94,29 @@ describe("POST /webhooks/veriff/decision", () => {
     expect(await res.json()).toEqual({ error: "invalid_signature" });
   });
 
+  it("accepts vrf-hmac-signature when x-hmac-signature is absent", async () => {
+    const repo = makeRepo();
+    const kycService = new VeriffKycService(baseEnv(), repo, null);
+    const container = makeContainer({ kycService });
+    const app = createVeriffWebhookRoutes(container);
+    const body = JSON.stringify({
+      status: "success",
+      verification: { id: "s1", status: "approved" },
+    });
+
+    const res = await app.request("/decision", {
+      method: "POST",
+      body,
+      headers: {
+        "vrf-hmac-signature": sign(body),
+        "x-auth-client": API_KEY,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, processed: false });
+  });
+
   it("returns 400 for invalid webhook payload schema", async () => {
     const repo = makeRepo();
     const kycService = new VeriffKycService(baseEnv(), repo, null);
@@ -261,6 +284,26 @@ describe("POST /webhooks/veriff/decision", () => {
 });
 
 describe("POST /webhooks/veriff/event", () => {
+  it("accepts vrf-hmac-signature when x-hmac-signature is absent", async () => {
+    const repo = makeRepo();
+    const kycService = new VeriffKycService(baseEnv(), repo, null);
+    const container = makeContainer({ kycService });
+    const app = createVeriffWebhookRoutes(container);
+    const body = JSON.stringify({ id: "session-1", action: "started" });
+
+    const res = await app.request("/event", {
+      method: "POST",
+      body,
+      headers: {
+        "vrf-hmac-signature": sign(body),
+        "x-auth-client": API_KEY,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
   it("maps VeriffWebhookPayloadError to 400", async () => {
     const container = makeContainer();
     vi.mocked(container.kycService.handleEventWebhook).mockRejectedValue(

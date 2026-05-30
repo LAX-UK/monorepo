@@ -29,7 +29,7 @@ export function statusFromLegalEntityRow(entity: ConnectLegalEntityFields): Conn
   const configured = isStripeAccountConfigured(entity);
   return {
     stripeAccountId: entity.stripeConnectAccountId ?? null,
-    chargesEnabled: false,
+    chargesEnabled: entity.stripeConnectChargesEnabled ?? false,
     payoutsEnabled: entity.stripeConnectPayoutsEnabled,
     requirementsCurrentlyDue: entity.stripeConnectRequirementsCurrentlyDue ?? [],
     disabledReason: entity.stripeConnectDisabledReason ?? null,

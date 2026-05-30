@@ -172,8 +172,9 @@ export interface IBidRepository {
     Array<{
       bidderId: string;
       buyerLegalEntityId: string;
-      ceiling: number;
-      autoBidStepAmount: number | null;
+      ceiling: string;
+      autoBidStepAmount: string | null;
+      maxCreatedAt: Date | null;
     }>
   >;
   /** True when the bidder has at least one bid on the lot with a proxy ceiling set. */

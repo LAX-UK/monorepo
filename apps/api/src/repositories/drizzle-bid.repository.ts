@@ -177,16 +177,32 @@ export class DrizzleBidRepository implements IBidRepository {
     Array<{
       bidderId: string;
       buyerLegalEntityId: string;
-      ceiling: number;
-      autoBidStepAmount: number | null;
+      ceiling: string;
+      autoBidStepAmount: string | null;
+      maxCreatedAt: Date | null;
     }>
   > {
     const res = await this.db.execute(sql`
       SELECT DISTINCT ON (bidder_id)
         bidder_id AS "bidderId",
         buyer_legal_entity_id AS "buyerLegalEntityId",
-        (greatest(amount::numeric, coalesce(max_auto_bid_amount::numeric, amount::numeric)))::float8 AS ceiling,
-        auto_bid_step_amount::float8 AS "autoBidStepAmount"
+        (greatest(amount::numeric, coalesce(max_auto_bid_amount::numeric, amount::numeric)))::text AS ceiling,
+        auto_bid_step_amount::text AS "autoBidStepAmount",
+        COALESCE(
+          (
+            SELECT MIN(b2.created_at)
+            FROM bid b2
+            WHERE b2.lot_id = ${lotId}::uuid
+              AND b2.bidder_id = bid.bidder_id
+              AND b2.max_auto_bid_amount IS NOT NULL
+          ),
+          (
+            SELECT MIN(b3.created_at)
+            FROM bid b3
+            WHERE b3.lot_id = ${lotId}::uuid
+              AND b3.bidder_id = bid.bidder_id
+          )
+        ) AS "maxCreatedAt"
       FROM bid
       WHERE lot_id = ${lotId}::uuid
       ORDER BY bidder_id,
@@ -196,11 +212,17 @@ export class DrizzleBidRepository implements IBidRepository {
     return rowsFromExecute(res).map((row) => ({
       bidderId: String(row.bidderId),
       buyerLegalEntityId: String(row.buyerLegalEntityId),
-      ceiling: Number(row.ceiling),
+      ceiling: String(row.ceiling),
       autoBidStepAmount:
         row.autoBidStepAmount == null || row.autoBidStepAmount === ""
           ? null
-          : Number(row.autoBidStepAmount),
+          : String(row.autoBidStepAmount),
+      maxCreatedAt:
+        row.maxCreatedAt == null
+          ? null
+          : row.maxCreatedAt instanceof Date
+            ? row.maxCreatedAt
+            : new Date(String(row.maxCreatedAt)),
     }));
   }
 
@@ -325,10 +347,11 @@ export class DrizzleBidRepository implements IBidRepository {
   }
 
   async markWinningBid(lotId: string, bidId: string) {
-    await this.db
-      .update(bid)
-      .set({ isWinning: false })
-      .where(and(eq(bid.lotId, lotId), eq(bid.isWinning, true)));
-    await this.db.update(bid).set({ isWinning: true }).where(eq(bid.id, bidId));
+    await this.db.execute(sql`
+      UPDATE bid
+      SET is_winning = (id = ${bidId}::uuid)
+      WHERE lot_id = ${lotId}::uuid
+        AND (is_winning = true OR id = ${bidId}::uuid)
+    `);
   }
 }
