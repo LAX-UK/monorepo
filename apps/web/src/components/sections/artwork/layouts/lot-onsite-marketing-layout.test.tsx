@@ -118,5 +118,29 @@ describe("LotOnsiteMarketingLayout", () => {
       />,
     );
     expect(screen.getByRole("heading", { name: /Watch from anywhere/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /open live stream/i })).toBeInTheDocument();
+  });
+
+  it("shows embed preview for YouTube stream URLs", () => {
+    const sale = {
+      ...baseSale,
+      streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    };
+    render(
+      <LotOnsiteMarketingLayout
+        auction={baseLot}
+        sale={sale}
+        summarySeed={summarySeed}
+        marketingAccordionBlocks={blocks}
+        rail={rail}
+        isAuthenticated={false}
+        watchedLotIds={[]}
+        currentUserId={null}
+        shareUrl="https://example.com/lot"
+        followSlot={<span>follow</span>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /watch live/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /open in youtube/i })).toBeInTheDocument();
   });
 });
