@@ -212,6 +212,9 @@ describe("StripeConnectService.initiateTransfer", () => {
     return {
       findById: vi.fn().mockResolvedValue(payoutData),
       updateStatus: vi.fn().mockResolvedValue(payoutData),
+      updateStatusIfCurrent: vi
+        .fn()
+        .mockResolvedValue(payoutData ? { ...payoutData, status: "in_transit" as const } : null),
       list: vi.fn(),
       create: vi.fn(),
       insertLine: vi.fn(),
@@ -470,6 +473,172 @@ describe("StripeConnectService.initiateTransfer", () => {
       expect.objectContaining({ eventType: "payout.transfer_failed", aggregateId: "po1" }),
     );
   });
+
+  it("omits source_transaction when charge currency mismatches payout currency", async () => {
+    const payoutRow = payout({ status: "scheduled", netAmount: "10.00", currency: "GBP" });
+    const updateStatusIfCurrent = vi
+      .fn()
+      .mockResolvedValue({ ...payoutRow, status: "in_transit" as const, stripeTransferId: "tr_1" });
+    const payoutRepo = {
+      findById: vi.fn().mockResolvedValue(payoutRow),
+      updateStatus: vi.fn(),
+      updateStatusIfCurrent,
+      list: vi.fn(),
+      create: vi.fn(),
+      insertLine: vi.fn(),
+      listLines: vi.fn().mockResolvedValue([{ kind: "sale", paymentId: "pay_1" }]),
+      findUnlinkedCapturedPayments: vi.fn(),
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
+      listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      updateTotals: vi.fn(),
+      updateXeroBillId: vi.fn(),
+      findByStripeTransferId: vi.fn(),
+      reconcileStripeTransfer: vi.fn(),
+    } as unknown as IPayoutRepository;
+
+    const entitySelect = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([
+            {
+              id: "le1",
+              stripeConnectAccountId: "acct_123",
+              stripeConnectPayoutsEnabled: true,
+              stripeConnectRequirementsCurrentlyDue: [],
+              status: "approved",
+              isLaxManaged: false,
+            },
+          ]),
+        }),
+      }),
+    };
+    const paymentSelect = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([{ stripeChargeId: "ch_1" }]),
+        }),
+      }),
+    };
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(entitySelect)
+        .mockReturnValueOnce(entitySelect)
+        .mockReturnValueOnce(paymentSelect),
+    } as unknown as Database;
+
+    const transfersCreate = vi.fn().mockResolvedValue({ id: "tr_1" });
+    const chargesRetrieve = vi.fn().mockResolvedValue({ currency: "eur" });
+    const svc = new StripeConnectService(
+      baseEnv(),
+      db,
+      makePayoutService(null),
+      payoutRepo,
+      makeDomainEventPublisher(),
+    );
+    injectStripeOnService(svc, {
+      transfers: { create: transfersCreate },
+      charges: { retrieve: chargesRetrieve },
+      accounts: {
+        retrieve: vi.fn().mockRejectedValue(new Error("skip live sync")),
+      },
+    } as unknown as Stripe);
+
+    const result = await svc.initiateTransfer("po1");
+
+    expect(result).toEqual({ ok: true, stripeTransferId: "tr_1" });
+    expect(chargesRetrieve).toHaveBeenCalledWith("ch_1");
+    expect(transfersCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 1000,
+        currency: "gbp",
+        destination: "acct_123",
+      }),
+      { idempotencyKey: "payout:transfer:po1" },
+    );
+    expect(transfersCreate.mock.calls[0]?.[0]).not.toHaveProperty("source_transaction");
+    expect(updateStatusIfCurrent).toHaveBeenCalledWith(
+      "po1",
+      "scheduled",
+      expect.objectContaining({ status: "in_transit", stripeTransferId: "tr_1" }),
+    );
+  });
+
+  it("does not downgrade paid payout when scheduled-to-in_transit CAS fails", async () => {
+    const payoutRow = payout({ status: "scheduled", netAmount: "10.00", currency: "GBP" });
+    const paidRow = payout({
+      status: "paid",
+      netAmount: "10.00",
+      stripeTransferId: "tr_1",
+      processedAt: new Date(),
+    });
+    const updateStatusIfCurrent = vi.fn().mockResolvedValue(null);
+    const updateStatus = vi.fn();
+    const findById = vi.fn().mockResolvedValueOnce(payoutRow).mockResolvedValueOnce(paidRow);
+    const payoutRepo = {
+      findById,
+      updateStatus,
+      updateStatusIfCurrent,
+      list: vi.fn(),
+      create: vi.fn(),
+      insertLine: vi.fn(),
+      listLines: vi.fn().mockResolvedValue([]),
+      findUnlinkedCapturedPayments: vi.fn(),
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
+      listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      updateTotals: vi.fn(),
+      updateXeroBillId: vi.fn(),
+      findByStripeTransferId: vi.fn(),
+      reconcileStripeTransfer: vi.fn(),
+    } as unknown as IPayoutRepository;
+
+    const entitySelect = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([
+            {
+              id: "le1",
+              stripeConnectAccountId: "acct_123",
+              stripeConnectPayoutsEnabled: true,
+              stripeConnectRequirementsCurrentlyDue: [],
+              status: "approved",
+              isLaxManaged: false,
+            },
+          ]),
+        }),
+      }),
+    };
+    const db = {
+      select: vi.fn().mockReturnValueOnce(entitySelect).mockReturnValueOnce(entitySelect),
+    } as unknown as Database;
+
+    const transfersCreate = vi.fn().mockResolvedValue({ id: "tr_1" });
+    const publisher = makeDomainEventPublisher();
+    const svc = new StripeConnectService(
+      baseEnv(),
+      db,
+      makePayoutService(null),
+      payoutRepo,
+      publisher,
+    );
+    injectStripeOnService(svc, {
+      transfers: { create: transfersCreate },
+      accounts: {
+        retrieve: vi.fn().mockRejectedValue(new Error("skip live sync")),
+      },
+    } as unknown as Stripe);
+
+    const result = await svc.initiateTransfer("po1");
+
+    expect(result).toEqual({ ok: true, stripeTransferId: "tr_1" });
+    expect(updateStatusIfCurrent).toHaveBeenCalledWith(
+      "po1",
+      "scheduled",
+      expect.objectContaining({ status: "in_transit", stripeTransferId: "tr_1" }),
+    );
+    expect(updateStatus).not.toHaveBeenCalled();
+    expect(publisher.publish).not.toHaveBeenCalled();
+  });
 });
 
 describe("StripeConnectService.ensureAccount", () => {
@@ -659,6 +828,16 @@ describe("StripeConnectService.handleConnectedAccountEvent dedup", () => {
       undefined,
       publisher,
     );
+    injectStripeOnService(svc, {
+      accounts: {
+        retrieve: vi.fn().mockResolvedValue({
+          id: "acct_1",
+          charges_enabled: true,
+          payouts_enabled: true,
+          requirements: { currently_due: [] },
+        }),
+      },
+    } as unknown as Stripe);
 
     const result = await svc.handleConnectedAccountEvent({
       id: "evt_acct_1",

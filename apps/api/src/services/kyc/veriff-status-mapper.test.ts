@@ -12,6 +12,20 @@ describe("mapVeriffDecisionToApplyInput", () => {
     expect(input.userKycUpdate.setStatus).toBe("unverified");
   });
 
+  it("falls back to decision code when status is unknown", () => {
+    const input = mapVeriffDecisionToApplyInput({ id: "s1", status: "unknown", code: 9121 }, {});
+    expect(input.verificationStatus).toBe("canceled");
+    expect(input.userKycUpdate.setStatus).toBe("unverified");
+    expect(input.isApproved).toBe(false);
+  });
+
+  it("maps code 9001 to approved when status is empty", () => {
+    const input = mapVeriffDecisionToApplyInput({ id: "s1", status: "", code: 9001 }, {});
+    expect(input.verificationStatus).toBe("verified");
+    expect(input.userKycUpdate.setStatus).toBe("approved");
+    expect(input.isApproved).toBe(true);
+  });
+
   it("maps review to processing", () => {
     const input = mapVeriffDecisionToApplyInput({ id: "s1", status: "review" }, {});
     expect(input.verificationStatus).toBe("processing");

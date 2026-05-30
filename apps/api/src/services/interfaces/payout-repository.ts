@@ -113,6 +113,18 @@ export interface IPayoutRepository {
     },
   ): Promise<Payout>;
 
+  /** Compare-and-set status transition; returns null when `expectedStatus` no longer matches. */
+  updateStatusIfCurrent(
+    payoutId: string,
+    expectedStatus: Payout["status"],
+    patch: {
+      status: Payout["status"];
+      stripeTransferId?: string | null;
+      processedAt?: Date | null;
+      failureReason?: string | null;
+    },
+  ): Promise<Payout | null>;
+
   /** Update Stripe Connect reconciliation fields and recompute net amount when
    * a Stripe fee is supplied.
    */
