@@ -2,6 +2,7 @@
 
 import { confirmWithMessage } from "@/components/admin/dirty-navigation-registry";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import {
   type ReactNode,
   createContext,
@@ -9,8 +10,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { type Control, useFormState } from "react-hook-form";
 
 export type LotEditSectionId = "auction" | "catalog";
 
@@ -32,6 +35,8 @@ export function LotEditFormProvider({ activeSection, children }: ProviderProps) 
   const [dirtySections, setDirtySections] = useState<ReadonlySet<LotEditSectionId>>(
     () => new Set(),
   );
+  const dirtySectionsRef = useRef(dirtySections);
+  dirtySectionsRef.current = dirtySections;
 
   const registerSectionDirty = useCallback((section: LotEditSectionId, dirty: boolean) => {
     setDirtySections((prev) => {
@@ -47,9 +52,9 @@ export function LotEditFormProvider({ activeSection, children }: ProviderProps) 
 
   const confirmLeaveActiveSection = useCallback(async () => {
     if (activeSection === "documents") return true;
-    if (!dirtySections.has(activeSection)) return true;
+    if (!dirtySectionsRef.current.has(activeSection)) return true;
     return confirmWithMessage("You have unsaved changes. Switch section anyway?");
-  }, [activeSection, dirtySections]);
+  }, [activeSection]);
 
   const hasAnyDirty = dirtySections.size > 0;
 
@@ -76,10 +81,31 @@ export function useLotEditFormContext(): LotEditFormContextValue | null {
 
 /** Registers dirty state for a lot-edit section (auction or catalog). */
 export function useLotEditSectionDirty(section: LotEditSectionId, isDirty: boolean): void {
-  const ctx = useContext(LotEditFormContext);
+  const registerSectionDirty = useContext(LotEditFormContext)?.registerSectionDirty;
   useEffect(() => {
-    if (!ctx) return;
-    ctx.registerSectionDirty(section, isDirty);
-    return () => ctx.registerSectionDirty(section, false);
-  }, [ctx, section, isDirty]);
+    if (!registerSectionDirty) return;
+    registerSectionDirty(section, isDirty);
+    return () => registerSectionDirty(section, false);
+  }, [registerSectionDirty, section, isDirty]);
+}
+
+/**
+ * Subscribes to lot form dirty state without re-rendering the full form tree.
+ * Reports auction-section dirty state to {@link LotEditFormProvider}.
+ */
+export function LotEditDirtyReporter({
+  control,
+  lotEditSection,
+  onWizardDirtyChange,
+}: {
+  control: Control<AdminLotFormValues>;
+  lotEditSection?: LotEditSectionId;
+  onWizardDirtyChange?: (isDirty: boolean) => void;
+}) {
+  const { isDirty } = useFormState({ control });
+  useLotEditSectionDirty("auction", Boolean(lotEditSection === "auction" && isDirty));
+  useEffect(() => {
+    onWizardDirtyChange?.(isDirty);
+  }, [isDirty, onWizardDirtyChange]);
+  return null;
 }

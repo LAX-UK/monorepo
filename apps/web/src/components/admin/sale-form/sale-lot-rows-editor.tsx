@@ -35,6 +35,7 @@ import {
   syncLotsToSaleWindowLabel,
   updateLotScheduleLabel,
 } from "@/lib/admin/sale-setup";
+import { applySellerLegalEntitySelection } from "@/lib/admin/seller-legal-entity-form";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { formatDateTime } from "@/lib/ui/format";
@@ -145,7 +146,6 @@ function LotRowEditor({
   const inheritsTiming = saleModeInheritsLotTiming(ctx.deliveryMode);
   const lotStartValue = form.watch("startTime");
   const sellerDisplayName = useWatch({ control: form.control, name: "sellerDisplayName" });
-
   useEffect(() => {
     form.reset(row);
   }, [form, row]);
@@ -411,11 +411,19 @@ function LotRowEditor({
                 </FormLabel>
                 <RhfLegalEntityPicker
                   value={field.value || null}
-                  displayLabel={sellerDisplayName ?? null}
-                  onChange={(id, entity) => {
-                    field.onChange(id ?? "");
-                    if (entity) form.setValue("sellerDisplayName", entity.displayName);
-                  }}
+                  displayLabel={sellerDisplayName?.trim() || null}
+                  onChange={(id, row) =>
+                    applySellerLegalEntitySelection(
+                      field.onChange,
+                      (name) =>
+                        form.setValue("sellerDisplayName", name, {
+                          shouldDirty: true,
+                          shouldValidate: false,
+                        }),
+                      id,
+                      row,
+                    )
+                  }
                   disabled={readOnly || isSaved}
                 />
                 <FormMessage />

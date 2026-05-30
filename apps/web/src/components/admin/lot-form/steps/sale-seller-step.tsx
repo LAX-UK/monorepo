@@ -11,6 +11,7 @@ import {
   proposeLotTimesWithinWindow,
 } from "@/lib/admin/sale-lot-window-sync";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
+import { applySellerLegalEntitySelection } from "@/lib/admin/seller-legal-entity-form";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import type { Sale } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
@@ -65,8 +66,11 @@ function applySaleScheduleToLot(form: UseFormReturn<AdminLotFormValues>, sale: S
 }
 
 export function LotSaleSellerStep({ form, sales }: Props) {
-  const selectedSaleId = useWatch({ control: form.control, name: "saleId" });
-  const sellerDisplayName = useWatch({ control: form.control, name: "sellerDisplayName" });
+  const sellerDisplayName = useWatch({
+    control: form.control,
+    name: "sellerDisplayName",
+  });
+  const selectedSaleId = form.watch("saleId");
   const selectedSale = sales.find((s) => s.id === selectedSaleId) ?? null;
   const saleAssignmentLocked = selectedSale != null && selectedSale.status !== "draft";
 
@@ -93,11 +97,19 @@ export function LotSaleSellerStep({ form, sales }: Props) {
             </FormLabel>
             <RhfLegalEntityPicker
               value={field.value || null}
-              displayLabel={sellerDisplayName ?? null}
-              onChange={(id, row) => {
-                field.onChange(id ?? "");
-                if (row) form.setValue("sellerDisplayName", row.displayName);
-              }}
+              displayLabel={sellerDisplayName?.trim() || null}
+              onChange={(id, row) =>
+                applySellerLegalEntitySelection(
+                  field.onChange,
+                  (name) =>
+                    form.setValue("sellerDisplayName", name, {
+                      shouldDirty: true,
+                      shouldValidate: false,
+                    }),
+                  id,
+                  row,
+                )
+              }
             />
             <p className="mt-2 font-body text-xs text-on-surface-variant">
               The legal entity that owns this lot and receives payout.

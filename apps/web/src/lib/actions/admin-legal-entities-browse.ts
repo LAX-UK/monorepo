@@ -5,6 +5,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import {
   type AdminLegalEntityPickerRow,
+  getAdminLegalEntityById,
   searchAdminLegalEntitiesForPicker,
 } from "@/lib/data/http/admin.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
@@ -55,12 +56,13 @@ export async function resolveAdminLegalEntityForPickerAction(
     if (denied) return denied;
 
     try {
-      const rows = await searchAdminLegalEntitiesForPicker({
-        q: legalEntityId,
-        limit: 25,
-        offset: 0,
-      });
-      return actionSuccess(rows.find((row) => row.id === legalEntityId) ?? null);
+      const entity = await getAdminLegalEntityById(legalEntityId);
+      if (!entity) return actionSuccess(null);
+      return actionSuccess({
+        id: entity.id,
+        displayName: entity.displayName,
+        status: entity.status,
+      } satisfies AdminLegalEntityPickerRow);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Legal entity lookup failed";
       return actionFailure(message);

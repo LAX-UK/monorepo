@@ -34,42 +34,7 @@ describe("AsyncCombobox", () => {
     expect(trigger).toHaveAttribute("aria-describedby", "desc");
   });
 
-  it("selects from empty state without remounting the picker shell", async () => {
-    const onChange = vi.fn();
-    function Picker({ value }: { value: string | null }) {
-      return (
-        <AsyncCombobox<Hit>
-          value={value}
-          onChange={onChange}
-          searchHits={async () => hits}
-          resolveHit={async (id) => hits.find((h) => h.id === id) ?? null}
-          renderHit={(row) => row.label}
-          renderSelected={(row) => <span>{row.label}</span>}
-          placeholder="Pick one"
-          minQueryLen={0}
-        />
-      );
-    }
-
-    const { rerender } = render(<Picker value={null} />);
-
-    fireEvent.click(await screen.findByRole("combobox"));
-
-    await waitFor(() => {
-      expect(screen.getByRole("option", { name: "Alpha" })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith("a", hits[0]);
-    });
-
-    rerender(<Picker value="a" />);
-    expect(await screen.findByText("Alpha")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Change" })).toBeInTheDocument();
-  });
-
-  it("selects from empty state with synchronous parent update without infinite loop", async () => {
+  it("selects with synchronous parent update without infinite loop", async () => {
     function ControlledPicker() {
       const [value, setValue] = React.useState<string | null>(null);
       return (
@@ -130,6 +95,103 @@ describe("AsyncCombobox", () => {
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith("b", hits[1]);
     });
+  });
+
+  it("mirrors RHF double parent update without infinite loop", async () => {
+    function RhfLikePicker() {
+      const [entityId, setEntityId] = React.useState<string | null>(null);
+      const [displayName, setDisplayName] = React.useState<string | null>(null);
+      return (
+        <>
+          <AsyncCombobox<Hit>
+            value={entityId}
+            onChange={(id, hit) => {
+              setEntityId(id);
+              if (hit) setDisplayName(hit.label);
+            }}
+            searchHits={async () => hits}
+            resolveHit={async (id) => hits.find((h) => h.id === id) ?? null}
+            renderHit={(row) => row.label}
+            renderSelected={(row) => <span data-testid="selected-label">{row.label}</span>}
+            placeholder="Pick one"
+            minQueryLen={0}
+          />
+          {displayName ? <span data-testid="display-name">{displayName}</span> : null}
+        </>
+      );
+    }
+
+    render(<RhfLikePicker />);
+
+    fireEvent.click(await screen.findByRole("combobox"));
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Alpha" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-label")).toHaveTextContent("Alpha");
+      expect(screen.getByTestId("display-name")).toHaveTextContent("Alpha");
+    });
+    expect(screen.getByRole("combobox", { name: "Change" })).toBeInTheDocument();
+  });
+
+  it("shows the selected label from cache when resolve is slow or fails", async () => {
+    function ControlledPicker() {
+      const [value, setValue] = React.useState<string | null>(null);
+      return (
+        <AsyncCombobox<Hit>
+          value={value}
+          onChange={(id) => setValue(id)}
+          searchHits={async () => hits}
+          resolveHit={async () => null}
+          renderHit={(row) => row.label}
+          renderSelected={(row) => <span data-testid="selected-name">{row.label}</span>}
+          placeholder="Pick one"
+          minQueryLen={0}
+        />
+      );
+    }
+
+    render(<ControlledPicker />);
+
+    fireEvent.click(await screen.findByRole("combobox"));
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Alpha" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
+
+    expect(await screen.findByTestId("selected-name")).toHaveTextContent("Alpha");
+    expect(screen.queryByText("a")).not.toBeInTheDocument();
+  });
+
+  it("keeps the same combobox trigger element across selection", async () => {
+    const onChange = vi.fn();
+    render(
+      <AsyncCombobox<Hit>
+        value={null}
+        onChange={onChange}
+        searchHits={async () => hits}
+        resolveHit={async (id) => hits.find((h) => h.id === id) ?? null}
+        renderHit={(row) => row.label}
+        renderSelected={(row) => <span data-testid="selected-chip">{row.label}</span>}
+        placeholder="Pick one"
+        minQueryLen={0}
+      />,
+    );
+
+    const triggerBefore = await screen.findByRole("combobox");
+    expect(screen.getByTestId("async-combobox-trigger-slot")).toBeInTheDocument();
+
+    fireEvent.click(triggerBefore);
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Alpha" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith("a", hits[0]));
+
+    expect(screen.getByRole("combobox")).toBe(triggerBefore);
   });
 
   it("clears the selected value", async () => {
