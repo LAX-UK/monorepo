@@ -4,8 +4,10 @@ import {
   WizardFormReviewSection,
   WizardReviewRow,
 } from "@/components/admin/admin-form-wizard/wizard-form-review-section";
+import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import { formatDateTime } from "@/lib/ui/format";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import type { UseFormReturn } from "react-hook-form";
 
 type Props = {
@@ -19,6 +21,12 @@ export function LotFormReviewStep({ form, onEditStep }: Props) {
 
   return (
     <div className="space-y-6">
+      {values.saleId ? (
+        <Alert>
+          <AlertDescription>{draftSaleLotPublishBanner()}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <WizardFormReviewSection title="Identity" onEdit={() => onEditStep(0)}>
         <WizardReviewRow label="Title" value={values.title} />
         <WizardReviewRow label="Auction type" value={values.auctionType} />

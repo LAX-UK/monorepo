@@ -1,9 +1,10 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { adminSaleHref } from "@/lib/admin/catalog-route-helpers";
+import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
+import { adminSaleEditHref, adminSaleHref } from "@/lib/admin/catalog-route-helpers";
 import { Sparkline } from "@auction/ui";
-import { Checkbox } from "@auction/ui/components/checkbox";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { SaleBoardMobileActionMenu } from "./mobile-action-menu";
 import type { AdminSaleBoardRow } from "./types";
@@ -24,37 +25,38 @@ export function SalesBoardMobileCards({
   return (
     <ul className="space-y-3">
       {rows.map((r) => (
-        <li
+        <CatalogMobileCardShell
           key={r.saleId}
-          className="rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-start gap-3">
-              <Checkbox
-                className="mt-1 min-h-11 min-w-11 md:hidden"
-                checked={Boolean(rowSelection[r.saleId])}
-                onCheckedChange={(checked) => onRowSelectionChange(r.saleId, checked === true)}
-                aria-label={`Select ${r.title}`}
-              />
-              <div className="min-w-0 flex-1">
-                <Link
-                  href={adminSaleHref(r.saleId)}
-                  className="font-headline text-base text-on-surface hover:text-primary"
-                >
-                  {r.title}
-                </Link>
-                <p className="mt-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                  {r.lotCount} lot{r.lotCount === 1 ? "" : "s"}
-                </p>
+          id={r.saleId}
+          title={r.title}
+          selected={rowSelection[r.saleId]}
+          onSelectedChange={(checked) => onRowSelectionChange(r.saleId, checked)}
+          selectionLabel={`Select ${r.title}`}
+          trailing={<SaleBoardMobileActionMenu row={r} canManageSales={canManageSales} />}
+          status={<AdminStatusBadge domain="sale" status={r.status} />}
+          footer={
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <Sparkline values={r.sparklineValues} width={96} height={28} tone="lot-orange" />
               </div>
-            </div>
-            <AdminStatusBadge domain="sale" status={r.status} />
-          </div>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <Sparkline values={r.sparklineValues} width={96} height={28} tone="lot-orange" />
-            <SaleBoardMobileActionMenu row={r} canManageSales={canManageSales} />
-          </div>
-        </li>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="min-h-11 flex-1" asChild>
+                  <Link href={adminSaleEditHref(r.saleId)}>Edit</Link>
+                </Button>
+                <Button variant="secondary" size="sm" className="min-h-11 flex-1" asChild>
+                  <Link href={adminSaleHref(r.saleId)}>Open</Link>
+                </Button>
+              </div>
+            </>
+          }
+        >
+          <Link href={adminSaleHref(r.saleId)} className="font-headline text-sm text-primary">
+            {r.title}
+          </Link>
+          <p className="font-label text-[10px] uppercase text-on-surface-variant">
+            {r.lotCount} lot{r.lotCount === 1 ? "" : "s"}
+          </p>
+        </CatalogMobileCardShell>
       ))}
     </ul>
   );

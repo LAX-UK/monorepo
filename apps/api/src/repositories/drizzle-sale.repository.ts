@@ -54,6 +54,22 @@ function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   } else if (input.settlementStatus === "unsettled") {
     conditions.push(soldLotMissingSettledPayment());
   }
+  if (input.needsSetup) {
+    conditions.push(eq(sale.status, "draft"));
+    conditions.push(
+      sql`(
+        not exists (
+          select 1 from ${lot} l
+          where l.sale_id = ${sale.id}
+            and l.deleted_at is null
+        )
+        or (
+          ${sale.deliveryMode} = 'onsite'
+          and coalesce(nullif(trim(${sale.locationName}), ''), nullif(trim(${sale.locationCity}), '')) is null
+        )
+      )`,
+    );
+  }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 

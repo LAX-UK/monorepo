@@ -2,13 +2,14 @@
 
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
 import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
-import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
+import { CatalogReadinessChecklist } from "@/components/admin/catalog/catalog-readiness-checklist";
 import {
   ActivitySnapshotRail,
   KpiStackRail,
   RelatedEntitiesRail,
 } from "@/components/admin/detail-rail";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
+import { shouldShowCatalogReadinessRail } from "@/lib/admin/catalog-detail-readiness-surface";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { lotDetailReadinessDismissKey } from "@/lib/admin/compute-lot-detail-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
@@ -44,7 +45,10 @@ export function LotContextRail({
 }: Props) {
   const { isPostCreateBannerActive } = useCatalogPostCreateSession();
   const readiness = publishReadiness;
-  const hideRailReadiness = isPostCreateBannerActive(readiness);
+  const showRailReadiness = shouldShowCatalogReadinessRail({
+    readiness,
+    isPostCreateBannerActive: isPostCreateBannerActive(readiness),
+  });
 
   const related = [
     ...(context.sale
@@ -114,12 +118,12 @@ export function LotContextRail({
         />
         {quickActions}
         <RelatedEntitiesRail items={related} />
-        {readiness && !hideRailReadiness ? (
-          <CatalogPublishReadiness
+        {showRailReadiness && readiness ? (
+          <CatalogReadinessChecklist
             title="Publish readiness"
             readiness={readiness}
+            variant="compact"
             dismissKey={lotDetailReadinessDismissKey(lotId)}
-            compact
           />
         ) : null}
         <ActivitySnapshotRail

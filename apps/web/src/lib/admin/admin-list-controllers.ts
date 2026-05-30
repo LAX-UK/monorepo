@@ -56,6 +56,7 @@ export type SalesListQuery = AdminListQueryBase & {
   lifecycle?: SaleLifecycleSlug | undefined;
   /** Server-side filter — online | onsite */
   delivery?: "online" | "onsite" | undefined;
+  needsSetup?: boolean | undefined;
 };
 
 const saleLifecycleStatuses: Partial<Record<SaleLifecycleSlug, SaleStatus>> = {
@@ -88,7 +89,16 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
       deliveryRaw === "online" || deliveryRaw === "onsite"
         ? (deliveryRaw as "online" | "onsite")
         : undefined;
-    return { ...base, lifecycle: life, status, delivery, limit: Math.min(100, base.limit) };
+    const lensRaw = firstString(sp.lens)?.trim()?.toLowerCase();
+    const needsSetup = lensRaw === "setup" || firstString(sp.needsSetup) === "1";
+    return {
+      ...base,
+      lifecycle: life,
+      status: needsSetup ? "draft" : status,
+      delivery,
+      needsSetup: needsSetup || undefined,
+      limit: Math.min(100, base.limit),
+    };
   },
   async fetch(q) {
     const life = q.lifecycle;
@@ -107,6 +117,7 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
       deliveryMode?: "online" | "onsite";
       settlementStatus?: "settled" | "unsettled";
       sort?: "createdDesc" | "startAsc";
+      needsSetup?: boolean;
     } = {
       limit: q.limit,
       offset: q.offset,
@@ -117,6 +128,7 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
     if (q.delivery) p.deliveryMode = q.delivery;
     if (settlementStatus) p.settlementStatus = settlementStatus;
     if (q.sort) p.sort = q.sort as "createdDesc" | "startAsc";
+    if (q.needsSetup) p.needsSetup = true;
     const fetchLimit = q.limit + 1;
     const rows = await getAdminSalesList({ ...p, limit: fetchLimit });
     const hasNextPage = rows.length > q.limit;

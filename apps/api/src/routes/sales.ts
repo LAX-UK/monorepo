@@ -60,6 +60,7 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       q: query.q,
       deliveryMode: query.deliveryMode,
       settlementStatus: query.settlementStatus,
+      needsSetup: query.needsSetup === "1",
       limit: query.limit,
       offset: query.offset,
       sort: query.sort,

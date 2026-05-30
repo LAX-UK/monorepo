@@ -1,4 +1,5 @@
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { countActiveCatalogFilters } from "@/lib/admin/catalog-list-filter-utils";
 import { adminLotListPath } from "@/lib/admin/catalog-routes";
 import { lotActiveLensId, lotLensItems } from "@/lib/admin/catalog/lots-lenses";
 import { buildSortHref } from "@/lib/admin/list-sort";
@@ -49,15 +50,14 @@ export function buildLotsListPageModel(
   const effectiveStatus = query.status;
   const lensOwnedSort = activeLens === "ending" && !sp.sort;
 
-  const advancedFilterCount = [
-    q,
-    artistId,
-    saleId,
-    categoryId,
-    viewPipeline,
+  const advancedFilterCount = countActiveCatalogFilters([
+    q.trim() !== "" ? q : null,
+    artistId.trim() !== "" ? artistId : null,
+    saleId.trim() !== "" ? saleId : null,
+    categoryId.trim() !== "" ? categoryId : null,
     effectiveSort && !lensOwnedSort ? effectiveSort : null,
     effectiveStatus && activeLens === "all" ? effectiveStatus : null,
-  ].filter(Boolean).length;
+  ]);
 
   const lenses: CatalogSegmentItem[] = [
     ...lotLensItems(
