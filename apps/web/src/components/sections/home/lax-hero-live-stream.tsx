@@ -1,4 +1,4 @@
-import { DeferredLiveIframe } from "@/components/sections/home/deferred-live-iframe";
+import { DeferredLiveIframe } from "@/components/marketing/deferred-live-iframe";
 import type { HeroStateVM } from "@/components/sections/home/home-view-models";
 import { LaxHeroLiveOverlayContent } from "@/components/sections/home/lax-hero-live-overlay-content";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
