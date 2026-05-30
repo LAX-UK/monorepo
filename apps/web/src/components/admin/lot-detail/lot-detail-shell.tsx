@@ -270,12 +270,27 @@ export function LotDetailShell({
             />
             <CatalogDetailStickyMiniBar
               items={[
-                { id: "hammer", label: "Hammer", value: formatMoney(auction.currentPrice) },
                 {
                   id: "status",
                   label: "Status",
                   value: <AdminStatusBadge domain="lot" status={auction.status} />,
                 },
+                {
+                  id: "sale",
+                  label: "Sale",
+                  value: context.sale?.title ?? "Unassigned",
+                },
+                {
+                  id: "end",
+                  label: "Ends",
+                  value: auction.endTime
+                    ? new Date(auction.endTime).toLocaleString(undefined, {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    : "—",
+                },
+                { id: "hammer", label: "Hammer", value: formatMoney(auction.currentPrice) },
               ]}
             />
           </>

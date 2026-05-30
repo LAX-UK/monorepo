@@ -18,7 +18,7 @@ import {
 import { cn } from "../../lib/utils.js";
 import { Button } from "./button.js";
 import { Calendar } from "./calendar.js";
-import { ResponsivePickerShell } from "./responsive-picker-shell.js";
+import { DetachedPickerShell } from "./detached-picker-shell.js";
 import { TimePicker } from "./time-picker.js";
 
 export type DateTimePickerProps = {
@@ -91,6 +91,7 @@ function DateTimePicker({
   "aria-describedby": ariaDescribedBy,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const isDesktop = useMinWidthMd();
   const parsed = value.trim() ? fromDatetimeFormString(value, zone) : null;
   const datePart = parsed ? toDateFormString(parsed.instant, zone) : "";
@@ -125,13 +126,20 @@ function DateTimePicker({
 
   const trigger = (
     <Button
+      ref={triggerRef}
       id={id}
       type="button"
       variant="outline"
       disabled={disabled}
+      aria-expanded={open}
+      aria-haspopup="dialog"
       aria-invalid={ariaInvalid}
       aria-describedby={ariaDescribedBy}
       onBlur={onBlur}
+      onClick={() => {
+        if (disabled) return;
+        setOpen((prev) => !prev);
+      }}
       className={cn(
         "min-h-11 w-full justify-start px-3 py-3 text-left font-body text-sm font-normal",
         !value && "text-on-surface-variant",
@@ -144,9 +152,10 @@ function DateTimePicker({
 
   return (
     <div className={cn("grid gap-1", className)}>
-      <ResponsivePickerShell
+      <DetachedPickerShell
         open={open}
         onOpenChange={setOpen}
+        anchorRef={triggerRef}
         trigger={trigger}
         panel={<DateTimePickerPanel {...panelProps} />}
         footer={isDesktop === false ? doneButton : undefined}

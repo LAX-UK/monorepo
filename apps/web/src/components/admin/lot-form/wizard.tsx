@@ -12,8 +12,8 @@ import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wiz
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
 import { FormRootErrorAlert } from "@/components/admin/form-root-error-alert";
 import {
+  LotEditDirtyReporter,
   type LotEditSectionId,
-  useLotEditSectionDirty,
 } from "@/components/admin/lot-form/lot-edit-form-context";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
@@ -40,7 +40,7 @@ import { LoadingButton } from "@auction/ui/components/loading-button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
-import { useForm, useFormState } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z as zod } from "zod";
 import { LotCatalogueStep } from "./steps/catalogue-step";
 import { LotIdentityStep } from "./steps/identity-step";
@@ -114,6 +114,7 @@ export function AdminLotForm({
   };
   const [validationBanner, setValidationBanner] = useState<string | null>(null);
   const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
+  const [formDirty, setFormDirty] = useState(false);
   const salesById = useMemo(() => {
     const map = new Map<string, AdminLotFormSaleTiming>();
     for (const s of sales) {
@@ -160,8 +161,6 @@ export function AdminLotForm({
     mode: "onTouched",
     reValidateMode: "onChange",
   });
-  const { isDirty } = useFormState({ control: form.control });
-  useLotEditSectionDirty("auction", Boolean(lotEditSection === "auction" && isDirty));
   const auctionType = form.watch("auctionType");
   const lotStepFields = useMemo(
     () => buildLotStepFields(auctionType, { includeArtist: showArtistField }),
@@ -223,8 +222,13 @@ export function AdminLotForm({
 
   return (
     <>
-      {!lotEditSection ? <FormDirtyGuard isDirty={isDirty} /> : null}
+      {!lotEditSection ? <FormDirtyGuard isDirty={formDirty} /> : null}
       <Form {...form}>
+        <LotEditDirtyReporter
+          control={form.control}
+          {...(lotEditSection ? { lotEditSection } : {})}
+          {...(!lotEditSection ? { onWizardDirtyChange: setFormDirty } : {})}
+        />
         <form
           id={htmlFormId}
           className="space-y-8"
@@ -324,7 +328,7 @@ export function AdminLotForm({
           ) : (
             <AdminFormWizard
               steps={LOT_FORM_STEPS}
-              isDirty={isDirty}
+              isDirty={formDirty}
               pending={pending}
               hideStickyOnMobile={Boolean(htmlFormId)}
               onStepControl={({ goTo }) => {

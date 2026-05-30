@@ -1,6 +1,14 @@
 export { CatalogBreadcrumbs, type CatalogBreadcrumbSegment } from "./catalog-breadcrumbs";
 export { CatalogInfoCard } from "./catalog-info-card";
 export { CatalogFilterBar, type CatalogSegmentItem } from "./catalog-filter-bar";
+export {
+  CatalogActiveFiltersRow,
+  type CatalogActiveFilterChip,
+} from "./catalog-active-filters-row";
+export { CatalogPrimaryCta } from "./catalog-primary-cta";
+export { CatalogRelatedWork } from "./catalog-related-work";
+export { CatalogOpsBreadcrumb } from "./catalog-ops-breadcrumb";
+export { CatalogLotsLensNav, ADMIN_LOTS_VIEW_STORAGE_KEY } from "./catalog-lots-lens-nav";
 export { CatalogSegmentNav } from "./catalog-segment-nav";
 export { CatalogPageHeader, type CatalogMobileActionsPlacement } from "./catalog-page-header";
 export { CatalogMobileActionBar, type CatalogMobileAction } from "./catalog-mobile-action-bar";

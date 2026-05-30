@@ -200,7 +200,9 @@ export const lotsListController: IAdminListController<
     const needsPhotos = firstString(sp.needsPhotos) === "1";
     const qRaw = base.q?.trim();
     const q = qRaw ? qRaw.slice(0, 200) : undefined;
-    const limit = viewPipeline ? 200 : Math.min(200, base.limit);
+    /** Pipeline is a single-page board (max 200 rows). Cursor-based server pipeline is deferred until lists routinely exceed this cap. */
+    const PIPELINE_LOT_CAP = 200;
+    const limit = viewPipeline ? PIPELINE_LOT_CAP : Math.min(200, base.limit);
     return {
       ...base,
       limit,
@@ -215,7 +217,7 @@ export const lotsListController: IAdminListController<
     };
   },
   async fetch(q) {
-    const fetchLimit = q.viewPipeline ? q.limit : q.limit + 1;
+    const fetchLimit = q.limit + 1;
     const p: ListLotsParams = {
       limit: fetchLimit,
       offset: q.offset,
@@ -229,7 +231,9 @@ export const lotsListController: IAdminListController<
     if (q.needsPhotos) p.needsPhotos = true;
     const rows = await getAdminLotList(p);
     if (q.viewPipeline) {
-      return { rows, offset: q.offset, limit: q.limit };
+      const hasNextPage = rows.length > q.limit;
+      const pageRows = hasNextPage ? rows.slice(0, q.limit) : rows;
+      return { rows: pageRows, offset: q.offset, limit: q.limit, hasNextPage };
     }
     const hasNextPage = rows.length > q.limit;
     const pageRows = hasNextPage ? rows.slice(0, q.limit) : rows;

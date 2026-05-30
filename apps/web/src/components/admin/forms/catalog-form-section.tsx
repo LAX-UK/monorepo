@@ -15,6 +15,8 @@ export type CatalogFormSectionProps = {
   defaultOpen?: boolean;
   /** When false, section header is static (no accordion). */
   collapsible?: boolean;
+  /** Optional DOM id for in-page section navigation. */
+  anchorId?: string;
   children: ReactNode;
 };
 
@@ -27,6 +29,7 @@ export function CatalogFormSection({
   description,
   defaultOpen = true,
   collapsible = true,
+  anchorId,
   children,
 }: CatalogFormSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -35,7 +38,10 @@ export function CatalogFormSection({
 
   if (!collapsible) {
     return (
-      <div className="rounded-xl border border-outline-variant/25 bg-surface-container-lowest/40">
+      <div
+        id={anchorId}
+        className="scroll-mt-24 rounded-xl border border-outline-variant/25 bg-surface-container-lowest/40"
+      >
         <div className="border-b border-border-hairline px-4 py-3">
           <span className="font-display text-base font-semibold tracking-tight text-on-surface">
             {title}
@@ -51,9 +57,10 @@ export function CatalogFormSection({
 
   return (
     <Collapsible
+      id={anchorId}
       open={open}
       onOpenChange={setOpen}
-      className="rounded-xl border border-outline-variant/25 bg-surface-container-lowest/40"
+      className="scroll-mt-24 rounded-xl border border-outline-variant/25 bg-surface-container-lowest/40"
     >
       <CollapsibleTrigger
         type="button"

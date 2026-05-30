@@ -40,7 +40,8 @@ export function AdminSalesBoard({
     () => saleBoardColumns(columnSort, canManageSales),
     [columnSort, canManageSales],
   );
-  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
+  const { rowSelection, setRowSelection, selectedIds, clear, selectAllOnPage } = useBulkSelection();
+  const pageIds = useMemo(() => rows.map((r) => r.saleId), [rows]);
   const bulkOperations = useMemo(() => getSaleBulkOperations(canManageSales), [canManageSales]);
   const bulkPreflightWarning = useMemo(() => {
     const hints = [
@@ -100,6 +101,8 @@ export function AdminSalesBoard({
         operations={bulkOperations}
         onClear={clear}
         preflightWarning={bulkPreflightWarning}
+        pageRowCount={pageIds.length}
+        onSelectAllOnPage={() => selectAllOnPage(pageIds)}
       />
     </div>
   );

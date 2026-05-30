@@ -1,20 +1,13 @@
 "use client";
 
+import { AdminQuickCreateMenu } from "@/components/admin/admin-quick-create-menu";
 import {
   type StaffAttentionItem,
   StaffNotificationBell,
 } from "@/components/admin/staff-notification-bell";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@auction/ui/components/dropdown-menu";
-import { Brush, Package, Plus, ScrollText, Upload, UserPlus } from "lucide-react";
+import { Upload } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
@@ -71,52 +64,7 @@ export function AdminShellHeaderActions({
           </Link>
         </Button>
       ) : null}
-      {showPlatformLinks ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-9 gap-1.5 font-label text-xs"
-              aria-label="Quick create"
-            >
-              <Plus className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Create</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
-              Quick create
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/admin/lots/new">
-                <Package className="mr-2 size-4 opacity-70" aria-hidden />
-                New lot
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/admin/sales/new">
-                <ScrollText className="mr-2 size-4 opacity-70" aria-hidden />
-                New sale
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/admin/artists/new">
-                <Brush className="mr-2 size-4 opacity-70" aria-hidden />
-                New artist
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/admin/invitations">
-                <UserPlus className="mr-2 size-4 opacity-70" aria-hidden />
-                Invite user
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+      {showPlatformLinks ? <AdminQuickCreateMenu /> : null}
     </div>
   );
 }

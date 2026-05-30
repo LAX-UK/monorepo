@@ -38,16 +38,23 @@ export function CatalogListShell({
   pagination,
   className,
 }: Props) {
+  const showEmpty = Boolean(empty);
+  const showResults = !showEmpty;
+
   return (
     <AppScreen className={cn("mx-auto w-full max-w-7xl space-y-6 pb-8 md:space-y-8", className)}>
+      {breadcrumbs ? <div className="mb-2">{breadcrumbs}</div> : null}
       <CatalogPageHeader
         title={title}
         {...(description ? { description } : {})}
-        {...(breadcrumbs ? { breadcrumbs } : {})}
         {...(meta ? { meta } : {})}
         actions={primaryAction}
       />
-      {filterBar}
+      {filterBar ? (
+        <div className="sticky top-0 z-20 -mx-1 space-y-3 bg-surface/95 px-1 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-surface/80">
+          {filterBar}
+        </div>
+      ) : null}
       {mobileSummary ? (
         <div className="md:hidden" aria-live="polite">
           {mobileSummary}
@@ -58,9 +65,9 @@ export function CatalogListShell({
         <div className="flex flex-wrap items-center justify-end gap-2">{toolbarEnd}</div>
       ) : null}
       {errorAlert}
-      {children}
-      {empty}
-      {pagination}
+      {showResults ? children : null}
+      {showEmpty ? empty : null}
+      {showResults && !showEmpty ? pagination : null}
     </AppScreen>
   );
 }

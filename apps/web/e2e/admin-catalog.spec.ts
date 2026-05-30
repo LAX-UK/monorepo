@@ -732,3 +732,179 @@ test.describe("catalog delete destructive", () => {
     await expect(page.getByRole("link", { name: lotTitle })).toHaveCount(0, { timeout: 15000 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 5: mobile catalog UX + filter breakpoints
+// ---------------------------------------------------------------------------
+
+test.describe("catalog mobile and filter UX", () => {
+  test("mobile submissions bulk shows Approve; Reject is in More sheet", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin/submissions");
+    await expect(page.getByRole("heading", { name: /submissions/i })).toBeVisible();
+
+    const firstCardCheckbox = page.getByRole("checkbox").first();
+    const hasRow = await firstCardCheckbox.isVisible({ timeout: 8000 }).catch(() => false);
+    if (!hasRow) {
+      test.skip(true, "No submissions in seed data");
+      return;
+    }
+    await firstCardCheckbox.check();
+    await expect(page.getByRole("button", { name: /^approve$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^reject$/i })).toHaveCount(0);
+    await page.getByRole("button", { name: /^more$/i }).click();
+    await expect(page.getByRole("button", { name: /^reject$/i })).toBeVisible();
+  });
+
+  test("dismissing a lots filter chip clears q from the URL", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin/lots?q=e2e-chip-test");
+    await expect(page.getByRole("list", { name: /active filters/i })).toBeVisible();
+    const chip = page
+      .getByRole("listitem")
+      .filter({ hasText: /search/i })
+      .first();
+    const hasChip = await chip.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasChip) {
+      test.skip(true, "Search filter chip not rendered");
+      return;
+    }
+    await chip.click();
+    await page.waitForURL((url) => !url.searchParams.has("q"));
+    expect(page.url()).not.toContain("q=");
+  });
+
+  test("lots search is inline at lg and in Filters sheet below lg", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto("/admin/lots");
+    const search = page.getByPlaceholder(/search lots/i);
+    await expect(search).toBeVisible();
+    await page.getByRole("button", { name: /^filters$/i }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByPlaceholder(/search lots/i)).toHaveCount(0);
+
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto("/admin/lots");
+    const headerSearch = page
+      .locator("header, main")
+      .getByPlaceholder(/search lots/i)
+      .first();
+    await expect(headerSearch).toBeHidden();
+    await page.getByRole("button", { name: /^filters$/i }).click();
+    await expect(page.getByRole("dialog").getByPlaceholder(/search lots/i)).toBeVisible();
+  });
+
+  test("sales search follows the same lg breakpoint", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto("/admin/sales");
+    await expect(page.getByPlaceholder(/search by sale title/i)).toBeVisible();
+
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto("/admin/sales");
+    await expect(page.getByPlaceholder(/search by sale title/i)).toBeHidden();
+    await page.getByRole("button", { name: /^filters$/i }).click();
+    await expect(page.getByRole("dialog").getByPlaceholder(/search by sale title/i)).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6: ops parity, attention lens, home queue, fulfilment pagination
+// ---------------------------------------------------------------------------
+
+test.describe("catalog phase 6 flows", () => {
+  test("lots attention lens shows work queue sections", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/lots?lens=attention");
+    await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible();
+    const withdrawals = page.getByRole("heading", { name: /withdrawal requests/i });
+    const drafts = page.getByRole("heading", { name: /drafts missing photos/i });
+    const hasWithdrawals = await withdrawals.isVisible({ timeout: 3000 }).catch(() => false);
+    const hasDrafts = await drafts.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!hasWithdrawals && !hasDrafts) {
+      test.skip(true, "No attention queue content in seed data");
+      return;
+    }
+    if (hasWithdrawals) await expect(withdrawals).toBeVisible();
+    if (hasDrafts) await expect(drafts).toBeVisible();
+  });
+
+  test("admin home shows nav-count queue links when present", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin");
+    const queue = page.getByRole("heading", { name: /my queue/i });
+    await expect(queue).toBeVisible();
+    const fulfilmentLink = page.getByRole("link", { name: /fulfilment/i });
+    const crLink = page.getByRole("link", { name: /condition report/i });
+    const hasFulfilment = await fulfilmentLink.isVisible({ timeout: 2000 }).catch(() => false);
+    const hasCr = await crLink.isVisible({ timeout: 2000 }).catch(() => false);
+    if (!hasFulfilment && !hasCr) {
+      test.skip(true, "No synthetic nav-count queue items in seed data");
+      return;
+    }
+  });
+
+  test("fulfilment list pagination controls when queue exceeds one page", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/lot-fulfilment?limit=5&offset=0");
+    await expect(page.getByRole("heading", { name: /lot fulfilment/i })).toBeVisible();
+    const next = page.getByRole("link", { name: /next/i });
+    const hasNext = await next.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasNext) {
+      test.skip(true, "Fulfilment queue has five or fewer rows");
+      return;
+    }
+    await next.click();
+    await page.waitForURL(/offset=5/);
+  });
+
+  test("condition reports fulfilment filter chip clears status", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/lot-fulfilment?status=awaiting_release");
+    const chip = page
+      .getByRole("listitem")
+      .filter({ hasText: /status/i })
+      .first();
+    const hasChip = await chip.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasChip) {
+      test.skip(true, "Fulfilment status chip not rendered");
+      return;
+    }
+    await chip.click();
+    await page.waitForURL((url) => !url.searchParams.has("status"));
+  });
+
+  test("artist detail shows post-create banner with created=1", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/artists");
+    const firstArtist = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasArtist = await firstArtist.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasArtist) {
+      test.skip(true, "No artists in seed data");
+      return;
+    }
+    const href = await firstArtist.getAttribute("href");
+    if (!href) {
+      test.skip(true, "Could not resolve artist href");
+      return;
+    }
+    await page.goto(`${href}?created=1`);
+    await expect(page.getByText(/created|what.?s next|saved/i).first()).toBeVisible({
+      timeout: 5000,
+    });
+  });
+});

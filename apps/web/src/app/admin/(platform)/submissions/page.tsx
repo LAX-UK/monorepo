@@ -1,12 +1,13 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { CatalogSubmissionsFilterToolbar } from "@/components/admin/catalog/catalog-submissions-filter-toolbar";
 import { ExportButton } from "@/components/exports/export-button";
 import {
@@ -14,8 +15,11 @@ import {
   submissionsListController,
 } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { buildSubmissionsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { submissionsDecisionQueueHref } from "@/lib/admin/list-presets/submissions-presets";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminCategoryById } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
@@ -109,26 +113,14 @@ export default async function AdminSubmissionsPage({
     ? await getAdminCategoryById(query.categoryId).catch(() => null)
     : null;
 
-  const categoryBanner =
-    categoryFilter && query.categoryId ? (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-low/40 px-4 py-3 text-sm">
-        <p className="text-on-surface">
-          Showing submissions tagged with{" "}
-          <Link
-            href={`/admin/categories/${query.categoryId}`}
-            className="font-medium text-primary hover:underline"
-          >
-            {categoryFilter.name}
-          </Link>
-        </p>
-        <Link
-          href={buildListHref("/admin/submissions", sp, { categoryId: undefined, offset: 0 })}
-          className="font-label text-xs font-semibold uppercase tracking-wide text-primary hover:underline"
-        >
-          Clear category filter
-        </Link>
-      </div>
-    ) : null;
+  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+
+  const activeFilterChips = buildSubmissionsActiveFilterChips(sp, {
+    ...(initialQ ? { q: initialQ } : {}),
+    ...(query.categoryId
+      ? { categoryId: query.categoryId, categoryName: categoryFilter?.name ?? null }
+      : {}),
+  });
 
   const pagination =
     !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total) ? (
@@ -164,25 +156,44 @@ export default async function AdminSubmissionsPage({
     rejected: "rejected",
   }[activeQueue];
 
-  const emptyNoQuery =
-    !loadError && rows.length === 0 && !initialQ ? (
-      <AdminEmptyState
-        title={`Nothing in "${DECISION_TABS.find((t) => t.id === activeQueue)?.label ?? "this queue"}"`}
-        description={`There are no submissions ${scopeDescription} right now.`}
-      />
-    ) : null;
-
-  const emptyTitleOnly =
-    !loadError && initialQ && rows.length === 0 ? (
-      <AdminEmptyState
-        title="No matches"
-        description={`No submissions match "${initialQ}" in this queue view. Try another search term or clear the filter.`}
-        action={
-          <Button variant="secondary" asChild>
-            <Link href={clearTitleHref}>Clear search</Link>
-          </Button>
-        }
-      />
+  const empty =
+    !loadError && rows.length === 0 ? (
+      initialQ || query.categoryId ? (
+        <CatalogListEmptyState
+          title="No matches"
+          description="No submissions match your filters in this queue. Try another search term or clear filters."
+          action={
+            <div className="flex flex-wrap gap-2">
+              {initialQ ? (
+                <Button variant="secondary" asChild>
+                  <Link href={clearTitleHref}>Clear search</Link>
+                </Button>
+              ) : null}
+              <Button variant="secondaryOutline" asChild>
+                <Link
+                  href={buildListHref("/admin/submissions", sp, {
+                    categoryId: undefined,
+                    q: "",
+                    offset: 0,
+                  })}
+                >
+                  View all in queue
+                </Link>
+              </Button>
+            </div>
+          }
+        />
+      ) : (
+        <CatalogListEmptyState
+          title={`Nothing in "${DECISION_TABS.find((t) => t.id === activeQueue)?.label ?? "this queue"}"`}
+          description={`There are no submissions ${scopeDescription} right now.`}
+          action={
+            <Button variant="secondaryOutline" asChild>
+              <Link href="/admin/submissions">View all submissions</Link>
+            </Button>
+          }
+        />
+      )
     ) : null;
 
   const board =
@@ -194,7 +205,10 @@ export default async function AdminSubmissionsPage({
     <CatalogListShell
       title="Submissions"
       description="Staff decision queue: approve to create draft lots or reject with a clear reason."
+      meta={<CatalogRelatedWork variant="submissions" navCounts={navCounts} />}
       kpiStrip={kpiTiles}
+      empty={empty}
+      pagination={pagination}
       filterBar={
         <Suspense
           fallback={
@@ -208,6 +222,7 @@ export default async function AdminSubmissionsPage({
             lenses={lenses}
             activeLensId={activeQueue}
             activeFilterCount={activeFilterCount}
+            activeFilterChips={activeFilterChips}
             initialQ={initialQ}
             queue={activeQueue}
           />
@@ -227,16 +242,15 @@ export default async function AdminSubmissionsPage({
       mobileSummary={
         !loadError && submissionRows.length > 0 ? (
           <CatalogListMobileSummary
-            segments={[`${submissionRows.length} on page`, total > 0 ? `${total} total` : null]}
+            metrics={[
+              { id: "page", label: "On page", value: String(submissionRows.length) },
+              { id: "total", label: "Total", value: String(total) },
+            ]}
           />
         ) : null
       }
     >
-      {categoryBanner}
       {board}
-      {emptyNoQuery}
-      {emptyTitleOnly}
-      {pagination}
     </CatalogListShell>
   );
 }

@@ -9,8 +9,11 @@ import {
   CatalogDetailStickyMiniBar,
   CatalogDetailTabNav,
   type CatalogMobileAction,
+  CatalogPostCreateSessionRoot,
+  CatalogWhatsNextBanner,
 } from "@/components/admin/catalog";
 import { AdminArtistEditableTitle } from "@/components/admin/editable-titles";
+import { buildArtistProfileReadiness } from "@/lib/admin/catalog-readiness";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
@@ -19,6 +22,7 @@ import { Badge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 type Props = {
   artistId: string;
@@ -87,86 +91,97 @@ export function ArtistDetailShell({
       : []),
   ];
 
+  const profileReadiness = buildArtistProfileReadiness(artistId, artist);
+
   return (
-    <CatalogDetailShell
-      breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[{ label: "Artists", href: "/admin/artists" }, { label: artist.displayName }]}
-        />
-      }
-      eyebrow="Artist"
-      title={<AdminArtistEditableTitle artistId={artist.id} value={artist.displayName} />}
-      description={life ? `${life} · Registry overview` : "Registry overview"}
-      meta={
-        <div className="flex flex-wrap items-center gap-2">
-          {artist.kind ? (
-            <Badge variant="secondary">{artistKindMeta(artist.kind).badge}</Badge>
-          ) : null}
-          {statusBadge}
-        </div>
-      }
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <AdminPinPageButton label={artist.displayName} />
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/artists/${artist.id}/edit`}>Edit</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={publicHref} target="_blank" rel="noopener noreferrer">
-              Public profile
-            </Link>
-          </Button>
-        </div>
-      }
-      mobileActions={artistMobileActions}
-      mobileMeta={
-        <CatalogDetailMobileMeta
-          entityId={artistId}
-          updatedAt={artist.updatedAt}
-          publicHref={publicHref}
-          publicLabel="Public profile"
-          status={statusBadge}
-          primaryAction={
-            registryStatus === "pending" ? (
-              <Link
-                href={artistDetailTabHref(artistId, "review")}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-              >
-                Review profile →
+    <CatalogPostCreateSessionRoot>
+      <CatalogDetailShell
+        breadcrumbs={
+          <CatalogBreadcrumbs
+            segments={[{ label: "Artists", href: "/admin/artists" }, { label: artist.displayName }]}
+          />
+        }
+        eyebrow="Artist"
+        title={<AdminArtistEditableTitle artistId={artist.id} value={artist.displayName} />}
+        description={life ? `${life} · Registry overview` : "Registry overview"}
+        meta={
+          <div className="flex flex-wrap items-center gap-2">
+            {artist.kind ? (
+              <Badge variant="secondary">{artistKindMeta(artist.kind).badge}</Badge>
+            ) : null}
+            {statusBadge}
+          </div>
+        }
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <AdminPinPageButton label={artist.displayName} />
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/admin/artists/${artist.id}/edit`}>Edit</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={publicHref} target="_blank" rel="noopener noreferrer">
+                Public profile
               </Link>
-            ) : undefined
-          }
-        />
-      }
-      aside={
-        <ArtistContextRail
-          artistId={artistId}
-          artist={artist}
-          lotCount={lotCount}
-          duplicateCount={duplicateCount}
-          publicHref={publicHref}
-          status={statusBadge}
-          activityEvents={activityEvents}
-        />
-      }
-      stickySubnav={
-        <>
-          <CatalogDetailTabNav
-            tabs={tabSpecs}
-            entityKind="artist"
+            </Button>
+          </div>
+        }
+        mobileActions={artistMobileActions}
+        mobileMeta={
+          <CatalogDetailMobileMeta
             entityId={artistId}
-            aria-label="Artist sections"
+            updatedAt={artist.updatedAt}
+            publicHref={publicHref}
+            publicLabel="Public profile"
+            status={statusBadge}
+            primaryAction={
+              registryStatus === "pending" ? (
+                <Link
+                  href={artistDetailTabHref(artistId, "review")}
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                >
+                  Review profile →
+                </Link>
+              ) : undefined
+            }
           />
-          <CatalogDetailStickyMiniBar
-            items={[
-              { id: "lots", label: "Lots", value: String(lotCount) },
-              { id: "status", label: "Status", value: statusBadge },
-            ]}
+        }
+        aside={
+          <ArtistContextRail
+            artistId={artistId}
+            artist={artist}
+            lotCount={lotCount}
+            duplicateCount={duplicateCount}
+            publicHref={publicHref}
+            status={statusBadge}
+            activityEvents={activityEvents}
           />
-        </>
-      }
-    >
-      {children}
-    </CatalogDetailShell>
+        }
+        stickySubnav={
+          <>
+            <CatalogDetailTabNav
+              tabs={tabSpecs}
+              entityKind="artist"
+              entityId={artistId}
+              aria-label="Artist sections"
+            />
+            <CatalogDetailStickyMiniBar
+              items={[
+                { id: "lots", label: "Lots", value: String(lotCount) },
+                { id: "status", label: "Status", value: statusBadge },
+              ]}
+            />
+          </>
+        }
+      >
+        <Suspense fallback={null}>
+          <CatalogWhatsNextBanner
+            entityLabel="artist profile"
+            readiness={profileReadiness}
+            dismissKey={`artist:${artistId}`}
+          />
+        </Suspense>
+        {children}
+      </CatalogDetailShell>
+    </CatalogPostCreateSessionRoot>
   );
 }
