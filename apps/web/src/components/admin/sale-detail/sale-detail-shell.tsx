@@ -282,7 +282,11 @@ export function SaleDetailShell({
             />
           </Suspense>
         ) : null}
-        <SaleDetailReadinessProvider draftSetupReadiness={setupReadiness}>
+        <SaleDetailReadinessProvider
+          draftSetupReadiness={setupReadiness}
+          deleteBlockers={deleteBlockers}
+          canManageSales={canManageSales}
+        >
           {children}
         </SaleDetailReadinessProvider>
       </CatalogDetailShell>

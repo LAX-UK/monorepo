@@ -257,19 +257,22 @@ export async function getAdminLotList(
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map((raw) => {
-    const lot = parseLot(raw);
     const o = raw as Record<string, unknown>;
+    const lot = parseLot(raw);
     const ls = o.lifecycleSummary as Record<string, unknown> | undefined;
-    if (!ls || typeof ls.lastEventType !== "string" || typeof ls.lastEventAt !== "string") {
-      return lot;
-    }
+    const deleteEligibility = parseLotDeleteEligibility(o.deleteEligibility);
+    const lifecycleSummary =
+      ls && typeof ls.lastEventType === "string" && typeof ls.lastEventAt === "string"
+        ? {
+            lastEventType: ls.lastEventType,
+            lastEventAt: ls.lastEventAt,
+            returnCount: Number(ls.returnCount ?? 0),
+          }
+        : undefined;
     return {
       ...lot,
-      lifecycleSummary: {
-        lastEventType: ls.lastEventType,
-        lastEventAt: ls.lastEventAt,
-        returnCount: Number(ls.returnCount ?? 0),
-      },
+      ...(lifecycleSummary ? { lifecycleSummary } : {}),
+      ...(deleteEligibility != null ? { deleteEligibility } : {}),
     };
   });
 }
@@ -488,10 +491,15 @@ export async function getAdminSalesList(
   if (params.needsSetup) qs.set("needsSetup", "1");
   const res = await authedServerFetch(`/sales?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
-  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
+  const body = (await res.json()) as {
+    data: { sale: unknown; lots: unknown[]; deleteEligibility?: unknown }[];
+  };
   return body.data.map((row) => ({
     sale: parseSale(row.sale),
     lots: row.lots.map(parseLot),
+    ...(row.deleteEligibility != null
+      ? { deleteEligibility: parseSaleDeleteEligibility(row.deleteEligibility) }
+      : {}),
   }));
 }
 
@@ -660,14 +668,50 @@ export async function getAdminConditionReportRequests(params?: {
   };
 }
 
+export type LotDeleteEligibility = {
+  canDelete: boolean;
+  confirmationPhrase: string | null;
+  blockers: string[];
+};
+
+function parseLotDeleteEligibility(raw: unknown): LotDeleteEligibility | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const blockers = Array.isArray(o.blockers) ? o.blockers.map(String) : [];
+  return {
+    canDelete: o.canDelete === true,
+    confirmationPhrase:
+      o.confirmationPhrase == null || o.confirmationPhrase === ""
+        ? null
+        : String(o.confirmationPhrase),
+    blockers,
+  };
+}
+
 export async function getAdminLotById(id: string): Promise<Lot | null> {
+  const detail = await getAdminLotDetail(id);
+  return detail?.auction ?? null;
+}
+
+export async function getAdminLotDetail(id: string): Promise<{
+  auction: Lot;
+  deleteEligibility: LotDeleteEligibility | null;
+} | null> {
   const res = await authedServerFetch(`/lots/${encodeURIComponent(id)}`);
   if (res.status === 404) return null;
   if (!res.ok) {
     throw new Error(`Failed to load lot: ${res.status}`);
   }
   const body = (await res.json()) as { data: unknown };
-  return parseLot(body.data);
+  const data = body.data;
+  if (!data || typeof data !== "object") return null;
+  const record = data as Record<string, unknown>;
+  const deleteEligibility = parseLotDeleteEligibility(record.deleteEligibility);
+  const { deleteEligibility: _omit, ...lotRaw } = record;
+  return {
+    auction: parseLot(lotRaw),
+    deleteEligibility,
+  };
 }
 
 /** Resolve lots referenced by id (e.g. payment rows) without scanning the full lot list. */

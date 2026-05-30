@@ -1,5 +1,6 @@
 "use client";
 
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
 import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
 import { CatalogReadinessChecklist } from "@/components/admin/catalog/catalog-readiness-checklist";
@@ -27,6 +28,8 @@ type Props = {
   bidCount: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
   publishReadiness?: CatalogReadinessResult | null;
+  deleteBlockers?: readonly string[];
+  canManageAuction?: boolean;
   status?: ReactNode;
   publicHref?: string;
   quickActions?: ReactNode;
@@ -39,6 +42,8 @@ export function LotContextRail({
   bidCount,
   activityEvents = [],
   publishReadiness = null,
+  deleteBlockers = [],
+  canManageAuction = false,
   status,
   publicHref,
   quickActions,
@@ -125,6 +130,9 @@ export function LotContextRail({
             variant="compact"
             dismissKey={lotDetailReadinessDismissKey(lotId)}
           />
+        ) : null}
+        {deleteBlockers.length > 0 && canManageAuction ? (
+          <CatalogDeleteEligibilityNotice blockers={deleteBlockers} entityLabel="lot" />
         ) : null}
         <ActivitySnapshotRail
           events={activityEvents.map((e) => ({

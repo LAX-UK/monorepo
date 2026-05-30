@@ -25,6 +25,7 @@ export interface IAdminLotService {
   ): Promise<ServiceResult<Record<string, unknown>>>;
   publish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   cancel(id: string, body: CancelLotBody): Promise<ServiceResult<Record<string, unknown>>>;
+  softDelete(id: string, confirmationPhrase: string): Promise<ServiceResult<void>>;
   bulk(body: BulkLotsBody): Promise<ServiceResult<Record<string, unknown>>>;
   returnToInventory(
     id: string,

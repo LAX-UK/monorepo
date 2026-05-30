@@ -1,5 +1,6 @@
 "use client";
 
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { AdminLotOverviewPanel } from "@/components/admin/admin-lot-overview-panel";
 import { useLotDetailReadiness } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotEditResumeHref } from "@/lib/admin/catalog-readiness";
@@ -20,9 +21,19 @@ export function LotOverviewTab({ lotId, auction, context, bidCount }: Props) {
   const readiness = readinessContext?.publishReadiness ?? null;
   const showContinueEditing =
     auction.status === "draft" && readiness != null && readiness.percent < 100;
+  const showDeleteBlockers =
+    readinessContext?.canManageAuction &&
+    (auction.status === "draft" || auction.status === "scheduled") &&
+    (readinessContext.deleteBlockers?.length ?? 0) > 0;
 
   return (
     <div className="space-y-8">
+      {showDeleteBlockers ? (
+        <CatalogDeleteEligibilityNotice
+          blockers={readinessContext?.deleteBlockers ?? []}
+          entityLabel="lot"
+        />
+      ) : null}
       {showContinueEditing ? (
         <Link
           href={lotEditResumeHref(lotId, readiness)}
