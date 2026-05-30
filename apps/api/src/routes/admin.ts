@@ -52,7 +52,7 @@ import {
   paymentIdParamSchema,
   returnLotToInventoryBodySchema,
   saleroomAdvanceLotBodySchema,
-  updateProfileSchema,
+  updateProfileNameFormSchema,
   userIdParamSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
@@ -1176,7 +1176,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.patch(
     "/users/:userId/profile",
     zValidator("param", userIdParamSchema),
-    zValidator("json", updateProfileSchema.pick({ name: true })),
+    zValidator("json", updateProfileNameFormSchema),
     async (c) => {
       const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
       const actorStaff = normalizeUserStaffRole(

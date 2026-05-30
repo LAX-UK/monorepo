@@ -10,6 +10,8 @@ function baseProfile(over: Partial<ProfileMeRow> = {}): ProfileMeRow {
     id: "u1",
     email: "a@b.com",
     name: "A",
+    mobile: null,
+    mobileCountry: null,
     image: null,
     role: "client",
     staffRole: null,
@@ -98,6 +100,16 @@ describe("GET /users/me", () => {
     });
   });
 
+  it("includes mobile when set", async () => {
+    const { app } = appWithGetProfile(
+      baseProfile({ mobile: "+447400123456", mobileCountry: "GB" }),
+    );
+    const res = await app.request("/users/me");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { mobile: string | null } };
+    expect(body.data.mobile).toBe("+447400123456");
+  });
+
   it("returns suspended true for suspended users instead of 403", async () => {
     const { app } = appWithGetProfile(baseProfile({ suspended: true }), { suspended: true });
     const res = await app.request("/users/me");
@@ -148,6 +160,40 @@ describe("PATCH /users/me/profile", () => {
     expect(res.status, await res.clone().text()).toBe(200);
     expect(profileService.updateProfile).toHaveBeenCalledWith("u1", {
       image: "uploads/pending/avatar/u1/new.webp",
+    });
+  });
+
+  it("accepts structured phone update", async () => {
+    const profileService = { updateProfile: vi.fn().mockResolvedValue(undefined) };
+    const app = appWithProfileService(profileService);
+
+    const res = await app.request("/users/me/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phone: { country: "GB", number: "7400123456" } }),
+    });
+
+    expect(res.status, await res.clone().text()).toBe(200);
+    expect(profileService.updateProfile).toHaveBeenCalledWith("u1", {
+      mobile: "+447400123456",
+      mobileCountry: "GB",
+    });
+  });
+
+  it("accepts mobile clear with phone null", async () => {
+    const profileService = { updateProfile: vi.fn().mockResolvedValue(undefined) };
+    const app = appWithProfileService(profileService);
+
+    const res = await app.request("/users/me/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phone: null, mobile: null }),
+    });
+
+    expect(res.status, await res.clone().text()).toBe(200);
+    expect(profileService.updateProfile).toHaveBeenCalledWith("u1", {
+      mobile: null,
+      mobileCountry: null,
     });
   });
 });

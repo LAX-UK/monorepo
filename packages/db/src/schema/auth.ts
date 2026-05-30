@@ -41,6 +41,8 @@ export const user = pgTable(
     firstName: text("first_name"),
     lastName: text("last_name"),
     mobile: text("mobile"),
+    /** ISO 3166-1 alpha-2 region for formatting `mobile` (E.164). */
+    mobileCountry: text("mobile_country"),
     /** Stored lowercased + trimmed; uniqueness enforced by `user_email_lower_uidx`. */
     email: text("email").notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),

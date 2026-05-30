@@ -2,6 +2,7 @@
 
 import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
+import { PhoneNumberField } from "@/components/forms/phone-number-field";
 import { passwordStrength } from "@/lib/auth/password-strength";
 import { isPersonalDomain } from "@/lib/auth/personal-email-domains";
 import type { SignUpFormValues } from "@/lib/auth/schemas";
@@ -13,9 +14,11 @@ import { type Control, Controller, useWatch } from "react-hook-form";
 export function SignUpFields({
   control,
   orgModuleEnabled = true,
+  phoneDefaultCountry = "GB",
 }: {
   control: Control<SignUpFormValues>;
   orgModuleEnabled?: boolean;
+  phoneDefaultCountry?: string;
 }) {
   const pwdHintId = useId();
   const pwdMeterId = useId();
@@ -122,12 +125,20 @@ export function SignUpFields({
           </p>
         ) : null}
       </div>
-      <RHFInput
+      <Controller
         control={control}
-        name="mobile"
-        label="Mobile number (optional)"
-        type="tel"
-        autoComplete="tel"
+        name="phone"
+        render={({ field, fieldState }) => (
+          <PhoneNumberField
+            id="signup-phone"
+            defaultCountry={phoneDefaultCountry as import("libphonenumber-js").CountryCode}
+            value={field.value ?? { country: phoneDefaultCountry, number: "" }}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            error={fieldState.error?.message ?? null}
+            description="Optional. Used for live bidding updates and fulfilment."
+          />
+        )}
       />
       <div>
         <RHFPasswordField

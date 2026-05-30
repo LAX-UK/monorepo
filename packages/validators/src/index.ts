@@ -2,6 +2,8 @@ export * from "./address.js";
 export * from "./lot.js";
 export * from "./english-auction-policy.js";
 export * from "./media.js";
+export * from "./mobile.js";
+export * from "./phone/index.js";
 export * from "./onsite-location.js";
 export * from "./sale.js";
 export * from "./sale-mode-policy.js";

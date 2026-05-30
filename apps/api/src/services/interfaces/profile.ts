@@ -1,6 +1,8 @@
 export type ProfileUpdateInput = {
   name?: string | undefined;
   image?: string | null | undefined;
+  mobile?: string | null | undefined;
+  mobileCountry?: string | null | undefined;
 };
 
 export type UserAddressRow = {
@@ -38,6 +40,8 @@ export type ProfileMeRow = {
   id: string;
   email: string;
   name: string;
+  mobile: string | null;
+  mobileCountry: string | null;
   image: string | null;
   role: string;
   staffRole: string | null;

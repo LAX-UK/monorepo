@@ -9,6 +9,7 @@ export type RegistrationInput = {
   password: string;
   persona: SignupPersona;
   mobile?: string;
+  mobileCountry?: string;
   inviteToken?: string | undefined;
 };
 
@@ -37,6 +38,7 @@ export interface IUserProfilePersister {
     lastName: string;
     persona: SignupPersona;
     mobile?: string;
+    mobileCountry?: string;
   }): Promise<{ ok: true } | { ok: false; message: string }>;
 }
 

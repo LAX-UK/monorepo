@@ -1,11 +1,34 @@
 import { userRoles, userStaffRoles } from "@auction/types";
 import { z } from "zod";
 import { mediaReferenceSchema } from "./media.js";
+import { phoneCountrySchema, phoneInputSchema } from "./mobile.js";
+import { resolvePhoneFromBody } from "./phone/resolve.js";
 
-export const updateProfileSchema = z.object({
-  name: z.string().min(1).max(200).optional(),
-  image: mediaReferenceSchema.nullable().optional(),
-});
+export const updateProfileSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    image: mediaReferenceSchema.nullable().optional(),
+    phone: phoneInputSchema.nullable().optional(),
+    /** @deprecated Prefer `phone`. */
+    mobile: z.string().trim().max(32).nullable().optional(),
+    mobileCountry: phoneCountrySchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.phone === null && data.mobile === null) return;
+    const r = resolvePhoneFromBody(data);
+    if (!r.ok) {
+      ctx.addIssue({ code: "custom", message: r.message, path: r.path });
+    }
+  })
+  .transform((data) => {
+    const { phone: _phone, mobile: _legacy, mobileCountry: _legacyCc, ...rest } = data;
+    if (data.phone === null && data.mobile === null) {
+      return { ...rest, mobile: null as string | null, mobileCountry: null as string | null };
+    }
+    const r = resolvePhoneFromBody(data);
+    if (!r.ok || !r.value) return rest;
+    return { ...rest, mobile: r.value.e164, mobileCountry: r.value.country };
+  });
 
 /** RHF: display name only. */
 export const updateProfileNameFormSchema = z.object({
