@@ -68,6 +68,23 @@ export function missingCatalogueCapabilityError(
   });
 }
 
+export class ArtistError extends Error {
+  readonly code?: string;
+  readonly blockers?: string[];
+
+  constructor(
+    message: string,
+    readonly status: number = 400,
+    code?: string,
+    blockers?: string[],
+  ) {
+    super(message);
+    this.name = "ArtistError";
+    if (code !== undefined) this.code = code;
+    if (blockers !== undefined) this.blockers = blockers;
+  }
+}
+
 export class CategoryError extends Error {
   constructor(
     message: string,
