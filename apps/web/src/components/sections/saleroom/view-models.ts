@@ -110,6 +110,8 @@ export type SaleOverviewVM = {
   tags: string[];
   streamUrl: string | null;
   showLiveStream: boolean;
+  saleTitle: string;
+  streamPosterUrl: string | null;
   terms: string | null;
   /** Onsite event location (venue name, address, optional map link). */
   locationName: string | null;
@@ -119,5 +121,7 @@ export type SaleOverviewVM = {
   locationAddressLines: string[];
   /** Resolved Google Maps URL (custom override, else generated from address). */
   resolvedMapUrl: string | null;
+  /** Google Maps embed URL for click-to-load preview (no API key). */
+  locationEmbedUrl: string | null;
   showLocation: boolean;
 };

@@ -9,6 +9,8 @@ type Props = {
   isAuthenticated?: boolean;
   backHref?: string;
   backLabel?: string;
+  deliveryMode?: "online" | "onsite";
+  streamUrl?: string | null;
 };
 
 export function SaleroomHero(props: Props) {

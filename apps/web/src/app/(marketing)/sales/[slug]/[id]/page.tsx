@@ -43,6 +43,7 @@ import { salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
+import { formatPostalAddressLines, resolveOnsiteMapUrl } from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 
@@ -297,6 +298,12 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     return q ? `/sales?${q}` : "/sales";
   })();
 
+  const locationLine = [bundle.sale.locationName, ...formatPostalAddressLines(bundle.sale)]
+    .filter(Boolean)
+    .join(", ");
+  const directionsUrl = resolveOnsiteMapUrl(bundle.sale);
+  const featuredLotTitles = lotVMs.slice(0, 3).map((lot) => lot.title);
+
   return (
     <main
       id="main-content"
@@ -313,6 +320,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         end={bundle.sale.endTime}
         status={bundle.sale.status}
         saleTitle={bundle.sale.title}
+        deliveryMode={bundle.sale.deliveryMode}
+        directionsUrl={directionsUrl}
+        streamUrl={bundle.sale.streamUrl}
+        sale={bundle.sale}
+        locationLine={locationLine}
         {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
       />
 
@@ -320,6 +332,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         hero={heroVM}
         isAuthenticated={isAuthenticated}
         backHref={calendarBackHref}
+        deliveryMode={bundle.sale.deliveryMode}
+        streamUrl={bundle.sale.streamUrl}
         toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
         actions={
           <SaleroomHeroActions
@@ -327,6 +341,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             saleHref={basePath}
             isAuthenticated={isAuthenticated}
             initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
+            sale={bundle.sale}
             registerToBid={{
               show: registerToBidShow,
               buyerEntities,
@@ -382,7 +397,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         className={cn(MARKETING_PAGE_SHELL, "pb-0 pt-16")}
         aria-label="Additional sale information"
       >
-        <SaleroomOverviewPanel overview={overviewVM} />
+        <SaleroomOverviewPanel
+          overview={overviewVM}
+          sale={bundle.sale}
+          featuredLotTitles={featuredLotTitles}
+        />
       </section>
 
       {relatedVMs.length > 0 ? (
