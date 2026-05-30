@@ -1,5 +1,8 @@
 import type { Lot, Sale } from "@auction/types";
-import { saleDeleteConfirmationPhrase } from "@auction/validators";
+import {
+  bulkSaleDeleteConfirmationPhrase,
+  saleDeleteConfirmationPhrase,
+} from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
@@ -218,5 +221,55 @@ describe("SaleSoftDeleteService", () => {
     expect(result.get("s1")?.canDelete).toBe(true);
     expect(result.has("s2")).toBe(false);
     expect(sideEffects.countGuardsForSales).toHaveBeenCalledWith(["s1"]);
+  });
+
+  it("bulkSoftDelete deletes eligible sales and reports ineligible per id", async () => {
+    const draft = baseSale({ id: "s1", title: "Draft sale" });
+    const live = baseSale({ id: "s2", title: "Live sale", status: "active" });
+    const lotRow = baseLot();
+    const softDeleteCascade = vi.fn().mockResolvedValue(undefined);
+    const saleRepo = {
+      findById: vi.fn(async (id: string) => (id === "s1" ? draft : id === "s2" ? live : null)),
+    } as unknown as ISaleRepository;
+    const lotRepo = {
+      findBySaleId: vi.fn().mockResolvedValue([lotRow]),
+    } as unknown as ILotRepository;
+    const sideEffects = {
+      countGuardsForSale: vi
+        .fn()
+        .mockResolvedValue({ bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }),
+      countGuardsForSales: vi.fn().mockResolvedValue(
+        new Map([
+          ["s1", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
+          ["s2", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
+        ]),
+      ),
+      softDeleteCascade,
+    } as unknown as ISaleSoftDeleteSideEffects;
+
+    const svc = new SaleSoftDeleteService(
+      saleRepo,
+      lotRepo,
+      sideEffects,
+      { cancelLotJobs: vi.fn() } as unknown as ILotJobScheduler,
+      null,
+      { publish: vi.fn() } as unknown as DomainEventPublisher,
+    );
+
+    const result = await svc.bulkSoftDelete(
+      "admin-1",
+      "staff",
+      ["s1", "s2"],
+      bulkSaleDeleteConfirmationPhrase(2),
+      "auction_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.attempted).toBe(2);
+      expect(result.value.failed).toBe(1);
+      expect(result.value.errors[0]?.saleId).toBe("s2");
+      expect(softDeleteCascade).toHaveBeenCalledTimes(1);
+    }
   });
 });

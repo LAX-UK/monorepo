@@ -1,5 +1,7 @@
 "use client";
 
+import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
+import { notifyOrphanDraftSales } from "@/lib/admin/bulk-ops/orphan-draft-sale-notify";
 import { handleBulkActionResult } from "@/lib/admin/catalog-bulk-result-handler";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
@@ -9,12 +11,24 @@ import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+export type BulkTypedConfirmConfig = {
+  title: string;
+  description: string;
+  actionLabel: string;
+  confirmationPhrase: (selectedCount: number) => string;
+};
+
+export type BulkOperationRunOptions = {
+  confirmationPhrase?: string;
+};
+
 export type BulkOperation = {
   id: string;
   label: string;
   confirm?: string;
+  typedConfirm?: BulkTypedConfirmConfig;
   destructive?: boolean;
-  run(ids: string[]): Promise<ActionResult<unknown>>;
+  run: (ids: string[], options?: BulkOperationRunOptions) => Promise<ActionResult<unknown>>;
 };
 
 type Props = {
@@ -33,13 +47,14 @@ export function BulkActionsToolbar({
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [confirmOp, setConfirmOp] = useState<BulkOperation | null>(null);
+  const [typedConfirmOp, setTypedConfirmOp] = useState<BulkOperation | null>(null);
   const router = useRouter();
   if (selectedIds.length === 0) return null;
 
-  const execute = (operation: BulkOperation) => {
+  const execute = (operation: BulkOperation, options?: BulkOperationRunOptions) => {
     startTransition(() => {
       void (async () => {
-        const result = await operation.run(selectedIds);
+        const result = await operation.run(selectedIds, options);
         const handled = handleBulkActionResult({
           operationLabel: operation.label,
           result,
@@ -48,10 +63,15 @@ export function BulkActionsToolbar({
         });
         if (handled.variant === "error") {
           notify.error(handled.message);
-        } else if (handled.variant === "warning") {
-          notify.warning(handled.message);
         } else {
-          notify.success(handled.message);
+          if (handled.variant === "warning") {
+            notify.warning(handled.message);
+          } else {
+            notify.success(handled.message);
+          }
+          if (result.ok) {
+            notifyOrphanDraftSales(router, result.data);
+          }
         }
         if (handled.shouldClear) onClear();
         if (handled.shouldRefresh) router.refresh();
@@ -60,6 +80,10 @@ export function BulkActionsToolbar({
   };
 
   const run = (operation: BulkOperation) => {
+    if (operation.typedConfirm) {
+      setTypedConfirmOp(operation);
+      return;
+    }
     if (operation.confirm) {
       setConfirmOp(operation);
       return;
@@ -132,6 +156,27 @@ export function BulkActionsToolbar({
           execute(op);
         }}
       />
+      {typedConfirmOp?.typedConfirm ? (
+        <TypedConfirmationDialog
+          open={typedConfirmOp !== null}
+          onOpenChange={(open) => {
+            if (!open) setTypedConfirmOp(null);
+          }}
+          title={typedConfirmOp.typedConfirm.title}
+          description={typedConfirmOp.typedConfirm.description}
+          actionLabel={typedConfirmOp.typedConfirm.actionLabel}
+          confirmationPhrase={typedConfirmOp.typedConfirm.confirmationPhrase(selectedIds.length)}
+          severity="danger"
+          relatedEntities={{ count: selectedIds.length, label: "selected item" }}
+          onConfirm={async () => {
+            const op = typedConfirmOp;
+            if (!op?.typedConfirm) return;
+            const phrase = op.typedConfirm.confirmationPhrase(selectedIds.length);
+            setTypedConfirmOp(null);
+            execute(op, { confirmationPhrase: phrase });
+          }}
+        />
+      ) : null}
     </>
   );
 }

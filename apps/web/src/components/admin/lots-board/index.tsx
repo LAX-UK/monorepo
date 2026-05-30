@@ -12,6 +12,7 @@ import { useTableDensity } from "@/components/layout/density-provider";
 import { TableScroll } from "@/components/ui/table-scroll";
 import {
   type ConnectRequiredByLotId,
+  bulkLotDeletePreflightWarning,
   bulkPublishPreflightWarning,
 } from "@/lib/admin/bulk-ops/lot-bulk-result";
 import { getLotBulkOperations } from "@/lib/admin/bulk-ops/lots";
@@ -70,10 +71,13 @@ export function AdminLotsBoard({
     [columnSort, canManageCatalog, canManageAuction],
   );
   const bulkOperations = useMemo(() => getLotBulkOperations(canManageAuction), [canManageAuction]);
-  const bulkPreflightWarning = useMemo(
-    () => bulkPublishPreflightWarning(selectedIds, fullLots, connectRequiredByLotId),
-    [selectedIds, fullLots, connectRequiredByLotId],
-  );
+  const bulkPreflightWarning = useMemo(() => {
+    const hints = [
+      bulkPublishPreflightWarning(selectedIds, fullLots, connectRequiredByLotId),
+      bulkLotDeletePreflightWarning(selectedIds, rows),
+    ].filter(Boolean);
+    return hints.length > 0 ? hints.join(". ") : null;
+  }, [selectedIds, fullLots, connectRequiredByLotId, rows]);
 
   if (viewPipeline) {
     return (

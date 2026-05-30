@@ -140,8 +140,27 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const { ids, op, reason } = c.req.valid("json");
+    const body = c.req.valid("json");
+    const { ids, op, reason } = body;
     const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+
+    if (op === "soft_delete") {
+      const result = await container.lotSoftDeleteService.bulkSoftDelete(
+        userId,
+        role,
+        ids,
+        body.confirmationPhrase ?? "",
+        staff,
+      );
+      if (result.isErr()) {
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
+      }
+      const { attempted, failed, errors, orphanDraftSales } = result.value;
+      return c.json({
+        data: { attempted, failed, errors, orphanDraftSales },
+      });
+    }
+
     const result = await container.lotService.bulkPublishOrCancel(
       userId,
       role,

@@ -1,5 +1,5 @@
 import type { Lot, Sale } from "@auction/types";
-import { lotDeleteConfirmationPhrase } from "@auction/validators";
+import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
@@ -262,5 +262,79 @@ describe("LotSoftDeleteService", () => {
     expect(result.get("l1")?.canDelete).toBe(true);
     expect(result.has("l2")).toBe(false);
     expect(sideEffects.countGuardsForLots).toHaveBeenCalledWith([{ lotId: "l1", saleId: "s1" }]);
+  });
+
+  it("bulkSoftDelete deletes eligible lots and skips ineligible with per-id errors", async () => {
+    const lot1 = baseLot({ id: "l1", title: "Lot one" });
+    const lot2 = baseLot({ id: "l2", title: "Lot two", status: "active" });
+    const saleRow = baseSale();
+    const softDeleteLot = vi.fn().mockResolvedValue(undefined);
+    const lotRepo = {
+      findById: vi.fn(async (id: string) => (id === "l1" ? lot1 : id === "l2" ? lot2 : null)),
+      findBySaleId: vi.fn().mockResolvedValue([lot1]),
+    } as unknown as ILotRepository;
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue(saleRow),
+      findByIds: vi.fn().mockResolvedValue([saleRow]),
+    } as unknown as ISaleRepository;
+    const sideEffects = {
+      countGuardsForLot: vi
+        .fn()
+        .mockResolvedValue({ bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }),
+      countGuardsForLots: vi.fn().mockResolvedValue(
+        new Map([
+          ["l1", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
+          ["l2", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
+        ]),
+      ),
+      softDeleteLot,
+    } as unknown as ILotSoftDeleteSideEffects;
+
+    const svc = new LotSoftDeleteService(
+      lotRepo,
+      saleRepo,
+      sideEffects,
+      { cancelLotJobs: vi.fn() } as unknown as ILotJobScheduler,
+      null,
+      { publish: vi.fn() } as unknown as DomainEventPublisher,
+    );
+
+    const result = await svc.bulkSoftDelete(
+      "admin-1",
+      "staff",
+      ["l1", "l2"],
+      bulkLotDeleteConfirmationPhrase(2),
+      "auction_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.attempted).toBe(2);
+      expect(result.value.failed).toBe(1);
+      expect(result.value.errors[0]?.lotId).toBe("l2");
+      expect(softDeleteLot).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("bulkSoftDelete rejects wrong confirmation phrase", async () => {
+    const svc = new LotSoftDeleteService(
+      {} as ILotRepository,
+      {} as ISaleRepository,
+      {} as ILotSoftDeleteSideEffects,
+      null,
+      null,
+      null,
+    );
+    const result = await svc.bulkSoftDelete(
+      "admin-1",
+      "staff",
+      ["l1"],
+      "DELETE 1 DRAFT LOT",
+      "auction_manager",
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status).toBe(400);
+    }
   });
 });

@@ -5,6 +5,11 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { getIdempotentSaleCreate, setIdempotentSaleCreate } from "@/lib/actions/idempotency-cache";
 import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
+import {
+  type BulkSalesActionResult,
+  bulkSalesFailureMessage,
+  parseBulkSalesApiResponse,
+} from "@/lib/admin/bulk-ops/sale-bulk-result";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -17,6 +22,7 @@ import {
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { LotStatus } from "@auction/types";
 import {
+  bulkSalesBodySchema,
   createNestedLotForSaleSchema,
   createSaleSchema,
   updateSaleSchema,
@@ -309,5 +315,38 @@ export async function adminSetLotStatusResultAction(
     revalidatePath(`/lot/${lid}`);
     revalidatePath("/", "layout");
     return actionSuccess();
+  });
+}
+
+export async function adminBulkSalesResultAction(
+  body: z.infer<typeof bulkSalesBodySchema>,
+): Promise<ActionResult<BulkSalesActionResult>> {
+  return instrumentServerAction("adminBulkSalesResultAction", async () => {
+    const parsed = bulkSalesBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+    const { adminSales } = getWriteContainer();
+    const r = await adminSales.bulk(parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status, r.code);
+    }
+    const bulk = parseBulkSalesApiResponse(r.data);
+    if (!bulk) {
+      return actionFailure("Unexpected bulk response from server");
+    }
+    revalidatePath("/admin/sales");
+    revalidatePath("/admin/lots");
+    for (const saleId of parsed.data.ids) {
+      revalidateAdminSaleDetail(saleId);
+    }
+    if (bulk.failed >= bulk.attempted) {
+      return actionFailure(bulkSalesFailureMessage(bulk), undefined, undefined, undefined, {
+        bulk,
+      });
+    }
+    return actionSuccess(bulk);
   });
 }
