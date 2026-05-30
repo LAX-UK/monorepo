@@ -35,10 +35,14 @@ export async function ensureStripeConnectAccountAction(
   });
 }
 
-export async function syncStripeConnectAction(
-  entityId?: string,
-): Promise<
-  | { ok: true; ready: boolean; payoutsEnabled: boolean; requirementsDue: string[] }
+export async function syncStripeConnectAction(entityId?: string): Promise<
+  | {
+      ok: true;
+      ready: boolean;
+      payoutsEnabled: boolean;
+      requirementsDue: string[];
+      disabledReason: string | null;
+    }
   | { ok: false; error: string }
 > {
   return instrumentServerAction("syncStripeConnectAction", async () => {
@@ -51,6 +55,7 @@ export async function syncStripeConnectAction(
         ready?: boolean;
         payoutsEnabled?: boolean;
         requirementsCurrentlyDue?: string[];
+        disabledReason?: string | null;
       };
       error?: unknown;
     };
@@ -63,6 +68,7 @@ export async function syncStripeConnectAction(
       ready: Boolean(body.data?.ready),
       payoutsEnabled: Boolean(body.data?.payoutsEnabled),
       requirementsDue: body.data?.requirementsCurrentlyDue ?? [],
+      disabledReason: body.data?.disabledReason ?? null,
     };
   });
 }

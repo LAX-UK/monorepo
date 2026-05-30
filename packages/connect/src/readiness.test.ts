@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   getConnectGapState,
+  isConnectOnboardingStage,
+  isPastDueConnectGap,
   isSellerConnectReady,
   isStripeAccountConfigured,
   shouldSkipConnect,
@@ -51,6 +53,15 @@ describe("isStripeAccountConfigured", () => {
       false,
     );
   });
+
+  it("returns false when disabledReason is set even if requirements arrays are empty", () => {
+    expect(
+      isStripeAccountConfigured({
+        ...readyEntity,
+        stripeConnectDisabledReason: "requirements.past_due",
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("isSellerConnectReady", () => {
@@ -98,6 +109,46 @@ describe("statusFromLegalEntityRow", () => {
   });
 });
 
+describe("isConnectOnboardingStage", () => {
+  it("allows onboarding for in-progress setup stages", () => {
+    expect(isConnectOnboardingStage("not_started")).toBe(true);
+    expect(isConnectOnboardingStage("onboarding_incomplete")).toBe(true);
+    expect(isConnectOnboardingStage("requirements_due")).toBe(true);
+  });
+
+  it("blocks onboarding for ready and restricted stages", () => {
+    expect(isConnectOnboardingStage("ready")).toBe(false);
+    expect(isConnectOnboardingStage("restricted")).toBe(false);
+    expect(isConnectOnboardingStage("kyc_required")).toBe(false);
+  });
+});
+
+describe("isPastDueConnectGap", () => {
+  it("returns true when disabledReason is requirements.past_due", () => {
+    expect(
+      isPastDueConnectGap({
+        stage: "requirements_due",
+        missing: [],
+        canReceivePayouts: false,
+        canPublish: false,
+        disabledReason: "requirements.past_due",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for generic requirements_due without past_due reason", () => {
+    expect(
+      isPastDueConnectGap({
+        stage: "requirements_due",
+        missing: [],
+        canReceivePayouts: false,
+        canPublish: false,
+        disabledReason: null,
+      }),
+    ).toBe(false);
+  });
+});
+
 describe("getConnectGapState", () => {
   it("returns managed_by_lax for LAX inventory", () => {
     expect(getConnectGapState({ ...readyEntity, isLaxManaged: true }).stage).toBe("managed_by_lax");
@@ -107,13 +158,26 @@ describe("getConnectGapState", () => {
     expect(getConnectGapState({ ...readyEntity, status: "rejected" }).stage).toBe("restricted");
   });
 
-  it("returns restricted when stripeConnectDisabledReason is set", () => {
+  it("returns requirements_due when stripeConnectDisabledReason is actionable past_due", () => {
     const gap = getConnectGapState({
       ...readyEntity,
+      stripeConnectPayoutsEnabled: false,
       stripeConnectDisabledReason: "requirements.past_due",
+      stripeConnectRequirementsCurrentlyDue: ["external_account"],
+    });
+    expect(gap.stage).toBe("requirements_due");
+    expect(gap.disabledReason).toBe("requirements.past_due");
+    expect(gap.missing[0]?.label).toBe("Overdue payout details");
+    expect(gap.missing.some((m) => m.label === "Bank account")).toBe(true);
+  });
+
+  it("returns restricted when stripeConnectDisabledReason is a hard block", () => {
+    const gap = getConnectGapState({
+      ...readyEntity,
+      stripeConnectDisabledReason: "rejected.fraud",
     });
     expect(gap.stage).toBe("restricted");
-    expect(gap.missing[0]?.hint).toBe("requirements.past_due");
+    expect(gap.missing[0]?.label).toBe("Account blocked");
   });
 
   it("returns kyc_required when kyc not approved", () => {
