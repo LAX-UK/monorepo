@@ -1,6 +1,9 @@
 "use client";
 
-import { DeleteLotDialog, useDeleteLotDialog } from "@/components/admin/lot-actions/delete-lot-button";
+import {
+  DeleteLotDialog,
+  useDeleteLotDialog,
+} from "@/components/admin/lot-actions/delete-lot-button";
 import { buildLotBoardMobileMenuItems } from "@/lib/admin/build-lot-board-mobile-menu";
 import { notify } from "@/lib/ui/notify";
 import { InlineActionMenu } from "@auction/ui";

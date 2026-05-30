@@ -83,6 +83,15 @@ export function LotDetailShell({
     auction.status === "draft" || auction.status === "scheduled"
       ? (bundle.deleteEligibility?.blockers ?? [])
       : [];
+  const parentSaleForDelete =
+    context.sale && context.parentSaleLotCount != null
+      ? {
+          id: context.sale.id,
+          title: context.sale.title,
+          status: context.sale.status,
+          lotCount: context.parentSaleLotCount,
+        }
+      : null;
 
   const lotNav = buildLotDetailNavActions({
     lotId,
@@ -184,6 +193,7 @@ export function LotDetailShell({
               publishReadiness={publishReadiness}
               canCancel={canCancel}
               canDelete={canDelete}
+              parentSale={parentSaleForDelete}
               showEditDraft={canEditDraft}
               showEditLot={canEditLot}
               showEditCatalog={showEditCatalog}
@@ -202,6 +212,7 @@ export function LotDetailShell({
             publishReadiness={publishReadiness}
             canCancel={canCancel}
             canDelete={canDelete}
+            parentSale={parentSaleForDelete}
           />
         }
         mobileMeta={

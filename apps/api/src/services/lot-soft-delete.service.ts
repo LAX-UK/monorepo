@@ -47,6 +47,41 @@ export class LotSoftDeleteService {
     };
   }
 
+  async getDeleteEligibilityBatch(lots: Lot[]): Promise<Map<string, LotDeleteEligibility>> {
+    const eligibleLots = lots.filter((l) => l.status === "draft" || l.status === "scheduled");
+    const result = new Map<string, LotDeleteEligibility>();
+    if (eligibleLots.length === 0) return result;
+
+    const saleIds = [
+      ...new Set(eligibleLots.map((l) => l.saleId).filter((id): id is string => id != null)),
+    ];
+    const sales = saleIds.length > 0 ? await this.saleRepo.findByIds(saleIds) : [];
+    const saleById = new Map(sales.map((s) => [s.id, s]));
+
+    const guardsByLot = await this.sideEffects.countGuardsForLots(
+      eligibleLots.map((l) => ({ lotId: l.id, saleId: l.saleId })),
+    );
+
+    for (const lot of eligibleLots) {
+      const sale = lot.saleId ? (saleById.get(lot.saleId) ?? null) : null;
+      const guards = guardsByLot.get(lot.id) ?? {
+        bidCount: 0,
+        paymentCount: 0,
+        approvedRegistrationCount: 0,
+      };
+      const ctx: LotSoftDeleteContext = { lot, sale, guards };
+      const blockers = listLotSoftDeleteBlockers(ctx);
+      const canDelete = canLotSoftDelete(ctx);
+      result.set(lot.id, {
+        canDelete,
+        confirmationPhrase: canDelete ? lotDeleteConfirmationPhrase(lot.title) : null,
+        blockers,
+      });
+    }
+
+    return result;
+  }
+
   async softDelete(
     actorUserId: string,
     userRole: string,

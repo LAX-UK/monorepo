@@ -6,6 +6,9 @@ export type LotSoftDeleteGuardCounts = {
 
 export interface ILotSoftDeleteSideEffects {
   countGuardsForLot(lotId: string, saleId: string | null): Promise<LotSoftDeleteGuardCounts>;
+  countGuardsForLots(
+    lots: Array<{ lotId: string; saleId: string | null }>,
+  ): Promise<Map<string, LotSoftDeleteGuardCounts>>;
   softDeleteLot(input: {
     lotId: string;
     actorUserId: string;

@@ -66,8 +66,8 @@ export function AdminLotsBoard({
 
   const data = useMemo(() => rows.map((r) => ({ ...r, id: r.id })), [rows]);
   const columns = useMemo(
-    () => lotColumns(columnSort, { canManageCatalog }),
-    [columnSort, canManageCatalog],
+    () => lotColumns(columnSort, { canManageCatalog, canManageAuction }),
+    [columnSort, canManageCatalog, canManageAuction],
   );
   const bulkOperations = useMemo(() => getLotBulkOperations(canManageAuction), [canManageAuction]);
   const bulkPreflightWarning = useMemo(

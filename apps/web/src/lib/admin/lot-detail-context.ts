@@ -10,6 +10,8 @@ import type { Lot, Sale } from "@auction/types";
 
 export type LotDetailContext = {
   sale: Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime"> | null;
+  /** Non-deleted lots on the parent sale when the lot is sale-assigned. */
+  parentSaleLotCount: number | null;
   artist: { id: string; displayName: string } | null;
   seller: { id: string; displayName: string } | null;
   categories: { id: string; name: string }[];
@@ -45,6 +47,7 @@ export async function fetchLotDetailContext(auction: Lot): Promise<LotDetailCont
           endTime: saleBundle.sale.endTime,
         }
       : null,
+    parentSaleLotCount: saleBundle ? saleBundle.lots.length : null,
     artist: artist ? { id: artist.id, displayName: artist.displayName } : null,
     seller: seller ? { id: seller.id, displayName: seller.displayName } : null,
     categories: categoryResults

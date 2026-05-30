@@ -10,6 +10,10 @@ import type { LotLifecycleRecording } from "../services/lot-lifecycle-recording.
 
 const VOIDABLE_ABSENTEE_STATUSES = ["scheduled", "executing"] as const;
 
+function emptyLotGuardCounts(): LotSoftDeleteGuardCounts {
+  return { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 };
+}
+
 export class DrizzleLotSoftDeleteSideEffects implements ILotSoftDeleteSideEffects {
   constructor(
     private readonly db: Database,
@@ -41,6 +45,64 @@ export class DrizzleLotSoftDeleteSideEffects implements ILotSoftDeleteSideEffect
       paymentCount: paymentRow?.n ?? 0,
       approvedRegistrationCount,
     };
+  }
+
+  async countGuardsForLots(
+    lots: Array<{ lotId: string; saleId: string | null }>,
+  ): Promise<Map<string, LotSoftDeleteGuardCounts>> {
+    const map = new Map<string, LotSoftDeleteGuardCounts>();
+    const lotIds = lots.map((l) => l.lotId);
+    for (const id of lotIds) {
+      map.set(id, emptyLotGuardCounts());
+    }
+    if (lotIds.length === 0) return map;
+
+    const bidRows = await this.db
+      .select({ lotId: bid.lotId, n: sql<number>`count(*)::int` })
+      .from(bid)
+      .where(inArray(bid.lotId, lotIds))
+      .groupBy(bid.lotId);
+
+    const paymentRows = await this.db
+      .select({ lotId: payment.lotId, n: sql<number>`count(*)::int` })
+      .from(payment)
+      .where(inArray(payment.lotId, lotIds))
+      .groupBy(payment.lotId);
+
+    for (const row of bidRows) {
+      const current = map.get(row.lotId) ?? emptyLotGuardCounts();
+      map.set(row.lotId, { ...current, bidCount: row.n ?? 0 });
+    }
+    for (const row of paymentRows) {
+      const current = map.get(row.lotId) ?? emptyLotGuardCounts();
+      map.set(row.lotId, { ...current, paymentCount: row.n ?? 0 });
+    }
+
+    const saleIds = [
+      ...new Set(lots.map((l) => l.saleId).filter((id): id is string => id != null)),
+    ];
+    const regBySale = new Map<string, number>();
+    if (saleIds.length > 0) {
+      const regRows = await this.db
+        .select({ saleId: saleRegistration.saleId, n: sql<number>`count(*)::int` })
+        .from(saleRegistration)
+        .where(
+          and(inArray(saleRegistration.saleId, saleIds), eq(saleRegistration.status, "approved")),
+        )
+        .groupBy(saleRegistration.saleId);
+      for (const row of regRows) {
+        regBySale.set(row.saleId, row.n ?? 0);
+      }
+    }
+
+    for (const { lotId, saleId } of lots) {
+      if (!saleId) continue;
+      const regCount = regBySale.get(saleId) ?? 0;
+      const current = map.get(lotId) ?? emptyLotGuardCounts();
+      map.set(lotId, { ...current, approvedRegistrationCount: regCount });
+    }
+
+    return map;
   }
 
   async softDeleteLot(input: {

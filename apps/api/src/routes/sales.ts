@@ -75,17 +75,17 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       return c.json({ data: rows });
     }
 
-    const data = await Promise.all(
-      rows.map(async (row) => {
+    const data = await (async () => {
+      const eligibilityBySale =
+        await container.saleSoftDeleteService.getDeleteEligibilityBatch(rows);
+      return rows.map((row) => {
         if (row.sale.status !== "draft" && row.sale.status !== "scheduled") {
           return row;
         }
-        const deleteEligibility = await container.saleSoftDeleteService.getDeleteEligibility(
-          row.sale.id,
-        );
+        const deleteEligibility = eligibilityBySale.get(row.sale.id);
         return deleteEligibility ? { ...row, deleteEligibility } : row;
-      }),
-    );
+      });
+    })();
 
     return c.json({ data });
   });

@@ -14,7 +14,7 @@ export type { AdminLotTableRow, LotColumnSortConfig };
 
 export function lotColumns(
   sort?: LotColumnSortConfig,
-  options?: { canManageCatalog?: boolean },
+  options?: { canManageCatalog?: boolean; canManageAuction?: boolean },
 ): ColumnDef<AdminLotTableRow>[] {
   return [
     {
@@ -120,6 +120,7 @@ export function lotColumns(
         <LotBoardMobileActionMenu
           row={row.original}
           {...(options?.canManageCatalog ? { canManageCatalog: true } : {})}
+          {...(options?.canManageAuction ? { canManageAuction: true } : {})}
         />
       ),
       enableSorting: false,

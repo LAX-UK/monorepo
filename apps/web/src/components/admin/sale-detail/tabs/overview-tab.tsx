@@ -1,13 +1,13 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import {
   CatalogDetailSection,
   CatalogDetailSummaryStrip,
   CatalogExternalLink,
   CatalogInfoCard,
 } from "@/components/admin/catalog";
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import {
   buyerPremiumSummary,
   sumLotHammers,
