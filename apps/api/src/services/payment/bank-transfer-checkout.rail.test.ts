@@ -97,6 +97,8 @@ describe("BankTransferCheckoutRail", () => {
       expect.objectContaining({
         paymentId: "pay-bank",
         stripeCustomerId: "cus_1",
+        lineItems: expect.any(Array),
+        paymentIntentDescription: expect.stringContaining("High value lot"),
       }),
     );
   });

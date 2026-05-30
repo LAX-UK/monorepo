@@ -6,8 +6,13 @@ import type {
   PaymentCheckoutResult,
 } from "../interfaces/checkout-rail.js";
 import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
+import type { MediaUrlResolver } from "../media-url-resolver.js";
 import { createOrRenewCheckoutSession } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
+import {
+  buildCreateCheckoutSessionInput,
+  resolveCheckoutLotHeroImage,
+} from "./stripe-checkout-product-display.js";
 
 export class CardCheckoutRail implements ICheckoutRail {
   readonly kind = "card" as const;
@@ -16,6 +21,7 @@ export class CardCheckoutRail implements ICheckoutRail {
     private readonly env: Pick<Env, "WEB_ORIGIN">,
     private readonly gateway: IStripePaymentGateway,
     private readonly payments: IPaymentWriteRepository,
+    private readonly mediaUrlResolver?: MediaUrlResolver,
   ) {}
 
   async createCheckout(ctx: PaymentCheckoutContext): Promise<PaymentCheckoutResult> {
@@ -32,21 +38,20 @@ export class CardCheckoutRail implements ICheckoutRail {
     const cancelUrl = `${webOrigin}/dashboard/checkout/${ctx.lot.id}?payment=cancelled`;
 
     try {
+      const imageUrl = await resolveCheckoutLotHeroImage(ctx.lot, this.mediaUrlResolver);
       const outcome = await createOrRenewCheckoutSession(
         this.gateway,
         "card",
         ctx.paymentId,
         (idempotencyKey) =>
-          this.gateway.createCardCheckoutSession({
-            paymentId: ctx.paymentId,
-            lotId: ctx.lot.id,
-            amountCents: ctx.amountPence,
-            currency: "gbp",
-            buyerEmail: ctx.buyerEmail,
-            successUrl,
-            cancelUrl,
-            idempotencyKey,
-          }),
+          this.gateway.createCardCheckoutSession(
+            buildCreateCheckoutSessionInput(ctx, {
+              successUrl,
+              cancelUrl,
+              idempotencyKey,
+              imageUrl,
+            }),
+          ),
       );
 
       if (outcome.kind === "already_complete") {
