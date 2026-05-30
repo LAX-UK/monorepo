@@ -5,6 +5,7 @@ import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import {
+  buildGoogleMapsEmbedUrl,
   formatPostalAddressLines,
   hasStructuredAddress,
   resolveOnsiteMapUrl,
@@ -232,6 +233,7 @@ export function mapSaleToOverviewVM(
   const tags = saleTags(sale);
   const addressLines = formatPostalAddressLines(sale);
   const resolvedMapUrl = resolveOnsiteMapUrl(sale);
+  const locationEmbedUrl = buildGoogleMapsEmbedUrl(sale);
   const hasAnyLocationInfo = Boolean(
     sale.locationName ||
       sale.locationAddress ||
@@ -251,13 +253,18 @@ export function mapSaleToOverviewVM(
     lotsLabel: `${opts.lotsTotal} ${opts.lotsTotal === 1 ? "lot" : "lots"}`,
     tags,
     streamUrl: sale.streamUrl,
-    showLiveStream: Boolean(sale.status === "active" && sale.streamUrl),
+    showLiveStream: Boolean(
+      sale.streamUrl && (sale.status === "active" || sale.status === "scheduled"),
+    ),
+    saleTitle: sale.title,
+    streamPosterUrl: sale.coverImages[0] ?? null,
     terms: sale.terms,
     locationName: sale.locationName,
     locationAddress: sale.locationAddress,
     locationMapUrl: sale.locationMapUrl,
     locationAddressLines: addressLines,
     resolvedMapUrl,
+    locationEmbedUrl,
     showLocation,
   };
 }

@@ -29,7 +29,7 @@ import {
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import type { AdminDomainEventRow, AdminLotLifecyclePayload } from "@/lib/data/http/admin.server";
 import { lotPath } from "@/lib/seo/url";
-import { formatMoney } from "@/lib/ui/format";
+import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { Badge } from "@auction/ui";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -283,12 +283,7 @@ export function LotDetailShell({
                 {
                   id: "end",
                   label: "Ends",
-                  value: auction.endTime
-                    ? new Date(auction.endTime).toLocaleString(undefined, {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "—",
+                  value: formatDateTime(auction.endTime),
                 },
                 { id: "hammer", label: "Hammer", value: formatMoney(auction.currentPrice) },
               ]}
