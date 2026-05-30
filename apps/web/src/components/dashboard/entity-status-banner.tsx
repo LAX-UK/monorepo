@@ -55,7 +55,7 @@ function copyForStatus(acting: LegalEntitySummary): {
         title: "Finish payout setup",
         body: (
           <>
-            Stripe verification in progress.{" "}
+            Add bank details and verification in your dashboard.{" "}
             <Link
               className="font-medium underline underline-offset-2"
               href={

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  connectGapActionHint,
+  connectGapMissingCountLabel,
   connectGapStageBadgeVariant,
   connectGapStageLabel,
   connectGapStageSummary,
@@ -14,11 +16,30 @@ const MAX_VISIBLE_MISSING = 5;
 type Props = {
   gap: ConnectGapState;
   lastSyncedAt?: Date | null;
+  /** Badge + summary only — hide requirement bullets when Stripe banner lists tasks. */
+  compact?: boolean;
+  /** Finance and other roles who cannot use the embedded onboarding form. */
+  readOnly?: boolean;
 };
 
-export function ConnectStatusHeader({ gap, lastSyncedAt }: Props) {
-  const visibleMissing = gap.missing.slice(0, MAX_VISIBLE_MISSING);
-  const hiddenCount = Math.max(0, gap.missing.length - visibleMissing.length);
+export function ConnectStatusHeader({
+  gap,
+  lastSyncedAt,
+  compact = false,
+  readOnly = false,
+}: Props) {
+  const actionableItems = gap.missing.filter((item) => item.key !== "stripe_disabled");
+  const visibleMissing = (actionableItems.length > 0 ? actionableItems : gap.missing).slice(
+    0,
+    MAX_VISIBLE_MISSING,
+  );
+  const hiddenCount = Math.max(
+    0,
+    (actionableItems.length > 0 ? actionableItems : gap.missing).length - visibleMissing.length,
+  );
+  const countLabel = compact ? null : connectGapMissingCountLabel(gap);
+  const actionHint = compact ? null : connectGapActionHint(gap.stage, { readOnly });
+  const copyOptions = readOnly ? { readOnly: true as const } : undefined;
 
   return (
     <Surface variant="section" padding="md" className="space-y-3">
@@ -26,16 +47,17 @@ export function ConnectStatusHeader({ gap, lastSyncedAt }: Props) {
         <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)} size="sm">
           {connectGapStageLabel(gap.stage)}
         </StatusBadge>
-        {gap.missing.length > 0 ? (
-          <span className="font-body text-xs text-on-surface-variant">
-            {gap.missing.length} item{gap.missing.length === 1 ? "" : "s"} outstanding
-          </span>
+        {countLabel ? (
+          <span className="font-body text-xs text-on-surface-variant">{countLabel}</span>
         ) : null}
       </div>
       <p className="font-body text-sm text-on-surface-variant">
-        {connectGapStageSummary(gap.stage, gap)}
+        {connectGapStageSummary(gap.stage, gap, copyOptions)}
       </p>
-      {visibleMissing.length > 0 ? (
+      {actionHint ? (
+        <p className="font-body text-sm text-on-surface-variant">{actionHint}</p>
+      ) : null}
+      {!compact && visibleMissing.length > 0 ? (
         <ul className="list-disc space-y-1 pl-5 font-body text-sm text-on-surface-variant">
           {visibleMissing.map((item) => (
             <li key={item.key}>

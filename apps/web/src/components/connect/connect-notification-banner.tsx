@@ -2,10 +2,17 @@
 
 import { ConnectNotificationBanner } from "@stripe/react-connect-js";
 
-export function ConnectNotificationBannerPanel() {
+type Props = {
+  onNotificationsChange?: (notifications: { actionRequired: number }) => void;
+};
+
+export function ConnectNotificationBannerPanel({ onNotificationsChange }: Props) {
   return (
     <div data-testid="connect-notification-banner">
-      <ConnectNotificationBanner />
+      <ConnectNotificationBanner
+        collectionOptions={{ fields: "eventually_due", futureRequirements: "include" }}
+        onNotificationsChange={onNotificationsChange}
+      />
     </div>
   );
 }

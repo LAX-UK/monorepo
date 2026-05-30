@@ -12,6 +12,7 @@ import {
 } from "@/components/dashboard/seller-org-context-banner";
 import { ExportButton } from "@/components/exports/export-button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { connectGapPayoutsBannerCopy } from "@/lib/connect/connect-gap-copy";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { buildSellerPayoutFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -20,7 +21,7 @@ import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-conne
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
-import { isSellerConnectReady } from "@auction/connect";
+import { getConnectGapState, isSellerConnectReady } from "@auction/connect";
 import type { Payout } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -50,6 +51,7 @@ export default async function SellerPayoutsPage() {
   let listFailure = null;
   let preview: SellerPayoutPendingPreview | null = null;
   let showConnectBanner = false;
+  let connectBannerCopy: { title: string; description: string } | null = null;
 
   if (sellerEntityId) {
     const hub = createOrganisationHubGateway();
@@ -73,6 +75,9 @@ export default async function SellerPayoutsPage() {
       !isSellerConnectReady({ ...entity, status: entity.status })
     ) {
       showConnectBanner = true;
+      connectBannerCopy = connectGapPayoutsBannerCopy(
+        getConnectGapState({ ...entity, status: entity.status }),
+      );
     }
   }
 
@@ -100,11 +105,11 @@ export default async function SellerPayoutsPage() {
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
       {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
 
-      {showConnectBanner ? (
+      {showConnectBanner && connectBannerCopy ? (
         <Alert>
-          <AlertTitle>Payout setup incomplete</AlertTitle>
+          <AlertTitle>{connectBannerCopy.title}</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-3">
-            <span>Finish Stripe Connect verification to receive settlement transfers.</span>
+            <span>{connectBannerCopy.description}</span>
             <Button asChild variant="cta" size="sm">
               <Link href="/dashboard/seller/connect">Open payout setup</Link>
             </Button>
