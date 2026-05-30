@@ -144,6 +144,7 @@ import { StructuredQueueAuditService } from "./services/admin/queue-audit.servic
 import { BullMQQueueInspector } from "./services/admin/queue-inspector.service.js";
 import { BullMQQueueMutator } from "./services/admin/queue-mutator.service.js";
 import { AnalyticsService } from "./services/analytics.service.js";
+import { ArtistDeleteService } from "./services/artist-delete.service.js";
 import { ArtistProfileService } from "./services/artist-profile.service.js";
 import { ArtistRegistryService } from "./services/artist-registry.service.js";
 import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
@@ -305,6 +306,7 @@ export type Container = {
   autoBidService: AutoBidService;
   categoryService: CategoryService;
   artistProfileService: ArtistProfileService;
+  artistDeleteService: ArtistDeleteService;
   dashboardQueryService: DashboardQueryService;
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
@@ -904,9 +906,13 @@ export function createContainer(env: Env): Container {
   );
 
   const categoryService = new CategoryService(categoryRepo, db, domainEventPublisher);
-  const artistProfileService = new ArtistProfileService(
-    new DrizzleArtistProfileRepository(db),
-    artistRegistryService,
+  const artistProfileRepo = new DrizzleArtistProfileRepository(db);
+  const artistProfileService = new ArtistProfileService(artistProfileRepo, artistRegistryService);
+  const artistDeleteService = new ArtistDeleteService(
+    artistProfileRepo,
+    artistProfileRepo,
+    db,
+    domainEventPublisher,
   );
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
@@ -1290,6 +1296,7 @@ export function createContainer(env: Env): Container {
     autoBidService,
     categoryService,
     artistProfileService,
+    artistDeleteService,
     dashboardQueryService,
     notificationQueryService,
     paymentService,

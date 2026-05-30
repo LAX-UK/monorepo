@@ -44,6 +44,7 @@ export const requireUserInvite = createRequireCapability("user.invite");
 export const requireArtistRead = createRequireCapability("artist.read");
 export const requireArtistReview = createRequireCapability("artist.review");
 export const requireArtistMerge = createRequireCapability("artist.merge");
+export const requireArtistDelete = createRequireCapability("artist.delete");
 export const requirePayoutRead = createRequireCapability("payout.read");
 export const requirePayoutProcess = createRequireCapability("payout.process");
 export const requirePayoutReverse = createRequireCapability("payout.reverse");

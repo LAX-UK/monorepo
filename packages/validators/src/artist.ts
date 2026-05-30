@@ -110,6 +110,14 @@ export const adminCreateArtistBodySchema = z.object({
 
 export const adminUpdateArtistBodySchema = adminCreateArtistBodySchema.partial();
 
+export function artistDeleteConfirmationPhrase(displayName: string): string {
+  return `DELETE ${displayName.trim()}`;
+}
+
+export const artistDeleteBodySchema = z.object({
+  confirmationPhrase: z.string().min(1).max(500),
+});
+
 /** Inline create payload used by the admin Artist Picker on lot/submission
  * flows. Trimmed-down vs. {@link adminCreateArtistBodySchema}: the admin only
  * needs to commit a name + kind to attach the artist to a lot. */

@@ -17,7 +17,7 @@ import { buildArtistProfileReadiness } from "@/lib/admin/catalog-readiness";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
-import type { ArtistProfile, ArtistStatus } from "@auction/types";
+import type { ArtistDeleteEligibility, ArtistProfile, ArtistStatus } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -31,6 +31,8 @@ type Props = {
   duplicateCount: number;
   publicHref: string;
   activityEvents?: readonly AdminDomainEventRow[];
+  deleteEligibility?: ArtistDeleteEligibility | null;
+  canManageDelete?: boolean;
   children: ReactNode;
 };
 
@@ -41,6 +43,8 @@ export function ArtistDetailShell({
   duplicateCount,
   publicHref,
   activityEvents = [],
+  deleteEligibility = null,
+  canManageDelete = false,
   children,
 }: Props) {
   const lifeRaw = formatArtistLifespan({
@@ -154,6 +158,8 @@ export function ArtistDetailShell({
             publicHref={publicHref}
             status={statusBadge}
             activityEvents={activityEvents}
+            deleteEligibility={deleteEligibility}
+            canManageDelete={canManageDelete}
           />
         }
         stickySubnav={

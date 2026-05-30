@@ -1,6 +1,6 @@
 import type { RoleCapability, UserRole, UserStaffRole } from "@auction/types";
 import type { Context } from "hono";
-import { AuthzError, LotError } from "./errors.js";
+import { ArtistError, AuthzError, LotError } from "./errors.js";
 
 export type MissingCapabilityActor = {
   role: UserRole | string;
@@ -64,6 +64,13 @@ export function serviceErrorJsonBody(error: Error): Record<string, unknown> {
   if (error instanceof AuthzError) return authzErrorJsonBody(error);
   if (error instanceof LotError && error.code) {
     return { error: error.message, code: error.code };
+  }
+  if (error instanceof ArtistError && error.code) {
+    return {
+      error: error.message,
+      code: error.code,
+      ...(error.blockers?.length ? { blockers: error.blockers } : {}),
+    };
   }
   return { error: error.message };
 }
