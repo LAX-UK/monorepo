@@ -16,6 +16,8 @@ type Props = {
     formId: string;
     submitLabel: string;
     cancelHref: string;
+    cancelLabel?: string;
+    alwaysShowSubmit?: boolean;
   };
   children: ReactNode;
   className?: string;
@@ -57,6 +59,8 @@ export function CatalogFormShell({
           formId={wizardMobile.formId}
           submitLabel={wizardMobile.submitLabel}
           cancelHref={wizardMobile.cancelHref}
+          {...(wizardMobile.cancelLabel ? { cancelLabel: wizardMobile.cancelLabel } : {})}
+          {...(wizardMobile.alwaysShowSubmit ? { alwaysShowSubmit: true } : {})}
         />
       ) : showMobileBar ? (
         <CatalogMobileActionBar actions={mobileActions ?? []} />

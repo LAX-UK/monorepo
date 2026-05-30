@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
 
 export type AdminSaleBoardInput = {
@@ -29,6 +30,8 @@ export function toAdminSaleBoardRow(row: AdminSaleBoardInput) {
     title: row.sale.title,
     status: row.sale.status,
     lotCount: row.lots.length,
+    startTimeIso: row.sale.startTime.toISOString(),
+    startTimeLabel: formatDateTime(row.sale.startTime),
     sparklineValues: scheduleEndingSparkline(row.lots, 7),
   };
 }

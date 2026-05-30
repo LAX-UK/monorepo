@@ -13,7 +13,7 @@ import {
   adminAddLotToSaleResultAction,
   adminDetachLotFromSaleResultAction,
 } from "@/lib/actions/admin-sales";
-import { notifyLotFormValidationFailure } from "@/lib/admin/lot-form-validation-notify";
+import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import {
   findLotsOutsideSaleWindow,
   proposeLotTimesWithinWindow,
@@ -43,6 +43,7 @@ import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { lotAuctionTypes } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import {
   Form,
   FormControl,
@@ -56,7 +57,7 @@ import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useFormState, useWatch } from "react-hook-form";
 
 type Props = {
   saleId: string;
@@ -136,7 +137,9 @@ function LotRowEditor({
   onScheduleUpdated?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
+  const [detachConfirmOpen, setDetachConfirmOpen] = useState(false);
   const form = useForm<SaleSetupLotRowFormValues>({ defaultValues: row });
+  const { isDirty } = useFormState({ control: form.control });
   const isSaved = Boolean(row.lotId);
   const isExisting = row.source === "existing";
   const inheritsTiming = saleModeInheritsLotTiming(ctx.deliveryMode);
@@ -147,16 +150,9 @@ function LotRowEditor({
     form.reset(row);
   }, [form, row]);
 
-  const detachAttached = useCallback(() => {
+  const runDetach = useCallback(() => {
     const lotId = row.lotId;
     if (!lotId) return;
-    if (
-      !window.confirm(
-        "Detach this lot from the sale? It returns to inventory as a standalone draft lot.",
-      )
-    ) {
-      return;
-    }
     startTransition(async () => {
       const r = await adminDetachLotFromSaleResultAction(saleId, lotId);
       if (!r.ok) {
@@ -169,6 +165,7 @@ function LotRowEditor({
         return;
       }
       notify.success(`Detached ${row.title || "lot"}`);
+      setDetachConfirmOpen(false);
       onRemove();
       onDetached?.();
     });
@@ -185,7 +182,7 @@ function LotRowEditor({
       const parsed = safeParseSaleSetupLotRowForApi(values, ctx);
       if (!parsed.success) {
         applyZodIssuesToForm(form, parsed.error.issues);
-        notifyLotFormValidationFailure({ issues: parsed.error.issues });
+        notifyAdminFormValidationFailure({ issues: parsed.error.issues });
         return;
       }
       const r = await adminAddLotToSaleResultAction(saleId, parsed.data);
@@ -242,7 +239,7 @@ function LotRowEditor({
       const parsed = safeParseSaleSetupLotRowForApi(values, ctx);
       if (!parsed.success) {
         applyZodIssuesToForm(form, parsed.error.issues);
-        notifyLotFormValidationFailure({ issues: parsed.error.issues });
+        notifyAdminFormValidationFailure({ issues: parsed.error.issues });
         return;
       }
       const r = await adminUpdateLotResultAction(row.lotId as string, {
@@ -269,33 +266,45 @@ function LotRowEditor({
 
   if (isExisting && isSaved) {
     return (
-      <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="font-headline text-base text-on-surface">
-            Lot {rowIndex + 1}
-            <span className="ml-2 inline-flex items-center gap-1 font-body text-xs text-primary">
-              <CheckCircle2 className="size-3.5" aria-hidden />
-              Attached
-            </span>
+      <>
+        <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="font-headline text-base text-on-surface">
+              Lot {rowIndex + 1}
+              <span className="ml-2 inline-flex items-center gap-1 font-body text-xs text-primary">
+                <CheckCircle2 className="size-3.5" aria-hidden />
+                Attached
+              </span>
+            </p>
+            {!readOnly ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDetachConfirmOpen(true)}
+                disabled={pending}
+                aria-label="Detach lot from sale"
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </Button>
+            ) : null}
+          </div>
+          <p className="font-body text-sm text-on-surface">{row.title || "Existing lot"}</p>
+          <p className="mt-1 font-body text-xs text-on-surface-variant">
+            Existing inventory lot attached to this sale.
           </p>
-          {!readOnly ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={detachAttached}
-              disabled={pending}
-              aria-label="Detach lot from sale"
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          ) : null}
         </div>
-        <p className="font-body text-sm text-on-surface">{row.title || "Existing lot"}</p>
-        <p className="mt-1 font-body text-xs text-on-surface-variant">
-          Existing inventory lot attached to this sale.
-        </p>
-      </div>
+        <ConfirmDialog
+          open={detachConfirmOpen}
+          onOpenChange={setDetachConfirmOpen}
+          title="Detach lot from sale?"
+          body="Detach this lot from the sale? It returns to inventory as a standalone draft lot."
+          confirmLabel="Detach"
+          tone="warning"
+          loading={pending}
+          onConfirm={runDetach}
+        />
+      </>
     );
   }
 
@@ -346,6 +355,11 @@ function LotRowEditor({
                 <CheckCircle2 className="size-3.5" aria-hidden />
                 Saved
               </span>
+            ) : (
+              <span className="ml-2 font-body text-xs text-warning">Unsaved</span>
+            )}
+            {isSaved && isDirty ? (
+              <span className="ml-2 font-body text-xs text-warning">Unsaved changes</span>
             ) : null}
             {scheduleOutOfSync ? (
               <span className="ml-2 font-body text-xs text-warning">
@@ -545,25 +559,47 @@ function LotRowEditor({
           />
 
           {!readOnly && !isSaved ? (
-            <LoadingButton
-              type="button"
-              loading={pending}
-              onClick={save}
-              className="w-full sm:w-auto"
-            >
-              Save lot
-            </LoadingButton>
+            <div className="flex flex-wrap gap-2">
+              <LoadingButton
+                type="button"
+                loading={pending}
+                onClick={save}
+                className="min-h-11 w-full sm:w-auto"
+              >
+                Save lot
+              </LoadingButton>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 w-full sm:w-auto"
+                onClick={() => form.reset(row)}
+              >
+                Reset row
+              </Button>
+            </div>
           ) : null}
           {!readOnly && isSaved && !inheritsTiming ? (
-            <LoadingButton
-              type="button"
-              loading={pending}
-              onClick={updateSchedule}
-              variant="secondary"
-              className="w-full sm:w-auto"
-            >
-              {updateLotScheduleLabel()}
-            </LoadingButton>
+            <div className="flex flex-wrap gap-2">
+              <LoadingButton
+                type="button"
+                loading={pending}
+                onClick={updateSchedule}
+                variant="secondary"
+                className="min-h-11 w-full sm:w-auto"
+              >
+                {updateLotScheduleLabel()}
+              </LoadingButton>
+              {isDirty ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full sm:w-auto"
+                  onClick={() => form.reset(row)}
+                >
+                  Discard changes
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -621,14 +657,15 @@ export function SaleLotRowsEditor({
   );
 
   const [syncPending, startSyncTransition] = useTransition();
+  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
 
-  const syncLotsToWindow = useCallback(() => {
+  const syncConfirmBody =
+    lotWindowConflicts.length === 1
+      ? "Adjust this lot's open/close times to fit the sale window?"
+      : `Adjust ${lotWindowConflicts.length} lots' open/close times to fit the sale window?`;
+
+  const runSyncLotsToWindow = useCallback(() => {
     if (lotWindowConflicts.length === 0) return;
-    const message =
-      lotWindowConflicts.length === 1
-        ? "Adjust this lot's open/close times to fit the sale window?"
-        : `Adjust ${lotWindowConflicts.length} lots' open/close times to fit the sale window?`;
-    if (!window.confirm(message)) return;
     startSyncTransition(async () => {
       const window = {
         deliveryMode: sale.deliveryMode,
@@ -653,6 +690,7 @@ export function SaleLotRowsEditor({
         }
       }
       notify.success("Lot schedules updated");
+      setSyncConfirmOpen(false);
       onLotsChange();
     });
   }, [lotWindowConflicts, onLotsChange, sale.deliveryMode, sale.endTime, sale.startTime]);
@@ -672,7 +710,7 @@ export function SaleLotRowsEditor({
               size="sm"
               variant="secondary"
               loading={syncPending}
-              onClick={syncLotsToWindow}
+              onClick={() => setSyncConfirmOpen(true)}
             >
               {syncLotsToSaleWindowLabel(lotWindowConflicts.length)}
             </LoadingButton>
@@ -758,10 +796,23 @@ export function SaleLotRowsEditor({
       ) : null}
 
       {unsavedCount > 0 ? (
-        <p className="font-body text-sm text-error" role="alert">
-          Save {unsavedCount} unsaved lot{unsavedCount === 1 ? "" : "s"} before continuing.
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription role="alert">
+            Save {unsavedCount} unsaved lot{unsavedCount === 1 ? "" : "s"} before continuing.
+          </AlertDescription>
+        </Alert>
       ) : null}
+
+      <ConfirmDialog
+        open={syncConfirmOpen}
+        onOpenChange={setSyncConfirmOpen}
+        title={syncLotsToSaleWindowLabel(lotWindowConflicts.length)}
+        body={syncConfirmBody}
+        confirmLabel="Adjust times"
+        tone="warning"
+        loading={syncPending}
+        onConfirm={runSyncLotsToWindow}
+      />
     </div>
   );
 }

@@ -21,6 +21,8 @@ export type ListLotsParams = {
   endYear?: number;
   /** Server-side title search (API `q`). */
   q?: string;
+  /** When true, only lots with zero images. */
+  needsPhotos?: boolean;
   limit?: number;
   offset?: number;
   /** API sort: default createdDesc; endingAsc for live urgency; hammerDesc/endedDesc for archive. */
