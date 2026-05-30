@@ -44,6 +44,35 @@ export function ArtistBrowseGrid({
   );
 }
 
+/** Profile-page horizontal rail — compact directory cards for related artists. */
+export function ArtistRelatedBrowseRail({
+  rows,
+  watchSet,
+  isAuthenticated,
+  profileLinkContext,
+}: {
+  rows: PublicArtistDirectoryRow[];
+  watchSet: ReadonlySet<string>;
+  isAuthenticated: boolean;
+  profileLinkContext?: ArtistProfileLinkContext;
+}) {
+  return (
+    <ul className="m-0 flex list-none snap-x snap-mandatory gap-4 overflow-x-auto p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {rows.map((a) => (
+        <ArtistDirectoryCard
+          key={a.id}
+          artist={a}
+          watching={watchSet.has(a.id)}
+          isAuthenticated={isAuthenticated}
+          density="compact"
+          className="w-[180px] shrink-0 snap-start sm:w-[200px]"
+          {...(profileLinkContext ? { profileLinkContext } : {})}
+        />
+      ))}
+    </ul>
+  );
+}
+
 /** Feature-style cards: large portrait, bio, distinct from grid tiles. */
 export function ArtistBrowseCard({
   rows,

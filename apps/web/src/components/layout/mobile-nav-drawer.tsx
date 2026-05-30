@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MobileAuthSection } from "./header-auth-chip";
 import { megaMenuSectionActive, utilityNav } from "./header-nav-config";
-import { HeaderSearchForm } from "./header-search";
+import { HeaderSearchPaletteTrigger } from "./header-search";
 import { LaxLogo } from "./lax-logo";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -81,7 +81,14 @@ export function MobileNavDrawer({
             </DialogClose>
           </div>
 
-          <HeaderSearchForm inputId="mobile-nav-search" />
+          <HeaderSearchPaletteTrigger variant="drawer" onOpen={close} />
+
+          <div className="flex items-center gap-3 border-b border-nav-border pb-4">
+            <span className="font-label text-xs font-semibold uppercase text-brand-400 dark:text-on-surface-variant">
+              Theme
+            </span>
+            <ThemeToggle />
+          </div>
 
           <nav aria-label="Mobile primary">
             <ul className="flex flex-col gap-1">
@@ -172,13 +179,6 @@ export function MobileNavDrawer({
           </ul>
 
           <MobileAuthSection onNavigate={close} />
-
-          <div className="flex items-center gap-3 border-t border-nav-border pt-4">
-            <span className="font-label text-xs font-semibold uppercase text-brand-400 dark:text-on-surface-variant">
-              Theme
-            </span>
-            <ThemeToggle />
-          </div>
         </div>
       </DialogContent>
     </Dialog>

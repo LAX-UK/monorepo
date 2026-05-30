@@ -7,7 +7,9 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import { resolveClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { LegalEntitySummary } from "@auction/types";
+import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo } from "react";
 
 type Props = {
@@ -38,12 +40,15 @@ export function ClientShell({
   orgModuleEnabled = true,
   children,
 }: Props) {
+  const pathname = usePathname();
+  const effectiveWorkspaceMode = resolveClientWorkspaceMode(pathname, clientWorkspaceMode);
+
   const config = useMemo(
     () =>
       buildShellConfig({
         user,
         role: "client",
-        clientWorkspaceMode,
+        clientWorkspaceMode: effectiveWorkspaceMode,
         orgModuleEnabled,
         headerRightSlot,
         mobileHeader: {
@@ -57,7 +62,7 @@ export function ClientShell({
       }),
     [
       user,
-      clientWorkspaceMode,
+      effectiveWorkspaceMode,
       orgModuleEnabled,
       headerRightSlot,
       contextBanner,
@@ -71,7 +76,7 @@ export function ClientShell({
   return (
     <ViewerCapabilitiesProvider
       user={user}
-      clientWorkspaceMode={clientWorkspaceMode}
+      clientWorkspaceMode={effectiveWorkspaceMode}
       acting={acting}
     >
       <AppShell user={user} config={config} cookieDensity={cookieDensity ?? null}>

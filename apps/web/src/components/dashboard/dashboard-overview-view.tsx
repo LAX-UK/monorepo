@@ -5,6 +5,7 @@ import { DashboardOverviewLayout } from "@/components/dashboard/overview/dashboa
 import { OverviewErrorsAlert } from "@/components/dashboard/overview/overview-errors-alert";
 import { OverviewHeroBand } from "@/components/dashboard/overview/overview-hero-band";
 import { SellCtaBand } from "@/components/dashboard/overview/sell-cta-band";
+import { shouldShowComplianceStrip } from "@/components/dashboard/overview/should-show-compliance-strip";
 import { WatchlistPreviewCard } from "@/components/dashboard/overview/watchlist-preview-card";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
@@ -32,20 +33,21 @@ export function DashboardOverviewView({
   addressesCount = 0,
   activity = [],
 }: Props) {
+  const showCompliance = shouldShowComplianceStrip(user, kyc, addressesCount);
+
   return (
     <>
       <OverviewErrorsAlert errors={vm.errors} />
       <DashboardOverviewLayout
-        layout="focal"
         slots={{
-          compliance: (
+          compliance: showCompliance ? (
             <ComplianceStatusStrip
               user={user}
               kyc={kyc}
               addressesCount={addressesCount}
               hideIdentityPill={kyc?.requiresKyc === true}
             />
-          ),
+          ) : null,
           kpis: (
             <OverviewHeroBand
               vm={vm}
@@ -57,9 +59,21 @@ export function DashboardOverviewView({
           activity: <ActiveBidsCard vm={vm} />,
           activityFeed: <ActivityFeed items={activity} />,
           watchlist: <WatchlistPreviewCard vm={vm} variant="tile-grid" />,
-          secondary: <SellCtaBand vm={vm} />,
+          secondary:
+            vm.kpi.activeBidsCount > 0 || vm.settlementsDue.length > 0 || vm.outbidCount > 0 ? (
+              <div className="hidden lg:block">
+                <SellCtaBand vm={vm} />
+              </div>
+            ) : (
+              <SellCtaBand vm={vm} />
+            ),
         }}
       />
+      {vm.kpi.activeBidsCount > 0 || vm.settlementsDue.length > 0 || vm.outbidCount > 0 ? (
+        <div className="lg:hidden">
+          <SellCtaBand vm={vm} />
+        </div>
+      ) : null}
     </>
   );
 }

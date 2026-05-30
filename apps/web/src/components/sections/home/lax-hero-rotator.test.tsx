@@ -1,5 +1,6 @@
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
 import { LaxHeroSaleroomRotator } from "@/components/sections/home/lax-hero-rotator";
+import { HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -52,7 +53,10 @@ describe("LaxHeroSaleroomRotator", () => {
 
   it("keeps a sized hero shell so absolute media layers do not collapse", () => {
     const { container } = render(<LaxHeroSaleroomRotator slides={[slideA]} />);
-    const sizedShell = container.querySelector(".min-h-\\[min\\(100svh\\,520px\\)\\]");
-    expect(sizedShell).toBeInTheDocument();
+    const carousel = container.querySelector('[aria-label="Upcoming salerooms"]');
+    expect(carousel).toBeInTheDocument();
+    for (const token of HOME_HERO_MIN_H.split(" ")) {
+      expect(carousel?.className).toContain(token);
+    }
   });
 });

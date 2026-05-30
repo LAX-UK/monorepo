@@ -2,7 +2,11 @@ import { PaymentsMobileList } from "@/components/dashboard/list/payments-mobile-
 import { PaymentRowCard } from "@/components/dashboard/payments/payment-row-card";
 import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/shell/shell-config-context", () => ({
+  useShellConfig: () => ({ density: "normal" }),
+}));
 
 const sampleRow: PaymentDisplayRow = {
   id: "p1",

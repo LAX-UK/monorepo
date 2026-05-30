@@ -8,6 +8,7 @@ import { NotificationsTypeFilterToolbar } from "@/components/dashboard/notificat
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
+import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
   buildNotificationsHref,
@@ -220,58 +221,50 @@ export function NotificationsInboxBoard({
   }, [items.length, loading, unreadCount]);
 
   return (
-    <div className="min-w-0 pb-[var(--page-bottom-padding)] lg:pb-0">
+    <div className="min-w-0 pb-[var(--page-bottom-padding)]">
       <output className="sr-only" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </output>
 
       {loadFailure ? (
-        <div className="mt-6">
-          <DashboardSliceErrorAlert failure={loadFailure} />
-        </div>
+        <DashboardSliceErrorAlert failure={loadFailure} />
       ) : (
         <>
-          <div className="mt-8">
-            <Surface variant="inset" padding="sm" className="mb-5">
-              <SectionTabsNav
-                variant="underline"
-                ariaLabel="Notification filters"
-                sticky={false}
-                items={tabs}
-              />
-            </Surface>
-          </div>
-
-          <div className="mt-4">
-            <NotificationsTypeFilterToolbar
-              filters={notificationFilters}
-              typeCounts={typeCounts}
-              totalCount={items.length}
-              loading={loading}
-              actions={
-                <Button type="button" variant="tertiary" asChild>
-                  <Link href="/dashboard/settings/notifications">Notification settings</Link>
-                </Button>
-              }
+          <Surface variant="inset" padding="sm">
+            <SectionTabsNav
+              variant="underline"
+              ariaLabel="Notification inbox"
+              sticky={false}
+              items={tabs}
             />
-          </div>
+          </Surface>
+
+          <NotificationsTypeFilterToolbar
+            filters={notificationFilters}
+            typeCounts={typeCounts}
+            totalCount={items.length}
+            loading={loading}
+            actions={
+              <Button type="button" variant="tertiary" asChild>
+                <Link href="/dashboard/settings/notifications">Notification settings</Link>
+              </Button>
+            }
+          />
 
           {!loading ? (
             <DashboardFilterResultsAnnouncer count={items.length} entityLabel="notifications" />
           ) : null}
 
           {error ? (
-            <div className="mt-6">
-              <DashboardErrorAlert title="Could not load notifications" message={error}>
-                <Button type="button" variant="outline" size="sm" onClick={() => void retry()}>
-                  <RefreshCcw className="mr-2 size-3.5" aria-hidden />
-                  Try again
-                </Button>
-              </DashboardErrorAlert>
-            </div>
+            <DashboardErrorAlert title="Could not load notifications" message={error}>
+              <Button type="button" variant="outline" size="sm" onClick={() => void retry()}>
+                <RefreshCcw className="mr-2 size-3.5" aria-hidden />
+                Try again
+              </Button>
+            </DashboardErrorAlert>
           ) : null}
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-body text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
               {counterLine}
             </p>
@@ -317,13 +310,13 @@ export function NotificationsInboxBoard({
             </BulkActionBar>
           </div>
 
-          <div className="mt-4">
+          <div>
             {loading ? (
               <NotificationsSkeleton rows={6} />
             ) : items.length === 0 ? (
               <InboxEmptyState tab={tab} filters={notificationFilters} />
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-6" aria-label="Notification groups">
                 {groups.map((group) => (
                   <section key={group.band} aria-labelledby={`band-${group.band}`}>
                     <h2
@@ -333,7 +326,10 @@ export function NotificationsInboxBoard({
                       {group.band}
                     </h2>
                     <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm">
-                      <ul className="divide-y divide-outline-variant/10">
+                      <ul
+                        aria-label={`${group.band} notifications`}
+                        className="divide-y divide-outline-variant/10"
+                      >
                         {group.items.map((item) => (
                           <NotificationRow
                             key={item.id}
@@ -426,11 +422,11 @@ function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
   }
   return (
     <DashboardEmptyState
-      title="You're all caught up"
-      description="We'll surface bids, wins, payments, and saved-lot updates here as they happen."
+      title={DASHBOARD_EMPTY.notifications.title}
+      description={DASHBOARD_EMPTY.notifications.description}
       action={
         <Button type="button" variant="secondaryOutline" asChild>
-          <Link href="/sales">Browse auctions</Link>
+          <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
         </Button>
       }
     />

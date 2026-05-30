@@ -1,75 +1,80 @@
 "use client";
 
 import { HeaderBidUrgencyChip } from "@/components/layout/header-bid-urgency-chip";
+import { HeaderGuestMenu } from "@/components/layout/header-guest-menu";
 import { HeaderUserMenu } from "@/components/layout/header-user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { useAppSession } from "@/lib/auth/use-app-session";
+import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
+import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { accountNavLinks } from "./header-account-nav";
 import { LogoutButton } from "./logout-button";
 
 type HeaderAuthChipVariant = "account" | "notifications" | "full";
 
-const loginPillClassSolid =
-  "inline-flex min-h-11 items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors duration-300 hover:bg-brand-900 hover:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface dark:hover:text-brand-900";
-
 type HeaderAuthChipProps = {
   variant?: HeaderAuthChipVariant;
+  headerTone?: SiteHeaderTone;
 };
 
-function HeaderAuthSkeleton({ variant }: { variant: HeaderAuthChipVariant }) {
+function HeaderAuthSkeleton({
+  variant,
+  headerTone = "on-light",
+}: {
+  variant: HeaderAuthChipVariant;
+  headerTone?: SiteHeaderTone;
+}) {
+  const skeletonClass =
+    headerTone === "on-dark"
+      ? "size-11 rounded-full bg-white/20 motion-safe:animate-pulse"
+      : "size-11 rounded-full bg-surface-container-high/70 motion-safe:animate-pulse";
+
   if (variant === "notifications") {
-    return (
-      <div
-        className="size-11 rounded-full bg-surface-container-high/70 motion-safe:animate-pulse"
-        aria-label="Loading account notifications"
-      />
-    );
+    return <div className={skeletonClass} aria-label="Loading account notifications" />;
   }
 
-  return (
-    <div className="flex items-center gap-2" aria-label="Loading account" aria-busy="true">
-      {variant === "full" ? (
-        <div className="size-11 rounded-full bg-surface-container-high/70 motion-safe:animate-pulse" />
-      ) : null}
-      <div className="size-9 rounded-full bg-surface-container-high/70 motion-safe:animate-pulse" />
-      <div className="hidden h-9 w-36 rounded-full bg-surface-container-high/70 motion-safe:animate-pulse sm:block" />
-    </div>
-  );
+  return <div className={skeletonClass} aria-label="Loading account" aria-busy="true" />;
 }
 
-function LoginPill() {
-  const registerClass =
-    "inline-flex min-h-11 items-center justify-center rounded-full border border-brand-900 px-4 py-1.5 font-label text-sm font-medium uppercase leading-[21px] text-brand-900 transition-colors duration-300 hover:bg-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface/10";
-
-  return (
-    <div className="flex items-center gap-2">
-      <Link href="/register" className={registerClass}>
-        Sign up
-      </Link>
-      <Link href="/login" className={loginPillClassSolid}>
-        Log in
-      </Link>
-    </div>
-  );
-}
-
-export function HeaderAuthChip({ variant = "full" }: HeaderAuthChipProps) {
+export function HeaderAuthChip({ variant = "full", headerTone = "on-light" }: HeaderAuthChipProps) {
   const { user, pending } = useAppSession();
 
-  if (pending) return <HeaderAuthSkeleton variant={variant} />;
+  if (pending) return <HeaderAuthSkeleton variant={variant} headerTone={headerTone} />;
   if (!user) {
-    return variant === "notifications" ? null : <LoginPill />;
+    return variant === "notifications" ? null : <HeaderGuestMenu headerTone={headerTone} />;
   }
-  if (variant === "notifications") return <NotificationBell />;
-  if (variant === "account") return <HeaderUserMenu user={user} />;
+  if (variant === "notifications") return <NotificationBell headerTone={headerTone} />;
+  if (variant === "account") return <HeaderUserMenu user={user} headerTone={headerTone} />;
 
   return (
     <div className="flex items-center gap-2">
       <HeaderBidUrgencyChip />
-      <NotificationBell />
-      <HeaderUserMenu user={user} />
+      <NotificationBell headerTone={headerTone} />
+      <HeaderUserMenu user={user} headerTone={headerTone} />
+    </div>
+  );
+}
+
+function MobileGuestAuthSection({ onNavigate }: { onNavigate: () => void }) {
+  const { signInHref, registerHref } = useAuthHeaderLinks();
+
+  return (
+    <div className="flex flex-col items-center gap-3 border-t border-nav-border pt-4">
+      <Button variant="cta" size="lg" className="w-full" asChild>
+        <Link href={registerHref} onClick={onNavigate}>
+          Create account
+        </Link>
+      </Button>
+      <Link
+        href={signInHref}
+        className="min-h-11 py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand dark:text-on-surface dark:hover:text-on-surface-variant"
+        onClick={onNavigate}
+      >
+        Sign in
+      </Link>
     </div>
   );
 }
@@ -81,31 +86,13 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
     return (
       <div className="flex flex-col gap-3 border-t border-nav-border pt-4" aria-busy="true">
         <div className="h-4 w-20 rounded bg-surface-container-high/70 motion-safe:animate-pulse" />
-        <div className="h-16 rounded-md bg-surface-container-high/70 motion-safe:animate-pulse" />
         <div className="h-11 rounded-md bg-surface-container-high/70 motion-safe:animate-pulse" />
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
-        <Link
-          href="/register"
-          className="block min-h-11 w-full rounded-md border border-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:text-on-surface dark:hover:bg-on-surface/10"
-          onClick={onNavigate}
-        >
-          Sign up
-        </Link>
-        <Link
-          href="/login"
-          className="block min-h-11 w-full rounded-md border border-brand-900 bg-brand-900 py-3 text-center font-label text-sm font-medium uppercase tracking-wide text-surface transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:border-on-surface dark:bg-on-surface dark:text-brand-900 dark:hover:bg-brand-200"
-          onClick={onNavigate}
-        >
-          Log in
-        </Link>
-      </div>
-    );
+    return <MobileGuestAuthSection onNavigate={onNavigate} />;
   }
 
   return (

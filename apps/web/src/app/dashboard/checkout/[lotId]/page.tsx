@@ -142,7 +142,15 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               </div>
             </DashboardSection>
 
-            <p className="mt-8 font-body text-xs text-on-surface-variant lg:mt-10">
+            <p className="mt-8 font-body text-sm text-on-surface-variant lg:mt-10">
+              After payment, your lot moves to{" "}
+              <Link
+                href="/dashboard/portfolio"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Collection
+              </Link>
+              . Need help?{" "}
               <Link
                 href={lotPath(auction)}
                 className="rounded font-medium text-primary underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -150,6 +158,12 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                 View full lot details
               </Link>
             </p>
+            {addressesR.status === "rejected" ? (
+              <div className="mt-4 rounded-lg border border-warning/40 bg-warning-container/15 p-4 text-sm text-on-surface">
+                We could not load your saved addresses. You can still pay — add a shipping address
+                during checkout if prompted.
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardMobileLotThumbnail } from "@/components/dashboard/list/dashboard-mobile-lot-thumbnail";
 import {
   DashboardListRowCard,
   DashboardMobileList,
@@ -7,7 +8,7 @@ import {
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import type { WatchlistBoardRow } from "@/components/dashboard/watchlist-board-rows";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
-import { MediaImage } from "@/components/ui/media-image";
+import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { lotPath } from "@/lib/seo/url";
 import { cn } from "@auction/ui";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export function WatchlistMobileList({ rows, artistNameById, selectedIds, onToggleRow }: Props) {
+  const rowPadding = useDashboardListRowPaddingClass();
   return (
     <DashboardMobileList>
       {rows.map((row) => {
@@ -33,6 +35,7 @@ export function WatchlistMobileList({ rows, artistNameById, selectedIds, onToggl
             <DashboardListRowCard
               className={cn(
                 "transition-colors",
+                rowPadding,
                 selected && "border-primary/40 bg-primary-container/5",
               )}
               leading={
@@ -44,12 +47,10 @@ export function WatchlistMobileList({ rows, artistNameById, selectedIds, onToggl
                 />
               }
               thumbnail={
-                <Link
+                <DashboardMobileLotThumbnail
                   href={lotPath({ id: row.lotId, title: row.title })}
-                  className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-container-high"
-                >
-                  <MediaImage src={row.image} alt="" label="Lot artwork" sizes="56px" />
-                </Link>
+                  src={row.image}
+                />
               }
               title={
                 <Link

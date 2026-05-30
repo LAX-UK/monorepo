@@ -1,20 +1,20 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { ArtistScenarioBadges } from "@/components/artists/artist-scenario-badge";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
-import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb";
-import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
+import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { ShareButton } from "@/components/marketing/share-button";
 import { ArtistHero } from "@/components/sections/artists/artist-hero";
+import { ArtistRelatedDirectorySection } from "@/components/sections/artists/artist-related-directory-section";
 import { ArtistStickyFollow } from "@/components/sections/artists/artist-sticky-follow";
 import { ArtistWorksEmptyState } from "@/components/sections/artists/artist-works-empty-state";
 import { ArtistWorksGrid } from "@/components/sections/artists/artist-works-grid";
 import { normalizeDecadeSegment, slugifyNationality } from "@/lib/artists/directory-presets";
+import { loadRelatedDirectoryArtists } from "@/lib/artists/related-directory-artists.server";
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import {
   fetchPublicArtistAliases,
   fetchRegistryArtistById,
   getServerArtistById,
-  getServerArtistReader,
 } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -113,20 +113,17 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
   const { id, slug } = await params;
   const sp = await searchParams;
   const directoryBackHref = artistDirectoryBackHref(sp);
-  const reader = await getServerArtistReader();
-  const [sellerLots, artist, registry, aliases, session, featured, watchedArtistIds] =
-    await Promise.all([
-      loadSellerLots(id),
-      getServerArtistById(id),
-      fetchRegistryArtistById(id),
-      fetchPublicArtistAliases(id),
-      getServerSessionUser(),
-      reader.listFeatured(),
-      getServerMyArtistWatchIds(),
-    ]);
+  const [sellerLots, artist, registry, aliases, session, watchedArtistIds] = await Promise.all([
+    loadSellerLots(id),
+    getServerArtistById(id),
+    fetchRegistryArtistById(id),
+    fetchPublicArtistAliases(id),
+    getServerSessionUser(),
+    getServerMyArtistWatchIds(),
+  ]);
   const currentUserId = session?.id ?? null;
   const base = getSiteUrl();
-  const isFeatured = featured.some((a) => a.id === id);
+  const isFeatured = registry?.featured === true;
   const watching = watchedArtistIds.includes(id);
   const isAuthed = Boolean(session);
 
@@ -167,17 +164,14 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
         <script type="application/ld+json" suppressHydrationWarning>
           {jsonLdText}
         </script>
-        <MarketingMobileBackLink
-          href={directoryBackHref}
-          label="Back to artists"
-          className="mb-4"
-        />
-        <MarketingBreadcrumb
-          className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
-          items={[
+        <MarketingDetailWayfinding
+          backHref={directoryBackHref}
+          backLabel="Back to artists"
+          breadcrumbItems={[
             { label: "Home", href: "/" },
             { label: user.name, current: true },
           ]}
+          className="mb-8"
         />
         <ArtistHero
           vm={{
@@ -273,19 +267,6 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
     ...(itemsLd ? [crumbs, subjectLd, itemsLd] : [crumbs, subjectLd]),
   );
 
-  const related = featured.filter((a) => a.id !== id).slice(0, 8);
-
-  // Build directory pivot chips so visitors can jump from a single artist to
-  // their decade / nationality / kind slice. Each chip is a real `<a>` so SEO
-  // and JS-disabled visitors both work, and it strengthens internal linking.
-  const birthMatch = registry?.birthYear?.match(/^\d{4}/);
-  const birthYearNum = birthMatch?.[0] != null ? Number.parseInt(birthMatch[0], 10) : null;
-  const decadeSlug = (() => {
-    if (birthYearNum == null) return null;
-    if (birthYearNum < 1800) return "pre-1800";
-    const start = Math.floor(birthYearNum / 10) * 10;
-    return normalizeDecadeSegment(`${start}s`);
-  })();
   const kindSegment: string | null = (() => {
     switch (registry?.kind) {
       case "artist":
@@ -299,6 +280,20 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
       default:
         return null;
     }
+  })();
+  const relatedRows = await loadRelatedDirectoryArtists(id, registry);
+  const browseHref = kindSegment ? `/artists/kind/${kindSegment}` : "/artists";
+
+  // Build directory pivot chips so visitors can jump from a single artist to
+  // their decade / nationality / kind slice. Each chip is a real `<a>` so SEO
+  // and JS-disabled visitors both work, and it strengthens internal linking.
+  const birthMatch = registry?.birthYear?.match(/^\d{4}/);
+  const birthYearNum = birthMatch?.[0] != null ? Number.parseInt(birthMatch[0], 10) : null;
+  const decadeSlug = (() => {
+    if (birthYearNum == null) return null;
+    if (birthYearNum < 1800) return "pre-1800";
+    const start = Math.floor(birthYearNum / 10) * 10;
+    return normalizeDecadeSegment(`${start}s`);
   })();
   const pivotChips: Array<{ href: string; label: string; aria: string }> = [];
   if (decadeSlug) {
@@ -388,14 +383,15 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
       </script>
       {shouldNoIndex(registry) ? <meta name="robots" content="noindex,follow" /> : null}
 
-      <MarketingMobileBackLink href={directoryBackHref} label="Back to artists" className="mb-4" />
-      <MarketingBreadcrumb
-        className="mb-8 font-label text-xs uppercase tracking-[0.2em] text-secondary"
-        items={[
+      <MarketingDetailWayfinding
+        backHref={directoryBackHref}
+        backLabel="Back to artists"
+        breadcrumbItems={[
           { label: "Home", href: "/" },
           { label: "Artists", href: "/artists" },
           { label: artist.name, current: true },
         ]}
+        className="mb-8"
       />
       <ArtistHero
         vm={{
@@ -460,33 +456,12 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
           </>
         )}
       </section>
-      {related.length > 0 ? (
-        <section
-          className="mt-16 border-t border-border-hairline pt-12"
-          aria-labelledby="related-artists"
-        >
-          <h2 id="related-artists" className="mb-6 font-headline text-2xl text-on-surface">
-            More in the directory
-          </h2>
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {related.map((a) => (
-              <li key={a.id}>
-                <Link
-                  href={artistPath(a)}
-                  className="block rounded-lg border border-border-hairline bg-surface-container-low/40 p-4 transition hover:border-primary/40 hover:bg-surface-container-low"
-                >
-                  <p className="font-headline text-base text-on-surface">{a.name}</p>
-                  {a.tagline ? (
-                    <p className="mt-1 line-clamp-2 font-body text-sm text-on-surface-variant">
-                      {a.tagline}
-                    </p>
-                  ) : null}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <ArtistRelatedDirectorySection
+        rows={relatedRows}
+        watchSet={new Set(watchedArtistIds)}
+        isAuthenticated={isAuthed}
+        browseHref={browseHref}
+      />
 
       <ArtistStickyFollow
         artistId={id}
