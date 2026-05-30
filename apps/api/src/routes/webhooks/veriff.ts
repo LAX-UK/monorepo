@@ -63,14 +63,22 @@ async function runKycProgression(container: Container, userId: string): Promise<
   await progressIndividualsAfterKycApproval(container.db, container.domainEventPublisher, userId);
 }
 
+function readVeriffWebhookHeaders(c: {
+  req: { header: (name: string) => string | undefined };
+}): { signature: string | undefined; authClient: string | undefined } {
+  return {
+    signature: c.req.header("x-hmac-signature") ?? c.req.header("vrf-hmac-signature"),
+    authClient: c.req.header("x-auth-client"),
+  };
+}
+
 /** Veriff webhook hub — decision (required) and event (optional UX progress). */
 export function createVeriffWebhookRoutes(container: Container) {
   const r = new Hono();
 
   r.post("/decision", async (c) => {
     const raw = await c.req.text();
-    const signature = c.req.header("x-hmac-signature");
-    const authClient = c.req.header("x-auth-client");
+    const { signature, authClient } = readVeriffWebhookHeaders(c);
     try {
       const result = await container.kycService.handleDecisionWebhook(raw, signature, authClient);
       const { verification: updated, shouldProgressIndividuals } = result;
@@ -116,8 +124,7 @@ export function createVeriffWebhookRoutes(container: Container) {
 
   r.post("/event", async (c) => {
     const raw = await c.req.text();
-    const signature = c.req.header("x-hmac-signature");
-    const authClient = c.req.header("x-auth-client");
+    const { signature, authClient } = readVeriffWebhookHeaders(c);
     try {
       await container.kycService.handleEventWebhook(raw, signature, authClient);
       return c.json({ ok: true });

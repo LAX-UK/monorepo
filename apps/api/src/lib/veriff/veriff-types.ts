@@ -8,6 +8,7 @@ export const veriffDecisionWebhookSchema = z
         id: z.string(),
         attemptId: z.string().optional().nullable(),
         status: z.string(),
+        code: z.number().optional().nullable(),
         reasonCode: z.number().optional().nullable(),
         reason: z.string().optional().nullable(),
         decisionTime: z.string().optional().nullable(),

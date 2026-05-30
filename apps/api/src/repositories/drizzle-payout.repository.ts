@@ -305,6 +305,39 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
     return rowToPayout(row);
   }
 
+  async updateStatusIfCurrent(
+    payoutId: string,
+    expectedStatus: Payout["status"],
+    patch: {
+      status: Payout["status"];
+      stripeTransferId?: string | null;
+      processedAt?: Date | null;
+      failureReason?: string | null;
+    },
+  ): Promise<Payout | null> {
+    const updateValues: {
+      status: PayoutStatus;
+      stripeTransferId?: string | null;
+      processedAt?: Date | null;
+      failureReason?: string | null;
+    } = { status: patch.status as PayoutStatus };
+    if (patch.stripeTransferId !== undefined) {
+      updateValues.stripeTransferId = patch.stripeTransferId;
+    }
+    if (patch.processedAt !== undefined) {
+      updateValues.processedAt = patch.processedAt;
+    }
+    if (patch.failureReason !== undefined) {
+      updateValues.failureReason = patch.failureReason;
+    }
+    const [row] = await this.db
+      .update(payout)
+      .set(updateValues)
+      .where(and(eq(payout.id, payoutId), eq(payout.status, expectedStatus as PayoutStatus)))
+      .returning();
+    return row ? rowToPayout(row) : null;
+  }
+
   async reconcileStripeTransfer(
     payoutId: string,
     patch: ReconcileStripeTransferPatch,

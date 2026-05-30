@@ -60,6 +60,7 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
       listScheduledPayoutsAwaitingTransfer: vi.fn(),
       updateStatus: vi.fn(),
+      updateStatusIfCurrent: vi.fn().mockResolvedValue(null),
       updateXeroBillId: vi.fn(),
       reconcileStripeTransfer: vi.fn(),
       setStatementUrl: vi.fn(),
