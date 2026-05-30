@@ -1,8 +1,7 @@
 import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleRegistrationsTab } from "@/components/admin/sale-detail/tabs/registrations-tab";
-import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
+import { loadAdminSaleDetail, loadAdminSaleRegistrations } from "@/lib/admin/load-sale-detail";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminSaleRegistrations } from "@/lib/data/http/admin.server";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -16,7 +15,7 @@ export default async function AdminSaleRegistrationsPage({ params, searchParams 
   const liveish = isSaleLiveish(bundle.sale);
 
   const registrationsResult = liveish
-    ? await getAdminSaleRegistrations(id)
+    ? await loadAdminSaleRegistrations(id)
         .then((rows) => ({ rows, error: null as string | null }))
         .catch((err) => ({
           rows: [],

@@ -1,8 +1,8 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
-import type { AdminLotTableRow } from "@/components/admin/admin-lots-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogListCapBanner } from "@/components/admin/catalog/catalog-list-cap-banner";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogLotsFilterToolbar } from "@/components/admin/catalog/catalog-lots-filter-toolbar";
@@ -12,27 +12,22 @@ import { AdminWithdrawalsBoard } from "@/components/admin/withdrawals-board";
 import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { lotsListController } from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
+import { buildLotsListPageModel } from "@/lib/admin/build-lots-list-page-model";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
-import { lotActiveLensId, lotLensItems } from "@/lib/admin/catalog/lots-lenses";
 import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
-import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminLotsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { getLotWithdrawalRequests } from "@/lib/data/http/admin.server";
+import { toAdminLotTableRows } from "@/lib/data/view-models/admin-lots.vm";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { formatDateTime } from "@/lib/ui/format";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-
-type LotSort = "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc" | "sellerAsc";
-const VALID_SORTS: LotSort[] = ["createdDesc", "endingAsc", "hammerDesc", "endedDesc", "sellerAsc"];
 
 export default async function AdminLotsPage({
   searchParams,
@@ -50,6 +45,7 @@ export default async function AdminLotsPage({
     offset?: string;
     period?: string;
     lens?: string;
+    needsPhotos?: string;
   }>;
 }) {
   const user = await requireAdminCapability(LOTS_ACCESS, "/admin/lots");
@@ -59,28 +55,40 @@ export default async function AdminLotsPage({
     SALES_ACCESS,
   );
   const sp = await searchParams;
-  const activeLens = lotActiveLensId(sp);
-  const attentionLens = activeLens === "attention";
   const periodDays = parseAdminKpiPeriod(sp.period);
   const error = safeDecodeAdminErrorParam(sp.error);
-  const sort = VALID_SORTS.includes(sp.sort as LotSort) ? (sp.sort as LotSort) : undefined;
 
-  const query = lotsListController.parseQuery({
-    ...sp,
-    ...(sort ? { sort } : {}),
-    ...(activeLens === "live" ? { status: "active" } : {}),
-    ...(activeLens === "draft" ? { status: "draft" } : {}),
-    ...(activeLens === "ending" ? { status: "active", sort: "endingAsc" } : {}),
-    ...(attentionLens ? { status: "draft" } : {}),
+  const navCountsResult = await getAdminNavCounts().catch(() => ({
+    withdrawalsPending: 0,
+    submissionsPending: 0,
+    artistsPending: 0,
+  }));
+  const model = buildLotsListPageModel(sp, {
+    withdrawalsPending: navCountsResult.withdrawalsPending,
   });
+  const {
+    query,
+    activeLens,
+    attentionLens,
+    effectiveSort,
+    effectiveStatus,
+    viewPipeline,
+    q,
+    artistId,
+    saleId,
+    categoryId,
+    advancedFilterCount,
+    lenses,
+    columnSort,
+    listParamsForToggle,
+    buildPaginationHref,
+    exportFilters,
+  } = model;
 
-  const [lotResult, lotsTrendResult, withdrawalResult, navCounts] = await Promise.allSettled([
-    attentionLens
-      ? lotsListController.fetch({ ...query, status: "draft", limit: 200 })
-      : lotsListController.fetch({ ...query, limit: query.limit + 1 }),
+  const [lotResult, lotsTrendResult, withdrawalResult] = await Promise.allSettled([
+    lotsListController.fetch(query),
     getAdminLotsKpiTrend(periodDays),
     attentionLens ? getLotWithdrawalRequests() : Promise.resolve([]),
-    getAdminNavCounts(),
   ]);
 
   const lotsTrend =
@@ -88,12 +96,10 @@ export default async function AdminLotsPage({
       ? lotsTrendResult.value
       : { currentTotal: 0, priorTotal: 0, dailyCounts: [] as number[] };
 
-  let lotRows = lotResult.status === "fulfilled" ? lotResult.value.rows : [];
-  if (attentionLens) {
-    lotRows = lotRows.filter((l) => l.images.length === 0);
-  }
-  const hasNextPage = !attentionLens && !query.viewPipeline && lotRows.length > query.limit;
-  const pageRows = hasNextPage ? lotRows.slice(0, query.limit) : lotRows;
+  const lotRows = lotResult.status === "fulfilled" ? lotResult.value.rows : [];
+  const hasNextPage =
+    lotResult.status === "fulfilled" ? (lotResult.value.hasNextPage ?? false) : false;
+  const pageRows = lotRows;
 
   const withdrawalTasks = withdrawalResult.status === "fulfilled" ? withdrawalResult.value : [];
   const withdrawalLoadError =
@@ -103,10 +109,7 @@ export default async function AdminLotsPage({
         : "Could not load withdrawal requests."
       : null;
 
-  const nav =
-    navCounts.status === "fulfilled"
-      ? navCounts.value
-      : { withdrawalsPending: 0, submissionsPending: 0, artistsPending: 0 };
+  const nav = navCountsResult;
 
   const listError =
     lotResult.status === "rejected"
@@ -115,63 +118,24 @@ export default async function AdminLotsPage({
         : "Could not load lots."
       : null;
 
-  const viewPipeline = query.viewPipeline ?? false;
-  const q = query.q ?? "";
-  const artistId = query.artistId ?? "";
-  const saleId = query.saleId ?? "";
-  const categoryId = query.categoryId ?? "";
-
-  const advancedFilterCount = [q, artistId, saleId, categoryId, sort, viewPipeline].filter(
-    Boolean,
-  ).length;
-
-  const lotTableRows: AdminLotTableRow[] = pageRows.map((a) => ({
-    id: a.id,
-    title: a.title,
-    auctionType: a.auctionType,
-    status: a.status,
-    endTimeIso: a.endTime.toISOString(),
-    endTimeLabel: formatDateTime(a.endTime),
-    currentPrice: a.currentPrice,
-    ...(a.lifecycleSummary
-      ? {
-          lastActivityType: a.lifecycleSummary.lastEventType,
-          lastActivityAt: a.lifecycleSummary.lastEventAt,
-          lastActivityLabel: domainEventLabel(a.lifecycleSummary.lastEventType),
-        }
-      : {}),
-  }));
-
+  const lotTableRows = toAdminLotTableRows(pageRows);
   const activeOnPage = lotTableRows.filter((r) => r.status === "active").length;
   const draftOnPage = lotTableRows.filter((r) => r.status === "draft").length;
   const connectRequiredByLotId =
     pageRows.length > 0 ? await buildConnectRequiredByLotId(pageRows) : undefined;
 
-  const lenses =
-    nav.withdrawalsPending > 0
-      ? lotLensItems(sp, { attention: nav.withdrawalsPending })
-      : lotLensItems(sp);
-
   const pagination =
-    !listError && !viewPipeline && !attentionLens && (query.offset > 0 || hasNextPage) ? (
+    !listError && !viewPipeline && (query.offset > 0 || hasNextPage) ? (
       <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={pageRows.length}
         prevHref={
           query.offset > 0
-            ? buildListHref("/admin/lots", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
+            ? buildPaginationHref({ offset: Math.max(0, query.offset - query.limit) })
             : null
         }
-        nextHref={
-          hasNextPage
-            ? buildListHref("/admin/lots", sp, {
-                offset: query.offset + query.limit,
-              })
-            : null
-        }
+        nextHref={hasNextPage ? buildPaginationHref({ offset: query.offset + query.limit }) : null}
       />
     ) : null;
 
@@ -201,6 +165,8 @@ export default async function AdminLotsPage({
       />
     ) : null;
 
+  const listParamsForToggleFromModel = listParamsForToggle;
+
   return (
     <CatalogListShell
       title="Lots"
@@ -221,15 +187,13 @@ export default async function AdminLotsPage({
           sheetFilters={
             <Suspense fallback={<PageSkeleton variant="table" />}>
               <LotFilterOptionsLoader
-                {...(typeof sp.status === "string" && sp.status.trim() !== ""
-                  ? { status: sp.status }
-                  : {})}
+                {...(effectiveStatus ? { status: effectiveStatus } : {})}
                 {...(q.trim() !== "" ? { q } : {})}
                 {...(viewPipeline ? { viewPipeline: true } : {})}
                 {...(artistId.trim() !== "" ? { artistId } : {})}
                 {...(saleId.trim() !== "" ? { saleId } : {})}
                 {...(categoryId.trim() !== "" ? { categoryId } : {})}
-                {...(sort !== undefined ? { sort } : {})}
+                {...(effectiveSort ? { sort: effectiveSort } : {})}
                 lens={activeLens}
               />
             </Suspense>
@@ -275,17 +239,7 @@ export default async function AdminLotsPage({
           >
             Public catalog
           </Link>
-          <ExportButton
-            entityType="lots"
-            filters={{
-              ...(query.status ? { status: query.status } : {}),
-              ...(q ? { q } : {}),
-              ...(artistId ? { artistId } : {}),
-              ...(saleId ? { saleId } : {}),
-              ...(categoryId ? { categoryId } : {}),
-              ...(sort ? { sort } : {}),
-            }}
-          />
+          <ExportButton entityType="lots" filters={exportFilters} />
         </>
       }
       errorAlert={
@@ -298,6 +252,12 @@ export default async function AdminLotsPage({
     >
       {attentionLens && withdrawalLoadError ? (
         <AdminListAlert title="Could not load withdrawals">{withdrawalLoadError}</AdminListAlert>
+      ) : null}
+      {attentionLens ? (
+        <p className="font-body text-sm text-on-surface-variant">
+          Export includes draft lots missing photos only; withdrawal requests are not included in
+          exports.
+        </p>
       ) : null}
       {attentionLens && !withdrawalLoadError && withdrawalTasks.length > 0 ? (
         <section className="space-y-3">
@@ -312,16 +272,26 @@ export default async function AdminLotsPage({
           Drafts missing photos
         </h2>
       ) : null}
+      {viewPipeline && lotTableRows.length >= 200 ? (
+        <CatalogListCapBanner message="Pipeline view shows up to 200 lots. Use Table view with filters for full pagination." />
+      ) : null}
       {!listError && (viewPipeline || lotTableRows.length > 0) ? (
         <Suspense fallback={<PageSkeleton variant="table" />}>
           <AdminLotsBoard
             rows={lotTableRows}
-            fullLots={lotRows}
+            fullLots={pageRows}
             viewPipeline={viewPipeline}
             listError={listError}
             urlError={error}
             searchQuery={q}
+            listParams={listParamsForToggleFromModel}
             canManageAuction={canManageAuction}
+            canManageCatalog={userHasAccessTo(
+              user.role as UserRole,
+              user.staffRole ?? null,
+              LOTS_ACCESS,
+            )}
+            columnSort={columnSort}
             {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
           />
         </Suspense>

@@ -17,22 +17,19 @@ import type { UseFormReturn } from "react-hook-form";
 
 type Props = {
   form: UseFormReturn<AdminSaleFormValues>;
-  mode: "create" | "edit";
-  saleId?: string;
+  saleId: string;
   initialSaleDocuments: EntityDocument[];
 };
 
-export function SaleDocumentsStep({ form, mode, saleId, initialSaleDocuments }: Props) {
+export function SaleDocumentsStep({ form, saleId, initialSaleDocuments }: Props) {
   return (
     <CatalogFormSection title="Documents & terms" collapsible={false}>
-      {mode === "edit" && saleId ? (
-        <div className="space-y-2">
-          <p className="font-body text-sm text-on-surface-variant">
-            PDF attachments (optional) — stored on this sale for staff download.
-          </p>
-          <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
-        </div>
-      ) : null}
+      <div className="space-y-2">
+        <p className="font-body text-sm text-on-surface-variant">
+          PDF attachments (optional) — stored on this sale for staff download.
+        </p>
+        <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
+      </div>
 
       <FormField
         control={form.control}

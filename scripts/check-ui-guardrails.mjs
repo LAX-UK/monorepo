@@ -60,6 +60,18 @@ for (const file of files) {
   if (/type="file"/.test(text) && !ALLOWED_FILE_INPUT.has(base)) {
     violations.push(`${rel}: type="file" outside approved upload modules`);
   }
+
+  if (/window\.(?:confirm|alert|prompt)\(/.test(text)) {
+    violations.push(
+      `${rel}: native window dialog — use ConfirmDialog from '@auction/ui/components/confirm-dialog'`,
+    );
+  }
+
+  if (/(?:^|[^.\w])(?:confirm|alert|prompt)\(/.test(text)) {
+    violations.push(
+      `${rel}: native dialog — use ConfirmDialog from '@auction/ui/components/confirm-dialog'`,
+    );
+  }
 }
 
 if (violations.length > 0) {

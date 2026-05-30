@@ -6,6 +6,7 @@ import { LotImageManager } from "@/components/admin/lot-image-manager";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
+import { lotDetailReadinessDismissKey } from "@/lib/admin/compute-lot-detail-readiness";
 import {
   type ConnectRequiredByLotId,
   lotConnectRequired,
@@ -100,7 +101,7 @@ function LotCatalogPrepCard({
         title="Lot readiness"
         readiness={readiness}
         compact
-        dismissKey={`setup-catalog:${lot.id}`}
+        dismissKey={lotDetailReadinessDismissKey(lot.id)}
       />
 
       <div className="space-y-3">

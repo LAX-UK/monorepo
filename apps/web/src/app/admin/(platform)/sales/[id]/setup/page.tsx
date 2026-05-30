@@ -81,7 +81,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
       description="Complete each step to publish your sale."
       wizardMobile={{
         formId: CATALOG_FORM_IDS.saleSetup,
-        submitLabel: "Publish sale",
+        submitLabel: canManageSale ? "Publish sale" : "Back to sale",
         cancelHref: `/admin/sales/${id}`,
       }}
     >

@@ -1,3 +1,5 @@
+import { adminSaleDetailTabHref, adminSaleEditHref } from "@/lib/admin/catalog-route-helpers";
+
 export const SALE_DETAIL_TABS = [
   "overview",
   "schedule",
@@ -10,8 +12,11 @@ export const SALE_DETAIL_TABS = [
 export type SaleDetailTab = (typeof SALE_DETAIL_TABS)[number];
 
 export function saleDetailTabHref(saleId: string, tab: SaleDetailTab): string {
-  if (tab === "overview") return `/admin/sales/${saleId}`;
-  return `/admin/sales/${saleId}/${tab}`;
+  return adminSaleDetailTabHref(saleId, tab);
+}
+
+export function saleEditHref(saleId: string): string {
+  return adminSaleEditHref(saleId);
 }
 
 /** Resolve active tab from a sale detail pathname. */

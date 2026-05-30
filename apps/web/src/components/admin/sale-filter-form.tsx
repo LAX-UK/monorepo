@@ -6,7 +6,6 @@ import { X } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
-  q?: string | undefined;
   lifecycle?: string | undefined;
   delivery?: string | undefined;
   activeLensId: SalePresetId;
@@ -17,7 +16,6 @@ const labelCapsCls =
   "font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
 export function SaleFilterForm({
-  q: _q,
   lifecycle: _lifecycle,
   delivery: _delivery,
   activeLensId,
@@ -33,6 +31,7 @@ export function SaleFilterForm({
           resetParams={{ offset: "0" }}
           defaultValue={activeLensId === "all" ? "" : activeLensId}
           className={selectCls}
+          ariaLabel="Time window"
           options={[
             { value: "", label: "All sales" },
             { value: "upcoming", label: "Upcoming" },
@@ -49,6 +48,7 @@ export function SaleFilterForm({
           param="delivery"
           resetParams={{ offset: "0" }}
           className={selectCls}
+          ariaLabel="Delivery mode"
           options={[
             { value: "", label: "Any delivery" },
             { value: "online", label: "Online only" },

@@ -33,6 +33,13 @@ export {
 } from "./catalog-detail-summary-strip";
 export { CatalogContextRail } from "./catalog-context-rail";
 export { CatalogPublishReadiness } from "./catalog-publish-readiness";
+export { CatalogWhatsNextBanner } from "./catalog-whats-next-banner";
+export {
+  CatalogPostCreateSessionProvider,
+  CatalogPostCreateSessionRoot,
+  useCatalogPostCreateSession,
+} from "./catalog-post-create-session";
+export { CatalogListCapBanner } from "./catalog-list-cap-banner";
 export { CatalogDomainEventsTimeline } from "./catalog-domain-events-timeline";
 export {
   CatalogDetailStickyMiniBar,

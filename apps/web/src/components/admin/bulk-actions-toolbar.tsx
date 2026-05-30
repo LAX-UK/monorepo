@@ -89,7 +89,13 @@ export function BulkActionsToolbar({
 
   return (
     <>
-      <div className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 space-y-2 rounded-xl border border-border-hairline bg-surface-container-lowest/95 p-3 shadow-2xl backdrop-blur-sm lg:static lg:rounded-lg lg:shadow-sm">
+      <div
+        className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 space-y-2 rounded-xl border border-border-hairline bg-surface-container-lowest/95 p-3 shadow-2xl backdrop-blur-sm lg:static lg:rounded-lg lg:shadow-sm"
+        aria-busy={pending}
+      >
+        <p className="sr-only" aria-live="polite">
+          {pending ? `Working on ${selectedIds.length} selected items…` : ""}
+        </p>
         {preflightWarning ? (
           <Alert
             variant="default"

@@ -94,6 +94,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
         sort: query.sort,
         limit: query.limit,
         offset: query.offset,
+        ...(query.needsPhotos === "1" ? { needsPhotos: true } : {}),
       },
       role,
       staffRole,

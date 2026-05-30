@@ -471,6 +471,7 @@ export async function getAdminSalesList(
     categoryId?: string;
     limit?: number;
     offset?: number;
+    sort?: "createdDesc" | "startAsc";
   } = {},
 ): Promise<AdminSaleListRow[]> {
   const qs = new URLSearchParams();
@@ -482,6 +483,7 @@ export async function getAdminSalesList(
   if (params.deliveryMode) qs.set("deliveryMode", params.deliveryMode);
   if (params.settlementStatus) qs.set("settlementStatus", params.settlementStatus);
   if (params.categoryId) qs.set("categoryId", params.categoryId);
+  if (params.sort) qs.set("sort", params.sort);
   const res = await authedServerFetch(`/sales?${qs.toString()}`);
   if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
   const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
