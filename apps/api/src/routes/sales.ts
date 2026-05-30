@@ -1,6 +1,7 @@
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import {
   attachLotToSaleBodySchema,
+  bulkSalesBodySchema,
   cancelSaleBodySchema,
   createNestedLotForSaleSchema,
   createSaleSchema,
@@ -88,6 +89,25 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     })();
 
     return c.json({ data });
+  });
+
+  r.post("/bulk", requireAuth, zValidator("json", bulkSalesBodySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const role = (c.get("userRole") ?? "client") as UserRole;
+    const staffRole = c.get("userStaffRole") ?? null;
+    const { ids, confirmationPhrase } = c.req.valid("json");
+    const result = await container.saleSoftDeleteService.bulkSoftDelete(
+      userId,
+      role,
+      ids,
+      confirmationPhrase,
+      staffRole,
+    );
+    if (result.isErr()) {
+      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
+    }
+    const { attempted, failed, errors } = result.value;
+    return c.json({ data: { attempted, failed, errors } });
   });
 
   r.post(

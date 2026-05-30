@@ -5,6 +5,11 @@ import {
   bulkLotsHasUseSalePublish,
   bulkLotsPartialSuccessMessage,
 } from "@/lib/admin/bulk-ops/lot-bulk-result";
+import {
+  type BulkSalesActionResult,
+  bulkSalesFailureMessage,
+  bulkSalesPartialSuccessMessage,
+} from "@/lib/admin/bulk-ops/sale-bulk-result";
 import type { ActionResult } from "@/lib/forms/form-result";
 
 export type SequentialBulkResult = {
@@ -14,10 +19,30 @@ export type SequentialBulkResult = {
   errors: { id: string; message: string }[];
 };
 
+type BulkCountResult = {
+  attempted: number;
+  failed: number;
+  succeeded: number;
+};
+
 export function isBulkLotsResult(data: unknown): data is BulkLotsActionResult {
   if (!data || typeof data !== "object") return false;
   const row = data as Record<string, unknown>;
   return typeof row.attempted === "number" && typeof row.failed === "number";
+}
+
+export function isBulkSalesResult(data: unknown): data is BulkSalesActionResult {
+  return isBulkLotsResult(data);
+}
+
+function bulkPartialMessage(
+  operationLabel: string,
+  bulk: BulkCountResult,
+  firstError?: string,
+): string {
+  const verb = operationLabel.toLowerCase();
+  const base = `${bulk.succeeded} of ${bulk.attempted} ${verb}`;
+  return firstError ? `${base}. ${firstError}` : base;
 }
 
 export function toSequentialBulkResult(ids: string[], failures: string[]): SequentialBulkResult {
@@ -64,9 +89,12 @@ export function handleBulkActionResult({
   if (!result.ok) {
     const bulkMeta = result.meta?.bulk;
     if (isBulkLotsResult(bulkMeta)) {
+      const message = isBulkSalesResult(bulkMeta)
+        ? bulkSalesFailureMessage(bulkMeta)
+        : bulkLotsFailureMessage(bulkMeta);
       return {
         ok: false,
-        message: bulkLotsFailureMessage(bulkMeta),
+        message,
         variant: "error",
         shouldClear: bulkMeta.succeeded > 0,
         shouldRefresh: bulkMeta.succeeded > 0,
@@ -93,10 +121,13 @@ export function handleBulkActionResult({
 
   const bulk = isBulkLotsResult(result.data) ? result.data : null;
   if (bulk && bulk.failed > 0) {
+    const first = bulk.errors[0]?.message;
     const message =
       bulkLotsHasConnectRequired(bulk) || bulkLotsHasUseSalePublish(bulk)
         ? bulkLotsPartialSuccessMessage(operationLabel, bulk)
-        : bulkLotsPartialSuccessMessage(operationLabel, bulk);
+        : isBulkSalesResult(bulk)
+          ? bulkSalesPartialSuccessMessage(operationLabel, bulk)
+          : bulkPartialMessage(operationLabel, bulk, first);
     return {
       ok: true,
       message,

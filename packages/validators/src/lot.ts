@@ -147,11 +147,34 @@ export const deleteLotBodySchema = z.object({
   confirmationPhrase: z.string().min(1).max(500),
 });
 
-export const bulkLotsBodySchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(50),
-  op: z.enum(["publish", "cancel"]),
-  reason: z.string().max(500).optional(),
-});
+/** Exact phrase staff must type to confirm bulk lot soft-delete (case-sensitive). */
+export function bulkLotDeleteConfirmationPhrase(count: number): string {
+  return `DELETE ${count} DRAFT LOTS`;
+}
+
+/** Dedupes bulk ids while preserving first-seen order. */
+export const bulkIdListSchema = z
+  .array(z.string().uuid())
+  .min(1)
+  .max(50)
+  .transform((ids) => [...new Set(ids)]);
+
+export const bulkLotsBodySchema = z
+  .object({
+    ids: bulkIdListSchema,
+    op: z.enum(["publish", "cancel", "soft_delete"]),
+    reason: z.string().max(500).optional(),
+    confirmationPhrase: z.string().min(1).max(500).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.op === "soft_delete" && !data.confirmationPhrase?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "confirmationPhrase is required for soft_delete",
+        path: ["confirmationPhrase"],
+      });
+    }
+  });
 
 /** Lot rows nested under `POST /sales` (no `saleId`; set server-side). */
 export const createNestedLotForSaleSchema = z.preprocess(

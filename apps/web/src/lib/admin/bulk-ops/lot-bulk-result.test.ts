@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bulkLotDeletePreflightWarning,
   bulkLotsFailureMessage,
   bulkLotsHasConnectRequired,
   bulkLotsPartialSuccessMessage,
@@ -116,5 +117,17 @@ describe("bulk lot messages", () => {
       "payout setup",
     );
     expect(bulkPublishPreflightWarning(["lot-1"], [lot], {})).toContain("published together");
+  });
+
+  it("builds bulk delete preflight warning for ineligible lots", () => {
+    expect(
+      bulkLotDeletePreflightWarning(
+        ["a", "b"],
+        [
+          { id: "a", canDelete: true },
+          { id: "b", canDelete: false },
+        ],
+      ),
+    ).toContain("1 selected lot cannot be deleted");
   });
 });

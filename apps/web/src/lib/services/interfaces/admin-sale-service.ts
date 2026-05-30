@@ -1,5 +1,6 @@
 import type { LotStatus } from "@auction/types";
 import type {
+  bulkSalesBodySchema,
   cancelSaleBodySchema,
   createNestedLotForSaleSchema,
   createSaleSchema,
@@ -16,6 +17,7 @@ export type UpdateSaleInput = z.infer<typeof updateSaleSchema>;
 export type CancelSaleBody = z.infer<typeof cancelSaleBodySchema>;
 export type MarkSaleEndedBody = z.infer<typeof markSaleEndedBodySchema>;
 export type UpdateLotStatusBody = z.infer<typeof updateLotStatusBodySchema>;
+export type BulkSalesBody = z.infer<typeof bulkSalesBodySchema>;
 
 export interface IAdminSaleService {
   create(input: CreateSaleInput): Promise<ServiceResult<{ id: string }>>;
@@ -24,6 +26,7 @@ export interface IAdminSaleService {
   unpublish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   cancel(id: string, body: CancelSaleBody): Promise<ServiceResult<Record<string, unknown>>>;
   softDelete(id: string, confirmationPhrase: string): Promise<ServiceResult<void>>;
+  bulk(body: BulkSalesBody): Promise<ServiceResult<Record<string, unknown>>>;
   createNestedLot(
     saleId: string,
     input: CreateNestedLotForSaleInput,
