@@ -388,6 +388,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         <SaleroomCatalogLotsByView
           view={layoutView}
           lots={lotVMs}
+          isAuthenticated={isAuthenticated}
           emptyMessage={catalogEmptyMessage}
           clearFiltersHref={catalogClearFiltersHref}
           renderCorner={(lot) => (

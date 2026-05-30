@@ -18,7 +18,9 @@ import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
+import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
+import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerAutoBid } from "@/lib/data/http/auto-bid.server";
@@ -137,11 +139,20 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     bidderId: b.bidderId ?? b.placedByUserId ?? "",
     amount: b.amount,
     at: b.createdAt.getTime(),
+    ...(b.isAutoBid ? { isAutoBid: true } : {}),
   }));
   const initialLeadingBidderId =
     initialBids.find((b) => b.isWinning)?.bidderId ??
     initialBids.find((b) => b.isWinning)?.placedByUserId ??
     null;
+
+  const initialUserHasBid = deriveUserHasBid(initialBids, session?.id ?? null);
+  const initialOutbid = deriveInitialOutbid({
+    lotStatus: auction.status,
+    sessionUserId: session?.id ?? null,
+    leadingBidderId: initialLeadingBidderId,
+    userHasBid: initialUserHasBid,
+  });
 
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
@@ -272,6 +283,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
       initialHistory={initialHistory}
       currentUserId={session?.id ?? null}
       watcherCount={null}
+      compactFeedHeader
+      initialOutbid={initialOutbid}
+      currentPrice={auction.currentPrice}
     >
       <ArtworkBidPanel
         auction={auction}
@@ -280,6 +294,8 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
         sessionUser={session}
         summarySeed={summarySeed}
         initialAutoBidSettings={initialAutoBidSettings}
+        initialOutbid={initialOutbid}
+        initialUserHasBid={initialUserHasBid}
         initialWatching={watching}
         loginNextPath={lotPath(auction)}
         omitPricingHeader
@@ -357,38 +373,40 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
             followSlot={followSlot}
           />
         ) : (
-          <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
-            <ArtworkOnlineLayout
-              auction={auction}
-              saleForLifecycle={saleLifecyclePick}
-              showPreviewRibbon={showPreviewRibbon}
-              isSaleQueueLoading={isSaleQueueLoading}
-              serverClockMs={serverNow}
-              sessionHeader={sessionHeaderVM}
-              queueCurrent={queueVMs.current}
-              queueUpNext={queueVMs.upNext}
-              queueRest={queueVMs.queue}
-              marketingAccordionBlocks={marketingBlocks}
-              rail={rail}
-              isAuthenticated={Boolean(session)}
-              watchedLotIds={watchedLotIds}
-              currentUserId={session?.id ?? null}
-              shareUrl={shareUrl}
-              followSlot={followSlot}
-              bidPanel={onlineBidPanel}
-              bidPanelTop={
-                <ArtworkConditionReportCta
-                  lotId={auction.id}
-                  loginNextPath={lotPath(auction)}
-                  isAuthenticated={Boolean(session)}
-                  show={conditionReportCtaShow}
-                  kycApproved={kycApprovedForCr}
-                  kycFeedback={kycFeedbackForCr}
-                />
-              }
-              hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
-            />
-          </OnlineLotLifecycleProvider>
+          <LotRealtimeProvider lotId={auction.id}>
+            <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
+              <ArtworkOnlineLayout
+                auction={auction}
+                saleForLifecycle={saleLifecyclePick}
+                showPreviewRibbon={showPreviewRibbon}
+                isSaleQueueLoading={isSaleQueueLoading}
+                serverClockMs={serverNow}
+                sessionHeader={sessionHeaderVM}
+                queueCurrent={queueVMs.current}
+                queueUpNext={queueVMs.upNext}
+                queueRest={queueVMs.queue}
+                marketingAccordionBlocks={marketingBlocks}
+                rail={rail}
+                isAuthenticated={Boolean(session)}
+                watchedLotIds={watchedLotIds}
+                currentUserId={session?.id ?? null}
+                shareUrl={shareUrl}
+                followSlot={followSlot}
+                bidPanel={onlineBidPanel}
+                bidPanelTop={
+                  <ArtworkConditionReportCta
+                    lotId={auction.id}
+                    loginNextPath={lotPath(auction)}
+                    isAuthenticated={Boolean(session)}
+                    show={conditionReportCtaShow}
+                    kycApproved={kycApprovedForCr}
+                    kycFeedback={kycFeedbackForCr}
+                  />
+                }
+                hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
+              />
+            </OnlineLotLifecycleProvider>
+          </LotRealtimeProvider>
         )}
       </LotPortsProvider>
     </main>

@@ -355,6 +355,7 @@ export type BidFeedEntryVM = {
   isHighest: boolean;
   isYourBid: boolean;
   timestamp: number;
+  isAutoBid?: boolean;
 };
 
 /** Top session bar for online auction layout. */
@@ -470,12 +471,15 @@ export type UserBidHistoryRowVM = {
   id: string;
   amount: string;
   status: "highest" | "outbid" | "won";
+  isAutoBid?: boolean;
 };
 
 export type UserBidsHistoryVM = {
   count: number;
   paddleLabel: string;
   rows: UserBidHistoryRowVM[];
+  /** e.g. outbid context: your last bid vs current high. */
+  contextLine?: string;
 };
 
 /** Pure mapper: newest user bids first; status from global leading bid and lot outcome. */
@@ -510,6 +514,7 @@ export function mapUserBidsHistoryVM(
         id: e.id,
         amount: formatMoney(e.amount),
         status,
+        ...(e.isAutoBid && isLeadingBid ? { isAutoBid: true } : {}),
       };
     });
 
@@ -540,6 +545,7 @@ export function mapBidHistoryToFeedEntries(
     isHighest: i === 0,
     isYourBid: Boolean(currentUserId && e.bidderId === currentUserId),
     timestamp: e.at,
+    ...(e.isAutoBid ? { isAutoBid: true } : {}),
   }));
 }
 
