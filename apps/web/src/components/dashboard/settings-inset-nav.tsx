@@ -110,7 +110,7 @@ function SettingsNavRow({
             aria-hidden
           />
         }
-        className={cn(active && "bg-primary-container/15")}
+        className={cn(active && "bg-primary-container/25 ring-1 ring-primary/20")}
       />
     </Link>
   );

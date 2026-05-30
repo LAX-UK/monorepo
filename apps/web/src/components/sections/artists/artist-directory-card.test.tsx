@@ -62,4 +62,24 @@ describe("ArtistDirectoryCard", () => {
     expect(screen.getByLabelText("Artist portrait placeholder")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Jane Doe" })).toBeInTheDocument();
   });
+
+  it("compact density hides bio and view profile link", () => {
+    render(
+      <ul>
+        <ArtistDirectoryCard
+          artist={baseArtist}
+          watching={false}
+          isAuthenticated={false}
+          density="compact"
+        />
+      </ul>,
+    );
+
+    expect(screen.queryByText("Painter")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /View profile for Jane Doe/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Browse 3 lots by Jane Doe/i })).toBeInTheDocument();
+    expect(screen.getByText("b. 1980 · British")).toBeInTheDocument();
+  });
 });

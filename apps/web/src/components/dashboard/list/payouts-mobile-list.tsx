@@ -5,6 +5,7 @@ import {
   DashboardListRowCard,
   DashboardMobileList,
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
+import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { getPayoutStatusView } from "@/lib/presenters/payment-status";
 import type { Payout } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
@@ -24,11 +25,13 @@ type PayoutRowProps = {
 };
 
 function PayoutRowCard({ payout, sellerEntityId }: PayoutRowProps) {
+  const rowPadding = useDashboardListRowPaddingClass();
   const statusView = getPayoutStatusView(payout.status);
   const periodLabel = `${new Date(payout.periodStart).toLocaleDateString("en-GB")} → ${new Date(payout.periodEnd).toLocaleDateString("en-GB")}`;
 
   return (
     <DashboardListRowCard
+      className={rowPadding}
       title={<span className="font-medium">{periodLabel}</span>}
       subtitle={
         <p className="text-xs tabular-nums text-on-surface-variant">

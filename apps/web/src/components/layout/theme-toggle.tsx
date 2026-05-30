@@ -2,6 +2,7 @@
 
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
+import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
 import { cn } from "@auction/ui";
 import { Moon, Sun } from "lucide-react";
@@ -15,7 +16,7 @@ function readDomDark(): boolean {
  * toggle's center when the theme switches. Falls back to instant toggle in
  * browsers without support, or when reduced-motion is preferred.
  */
-export function ThemeToggle() {
+export function ThemeToggle({ headerTone = "on-light" }: { headerTone?: SiteHeaderTone }) {
   const [isDark, setIsDark] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -91,7 +92,7 @@ export function ThemeToggle() {
       aria-pressed={isDark}
       className={cn(
         "transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
-        "text-secondary hover:bg-surface-container-low hover:text-primary",
+        headerChromeIconClass(headerTone),
       )}
     >
       {isDark ? <Sun aria-hidden /> : <Moon aria-hidden />}

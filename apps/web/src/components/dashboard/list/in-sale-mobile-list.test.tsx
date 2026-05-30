@@ -7,6 +7,10 @@ vi.mock("@/hooks/use-now", () => ({
   useNow: () => Date.parse("2026-01-01T12:00:00.000Z"),
 }));
 
+vi.mock("@/lib/shell/shell-config-context", () => ({
+  useShellConfig: () => ({ density: "normal" }),
+}));
+
 function inSaleRow(id: string, title: string): InSaleDisplayRow {
   return {
     id,

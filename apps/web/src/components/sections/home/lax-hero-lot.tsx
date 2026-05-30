@@ -8,7 +8,9 @@ import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { RevealOnMount } from "@/components/ui/reveal";
+import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { Countdown, LiveDot } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +26,12 @@ export function LaxHeroLot({ lot }: Props) {
 
   return (
     <section className="relative w-full overflow-hidden bg-brand-900">
-      <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
+      <div
+        className={cn(
+          "relative mx-auto w-full max-w-[var(--container-max,1440px)]",
+          HOME_HERO_MIN_H,
+        )}
+      >
         <RevealOnMount className="absolute inset-0" innerClassName="absolute inset-0">
           <HeroAdaptiveShell
             src={lot.heroImageUrl}
@@ -41,7 +48,13 @@ export function LaxHeroLot({ lot }: Props) {
               </>
             }
           >
-            <div className="relative flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-16">
+            <div
+              className={cn(
+                "relative flex flex-col justify-end px-6 pb-16 md:px-10 md:pb-20 lg:px-16",
+                HOME_HERO_MIN_H,
+                HOME_HERO_CONTENT_PT,
+              )}
+            >
               <div className="flex max-w-[660px] flex-col gap-9">
                 <div className="flex flex-col gap-8">
                   <div className="fade-up flex flex-col gap-6">

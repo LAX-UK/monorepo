@@ -4,6 +4,7 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { cn } from "@auction/ui";
 import { Menu, Search, X } from "lucide-react";
@@ -92,6 +93,8 @@ function SiteHeaderShell({
   const isTransparent =
     resolvedVariant === "transparentUntilScroll" && atTop && !megaOpen && !menuOpen;
 
+  const headerTone: SiteHeaderTone = isTransparent ? "on-dark" : "on-light";
+
   return (
     <>
       <SiteHeaderHeightSync headerRef={headerRef} />
@@ -99,6 +102,7 @@ function SiteHeaderShell({
         ref={headerRef}
         data-chrome-variant={resolvedVariant}
         data-at-top={atTop ? "true" : "false"}
+        data-header-tone={headerTone}
         className={cn(
           "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
           isTransparent
@@ -109,9 +113,9 @@ function SiteHeaderShell({
               ),
         )}
       >
-        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-6 px-4 py-2 md:px-6 lg:px-10 lg:pt-3 lg:pb-4">
+        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 px-4 py-2 md:px-6 lg:gap-4 lg:px-10 lg:pt-3 lg:pb-4">
           <div className="hidden lg:block">
-            <HeaderUtilityBar />
+            <HeaderUtilityBar headerTone={headerTone} />
           </div>
 
           <HeaderMegaNav
@@ -119,40 +123,40 @@ function SiteHeaderShell({
             pathname={pathname}
             searchParams={searchParams}
             onOpenChange={setMegaOpen}
+            headerTone={headerTone}
             logo={
               <Link
                 href="/"
-                className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+                className="site-header-logo shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
               >
                 <LaxLogo variant="header" />
               </Link>
             }
             trailing={
-              <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:max-w-[420px] lg:gap-3 lg:flex-none">
+              <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
                 <ChromeIconButton
                   label="Open search"
-                  className={cn(
-                    "lg:hidden",
-                    "text-brand-800 hover:bg-page-bg dark:text-on-surface",
-                  )}
+                  className={cn("lg:flex xl:hidden", headerChromeIconClass(headerTone))}
                   onClick={openCommandPalette}
                 >
                   <Search aria-hidden />
                 </ChromeIconButton>
-                <HeaderSearchTrigger />
+                <HeaderSearchTrigger tone={headerTone} />
                 <div className="hidden lg:flex">
-                  <ThemeToggle />
+                  <ThemeToggle headerTone={headerTone} />
                 </div>
-                <HeaderAuthChip variant="notifications" />
-                <div className="lg:hidden">
-                  <HeaderAuthChip variant="account" />
-                </div>
-                <MobileMenuIconButton menuOpen={menuOpen} onToggle={() => setMenuOpen((o) => !o)} />
+                <HeaderAuthChip variant="notifications" headerTone={headerTone} />
+                <HeaderAuthChip variant="account" headerTone={headerTone} />
+                <MobileMenuIconButton
+                  menuOpen={menuOpen}
+                  headerTone={headerTone}
+                  onToggle={() => setMenuOpen((o) => !o)}
+                />
               </div>
             }
           />
           {marketingPageTitle ? (
-            <div className="border-t border-nav-border px-2 pb-2 pt-1 lg:hidden">
+            <div className="site-header-page-title border-t border-nav-border px-2 pb-2 pt-1 lg:hidden">
               <p className="truncate text-center font-headline text-sm font-semibold text-on-surface">
                 {marketingPageTitle}
               </p>
@@ -187,15 +191,17 @@ export function SiteHeader(props: SiteHeaderProps) {
 
 function MobileMenuIconButton({
   menuOpen,
+  headerTone,
   onToggle,
 }: {
   menuOpen: boolean;
+  headerTone: SiteHeaderTone;
   onToggle: () => void;
 }) {
   return (
     <ChromeIconButton
       label={menuOpen ? "Close menu" : "Open menu"}
-      className={cn("lg:hidden", "text-brand-800 hover:bg-page-bg dark:text-on-surface")}
+      className={cn("lg:hidden", headerChromeIconClass(headerTone))}
       aria-haspopup="dialog"
       aria-expanded={menuOpen}
       onClick={onToggle}

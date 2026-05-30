@@ -59,7 +59,7 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-1 max-w-full truncate text-[10px]">{item.label}</span>
+                <span className="mt-1 max-w-full truncate text-[11px]">{item.label}</span>
               </>
             );
             const tabClassName = cn(

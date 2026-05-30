@@ -1,12 +1,11 @@
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import { PortfolioLotGrid } from "@/components/dashboard/portfolio-lot-grid";
 import { PortfolioNoticeToast } from "@/components/dashboard/portfolio-notice-toast";
 import { PortfolioListToolbar } from "@/components/dashboard/portfolio/portfolio-list-toolbar";
 import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -63,18 +62,17 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
-    <DashboardPage className="space-y-8">
-      <PortfolioNoticeToast />
-      <DashboardPageHeader
-        meta={workspaceMeta}
-        title="Collection"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
-        description="Lots where you are the winning bidder after the hammer fell."
-      />
-
-      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-
+    <DashboardListPage
+      meta={workspaceMeta}
+      title="Collection"
+      description="Lots where you are the winning bidder after the hammer fell."
+      banner={<PortfolioNoticeToast />}
+      toolbar={
+        !loadFailure ? <PortfolioListToolbar filters={filters} years={analytics.years} /> : null
+      }
+      errorAlert={loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+      className="space-y-8"
+    >
       {!loadFailure && analytics.totalRows > 0 ? (
         <KpiRow
           variant="hero"
@@ -105,8 +103,6 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
           ]}
         />
       ) : null}
-
-      {!loadFailure ? <PortfolioListToolbar filters={filters} years={analytics.years} /> : null}
 
       {!loadFailure ? (
         <DashboardFilterResultsAnnouncer count={filtered.length} entityLabel="works" />
@@ -143,6 +139,6 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
           )}
         </DashboardSection>
       ) : null}
-    </DashboardPage>
+    </DashboardListPage>
   );
 }

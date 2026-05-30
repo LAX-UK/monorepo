@@ -2,7 +2,9 @@ import { buildActiveFilterDescriptors, hasActiveFilters } from "../filter-active
 import { buildFilterHref } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
-export const ARTIST_FOLLOW_BASE_PATH = "/dashboard/artist-follow";
+export const ARTIST_FOLLOW_BASE_PATH = "/dashboard/watchlist";
+
+export const ARTIST_FOLLOW_SECTION = "artists";
 
 export type ArtistFollowSort = "addedDesc" | "nameAsc" | "nameDesc";
 
@@ -55,6 +57,7 @@ export function parseArtistFollowParams(raw: { q?: string; sort?: string }): Art
 
 export function artistFollowFiltersToParams(filters: ArtistFollowFilters): FilterParamsRecord {
   return {
+    section: ARTIST_FOLLOW_SECTION,
     ...(filters.q ? { q: filters.q } : {}),
     ...(filters.sort !== "addedDesc" ? { sort: filters.sort } : {}),
   };

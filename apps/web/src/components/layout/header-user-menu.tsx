@@ -5,6 +5,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
@@ -33,9 +34,10 @@ function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
 
 type HeaderUserMenuProps = {
   user: SessionUser;
+  headerTone?: SiteHeaderTone;
 };
 
-export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
+export function HeaderUserMenu({ user, headerTone = "on-light" }: HeaderUserMenuProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -108,8 +110,10 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
         type="button"
         variant="ghost"
         className={cn(
-          "h-auto max-w-[200px] justify-start gap-2 py-1 pl-1 pr-2 text-left transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
-          "hover:bg-page-bg dark:hover:bg-surface-container-low",
+          "h-auto max-w-[200px] justify-start gap-2 bg-transparent py-1 pl-1 pr-2 text-left transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
+          headerTone === "on-dark"
+            ? "text-hero-foreground hover:bg-white/10"
+            : "hover:bg-page-bg dark:hover:bg-surface-container-low",
         )}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -128,14 +132,20 @@ export function HeaderUserMenu({ user }: HeaderUserMenuProps) {
         />
         <span
           className={cn(
-            "hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight text-brand-900 sm:inline dark:text-on-surface",
+            "hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight sm:inline",
+            headerTone === "on-dark"
+              ? "text-hero-foreground"
+              : "text-brand-900 dark:text-on-surface",
           )}
         >
           {displayName}
         </span>
         <ChevronDown
           className={cn(
-            "shrink-0 text-base! text-brand-900 transition-transform duration-200 motion-reduce:transition-none dark:text-on-surface",
+            "shrink-0 text-base! transition-transform duration-200 motion-reduce:transition-none",
+            headerTone === "on-dark"
+              ? "text-hero-foreground"
+              : "text-brand-900 dark:text-on-surface",
             open ? "rotate-180" : "",
           )}
           aria-hidden

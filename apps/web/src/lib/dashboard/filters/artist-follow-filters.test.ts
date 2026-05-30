@@ -17,7 +17,7 @@ describe("artist-follow-filters", () => {
   it("buildArtistFollowHref clears search", () => {
     const current = parseArtistFollowParams({ q: "monet", sort: "nameAsc" });
     expect(buildArtistFollowHref(current, { q: null })).toBe(
-      "/dashboard/artist-follow?sort=nameAsc",
+      "/dashboard/watchlist?section=artists&sort=nameAsc",
     );
   });
 
