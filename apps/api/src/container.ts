@@ -115,6 +115,7 @@ import { DrizzleSaleBiddersReader } from "./repositories/drizzle-sale-bidders.re
 import { DrizzleSaleDocumentRepository } from "./repositories/drizzle-sale-document.repository.js";
 import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.repository.js";
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
+import { DrizzleLotSoftDeleteSideEffects } from "./repositories/drizzle-lot-soft-delete.side-effects.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-soft-delete.side-effects.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
@@ -242,6 +243,7 @@ import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
 import { SaleRegistrationService } from "./services/sale-registration.service.js";
+import { LotSoftDeleteService } from "./services/lot-soft-delete.service.js";
 import { SaleSoftDeleteService } from "./services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
@@ -284,6 +286,7 @@ export type Container = {
   conditionReportService: IConditionReportService;
   saleService: SaleService;
   saleSoftDeleteService: SaleSoftDeleteService;
+  lotSoftDeleteService: LotSoftDeleteService;
   saleFollowService: SaleFollowService;
   saleBiddersService: SaleBiddersService;
   saleRegistrationService: SaleRegistrationService;
@@ -862,6 +865,15 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
   );
+  const lotSoftDeleteSideEffects = new DrizzleLotSoftDeleteSideEffects(db, lotLifecycleRecording);
+  const lotSoftDeleteService = new LotSoftDeleteService(
+    lotRepo,
+    saleRepo,
+    lotSoftDeleteSideEffects,
+    lotJobScheduler,
+    db,
+    domainEventPublisher,
+  );
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,
     lotRepo,
@@ -1244,6 +1256,7 @@ export function createContainer(env: Env): Container {
     conditionReportService,
     saleService,
     saleSoftDeleteService,
+    lotSoftDeleteService,
     saleFollowService,
     saleBiddersService,
     saleRegistrationService,

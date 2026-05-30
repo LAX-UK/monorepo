@@ -50,9 +50,9 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>();
 
-  r.get("/", zValidator("query", listSalesQuerySchema), async (c) => {
+  r.get("/", optionalAuth, zValidator("query", listSalesQuerySchema), async (c) => {
     const query = c.req.valid("query");
-    const { data } = await container.saleService.listSalesForPublicApi({
+    const { data: rows } = await container.saleService.listSalesForPublicApi({
       status: query.statuses ? undefined : query.status,
       statuses: query.statuses,
       categoryId: query.categoryId,
@@ -65,6 +65,28 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       offset: query.offset,
       sort: query.sort,
     });
+
+    const role = c.get("userRole");
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") ?? undefined);
+    const canEnrichDelete =
+      role != null && roleHasCapability(role as UserRole, "auction.manage", staff);
+
+    if (!canEnrichDelete) {
+      return c.json({ data: rows });
+    }
+
+    const data = await Promise.all(
+      rows.map(async (row) => {
+        if (row.sale.status !== "draft" && row.sale.status !== "scheduled") {
+          return row;
+        }
+        const deleteEligibility = await container.saleSoftDeleteService.getDeleteEligibility(
+          row.sale.id,
+        );
+        return deleteEligibility ? { ...row, deleteEligibility } : row;
+      }),
+    );
+
     return c.json({ data });
   });
 

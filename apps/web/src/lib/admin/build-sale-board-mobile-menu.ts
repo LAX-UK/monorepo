@@ -6,7 +6,7 @@ import {
 import { salePath } from "@/lib/seo/url";
 import type { SaleStatus } from "@auction/types";
 
-export type SaleBoardMobileMenuItemKind = "open" | "edit" | "setup" | "site" | "copyId";
+export type SaleBoardMobileMenuItemKind = "open" | "edit" | "setup" | "delete" | "site" | "copyId";
 
 export type SaleBoardMobileMenuItem = {
   id: string;
@@ -19,6 +19,7 @@ type Row = {
   saleId: string;
   title: string;
   status: SaleStatus;
+  canDelete?: boolean;
 };
 
 type Flags = {
@@ -57,6 +58,15 @@ export function buildSaleBoardMobileMenuItems(row: Row, flags: Flags): SaleBoard
       label: "Edit",
       kind: "edit",
       href: adminSaleEditHref(row.saleId),
+    });
+  }
+
+  if (flags.canManageSales && row.canDelete) {
+    items.push({
+      id: "delete",
+      label: "Delete sale",
+      kind: "delete",
+      href: row.saleId,
     });
   }
 

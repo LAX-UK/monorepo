@@ -144,6 +144,7 @@ export function AdminLotsBoard({
           <LotsMobileCards
             rows={data}
             canManageCatalog={canManageCatalog}
+            canManageAuction={canManageAuction}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
           />

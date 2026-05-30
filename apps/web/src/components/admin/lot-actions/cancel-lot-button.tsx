@@ -33,7 +33,7 @@ export function CancelLotButton({ lotId, disabled }: Props) {
         open={open}
         onOpenChange={setOpen}
         title="Cancel this auction?"
-        description="Bidders will no longer be able to place bids. This cannot be undone from the catalog UI."
+        description="Bidding will stop and the lot stays visible in admin lists as cancelled. Use delete for pre-live catalogue cleanup."
         actionLabel="Cancel auction"
         confirmationPhrase={lotId}
         severity="danger"

@@ -9,6 +9,7 @@ export type AdminSaleBoardRow = {
   startTimeIso: string;
   startTimeLabel: string;
   sparklineValues: number[];
+  canDelete: boolean;
 };
 
 export type SaleColumnSortConfig = {

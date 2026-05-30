@@ -4,6 +4,7 @@ const LABELS: Record<string, string> = {
   "sale.unpublished": "Sale reverted to draft",
   "sale.cancelled": "Sale cancelled",
   "sale.soft_deleted": "Sale deleted",
+  "lot.soft_deleted": "Lot deleted",
   "sale.ended": "Sale marked ended",
   "lot.created": "Lot created",
   "lot.activated": "Lot went live",

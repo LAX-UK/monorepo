@@ -138,6 +138,15 @@ export const cancelLotBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+/** Exact phrase staff must type to confirm lot soft-delete (case-sensitive). */
+export function lotDeleteConfirmationPhrase(title: string): string {
+  return `DELETE ${title}`;
+}
+
+export const deleteLotBodySchema = z.object({
+  confirmationPhrase: z.string().min(1).max(500),
+});
+
 export const bulkLotsBodySchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(50),
   op: z.enum(["publish", "cancel"]),

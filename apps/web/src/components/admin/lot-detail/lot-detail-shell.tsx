@@ -78,6 +78,11 @@ export function LotDetailShell({
   const canEditDraft = auction.status === "draft";
   const canEditLot = auction.status === "scheduled";
   const showEditCatalog = auction.status === "active";
+  const canDelete = canManageAuction && bundle.deleteEligibility?.canDelete === true;
+  const deleteBlockers =
+    auction.status === "draft" || auction.status === "scheduled"
+      ? (bundle.deleteEligibility?.blockers ?? [])
+      : [];
 
   const lotNav = buildLotDetailNavActions({
     lotId,
@@ -170,6 +175,7 @@ export function LotDetailShell({
             <AdminLotDetailActions
               key={lotId}
               lotId={lotId}
+              lotTitle={auction.title}
               publicHref={publicHref}
               sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
               canPublish={canPublish}
@@ -177,6 +183,7 @@ export function LotDetailShell({
               saleStatus={context.sale?.status ?? null}
               publishReadiness={publishReadiness}
               canCancel={canCancel}
+              canDelete={canDelete}
               showEditDraft={canEditDraft}
               showEditLot={canEditLot}
               showEditCatalog={showEditCatalog}
@@ -187,12 +194,14 @@ export function LotDetailShell({
         mobileActionBarTrailing={
           <LotDetailMobilePublishCancel
             lotId={lotId}
+            lotTitle={auction.title}
             sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
             canPublish={canPublish}
             connectBlocked={connectRequired}
             saleStatus={context.sale?.status ?? null}
             publishReadiness={publishReadiness}
             canCancel={canCancel}
+            canDelete={canDelete}
           />
         }
         mobileMeta={
@@ -227,6 +236,8 @@ export function LotDetailShell({
             bidCount={bidCount}
             activityEvents={activityEvents}
             publishReadiness={publishReadiness}
+            deleteBlockers={deleteBlockers}
+            canManageAuction={canManageAuction}
             status={<AdminStatusBadge domain="lot" status={auction.status} />}
             publicHref={publicHref}
             quickActions={quickActions}
@@ -279,7 +290,11 @@ export function LotDetailShell({
             />
           </Suspense>
         ) : null}
-        <LotDetailReadinessProvider publishReadiness={publishReadiness}>
+        <LotDetailReadinessProvider
+          publishReadiness={publishReadiness}
+          deleteBlockers={deleteBlockers}
+          canManageAuction={canManageAuction}
+        >
           {children}
         </LotDetailReadinessProvider>
       </CatalogDetailShell>

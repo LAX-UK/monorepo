@@ -14,6 +14,7 @@ import {
   telephoneBidBooking,
 } from "@auction/db/schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { LotError } from "../lib/errors.js";
 import type {
   ISaleSoftDeleteSideEffects,
   SaleSoftDeleteGuardCounts,
@@ -168,14 +169,18 @@ export class DrizzleSaleSoftDeleteSideEffects implements ISaleSoftDeleteSideEffe
           ),
         );
 
-      await tx
+      const updatedSales = await tx
         .update(sale)
         .set({
           deletedAt,
           deletedByUserId: actorUserId,
           updatedAt: deletedAt,
         })
-        .where(and(eq(sale.id, saleId), isNull(sale.deletedAt)));
+        .where(and(eq(sale.id, saleId), isNull(sale.deletedAt)))
+        .returning({ id: sale.id });
+      if (updatedSales.length === 0) {
+        throw new LotError("Sale not found", 404);
+      }
     });
   }
 }

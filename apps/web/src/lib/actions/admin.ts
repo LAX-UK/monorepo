@@ -790,6 +790,32 @@ export async function adminCancelLotResultAction(
   });
 }
 
+export async function adminSoftDeleteLotResultAction(
+  lotId: string,
+  confirmationPhrase: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSoftDeleteLotResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    if (denied) return denied;
+    const id = lotId.trim();
+    const phrase = confirmationPhrase.trim();
+    if (!id) {
+      return actionFailure("Missing lot");
+    }
+    if (!phrase) {
+      return actionFailure("Confirmation phrase is required");
+    }
+    const { adminLots } = getWriteContainer();
+    const r = await adminLots.softDelete(id, phrase);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/admin/lots");
+    revalidatePath("/");
+    return actionSuccess();
+  });
+}
+
 export async function adminReturnLotToInventoryResultAction(
   lotId: string,
   body: z.infer<typeof returnLotToInventoryBodySchema>,

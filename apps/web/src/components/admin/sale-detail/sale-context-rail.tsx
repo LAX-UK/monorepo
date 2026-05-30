@@ -1,5 +1,6 @@
 "use client";
 
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
 import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
 import { CatalogReadinessChecklist } from "@/components/admin/catalog/catalog-readiness-checklist";
@@ -126,16 +127,7 @@ export function SaleContextRail({
           />
         ) : null}
         {deleteBlockers.length > 0 && canManageSales ? (
-          <div className="rounded-lg border border-border-hairline bg-surface-container-low px-4 py-3">
-            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-              Cannot delete
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-4 font-body text-sm text-on-surface-variant">
-              {deleteBlockers.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          </div>
+          <CatalogDeleteEligibilityNotice blockers={deleteBlockers} entityLabel="sale" />
         ) : null}
         <ActivitySnapshotRail
           events={activityEvents.map((e) => ({

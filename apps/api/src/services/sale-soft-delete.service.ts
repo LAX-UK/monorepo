@@ -95,12 +95,17 @@ export class SaleSoftDeleteService {
 
     const deletedAt = new Date();
     const lotIds = lots.map((l) => l.id);
-    await this.sideEffects.softDeleteCascade({
-      saleId,
-      actorUserId,
-      deletedAt,
-      lotIds,
-    });
+    try {
+      await this.sideEffects.softDeleteCascade({
+        saleId,
+        actorUserId,
+        deletedAt,
+        lotIds,
+      });
+    } catch (error) {
+      if (error instanceof LotError) return err(error);
+      throw error;
+    }
 
     await this.publishEvent(actorUserId, sale, lots.length, deletedAt);
 

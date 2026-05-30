@@ -8,6 +8,7 @@ export type AdminLotTableRow = {
   endTimeIso: string;
   endTimeLabel: string;
   currentPrice: string;
+  canDelete: boolean;
   lastActivityType?: string;
   lastActivityAt?: string;
   lastActivityLabel?: string;

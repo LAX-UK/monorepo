@@ -13,6 +13,7 @@ import Link from "next/link";
 type Props = {
   rows: AdminLotTableRow[];
   canManageCatalog?: boolean;
+  canManageAuction?: boolean;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 };
@@ -20,6 +21,7 @@ type Props = {
 export function LotsMobileCards({
   rows,
   canManageCatalog = false,
+  canManageAuction = false,
   rowSelection,
   onRowSelectionChange,
 }: Props) {
@@ -42,7 +44,13 @@ export function LotsMobileCards({
               : undefined
           }
           selectionLabel={`Select ${r.title}`}
-          trailing={<LotBoardMobileActionMenu row={r} canManageCatalog={canManageCatalog} />}
+          trailing={
+            <LotBoardMobileActionMenu
+              row={r}
+              canManageCatalog={canManageCatalog}
+              canManageAuction={canManageAuction}
+            />
+          }
           status={<AdminStatusBadge domain="lot" status={r.status} />}
           footer={
             <div className="flex flex-wrap gap-2">
