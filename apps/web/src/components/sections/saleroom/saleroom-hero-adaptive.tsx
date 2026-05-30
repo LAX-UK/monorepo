@@ -23,7 +23,60 @@ type Props = {
   /** Mobile-only link back to the sales calendar. */
   backHref?: string;
   backLabel?: string;
+  deliveryMode?: "online" | "onsite";
+  streamUrl?: string | null;
 };
+
+function SaleroomHeroPrimaryCta({
+  hero,
+  isAuthenticated,
+  deliveryMode,
+  streamUrl,
+}: {
+  hero: SaleHeroVM;
+  isAuthenticated: boolean;
+  deliveryMode: "online" | "onsite";
+  streamUrl: string | null;
+}) {
+  if (deliveryMode === "onsite") {
+    if (hero.isLive && streamUrl) {
+      return (
+        <Button variant="cta" size="lg" className="gap-2" asChild>
+          <a href={streamUrl} target="_blank" rel="noopener noreferrer">
+            <LiveDot className="live-dot-pulse h-2 w-2" />
+            Watch live stream
+          </a>
+        </Button>
+      );
+    }
+    if (hero.status === "scheduled" || hero.status === "draft") {
+      return (
+        <Button variant="cta" size="lg" asChild>
+          <Link href="#plan-visit">Plan your visit →</Link>
+        </Button>
+      );
+    }
+    return (
+      <Button variant="cta" size="lg" asChild>
+        <Link href="#catalog">{isAuthenticated ? "Browse Lots →" : "View catalogue →"}</Link>
+      </Button>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <Button variant="cta" size="lg" asChild>
+        <Link href="#catalog">Browse Lots →</Link>
+      </Button>
+    );
+  }
+
+  return (
+    <Button variant="cta" size="lg" asChild>
+      <Link href="/register">Register to Bid →</Link>
+    </Button>
+  );
+}
 
 export function SaleroomHeroAdaptive({
   hero,
@@ -32,6 +85,8 @@ export function SaleroomHeroAdaptive({
   isAuthenticated = false,
   backHref,
   backLabel = "Back to calendar",
+  deliveryMode = "online",
+  streamUrl = null,
 }: Props) {
   const statusLabel = hero.isLive ? "Auction in progress" : (hero.statusBadge?.label ?? "Auction");
   const liveTrailing =
@@ -107,15 +162,12 @@ export function SaleroomHeroAdaptive({
               ) : null}
             </div>
             <div className="fade-up-d3 flex flex-wrap gap-3">
-              {isAuthenticated ? (
-                <Button variant="cta" size="lg" asChild>
-                  <Link href="#catalog">Browse Lots →</Link>
-                </Button>
-              ) : (
-                <Button variant="cta" size="lg" asChild>
-                  <Link href="/register">Register to Bid →</Link>
-                </Button>
-              )}
+              <SaleroomHeroPrimaryCta
+                hero={hero}
+                isAuthenticated={isAuthenticated}
+                deliveryMode={deliveryMode}
+                streamUrl={streamUrl}
+              />
               {actions}
             </div>
             <div className="fade-up-d4 mt-7">

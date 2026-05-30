@@ -159,7 +159,9 @@ describe("mapSaleToOverviewVM", () => {
     expect(vm.categoryLabel).toBe("Contemporary");
     expect(vm.buyerPremiumLabel).toBe("25%");
     expect(vm.formatLabel).toBe("On-site");
-    expect(vm.showLiveStream).toBe(false);
+    expect(vm.showLiveStream).toBe(true);
+    expect(vm.saleTitle).toBe("Evening Sale");
+    expect(vm.streamPosterUrl).toBe("https://cdn/image.jpg");
     expect(vm.showLocation).toBe(true);
     expect(vm.locationName).toBe("TheLax Saleroom");
   });
@@ -184,6 +186,8 @@ describe("mapSaleToOverviewVM", () => {
     ]);
     expect(vm.resolvedMapUrl).toMatch(/^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/);
     expect(vm.resolvedMapUrl).toContain("Sotheby");
+    expect(vm.locationEmbedUrl).toMatch(/^https:\/\/www\.google\.com\/maps\?q=/);
+    expect(vm.locationEmbedUrl).toContain("output=embed");
   });
 
   it("hides location for online sales even when fields are populated", () => {
@@ -194,6 +198,12 @@ describe("mapSaleToOverviewVM", () => {
     };
     const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
     expect(vm.showLocation).toBe(false);
+  });
+
+  it("hides stream preview when sale has ended", () => {
+    const sale = { ...baseSale, status: "ended" as const };
+    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
+    expect(vm.showLiveStream).toBe(false);
   });
 
   it("uses an explicit locationMapUrl override when provided", () => {

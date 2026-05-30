@@ -1,10 +1,13 @@
+import { SaleStreamPreview } from "@/components/marketing/sale-stream-preview";
 import { ShareButton } from "@/components/marketing/share-button";
+import { VenueMapCard } from "@/components/marketing/venue-map-card";
 import type {
   AccordionBlock,
   LotRelatedRailVM,
   LotSummarySeedVM,
 } from "@/components/sections/artwork/artwork-view-models";
 import { LotHeroViewTransitionShell } from "@/components/sections/artwork/lot-hero-view-transition-shell";
+import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
 import {
   AddSaleToCalendarButton,
   RequestViewingMailtoButton,
@@ -18,10 +21,11 @@ import { SITE_BUSINESS_HOURS_LABEL, SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { formatMoney } from "@/lib/format-currency";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
+import { LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
+  buildGoogleMapsEmbedUrl,
   formatPostalAddressLines,
-  hasStructuredAddress,
   resolveOnsiteMapUrl,
 } from "@auction/validators";
 import { MapPin, Radio, Video } from "lucide-react";
@@ -60,10 +64,12 @@ export function LotOnsiteMarketingLayout({
   followSlot,
 }: Props) {
   const heroImage = auction.images[0] ?? sale.coverImages[0] ?? null;
+  const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
   const mapsUrl = resolveOnsiteMapUrl(sale);
+  const embedUrl = buildGoogleMapsEmbedUrl(sale);
   const addressLines = formatPostalAddressLines(sale);
-  const hasStructured = hasStructuredAddress(sale);
   const locationLine = locationOneLine(sale);
+  const isSaleLive = sale.status === "active";
 
   const previewStart = sale.previewStartTime ? new Date(sale.previewStartTime) : null;
   const previewLabel =
@@ -137,7 +143,11 @@ export function LotOnsiteMarketingLayout({
           {sale.streamUrl ? (
             <Button variant="default" className="gap-2" asChild>
               <a href={sale.streamUrl} target="_blank" rel="noopener noreferrer">
-                <Radio className="size-4" aria-hidden />
+                {isSaleLive ? (
+                  <LiveDot className="live-dot-pulse h-2 w-2" />
+                ) : (
+                  <Radio className="size-4" aria-hidden />
+                )}
                 Watch live stream
               </a>
             </Button>
@@ -148,7 +158,7 @@ export function LotOnsiteMarketingLayout({
         </div>
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-start">
-          <div className="space-y-10">
+          <div className="order-2 space-y-10 lg:order-1">
             <section
               aria-labelledby="lot-estimate-onsite"
               className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 lg:p-8"
@@ -187,6 +197,7 @@ export function LotOnsiteMarketingLayout({
             </section>
 
             <section
+              id="plan-visit"
               aria-labelledby="plan-visit"
               className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 dark:bg-surface-container-low/40 lg:p-8"
             >
@@ -233,36 +244,14 @@ export function LotOnsiteMarketingLayout({
                 <MapPin className="size-5 shrink-0 text-primary" aria-hidden />
                 Venue
               </h2>
-              {sale.locationName ? (
-                <p className="mt-3 font-body text-base font-medium text-on-surface">
-                  {sale.locationName}
-                </p>
-              ) : null}
-              {addressLines.length > 0 ? (
-                <address className="mt-2 font-body text-sm not-italic leading-relaxed text-on-surface-variant">
-                  {addressLines.map((line) => (
-                    <span key={line} className="block">
-                      {line}
-                    </span>
-                  ))}
-                </address>
-              ) : null}
-              <div className="mt-6 flex flex-wrap gap-3">
-                {mapsUrl ? (
-                  <Button variant="outline" asChild>
-                    <a
-                      href={mapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={
-                        hasStructured ? "Get directions in Google Maps" : "Open venue location"
-                      }
-                    >
-                      {sale.locationMapUrl ? "Open map" : "Get directions"}
-                    </a>
-                  </Button>
-                ) : null}
-              </div>
+              <VenueMapCard
+                className="mt-3"
+                locationName={sale.locationName}
+                addressLines={addressLines}
+                embedUrl={embedUrl}
+                directionsUrl={mapsUrl}
+                hasCustomMapUrl={Boolean(sale.locationMapUrl)}
+              />
             </section>
 
             <section
@@ -304,44 +293,47 @@ export function LotOnsiteMarketingLayout({
                   Follow the live stream while the auction runs in the gallery — ideal if you cannot
                   travel but still want to watch the room.
                 </p>
-                <Button className="mt-4" asChild>
-                  <a href={sale.streamUrl} target="_blank" rel="noopener noreferrer">
-                    Open live stream
-                  </a>
-                </Button>
+                <SaleStreamPreview
+                  className="mt-4"
+                  streamUrl={sale.streamUrl}
+                  saleTitle={sale.title}
+                  posterUrl={streamPosterUrl}
+                />
               </section>
             ) : null}
           </div>
 
-          <aside className="space-y-6 lg:sticky lg:top-[calc(var(--header-height)+16px)]">
+          <aside className="order-1 space-y-6 lg:order-2 lg:sticky lg:top-[calc(var(--header-height)+16px)]">
             <div className="overflow-hidden rounded-2xl border border-border-hairline bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/40">
-              <div className="relative aspect-square w-full max-w-[400px]">
-                {heroImage ? (
-                  <MediaImage
-                    src={heroImage}
-                    alt=""
-                    label="Lot"
-                    className="size-full object-cover"
-                    sizes="400px"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center bg-surface-container-high text-on-surface-variant">
-                    No image
-                  </div>
-                )}
-              </div>
+              <LotImageArea lot={auction} className="max-w-none w-full [&>div]:max-w-none" />
             </div>
-            <div>
-              <LotActionsRow
-                followSlot={followSlot}
-                shareSlot={
-                  <ShareButton
-                    url={shareUrl}
-                    title={auction.title}
-                    className="h-10 w-full min-h-10 border-brand-400 font-['DM_Sans',sans-serif] text-base font-semibold"
-                  />
-                }
-              />
+            <div className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-4 dark:bg-surface-container-low/40">
+              <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                Stay connected
+              </p>
+              <div className="mt-3 space-y-3">
+                <LotActionsRow
+                  followSlot={followSlot}
+                  shareSlot={
+                    <ShareButton
+                      url={shareUrl}
+                      title={auction.title}
+                      className="h-10 w-full min-h-10 border-brand-400 font-['DM_Sans',sans-serif] text-base font-semibold"
+                    />
+                  }
+                />
+                <AddSaleToCalendarButton
+                  sale={sale}
+                  lotTitle={auction.title}
+                  locationLine={locationLine}
+                  className="w-full"
+                />
+                <RequestViewingMailtoButton
+                  sale={sale}
+                  lotTitle={auction.title}
+                  className="w-full"
+                />
+              </div>
             </div>
           </aside>
         </div>
