@@ -1,10 +1,5 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { PayoutsPageSkeleton } from "@/components/dashboard/seller/payouts-page-skeleton";
 
 export default function SellerPayoutsLoading() {
-  return (
-    <DashboardPage>
-      <DashboardSkeleton variant="list" />
-    </DashboardPage>
-  );
+  return <PayoutsPageSkeleton />;
 }

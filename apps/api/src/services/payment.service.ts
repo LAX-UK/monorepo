@@ -19,11 +19,13 @@ import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
+import type { LotFulfilmentAddressSnapshot } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
+import type { IAddressRepository } from "./interfaces/profile.js";
 import type {
   ILotRepository,
   ISaleRepository,
@@ -34,6 +36,7 @@ import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 import { type MyPaymentRowDTO, presentMyPayments } from "./payment-me-presenter.js";
+import { resolveCheckoutAddressSnapshot } from "./payment/checkout-address.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
 import type {
   CheckoutRailKind,
@@ -92,12 +95,14 @@ export class PaymentService {
     private readonly payoutAdjustments: IPayoutAdjustmentService | null = null,
     private readonly paymentRefundReconcile: PaymentRefundReconcileService | null = null,
     private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
+    private readonly addresses: IAddressRepository | null = null,
   ) {}
 
   /** Winning bidder initiates Stripe checkout (card or UK bank transfer by amount tier). */
   async createPendingForWinner(
     buyerId: string,
     lotId: string,
+    addressId: string,
   ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
     const lot = await this.lots.findById(lotId);
     if (!lot) {
@@ -116,9 +121,20 @@ export class PaymentService {
       return err(new AuthzError("Seller legal entity is missing for this lot", 400));
     }
 
+    let addressSnapshot: LotFulfilmentAddressSnapshot;
+    try {
+      if (!this.addresses) {
+        return err(new LotError("Address service unavailable", 503, "address_service_unavailable"));
+      }
+      addressSnapshot = await resolveCheckoutAddressSnapshot(this.addresses, buyerId, addressId);
+    } catch (e) {
+      if (e instanceof LotError) return err(e);
+      throw e;
+    }
+
     const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
     if (existing) {
-      await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, existing.id);
+      await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, existing.id, addressSnapshot);
       if (existing.status === "captured") {
         return ok({
           paymentId: existing.id,
@@ -243,7 +259,7 @@ export class PaymentService {
       checkoutRail = checkout.value.checkoutRail;
     }
 
-    await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id);
+    await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id, addressSnapshot);
 
     if (this.notificationDispatcher && !requiresManualReview) {
       await this.notificationDispatcher.dispatch(

@@ -5,6 +5,7 @@ import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   describeDashboardSliceFailure,
   describeSettingsActionError,
@@ -71,7 +72,7 @@ export default async function SubmissionDetailPage({
         <DashboardDetailHeader
           compactOnMobile
           track="selling"
-          backHref="/dashboard/submissions"
+          backHref={DASHBOARD_ROUTES.submissions}
           backLabel="Submissions"
           eyebrow="Submission"
           title="Submission"

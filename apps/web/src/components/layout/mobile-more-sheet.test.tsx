@@ -1,5 +1,6 @@
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
 import { render, screen } from "@testing-library/react";
+import { Bell } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/link", () => ({
@@ -37,6 +38,10 @@ vi.mock("@/lib/auth/use-refetch-app-session", () => ({
   useRefetchAppSession: () => async () => {},
 }));
 
+vi.mock("@/hooks/use-unread-notifications", () => ({
+  useUnreadNotifications: () => ({ unread: 2 }),
+}));
+
 describe("MobileMoreSheet", () => {
   it("renders profile strip for client users", () => {
     render(
@@ -63,5 +68,27 @@ describe("MobileMoreSheet", () => {
       "href",
       "/dashboard/settings/account",
     );
+  });
+
+  it("uses accessible label for notifications with unread count", () => {
+    render(
+      <MobileMoreSheet
+        open
+        onOpenChange={() => {}}
+        variant="client"
+        items={[
+          {
+            id: "notifications",
+            label: "Notifications",
+            href: "/dashboard/notifications",
+            icon: Bell,
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Notifications, 2 unread notifications" }),
+    ).toBeInTheDocument();
   });
 });

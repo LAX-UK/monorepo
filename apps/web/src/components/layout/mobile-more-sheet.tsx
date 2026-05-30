@@ -7,7 +7,9 @@ import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { DensityTweakSection } from "@/components/layout/tweaks-popover";
 import { MediaImage } from "@/components/ui/media-image";
+import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
+import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import {
@@ -50,6 +52,7 @@ function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): stri
     item.id === "submissions" ||
     item.id === "in-sale" ||
     item.id === "payouts" ||
+    item.id === "connect" ||
     item.id === "artist"
   ) {
     return "Workspace";
@@ -147,6 +150,7 @@ export function MobileMoreSheet({
   user,
 }: Props) {
   const pathname = usePathname();
+  const { unread } = useUnreadNotifications();
   const grouped = groupNavItems(items, variant);
 
   return (
@@ -189,12 +193,17 @@ export function MobileMoreSheet({
                     {groupItems.map((item) => {
                       const Icon = item.icon;
                       const active = isNavItemActive(pathname, item);
+                      const isNotifications = item.id === "notifications";
+                      const ariaLabel = isNotifications
+                        ? formatUnreadTabLabel(item.label, unread)
+                        : item.label;
                       return (
                         <Link
                           key={item.id}
                           href={item.href}
                           onClick={() => onOpenChange(false)}
                           aria-current={active ? "page" : undefined}
+                          aria-label={ariaLabel}
                           className={cn(
                             "flex min-h-12 items-center gap-3 rounded-lg border px-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors",
                             active
@@ -202,7 +211,25 @@ export function MobileMoreSheet({
                               : "border-border-hairline bg-surface-container-low/40 text-on-surface hover:bg-surface-container-high",
                           )}
                         >
-                          <Icon className="size-4 text-primary" aria-hidden />
+                          <span className="relative flex shrink-0 items-center">
+                            <Icon className="size-4 text-primary" aria-hidden />
+                            {isNotifications && unread > 0 ? (
+                              <span
+                                className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[10px] font-bold text-on-error"
+                                aria-hidden
+                              >
+                                {unread > 9 ? "9+" : unread}
+                              </span>
+                            ) : null}
+                            {item.badge ? (
+                              <span
+                                className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 font-label text-[10px] font-bold text-on-warning"
+                                aria-hidden
+                              >
+                                {item.badge > 9 ? "9+" : item.badge}
+                              </span>
+                            ) : null}
+                          </span>
                           {item.label}
                         </Link>
                       );

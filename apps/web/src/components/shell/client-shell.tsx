@@ -4,7 +4,9 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
+import { isHideDashboardTabBarRoute } from "@/lib/layout/bottom-chrome";
 import type { DashboardDensity } from "@/lib/preferences/density";
+import type { SellerConnectNavBadgeInput } from "@/lib/shell/apply-seller-connect-nav-badges";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { resolveClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
@@ -23,6 +25,7 @@ type Props = {
   acting?: ActingContext;
   safeActing?: LegalEntitySummary | null;
   orgModuleEnabled?: boolean;
+  sellerConnectNavBadge?: SellerConnectNavBadgeInput | null;
   children: ReactNode;
 };
 
@@ -38,6 +41,7 @@ export function ClientShell({
   acting = { kind: "self" },
   safeActing = null,
   orgModuleEnabled = true,
+  sellerConnectNavBadge = null,
   children,
 }: Props) {
   const pathname = usePathname();
@@ -59,6 +63,8 @@ export function ClientShell({
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
+        sellerConnectNavBadge: effectiveWorkspaceMode === "selling" ? sellerConnectNavBadge : null,
+        hideBottomTabBar: isHideDashboardTabBarRoute(pathname),
       }),
     [
       user,
@@ -70,6 +76,8 @@ export function ClientShell({
       hideEmailStatusBanner,
       acting,
       safeActing,
+      sellerConnectNavBadge,
+      pathname,
     ],
   );
 

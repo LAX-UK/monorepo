@@ -3,6 +3,7 @@ import { TwoFactorStatusCard } from "@/components/auth/two-factor-status-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { SETTINGS_NARROW_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -19,7 +20,7 @@ export default async function SecurityTwoFactorPage() {
   const enabled = user.twoFactorEnabled === true;
 
   return (
-    <DashboardPage className="mx-auto max-w-md space-y-8">
+    <DashboardPage className={`space-y-8 ${SETTINGS_NARROW_MAX_WIDTH}`}>
       <SettingsFormHeader
         title="Two-factor authentication"
         actions={

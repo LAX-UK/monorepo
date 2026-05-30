@@ -23,6 +23,7 @@ export type DashboardSlice =
   | "addresses"
   | "sellerLots"
   | "sellerPayouts"
+  | "sellerPayoutPreview"
   | "sellerConnect"
   | "categories"
   | "legalEntities"
@@ -146,6 +147,11 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
         : s === 403
           ? "You do not have permission to view payouts for this entity."
           : "Could not load payouts. Please try again later.",
+    retryHref: DASHBOARD_ROUTES.sellerPayouts,
+  },
+  sellerPayoutPreview: {
+    title: "Could not load payout preview",
+    message: () => "Something went wrong while loading the next payout preview. Try again.",
     retryHref: DASHBOARD_ROUTES.sellerPayouts,
   },
   sellerConnect: {
@@ -338,6 +344,17 @@ export function buildSellerPayoutFailure(
   const status = error === "unauthorized" ? 401 : error === "forbidden" ? 403 : 500;
   return buildDashboardSliceFailure(
     "sellerPayouts",
+    status,
+    error === "server_error" ? null : error,
+  );
+}
+
+export function buildSellerPayoutPreviewFailure(
+  error: "unauthorized" | "forbidden" | "server_error" | string,
+): DashboardSliceFailure {
+  const status = error === "unauthorized" ? 401 : error === "forbidden" ? 403 : 500;
+  return buildDashboardSliceFailure(
+    "sellerPayoutPreview",
     status,
     error === "server_error" ? null : error,
   );

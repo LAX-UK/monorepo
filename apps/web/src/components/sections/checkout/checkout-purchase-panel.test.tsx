@@ -12,6 +12,10 @@ vi.mock("@/lib/analytics/events", () => ({
   trackPurchase: vi.fn(),
 }));
 
+vi.mock("@/lib/shell/shell-chrome-context", () => ({
+  HideBottomTabBarWhileMounted: () => null,
+}));
+
 const user = { id: "user-1", role: "client" } as SessionUser;
 
 describe("CheckoutPurchasePanel", () => {
@@ -19,14 +23,14 @@ describe("CheckoutPurchasePanel", () => {
     render(
       <CheckoutPurchasePanel
         sessionUser={user}
-        lotId="lot-1"
+        lotId="00000000-0000-4000-8000-000000000001"
         hammer="£100"
         buyerPremium="£25"
         total="£125"
         premiumPercentLabel="25%"
         addresses={[
           {
-            id: "addr-1",
+            id: "00000000-0000-4000-8000-0000000000a1",
             label: "Home",
             line1: "1 Test St",
             line2: null,
@@ -41,8 +45,26 @@ describe("CheckoutPurchasePanel", () => {
       />,
     );
 
-    const submit = screen.getByRole("button", { name: /complete purchase/i });
-    expect(submit.className).toMatch(/\bhidden\b/);
-    expect(submit.className).toMatch(/\blg:flex\b/);
+    const submits = screen.getAllByRole("button", { name: /complete purchase/i });
+    const desktopSubmit = submits.find((el) => el.className.includes("lg:flex"));
+    expect(desktopSubmit?.className).toMatch(/\bhidden\b/);
+    expect(desktopSubmit?.className).toMatch(/\blg:flex\b/);
+  });
+
+  it("shows payment complete state without purchase form", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[]}
+        paymentComplete
+      />,
+    );
+    expect(screen.getByText(/payment recorded/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
   });
 });

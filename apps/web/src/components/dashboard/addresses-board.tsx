@@ -271,16 +271,30 @@ function AddressForm({
   );
 }
 
-export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }) {
+export function AddressesBoard({
+  addresses,
+  returnAfterSave,
+}: {
+  addresses: ProfileAddressRow[];
+  returnAfterSave?: string;
+}) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
-  const run = (work: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
+  const run = (
+    work: () => Promise<{ ok: boolean; error?: string }>,
+    success: string,
+    options?: { returnToCheckout?: boolean },
+  ) => {
     startTransition(async () => {
       const result = await work();
       if (result.ok) {
         notify.success(success);
+        if (options?.returnToCheckout && returnAfterSave) {
+          router.push(returnAfterSave);
+          return;
+        }
         router.refresh();
         return;
       }
@@ -411,6 +425,7 @@ export function AddressesBoard({ addresses }: { addresses: ProfileAddressRow[] }
               run(
                 async () => createAddressFromValuesAction(normalizeAddress(values)),
                 "Address added",
+                { returnToCheckout: true },
               )
             }
           />

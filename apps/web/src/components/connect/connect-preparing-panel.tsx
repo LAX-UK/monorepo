@@ -1,7 +1,7 @@
 "use client";
 
+import { ConnectInlineAlert } from "@/components/connect/connect-inline-alert";
 import { Button } from "@auction/ui/components/button";
-import { normalizeApiErrorMessage } from "@auction/validators";
 import { Loader2 } from "lucide-react";
 
 type Props = {
@@ -30,9 +30,7 @@ export function ConnectPreparingPanel({ preparingAccount, ensureError, pending, 
       </div>
       {ensureError ? (
         <div className="mt-3 space-y-2">
-          <p className="font-body text-sm text-error" role="alert">
-            {normalizeApiErrorMessage(ensureError, "Could not create Connect account.")}
-          </p>
+          <ConnectInlineAlert kind="init_failed" detail={ensureError} />
           <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={onRetry}>
             Try again
           </Button>

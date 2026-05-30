@@ -11,7 +11,11 @@ import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboar
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { MediaImage } from "@/components/ui/media-image";
-import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import {
+  DASHBOARD_CTA,
+  DASHBOARD_EMPTY,
+  dashboardCheckoutLotUrl,
+} from "@/lib/dashboard/dashboard-copy";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
   buildBidsTabHref,
@@ -180,7 +184,7 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
         if (row.original.statusLabel === "Won") {
           return (
             <Button variant="primary" asChild>
-              <Link href={`/dashboard/checkout/${a.id}`}>Settle now</Link>
+              <Link href={dashboardCheckoutLotUrl(a.id)}>Settle now</Link>
             </Button>
           );
         }

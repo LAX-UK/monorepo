@@ -3,6 +3,7 @@ import {
   type SettlementRow,
   formatSettlementTotal,
 } from "@/components/dashboard/overview/overview-presenters";
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -29,7 +30,7 @@ export function ActionRequiredBanner({ row, variant = "card" }: ActionRequiredBa
           </p>
         </div>
         <Button size="sm" className="shrink-0" asChild>
-          <Link href={`/dashboard/checkout/${row.lot.id}`}>Complete checkout</Link>
+          <Link href={dashboardCheckoutLotUrl(row.lot.id)}>Complete checkout</Link>
         </Button>
       </div>
     );
@@ -56,7 +57,7 @@ export function ActionRequiredBanner({ row, variant = "card" }: ActionRequiredBa
           </div>
         </div>
         <Button className="min-h-11 shrink-0" asChild>
-          <Link href={`/dashboard/checkout/${row.lot.id}`}>Complete checkout</Link>
+          <Link href={dashboardCheckoutLotUrl(row.lot.id)}>Complete checkout</Link>
         </Button>
       </div>
     </section>

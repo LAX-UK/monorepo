@@ -43,6 +43,41 @@ describe("buildShellConfig", () => {
     expect(config.topSlot).toBeTruthy();
   });
 
+  it("does not apply connect badge on buying workspace even when badge input is present", () => {
+    const config = buildShellConfig({
+      user: clientUser,
+      role: "client",
+      clientWorkspaceMode: "buying",
+      sellerConnectNavBadge: { connectEnforced: true, connectReady: false },
+    });
+    const connectNav = config.nav.find((item) => !isNavGroup(item) && item.id === "connect");
+    expect(connectNav && !isNavGroup(connectNav) && connectNav.badge).toBeUndefined();
+  });
+
+  it("applies connect warning badge on selling nav when not ready", () => {
+    const config = buildShellConfig({
+      user: clientUser,
+      role: "client",
+      clientWorkspaceMode: "selling",
+      sellerConnectNavBadge: { connectEnforced: true, connectReady: false },
+    });
+    const connectNav = config.nav.find((item) => !isNavGroup(item) && item.id === "connect");
+    expect(connectNav && !isNavGroup(connectNav) && connectNav.badge).toBe(1);
+    expect(connectNav && !isNavGroup(connectNav) && connectNav.badgeTone).toBe("warning");
+  });
+
+  it("includes payout setup in selling more sheet nav", () => {
+    const config = buildShellConfig({
+      user: clientUser,
+      role: "client",
+      clientWorkspaceMode: "selling",
+    });
+    const flatMore = config.moreSheetNav?.filter((e) => !isNavGroup(e)) ?? [];
+    const connectItem = flatMore.find((item) => item.id === "connect");
+    expect(connectItem).toBeDefined();
+    expect(connectItem && "href" in connectItem && connectItem.href).toContain("/seller/connect");
+  });
+
   it("splits client more sheet nav from bottom tabs", () => {
     const config = buildShellConfig({
       user: clientUser,
