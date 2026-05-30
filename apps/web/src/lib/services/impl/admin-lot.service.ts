@@ -69,6 +69,14 @@ export class AdminLotService implements IAdminLotService {
     });
   }
 
+  async softDelete(id: string, confirmationPhrase: string): Promise<ServiceResult<void>> {
+    return this.api.json<void>(`/lots/${encodeURIComponent(id)}/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmationPhrase }),
+    });
+  }
+
   async bulk(body: BulkLotsBody): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>("/lots/bulk", {
       method: "POST",

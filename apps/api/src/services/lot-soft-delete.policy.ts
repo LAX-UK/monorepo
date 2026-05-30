@@ -1,0 +1,61 @@
+import type { Lot, Sale } from "@auction/types";
+import { type Result, err, ok } from "neverthrow";
+import { LotError } from "../lib/errors.js";
+import type { LotSoftDeleteGuardCounts } from "./interfaces/lot-soft-delete.js";
+
+const DELETABLE_LOT_STATUSES = new Set<Lot["status"]>(["draft", "scheduled"]);
+const DELETABLE_SALE_STATUSES = new Set<Sale["status"]>(["draft", "scheduled"]);
+
+export type LotSoftDeleteContext = {
+  lot: Lot;
+  sale: Sale | null;
+  guards: LotSoftDeleteGuardCounts;
+};
+
+/** Human-readable reasons delete is blocked (empty when deletable). */
+export function listLotSoftDeleteBlockers(ctx: LotSoftDeleteContext): string[] {
+  const { lot, sale, guards } = ctx;
+  if (lot.deletedAt) return [];
+
+  const blockers: string[] = [];
+
+  if (!DELETABLE_LOT_STATUSES.has(lot.status)) {
+    blockers.push("Only draft or scheduled lots that have not gone live can be deleted");
+  }
+
+  if (sale) {
+    if (!DELETABLE_SALE_STATUSES.has(sale.status)) {
+      blockers.push("Parent sale is live or ended — cancel the lot instead");
+    }
+  }
+
+  if (guards.bidCount > 0) {
+    blockers.push("This lot has bids");
+  }
+  if (guards.paymentCount > 0) {
+    blockers.push("This lot has payments");
+  }
+  if (guards.approvedRegistrationCount > 0) {
+    blockers.push("Parent sale has approved bidder registrations");
+  }
+
+  return blockers;
+}
+
+export function canLotSoftDelete(ctx: LotSoftDeleteContext): boolean {
+  return listLotSoftDeleteBlockers(ctx).length === 0;
+}
+
+export function validateLotSoftDelete(ctx: LotSoftDeleteContext): Result<void, LotError> {
+  if (ctx.lot.deletedAt) {
+    return err(new LotError("Lot not found", 404));
+  }
+
+  const blockers = listLotSoftDeleteBlockers(ctx);
+  const firstBlocker = blockers[0];
+  if (firstBlocker) {
+    return err(new LotError(firstBlocker, 422));
+  }
+
+  return ok(undefined);
+}

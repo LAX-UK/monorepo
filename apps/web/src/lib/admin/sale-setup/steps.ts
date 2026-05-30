@@ -91,3 +91,14 @@ export const SALE_SETUP_SALE_STEP_FIELDS = {
   ],
   documents: ["terms"],
 } as const;
+
+/** Sale form field groups per wizard step (identity → documents). */
+export const SALE_FORM_WIZARD_STEP_FIELDS = [
+  [...SALE_SETUP_SALE_STEP_FIELDS.identity],
+  [...SALE_SETUP_SALE_STEP_FIELDS.schedule],
+  [...SALE_SETUP_SALE_STEP_FIELDS.documents],
+] as const;
+
+export function saleSetupResumeHref(saleId: string, input: ResolveInput): string {
+  return saleSetupHref(saleId, resolveFirstIncompleteStep(input));
+}

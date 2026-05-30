@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AsyncCombobox } from "./async-combobox.js";
 
@@ -59,10 +60,45 @@ describe("AsyncCombobox", () => {
     });
 
     fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
-    expect(onChange).toHaveBeenCalledWith("a", hits[0]);
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith("a", hits[0]);
+    });
 
     rerender(<Picker value="a" />);
     expect(await screen.findByText("Alpha")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Change" })).toBeInTheDocument();
+  });
+
+  it("selects from empty state with synchronous parent update without infinite loop", async () => {
+    function ControlledPicker() {
+      const [value, setValue] = React.useState<string | null>(null);
+      return (
+        <AsyncCombobox<Hit>
+          value={value}
+          onChange={(id) => setValue(id)}
+          searchHits={async () => hits}
+          resolveHit={async (id) => hits.find((h) => h.id === id) ?? null}
+          renderHit={(row) => row.label}
+          renderSelected={(row) => <span>{row.label}</span>}
+          placeholder="Pick one"
+          minQueryLen={0}
+        />
+      );
+    }
+
+    render(<ControlledPicker />);
+
+    fireEvent.click(await screen.findByRole("combobox"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Alpha" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha")).toBeInTheDocument();
+    });
     expect(screen.getByRole("combobox", { name: "Change" })).toBeInTheDocument();
   });
 
@@ -91,7 +127,9 @@ describe("AsyncCombobox", () => {
     });
 
     fireEvent.click(screen.getByRole("option", { name: "Beta" }));
-    expect(onChange).toHaveBeenCalledWith("b", hits[1]);
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith("b", hits[1]);
+    });
   });
 
   it("clears the selected value", async () => {
@@ -109,6 +147,8 @@ describe("AsyncCombobox", () => {
 
     await screen.findByText("Alpha");
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
-    expect(onChange).toHaveBeenCalledWith(null);
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith(null);
+    });
   });
 });

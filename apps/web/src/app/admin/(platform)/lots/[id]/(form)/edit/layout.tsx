@@ -4,13 +4,14 @@ import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-s
 import { LotEditFormLayout } from "@/components/admin/lot-form/lot-edit-form-layout";
 import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { loadAdminLotRecord } from "@/lib/admin/load-lot-detail";
 import { getLotFormAssignableSales } from "@/lib/admin/lot-form-sales";
-import { getAdminArtistList, getAdminLotById } from "@/lib/data/http/admin.server";
+import { getAdminArtistList } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -25,17 +26,14 @@ type Props = {
 
 export default async function AdminEditLotLayout({ params, children }: Props) {
   const { id } = await params;
-  const [auction, categories, sales, artistList, lotDocuments] = await Promise.all([
-    getAdminLotById(id).catch(() => null),
+  const auction = await loadAdminLotRecord(id);
+  const [categories, sales, artistList, lotDocuments] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
-    getAdminLotById(id)
-      .then((lot) => getLotFormAssignableSales(lot?.saleId))
-      .catch(() => getLotFormAssignableSales()),
+    getLotFormAssignableSales(auction?.saleId).catch(() => getLotFormAssignableSales()),
     getAdminArtistList({ includeArchived: false, limit: 200 }),
     getServerLotDocuments(id),
   ]);
   const artists = artistList.rows;
-  if (!auction) notFound();
   if (auction.status === "ended" || auction.status === "cancelled" || auction.status === "voided") {
     redirect(`/admin/lots/${id}`);
   }

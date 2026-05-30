@@ -15,11 +15,16 @@ export const loadAdminSaleDetail = cache(async (saleId: string): Promise<AdminSa
   return bundle;
 });
 
+/** Cached registrations list for layout count + registrations tab. */
+export const loadAdminSaleRegistrations = cache(async (saleId: string) =>
+  getAdminSaleRegistrations(saleId).catch(() => []),
+);
+
 /** Registration count for sale detail shell (null when sale is not liveish). */
 export const loadAdminSaleRegistrationCount = cache(
   async (saleId: string, sale: Sale): Promise<number | null> => {
     if (!isSaleLiveish(sale)) return null;
-    const registrations = await getAdminSaleRegistrations(saleId).catch(() => []);
+    const registrations = await loadAdminSaleRegistrations(saleId);
     return registrations.length;
   },
 );

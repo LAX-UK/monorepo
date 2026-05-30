@@ -1,12 +1,18 @@
+"use client";
+
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
-import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
+import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
+import { CatalogReadinessChecklist } from "@/components/admin/catalog/catalog-readiness-checklist";
 import {
   ActivitySnapshotRail,
   KpiStackRail,
   RelatedEntitiesRail,
 } from "@/components/admin/detail-rail";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
-import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
+import { shouldShowCatalogReadinessRail } from "@/lib/admin/catalog-detail-readiness-surface";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import { lotDetailReadinessDismissKey } from "@/lib/admin/compute-lot-detail-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
@@ -21,7 +27,9 @@ type Props = {
   context: LotDetailContext;
   bidCount: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
-  connectRequired?: boolean;
+  publishReadiness?: CatalogReadinessResult | null;
+  deleteBlockers?: readonly string[];
+  canManageAuction?: boolean;
   status?: ReactNode;
   publicHref?: string;
   quickActions?: ReactNode;
@@ -33,18 +41,19 @@ export function LotContextRail({
   context,
   bidCount,
   activityEvents = [],
-  connectRequired = false,
+  publishReadiness = null,
+  deleteBlockers = [],
+  canManageAuction = false,
   status,
   publicHref,
   quickActions,
 }: Props) {
-  const readiness =
-    auction.status === "draft"
-      ? buildLotPublishReadiness(lotId, auction, {
-          connectRequired,
-          sale: context.sale,
-        })
-      : null;
+  const { isPostCreateBannerActive } = useCatalogPostCreateSession();
+  const readiness = publishReadiness;
+  const showRailReadiness = shouldShowCatalogReadinessRail({
+    readiness,
+    isPostCreateBannerActive: isPostCreateBannerActive(readiness),
+  });
 
   const related = [
     ...(context.sale
@@ -114,13 +123,16 @@ export function LotContextRail({
         />
         {quickActions}
         <RelatedEntitiesRail items={related} />
-        {readiness ? (
-          <CatalogPublishReadiness
+        {showRailReadiness && readiness ? (
+          <CatalogReadinessChecklist
             title="Publish readiness"
             readiness={readiness}
-            dismissKey={`lot:${lotId}`}
-            compact
+            variant="compact"
+            dismissKey={lotDetailReadinessDismissKey(lotId)}
           />
+        ) : null}
+        {deleteBlockers.length > 0 && canManageAuction ? (
+          <CatalogDeleteEligibilityNotice blockers={deleteBlockers} entityLabel="lot" />
         ) : null}
         <ActivitySnapshotRail
           events={activityEvents.map((e) => ({

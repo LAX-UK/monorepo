@@ -85,6 +85,8 @@ export const listLotsQuerySchema = z.object({
   endYear: z.coerce.number().int().min(1970).max(2100).optional(),
   /** Case-insensitive substring on lot title (server-side search). */
   q: z.string().trim().max(200).optional(),
+  /** When `1`, only lots with zero images (staff attention lens). */
+  needsPhotos: z.enum(["1"]).optional(),
   sort: listSort,
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),
@@ -134,6 +136,15 @@ export const lotIdParamSchema = z.object({
 
 export const cancelLotBodySchema = z.object({
   reason: z.string().max(500).optional(),
+});
+
+/** Exact phrase staff must type to confirm lot soft-delete (case-sensitive). */
+export function lotDeleteConfirmationPhrase(title: string): string {
+  return `DELETE ${title}`;
+}
+
+export const deleteLotBodySchema = z.object({
+  confirmationPhrase: z.string().min(1).max(500),
 });
 
 export const bulkLotsBodySchema = z.object({

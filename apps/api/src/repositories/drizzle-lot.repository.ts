@@ -59,6 +59,9 @@ function listWhere(input: ListWhereInput) {
       conditions.push(ilike(lot.title, `%${safe}%`));
     }
   }
+  if (input.needsPhotos) {
+    conditions.push(sql`cardinality(${lot.images}) = 0`);
+  }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 

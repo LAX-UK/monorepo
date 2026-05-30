@@ -2,7 +2,7 @@ import { LotFilterForm } from "@/components/admin/lot-filter-form";
 import { getAdminArtistList, getAdminSalesList } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 
-type LotSort = "createdDesc" | "endingAsc" | "hammerDesc" | "endedDesc" | "sellerAsc";
+import type { LotListSortKey } from "@/lib/admin/lots-list-sort";
 
 type Props = {
   status?: string | undefined;
@@ -11,7 +11,7 @@ type Props = {
   artistId?: string | undefined;
   saleId?: string | undefined;
   categoryId?: string | undefined;
-  sort?: LotSort | undefined;
+  sort?: LotListSortKey | undefined;
   lens?: string | undefined;
 };
 

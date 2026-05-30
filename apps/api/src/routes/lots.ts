@@ -12,6 +12,7 @@ import {
   cancelLotBodySchema,
   createConditionReportRequestBodySchema,
   createLotSchema,
+  deleteLotBodySchema,
   listLotsQuerySchema,
   lotIdParamSchema,
   scheduleAbsenteeBidBodySchema,
@@ -94,6 +95,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
         sort: query.sort,
         limit: query.limit,
         offset: query.offset,
+        ...(query.needsPhotos === "1" ? { needsPhotos: true } : {}),
       },
       role,
       staffRole,
@@ -119,6 +121,16 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
             returnCount: snap.returnCount,
           },
         };
+      });
+    }
+    if (roleHasCapability(viewerRole, "auction.manage", staff) && rows.length > 0) {
+      const eligibilityByLot = await container.lotSoftDeleteService.getDeleteEligibilityBatch(rows);
+      rows = rows.map((lotRow) => {
+        if (lotRow.status !== "draft" && lotRow.status !== "scheduled") {
+          return lotRow;
+        }
+        const deleteEligibility = eligibilityByLot.get(lotRow.id);
+        return deleteEligibility ? { ...lotRow, deleteEligibility } : lotRow;
       });
     }
     const withPricing = await lotsWithCheckoutPricing(container, rows);
@@ -212,6 +224,31 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+    },
+  );
+
+  r.post(
+    "/:id/delete",
+    requireAuth,
+    zValidator("param", lotIdParamSchema),
+    zValidator("json", deleteLotBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staffRole = c.get("userStaffRole") ?? null;
+      const { id } = c.req.valid("param");
+      const { confirmationPhrase } = c.req.valid("json");
+      const result = await container.lotSoftDeleteService.softDelete(
+        userId,
+        role,
+        id,
+        confirmationPhrase,
+        staffRole,
+      );
+      if (result.isErr()) {
+        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
+      }
+      return c.body(null, 204);
     },
   );
 
@@ -349,7 +386,17 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       ...presented,
       checkoutPricing: computeLotCheckoutPricing(presented, sale),
     };
-    return c.json({ data: maskLotForPublicView(withPricing, role, staffRole) });
+    const viewerRole = normalizeUserRoleOrClient(role);
+    const staff = normalizeUserStaffRole(staffRole ?? undefined);
+    const deleteEligibility = roleHasCapability(viewerRole, "auction.manage", staff)
+      ? await container.lotSoftDeleteService.getDeleteEligibility(id)
+      : null;
+    return c.json({
+      data: {
+        ...maskLotForPublicView(withPricing, role, staffRole),
+        ...(deleteEligibility ? { deleteEligibility } : {}),
+      },
+    });
   });
 
   r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {

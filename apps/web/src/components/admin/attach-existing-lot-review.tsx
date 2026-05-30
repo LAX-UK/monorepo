@@ -5,13 +5,13 @@ import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminGetLotAttachPreviewAction, adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { adminAttachLotToSaleResultAction } from "@/lib/actions/admin-sales";
+import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import {
   attachReviewScheduleChanged,
   attachReviewScheduleViolation,
   inventoryLotToAttachReviewRow,
   validateAttachReviewSchedule,
 } from "@/lib/admin/attach-existing-lot";
-import { notifyLotFormValidationFailure } from "@/lib/admin/lot-form-validation-notify";
 import { proposeLotTimesWithinWindow } from "@/lib/admin/sale-lot-window-sync";
 import {
   type SaleSetupLotRowFormValues,
@@ -188,7 +188,7 @@ export function AttachExistingLotReview({
           message ? [{ path: [path], message }] : [],
         );
         applyZodIssuesToForm(form, issues);
-        notifyLotFormValidationFailure({ issues });
+        notifyAdminFormValidationFailure({ issues });
         return;
       }
 

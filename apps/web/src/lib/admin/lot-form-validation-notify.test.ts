@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildLotFormValidationMessage,
-  humanizeLotFormError,
+  buildAdminFormValidationMessage,
+  humanizeAdminFormError,
   summarizeZodIssues,
-} from "./lot-form-validation-notify";
+} from "./admin-form-validation-notify";
 
 describe("humanizeLotFormError", () => {
   it("humanizes lot schedule violations", () => {
-    expect(humanizeLotFormError("Lot start must not be before the sale start time")).toBe(
+    expect(humanizeAdminFormError("Lot start must not be before the sale start time")).toBe(
       "This lot can’t open before the sale starts.",
     );
   });
@@ -35,7 +35,7 @@ describe("summarizeZodIssues", () => {
 
 describe("buildLotFormValidationMessage", () => {
   it("never returns generic check-the-form copy", () => {
-    const msg = buildLotFormValidationMessage({
+    const msg = buildAdminFormValidationMessage({
       issues: [{ message: "Lot start must not be before the sale start time" }],
     });
     expect(msg).not.toContain("Check the form for errors");

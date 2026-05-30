@@ -1,56 +1,37 @@
 "use client";
 
+import { AdminSortableColumnHeader } from "@/components/admin/admin-sortable-column-header";
 import { LotStatusCell } from "@/components/admin/lots-board/lot-status-cell";
-import type { LotStatus } from "@auction/types";
-import { InlineActionMenu } from "@auction/ui";
+import { LotBoardMobileActionMenu } from "@/components/admin/lots-board/mobile-action-menu";
+import type { AdminLotTableRow, LotColumnSortConfig } from "@/components/admin/lots-board/types";
+import { adminLotHref } from "@/lib/admin/catalog-route-helpers";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { formatDateTime } from "@/lib/ui/format";
 
-export type AdminLotTableRow = {
-  id: string;
-  title: string;
-  auctionType: string;
-  status: LotStatus;
-  endTimeIso: string;
-  endTimeLabel: string;
-  currentPrice: string;
-  lastActivityType?: string;
-  lastActivityAt?: string;
-  lastActivityLabel?: string;
-};
+export type { AdminLotTableRow, LotColumnSortConfig };
 
-export function LotActionMenu({ row }: { row: AdminLotTableRow }) {
-  const router = useRouter();
-  return (
-    <InlineActionMenu
-      label={`Actions for ${row.title}`}
-      items={[
-        {
-          type: "item",
-          label: "Open detail",
-          onSelect: () => router.push(`/admin/lots/${row.id}`),
-        },
-        {
-          type: "item",
-          label: "Copy lot ID",
-          onSelect: () => void navigator.clipboard.writeText(row.id),
-        },
-      ]}
-    />
-  );
-}
-
-export function lotColumns(): ColumnDef<AdminLotTableRow>[] {
+export function lotColumns(
+  sort?: LotColumnSortConfig,
+  options?: { canManageCatalog?: boolean; canManageAuction?: boolean },
+): ColumnDef<AdminLotTableRow>[] {
   return [
     {
       accessorKey: "title",
-      header: "Title",
+      header: sort
+        ? () => (
+            <AdminSortableColumnHeader
+              label="Title"
+              sortValue="createdDesc"
+              currentSort={sort.current}
+              href={sort.hrefs.createdDesc}
+            />
+          )
+        : "Title",
       cell: ({ row }) => (
         <Link
-          href={`/admin/lots/${row.original.id}`}
+          href={adminLotHref(row.original.id)}
           className="font-medium text-primary hover:underline"
         >
           {row.original.title}
@@ -88,7 +69,25 @@ export function lotColumns(): ColumnDef<AdminLotTableRow>[] {
     },
     {
       accessorKey: "endTimeLabel",
-      header: "Ends",
+      header: sort
+        ? () =>
+            sort.current === "endedDesc" ? (
+              <AdminSortableColumnHeader
+                label="Ends"
+                sortValue="endedDesc"
+                currentSort={sort.current}
+                href={sort.hrefs.endedDesc}
+              />
+            ) : (
+              <AdminSortableColumnHeader
+                label="Ends"
+                sortValue="endingAsc"
+                currentSort={sort.current}
+                href={sort.hrefs.endingAsc}
+                direction="asc"
+              />
+            )
+        : "Ends",
       cell: ({ row }) => (
         <time dateTime={row.original.endTimeIso} className="text-xs text-on-surface-variant">
           {row.original.endTimeLabel}
@@ -97,7 +96,19 @@ export function lotColumns(): ColumnDef<AdminLotTableRow>[] {
     },
     {
       accessorKey: "currentPrice",
-      header: () => <span className="block text-right">Hammer</span>,
+      header: sort
+        ? () => (
+            <span className="block text-right">
+              <AdminSortableColumnHeader
+                label="Hammer"
+                sortValue="hammerDesc"
+                currentSort={sort.current}
+                href={sort.hrefs.hammerDesc}
+                className="justify-end"
+              />
+            </span>
+          )
+        : () => <span className="block text-right">Hammer</span>,
       cell: ({ row }) => (
         <span className="block text-right tabular-nums">{row.original.currentPrice}</span>
       ),
@@ -105,7 +116,13 @@ export function lotColumns(): ColumnDef<AdminLotTableRow>[] {
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => <LotActionMenu row={row.original} />,
+      cell: ({ row }) => (
+        <LotBoardMobileActionMenu
+          row={row.original}
+          {...(options?.canManageCatalog ? { canManageCatalog: true } : {})}
+          {...(options?.canManageAuction ? { canManageAuction: true } : {})}
+        />
+      ),
       enableSorting: false,
     },
   ];

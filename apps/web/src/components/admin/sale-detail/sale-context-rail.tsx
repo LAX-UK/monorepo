@@ -1,16 +1,23 @@
+"use client";
+
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
-import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
+import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
+import { CatalogReadinessChecklist } from "@/components/admin/catalog/catalog-readiness-checklist";
 import {
   ActivitySnapshotRail,
   KpiStackRail,
   QuickActionsRail,
   RelatedEntitiesRail,
 } from "@/components/admin/detail-rail";
+import type { QuickActionItem } from "@/components/admin/detail-rail/quick-actions-rail";
 import { sumLotHammers } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
+import { shouldShowCatalogReadinessRail } from "@/lib/admin/catalog-detail-readiness-surface";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import { saleDetailReadinessDismissKey } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
-import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import type { Lot, Sale } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -27,6 +34,9 @@ type Props = {
   deleteBlockers?: readonly string[];
   canManageSales?: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
+  draftSetupReadiness?: CatalogReadinessResult | null;
+  quickRailItems?: readonly QuickActionItem[];
+  draftSetupHref?: string;
   status?: ReactNode;
   publicHref?: string;
 };
@@ -40,21 +50,18 @@ export function SaleContextRail({
   activityEvents = [],
   deleteBlockers = [],
   canManageSales = false,
-  connectRequiredByLotId,
+  connectRequiredByLotId: _connectRequiredByLotId,
+  draftSetupReadiness = null,
+  quickRailItems = [],
   status,
   publicHref,
 }: Props) {
-  const readiness =
-    sale.status === "draft"
-      ? buildSaleSetupReadiness({
-          saleId,
-          sale,
-          lots,
-          pendingRegistrationCount: registrationCount,
-          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
-          setupStepHref: (step) => saleSetupHref(saleId, step),
-        })
-      : null;
+  const { isPostCreateBannerActive } = useCatalogPostCreateSession();
+  const readiness = draftSetupReadiness;
+  const showRailReadiness = shouldShowCatalogReadinessRail({
+    readiness,
+    isPostCreateBannerActive: isPostCreateBannerActive(readiness),
+  });
 
   const pendingRegs =
     liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;
@@ -80,50 +87,7 @@ export function SaleContextRail({
             },
           ]}
         />
-        <QuickActionsRail
-          actions={[
-            ...(liveish
-              ? [
-                  {
-                    id: "saleroom",
-                    label: "Open saleroom",
-                    href: `/admin/saleroom/${saleId}`,
-                    variant: "default" as const,
-                  },
-                ]
-              : []),
-            ...(sale.status === "draft"
-              ? [
-                  {
-                    id: "setup",
-                    label: "Continue setup",
-                    href: saleSetupHref(saleId, "identity"),
-                    variant: "default" as const,
-                  },
-                  ...(canManageSales
-                    ? [
-                        {
-                          id: "edit",
-                          label: "Edit draft",
-                          href: `/admin/sales/${saleId}/edit`,
-                          variant: "outline" as const,
-                        },
-                      ]
-                    : []),
-                ]
-              : []),
-            ...(publicHref
-              ? [
-                  {
-                    id: "public",
-                    label: "View on site",
-                    href: publicHref,
-                    variant: "outline" as const,
-                  },
-                ]
-              : []),
-          ]}
-        />
+        <QuickActionsRail actions={quickRailItems} />
         <RelatedEntitiesRail
           title="Quick links"
           items={[
@@ -154,25 +118,16 @@ export function SaleContextRail({
             </Link>
           </Button>
         ) : null}
-        {readiness ? (
-          <CatalogPublishReadiness
+        {showRailReadiness && readiness ? (
+          <CatalogReadinessChecklist
             title="Publish readiness"
             readiness={readiness}
-            dismissKey={`sale:${saleId}`}
-            compact
+            variant="compact"
+            dismissKey={saleDetailReadinessDismissKey(saleId)}
           />
         ) : null}
         {deleteBlockers.length > 0 && canManageSales ? (
-          <div className="rounded-lg border border-border-hairline bg-surface-container-low px-4 py-3">
-            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-              Cannot delete
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-4 font-body text-sm text-on-surface-variant">
-              {deleteBlockers.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          </div>
+          <CatalogDeleteEligibilityNotice blockers={deleteBlockers} entityLabel="sale" />
         ) : null}
         <ActivitySnapshotRail
           events={activityEvents.map((e) => ({

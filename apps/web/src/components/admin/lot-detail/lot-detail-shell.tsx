@@ -8,6 +8,8 @@ import {
   CatalogDetailStickyMiniBar,
   CatalogDetailTabNav,
 } from "@/components/admin/catalog";
+import { CatalogPostCreateSessionRoot } from "@/components/admin/catalog/catalog-post-create-session";
+import { CatalogWhatsNextBanner } from "@/components/admin/catalog/catalog-whats-next-banner";
 import { QuickActionsRail } from "@/components/admin/detail-rail";
 import { AdminLotEditableTitle } from "@/components/admin/editable-titles";
 import { ReturnToInventoryButton } from "@/components/admin/lot-actions/return-to-inventory-button";
@@ -15,10 +17,15 @@ import { LotDetailMobilePublishCancel } from "@/components/admin/lot-detail-mobi
 import { LotDetailQueueNav } from "@/components/admin/lot-detail-queue-nav";
 import { LotContextRail } from "@/components/admin/lot-detail/lot-context-rail";
 import { LotDetailConnectNotice } from "@/components/admin/lot-detail/lot-detail-connect-notice";
+import { LotDetailReadinessProvider } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journey";
-import { buildLotMobileActions } from "@/lib/admin/build-lot-mobile-actions";
-import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
+import { buildLotDetailNavActions } from "@/lib/admin/build-lot-mobile-actions";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import {
+  computeLotDetailReadiness,
+  lotDetailReadinessDismissKey,
+} from "@/lib/admin/compute-lot-detail-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import type { AdminDomainEventRow, AdminLotLifecyclePayload } from "@/lib/data/http/admin.server";
 import { lotPath } from "@/lib/seo/url";
@@ -37,6 +44,7 @@ type Props = {
   connectRequired?: boolean;
   canManageCatalog?: boolean;
   canManageAuction?: boolean;
+  publishReadiness?: CatalogReadinessResult | null;
   children: ReactNode;
 };
 
@@ -56,6 +64,7 @@ export function LotDetailShell({
   connectRequired = false,
   canManageCatalog = false,
   canManageAuction = false,
+  publishReadiness: publishReadinessProp,
   children,
 }: Props) {
   const { auction, context } = bundle;
@@ -69,25 +78,42 @@ export function LotDetailShell({
   const canEditDraft = auction.status === "draft";
   const canEditLot = auction.status === "scheduled";
   const showEditCatalog = auction.status === "active";
+  const canDelete = canManageAuction && bundle.deleteEligibility?.canDelete === true;
+  const deleteBlockers =
+    auction.status === "draft" || auction.status === "scheduled"
+      ? (bundle.deleteEligibility?.blockers ?? [])
+      : [];
+  const parentSaleForDelete =
+    context.sale && context.parentSaleLotCount != null
+      ? {
+          id: context.sale.id,
+          title: context.sale.title,
+          status: context.sale.status,
+          lotCount: context.parentSaleLotCount,
+        }
+      : null;
 
-  const mobileActions = buildLotMobileActions({
+  const lotNav = buildLotDetailNavActions({
     lotId,
     publicHref,
     canEditDraft,
     canEditLot,
     showEditCatalog,
   });
+  const mobileActions = lotNav.barActions;
 
   const catalogIncomplete =
     auction.status === "draft" && (auction.images.length === 0 || !auction.description?.trim());
 
   const publishReadiness =
-    auction.status === "draft"
-      ? buildLotPublishReadiness(lotId, auction, {
+    publishReadinessProp !== undefined
+      ? publishReadinessProp
+      : computeLotDetailReadiness({
+          lotId,
+          auction,
+          context,
           connectRequired,
-          sale: context.sale,
-        })
-      : null;
+        });
 
   const tabSpecs = [
     {
@@ -118,187 +144,171 @@ export function LotDetailShell({
     },
   ];
 
-  const quickActions = (
-    <QuickActionsRail
-      actions={[
-        ...(canEditDraft
-          ? [
-              {
-                id: "edit",
-                label: "Edit draft",
-                href: `/admin/lots/${lotId}/edit`,
-                variant: "default" as const,
-              },
-            ]
-          : []),
-        ...(canEditLot
-          ? [
-              {
-                id: "edit-lot",
-                label: "Edit lot",
-                href: `/admin/lots/${lotId}/edit`,
-                variant: "outline" as const,
-              },
-            ]
-          : []),
-        ...(showEditCatalog
-          ? [
-              {
-                id: "catalog",
-                label: "Edit catalogue",
-                href: `/admin/lots/${lotId}/edit/catalog`,
-                variant: "outline" as const,
-              },
-            ]
-          : []),
-        {
-          id: "public",
-          label: "View on site",
-          href: publicHref,
-          variant: "outline" as const,
-        },
-      ]}
-    />
-  );
+  const quickActions = <QuickActionsRail actions={lotNav.quickRailItems} />;
 
   return (
-    <CatalogDetailShell
-      breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[
-            { label: "Lots", href: "/admin/lots" },
-            ...(context.sale
-              ? [{ label: context.sale.title, href: `/admin/sales/${context.sale.id}` }]
-              : [{ label: "Unassigned" }]),
-            ...(auction.lotNumber != null ? [{ label: `Lot #${auction.lotNumber}` }] : []),
-          ]}
-        />
-      }
-      eyebrow="Catalogue lot"
-      title={<AdminLotEditableTitle lotId={lotId} value={auction.title} />}
-      {...(subtitle ? { description: subtitle } : {})}
-      meta={
-        <div className="flex flex-wrap items-center gap-2">
-          <AdminStatusBadge domain="lot" status={auction.status} />
-          {auction.lotNumber != null ? (
-            <Badge variant="secondary">Lot #{auction.lotNumber}</Badge>
-          ) : null}
-        </div>
-      }
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <AdminPinPageButton label={auction.title} />
-          {canManageAuction ? (
-            <ReturnToInventoryButton
+    <CatalogPostCreateSessionRoot>
+      <CatalogDetailShell
+        breadcrumbs={
+          <CatalogBreadcrumbs
+            segments={[
+              { label: "Lots", href: "/admin/lots" },
+              ...(context.sale
+                ? [{ label: context.sale.title, href: `/admin/sales/${context.sale.id}` }]
+                : [{ label: "Unassigned" }]),
+              ...(auction.lotNumber != null ? [{ label: `Lot #${auction.lotNumber}` }] : []),
+            ]}
+          />
+        }
+        eyebrow="Catalogue lot"
+        title={<AdminLotEditableTitle lotId={lotId} value={auction.title} />}
+        {...(subtitle ? { description: subtitle } : {})}
+        meta={
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminStatusBadge domain="lot" status={auction.status} />
+            {auction.lotNumber != null ? (
+              <Badge variant="secondary">Lot #{auction.lotNumber}</Badge>
+            ) : null}
+          </div>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminPinPageButton label={auction.title} />
+            {canManageAuction ? (
+              <ReturnToInventoryButton
+                lotId={lotId}
+                status={auction.status}
+                hasWinner={Boolean(auction.winnerId)}
+              />
+            ) : null}
+            <AdminLotDetailActions
+              key={lotId}
               lotId={lotId}
-              status={auction.status}
-              hasWinner={Boolean(auction.winnerId)}
+              lotTitle={auction.title}
+              publicHref={publicHref}
+              sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
+              canPublish={canPublish}
+              connectBlocked={connectRequired}
+              saleStatus={context.sale?.status ?? null}
+              publishReadiness={publishReadiness}
+              canCancel={canCancel}
+              canDelete={canDelete}
+              parentSale={parentSaleForDelete}
+              showEditDraft={canEditDraft}
+              showEditLot={canEditLot}
+              showEditCatalog={showEditCatalog}
             />
-          ) : null}
-          <AdminLotDetailActions
-            key={lotId}
+          </div>
+        }
+        mobileActions={mobileActions}
+        mobileActionBarTrailing={
+          <LotDetailMobilePublishCancel
             lotId={lotId}
-            publicHref={publicHref}
+            lotTitle={auction.title}
             sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
             canPublish={canPublish}
             connectBlocked={connectRequired}
             saleStatus={context.sale?.status ?? null}
             publishReadiness={publishReadiness}
             canCancel={canCancel}
-            showEditDraft={canEditDraft}
-            showEditLot={canEditLot}
-            showEditCatalog={showEditCatalog}
+            canDelete={canDelete}
+            parentSale={parentSaleForDelete}
           />
-        </div>
-      }
-      mobileActions={mobileActions}
-      mobileActionBarTrailing={
-        <LotDetailMobilePublishCancel
-          lotId={lotId}
-          sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
-          canPublish={canPublish}
-          connectBlocked={connectRequired}
-          saleStatus={context.sale?.status ?? null}
-          publishReadiness={publishReadiness}
-          canCancel={canCancel}
-        />
-      }
-      mobileMeta={
-        <CatalogDetailMobileMeta
-          entityId={lotId}
-          {...(auction.updatedAt ? { updatedAt: auction.updatedAt } : {})}
-          publicHref={publicHref}
-          publicLabel="View on site"
-          status={<AdminStatusBadge domain="lot" status={auction.status} />}
-          quickLinks={[
-            ...(context.sale
-              ? [{ label: context.sale.title, href: `/admin/sales/${context.sale.id}` }]
-              : []),
-          ]}
-          primaryAction={
-            canEditDraft ? (
-              <a
-                href={`/admin/lots/${lotId}/edit`}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-              >
-                Edit draft →
-              </a>
-            ) : undefined
-          }
-        />
-      }
-      aside={
-        <LotContextRail
-          lotId={lotId}
-          auction={auction}
-          context={context}
-          bidCount={bidCount}
-          activityEvents={activityEvents}
-          connectRequired={connectRequired}
-          status={<AdminStatusBadge domain="lot" status={auction.status} />}
-          publicHref={publicHref}
-          quickActions={quickActions}
-        />
-      }
-      stickySubnav={
-        <>
-          <CatalogDetailTabNav
-            tabs={tabSpecs}
-            entityKind="lot"
+        }
+        mobileMeta={
+          <CatalogDetailMobileMeta
             entityId={lotId}
-            aria-label="Lot sections"
-          />
-          <LotDetailQueueNav
-            lotId={lotId}
-            saleId={auction.saleId ?? null}
-            lotNumber={auction.lotNumber ?? null}
-            compact
-          />
-          <CatalogDetailStickyMiniBar
-            items={[
-              { id: "hammer", label: "Hammer", value: formatMoney(auction.currentPrice) },
-              {
-                id: "status",
-                label: "Status",
-                value: <AdminStatusBadge domain="lot" status={auction.status} />,
-              },
+            {...(auction.updatedAt ? { updatedAt: auction.updatedAt } : {})}
+            publicHref={publicHref}
+            publicLabel="View on site"
+            status={<AdminStatusBadge domain="lot" status={auction.status} />}
+            quickLinks={[
+              ...(context.sale
+                ? [{ label: context.sale.title, href: `/admin/sales/${context.sale.id}` }]
+                : []),
             ]}
+            primaryAction={
+              lotNav.primaryMetaAction ? (
+                <a
+                  href={lotNav.primaryMetaAction.href}
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                >
+                  {lotNav.primaryMetaAction.label}
+                </a>
+              ) : undefined
+            }
           />
-        </>
-      }
-    >
-      <LotStatusJourney
-        snapshot={lifecycle.snapshot}
-        events={lifecycle.events}
-        saleName={context.sale?.title ?? null}
-      />
-      <Suspense fallback={null}>
-        <LotDetailConnectNotice
-          proactiveConnectRequired={connectRequired}
-          sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
+        }
+        aside={
+          <LotContextRail
+            lotId={lotId}
+            auction={auction}
+            context={context}
+            bidCount={bidCount}
+            activityEvents={activityEvents}
+            publishReadiness={publishReadiness}
+            deleteBlockers={deleteBlockers}
+            canManageAuction={canManageAuction}
+            status={<AdminStatusBadge domain="lot" status={auction.status} />}
+            publicHref={publicHref}
+            quickActions={quickActions}
+          />
+        }
+        stickySubnav={
+          <>
+            <CatalogDetailTabNav
+              tabs={tabSpecs}
+              entityKind="lot"
+              entityId={lotId}
+              aria-label="Lot sections"
+            />
+            <LotDetailQueueNav
+              lotId={lotId}
+              saleId={auction.saleId ?? null}
+              lotNumber={auction.lotNumber ?? null}
+              compact
+            />
+            <CatalogDetailStickyMiniBar
+              items={[
+                { id: "hammer", label: "Hammer", value: formatMoney(auction.currentPrice) },
+                {
+                  id: "status",
+                  label: "Status",
+                  value: <AdminStatusBadge domain="lot" status={auction.status} />,
+                },
+              ]}
+            />
+          </>
+        }
+      >
+        <LotStatusJourney
+          snapshot={lifecycle.snapshot}
+          events={lifecycle.events}
+          saleName={context.sale?.title ?? null}
         />
-      </Suspense>
-      {children}
-    </CatalogDetailShell>
+        <Suspense fallback={null}>
+          <LotDetailConnectNotice
+            proactiveConnectRequired={connectRequired}
+            sellerLegalEntityId={auction.sellerLegalEntityId ?? null}
+          />
+        </Suspense>
+        {publishReadiness ? (
+          <Suspense fallback={null}>
+            <CatalogWhatsNextBanner
+              entityLabel="lot"
+              readiness={publishReadiness}
+              dismissKey={lotDetailReadinessDismissKey(lotId)}
+            />
+          </Suspense>
+        ) : null}
+        <LotDetailReadinessProvider
+          publishReadiness={publishReadiness}
+          deleteBlockers={deleteBlockers}
+          canManageAuction={canManageAuction}
+        >
+          {children}
+        </LotDetailReadinessProvider>
+      </CatalogDetailShell>
+    </CatalogPostCreateSessionRoot>
   );
 }

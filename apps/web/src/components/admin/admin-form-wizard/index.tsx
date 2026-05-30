@@ -15,11 +15,19 @@ import {
   wizardDraftCookieKey,
   writeWizardDraft,
 } from "./wizard-draft";
+import {
+  WizardDraftSaveIndicator,
+  type WizardDraftSaveStatus,
+} from "./wizard-draft-save-indicator";
 import { WizardResumeBanner } from "./wizard-resume-banner";
 import {
+  type WizardMobileCancelAction,
+  type WizardMobilePrimaryAction,
   createWizardStepOwner,
   publishWizardStep,
+  registerWizardMobileCancel,
   registerWizardMobileNavigation,
+  registerWizardMobilePrimary,
   resetWizardStepSync,
 } from "./wizard-step-sync";
 
@@ -48,8 +56,14 @@ export type AdminFormWizardProps = {
   onBeforeNext?: (stepIndex: number) => boolean | Promise<boolean>;
   /** Hide duplicate sticky submit on mobile when CatalogMobileActionBar submits the form. */
   hideStickyOnMobile?: boolean;
+  /** When true, submitSlot is shown on every step (edit flows). */
+  showSubmitOnAllSteps?: boolean;
   /** Exposes goTo for submit-time navigation to the first invalid step. */
   onStepControl?: (control: { goTo: (index: number) => void }) => void;
+  /** Custom mobile primary action (overrides form submit on last step). */
+  mobilePrimaryAction?: WizardMobilePrimaryAction | null;
+  /** Custom mobile cancel (overrides static cancel href). */
+  mobileCancelAction?: WizardMobileCancelAction | null;
 };
 
 /** Multi-step admin form shell with step indicator, navigation, and sticky actions. */
@@ -66,7 +80,10 @@ export function AdminFormWizard({
   onDraftResume,
   onBeforeNext,
   hideStickyOnMobile = false,
+  showSubmitOnAllSteps = false,
   onStepControl,
+  mobilePrimaryAction = null,
+  mobileCancelAction = null,
 }: AdminFormWizardProps) {
   const draftKey = draft ? wizardDraftCookieKey(draft.entityKind, draft.entityId) : null;
   const { stepIndex, goNext, goPrev, goTo, isFirst, isLast, setDirty } = useWizardState(
@@ -76,17 +93,23 @@ export function AdminFormWizard({
   const [showResume, setShowResume] = useState(false);
   const [storedDraft, setStoredDraft] = useState<WizardDraftPayload | null>(null);
   const [stepJumpPending, setStepJumpPending] = useState(false);
+  const [draftSaveStatus, setDraftSaveStatus] = useState<WizardDraftSaveStatus>("idle");
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const submitRef = useRef<HTMLDivElement>(null);
   const draftGetValuesRef = useRef(draft?.getValues);
   draftGetValuesRef.current = draft?.getValues;
 
   const persistDraft = useCallback(() => {
     if (!draftKey || !isDirty) return;
+    setDraftSaveStatus("saving");
     writeWizardDraft(draftKey, {
       stepIndex,
       values: draftGetValuesRef.current?.() ?? {},
       savedAt: new Date().toISOString(),
     });
+    const savedAt = new Date().toISOString();
+    setDraftSavedAt(savedAt);
+    setDraftSaveStatus("saved");
   }, [draftKey, isDirty, stepIndex]);
 
   useEffect(() => {
@@ -142,6 +165,20 @@ export function AdminFormWizard({
     return () => registerWizardMobileNavigation(owner, null);
   }, [handleNext]);
 
+  useEffect(() => {
+    const owner = wizardOwnerRef.current;
+    if (!owner) return;
+    registerWizardMobilePrimary(owner, mobilePrimaryAction);
+    return () => registerWizardMobilePrimary(owner, null);
+  }, [mobilePrimaryAction]);
+
+  useEffect(() => {
+    const owner = wizardOwnerRef.current;
+    if (!owner) return;
+    registerWizardMobileCancel(owner, mobileCancelAction);
+    return () => registerWizardMobileCancel(owner, null);
+  }, [mobileCancelAction]);
+
   const handleStepClick = useCallback(
     async (targetIndex: number) => {
       if (stepJumpPending || targetIndex === stepIndex) return;
@@ -181,7 +218,7 @@ export function AdminFormWizard({
       if (isEditableTarget(event.target)) return;
       if (pending) return;
       event.preventDefault();
-      if (isLast) {
+      if (isLast || showSubmitOnAllSteps) {
         const submit = submitRef.current?.querySelector<HTMLButtonElement>(
           'button[type="submit"], button[data-wizard-submit="true"]',
         );
@@ -192,7 +229,7 @@ export function AdminFormWizard({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleNext, isLast, pending]);
+  }, [handleNext, isLast, pending, showSubmitOnAllSteps]);
 
   useEffect(() => {
     if (!draftKey || !isDirty) return;
@@ -233,12 +270,17 @@ export function AdminFormWizard({
         />
       ) : null}
       <div className="border-b border-border-hairline pb-4">
-        <WizardStepIndicator
-          steps={steps}
-          currentIndex={stepIndex}
-          onStepClick={(index) => void handleStepClick(index)}
-          stepNavigationDisabled={stepJumpPending || pending}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <WizardStepIndicator
+            steps={steps}
+            currentIndex={stepIndex}
+            onStepClick={(index) => void handleStepClick(index)}
+            stepNavigationDisabled={stepJumpPending || pending}
+          />
+          {draftKey ? (
+            <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
+          ) : null}
+        </div>
       </div>
       <div className="min-h-[12rem]">{stepBody}</div>
       <StickySaveBar className={cn(hideStickyOnMobile && "hidden md:block")}>
@@ -251,6 +293,7 @@ export function AdminFormWizard({
               onBack={handleBack}
               onNext={() => void handleNext()}
               submitSlot={submitSlot}
+              showSubmitOnAllSteps={showSubmitOnAllSteps}
               pending={pending}
             />
           </div>

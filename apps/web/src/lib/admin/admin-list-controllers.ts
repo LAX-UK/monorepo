@@ -56,6 +56,7 @@ export type SalesListQuery = AdminListQueryBase & {
   lifecycle?: SaleLifecycleSlug | undefined;
   /** Server-side filter — online | onsite */
   delivery?: "online" | "onsite" | undefined;
+  needsSetup?: boolean | undefined;
 };
 
 const saleLifecycleStatuses: Partial<Record<SaleLifecycleSlug, SaleStatus>> = {
@@ -88,7 +89,16 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
       deliveryRaw === "online" || deliveryRaw === "onsite"
         ? (deliveryRaw as "online" | "onsite")
         : undefined;
-    return { ...base, lifecycle: life, status, delivery, limit: Math.min(100, base.limit) };
+    const lensRaw = firstString(sp.lens)?.trim()?.toLowerCase();
+    const needsSetup = lensRaw === "setup" || firstString(sp.needsSetup) === "1";
+    return {
+      ...base,
+      lifecycle: life,
+      status: needsSetup ? "draft" : status,
+      delivery,
+      needsSetup: needsSetup || undefined,
+      limit: Math.min(100, base.limit),
+    };
   },
   async fetch(q) {
     const life = q.lifecycle;
@@ -106,6 +116,8 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
       q?: string;
       deliveryMode?: "online" | "onsite";
       settlementStatus?: "settled" | "unsettled";
+      sort?: "createdDesc" | "startAsc";
+      needsSetup?: boolean;
     } = {
       limit: q.limit,
       offset: q.offset,
@@ -115,10 +127,18 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
     if (q.q !== undefined && q.q !== "") p.q = q.q;
     if (q.delivery) p.deliveryMode = q.delivery;
     if (settlementStatus) p.settlementStatus = settlementStatus;
-    const rows = await getAdminSalesList(p);
-    return { rows, offset: q.offset, limit: q.limit };
+    if (q.sort) p.sort = q.sort as "createdDesc" | "startAsc";
+    if (q.needsSetup) p.needsSetup = true;
+    const fetchLimit = q.limit + 1;
+    const rows = await getAdminSalesList({ ...p, limit: fetchLimit });
+    const hasNextPage = rows.length > q.limit;
+    const pageRows = hasNextPage ? rows.slice(0, q.limit) : rows;
+    return { rows: pageRows, offset: q.offset, limit: q.limit, hasNextPage };
   },
 };
+
+export type { SalesListExportFilters } from "./sales-list-export-filters";
+export { salesListExportFilters } from "./sales-list-export-filters";
 
 export type UsersListQuery = AdminListQueryBase & {
   role?: string | undefined;
@@ -160,6 +180,7 @@ export type LotsListQuery = AdminListQueryBase & {
   sort?: ListLotsParams["sort"] | undefined;
   q?: string | undefined;
   viewPipeline?: boolean | undefined;
+  needsPhotos?: boolean | undefined;
 };
 
 export const lotsListController: IAdminListController<
@@ -176,6 +197,7 @@ export const lotsListController: IAdminListController<
     const saleId = firstString(sp.saleId);
     const categoryId = firstString(sp.categoryId);
     const sort = firstString(sp.sort) as ListLotsParams["sort"] | undefined;
+    const needsPhotos = firstString(sp.needsPhotos) === "1";
     const qRaw = base.q?.trim();
     const q = qRaw ? qRaw.slice(0, 200) : undefined;
     const limit = viewPipeline ? 200 : Math.min(200, base.limit);
@@ -189,11 +211,13 @@ export const lotsListController: IAdminListController<
       categoryId,
       sort,
       q,
+      needsPhotos,
     };
   },
   async fetch(q) {
+    const fetchLimit = q.viewPipeline ? q.limit : q.limit + 1;
     const p: ListLotsParams = {
-      limit: q.limit,
+      limit: fetchLimit,
       offset: q.offset,
     };
     if (q.status !== undefined) p.status = q.status;
@@ -202,8 +226,14 @@ export const lotsListController: IAdminListController<
     if (q.categoryId !== undefined && q.categoryId !== "") p.categoryId = q.categoryId;
     if (q.sort !== undefined) p.sort = q.sort;
     if (q.q !== undefined && q.q !== "") p.q = q.q;
+    if (q.needsPhotos) p.needsPhotos = true;
     const rows = await getAdminLotList(p);
-    return { rows, offset: q.offset, limit: q.limit };
+    if (q.viewPipeline) {
+      return { rows, offset: q.offset, limit: q.limit };
+    }
+    const hasNextPage = rows.length > q.limit;
+    const pageRows = hasNextPage ? rows.slice(0, q.limit) : rows;
+    return { rows: pageRows, offset: q.offset, limit: q.limit, hasNextPage };
   },
 };
 

@@ -1,22 +1,24 @@
 "use client";
 
+import { buildListHref } from "@/lib/admin/admin-list-params";
 import Link from "next/link";
 
 export function LotsLayoutToggle({
-  searchQuery,
+  listParams,
   viewPipeline,
 }: {
-  searchQuery: string;
+  /** Current list URL params (serializable from RSC). */
+  listParams: Record<string, string | undefined>;
   viewPipeline: boolean;
 }) {
-  const pipelineHref = (() => {
-    const qs = new URLSearchParams();
-    qs.set("view", "pipeline");
-    if (searchQuery) qs.set("q", searchQuery);
-    return `/admin/lots?${qs.toString()}`;
-  })();
-  const tableHref =
-    searchQuery.length > 0 ? `/admin/lots?q=${encodeURIComponent(searchQuery)}` : "/admin/lots";
+  const tableHref = buildListHref("/admin/lots", listParams, {
+    view: "",
+    offset: 0,
+  });
+  const pipelineHref = buildListHref("/admin/lots", listParams, {
+    view: "pipeline",
+    offset: 0,
+  });
 
   return (
     <fieldset className="flex flex-wrap gap-2 border-0 p-0">

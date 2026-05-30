@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  WizardFormReviewSection,
+  WizardReviewRow,
+} from "@/components/admin/admin-form-wizard/wizard-form-review-section";
 import { buyerPremiumSummary } from "@/components/admin/sale-detail/sale-detail-helpers";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
@@ -25,6 +29,7 @@ type Props = {
   pendingRegistrationCount?: number | null;
   canPublish: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
+  onEditSummary?: () => void;
 };
 
 function SetupReviewBeforePublish({
@@ -90,6 +95,7 @@ export function SaleSetupReviewStep({
   pendingRegistrationCount = null,
   canPublish,
   connectRequiredByLotId,
+  onEditSummary,
 }: Props) {
   const readiness = buildSaleSetupReadiness({
     saleId,
@@ -114,40 +120,14 @@ export function SaleSetupReviewStep({
 
       <SetupReviewBeforePublish readiness={readiness} />
 
-      <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
-        <dl className="grid gap-4 sm:grid-cols-2 font-body text-sm">
-          <div>
-            <dt className="font-label text-[10px] uppercase tracking-wide text-secondary">Sale</dt>
-            <dd className="mt-1 text-on-surface">{sale.title}</dd>
-          </div>
-          <div>
-            <dt className="font-label text-[10px] uppercase tracking-wide text-secondary">
-              Delivery
-            </dt>
-            <dd className="mt-1 capitalize text-on-surface">{sale.deliveryMode}</dd>
-          </div>
-          <div>
-            <dt className="font-label text-[10px] uppercase tracking-wide text-secondary">Opens</dt>
-            <dd className="mt-1 tabular-nums text-on-surface">{formatDateTime(sale.startTime)}</dd>
-          </div>
-          <div>
-            <dt className="font-label text-[10px] uppercase tracking-wide text-secondary">
-              Closes
-            </dt>
-            <dd className="mt-1 tabular-nums text-on-surface">{formatDateTime(sale.endTime)}</dd>
-          </div>
-          <div>
-            <dt className="font-label text-[10px] uppercase tracking-wide text-secondary">Lots</dt>
-            <dd className="mt-1 tabular-nums text-on-surface">{lots.length}</dd>
-          </div>
-          <div>
-            <dt className="font-label text-[10px] uppercase tracking-wide text-secondary">
-              Buyer premium
-            </dt>
-            <dd className="mt-1 text-on-surface">{buyerPremiumSummary(sale)}</dd>
-          </div>
-        </dl>
-      </div>
+      <WizardFormReviewSection title="Summary" onEdit={() => onEditSummary?.()}>
+        <WizardReviewRow label="Sale" value={sale.title} />
+        <WizardReviewRow label="Delivery" value={sale.deliveryMode} />
+        <WizardReviewRow label="Opens" value={formatDateTime(sale.startTime)} />
+        <WizardReviewRow label="Closes" value={formatDateTime(sale.endTime)} />
+        <WizardReviewRow label="Lots" value={String(lots.length)} />
+        <WizardReviewRow label="Buyer premium" value={buyerPremiumSummary(sale)} />
+      </WizardFormReviewSection>
     </div>
   );
 }

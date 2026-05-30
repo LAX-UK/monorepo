@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  type Lot,
   type Sale,
   type UserRole,
   normalizeUserStaffRole,
@@ -57,6 +58,36 @@ export class SaleSoftDeleteService {
     };
   }
 
+  async getDeleteEligibilityBatch(
+    rows: Array<{ sale: Sale; lots: Lot[] }>,
+  ): Promise<Map<string, SaleDeleteEligibility>> {
+    const eligible = rows.filter((r) => r.sale.status === "draft" || r.sale.status === "scheduled");
+    const result = new Map<string, SaleDeleteEligibility>();
+    if (eligible.length === 0) return result;
+
+    const saleIds = eligible.map((r) => r.sale.id);
+    const guardsBySale = await this.sideEffects.countGuardsForSales(saleIds);
+
+    for (const { sale, lots } of eligible) {
+      const guards = guardsBySale.get(sale.id) ?? {
+        bidCount: 0,
+        paymentCount: 0,
+        approvedRegistrationCount: 0,
+      };
+      const ctx: SaleSoftDeleteContext = { sale, lots, guards };
+      const blockers = listSaleSoftDeleteBlockers(ctx);
+      const canDelete = canSaleSoftDelete(ctx);
+      result.set(sale.id, {
+        canDelete,
+        confirmationPhrase: canDelete ? saleDeleteConfirmationPhrase(sale.title) : null,
+        guards,
+        blockers,
+      });
+    }
+
+    return result;
+  }
+
   async softDelete(
     actorUserId: string,
     userRole: string,
@@ -95,12 +126,17 @@ export class SaleSoftDeleteService {
 
     const deletedAt = new Date();
     const lotIds = lots.map((l) => l.id);
-    await this.sideEffects.softDeleteCascade({
-      saleId,
-      actorUserId,
-      deletedAt,
-      lotIds,
-    });
+    try {
+      await this.sideEffects.softDeleteCascade({
+        saleId,
+        actorUserId,
+        deletedAt,
+        lotIds,
+      });
+    } catch (error) {
+      if (error instanceof LotError) return err(error);
+      throw error;
+    }
 
     await this.publishEvent(actorUserId, sale, lots.length, deletedAt);
 
