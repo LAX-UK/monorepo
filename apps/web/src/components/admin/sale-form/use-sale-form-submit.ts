@@ -1,5 +1,6 @@
 "use client";
 
+import { validateAllCatalogWizardSteps } from "@/components/admin/catalog/use-catalog-form-submit";
 import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { saleFormStepLabel, saleFormValidationBanner } from "@/lib/admin/sale-form-step-copy";
@@ -20,11 +21,11 @@ import {
   safeParseUpdatePublishedSaleFromForm,
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
-import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
-import type { UseFormReturn } from "react-hook-form";
+import type { FieldValues, UseFormReturn } from "react-hook-form";
+import type { z as zod } from "zod";
 
 export const SALE_STEP_FIELDS = SALE_FORM_WIZARD_STEP_FIELDS.map((fields) => [
   ...fields,
@@ -51,7 +52,7 @@ type SubmitArgs = {
   isDraft: boolean;
   lots: Lot[];
   form: UseFormReturn<AdminSaleFormValues>;
-  formSchema: Parameters<typeof validateWizardStep>[1];
+  formSchema: zod.ZodType<AdminSaleFormValues>;
   wizardGoTo: (index: number) => void;
   onSaveNotice: (message: string | null) => void;
   onValidationBanner?: (message: string | null, stepIndex?: number) => void;
@@ -60,17 +61,15 @@ type SubmitArgs = {
 
 export async function validateAllSaleWizardSteps(
   form: UseFormReturn<AdminSaleFormValues>,
-  formSchema: Parameters<typeof validateWizardStep>[1],
+  formSchema: Parameters<typeof validateAllCatalogWizardSteps>[1],
   wizardGoTo: (index: number) => void,
 ): Promise<boolean> {
-  for (let i = 0; i < SALE_STEP_FIELDS.length; i++) {
-    const fields = SALE_STEP_FIELDS[i];
-    if (fields?.length && !(await validateWizardStep(form, formSchema, fields))) {
-      wizardGoTo(i);
-      return false;
-    }
-  }
-  return true;
+  return validateAllCatalogWizardSteps(
+    form as unknown as UseFormReturn<FieldValues>,
+    formSchema,
+    SALE_STEP_FIELDS,
+    wizardGoTo,
+  );
 }
 
 export function reportSaleFormZodFailure(

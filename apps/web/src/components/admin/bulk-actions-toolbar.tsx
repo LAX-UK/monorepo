@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  type BulkLotsActionResult,
-  bulkLotsFailureMessage,
-  bulkLotsHasConnectRequired,
-  bulkLotsHasUseSalePublish,
-  bulkLotsPartialSuccessMessage,
-} from "@/lib/admin/bulk-ops/lot-bulk-result";
+import { handleBulkActionResult } from "@/lib/admin/catalog-bulk-result-handler";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
@@ -22,12 +16,6 @@ export type BulkOperation = {
   destructive?: boolean;
   run(ids: string[]): Promise<ActionResult<unknown>>;
 };
-
-function isBulkLotsResult(data: unknown): data is BulkLotsActionResult {
-  if (!data || typeof data !== "object") return false;
-  const row = data as Record<string, unknown>;
-  return typeof row.attempted === "number" && typeof row.failed === "number";
-}
 
 type Props = {
   selectedIds: string[];
@@ -52,29 +40,21 @@ export function BulkActionsToolbar({
     startTransition(() => {
       void (async () => {
         const result = await operation.run(selectedIds);
-        if (!result.ok) {
-          const bulkMeta = result.meta?.bulk;
-          if (isBulkLotsResult(bulkMeta) && bulkLotsHasConnectRequired(bulkMeta)) {
-            notify.error(bulkLotsFailureMessage(bulkMeta));
-          } else if (isBulkLotsResult(bulkMeta) && bulkLotsHasUseSalePublish(bulkMeta)) {
-            notify.error(bulkLotsFailureMessage(bulkMeta));
-          } else {
-            notify.error(result.error);
-          }
-          if (isBulkLotsResult(bulkMeta) && bulkMeta.succeeded > 0) {
-            onClear();
-            router.refresh();
-          }
-          return;
-        }
-        const bulk = isBulkLotsResult(result.data) ? result.data : null;
-        if (bulk && bulk.failed > 0) {
-          notify.warning(bulkLotsPartialSuccessMessage(operation.label, bulk));
+        const handled = handleBulkActionResult({
+          operationLabel: operation.label,
+          result,
+          onPartialClear: onClear,
+          refresh: () => router.refresh(),
+        });
+        if (handled.variant === "error") {
+          notify.error(handled.message);
+        } else if (handled.variant === "warning") {
+          notify.warning(handled.message);
         } else {
-          notify.success(`${operation.label} complete`);
+          notify.success(handled.message);
         }
-        onClear();
-        router.refresh();
+        if (handled.shouldClear) onClear();
+        if (handled.shouldRefresh) router.refresh();
       })();
     });
   };

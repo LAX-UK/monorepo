@@ -57,6 +57,8 @@ export type ListSalesFilter = {
   deliveryMode?: Sale["deliveryMode"] | undefined;
   /** Applies to ended sales — filters by buyer payment settlement on sold lots. */
   settlementStatus?: "settled" | "unsettled" | undefined;
+  /** Draft sales missing lots or onsite venue details. */
+  needsSetup?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListSalesSort | undefined;

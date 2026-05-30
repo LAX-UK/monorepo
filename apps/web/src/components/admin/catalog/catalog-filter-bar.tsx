@@ -4,8 +4,8 @@ import {
   type CatalogSegmentItem,
   CatalogSegmentNav,
 } from "@/components/admin/catalog/catalog-segment-nav";
-import { MarketingFilterSheet } from "@/components/marketing/marketing-filter-sheet";
 import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
+import { SplitFilterSheet } from "@/components/ui/split-filter-sheet";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 import { useId, useState } from "react";
@@ -67,12 +67,17 @@ export function CatalogFilterBar({
         </div>
       </div>
       {showFilterTrigger ? (
-        <MarketingFilterSheet open={open} onOpenChange={setOpen} title={sheetTitle}>
+        <SplitFilterSheet
+          open={open}
+          onOpenChange={setOpen}
+          title={sheetTitle}
+          description="Refine catalog results. Filter changes apply when you navigate."
+        >
           <div id={filterPanelId} className="space-y-4">
             {searchSlot ? <div className="sm:hidden">{searchSlot}</div> : null}
             {sheetFilters}
           </div>
-        </MarketingFilterSheet>
+        </SplitFilterSheet>
       ) : null}
     </div>
   );

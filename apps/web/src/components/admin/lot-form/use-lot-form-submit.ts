@@ -1,5 +1,6 @@
 "use client";
 
+import { validateAllCatalogWizardSteps } from "@/components/admin/catalog/use-catalog-form-submit";
 import {
   adminCreateLotResultAction,
   adminUpdateLotMarketingDetailsResultAction,
@@ -14,7 +15,6 @@ import {
   safeParseCreateLotFromForm,
   safeParseUpdateLotFromForm,
 } from "@/lib/forms/schemas/admin-lot-form";
-import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { UseFormReturn } from "react-hook-form";
@@ -41,14 +41,7 @@ export async function validateAllLotWizardSteps(
   lotStepFields: (keyof AdminLotFormValues)[][],
   wizardGoTo: (index: number) => void,
 ): Promise<boolean> {
-  for (let i = 0; i < lotStepFields.length; i++) {
-    const fields = lotStepFields[i];
-    if (fields?.length && !(await validateWizardStep(form, formSchema, fields))) {
-      wizardGoTo(i);
-      return false;
-    }
-  }
-  return true;
+  return validateAllCatalogWizardSteps(form, formSchema, lotStepFields, wizardGoTo);
 }
 
 export function reportLotFormValidationFailure(
