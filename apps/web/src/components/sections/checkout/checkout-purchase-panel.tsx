@@ -43,6 +43,7 @@ import { useForm, useWatch } from "react-hook-form";
 type Props = {
   sessionUser: SessionUser;
   lotId: string;
+  lotTitle: string;
   hammer: string;
   buyerPremium: string;
   total: string;
@@ -126,6 +127,7 @@ function ManualReviewBlock({ reason }: { reason: ManualReviewReason | null }) {
 export function CheckoutPurchasePanel({
   sessionUser,
   lotId,
+  lotTitle,
   hammer,
   buyerPremium,
   total,
@@ -138,6 +140,7 @@ export function CheckoutPurchasePanel({
   openPaymentManualReviewReason = null,
 }: Props) {
   const [submitted, setSubmitted] = useState(false);
+  const [redirectingToStripe, setRedirectingToStripe] = useState(false);
   const [submittedReviewReason, setSubmittedReviewReason] = useState<ManualReviewReason | null>(
     null,
   );
@@ -202,6 +205,25 @@ export function CheckoutPurchasePanel({
     );
   }
 
+  if (redirectingToStripe) {
+    return (
+      <div id="checkout-complete-purchase" className="scroll-mt-28">
+        <output
+          className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10"
+          aria-live="polite"
+        >
+          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+            Secure checkout
+          </p>
+          <p className="font-headline text-2xl text-on-surface">Opening Stripe checkout…</p>
+          <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
+            Taking you to pay for {lotTitle}. This may take a few seconds.
+          </p>
+        </output>
+      </div>
+    );
+  }
+
   if (submitted && submittedReviewReason) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28">
@@ -228,6 +250,7 @@ export function CheckoutPurchasePanel({
           transactionId: data.paymentId,
         });
       }
+      setRedirectingToStripe(true);
       window.location.assign(data.checkoutUrl);
       return;
     }

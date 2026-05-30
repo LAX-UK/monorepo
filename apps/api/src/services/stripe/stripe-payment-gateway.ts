@@ -3,6 +3,12 @@ import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../lib/stripe-retries.js";
+import { buildStripeCheckoutCustomText } from "../payment/stripe-checkout-product-display.js";
+import type {
+  CreateBankTransferCheckoutSessionInput,
+  CreateCheckoutSessionInput,
+  CreateCheckoutSessionResult,
+} from "./stripe-checkout-session.types.js";
 
 export type StripeRefundInput = {
   chargeId: string;
@@ -15,27 +21,12 @@ export type StripeRefundGatewayResult =
   | { kind: "created"; refundId: string }
   | { kind: "already_refunded" };
 
-export type CreateCheckoutSessionInput = {
-  paymentId: string;
-  lotId: string;
-  amountCents: number;
-  currency: string;
-  buyerEmail: string;
-  successUrl: string;
-  cancelUrl: string;
-  /** Override Stripe idempotency key (defaults to rail + payment id). */
-  idempotencyKey?: string;
-};
-
-export type CreateBankTransferCheckoutSessionInput = CreateCheckoutSessionInput & {
-  stripeCustomerId: string;
-};
-
-export type CreateCheckoutSessionResult = {
-  sessionId: string;
-  url: string;
-  paymentIntentId: string | null;
-};
+export type {
+  CreateBankTransferCheckoutSessionInput,
+  CreateCheckoutSessionInput,
+  CreateCheckoutSessionResult,
+  StripeCheckoutLineItem,
+} from "./stripe-checkout-session.types.js";
 
 export interface IStripePaymentGateway {
   isConfigured(): boolean;
@@ -129,37 +120,9 @@ export class StripePaymentGateway implements IStripePaymentGateway {
     }
     return executeWithStripeRetries(async () => {
       const session = await stripe.checkout.sessions.create(
-        {
-          mode: "payment",
+        this.buildCheckoutSessionParams(input, "card", {
           customer_email: input.buyerEmail,
-          line_items: [
-            {
-              quantity: 1,
-              price_data: {
-                currency: input.currency.toLowerCase(),
-                unit_amount: input.amountCents,
-                product_data: {
-                  name: "Auction lot payment",
-                  metadata: { lotId: input.lotId },
-                },
-              },
-            },
-          ],
-          metadata: {
-            paymentId: input.paymentId,
-            lotId: input.lotId,
-            checkoutRail: "card",
-          },
-          payment_intent_data: {
-            metadata: {
-              paymentId: input.paymentId,
-              lotId: input.lotId,
-              checkoutRail: "card",
-            },
-          },
-          success_url: input.successUrl,
-          cancel_url: input.cancelUrl,
-        },
+        }),
         {
           idempotencyKey: input.idempotencyKey ?? `checkout:card:payment:${input.paymentId}`,
         },
@@ -177,22 +140,8 @@ export class StripePaymentGateway implements IStripePaymentGateway {
     }
     return executeWithStripeRetries(async () => {
       const session = await stripe.checkout.sessions.create(
-        {
-          mode: "payment",
+        this.buildCheckoutSessionParams(input, "gb_bank_transfer", {
           customer: input.stripeCustomerId,
-          line_items: [
-            {
-              quantity: 1,
-              price_data: {
-                currency: input.currency.toLowerCase(),
-                unit_amount: input.amountCents,
-                product_data: {
-                  name: "Auction lot payment",
-                  metadata: { lotId: input.lotId },
-                },
-              },
-            },
-          ],
           payment_method_types: ["customer_balance"],
           payment_method_options: {
             customer_balance: {
@@ -202,27 +151,60 @@ export class StripePaymentGateway implements IStripePaymentGateway {
               },
             },
           },
-          metadata: {
-            paymentId: input.paymentId,
-            lotId: input.lotId,
-            checkoutRail: "gb_bank_transfer",
-          },
-          payment_intent_data: {
-            metadata: {
-              paymentId: input.paymentId,
-              lotId: input.lotId,
-              checkoutRail: "gb_bank_transfer",
-            },
-          },
-          success_url: input.successUrl,
-          cancel_url: input.cancelUrl,
-        },
+        }),
         {
           idempotencyKey: input.idempotencyKey ?? `checkout:bank:payment:${input.paymentId}`,
         },
       );
       return this.toCheckoutResult(session);
     });
+  }
+
+  private buildCheckoutSessionParams(
+    input: CreateCheckoutSessionInput,
+    checkoutRail: "card" | "gb_bank_transfer",
+    extra: Stripe.Checkout.SessionCreateParams,
+  ): Stripe.Checkout.SessionCreateParams {
+    return {
+      mode: "payment",
+      locale: "en-GB",
+      line_items: input.lineItems.map((item) => ({
+        quantity: 1,
+        price_data: {
+          currency: input.currency.toLowerCase(),
+          unit_amount: item.unitAmountCents,
+          product_data: {
+            name: item.name,
+            ...(item.description ? { description: item.description } : {}),
+            ...(item.images?.length ? { images: item.images } : {}),
+            metadata: {
+              lotId: input.lotId,
+              paymentId: input.paymentId,
+              ...item.metadata,
+            },
+          },
+        },
+      })),
+      custom_text: buildStripeCheckoutCustomText(),
+      metadata: {
+        paymentId: input.paymentId,
+        lotId: input.lotId,
+        checkoutRail,
+      },
+      payment_intent_data: {
+        description: input.paymentIntentDescription,
+        statement_descriptor_suffix: input.statementDescriptorSuffix,
+        receipt_email: input.buyerEmail,
+        metadata: {
+          paymentId: input.paymentId,
+          lotId: input.lotId,
+          checkoutRail,
+        },
+      },
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+      ...extra,
+    };
   }
 
   private toCheckoutResult(session: Stripe.Checkout.Session): CreateCheckoutSessionResult {
