@@ -110,3 +110,19 @@ export type PublicArtistDirectoryResult = {
 export type PublicArtistDetail = ArtistProfile & {
   aliases: string[];
 };
+
+/** Guard counts evaluated before hard-deleting an artist profile. */
+export type ArtistDeleteGuardCounts = {
+  lotCount: number;
+  mergeDependentCount: number;
+  watchlistCount: number;
+};
+
+/** Admin delete eligibility for an artist profile. */
+export type ArtistDeleteEligibility = {
+  canDelete: boolean;
+  blockers: string[];
+  warnings: string[];
+  confirmationPhrase: string | null;
+  guards: ArtistDeleteGuardCounts;
+};
