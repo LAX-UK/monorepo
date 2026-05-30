@@ -5,7 +5,9 @@ import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { RevealOnMount } from "@/components/ui/reveal";
+import { HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -58,7 +60,12 @@ function LiveHeroContent({
 function LaxHeroLiveSplitEmbed({ vm }: Props) {
   return (
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
-      <div className="relative mx-auto flex min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] flex-col md:min-h-[min(100svh,760px)]">
+      <div
+        className={cn(
+          "relative mx-auto flex w-full max-w-[var(--container-max,1440px)] flex-col",
+          HOME_HERO_MIN_H,
+        )}
+      >
         <div className="relative aspect-video w-full shrink-0 bg-black">
           <RevealOnMount
             className="absolute inset-0 overflow-hidden"
@@ -125,7 +132,12 @@ export function LaxHeroLiveStream({ vm }: Props) {
 
   return (
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
-      <div className="relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] md:min-h-[min(100svh,760px)]">
+      <div
+        className={cn(
+          "relative mx-auto w-full max-w-[var(--container-max,1440px)]",
+          HOME_HERO_MIN_H,
+        )}
+      >
         <HeroAdaptiveShell
           src={poster}
           alt={`${vm.saleTitle} — saleroom cover`}

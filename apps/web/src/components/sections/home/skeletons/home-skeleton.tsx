@@ -1,4 +1,5 @@
-import { Skeleton } from "@auction/ui";
+import { HOME_HERO_BLEED, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
+import { Skeleton, cn } from "@auction/ui";
 
 /** F5b — Per-section skeleton mirroring the actual home composition.
  *
@@ -9,8 +10,8 @@ import { Skeleton } from "@auction/ui";
 export function HomeSkeleton() {
   return (
     <div aria-hidden className="flex flex-col">
-      <div className="relative w-full">
-        <Skeleton className="aspect-[1440/760] w-full rounded-none shimmer-sweep" />
+      <div className={HOME_HERO_BLEED}>
+        <Skeleton className={cn("w-full rounded-none shimmer-sweep", HOME_HERO_MIN_H)} />
       </div>
       <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-6 py-12 md:px-10 lg:px-14">
         <Skeleton className="mb-8 h-10 w-64" />

@@ -1,12 +1,13 @@
 "use client";
 
 import type { BidBoardRow } from "@/components/dashboard/bid-board-rows";
+import { DashboardMobileLotThumbnail } from "@/components/dashboard/list/dashboard-mobile-lot-thumbnail";
 import {
   DashboardListRowCard,
   DashboardMobileList,
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
-import { MediaImage } from "@/components/ui/media-image";
+import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
@@ -35,6 +36,7 @@ type Props = {
 };
 
 export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
+  const rowPadding = useDashboardListRowPaddingClass();
   return (
     <DashboardMobileList>
       {rows.map((row) => {
@@ -53,19 +55,14 @@ export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
         return (
           <li key={row.bid.id}>
             <DashboardListRowCard
+              className={rowPadding}
               thumbnail={
-                <Link
+                <DashboardMobileLotThumbnail
                   href={lotPath(lot)}
-                  className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-container-high"
-                >
-                  <MediaImage
-                    src={img}
-                    alt=""
-                    label="Lot artwork"
-                    imgClassName={row.outbid ? "grayscale" : undefined}
-                    sizes="56px"
-                  />
-                </Link>
+                  src={img}
+                  alt={`${lot.title} thumbnail`}
+                  {...(row.outbid ? { imgClassName: "grayscale" } : {})}
+                />
               }
               title={
                 <Link

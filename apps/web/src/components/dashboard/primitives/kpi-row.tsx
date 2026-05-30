@@ -2,8 +2,9 @@ import { type AccentTrack, accentHeroBorderClass } from "@/lib/dashboard/accent-
 import { cn } from "@auction/ui";
 import { KpiTile, type KpiTileProps } from "@auction/ui/components/kpi-tile";
 import { StatStrip } from "@auction/ui/components/stat-strip";
+import Link from "next/link";
 
-export type KpiRowTile = KpiTileProps & { id?: string };
+export type KpiRowTile = KpiTileProps & { id?: string; href?: string };
 
 export type KpiRowProps = {
   tiles: readonly KpiRowTile[];
@@ -52,8 +53,26 @@ export function KpiRow({
     >
       <StatStrip {...(sticky ? { sticky: true } : {})} className={columnClass}>
         {tiles.map((tile, index) => {
-          const { id, ...tileProps } = tile;
-          return <KpiTile key={id ?? `${String(tile.label)}-${index}`} {...tileProps} />;
+          const { id, href, ...tileProps } = tile;
+          const content = (
+            <KpiTile {...tileProps} clickable={Boolean(href) || tileProps.clickable === true} />
+          );
+          if (href) {
+            return (
+              <Link
+                key={id ?? `${String(tile.label)}-${index}`}
+                href={href}
+                className="block min-w-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                {content}
+              </Link>
+            );
+          }
+          return (
+            <div key={id ?? `${String(tile.label)}-${index}`} className="min-w-0">
+              {content}
+            </div>
+          );
         })}
       </StatStrip>
     </section>

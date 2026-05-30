@@ -90,7 +90,15 @@ export function getClientBuyingNavItems(orgModuleEnabled = true): AppShellNavIte
       { id: "bids", label: "My Bids", href: "/dashboard/bids", icon: TrendingUp },
       { id: "portfolio", label: "Collection", href: "/dashboard/portfolio", icon: Package },
       { id: "payments", label: "My payments", href: "/dashboard/payments", icon: CreditCard },
-      { id: "watchlist", label: "Watchlist", href: "/dashboard/watchlist", icon: Heart },
+      {
+        id: "watchlist",
+        label: "Watchlist",
+        href: "/dashboard/watchlist",
+        icon: Heart,
+        match: (pathname) =>
+          pathname.startsWith("/dashboard/watchlist") ||
+          pathname.startsWith("/dashboard/artist-follow"),
+      },
       {
         id: "organisations",
         label: "Organisations",
@@ -215,7 +223,7 @@ export function getClientMobileBottomTabs(
     buying.find((item) => item.id === "overview"),
     buying.find((item) => item.id === "bids"),
     buying.find((item) => item.id === "watchlist"),
-    buying.find((item) => item.id === "portfolio"),
+    buying.find((item) => item.id === "notifications"),
     more,
   ].filter((item): item is AppShellNavItem => item != null);
 }

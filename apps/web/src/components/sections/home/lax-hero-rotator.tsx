@@ -13,6 +13,7 @@ import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { Carousel, CarouselContent, CarouselItem, cn, useCarousel } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -38,7 +39,8 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       opts={{ loop: true, align: "start" }}
       plugins={plugins}
       className={cn(
-        "relative mx-auto min-h-[min(100svh,520px)] w-full max-w-[var(--container-max,1440px)] overflow-x-hidden bg-hero-cream dark:bg-surface-container-low md:min-h-[min(100svh,760px)]",
+        "relative mx-auto w-full max-w-[var(--container-max,1440px)] overflow-x-hidden bg-hero-cream dark:bg-surface-container-low",
+        HOME_HERO_MIN_H,
         FOCUS_RING,
       )}
       aria-label="Upcoming salerooms"
@@ -51,7 +53,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       tabIndex={0}
     >
       <HeroProgressWithCarousel paused={paused} active={n > 1} reduceMotion={reduceMotion} />
-      <CarouselContent className="-ml-0 h-full min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]">
+      <CarouselContent className={cn("-ml-0 h-full", HOME_HERO_MIN_H)}>
         {slides.map((slide, i) => (
           <CarouselItem key={slide.id} className="basis-full pl-0">
             <HeroSlidePanel slide={slide} priority={i === 0} />
@@ -63,7 +65,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
   );
 }
 
-const HERO_MIN_H = "min-h-[min(100svh,520px)] md:min-h-[min(100svh,760px)]";
+const HERO_MIN_H = HOME_HERO_MIN_H;
 
 function HeroSlidePanel({ slide, priority }: { slide: HeroSaleSlideVM; priority: boolean }) {
   return (
@@ -120,8 +122,9 @@ function HeroChrome({ slides }: { slides: HeroSaleSlideVM[] }) {
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-0 z-[2] flex flex-col justify-end px-6 pb-16 pt-32 md:px-10 md:pb-20 lg:px-10",
-        HERO_MIN_H,
+        "pointer-events-none absolute inset-0 z-[2] flex flex-col justify-end px-6 pb-16 md:px-10 md:pb-20 lg:px-10",
+        HOME_HERO_MIN_H,
+        HOME_HERO_CONTENT_PT,
       )}
     >
       <HeroSlideCopy slide={current} slideIndex={selectedIndex} slideCount={n} />

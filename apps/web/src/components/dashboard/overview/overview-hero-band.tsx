@@ -38,10 +38,16 @@ export function OverviewHeroBand({
     <section
       aria-label="Today at a glance"
       className={cn(
-        "rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-lg sm:p-5",
+        "rounded-xl border border-border-hairline bg-surface-container-lowest p-4 sm:p-5",
         className,
       )}
     >
+      {firstSettlement ? (
+        <div className="mb-4 lg:hidden">
+          <ActionRequiredBanner row={firstSettlement} variant="strip" />
+        </div>
+      ) : null}
+
       <KpiRow
         variant="default"
         embedded
@@ -51,7 +57,7 @@ export function OverviewHeroBand({
       />
 
       {firstSettlement ? (
-        <div className="mt-4 border-t border-border-hairline pt-4">
+        <div className="mt-4 hidden border-t border-border-hairline pt-4 lg:block">
           <ActionRequiredBanner row={firstSettlement} variant="strip" />
         </div>
       ) : null}

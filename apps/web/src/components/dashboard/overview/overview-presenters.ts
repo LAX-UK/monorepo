@@ -1,10 +1,10 @@
+import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { kpiCompareHint } from "@/lib/dashboard/kpi-slot-conventions";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { lotTotalMajorUnits } from "@/lib/data/view-models/lot-pricing-helpers";
 import { formatMoney } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import type { KpiTileProps } from "@auction/ui";
 
 export type SettlementRow = DashboardOverviewVm["settlementsDue"][number];
 
@@ -17,7 +17,7 @@ export const accountEssentialLinks: readonly AccountEssentialLink[] = [
   { label: "Profile", href: "/dashboard/settings/profile" },
   { label: "Notifications", href: "/dashboard/settings/notifications" },
   { label: "Bidding", href: "/dashboard/settings/bidding" },
-  { label: "Artists", href: "/dashboard/artist-follow" },
+  { label: "Artists", href: "/dashboard/watchlist?section=artists" },
 ];
 
 export function formatSettlementTotal(row: SettlementRow): string {
@@ -31,7 +31,7 @@ export function settlementStageIndex(row: SettlementRow): number {
   return 1;
 }
 
-export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
+export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiRowTile[] {
   const activeBidsDelta = (() => {
     if (vm.outbidCount > 0) return `${vm.outbidCount} outbid`;
     if (vm.kpi.activeBidsCount > 0) return "Leading";
@@ -45,7 +45,7 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
   const activeBidsTone: "positive" | "negative" | "neutral" =
     vm.outbidCount > 0 ? "negative" : vm.kpi.activeBidsCount > 0 ? "positive" : "neutral";
 
-  const fourthTile: KpiTileProps =
+  const fourthTile: KpiRowTile =
     vm.acquiredCount > 0
       ? {
           label: "Portfolio value",
@@ -73,12 +73,14 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
       ...kpiCompareHint(activeBidsCompareHint),
       deltaTone: activeBidsTone,
       emphasize: true,
+      href: "/dashboard/bids",
     },
     {
       label: "Won lots",
       value: String(vm.acquiredCount),
       delta: vm.kpi.wonThisYear > 0 ? `${vm.kpi.wonThisYear} this year` : "All time",
       deltaTone: "neutral",
+      href: "/dashboard/portfolio",
     },
     {
       label: "Watchlist",
@@ -88,8 +90,17 @@ export function buildOverviewKpiTiles(vm: DashboardOverviewVm): KpiTileProps[] {
           ? `${vm.endingSoonWatchlist.length} ending soon`
           : "Saved lots",
       deltaTone: vm.endingSoonWatchlist.length > 0 ? "positive" : "neutral",
+      href: "/dashboard/watchlist",
     },
-    fourthTile,
+    {
+      ...fourthTile,
+      href:
+        vm.acquiredCount > 0
+          ? "/dashboard/portfolio"
+          : vm.submissionsCount > 0
+            ? "/dashboard/submissions"
+            : "/dashboard/submissions/new",
+    },
   ];
 }
 

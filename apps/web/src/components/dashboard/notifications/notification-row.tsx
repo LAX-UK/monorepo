@@ -3,8 +3,7 @@
 import { lotPath } from "@/lib/seo/url";
 import type { UserNotification } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button as UiButton } from "@auction/ui/components/button";
-import { Button as ShadButton } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   DropdownMenu,
@@ -80,6 +79,7 @@ export function NotificationRow({
 
   return (
     <li
+      aria-label={unread ? `Unread: ${item.title}` : item.title}
       className={cn(
         "group relative flex items-start gap-3 border-b border-border-hairline px-4 py-4 transition-colors last:border-b-0 hover:bg-surface-container-high/40 focus-within:bg-surface-container-high/40",
         unread
@@ -158,7 +158,7 @@ export function NotificationRow({
 
       <div className="flex shrink-0 items-center gap-1">
         {item.lotId ? (
-          <UiButton variant="ctaLink" asChild>
+          <Button variant="ctaLink" asChild>
             <Link
               href={lotPath({ id: item.lotId, title: item.title })}
               onClick={() => {
@@ -167,15 +167,15 @@ export function NotificationRow({
             >
               View
             </Link>
-          </UiButton>
+          </Button>
         ) : unread ? (
-          <UiButton type="button" variant="ctaLink" onClick={() => onMarkRead(item.id)}>
+          <Button type="button" variant="ctaLink" onClick={() => onMarkRead(item.id)}>
             Mark read
-          </UiButton>
+          </Button>
         ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <ShadButton
+            <Button
               type="button"
               variant="ghost"
               size="icon"
@@ -183,7 +183,7 @@ export function NotificationRow({
               aria-label={`Row actions for ${item.title}`}
             >
               <MoreHorizontal className="size-4" />
-            </ShadButton>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem disabled={!unread} onSelect={() => onMarkRead(item.id)}>

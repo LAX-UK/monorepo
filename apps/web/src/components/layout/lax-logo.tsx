@@ -19,8 +19,6 @@ type LaxLogoProps = {
   children?: ReactNode;
 };
 
-const imgClassName = "h-auto w-auto motion-reduce:transition-none dark:brightness-0 dark:invert";
-
 export function LaxLogo({
   variant = "header",
   className = "",
@@ -52,7 +50,11 @@ export function LaxLogo({
         : "max-h-9 max-w-[140px] sm:max-h-11 sm:max-w-[201px]";
   const shellClassName = cn("flex flex-col", variant === "auth" && "items-center", className);
   const isAboveFold = variant === "header" || variant === "auth";
-  const imageClassName = cn(imgClassName, imgMax);
+  const imageClassName = cn(
+    "h-auto w-auto motion-reduce:transition-none",
+    variant !== "header" && "dark:brightness-0 dark:invert",
+    imgMax,
+  );
 
   if (src) {
     return (
