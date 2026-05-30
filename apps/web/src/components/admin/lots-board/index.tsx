@@ -63,7 +63,8 @@ export function AdminLotsBoard({
   columnSort,
 }: Props) {
   const { density } = useTableDensity();
-  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
+  const { rowSelection, setRowSelection, selectedIds, clear, selectAllOnPage } = useBulkSelection();
+  const pageIds = useMemo(() => rows.map((r) => r.id), [rows]);
 
   const data = useMemo(() => rows.map((r) => ({ ...r, id: r.id })), [rows]);
   const columns = useMemo(
@@ -159,6 +160,8 @@ export function AdminLotsBoard({
         operations={bulkOperations}
         onClear={clear}
         preflightWarning={bulkPreflightWarning}
+        pageRowCount={pageIds.length}
+        onSelectAllOnPage={() => selectAllOnPage(pageIds)}
       />
     </div>
   );

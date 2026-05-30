@@ -10,6 +10,8 @@ export type AdminNavCounts = {
   payoutsFailed: number;
   saleroomLiveCount: number;
   invitationsPending: number;
+  draftSalesNeedingSetup: number;
+  draftLotsMissingPhotos: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -24,4 +26,6 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   payoutsFailed: 0,
   saleroomLiveCount: 0,
   invitationsPending: 0,
+  draftSalesNeedingSetup: 0,
+  draftLotsMissingPhotos: 0,
 };

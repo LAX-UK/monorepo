@@ -87,6 +87,18 @@ function buildStaffAdminPaletteSections(
       { id: "sn-clients", href: "/admin/clients", label: "Clients" },
       { id: "sn-new-category", href: "/admin/categories/new", label: "New category" },
       {
+        id: "sn-condition-reports",
+        href: "/admin/condition-reports",
+        label: "Condition reports",
+        keywords: "catalog condition report cr requests",
+      },
+      {
+        id: "sn-lot-fulfilment",
+        href: "/admin/lot-fulfilment",
+        label: "Lot fulfilment",
+        keywords: "catalog fulfilment fulfillment queue release shipping",
+      },
+      {
         id: "sn-manual-review",
         href: "/admin/payments?manualReview=1",
         label: "Manual review queue",

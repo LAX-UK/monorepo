@@ -11,12 +11,14 @@ export type CatalogSegmentItem = {
   disabled?: boolean;
 };
 
-type Props = {
+export type CatalogSegmentNavProps = {
   items: readonly CatalogSegmentItem[];
   activeId: string;
   "aria-label": string;
   className?: string;
 };
+
+type Props = CatalogSegmentNavProps;
 
 /** GET-based lens control — link segments styled like SegmentToggle. */
 export function CatalogSegmentNav({ items, activeId, "aria-label": ariaLabel, className }: Props) {

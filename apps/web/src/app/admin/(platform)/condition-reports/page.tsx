@@ -1,13 +1,18 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { CatalogConditionReportsFilterToolbar } from "@/components/admin/catalog/catalog-condition-reports-filter-toolbar";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
+import { CatalogOpsBreadcrumb } from "@/components/admin/catalog/catalog-ops-breadcrumb";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { AdminConditionReportsBoard } from "@/components/admin/condition-reports-board";
 import { conditionReportsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { buildConditionReportsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { Suspense } from "react";
 
 type Props = {
@@ -19,6 +24,10 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
   const error = safeDecodeAdminErrorParam(sp.error);
   const query = conditionReportsListController.parseQuery(sp);
   const activeLensId = query.lens ?? "open";
+  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+  const activeFilterChips = buildConditionReportsActiveFilterChips(sp, {
+    activeLens: activeLensId,
+  });
 
   let rows: Awaited<ReturnType<typeof conditionReportsListController.fetch>>["rows"] = [];
   let pageRowCount = 0;
@@ -40,7 +49,7 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
 
   const empty =
     !loadError && total === 0 ? (
-      <AdminEmptyState
+      <CatalogListEmptyState
         title="Queue is clear"
         description={
           activeLensId === "open"
@@ -49,7 +58,10 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
         }
       />
     ) : !loadError && rows.length === 0 ? (
-      <p className="font-body text-sm text-on-surface-variant">No rows on this page.</p>
+      <CatalogListEmptyState
+        title="No rows on this page"
+        description="Try the previous page or switch lenses."
+      />
     ) : null;
 
   const view = !loadError && rows.length > 0 ? <AdminConditionReportsBoard rows={rows} /> : null;
@@ -86,7 +98,11 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
         />
       }
     >
-      <CatalogConditionReportsFilterToolbar activeLensId={activeLensId} searchParams={sp} />
+      <CatalogConditionReportsFilterToolbar
+        activeLensId={activeLensId}
+        searchParams={sp}
+        activeFilterChips={activeFilterChips}
+      />
     </Suspense>
   );
 
@@ -94,6 +110,8 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
     <CatalogListShell
       title="Condition report requests"
       description="Buyer-requested condition reports. Fulfilling publishes the PDF copy block on the public lot page."
+      meta={<CatalogRelatedWork variant="conditionReports" navCounts={navCounts} />}
+      breadcrumbs={<CatalogOpsBreadcrumb current="Condition reports" />}
       filterBar={filterBar}
       errorAlert={errorAlert}
       mobileSummary={

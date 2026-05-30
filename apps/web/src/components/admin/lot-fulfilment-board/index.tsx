@@ -4,6 +4,7 @@ import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminLotFulfilmentQueueCard } from "@/components/admin/admin-lot-fulfilment-queue-card";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { lotFulfilmentColumns } from "@/components/admin/lot-fulfilment-board/columns";
+import { LotFulfilmentMobileCards } from "@/components/admin/lot-fulfilment-board/mobile-cards";
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin.server";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
@@ -38,13 +39,7 @@ export function AdminLotFulfilmentBoard({ rows, returnStatus, statusChips }: Pro
             getRowId={(r) => r.id}
           />
         }
-        cards={
-          <ul className="space-y-4">
-            {rows.map((row) => (
-              <AdminLotFulfilmentQueueCard key={row.id} row={row} returnStatus={returnStatus} />
-            ))}
-          </ul>
-        }
+        cards={<LotFulfilmentMobileCards rows={rows} onOpen={onOpen} />}
       />
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">

@@ -256,11 +256,16 @@ export function SaleDetailShell({
             />
             <CatalogDetailStickyMiniBar
               items={[
+                {
+                  id: "status",
+                  label: "Status",
+                  value: <AdminStatusBadge domain="sale" status={sale.status} />,
+                },
                 { id: "lots", label: "Lots", value: lots.length },
                 {
-                  id: "registrations",
-                  label: "Registrations",
-                  value: liveish ? (registrationCount ?? 0) : "—",
+                  id: "publish",
+                  label: "Publish",
+                  value: publishReady ? "Ready" : sale.status === "draft" ? "Not ready" : "—",
                 },
               ]}
             />

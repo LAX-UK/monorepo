@@ -19,7 +19,8 @@ type Props = {
 
 export function AdminArtistsBoard({ artists }: Props) {
   const { density } = useTableDensity();
-  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
+  const { rowSelection, setRowSelection, selectedIds, clear, selectAllOnPage } = useBulkSelection();
+  const pageIds = useMemo(() => artists.map((a) => a.id), [artists]);
   const bulkOperations = useMemo(() => getArtistBulkOperations(), []);
   const columns = useMemo(() => artistColumns(), []);
 
@@ -46,9 +47,21 @@ export function AdminArtistsBoard({ artists }: Props) {
             />
           </TableScroll>
         }
-        cards={<ArtistsMobileCards artists={artists} />}
+        cards={
+          <ArtistsMobileCards
+            artists={artists}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+          />
+        }
       />
-      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
+      <BulkActionsToolbar
+        selectedIds={selectedIds}
+        operations={bulkOperations}
+        onClear={clear}
+        pageRowCount={pageIds.length}
+        onSelectAllOnPage={() => selectAllOnPage(pageIds)}
+      />
     </div>
   );
 }

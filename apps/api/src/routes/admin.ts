@@ -494,10 +494,20 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminLotFulfilmentListQuerySchema),
     async (c) => {
       const query = adminLotFulfilmentListQuerySchema.parse(c.req.valid("query"));
-      const data = await container.lotFulfilmentService.listForAdmin(
+      const rows = await container.lotFulfilmentService.listForAdmin(
         query.status === undefined ? {} : { status: query.status as LotFulfilmentStatusCol },
       );
-      return c.json({ data });
+      const limit = query.limit ?? rows.length;
+      const offset = query.offset ?? 0;
+      const statusCounts: Record<string, number> = {};
+      for (const row of rows) {
+        statusCounts[row.status] = (statusCounts[row.status] ?? 0) + 1;
+      }
+      const data = rows.slice(offset, offset + limit);
+      return c.json({
+        data,
+        meta: { total: rows.length, limit, offset, statusCounts },
+      });
     },
   );
 
