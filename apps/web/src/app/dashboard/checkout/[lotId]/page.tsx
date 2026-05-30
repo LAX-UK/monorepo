@@ -3,11 +3,13 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
-import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout-lot-mobile-chrome";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
+import { CheckoutReturnBanner } from "@/components/sections/checkout/checkout-return-banner";
 import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { resolveCheckoutPagePaymentState } from "@/lib/checkout/checkout-page-state";
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
@@ -15,21 +17,32 @@ import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
+import { z } from "zod";
 
 type PageProps = {
   params: Promise<{ lotId: string }>;
 };
 
+const lotIdSchema = z.string().uuid();
+
 export default async function DashboardCheckoutPage({ params }: PageProps) {
-  const { lotId } = await params;
+  const { lotId: rawLotId } = await params;
+  const parsedLotId = lotIdSchema.safeParse(rawLotId);
+  if (!parsedLotId.success) {
+    notFound();
+  }
+  const lotId = parsedLotId.data;
+
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
 
   const c = await getServerDataContainer();
-  const [lotR, fulfilmentR, addressesR] = await Promise.allSettled([
+  const [lotR, fulfilmentR, addressesR, paymentsR] = await Promise.allSettled([
     c.buyerLots.getById(lotId),
     c.payments.getLotFulfilmentForWinner(lotId),
     c.addresses.listMine(),
+    c.payments.listMine(),
   ]);
   if (lotR.status === "rejected") {
     throw lotR.reason;
@@ -49,15 +62,23 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
         )
       : null;
   const addresses = addressesR.status === "fulfilled" ? addressesR.value : [];
+  const myPayments = paymentsR.status === "fulfilled" ? paymentsR.value : [];
+  const { paymentComplete, openPayment } = resolveCheckoutPagePaymentState(
+    myPayments,
+    lotId,
+    fulfilment,
+  );
 
   const checkoutPricing = auction.checkoutPricing;
   const hasPricing = checkoutPricing != null;
   const totalsVm = checkoutPricing ? buildCheckoutTotalsVm(checkoutPricing) : null;
 
   const img = auction.images[0];
+  const hammerLabel = totalsVm ? formatMoney(totalsVm.hammer.toFixed(2)) : "";
   const premium = totalsVm?.premium ?? 0;
   const total = totalsVm?.total ?? 0;
   const premiumPercentLabel = totalsVm?.premiumPercentLabel ?? "";
+  const totalLabel = formatMoney(total.toFixed(2));
 
   return (
     <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
@@ -74,8 +95,8 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
           />
         </div>
 
-        <div className="w-full flex-1 px-4 pb-[var(--page-bottom-padding)] pt-8 sm:px-6 lg:w-1/2 lg:px-16 lg:pb-20 lg:pt-16">
-          <div className="mx-auto max-w-xl lg:mx-0">
+        <div className="min-w-0 w-full flex-1 overflow-x-hidden px-4 pb-[var(--page-bottom-padding)] pt-8 sm:px-6 lg:w-1/2 lg:px-16 lg:pb-20 lg:pt-16">
+          <div className="mx-auto min-w-0 max-w-xl lg:mx-0">
             <DashboardDetailHeader
               title={auction.title}
               backHref="/dashboard/portfolio"
@@ -83,11 +104,15 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               compactOnMobile
               sticky={false}
               className="mb-8 border-0 bg-transparent px-0 py-0 backdrop-blur-none lg:mb-10"
-              description="Lot settled in your favor. Complete purchase below to open secure Stripe Checkout (card or UK bank transfer). High-value lots may require finance review before checkout is issued."
+              description="Lot settled in your favor. Review your invoice and complete payment below (card or UK bank transfer via Stripe). High-value lots may require finance review first."
             />
 
+            <Suspense fallback={null}>
+              <CheckoutReturnBanner />
+            </Suspense>
+
             <DashboardSection id="checkout-flow" title="Invoice and payment">
-              <div className="rounded-xl border border-border-hairline bg-surface-container-lowest/90 p-6 shadow-sm backdrop-blur-sm sm:p-8">
+              <div className="min-w-0 space-y-6">
                 {!hasPricing ? (
                   <DashboardErrorAlert
                     title="Could not load checkout pricing"
@@ -95,7 +120,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                   >
                     <div className="flex flex-wrap gap-3">
                       <Button variant="secondary" asChild>
-                        <Link href={`/dashboard/checkout/${lotId}`}>Retry</Link>
+                        <Link href={dashboardCheckoutLotUrl(lotId)}>Retry</Link>
                       </Button>
                       <Button variant="outline" asChild>
                         <Link
@@ -108,20 +133,9 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                   </DashboardErrorAlert>
                 ) : (
                   <>
-                    <nav
-                      aria-label="Checkout steps"
-                      className="mb-8 flex flex-wrap items-center gap-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-                    >
-                      <span className="rounded-full border border-primary/35 bg-primary-container/45 px-4 py-1.5 text-primary shadow-sm">
-                        1 · Invoice
-                      </span>
-                      <span className="text-on-surface-variant/50" aria-hidden>
-                        →
-                      </span>
-                      <span className="rounded-full border border-outline-variant/25 bg-surface-container-low px-4 py-1.5 text-on-surface-variant">
-                        2 · Confirm
-                      </span>
-                    </nav>
+                    <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                      Review invoice and pay
+                    </p>
                     {fulfilmentFailure ? (
                       <DashboardSliceErrorAlert failure={fulfilmentFailure} />
                     ) : null}
@@ -130,12 +144,15 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                     <CheckoutPurchasePanel
                       sessionUser={user}
                       lotId={auction.id}
-                      hammer={formatMoney(auction.currentPrice)}
+                      hammer={hammerLabel}
                       buyerPremium={formatMoney(premium.toFixed(2))}
-                      total={formatMoney(total.toFixed(2))}
+                      total={totalLabel}
                       totalMinor={Math.round(total * 100)}
                       premiumPercentLabel={premiumPercentLabel}
                       addresses={addresses}
+                      paymentComplete={paymentComplete}
+                      openPaymentStatus={openPayment?.status ?? null}
+                      openPaymentManualReviewReason={openPayment?.manualReviewReason ?? null}
                     />
                   </>
                 )}
@@ -160,20 +177,13 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             </p>
             {addressesR.status === "rejected" ? (
               <div className="mt-4 rounded-lg border border-warning/40 bg-warning-container/15 p-4 text-sm text-on-surface">
-                We could not load your saved addresses. You can still pay — add a shipping address
-                during checkout if prompted.
+                We could not load your saved addresses. Add a shipping address in settings before
+                checkout.
               </div>
             ) : null}
           </div>
         </div>
       </div>
-
-      {hasPricing ? (
-        <CheckoutLotMobileChrome
-          totalLabel={formatMoney(total.toFixed(2))}
-          formId="checkout-purchase-form"
-        />
-      ) : null}
     </DashboardPage>
   );
 }

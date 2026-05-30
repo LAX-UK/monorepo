@@ -28,6 +28,8 @@ describe("bottom-chrome", () => {
     expect(isFixedPayBarRoute("/dashboard/checkout/abc-123")).toBe(true);
     expect(isFixedPayBarRoute("/dashboard/checkout")).toBe(false);
     expect(isHideDashboardTabBarRoute("/dashboard/submissions/new")).toBe(true);
+    expect(isHideDashboardTabBarRoute("/dashboard/submissions/abc-123")).toBe(true);
+    expect(isHideDashboardTabBarRoute("/dashboard/submissions")).toBe(false);
   });
 
   it("uses pay bar padding on lot checkout routes", () => {

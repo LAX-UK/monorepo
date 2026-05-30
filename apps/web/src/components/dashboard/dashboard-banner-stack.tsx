@@ -40,6 +40,8 @@ type StackProps = {
   suppressOrgStatusBanner?: boolean;
   /** Skip KYC banner on overview when ComplianceStatusStrip covers it. */
   suppressKycOnOverview?: boolean;
+  /** Skip connect_pending entity banner when user is on payout setup page. */
+  suppressConnectPendingEntityBanner?: boolean;
 };
 
 export type DashboardBannerStackProps = StackProps;
@@ -55,6 +57,7 @@ export function DashboardBannerStack({
   compactOverflow = false,
   suppressOrgStatusBanner = false,
   suppressKycOnOverview = false,
+  suppressConnectPendingEntityBanner = false,
 }: StackProps) {
   const candidates: DashboardBannerCandidate[] = [];
 
@@ -74,7 +77,13 @@ export function DashboardBannerStack({
     });
   }
 
-  if (orgModuleEnabled && !suppressOrgStatusBanner && isEntityStatusBannerVisible(acting)) {
+  const showEntityStatus =
+    orgModuleEnabled &&
+    !suppressOrgStatusBanner &&
+    isEntityStatusBannerVisible(acting) &&
+    !(suppressConnectPendingEntityBanner && acting?.status === "connect_pending");
+
+  if (showEntityStatus) {
     candidates.push({
       id: "org-status",
       priority: DASHBOARD_BANNER_PRIORITIES.org,

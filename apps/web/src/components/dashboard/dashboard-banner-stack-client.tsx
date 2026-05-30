@@ -5,6 +5,7 @@ import {
   type DashboardBannerStackProps,
 } from "@/components/dashboard/dashboard-banner-stack";
 import { isEntityStatusBannerVisible } from "@/components/dashboard/entity-status-banner";
+import { shouldSuppressConnectPendingEntityBanner } from "@/lib/connect/should-suppress-connect-pending-entity-banner";
 import { isDashboardListRoute, isDashboardOrgDetailRoute } from "@/lib/dashboard/list-routes";
 import { cn } from "@auction/ui";
 import {
@@ -26,13 +27,16 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
   const suppressKyc =
     pathname === "/dashboard" || pathname.startsWith("/dashboard/verify-identity");
 
+  const suppressConnectPending = shouldSuppressConnectPendingEntityBanner(pathname);
+
   const stackProps = useMemo(
     (): DashboardBannerStackProps => ({
       ...props,
       suppressOrgStatusBanner: suppressOrgStatus,
       suppressKycOnOverview: suppressKyc,
+      suppressConnectPendingEntityBanner: suppressConnectPending,
     }),
-    [props, suppressOrgStatus, suppressKyc],
+    [props, suppressOrgStatus, suppressKyc, suppressConnectPending],
   );
 
   const alertCount = useMemo(() => countBannerCandidates(stackProps), [stackProps]);

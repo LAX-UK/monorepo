@@ -1,4 +1,5 @@
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
+import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { LegalEntitySummary } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
@@ -60,7 +61,7 @@ function copyForStatus(acting: LegalEntitySummary): {
               className="font-medium underline underline-offset-2"
               href={
                 kind === "individual"
-                  ? "/dashboard/seller/connect"
+                  ? DASHBOARD_ROUTES.sellerConnect
                   : `/dashboard/organisations/${acting.id}/connect`
               }
             >

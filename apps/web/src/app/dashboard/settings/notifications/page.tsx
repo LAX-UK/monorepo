@@ -48,7 +48,7 @@ export default async function NotificationSettingsPage({
   }
 
   return (
-    <DashboardPage className="mx-auto max-w-3xl space-y-6">
+    <DashboardPage className="space-y-6">
       <Link
         href="/dashboard/notifications"
         className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"

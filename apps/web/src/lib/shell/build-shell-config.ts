@@ -15,6 +15,10 @@ import type { DashboardDensity } from "@/lib/preferences/density";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { LegalEntitySummary, UserRole, UserStaffRole } from "@auction/types";
 import type { ReactNode } from "react";
+import {
+  type SellerConnectNavBadgeInput,
+  applySellerConnectNavBadges,
+} from "./apply-seller-connect-nav-badges";
 import type { ShellConfig } from "./contracts";
 import { appShellNavItemsToNavItems, staffNavGroupsToNavEntries } from "./nav-adapters";
 
@@ -37,6 +41,10 @@ export type BuildShellConfigInput = {
     actingContext: ActingContext;
     userDisplayName?: string;
   };
+  /** When selling workspace and payout setup incomplete — server-resolved nav badge. */
+  sellerConnectNavBadge?: SellerConnectNavBadgeInput | null;
+  /** Hide mobile bottom tab bar (wizard, checkout). */
+  hideBottomTabBar?: boolean;
 };
 
 export function buildShellConfig({
@@ -54,6 +62,8 @@ export function buildShellConfig({
   navCounts,
   orgModuleEnabled = true,
   mobileHeader,
+  sellerConnectNavBadge = null,
+  hideBottomTabBar = false,
 }: BuildShellConfigInput): ShellConfig {
   const navItems = getAppShellNavItems(
     role,
@@ -64,9 +74,12 @@ export function buildShellConfig({
     navCounts,
     orgModuleEnabled,
   );
+  const applyConnectBadge =
+    role === "client" && clientWorkspaceMode === "selling" ? sellerConnectNavBadge : null;
+
   const nav =
     role === "client"
-      ? appShellNavItemsToNavItems(navItems)
+      ? applySellerConnectNavBadges(appShellNavItemsToNavItems(navItems), applyConnectBadge)
       : staffNavGroupsToNavEntries(
           getStaffNavGroups(
             user.role as UserRole,
@@ -78,7 +91,12 @@ export function buildShellConfig({
         );
   const mobileNav =
     role === "client"
-      ? appShellNavItemsToNavItems(getClientMobileBottomTabs(clientWorkspaceMode, orgModuleEnabled))
+      ? applySellerConnectNavBadges(
+          appShellNavItemsToNavItems(
+            getClientMobileBottomTabs(clientWorkspaceMode, orgModuleEnabled),
+          ),
+          applyConnectBadge,
+        )
       : appShellNavItemsToNavItems(
           getStaffMobileBottomTabs(
             user.role as UserRole,
@@ -91,7 +109,7 @@ export function buildShellConfig({
         );
 
   const tabIds = new Set(mobileNav.map((item) => item.id));
-  const moreSheetNav =
+  const moreSheetNavRaw =
     role === "client"
       ? appShellNavItemsToNavItems(
           navItems.filter((item) => !tabIds.has(item.id) && item.id !== "more"),
@@ -107,6 +125,11 @@ export function buildShellConfig({
             ).filter((item) => !tabIds.has(item.id) && item.id !== "more"),
           )
         : undefined;
+
+  const moreSheetNav =
+    moreSheetNavRaw && role === "client"
+      ? applySellerConnectNavBadges(moreSheetNavRaw, applyConnectBadge)
+      : moreSheetNavRaw;
 
   return {
     role,
@@ -125,5 +148,6 @@ export function buildShellConfig({
     pendingSubmissionCount,
     pendingArtistCount,
     ...(mobileHeader ? { mobileHeader } : {}),
+    ...(hideBottomTabBar ? { hideBottomTabBar: true } : {}),
   };
 }

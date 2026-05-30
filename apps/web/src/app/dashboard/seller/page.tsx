@@ -9,17 +9,24 @@ import {
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import {
+  legalEntityToConnectFields,
+  resolveSellerConnectPresentation,
+} from "@/lib/connect/resolve-seller-connect-presentation";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   type DashboardSliceFailure,
   describeDashboardSliceFailure,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
 import { formatMoney } from "@/lib/format-currency";
+import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { ArrowRight, CalendarDays, FileStack, Layers, Sparkles, WalletCards } from "lucide-react";
@@ -173,6 +180,22 @@ export default async function SellerOverviewPage() {
   const upcomingSales = buildUpcomingSales(sellerLots, saleLookup);
   const forecast = buildPayoutForecast(sellerLots);
 
+  let connectPresentation = resolveSellerConnectPresentation({
+    connectEnforced: false,
+    entity: null,
+  });
+  if (sellerEntityId) {
+    const hub = createOrganisationHubGateway();
+    const [clientConfig, entity] = await Promise.all([
+      getServerStripeConnectClientConfig(),
+      hub.getEntityDetail(sellerEntityId).catch(() => null),
+    ]);
+    connectPresentation = resolveSellerConnectPresentation({
+      connectEnforced: clientConfig.connectEnforced,
+      entity: entity ? legalEntityToConnectFields(entity) : null,
+    });
+  }
+
   const drafts = countByStatus(rows, "draft");
   const inReview =
     countByStatus(rows, "submitted") +
@@ -222,6 +245,18 @@ export default async function SellerOverviewPage() {
 
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
       {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
+
+      {connectPresentation.showBanner && connectPresentation.bannerCopy ? (
+        <Alert>
+          <AlertTitle>{connectPresentation.bannerCopy.title}</AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>{connectPresentation.bannerCopy.description}</span>
+            <Button asChild variant="cta" size="sm">
+              <Link href={DASHBOARD_ROUTES.sellerConnect}>{DASHBOARD_CTA.openPayoutSetup}</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {submissionsFailure ? (
         <div className="space-y-3">

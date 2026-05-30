@@ -1,4 +1,5 @@
 import type { PortfolioLotCardVm } from "@/components/dashboard/portfolio-lot-grid";
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { formatMoney } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { PortfolioRow } from "@auction/types";
@@ -121,7 +122,7 @@ export function toPortfolioLotCards(
       medium: a.medium,
       dimensions: a.dimensions,
       paymentStatus: row.payment?.status ?? null,
-      checkoutHref: `/dashboard/checkout/${a.id}`,
+      checkoutHref: dashboardCheckoutLotUrl(a.id),
       conditionReportUrl,
       endYear: a.endTime.getUTCFullYear(),
     };

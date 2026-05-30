@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { lot, lotFulfilment } from "@auction/db/schema";
 import { desc, eq, getTableColumns } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import type { LotFulfilmentAddressSnapshot } from "./interfaces/lot-fulfilment-payment-hook.js";
 
 export type LotFulfilmentRow = typeof lotFulfilment.$inferSelect;
 
@@ -13,7 +14,12 @@ export class LotFulfilmentService {
   constructor(private readonly db: Database) {}
 
   /** Called when a pending payment exists for the lot (create or reuse). */
-  async ensureAwaitingPayment(lotId: string, paymentId: string): Promise<void> {
+  async ensureAwaitingPayment(
+    lotId: string,
+    paymentId: string,
+    addressSnapshot?: LotFulfilmentAddressSnapshot | null,
+  ): Promise<void> {
+    const snapshotJson = addressSnapshot ?? null;
     const [existing] = await this.db
       .select()
       .from(lotFulfilment)
@@ -24,13 +30,18 @@ export class LotFulfilmentService {
         lotId,
         paymentId,
         status: "awaiting_payment",
+        ...(snapshotJson ? { addressSnapshot: snapshotJson } : {}),
       });
       return;
     }
     if (existing.status === "awaiting_payment") {
       await this.db
         .update(lotFulfilment)
-        .set({ paymentId, updatedAt: new Date() })
+        .set({
+          paymentId,
+          updatedAt: new Date(),
+          ...(snapshotJson ? { addressSnapshot: snapshotJson } : {}),
+        })
         .where(eq(lotFulfilment.lotId, lotId));
     }
   }

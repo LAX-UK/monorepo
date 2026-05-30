@@ -28,7 +28,7 @@ export default async function SessionsPage() {
   }
 
   return (
-    <DashboardPage className="mx-auto max-w-xl space-y-8">
+    <DashboardPage className="space-y-8">
       <SettingsFormHeader title="Active sessions" />
       <SessionsClientPage sessions={result.sessions} />
     </DashboardPage>

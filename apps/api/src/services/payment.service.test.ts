@@ -9,6 +9,7 @@ import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
+import type { IAddressRepository } from "./interfaces/profile.js";
 import type {
   ILotRepository,
   ISaleRepository,
@@ -19,6 +20,27 @@ import { NotificationFactory } from "./notification.factory.js";
 import { PaymentService } from "./payment.service.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment/payment-tier.policy.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
+
+const CHECKOUT_ADDRESS_ID = "00000000-0000-4000-8000-0000000000a1";
+
+function mockCheckoutAddresses(): IAddressRepository {
+  return {
+    findByIdForUser: vi.fn().mockResolvedValue({
+      id: CHECKOUT_ADDRESS_ID,
+      userId: "buyer-1",
+      label: "Home",
+      line1: "1 Test St",
+      line2: null,
+      city: "London",
+      state: null,
+      postalCode: "SW1A 1AA",
+      country: "GB",
+      addressType: "both",
+      isDefault: true,
+      createdAt: new Date(),
+    }),
+  } as unknown as IAddressRepository;
+}
 
 const defaultTierPolicy = new PaymentTierPolicy(
   parsePaymentTierLimits({
@@ -561,9 +583,21 @@ describe("PaymentService", () => {
       legalEntities,
       {} as never,
       publisher as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
 
-    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
 
     expect(result.isOk()).toBe(true);
     expect(payments.create).toHaveBeenCalledWith(
@@ -699,9 +733,17 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
 
-    const result = await service.createPendingForWinner("buyer-1", tieredLot.id);
+    const result = await service.createPendingForWinner(
+      "buyer-1",
+      tieredLot.id,
+      CHECKOUT_ADDRESS_ID,
+    );
     expect(result.isOk()).toBe(true);
     // Hammer 499_999.99 → tier @ 0 → 15% → banker's-rounded premium = 75000.00
     // Without tiers the lot's flat 10% would have produced 549999.99 → we assert the tier wins.
@@ -760,8 +802,27 @@ describe("PaymentService", () => {
       { findById: vi.fn() } as unknown as IUserRepository,
       mockAccounting(),
       defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
-    const result = await service.createPendingForWinner("buyer-1", blockedLot.id);
+    const result = await service.createPendingForWinner(
+      "buyer-1",
+      blockedLot.id,
+      CHECKOUT_ADDRESS_ID,
+    );
     expect(result.isErr()).toBe(true);
     expect(payments.create).not.toHaveBeenCalled();
   });
@@ -801,8 +862,12 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
-    const result = await service.createPendingForWinner("buyer-1", highLot.id);
+    const result = await service.createPendingForWinner("buyer-1", highLot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.checkoutUrl).toBeNull();
@@ -846,8 +911,12 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
-    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(PaymentProviderError);
@@ -897,8 +966,12 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
-    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.checkoutRail).toBe("gb_bank_transfer");
@@ -938,8 +1011,12 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
-    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.paymentId).toBe("pay-captured");
@@ -980,8 +1057,12 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
     );
-    const result = await service.createPendingForWinner("buyer-1", lot.id);
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(LotError);

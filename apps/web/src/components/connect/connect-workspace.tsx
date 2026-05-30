@@ -3,6 +3,7 @@
 import { ConnectActionsBar } from "@/components/connect/connect-actions-bar";
 import { ConnectComponentsShell } from "@/components/connect/connect-components-shell";
 import { ConnectErrorBoundary } from "@/components/connect/connect-error-boundary";
+import { ConnectInlineAlert } from "@/components/connect/connect-inline-alert";
 import { ConnectManagementPanel } from "@/components/connect/connect-management-panel";
 import { ConnectNotificationBannerPanel } from "@/components/connect/connect-notification-banner";
 import { ConnectOnboardingPanel } from "@/components/connect/connect-onboarding-panel";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/actions/stripe-connect.actions";
 import { connectGapStageSummary } from "@/lib/connect/connect-gap-copy";
 import { deriveConnectWorkspaceFlags } from "@/lib/connect/connect-workspace-flags";
+import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
@@ -24,7 +26,6 @@ import { isActionableStripeDisabledReason, shouldSkipConnect } from "@auction/co
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
-import { normalizeApiErrorMessage } from "@auction/validators";
 import { useCallback, useMemo } from "react";
 
 type Props = {
@@ -53,10 +54,6 @@ function canManageConnect(role: string): boolean {
   return role === "owner" || role === "admin" || role === "finance";
 }
 
-function canOnboard(role: string): boolean {
-  return role === "owner" || role === "admin";
-}
-
 export function ConnectWorkspace({
   publishableKey,
   connectEnforced,
@@ -69,7 +66,7 @@ export function ConnectWorkspace({
   isLaxManaged = false,
   entityStatus = "approved",
   onConnectReady,
-  returnPath = "/dashboard/seller/connect",
+  returnPath = DASHBOARD_ROUTES.sellerConnect,
   showDashboardLink = true,
   syncDegraded = false,
 }: Props) {
@@ -88,6 +85,7 @@ export function ConnectWorkspace({
     handleOnboardingExit,
     runEnsureAccount,
     reloadEmbeddedSetup,
+    pollingTimedOut,
   } = useStripeConnectAccount({
     status,
     legalEntityId,
@@ -104,16 +102,21 @@ export function ConnectWorkspace({
     return "onboarding";
   }, [gap.stage]);
 
+  const hasStripeAccount = Boolean(localStatus?.stripeAccountId);
+
   const workspaceFlags = deriveConnectWorkspaceFlags({
     memberRole,
     gap,
     stripeActionRequired,
+    hasStripeAccount,
   });
   const {
-    canCompleteOnboarding,
     showOnboardingForm,
     showManagement,
     showFinanceReadOnly,
+    showFinanceAwaitingOwner,
+    showRefreshAction,
+    showPreparingPanel,
     useCompactHeader,
   } = workspaceFlags;
 
@@ -148,13 +151,7 @@ export function ConnectWorkspace({
   }
 
   if (!canManageConnect(memberRole)) {
-    return (
-      <Surface variant="section" padding="md" className="space-y-2">
-        <p className="font-body text-sm text-on-surface-variant">
-          Ask an organisation owner or admin to complete payout setup.
-        </p>
-      </Surface>
-    );
+    return <ConnectInlineAlert kind="role_blocked" />;
   }
 
   if (!kycApproved) {
@@ -182,13 +179,27 @@ export function ConnectWorkspace({
     );
   }
 
-  const canMountConnectShell = Boolean(localStatus?.stripeAccountId);
+  const canMountConnectShell = hasStripeAccount;
   const showSyncDegraded = syncDegraded || localStatus?.syncDegraded;
-  const preparingAccount = canCompleteOnboarding && !localStatus?.stripeAccountId && pending;
+  const preparingAccount = showPreparingPanel && pending;
   const showActionablePastDueAlert =
     isActionableStripeDisabledReason(localStatus?.disabledReason) &&
     !localStatus?.ready &&
     !useCompactHeader;
+
+  const actionsBar = (
+    <ConnectActionsBar
+      pending={pending}
+      legalEntityId={legalEntityId}
+      showDashboardLink={showDashboardLink}
+      hasStripeAccount={hasStripeAccount}
+      showOnboardingForm={showOnboardingForm}
+      payoutReady={Boolean(localStatus?.ready)}
+      showRefreshAction={showRefreshAction}
+      onSync={handleSync}
+      onError={setError}
+    />
+  );
 
   return (
     <div className="space-y-4" data-testid="connect-workspace">
@@ -201,20 +212,13 @@ export function ConnectWorkspace({
         readOnly={showFinanceReadOnly}
       />
 
-      {showSyncDegraded ? (
-        <Alert>
-          <AlertDescription className="font-body text-sm">
-            We could not reach Stripe for a live status check. Showing the last known state — use
-            Refresh status to try again.
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      {showFinanceAwaitingOwner ? <ConnectInlineAlert kind="role_blocked" /> : null}
 
-      {error ? (
-        <p className="font-body text-sm text-error" role="alert">
-          {normalizeApiErrorMessage(error, "Something went wrong.")}
-        </p>
-      ) : null}
+      {showSyncDegraded ? <ConnectInlineAlert kind="sync_degraded" /> : null}
+
+      {error ? <ConnectInlineAlert kind="generic" detail={error} /> : null}
+
+      {pollingTimedOut ? <ConnectInlineAlert kind="polling_timed_out" /> : null}
 
       {!localStatus?.ready && showOnboardingForm && !useCompactHeader ? (
         <p className="font-body text-sm text-on-surface-variant">
@@ -230,6 +234,8 @@ export function ConnectWorkspace({
           </AlertDescription>
         </Alert>
       ) : null}
+
+      {showRefreshAction ? actionsBar : null}
 
       {canMountConnectShell ? (
         <ConnectErrorBoundary
@@ -264,7 +270,7 @@ export function ConnectWorkspace({
             {showManagement ? <ConnectManagementPanel /> : null}
           </ConnectComponentsShell>
         </ConnectErrorBoundary>
-      ) : canOnboard(memberRole) ? (
+      ) : showPreparingPanel ? (
         <ConnectPreparingPanel
           preparingAccount={preparingAccount}
           ensureError={ensureError}
@@ -272,17 +278,6 @@ export function ConnectWorkspace({
           onRetry={runEnsureAccount}
         />
       ) : null}
-
-      <ConnectActionsBar
-        pending={pending}
-        legalEntityId={legalEntityId}
-        showDashboardLink={showDashboardLink}
-        hasStripeAccount={Boolean(localStatus?.stripeAccountId)}
-        showOnboardingForm={showOnboardingForm}
-        payoutReady={Boolean(localStatus?.ready)}
-        onSync={handleSync}
-        onError={setError}
-      />
     </div>
   );
 }

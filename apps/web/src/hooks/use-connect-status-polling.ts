@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const DEFAULT_INTERVAL_MS = 8000;
 /** Stop polling after onboarding exit once this window elapses. */
@@ -19,18 +19,24 @@ export function useConnectStatusPolling({
   onPoll,
   intervalMs = DEFAULT_INTERVAL_MS,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-}: Options) {
+}: Options): { timedOut: boolean } {
   const onPollRef = useRef(onPoll);
   onPollRef.current = onPoll;
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setTimedOut(false);
+      return;
+    }
 
+    setTimedOut(false);
     const startedAt = Date.now();
     const id = window.setInterval(() => {
       if (document.hidden) return;
       if (Date.now() - startedAt > timeoutMs) {
         window.clearInterval(id);
+        setTimedOut(true);
         return;
       }
       void onPollRef.current();
@@ -38,4 +44,6 @@ export function useConnectStatusPolling({
 
     return () => window.clearInterval(id);
   }, [enabled, intervalMs, timeoutMs]);
+
+  return { timedOut };
 }

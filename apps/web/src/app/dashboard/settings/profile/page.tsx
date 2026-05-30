@@ -40,7 +40,7 @@ export default async function ProfileSettingsPage({
   }
 
   return (
-    <DashboardPage className="mx-auto max-w-5xl space-y-8">
+    <DashboardPage className="space-y-8">
       <SettingsFormHeader
         title="Profile"
         description="Manage your personal details, addresses, and account preferences."
