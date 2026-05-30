@@ -7,7 +7,7 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages ./packages
 COPY apps/auth/package.json ./apps/auth/
-COPY apps/api/package.json ./apps/api/
+COPY apps/api/package.json apps/api/tsconfig.json apps/api/tsconfig.build.json ./apps/api/
 COPY apps/ws/package.json ./apps/ws/
 COPY apps/web/package.json ./apps/web/
 COPY apps/worker/package.json ./apps/worker/
@@ -15,6 +15,9 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
 COPY apps/api ./apps/api
+# Re-copy tsconfigs after the tree COPY so stale DO layer cache cannot drop tsconfig.build.json
+# while package.json already points the build script at it.
+COPY apps/api/tsconfig.json apps/api/tsconfig.build.json ./apps/api/
 RUN pnpm turbo run build --filter=@auction/api
 
 FROM node:22-alpine AS runner
