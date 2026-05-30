@@ -24,6 +24,7 @@ describe("CheckoutPurchasePanel", () => {
       <CheckoutPurchasePanel
         sessionUser={user}
         lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
         hammer="£100"
         buyerPremium="£25"
         total="£125"
@@ -56,6 +57,7 @@ describe("CheckoutPurchasePanel", () => {
       <CheckoutPurchasePanel
         sessionUser={user}
         lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
         hammer="£100"
         buyerPremium="£25"
         total="£125"
