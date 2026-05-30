@@ -11,6 +11,7 @@ type Props = {
   hasStripeAccount: boolean;
   showOnboardingForm: boolean;
   payoutReady: boolean;
+  showRefreshAction?: boolean;
   onSync: () => void;
   onError: (message: string) => void;
 };
@@ -22,6 +23,7 @@ export function ConnectActionsBar({
   hasStripeAccount,
   showOnboardingForm,
   payoutReady,
+  showRefreshAction = true,
   onSync,
   onError,
 }: Props) {
@@ -46,18 +48,24 @@ export function ConnectActionsBar({
 
   const actionsPending = pending || dashboardPending;
 
+  if (!showRefreshAction && !(showDashboardLink && hasStripeAccount)) {
+    return null;
+  }
+
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={actionsPending}
-          onClick={onSync}
-        >
-          {pending ? "Refreshing…" : "Refresh status"}
-        </Button>
+        {showRefreshAction ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={actionsPending}
+            onClick={onSync}
+          >
+            {pending ? "Refreshing…" : "Refresh status"}
+          </Button>
+        ) : null}
         {showDashboardLink && hasStripeAccount ? (
           <Button
             type="button"

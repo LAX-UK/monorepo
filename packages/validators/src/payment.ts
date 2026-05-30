@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const createPaymentBodySchema = z.object({
   lotId: z.string().uuid(),
+  addressId: z.string().uuid("Choose a saved address before continuing."),
 });
 
 export const paymentIdParamSchema = z.object({

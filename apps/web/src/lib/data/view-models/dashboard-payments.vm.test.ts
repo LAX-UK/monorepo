@@ -1,3 +1,4 @@
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
 import { describe, expect, it } from "vitest";
 import { sortPaymentsNewestFirst, toPaymentDisplayRows } from "./dashboard-payments.vm";
@@ -41,7 +42,7 @@ describe("toPaymentDisplayRows", () => {
     const [out] = toPaymentDisplayRows([row({ status: "pending", lotId: "abc-123" })]);
     expect(out?.primaryAction).toEqual({
       kind: "pay",
-      href: "/dashboard/checkout/abc-123",
+      href: dashboardCheckoutLotUrl("abc-123"),
       label: "Pay now",
     });
   });

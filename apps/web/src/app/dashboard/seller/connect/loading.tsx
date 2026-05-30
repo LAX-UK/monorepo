@@ -1,5 +1,5 @@
-import { ConnectWorkspaceSkeleton } from "@/components/connect/connect-workspace-skeleton";
+import { ConnectPageSkeleton } from "@/components/connect/connect-page-skeleton";
 
 export default function SellerConnectLoading() {
-  return <ConnectWorkspaceSkeleton />;
+  return <ConnectPageSkeleton />;
 }

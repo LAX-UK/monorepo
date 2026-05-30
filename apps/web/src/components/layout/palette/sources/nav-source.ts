@@ -1,6 +1,10 @@
 import type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
+import {
+  buildClientBuyingPaletteSections,
+  buildClientSellingPaletteSections,
+} from "@/lib/shell/client-nav-palette";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { UserRole } from "@auction/types";
 
@@ -13,44 +17,6 @@ const marketingSections: PaletteSection[] = [
       { id: "m-search", href: "/search", label: "Search lots" },
       { id: "m-archive", href: "/archive", label: "Past auctions" },
       { id: "m-artists", href: "/artists", label: "Browse artists" },
-    ],
-  },
-];
-
-const dashboardBuyingSections: PaletteSection[] = [
-  {
-    id: "pages",
-    heading: "Pages",
-    items: [
-      { id: "d-home", href: "/dashboard", label: "Dashboard home" },
-      { id: "d-portfolio", href: "/dashboard/portfolio", label: "My collection" },
-      { id: "d-bids", href: "/dashboard/bids", label: "My bids" },
-      { id: "d-watchlist", href: "/dashboard/watchlist", label: "Watchlist" },
-      { id: "d-payments", href: "/dashboard/payments", label: "My payments" },
-      { id: "d-notifications", href: "/dashboard/notifications", label: "Notifications" },
-      { id: "d-organisations", href: "/dashboard/organisations", label: "Organisations" },
-      { id: "d-settings", href: "/dashboard/settings/profile", label: "Settings" },
-      { id: "d-gallery", href: "/", label: "Browse gallery", hint: "Marketing site" },
-      { id: "d-search", href: "/search", label: "Search lots" },
-    ],
-  },
-];
-
-const dashboardSellingSections: PaletteSection[] = [
-  {
-    id: "seller",
-    heading: "Selling workspace",
-    items: [
-      { id: "s-overview", href: "/dashboard/seller", label: "Seller overview" },
-      { id: "s-submissions", href: "/dashboard/submissions", label: "My submissions" },
-      { id: "s-in-sale", href: "/dashboard/seller/in-sale", label: "Items in sale" },
-      { id: "s-payouts", href: "/dashboard/seller/payouts", label: "Sold & payouts" },
-      { id: "s-connect", href: "/dashboard/seller/connect", label: "Payout setup" },
-      { id: "s-artist", href: "/dashboard/seller/artist", label: "Artist profile" },
-      { id: "s-notifications", href: "/dashboard/notifications", label: "Notifications" },
-      { id: "s-organisations", href: "/dashboard/organisations", label: "Organisations" },
-      { id: "s-settings", href: "/dashboard/settings/profile", label: "Settings" },
-      { id: "s-search", href: "/search", label: "Search lots" },
     ],
   },
 ];
@@ -146,12 +112,13 @@ export function buildNavPaletteSections(
   clientWorkspaceMode: ClientWorkspaceMode = "buying",
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
+  orgModuleEnabled = true,
 ): PaletteSection[] {
   const base =
     variant === "dashboard"
       ? clientWorkspaceMode === "selling"
-        ? dashboardSellingSections
-        : dashboardBuyingSections
+        ? buildClientSellingPaletteSections(orgModuleEnabled)
+        : buildClientBuyingPaletteSections(orgModuleEnabled)
       : variant === "admin" && sessionUser
         ? buildStaffAdminPaletteSections(sessionUser, pendingSubmissionCount, pendingArtistCount)
         : variant === "admin"

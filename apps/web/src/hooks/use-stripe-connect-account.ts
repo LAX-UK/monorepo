@@ -149,7 +149,7 @@ export function useStripeConnectAccount({
     }
   }, [localStatus?.ready]);
 
-  useConnectStatusPolling({
+  const { timedOut: pollingTimedOut } = useConnectStatusPolling({
     enabled:
       pollAfterOnboardingExit &&
       !localStatus?.ready &&
@@ -177,5 +177,6 @@ export function useStripeConnectAccount({
     handleOnboardingExit,
     runEnsureAccount,
     reloadEmbeddedSetup,
+    pollingTimedOut,
   };
 }

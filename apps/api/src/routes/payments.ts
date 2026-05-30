@@ -6,7 +6,7 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
-import { PaymentProviderError } from "../lib/errors.js";
+import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
 import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
@@ -104,12 +104,18 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const result = await container.paymentService.createPendingForWinner(userId, body.lotId);
+      const result = await container.paymentService.createPendingForWinner(
+        userId,
+        body.lotId,
+        body.addressId,
+      );
       if (result.isErr()) {
         const error = result.error;
         const body: Record<string, string> = { error: error.message };
         if (error instanceof PaymentProviderError && error.stripeCode) {
           body.code = error.stripeCode;
+        } else if (error instanceof LotError && error.code) {
+          body.code = error.code;
         }
         return c.json(body, asHttpStatus(error.status));
       }

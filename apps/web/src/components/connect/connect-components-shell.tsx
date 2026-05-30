@@ -1,5 +1,6 @@
 "use client";
 
+import { ConnectInlineAlert } from "@/components/connect/connect-inline-alert";
 import { useStripeConnectInstance } from "@/components/connect/use-stripe-connect-instance";
 import { ConnectComponentsProvider } from "@stripe/react-connect-js";
 import type { ReactNode } from "react";
@@ -17,11 +18,7 @@ export function ConnectComponentsShell({ publishableKey, fetchClientSecret, chil
   });
 
   if (error) {
-    return (
-      <p className="font-body text-sm text-error" role="alert">
-        {error}
-      </p>
-    );
+    return <ConnectInlineAlert kind="init_failed" detail={error} />;
   }
 
   if (!connectInstance) {

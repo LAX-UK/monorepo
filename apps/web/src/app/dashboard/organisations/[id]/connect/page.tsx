@@ -1,6 +1,8 @@
 import { ConnectWorkspace } from "@/components/connect/connect-workspace";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
   getServerStripeConnectClientConfig,
   syncServerStripeConnectStatus,
@@ -29,6 +31,11 @@ export default async function OrganisationConnectPage({
     syncServerStripeConnectStatus(id),
   ]);
 
+  const connectFailure =
+    connectRes.ok || connectRes.error === "not_connected"
+      ? null
+      : buildSellerConnectFailure(connectRes.error);
+
   return (
     <div className="space-y-6">
       <OrgTabSectionHeader>
@@ -38,8 +45,9 @@ export default async function OrganisationConnectPage({
         />
       </OrgTabSectionHeader>
       <p className="font-body text-sm text-on-surface-variant">
-        Manage bank details and Stripe requirements without leaving LAX.
+        Manage bank details and verification without leaving LAX.
       </p>
+      {connectFailure ? <DashboardSliceErrorAlert failure={connectFailure} /> : null}
       <ConnectWorkspace
         publishableKey={clientConfig.publishableKey}
         connectEnforced={clientConfig.connectEnforced}

@@ -6,6 +6,7 @@ import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { ClientShell } from "@/components/shell/client-shell";
 import { ContextBanner } from "@/components/shell/context-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
@@ -85,12 +86,16 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   const { acting, safeActing } = deriveActingContext({ actingContext, orgModuleEnabled });
 
+  // Prefetch for pathname-resolved selling nav (cookie may still be "buying" on /dashboard/seller/*).
+  const sellerConnectNavBadge = await loadSellerConnectNavBadge(user.role, user.staffRole ?? null);
+
   return (
     <ExportShellClient>
       <ClientShell
         user={user}
         orgModuleEnabled={orgModuleEnabled}
         clientWorkspaceMode={clientWorkspaceMode}
+        sellerConnectNavBadge={sellerConnectNavBadge}
         cookieDensity={cookieDensity}
         hideEmailStatusBanner
         acting={acting}

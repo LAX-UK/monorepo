@@ -7,6 +7,7 @@ import {
   kycLinkActionLabel,
   resolveKycFeedback,
 } from "@/components/kyc/kyc-copy";
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { lotPath } from "@/lib/seo/url";
@@ -94,7 +95,7 @@ export function buildAttentionItems({
       id: `settlement-${row.lot.id}`,
       title: `Payment due: ${row.lot.title}`,
       hint: `Total ${formatSettlementTotal(row)}`,
-      href: `/dashboard/checkout/${row.lot.id}`,
+      href: dashboardCheckoutLotUrl(row.lot.id),
       ctaLabel: "Pay",
     });
   }

@@ -22,6 +22,7 @@ export const DASHBOARD_CTA = {
   contactSupport: "Contact support",
   usePersonalProfile: "Use personal profile",
   sellerWorkspace: "Seller workspace",
+  openPayoutSetup: "Open payout setup",
   itemsInSale: "View items in sale",
   myPayments: "View my payments",
   myOrganisations: "Organisations",
@@ -44,8 +45,14 @@ export const DASHBOARD_ROUTES = {
   sellerConnect: "/dashboard/seller/connect",
   organisations: "/dashboard/organisations",
   invitations: "/dashboard/invitations",
+  checkout: "/dashboard/checkout",
   signIn: "/login",
 } as const;
+
+/** Per-lot checkout session (buying workspace). */
+export function dashboardCheckoutLotUrl(lotId: string): string {
+  return `${DASHBOARD_ROUTES.checkout}/${lotId}`;
+}
 
 /** Login URL with optional post-auth return path. */
 export function dashboardLoginUrl(next?: string): string {

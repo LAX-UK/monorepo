@@ -13,10 +13,12 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 export default async function AddressSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const sp = await searchParams;
   const err = sp.error ? decodeURIComponent(sp.error) : null;
+  const returnAfterSave =
+    sp.next?.startsWith("/dashboard/") && !sp.next.includes("//") ? sp.next : null;
 
   await requireAuthenticatedUser({
     shell: "client",
@@ -42,7 +44,7 @@ export default async function AddressSettingsPage({
       <SettingsFormHeader title="Addresses" />
       {err ? <DashboardSliceErrorAlert failure={describeSettingsActionError(err)} /> : null}
       {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-      <AddressesBoard addresses={addresses} />
+      <AddressesBoard addresses={addresses} {...(returnAfterSave ? { returnAfterSave } : {})} />
     </DashboardPage>
   );
 }
