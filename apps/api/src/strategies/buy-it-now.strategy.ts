@@ -1,16 +1,23 @@
 import type { Bid, Lot, NewBid } from "@auction/types";
+import { moneyGte } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
-import type { ILotStrategy } from "../services/interfaces/auction-strategy.js";
+import {
+  bidAmountBelowMinimum,
+  lotMinIncrementMoney,
+  minBidAmountMoney,
+} from "../services/bid/bid-money.js";
+import type { BidPolicyConfig } from "../services/bid/bid-policy.js";
+import type {
+  EarlyCloseResolution,
+  ILotStrategy,
+  ValidateBidContext,
+} from "../services/interfaces/auction-strategy.js";
+import { isOperatorPlacement } from "../services/interfaces/auction-strategy.js";
 import { determineHighestBid } from "./highest-bid-winner.js";
 
-function minIncrement(lot: Lot): number {
-  const n = Number.parseFloat(lot.minBidIncrement);
-  return Number.isFinite(n) && n > 0 ? n : 0.01;
-}
-
 export class BuyItNowAuctionStrategy implements ILotStrategy {
-  validateBid(lot: Lot, bid: NewBid): Result<void, BidError> {
+  validateBid(lot: Lot, bid: NewBid, ctx?: ValidateBidContext): Result<void, BidError> {
     if (
       bid.buyerLegalEntityId && lot.sellerLegalEntityId
         ? bid.buyerLegalEntityId === lot.sellerLegalEntityId
@@ -18,14 +25,18 @@ export class BuyItNowAuctionStrategy implements ILotStrategy {
     ) {
       return err(new BidError("Seller cannot bid on own lot"));
     }
-    const current = Number(lot.currentPrice);
-    const buyNow = lot.buyNowPrice ? Number(lot.buyNowPrice) : null;
-    if (buyNow !== null && bid.amount >= buyNow) {
+    const buyNow = lot.buyNowPrice?.trim();
+    if (buyNow && moneyGte(String(bid.amount), buyNow)) {
       return ok(undefined);
     }
-    const inc = minIncrement(lot);
-    if (bid.amount + 1e-9 < current + inc) {
-      return err(new BidError(`Bid must be at least ${(current + inc).toFixed(2)}`));
+    const winnerId = ctx?.currentWinnerId;
+    const bidderKey = bid.placedByUserId ?? bid.bidderId;
+    if (!isOperatorPlacement(ctx?.placedVia) && winnerId && bidderKey && winnerId === bidderKey) {
+      return err(new BidError("You are already the highest bidder", 400, "already_leading"));
+    }
+    const inc = lotMinIncrementMoney(lot);
+    if (bidAmountBelowMinimum(bid.amount, lot.currentPrice, inc)) {
+      return err(new BidError(`Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`));
     }
     return ok(undefined);
   }
@@ -38,11 +49,35 @@ export class BuyItNowAuctionStrategy implements ILotStrategy {
     return Math.max(Number(lot.currentPrice), currentBidAmount);
   }
 
-  shouldExtendTime(lot: Lot, bid: NewBid): boolean {
+  shouldExtendTime(lot: Lot, bid: NewBid, policy: BidPolicyConfig): boolean {
     const buyNow = lot.buyNowPrice ? Number(lot.buyNowPrice) : null;
     if (buyNow !== null && bid.amount >= buyNow) return false;
     const msRemaining = lot.endTime.getTime() - Date.now();
-    return msRemaining > 0 && msRemaining < 2 * 60 * 1000;
+    return msRemaining > 0 && msRemaining < policy.antiSnipingWindowMs;
+  }
+
+  validateSelfServiceAllowed(_lot: Lot, _englishOnlyAuctions: boolean): Result<void, BidError> {
+    return ok(undefined);
+  }
+
+  resolveEarlyClose(
+    lot: Lot,
+    lastBid: Bid,
+    ctx: { buyerLegalEntityId: string },
+  ): EarlyCloseResolution | null {
+    const buyNow = lot.buyNowPrice?.trim();
+    if (!buyNow || buyNow === "" || !moneyGte(lastBid.amount, buyNow)) {
+      return null;
+    }
+    const winnerUserId = lastBid.placedByUserId ?? lastBid.bidderId;
+    const winnerLegalEntityId = lastBid.buyerLegalEntityId ?? ctx.buyerLegalEntityId;
+    if (!winnerUserId || !winnerLegalEntityId) return null;
+    return {
+      endedEarly: true,
+      winnerUserId,
+      winnerLegalEntityId,
+      hammerPrice: lastBid.amount,
+    };
   }
 
   determineWinner(_lot: Lot, bids: Bid[]): Bid | null {

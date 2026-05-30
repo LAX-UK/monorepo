@@ -6,11 +6,42 @@ export type VeriffVerificationDecision = {
   id: string;
   attemptId?: string | null;
   status: string;
+  code?: number | null;
   reasonCode?: number | null;
   person?: Record<string, unknown> | null;
   document?: Record<string, unknown> | null;
   decisionTime?: string | null;
 };
+
+const KNOWN_DECISION_STATUSES = new Set([
+  "approved",
+  "resubmission_requested",
+  "declined",
+  "expired",
+  "abandoned",
+  "review",
+  "submitted",
+]);
+
+/** Veriff programmatic decision codes — fallback when status is missing or unknown. */
+const VERIFF_CODE_TO_STATUS: Record<number, string> = {
+  9001: "approved",
+  9102: "declined",
+  9103: "resubmission_requested",
+  9104: "expired",
+  9121: "abandoned",
+};
+
+function resolveVeriffDecisionStatus(status: string, code?: number | null): string {
+  const normalized = status.trim();
+  if (normalized && KNOWN_DECISION_STATUSES.has(normalized)) {
+    return normalized;
+  }
+  if (code != null && VERIFF_CODE_TO_STATUS[code]) {
+    return VERIFF_CODE_TO_STATUS[code];
+  }
+  return normalized || "unknown";
+}
 
 /** Fraud / hard-fail reason codes — increment retry count. */
 const VERIFF_HARD_FAILURE_REASON_CODES = new Set([
@@ -64,7 +95,7 @@ export function mapVeriffDecisionToApplyInput(
   verification: VeriffVerificationDecision,
   decisionPayload: Record<string, unknown>,
 ): KycDecisionApplyInput {
-  const status = verification.status;
+  const status = resolveVeriffDecisionStatus(verification.status, verification.code);
   const verificationStatus = mapVerificationStatus(status);
   const userKycUpdate = userKycUpdateFromVeriffDecision(status, verification.reasonCode);
   const isTerminal = ["approved", "declined", "expired", "abandoned"].includes(status);

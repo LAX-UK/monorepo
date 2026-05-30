@@ -2,6 +2,7 @@
 export type ConnectLegalEntityFields = {
   status: string;
   stripeConnectAccountId?: string | null;
+  stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue?: string[] | null;
   stripeConnectDisabledReason?: string | null;

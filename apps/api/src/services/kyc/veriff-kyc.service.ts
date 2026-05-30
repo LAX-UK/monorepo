@@ -308,6 +308,7 @@ export class VeriffKycService implements IKycService {
         id: verification.id,
         attemptId: verification.attemptId ?? null,
         status: verification.status,
+        code: verification.code ?? null,
         reasonCode: verification.reasonCode ?? null,
         person: verification.person ?? null,
         document: verification.document ?? null,

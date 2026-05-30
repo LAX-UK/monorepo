@@ -18,35 +18,33 @@ export class ConnectWebhookHandler {
     return stripe;
   }
 
-  async handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }> {
+  private resolveAccountId(event: Stripe.Event): string | undefined {
     if (event.type === "account.updated") {
-      const account = event.data.object as Stripe.Account;
-      return this.db.transaction(async (tx) => {
-        const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_connect");
-        if (!claimed) {
-          return { processed: true };
-        }
-        await this.accountService.applyAccountUpdate(account, tx);
-        return { processed: true };
-      });
+      return (event.data.object as Stripe.Account).id;
     }
     if (event.type === "capability.updated") {
       const cap = event.data.object as Stripe.Capability;
-      const accountId = typeof cap.account === "string" ? cap.account : cap.account?.id;
-      if (!accountId) {
-        return { processed: false };
-      }
-      return this.db.transaction(async (tx) => {
-        const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_connect");
-        if (!claimed) {
-          return { processed: true };
-        }
-        const stripe = this.requireStripe();
-        const account = await stripe.accounts.retrieve(accountId);
-        await this.accountService.applyAccountUpdate(account, tx);
-        return { processed: true };
-      });
+      return typeof cap.account === "string" ? cap.account : cap.account?.id;
     }
-    return { processed: false };
+    return undefined;
+  }
+
+  async handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }> {
+    const accountId = this.resolveAccountId(event);
+    if (!accountId) {
+      return { processed: false };
+    }
+
+    const stripe = this.requireStripe();
+    const account = await stripe.accounts.retrieve(accountId);
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_connect");
+      if (!claimed) {
+        return { processed: true };
+      }
+      await this.accountService.applyAccountUpdate(account, tx);
+      return { processed: true };
+    });
   }
 }

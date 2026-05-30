@@ -1,23 +1,22 @@
 import type { Bid, Lot } from "@auction/types";
-import { listAllowedAutoBidSteps, validateAutoBidStepAmount } from "@auction/validators";
+import {
+  listAllowedAutoBidSteps,
+  numberToMinorUnits,
+  parseMoneyToMinorUnits,
+  validateAutoBidStepAmount,
+} from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
+import { lotMinIncrementMoney, minBidAmountMoney, numberToMoneyString } from "./bid/bid-money.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { NotificationService } from "./notification.service.js";
 
-function minIncrementAmount(lot: Lot): number {
-  const n = Number.parseFloat(lot.minBidIncrement);
-  return Number.isFinite(n) && n > 0 ? n : 0.01;
-}
-
-function minNextBidAmount(lot: Lot): number {
-  const current = Number.parseFloat(lot.currentPrice);
-  const inc = minIncrementAmount(lot);
-  const base = Number.isFinite(current) ? current : 0;
-  return base + inc;
+function minNextBidAmountMoney(lot: Lot): string {
+  const increment = lotMinIncrementMoney(lot);
+  return minBidAmountMoney(lot.currentPrice, increment);
 }
 
 export type AutoBidSettings = {
@@ -105,10 +104,12 @@ export class AutoBidService {
       return err(new BidError(stepErr, 400, "auto_bid_step_invalid"));
     }
 
-    const minNext = minNextBidAmount(lot);
-    if (input.maxAutoBidAmount + 1e-9 < minNext) {
+    const minNextMoney = minNextBidAmountMoney(lot);
+    const maxMinor = numberToMinorUnits(input.maxAutoBidAmount);
+    const minNextMinor = parseMoneyToMinorUnits(minNextMoney);
+    if (maxMinor < minNextMinor) {
       return err(
-        new BidError(`Max auto-bid must be at least ${minNext.toFixed(2)} (next minimum bid)`, 400),
+        new BidError(`Max auto-bid must be at least ${minNextMoney} (next minimum bid)`, 400),
       );
     }
 
@@ -117,7 +118,7 @@ export class AutoBidService {
         placedByUserId: input.placedByUserId,
         buyerLegalEntityId: input.buyerLegalEntityId,
         lotId: input.lotId,
-        amount: minNext,
+        amount: Number.parseFloat(minNextMoney),
         maxAutoBidAmount: input.maxAutoBidAmount,
         autoBidStepAmount: input.autoBidStepAmount,
       });
@@ -126,8 +127,9 @@ export class AutoBidService {
 
     const winning = await this.opts.repos.root.bid.findWinningBid(input.lotId);
     const winnerUserId = winning?.placedByUserId ?? winning?.bidderId ?? null;
-    const maxStr = input.maxAutoBidAmount.toFixed(2);
-    const stepStr = input.autoBidStepAmount.toFixed(2);
+    const maxStr = numberToMoneyString(input.maxAutoBidAmount);
+    const stepStr = numberToMoneyString(input.autoBidStepAmount);
+    const minNext = Number.parseFloat(minNextMoney);
 
     if (winnerUserId === input.placedByUserId) {
       await this.opts.repos.root.bid.updateProxySettingsForBidderOnLot(

@@ -1,4 +1,5 @@
 import { adminBidErrorMatcher } from "./matchers/admin.matcher";
+import { alreadyLeadingBidErrorMatcher } from "./matchers/already-leading.matcher";
 import { dutchPriceBidErrorMatcher } from "./matchers/dutch-price.matcher";
 import {
   bidInFlightBidErrorMatcher,
@@ -32,6 +33,7 @@ export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   bidRateLimitedBidErrorMatcher,
   biddingDisabledBidErrorMatcher,
   bidInFlightBidErrorMatcher,
+  alreadyLeadingBidErrorMatcher,
   notAcceptingBidErrorMatcher,
   endedBidErrorMatcher,
   minBidBidErrorMatcher,
