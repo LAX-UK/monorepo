@@ -1,7 +1,6 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { InvitationCardList } from "@/components/organisations/invitation-card-list";
 import { OrgModuleComingSoon } from "@/components/organisations/org-module-coming-soon";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -22,15 +21,15 @@ export default async function InvitationsInboxPage() {
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   if (!orgModuleEnabled) {
     return (
-      <DashboardPage>
+      <DashboardListPage title="Invitations">
         <OrgModuleComingSoon />
-      </DashboardPage>
+      </DashboardListPage>
     );
   }
 
   await requireAuthenticatedUser({
     shell: "client",
-    loginNext: "/dashboard/invitations",
+    loginNext: DASHBOARD_ROUTES.invitations,
   });
 
   let loadFailure: DashboardSliceFailure | null = null;
@@ -50,43 +49,36 @@ export default async function InvitationsInboxPage() {
   }
 
   return (
-    <DashboardPage>
-      <div className="mx-auto max-w-5xl space-y-8">
-        <DashboardPageHeader
-          meta="Invitation"
-          title="Invitations"
-          hideTitleOnMobile
-          hideDescriptionOnMobile
-          description="Pending organisation invitations for your account email."
-          actions={
+    <DashboardListPage
+      meta="Invitation"
+      title="Invitations"
+      description="Pending organisation invitations for your account email."
+      actions={
+        <Button asChild variant="outline" size="sm">
+          <Link href={DASHBOARD_ROUTES.organisations} prefetch>
+            Back to organisations
+          </Link>
+        </Button>
+      }
+      errorAlert={loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+    >
+      {!loadFailure && pending.length === 0 ? (
+        <DashboardEmptyState
+          variant="hero"
+          icon={<Inbox className="size-6" aria-hidden />}
+          title={DASHBOARD_EMPTY.invitations.title}
+          description={DASHBOARD_EMPTY.invitations.description}
+          action={
             <Button asChild variant="outline" size="sm">
               <Link href={DASHBOARD_ROUTES.organisations} prefetch>
-                Back to organisations
+                Go to Organisations
               </Link>
             </Button>
           }
         />
+      ) : null}
 
-        {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-
-        {!loadFailure && pending.length === 0 ? (
-          <DashboardEmptyState
-            variant="hero"
-            icon={<Inbox className="size-6" aria-hidden />}
-            title={DASHBOARD_EMPTY.invitations.title}
-            description={DASHBOARD_EMPTY.invitations.description}
-            action={
-              <Button asChild variant="outline" size="sm">
-                <Link href={DASHBOARD_ROUTES.organisations} prefetch>
-                  Go to Organisations
-                </Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {!loadFailure && pending.length > 0 ? <InvitationCardList invitations={pending} /> : null}
-      </div>
-    </DashboardPage>
+      {!loadFailure && pending.length > 0 ? <InvitationCardList invitations={pending} /> : null}
+    </DashboardListPage>
   );
 }

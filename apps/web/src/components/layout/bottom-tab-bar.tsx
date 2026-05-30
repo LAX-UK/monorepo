@@ -4,6 +4,7 @@ import type { AppShellNavItem } from "@/components/layout/app-shell-nav";
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
+import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -54,7 +55,10 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
                 <span className="relative">
                   <Icon className="size-5" aria-hidden />
                   {item.id === "notifications" && unread > 0 ? (
-                    <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[10px] font-bold text-on-error">
+                    <span
+                      className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[10px] font-bold text-on-error"
+                      aria-hidden
+                    >
                       {unread > 9 ? "9+" : unread}
                     </span>
                   ) : null}
@@ -84,6 +88,11 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
                   <Link
                     href={item.href}
                     aria-current={active ? "page" : undefined}
+                    aria-label={
+                      item.id === "notifications"
+                        ? formatUnreadTabLabel(item.label, unread)
+                        : item.label
+                    }
                     className={tabClassName}
                   >
                     {content}

@@ -1,3 +1,4 @@
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
@@ -144,7 +145,7 @@ describe("toPortfolioLotCards", () => {
     const cards = toPortfolioLotCards(rows, { artistNameById: { "art-1": "Jane Doe" } });
     expect(cards).toHaveLength(1);
     expect(cards[0]?.artistName).toBe("Jane Doe");
-    expect(cards[0]?.checkoutHref).toBe("/dashboard/checkout/lot-x");
+    expect(cards[0]?.checkoutHref).toBe(dashboardCheckoutLotUrl("lot-x"));
     expect(cards[0]?.premiumLabel).toMatch(/100/);
     expect(cards[0]?.totalLabel).toMatch(/1,100/);
   });

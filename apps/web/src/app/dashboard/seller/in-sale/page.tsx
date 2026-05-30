@@ -1,12 +1,12 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import {
   SellerOrgContextBanner,
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
 import { InSaleBoard } from "@/components/dashboard/seller/in-sale-board";
+import { InSaleListToolbar } from "@/components/dashboard/seller/in-sale-list-toolbar";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
@@ -97,27 +97,28 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
   }));
 
   return (
-    <DashboardPage className="screen w-full space-y-6">
-      <DashboardPageHeader
-        meta={workspaceMeta}
-        title="Items in sale"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
-        description="Lots from your submissions across every catalogue. Status, reserve, and end time at a glance — bidder identities are never shown."
-      />
-
-      {orgActingSelected ? <SellerOrgContextBanner /> : null}
-      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
-
+    <DashboardListPage
+      className="screen w-full"
+      meta={workspaceMeta}
+      title="Items in sale"
+      description="Lots from your submissions across every catalogue. Status, reserve, and end time at a glance — bidder identities are never shown."
+      banner={
+        <>
+          {orgActingSelected ? <SellerOrgContextBanner /> : null}
+          {!sellerEntityId ? (
+            <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} />
+          ) : null}
+        </>
+      }
+      errorAlert={loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+      toolbar={!loadFailure ? <InSaleListToolbar filters={filters} /> : null}
+    >
       {!loadFailure && allDisplay.length > 0 ? (
         <KpiRow track="selling" columns={4} tiles={kpiTiles} />
       ) : null}
-
-      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-
       {!loadFailure ? (
         <InSaleBoard filters={filters} allDisplay={allDisplay} filtered={filtered} />
       ) : null}
-    </DashboardPage>
+    </DashboardListPage>
   );
 }

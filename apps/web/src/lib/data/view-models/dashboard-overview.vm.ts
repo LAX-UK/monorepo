@@ -1,3 +1,4 @@
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type {
   ArtistFollowRow,
   BidWithLot,
@@ -157,7 +158,7 @@ export function buildDashboardOverviewVm(input: {
   if (firstSettlement) {
     primaryCta = {
       label: `Pay for “${firstSettlement.lot.title}”`,
-      href: `/dashboard/checkout/${firstSettlement.lot.id}`,
+      href: dashboardCheckoutLotUrl(firstSettlement.lot.id),
     };
   } else {
     const outbidLot = activeLots.find((lot) => activeLotBidHints[lot.id] === "outbid");

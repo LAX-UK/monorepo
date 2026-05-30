@@ -57,7 +57,7 @@ export default async function BiddingSettingsPage({
   }
 
   return (
-    <DashboardPage className="mx-auto max-w-2xl space-y-8">
+    <DashboardPage className="space-y-8">
       <SettingsFormHeader title="Bidding preferences" />
       {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
       {!loadFailure && saved ? (

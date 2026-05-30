@@ -1,5 +1,6 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { getStaffNavItems, getStaffNavParentLabel } from "@/components/layout/staff-nav";
+import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { AppShellLayout, UserRole, UserStaffRole } from "@auction/types";
@@ -161,8 +162,15 @@ export function getClientSellingNavItems(orgModuleEnabled = true): AppShellNavIt
       {
         id: "payouts",
         label: "Sold & payouts",
-        href: "/dashboard/seller/payouts",
+        href: DASHBOARD_ROUTES.sellerPayouts,
         icon: WalletCards,
+      },
+      {
+        id: "connect",
+        label: "Payout setup",
+        href: DASHBOARD_ROUTES.sellerConnect,
+        icon: CreditCard,
+        match: exactOrNested(DASHBOARD_ROUTES.sellerConnect),
       },
       {
         id: "artist",

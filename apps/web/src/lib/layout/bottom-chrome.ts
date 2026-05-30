@@ -57,6 +57,7 @@ export function isFixedPayBarRoute(pathname: string): boolean {
 export function isHideDashboardTabBarRoute(pathname: string): boolean {
   if (isFixedPayBarRoute(pathname)) return true;
   if (pathname.startsWith("/dashboard/submissions/new")) return true;
+  if (/^\/dashboard\/submissions\/[^/]+$/.test(pathname)) return true;
   return false;
 }
 

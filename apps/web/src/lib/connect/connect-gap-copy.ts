@@ -113,12 +113,12 @@ export function connectGapPayoutsBannerCopy(gap: ConnectGapState): {
     case "not_started":
       return {
         title: "Start payout setup",
-        description: "Set up Stripe Connect to receive settlement transfers.",
+        description: "Set up your payout account to receive settlement transfers.",
       };
     case "kyc_required":
       return {
         title: "Verify identity first",
-        description: "Complete identity verification before connecting a payout account.",
+        description: "Complete identity verification before starting payout setup.",
       };
     case "requirements_due":
       if (isPastDueConnectGap(gap)) {
@@ -134,7 +134,7 @@ export function connectGapPayoutsBannerCopy(gap: ConnectGapState): {
     case "onboarding_incomplete":
       return {
         title: "Finish payout setup",
-        description: "Complete Stripe Connect verification to receive settlement transfers.",
+        description: "Complete payout verification to receive settlement transfers.",
       };
     case "restricted":
       return {
@@ -145,7 +145,7 @@ export function connectGapPayoutsBannerCopy(gap: ConnectGapState): {
     default:
       return {
         title: "Payout setup incomplete",
-        description: "Finish Stripe Connect verification to receive settlement transfers.",
+        description: "Finish payout verification to receive settlement transfers.",
       };
   }
 }

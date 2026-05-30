@@ -4,6 +4,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { SETTINGS_NARROW_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
@@ -22,7 +23,7 @@ export default async function SecuritySettingsPage() {
   const twoFactorEnabled = me.twoFactorEnabled === true;
 
   return (
-    <DashboardPage className="mx-auto max-w-md space-y-6">
+    <DashboardPage className={`space-y-6 ${SETTINGS_NARROW_MAX_WIDTH}`}>
       <SettingsFormHeader
         title="Security"
         actions={

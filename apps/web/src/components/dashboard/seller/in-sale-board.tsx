@@ -8,7 +8,6 @@ import {
   InSaleMobileList,
 } from "@/components/dashboard/list/in-sale-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
-import { InSaleListToolbar } from "@/components/dashboard/seller/in-sale-list-toolbar";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   type InSaleFilters,
@@ -28,8 +27,6 @@ type Props = {
 export function InSaleBoard({ filters, allDisplay, filtered }: Props) {
   return (
     <>
-      <InSaleListToolbar filters={filters} />
-
       <DashboardFilterResultsAnnouncer count={filtered.length} entityLabel="lots" />
 
       <section>
