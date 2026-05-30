@@ -835,6 +835,8 @@ export function createContainer(env: Env): Container {
     lotRepo,
     legalEntityRepository,
     domainEventPublisher,
+    notificationDispatcher,
+    notificationFactory,
   );
 
   const saleFollowRepo = new DrizzleSaleFollowRepository(db);

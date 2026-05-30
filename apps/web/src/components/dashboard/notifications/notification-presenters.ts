@@ -5,6 +5,8 @@ import {
   Clock,
   CreditCard,
   Eye,
+  FileSearch,
+  FileText,
   Gavel,
   type LucideIcon,
   ShieldAlert,
@@ -58,6 +60,12 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };
+  }
+  if (type === "condition_report_ready") {
+    return { label: "Condition report", Icon: FileText, tone: "success" };
+  }
+  if (type === "condition_report_declined") {
+    return { label: "Condition report", Icon: FileSearch, tone: "warn" };
   }
   return { label: humanizeType(type), Icon: BellRing, tone: "neutral" };
 }

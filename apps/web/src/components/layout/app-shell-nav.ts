@@ -9,6 +9,7 @@ import {
   Brush,
   Building2,
   CreditCard,
+  FileSearch,
   Heart,
   Inbox,
   Layers,
@@ -88,6 +89,13 @@ export function getClientBuyingNavItems(orgModuleEnabled = true): AppShellNavIte
         match: (pathname) => pathname === "/dashboard",
       },
       { id: "bids", label: "My Bids", href: "/dashboard/bids", icon: TrendingUp },
+      {
+        id: "condition-reports",
+        label: "Condition reports",
+        href: "/dashboard/condition-reports",
+        icon: FileSearch,
+        match: exactOrNested("/dashboard/condition-reports"),
+      },
       { id: "portfolio", label: "Collection", href: "/dashboard/portfolio", icon: Package },
       { id: "payments", label: "My payments", href: "/dashboard/payments", icon: CreditCard },
       {

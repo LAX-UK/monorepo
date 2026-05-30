@@ -24,6 +24,7 @@ import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerAutoBid } from "@/lib/data/http/auto-bid.server";
+import { getServerConditionReportForLot } from "@/lib/data/http/condition-report.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
   getServerLotBids,
@@ -208,6 +209,19 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
   const kycApprovedForCr = session?.kycStatus === "approved";
   const kycFeedbackForCr = kycApprovedForCr ? null : (kycSummary?.feedback ?? null);
+
+  const mdCr = auction.marketingDetails?.conditionReport;
+  const publishedConditionReport =
+    mdCr?.downloadUrl || mdCr?.summary
+      ? {
+          ...(mdCr.summary ? { summary: mdCr.summary } : {}),
+          ...(mdCr.downloadUrl ? { downloadUrl: mdCr.downloadUrl } : {}),
+        }
+      : null;
+
+  const buyerConditionReportRequest = session
+    ? await getServerConditionReportForLot(auction.id).catch(() => null)
+    : null;
 
   const queueVMs = mapSaleLotsToQueueVMs(
     auction,
@@ -399,8 +413,12 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                     loginNextPath={lotPath(auction)}
                     isAuthenticated={Boolean(session)}
                     show={conditionReportCtaShow}
+                    lotEligible={conditionReportCtaShow}
                     kycApproved={kycApprovedForCr}
                     kycFeedback={kycFeedbackForCr}
+                    publishedConditionReport={publishedConditionReport}
+                    buyerRequest={buyerConditionReportRequest}
+                    userId={session?.id ?? null}
                   />
                 }
                 hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}

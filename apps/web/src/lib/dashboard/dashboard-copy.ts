@@ -30,6 +30,7 @@ export const DASHBOARD_CTA = {
 export const DASHBOARD_ROUTES = {
   overview: "/dashboard",
   bids: "/dashboard/bids",
+  conditionReports: "/dashboard/condition-reports",
   portfolio: "/dashboard/portfolio",
   payments: "/dashboard/payments",
   watchlist: "/dashboard/watchlist",

@@ -242,13 +242,36 @@ export const adminTelephonePlaceBidBodySchema = z.object({
 
 export type AdminTelephonePlaceBidBody = z.infer<typeof adminTelephonePlaceBidBodySchema>;
 
+export const CONDITION_REPORT_REQUEST_NOTE_MAX = 2000;
+
+export const conditionReportRequestFormSchema = z.object({
+  requestNote: z
+    .string()
+    .max(
+      CONDITION_REPORT_REQUEST_NOTE_MAX,
+      `Note must be ${CONDITION_REPORT_REQUEST_NOTE_MAX} characters or fewer`,
+    )
+    .transform((s) => s.trim()),
+});
+
+export type ConditionReportRequestFormValues = z.infer<typeof conditionReportRequestFormSchema>;
+
 export const createConditionReportRequestBodySchema = z.object({
-  requestNote: z.string().max(2000).optional(),
+  requestNote: z.string().max(CONDITION_REPORT_REQUEST_NOTE_MAX).optional(),
   requestingLegalEntityId: z.string().uuid().optional(),
 });
 
 export type CreateConditionReportRequestBody = z.infer<
   typeof createConditionReportRequestBodySchema
+>;
+
+export const listMyConditionReportRequestsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+export type ListMyConditionReportRequestsQuery = z.infer<
+  typeof listMyConditionReportRequestsQuerySchema
 >;
 
 export const fulfillConditionReportRequestBodySchema = z.object({

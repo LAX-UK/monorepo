@@ -335,6 +335,22 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     },
   );
 
+  r.get(
+    "/:id/condition-report-request",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", lotIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const row = await container.conditionReportService.findForBuyerOnLot({
+        userId,
+        lotId: id,
+      });
+      return c.json({ data: row });
+    },
+  );
+
   r.post(
     "/:id/condition-report-requests",
     requireAuth,

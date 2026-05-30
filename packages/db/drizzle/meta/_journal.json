@@ -568,6 +568,13 @@
       "when": 1783800000000,
       "tag": "0083_failed_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1783900000000,
+      "tag": "0084_notification_condition_report_types",
+      "breakpoints": true
     }
   ]
 }
