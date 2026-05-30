@@ -1,4 +1,6 @@
+import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleDetailShell } from "@/components/admin/sale-detail/sale-detail-shell";
+import { computeSaleDetailReadiness } from "@/lib/admin/compute-sale-detail-readiness";
 import { loadSaleConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { loadAdminSaleDetail, loadAdminSaleRegistrationCount } from "@/lib/admin/load-sale-detail";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -30,6 +32,16 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     ),
     loadSaleConnectRequiredByLotId(id),
   ]);
+  const liveish = isSaleLiveish(bundle.sale);
+  const pendingRegs =
+    liveish && registrationCount != null && registrationCount > 0 ? registrationCount : null;
+  const draftSetupReadiness = computeSaleDetailReadiness({
+    saleId: id,
+    sale: bundle.sale,
+    lots: bundle.lots,
+    pendingRegistrationCount: pendingRegs,
+    connectRequiredByLotId,
+  });
 
   return (
     <SaleDetailShell
@@ -40,6 +52,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       activityEvents={activityEvents}
       canManageSales={canManageSales}
       connectRequiredByLotId={connectRequiredByLotId}
+      draftSetupReadiness={draftSetupReadiness}
     >
       {children}
     </SaleDetailShell>

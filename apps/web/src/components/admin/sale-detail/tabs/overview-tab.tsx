@@ -1,3 +1,5 @@
+"use client";
+
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
   CatalogDetailSection,
@@ -9,11 +11,12 @@ import {
   buyerPremiumSummary,
   sumLotHammers,
 } from "@/components/admin/sale-detail/sale-detail-helpers";
+import { useSaleDetailReadiness } from "@/components/admin/sale-detail/sale-detail-readiness-context";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { buildSaleSummaryItems } from "@/lib/admin/build-sale-summary-items";
 import { buildSalePublishReadiness } from "@/lib/admin/catalog-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
-import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
+import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
 import Link from "next/link";
@@ -39,6 +42,7 @@ export function SaleOverviewTab({
   registrationCount,
   connectRequiredByLotId,
 }: Props) {
+  const readinessContext = useSaleDetailReadiness();
   const summaryItems = buildSaleSummaryItems(
     saleId,
     sale,
@@ -50,14 +54,7 @@ export function SaleOverviewTab({
 
   const readiness =
     sale.status === "draft"
-      ? buildSaleSetupReadiness({
-          saleId,
-          sale,
-          lots,
-          pendingRegistrationCount: registrationCount,
-          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
-          setupStepHref: (step) => saleSetupHref(saleId, step),
-        })
+      ? (readinessContext?.draftSetupReadiness ?? null)
       : sale.status === "scheduled"
         ? buildSalePublishReadiness(saleId, sale, lots.length, registrationCount)
         : null;
@@ -68,7 +65,12 @@ export function SaleOverviewTab({
     <div className="space-y-8">
       {showContinueSetup ? (
         <Link
-          href={saleSetupHref(saleId, "identity")}
+          href={saleSetupResumeHref(saleId, {
+            sale,
+            lots,
+            pendingRegistrationCount: registrationCount,
+            ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
+          })}
           className="block rounded-xl border border-primary/30 bg-primary/5 p-5 transition-colors hover:bg-primary/10"
         >
           <h3 className="font-headline text-base text-on-surface">Continue sale setup</h3>

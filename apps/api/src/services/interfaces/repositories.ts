@@ -38,6 +38,8 @@ export type ListLotsFilter = {
   endYear?: number | undefined;
   /** Case-insensitive substring match on title (public catalogue search). */
   search?: string | undefined;
+  /** When true, only lots with no images (draft triage). */
+  needsPhotos?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListLotsSort | undefined;

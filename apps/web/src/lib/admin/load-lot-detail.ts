@@ -9,6 +9,13 @@ export type AdminLotDetailBundle = {
   context: LotDetailContext;
 };
 
+/** Deduped lot record fetch for edit routes (no detail context). */
+export const loadAdminLotRecord = cache(async (lotId: string): Promise<Lot> => {
+  const auction = await getAdminLotById(lotId).catch(() => null);
+  if (!auction) notFound();
+  return auction;
+});
+
 /** Deduped lot fetch for layout + tab routes. */
 export const loadAdminLotDetail = cache(async (lotId: string): Promise<AdminLotDetailBundle> => {
   const auction = await getAdminLotById(lotId).catch(() => null);

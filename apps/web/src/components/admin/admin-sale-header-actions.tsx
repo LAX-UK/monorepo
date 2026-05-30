@@ -5,6 +5,12 @@ import {
   useSaleLifecycleActions,
 } from "@/components/admin/sale-actions/use-sale-lifecycle-actions";
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
+import { saleLifecycleConfirmCopy } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
+import {
+  adminSaleEditHref,
+  adminSaleSetupHref,
+  adminSaleroomHref,
+} from "@/lib/admin/catalog-route-helpers";
 import { salePath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
@@ -36,29 +42,6 @@ type Props = {
   showSaleroomLink?: boolean | undefined;
 };
 
-function confirmCopy(kind: ConfirmKind) {
-  switch (kind) {
-    case "unpublish":
-      return {
-        title: "Revert sale to draft?",
-        description: "All scheduled lots will also revert to draft.",
-        actionLabel: "Revert to draft",
-      };
-    case "markEnded":
-      return {
-        title: "End onsite sale?",
-        description: "This will end the sale and all remaining lots.",
-        actionLabel: "Mark ended",
-      };
-    case "cancel":
-      return {
-        title: "Cancel entire sale?",
-        description: "This cancels the sale and remaining lots.",
-        actionLabel: "Cancel sale",
-      };
-  }
-}
-
 export function AdminSaleHeaderActions({
   saleId,
   saleTitle,
@@ -78,18 +61,18 @@ export function AdminSaleHeaderActions({
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null);
 
   const hasMoreActions = canPublish || canUnpublish || canMarkOnsiteEnded || canCancel || canDelete;
-  const copy = confirmKind ? confirmCopy(confirmKind) : null;
+  const copy = confirmKind ? saleLifecycleConfirmCopy(confirmKind) : null;
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {showSaleroomLink ? (
         <Button size="sm" asChild>
-          <Link href={`/admin/saleroom/${saleId}`}>Open saleroom</Link>
+          <Link href={adminSaleroomHref(saleId)}>Open saleroom</Link>
         </Button>
       ) : null}
       {canEdit ? (
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/admin/sales/${saleId}/edit`}>Edit draft</Link>
+          <Link href={adminSaleEditHref(saleId)}>Edit draft</Link>
         </Button>
       ) : null}
       {hasMoreActions ? (
@@ -120,7 +103,7 @@ export function AdminSaleHeaderActions({
             ) : null}
             {canPublish && !publishReady ? (
               <DropdownMenuItem asChild>
-                <Link href={`/admin/sales/${saleId}/setup?step=review`}>Continue setup</Link>
+                <Link href={adminSaleSetupHref(saleId, "review")}>Continue setup</Link>
               </DropdownMenuItem>
             ) : null}
             {canUnpublish ? (

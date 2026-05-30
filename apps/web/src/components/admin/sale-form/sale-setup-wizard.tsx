@@ -2,66 +2,41 @@
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
-import {
-  clearWizardDraft,
-  wizardDraftCookieKey,
-} from "@/components/admin/admin-form-wizard/wizard-draft";
+import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
+import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import { FormRootErrorAlert } from "@/components/admin/form-root-error-alert";
 import { SALE_PUBLISH_PHRASE } from "@/components/admin/sale-actions/use-sale-lifecycle-actions";
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
-import {
-  adminCreateSaleResultAction,
-  adminPublishSaleResultAction,
-  adminUpdateSaleResultAction,
-} from "@/lib/actions/admin-sales";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { saleDetailReadinessDismissKey } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
+import { parseSaleWindowFromForm, parseSaleWindowFromSale } from "@/lib/admin/sale-lot-window-sync";
 import {
-  findLotsOutsideSaleWindow,
-  parseSaleWindowFromForm,
-  parseSaleWindowFromSale,
-} from "@/lib/admin/sale-lot-window-sync";
-import {
-  SALE_SETUP_SALE_STEP_FIELDS,
   SALE_SETUP_STEPS,
   type SaleSetupStepId,
+  buildSaleSetupReadiness,
   catalogPrepReviewNotice,
   catalogueStaffReadOnlyMessage,
-  humanizeSetupError,
   isSaleSetupPublishReady,
   reviewPublishBlockedHint,
-  saleSavedMessage,
   saleSetupHref,
   saleSetupStepId,
   saveDraftSuccessMessage,
-  scheduleLotConflictPersistBlocked,
 } from "@/lib/admin/sale-setup";
-import {
-  applyZodErrorsToForm,
-  zodIssuePathForForm as zodPathJoin,
-} from "@/lib/admin/zod-form-errors";
 import {
   type AdminSaleFormValues,
   adminSaleDraftScheduleSchema,
-  normalizeAdminFormTiersToApi,
-  safeParseCreateSaleFromForm,
-  safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
 import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
-import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, EntityDocument, Lot, Sale } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
-import {
-  buildBuyerPremiumPolicy,
-  buildGoogleMapsSearchUrl,
-  formatPostalAddress,
-  isUkPostcode,
-} from "@auction/validators";
+import { buildGoogleMapsSearchUrl, formatPostalAddress, isUkPostcode } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -74,6 +49,14 @@ import { SaleDocumentsStep } from "./steps/documents-step";
 import { SaleIdentityStep } from "./steps/identity-step";
 import { SaleSetupReviewStep, isSaleSetupReadyToPublish } from "./steps/review-step";
 import { SaleScheduleStep } from "./steps/schedule-step";
+import {
+  SALE_SETUP_STEP_FIELD_GROUPS,
+  saleSetupStepLabel,
+  saleSetupWizardValidationMessage,
+  useSaleSetupSteps,
+} from "./use-sale-setup-steps";
+import { useSaleSetupSubmit } from "./use-sale-setup-submit";
+import { useSaleTierBandPreview } from "./use-sale-tier-preview";
 
 function WizardStepSync({
   stepIndex,
@@ -87,12 +70,6 @@ function WizardStepSync({
   }, [onStepIndex, stepIndex]);
   return null;
 }
-
-const SALE_STEP_FIELD_GROUPS: (keyof AdminSaleFormValues)[][] = [
-  [...SALE_SETUP_SALE_STEP_FIELDS.identity],
-  [...SALE_SETUP_SALE_STEP_FIELDS.schedule],
-  [...SALE_SETUP_SALE_STEP_FIELDS.documents],
-];
 
 type Props = {
   saleId: string | null;
@@ -111,13 +88,6 @@ type Props = {
   pendingRegistrationCount?: number | null;
   connectRequiredByLotId?: ConnectRequiredByLotId;
 };
-
-function saleZodIssuePath(path: (string | number)[]): string {
-  if (path.length > 0 && typeof path[0] === "number") {
-    return zodPathJoin(["buyerPremiumTiers", ...path]);
-  }
-  return zodPathJoin(path);
-}
 
 export function SaleSetupWizard({
   saleId: initialSaleId,
@@ -143,6 +113,9 @@ export function SaleSetupWizard({
   const [lotsUnsaved, setLotsUnsaved] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [stepNotice, setStepNotice] = useState<string | null>(null);
+  const [validationBanner, setValidationBanner] = useState<string | null>(null);
+  const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
+  const [showFirstSaveNudge, setShowFirstSaveNudge] = useState(false);
   const [wizardStepIndex, setWizardStepIndex] = useState(() =>
     Math.max(
       0,
@@ -152,7 +125,6 @@ export function SaleSetupWizard({
   const baselineRef = useRef(defaultValues);
   baselineRef.current = defaultValues;
   const wizardGoToRef = useRef<(index: number) => void>(() => {});
-  const createIdempotencyKeyRef = useRef(`sale-create-${crypto.randomUUID()}`);
 
   const form = useForm<AdminSaleFormValues>({
     resolver: zodResolver(adminSaleDraftScheduleSchema()),
@@ -167,104 +139,24 @@ export function SaleSetupWizard({
   const readOnlyLots = !canEditLotsStep;
   const readOnlyCatalog = !canEditCatalog && !canManageSale;
 
-  const persistSale = useCallback(
-    async (opts?: { savedNoticeStep?: SaleSetupStepId }): Promise<string | null> => {
-      const values = form.getValues();
-      if (!saleId) {
-        const api = safeParseCreateSaleFromForm(values);
-        if (!api.success) {
-          for (const iss of api.error.issues) {
-            applyZodErrorsToForm(form, saleZodIssuePath([...iss.path]), iss.message);
-          }
-          notify.error("Check the form for errors");
-          return null;
-        }
-        const r = await adminCreateSaleResultAction(api.data, createIdempotencyKeyRef.current);
-        if (!r.ok) {
-          notify.error(
-            humanizeSetupError({
-              message: actionFailureNotifyMessage(r.error, {
-                status: r.status,
-                errorCode: r.errorCode,
-                meta: r.meta,
-              }),
-              errorCode: r.errorCode,
-            }),
-          );
-          return null;
-        }
-        clearWizardDraft(wizardDraftCookieKey("admin_sale_new", wizardDraftEntityId ?? "new"));
-        if (!r.data?.id) return null;
-        const newId = r.data.id;
-        setSaleId(newId);
-        router.replace(`/admin/sales/${newId}/setup?step=schedule`);
-        setStepNotice(saleSavedMessage("schedule"));
-        return newId;
-      }
-
-      const api = safeParseUpdateSaleFromForm(values);
-      if (!api.success) {
-        for (const iss of api.error.issues) {
-          applyZodErrorsToForm(form, saleZodIssuePath([...iss.path]), iss.message);
-        }
-        notify.error("Check the form for errors");
-        return null;
-      }
-      const pendingWindow = parseSaleWindowFromForm(values);
-      if (pendingWindow && lots.length > 0) {
-        const conflicts = findLotsOutsideSaleWindow(lots, pendingWindow);
-        if (conflicts.length > 0) {
-          const titles = conflicts.map((c) => c.lot.title.trim() || "Untitled lot");
-          setStepNotice(scheduleLotConflictPersistBlocked(titles));
-          wizardGoToRef.current(1);
-          return null;
-        }
-      }
-      const r = await adminUpdateSaleResultAction(saleId, api.data);
-      if (!r.ok) {
-        notify.error(
-          humanizeSetupError({
-            message: actionFailureNotifyMessage(r.error, {
-              status: r.status,
-              errorCode: r.errorCode,
-              meta: r.meta,
-            }),
-            errorCode: r.errorCode,
-          }),
-        );
-        return null;
-      }
-      setStepNotice(saleSavedMessage(opts?.savedNoticeStep ?? "lots"));
-      router.refresh();
-      return saleId;
-    },
-    [form, lots, router, saleId, wizardDraftEntityId],
-  );
+  const { persistSale, handlePublish: runPublish } = useSaleSetupSubmit({
+    form,
+    saleId,
+    setSaleId,
+    lots,
+    wizardDraftEntityId,
+    wizardGoToRef,
+    setStepNotice,
+    setShowFirstSaveNudge,
+  });
+  const { jumpToStepIndex } = useSaleSetupSteps(wizardGoToRef);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "buyerPremiumTiers",
   });
 
-  const tierRowsWatch = form.watch("buyerPremiumTiers");
-  const buyerPremiumRateWatch = form.watch("buyerPremiumRate");
-  const tierBandPreview = useMemo(() => {
-    const parsed = normalizeAdminFormTiersToApi(tierRowsWatch);
-    if (!parsed.ok) return { ok: false as const };
-    const policy = buildBuyerPremiumPolicy({
-      saleTiers: parsed.data,
-      lotRate: buyerPremiumRateWatch.trim() || "0.25",
-    });
-    const exLow = "250000";
-    const exHigh = "600000";
-    const kind = parsed.data && parsed.data.length > 0 ? ("tiered" as const) : ("flat" as const);
-    return {
-      ok: true as const,
-      kind,
-      at250k: { hammer: exLow, premium: policy.computePremiumMajor(exLow) },
-      at600k: { hammer: exHigh, premium: policy.computePremiumMajor(exHigh) },
-    };
-  }, [tierRowsWatch, buyerPremiumRateWatch]);
+  const tierBandPreview = useSaleTierBandPreview(form);
 
   const deliveryMode = form.watch("deliveryMode");
   const watchedStartTime = form.watch("startTime");
@@ -309,6 +201,17 @@ export function SaleSetupWizard({
       connectRequiredByLotId,
     );
   const isReviewStep = saleSetupStepId(wizardStepIndex) === "review";
+  const setupReadinessNudge =
+    showFirstSaveNudge && saleId && activeSale && wizardStepIndex >= 1
+      ? buildSaleSetupReadiness({
+          saleId,
+          sale: activeSale,
+          lots,
+          pendingRegistrationCount,
+          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
+          setupStepHref: (step) => saleSetupHref(saleId, step),
+        })
+      : null;
 
   const handleSaveDraft = useCallback(() => {
     startTransition(async () => {
@@ -319,7 +222,7 @@ export function SaleSetupWizard({
         if (!id) return;
       }
       notify.success(saveDraftSuccessMessage());
-      guardedPush(saleId ? `/admin/sales/${saleId}` : "/admin/sales");
+      guardedPush(saleId ? `/admin/sales/${saleId}?created=1` : "/admin/sales");
     });
   }, [
     canManageSale,
@@ -330,6 +233,31 @@ export function SaleSetupWizard({
     saleId,
     wizardStepIndex,
   ]);
+
+  const mobilePrimaryAction = useMemo(() => {
+    if (!isReviewStep) return null;
+    if (!canManageSale) {
+      return {
+        label: "Back to sale",
+        onClick: () => guardedPush(saleId ? `/admin/sales/${saleId}` : "/admin/sales"),
+      };
+    }
+    return {
+      label: "Publish sale",
+      onClick: () => setPublishOpen(true),
+      ...(!readyToPublish || pending ? { disabled: true as const } : {}),
+    };
+  }, [canManageSale, guardedPush, isReviewStep, pending, readyToPublish, saleId]);
+
+  const mobileCancelAction = useMemo(() => {
+    if (saleId) {
+      return {
+        label: isReviewStep ? "Save as draft" : "Save & finish later",
+        onClick: handleSaveDraft,
+      };
+    }
+    return { label: "Cancel", href: "/admin/sales" };
+  }, [handleSaveDraft, isReviewStep, saleId]);
 
   const wizardCreateDraftExtras =
     !saleId && canManageSale
@@ -355,28 +283,13 @@ export function SaleSetupWizard({
     }
   }, [initialStep]);
 
+  const handleValidationBannerJump = useCallback(() => {
+    if (validationStepIndex != null) jumpToStepIndex(validationStepIndex);
+  }, [jumpToStepIndex, validationStepIndex]);
+
   const handlePublish = async () => {
     if (!saleId) return;
-    if (form.formState.isDirty) {
-      const id = await persistSale({ savedNoticeStep: "review" });
-      if (!id) return;
-    }
-    const r = await adminPublishSaleResultAction(saleId);
-    if (!r.ok) {
-      notify.error(
-        humanizeSetupError({
-          message: actionFailureNotifyMessage(r.error, {
-            status: r.status,
-            errorCode: r.errorCode,
-            meta: r.meta,
-          }),
-          errorCode: r.errorCode,
-        }),
-      );
-      return;
-    }
-    notify.success("Sale published");
-    router.push(`/admin/sales/${saleId}`);
+    await runPublish(saleId);
   };
 
   return (
@@ -406,11 +319,33 @@ export function SaleSetupWizard({
             </Alert>
           ) : null}
 
+          {validationBanner ? (
+            <WizardValidationBanner
+              message={validationBanner}
+              {...(validationStepIndex != null
+                ? {
+                    stepLabel: saleSetupStepLabel(validationStepIndex),
+                    onJumpToStep: handleValidationBannerJump,
+                  }
+                : {})}
+            />
+          ) : null}
+
+          {setupReadinessNudge ? (
+            <CatalogPublishReadiness
+              title="Your sale draft is saved"
+              readiness={setupReadinessNudge}
+              {...(saleId ? { dismissKey: saleDetailReadinessDismissKey(saleId) } : {})}
+            />
+          ) : null}
+
           <AdminFormWizard
             steps={SALE_SETUP_STEPS}
             isDirty={form.formState.isDirty}
             pending={pending}
             hideStickyOnMobile
+            mobilePrimaryAction={mobilePrimaryAction}
+            mobileCancelAction={mobileCancelAction}
             onStepControl={({ goTo }) => {
               wizardGoToRef.current = goTo;
             }}
@@ -418,13 +353,17 @@ export function SaleSetupWizard({
               const stepId = saleSetupStepId(stepIndex);
               if (stepIndex <= 2) {
                 if (readOnlySaleSteps) return stepIndex >= 3;
-                const fields = SALE_STEP_FIELD_GROUPS[stepIndex];
+                const fields = SALE_SETUP_STEP_FIELD_GROUPS[stepIndex];
                 if (
                   fields?.length &&
                   !(await validateWizardStep(form, adminSaleDraftScheduleSchema(), fields))
                 ) {
+                  setValidationStepIndex(stepIndex);
+                  setValidationBanner(saleSetupWizardValidationMessage(stepIndex));
                   return false;
                 }
+                setValidationBanner(null);
+                setValidationStepIndex(null);
                 if (stepIndex === 1) {
                   let ok = false;
                   await new Promise<void>((resolve) => {
@@ -520,6 +459,7 @@ export function SaleSetupWizard({
                     type="button"
                     loading={pending}
                     disabled={!readyToPublish}
+                    data-wizard-submit="true"
                     className="min-h-11 w-full sm:min-w-40 sm:w-auto"
                     onClick={() => setPublishOpen(true)}
                   >
@@ -582,13 +522,12 @@ export function SaleSetupWizard({
                       />
                     </fieldset>
                   ) : null}
-                  {stepIndex === 2 ? (
+                  {stepIndex === 2 && saleId ? (
                     <fieldset disabled={readOnlySaleSteps}>
                       <SaleDocumentsStep
                         form={form}
-                        mode={saleId ? "edit" : "create"}
+                        saleId={saleId}
                         initialSaleDocuments={initialSaleDocuments}
-                        {...(saleId ? { saleId } : {})}
                       />
                     </fieldset>
                   ) : null}
@@ -632,6 +571,8 @@ export function SaleSetupWizard({
               );
             }}
           </AdminFormWizard>
+
+          <FormRootErrorAlert message={form.formState.errors.root?.message ?? null} />
         </form>
       </Form>
     </>

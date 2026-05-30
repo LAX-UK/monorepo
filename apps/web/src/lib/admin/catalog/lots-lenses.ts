@@ -1,8 +1,9 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { adminLotListPath } from "@/lib/admin/catalog-routes";
 
 export type LotLensId = "all" | "live" | "draft" | "ending" | "attention";
 
-const BASE = "/admin/lots";
+const BASE = adminLotListPath();
 
 export function lotLensHref(
   lens: LotLensId,
@@ -32,7 +33,8 @@ export function lotLensHref(
       return buildListHref(BASE, current, {
         ...clear,
         lens: "attention",
-        needsPhotos: "",
+        status: "draft",
+        needsPhotos: "1",
         withdrawal: "",
       });
     default:

@@ -8,6 +8,7 @@ import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-d
 import {
   type SaleLifecycleActionKind,
   buildSaleLifecycleActionItems,
+  saleLifecycleConfirmCopy,
 } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
@@ -24,31 +25,6 @@ type Props = {
   canDelete: boolean;
   canMarkOnsiteEnded: boolean;
 };
-
-function lifecycleConfirmCopy(kind: SaleLifecycleActionKind) {
-  switch (kind) {
-    case "unpublish":
-      return {
-        title: "Revert sale to draft?",
-        description: "All scheduled lots will also revert to draft.",
-        actionLabel: "Revert to draft",
-      };
-    case "markEnded":
-      return {
-        title: "End onsite sale?",
-        description: "This will end the sale and all remaining lots.",
-        actionLabel: "Mark ended",
-      };
-    case "cancel":
-      return {
-        title: "Cancel entire sale?",
-        description: "This cancels the sale and remaining lots.",
-        actionLabel: "Cancel sale",
-      };
-    default:
-      return null;
-  }
-}
 
 /** Lifecycle publish/cancel actions for sale detail mobile bar trailing slot. */
 export function SaleDetailMobileLifecycleTrailing({
@@ -88,7 +64,7 @@ export function SaleDetailMobileLifecycleTrailing({
 
   if (lifecycleItems.length === 0) return null;
 
-  const confirmCopy = confirmKind ? lifecycleConfirmCopy(confirmKind) : null;
+  const confirmCopy = confirmKind ? saleLifecycleConfirmCopy(confirmKind) : null;
 
   return (
     <>

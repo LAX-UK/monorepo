@@ -1,4 +1,5 @@
 import { LotDetailShell } from "@/components/admin/lot-detail/lot-detail-shell";
+import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readiness";
 import { loadLotConnectRequired } from "@/lib/admin/connect-readiness";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -41,6 +42,13 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
     loadLotConnectRequired(id),
   ]);
 
+  const publishReadiness = computeLotDetailReadiness({
+    lotId: id,
+    auction: bundle.auction,
+    context: bundle.context,
+    connectRequired,
+  });
+
   return (
     <LotDetailShell
       lotId={id}
@@ -52,6 +60,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       canManageCatalog={canManageCatalog}
       canManageAuction={canManageAuction}
       connectRequired={connectRequired}
+      publishReadiness={publishReadiness}
     >
       {children}
     </LotDetailShell>

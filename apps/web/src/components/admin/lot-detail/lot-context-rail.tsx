@@ -1,4 +1,7 @@
+"use client";
+
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
+import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
 import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
 import {
   ActivitySnapshotRail,
@@ -6,7 +9,8 @@ import {
   RelatedEntitiesRail,
 } from "@/components/admin/detail-rail";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
-import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
+import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import { lotDetailReadinessDismissKey } from "@/lib/admin/compute-lot-detail-readiness";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
@@ -21,7 +25,7 @@ type Props = {
   context: LotDetailContext;
   bidCount: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
-  connectRequired?: boolean;
+  publishReadiness?: CatalogReadinessResult | null;
   status?: ReactNode;
   publicHref?: string;
   quickActions?: ReactNode;
@@ -33,18 +37,14 @@ export function LotContextRail({
   context,
   bidCount,
   activityEvents = [],
-  connectRequired = false,
+  publishReadiness = null,
   status,
   publicHref,
   quickActions,
 }: Props) {
-  const readiness =
-    auction.status === "draft"
-      ? buildLotPublishReadiness(lotId, auction, {
-          connectRequired,
-          sale: context.sale,
-        })
-      : null;
+  const { isPostCreateBannerActive } = useCatalogPostCreateSession();
+  const readiness = publishReadiness;
+  const hideRailReadiness = isPostCreateBannerActive(readiness);
 
   const related = [
     ...(context.sale
@@ -114,11 +114,11 @@ export function LotContextRail({
         />
         {quickActions}
         <RelatedEntitiesRail items={related} />
-        {readiness ? (
+        {readiness && !hideRailReadiness ? (
           <CatalogPublishReadiness
             title="Publish readiness"
             readiness={readiness}
-            dismissKey={`lot:${lotId}`}
+            dismissKey={lotDetailReadinessDismissKey(lotId)}
             compact
           />
         ) : null}

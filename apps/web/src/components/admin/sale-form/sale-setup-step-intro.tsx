@@ -1,5 +1,6 @@
 "use client";
 
+import { WizardStepIntro } from "@/components/admin/admin-form-wizard/wizard-step-intro";
 import type { SaleSetupStepId } from "@/lib/admin/sale-setup";
 import { stepIntro } from "@/lib/admin/sale-setup";
 
@@ -10,14 +11,27 @@ type Props = {
 };
 
 export function SaleSetupStepIntro({ stepId, stepIndex, stepCount = 6 }: Props) {
-  const { title, body } = stepIntro(stepId);
+  const intro = stepIntro(stepId);
+  const nextStepIds: SaleSetupStepId[] = [
+    "identity",
+    "schedule",
+    "documents",
+    "lots",
+    "catalog-prep",
+    "review",
+  ];
+  const nextId = nextStepIds[stepIndex + 1];
+  const nextHint = nextId ? stepIntro(nextId).title : undefined;
+
   return (
-    <div className="space-y-2">
-      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Step {stepIndex + 1} of {stepCount}
-      </p>
-      <h2 className="font-headline text-xl text-on-surface">{title}</h2>
-      <p className="font-body text-sm text-on-surface-variant">{body}</p>
-    </div>
+    <WizardStepIntro
+      stepIndex={stepIndex}
+      stepCount={stepCount}
+      copy={{
+        title: intro.title,
+        body: intro.body,
+        ...(nextHint ? { nextHint } : {}),
+      }}
+    />
   );
 }

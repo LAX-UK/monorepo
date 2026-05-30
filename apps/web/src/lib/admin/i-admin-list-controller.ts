@@ -16,6 +16,8 @@ export type AdminListResult<TRow> = {
   limit: number;
   /** Full dataset before a narrow filter (e.g. payments KPI strip while status chip filters the table). */
   rowsForSummary?: TRow[] | undefined;
+  /** When total is unknown, set from limit+1 fetch. */
+  hasNextPage?: boolean | undefined;
 };
 
 export interface IAdminListController<
