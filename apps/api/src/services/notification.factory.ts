@@ -87,6 +87,34 @@ export class NotificationFactory {
     };
   }
 
+  createConditionReportReady(lot: Lot, userId: string): CreateNotificationRow {
+    return {
+      userId,
+      type: "condition_report_ready",
+      title: "Condition report ready",
+      message: `Your condition report for "${lot.title}" is ready to view.`,
+      lotId: lot.id,
+    };
+  }
+
+  createConditionReportDeclined(
+    lot: Lot,
+    userId: string,
+    responseNote?: string | null,
+  ): CreateNotificationRow {
+    const detail =
+      responseNote && responseNote.trim().length > 0
+        ? ` ${responseNote.trim()}`
+        : " Contact support if you have questions.";
+    return {
+      userId,
+      type: "condition_report_declined",
+      title: "Condition report unavailable",
+      message: `We could not provide a condition report for "${lot.title}".${detail}`,
+      lotId: lot.id,
+    };
+  }
+
   createPaymentDue(
     lot: Lot,
     buyerId: string,

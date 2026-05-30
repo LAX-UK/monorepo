@@ -13,6 +13,7 @@ import { parseApiErrorCodeFromBody } from "@auction/validators";
 export type DashboardSlice =
   | "session"
   | "bids"
+  | "conditionReports"
   | "portfolio"
   | "payments"
   | "watchlist"
@@ -91,6 +92,11 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
     title: "Could not load bids",
     message: () => "Something went wrong while loading your bids. Try again.",
     retryHref: DASHBOARD_ROUTES.bids,
+  },
+  conditionReports: {
+    title: "Could not load condition reports",
+    message: () => "Something went wrong while loading your condition report requests. Try again.",
+    retryHref: DASHBOARD_ROUTES.conditionReports,
   },
   portfolio: {
     title: "Could not load collection",

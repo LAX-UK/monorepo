@@ -14,6 +14,7 @@ import {
   artistWatchlistBodySchema,
   biddingPreferencesPatchSchema,
   createAddressBodySchema,
+  listMyConditionReportRequestsQuerySchema,
   notificationIdUuidParamSchema,
   notificationPreferencePatchSchema,
   pushSubscriptionBodySchema,
@@ -150,6 +151,22 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       data: { id: row.id, name: row.name, image },
     });
   });
+
+  r.get(
+    "/me/condition-report-requests",
+    requireAuth,
+    zValidator("query", listMyConditionReportRequestsQuerySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { limit, offset } = c.req.valid("query");
+      const { items, total } = await container.conditionReportService.listForBuyer({
+        userId,
+        limit,
+        offset,
+      });
+      return c.json({ data: { items, total, limit, offset } });
+    },
+  );
 
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
