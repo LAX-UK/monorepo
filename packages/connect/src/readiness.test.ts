@@ -87,6 +87,15 @@ describe("statusFromLegalEntityRow", () => {
       ready: true,
     });
   });
+
+  it("includes stripeConnectChargesEnabled when present", () => {
+    expect(
+      statusFromLegalEntityRow({
+        ...readyEntity,
+        stripeConnectChargesEnabled: true,
+      }).chargesEnabled,
+    ).toBe(true);
+  });
 });
 
 describe("getConnectGapState", () => {

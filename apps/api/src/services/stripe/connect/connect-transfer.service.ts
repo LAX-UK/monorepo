@@ -204,10 +204,10 @@ export class ConnectTransferService {
 
     const maxRetries = 3;
     let lastError: InstanceType<typeof Stripe.errors.StripeError> | null = null;
+    const sourceChargeId = await this.resolveSourceTransaction(stripe, payoutId, payout.currency);
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const sourceChargeId = await this.findSourceChargeForPayout(payoutId);
         const transfer = await stripe.transfers.create(
           {
             amount: amountCents,
@@ -223,12 +223,27 @@ export class ConnectTransferService {
           { idempotencyKey: `payout:transfer:${payoutId}` },
         );
 
-        await this.payoutRepository.updateStatus(payoutId, {
+        const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
           status: "in_transit",
           stripeTransferId: transfer.id,
           processedAt: null,
           failureReason: null,
         });
+
+        if (!updated) {
+          const current = await this.payoutRepository.findById(payoutId);
+          if (current?.status === "paid" || current?.status === "in_transit") {
+            return {
+              ok: true,
+              stripeTransferId: current.stripeTransferId ?? transfer.id,
+            };
+          }
+          this.logger.warn(
+            { payoutId, stripeTransferId: transfer.id, currentStatus: current?.status ?? null },
+            "payout_transfer_status_cas_miss",
+          );
+          return { ok: true, stripeTransferId: transfer.id };
+        }
 
         if (this.domainEventPublisher) {
           await this.domainEventPublisher.publish(this.db, {
@@ -314,5 +329,45 @@ export class ConnectTransferService {
       .limit(1);
     const chargeId = rows[0]?.stripeChargeId;
     return chargeId && chargeId.length > 0 ? chargeId : null;
+  }
+
+  /** Resolves source_transaction when charge currency matches payout currency. */
+  private async resolveSourceTransaction(
+    stripe: Stripe,
+    payoutId: string,
+    payoutCurrency: string,
+  ): Promise<string | undefined> {
+    const sourceChargeId = await this.findSourceChargeForPayout(payoutId);
+    if (!sourceChargeId) return undefined;
+
+    try {
+      const charge = await stripe.charges.retrieve(sourceChargeId);
+      const chargeCurrency = charge.currency?.toLowerCase();
+      const expectedCurrency = payoutCurrency.toLowerCase();
+      if (chargeCurrency && chargeCurrency !== expectedCurrency) {
+        this.logger.warn(
+          {
+            payoutId,
+            sourceChargeId,
+            chargeCurrency,
+            payoutCurrency: expectedCurrency,
+          },
+          "stripe_connect_transfer_currency_mismatch",
+        );
+        recordMoneyPathEvent("stripe_connect_transfer_currency_mismatch");
+        return undefined;
+      }
+      return sourceChargeId;
+    } catch (err) {
+      this.logger.warn(
+        {
+          payoutId,
+          sourceChargeId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "stripe_connect_source_charge_lookup_failed",
+      );
+      return undefined;
+    }
   }
 }

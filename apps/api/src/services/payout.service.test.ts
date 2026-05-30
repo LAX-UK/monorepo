@@ -35,6 +35,7 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([]),
     updateTotals: vi.fn(),
     updateStatus: vi.fn(),
+    updateStatusIfCurrent: vi.fn().mockResolvedValue(null),
     updateXeroBillId: vi.fn(),
     reconcileStripeTransfer: vi.fn(),
     setStatementUrl: vi.fn(),

@@ -63,7 +63,6 @@ export class ConnectAccountService {
     const base = statusFromLegalEntityRow(row);
     return {
       ...base,
-      chargesEnabled: row.stripeConnectChargesEnabled,
       ...(syncDegraded ? { syncDegraded: true } : {}),
     };
   }

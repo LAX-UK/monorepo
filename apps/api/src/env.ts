@@ -351,6 +351,20 @@ const envSchema = z
           });
         }
       }
+      if (!e.VERIFF_API_KEY?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "VERIFF_API_KEY is required in production",
+          path: ["VERIFF_API_KEY"],
+        });
+      }
+      if (!e.VERIFF_SHARED_SECRET?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "VERIFF_SHARED_SECRET is required in production",
+          path: ["VERIFF_SHARED_SECRET"],
+        });
+      }
     } else if (appEnv === "test") {
       if (e.STRIPE_SECRET_KEY && !e.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
         ctx.addIssue({
@@ -454,6 +468,9 @@ const envSchema = z
   });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** Exported for unit tests validating deployment env constraints. */
+export { envSchema };
 
 export function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);
