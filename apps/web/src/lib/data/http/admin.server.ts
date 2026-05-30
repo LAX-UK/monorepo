@@ -9,6 +9,7 @@ import type {
   AdminArtistListRow,
   AdminArtistStats,
   AdminCategory,
+  ArtistDeleteEligibility,
   ArtistKind,
   ArtistProfile,
   ArtistStatus,
@@ -420,6 +421,42 @@ export async function getAdminArtistById(id: string): Promise<ArtistProfile | nu
   if (!res.ok) throw new Error(`Failed to load artist: ${res.status}`);
   const body = (await res.json()) as { data: unknown };
   return parseArtistProfile(body.data);
+}
+
+function parseArtistDeleteEligibility(raw: unknown): ArtistDeleteEligibility | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const guardsRaw = o.guards;
+  const guards =
+    guardsRaw && typeof guardsRaw === "object"
+      ? {
+          lotCount: Number((guardsRaw as Record<string, unknown>).lotCount ?? 0),
+          mergeDependentCount: Number(
+            (guardsRaw as Record<string, unknown>).mergeDependentCount ?? 0,
+          ),
+          watchlistCount: Number((guardsRaw as Record<string, unknown>).watchlistCount ?? 0),
+        }
+      : { lotCount: 0, mergeDependentCount: 0, watchlistCount: 0 };
+  return {
+    canDelete: o.canDelete === true,
+    blockers: Array.isArray(o.blockers) ? o.blockers.map(String) : [],
+    warnings: Array.isArray(o.warnings) ? o.warnings.map(String) : [],
+    confirmationPhrase: typeof o.confirmationPhrase === "string" ? o.confirmationPhrase : null,
+    guards,
+  };
+}
+
+export async function getAdminArtistDeleteEligibility(
+  artistId: string,
+): Promise<ArtistDeleteEligibility | null> {
+  const res = await authedServerFetch(
+    `/artists/${encodeURIComponent(artistId)}/delete-eligibility`,
+  );
+  if (res.status === 404) return null;
+  if (res.status === 403) return null;
+  if (!res.ok) throw new Error(`Failed to load artist delete eligibility: ${res.status}`);
+  const body = (await res.json()) as { data: unknown };
+  return parseArtistDeleteEligibility(body.data);
 }
 
 export type AdminSaleListRow = {

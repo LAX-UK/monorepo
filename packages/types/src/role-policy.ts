@@ -20,6 +20,7 @@ export type RoleCapability =
   | "artist.read"
   | "artist.review"
   | "artist.merge"
+  | "artist.delete"
   | "payout.read"
   | "payout.process"
   | "payout.reverse"
@@ -47,6 +48,7 @@ const ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT: RoleCapability[] = [
   "artist.read",
   "artist.review",
   "artist.merge",
+  "artist.delete",
   "payout.read",
   "payout.process",
   "payout.reverse",
@@ -71,6 +73,7 @@ const STAFF_MATRIX: Record<Exclude<UserStaffRole, "super_admin">, Set<RoleCapabi
     "catalogue.write",
     "artist.read",
     "artist.review",
+    "artist.delete",
     "legal_entity.read",
   ]),
   specialist: new Set(["specialist.appraise", "artist.read", "artist.review", "legal_entity.read"]),

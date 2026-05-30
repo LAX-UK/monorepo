@@ -41,6 +41,10 @@ export const ARTISTS_ACCESS: CapabilityRequirement = {
   anyOf: ["artist.read", "artist.review", "catalogue.write", "platform.admin.full"],
 };
 
+export const ARTIST_DELETE_ACCESS: CapabilityRequirement = {
+  anyOf: ["artist.delete", "platform.admin.full"],
+};
+
 export const CATEGORIES_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "platform.admin.full"],
 };
