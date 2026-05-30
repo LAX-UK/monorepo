@@ -39,7 +39,9 @@ export const notification = pgTable(
         'kyc_resubmission_required',
         'submission_received_for_review',
         'submission_approved',
-        'submission_rejected'
+        'submission_rejected',
+        'condition_report_ready',
+        'condition_report_declined'
       )`,
     ),
   ],

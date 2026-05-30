@@ -14,7 +14,10 @@ import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
   lot: SaleLotCardVM;
+  /** Grid/tile image overlays (watchlist + quick-look). */
   cornerAction?: ReactNode;
+  /** List row actions beside title (inline heart + quick-look). */
+  listActions?: ReactNode;
   actions?: ReactNode;
   sizes?: string;
   priceEmphasis?: "estimate" | "currentBid" | "both";
@@ -44,6 +47,7 @@ function MetaStack({
 export function SaleroomLotCard({
   lot,
   cornerAction,
+  listActions,
   actions,
   sizes = DEFAULT_SIZES,
   priceEmphasis,
@@ -74,9 +78,6 @@ export function SaleroomLotCard({
               />
             </AdaptiveMediaFrameContainer>
           </Link>
-          {cornerAction ? (
-            <Fragment key={`${lot.id}-corner-action`}>{cornerAction}</Fragment>
-          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -93,17 +94,22 @@ export function SaleroomLotCard({
               closingShort={lot.closingShort}
             />
           </div>
-          <div>
-            <Link
-              href={lot.href}
-              className="line-clamp-2 block text-base font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
-            >
-              {lot.title}
-            </Link>
-            {lot.artistOrMedium ? (
-              <p className="line-clamp-1 mt-0.5 text-xs font-light leading-4 text-brand-500 dark:text-on-surface-variant">
-                {lot.artistOrMedium}
-              </p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <Link
+                href={lot.href}
+                className="line-clamp-2 block text-base font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
+              >
+                {lot.title}
+              </Link>
+              {lot.artistOrMedium ? (
+                <p className="line-clamp-1 mt-0.5 text-xs font-light leading-4 text-brand-500 dark:text-on-surface-variant">
+                  {lot.artistOrMedium}
+                </p>
+              ) : null}
+            </div>
+            {listActions ? (
+              <div className="pointer-events-auto relative z-[2] shrink-0">{listActions}</div>
             ) : null}
           </div>
 

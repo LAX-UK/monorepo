@@ -31,11 +31,16 @@ export function BidFeedEntry({ entry, className }: Props) {
             </p>
             <p className="font-body text-xs font-semibold uppercase leading-6 tabular-nums text-[#050505] dark:text-on-surface">
               {entry.amount}
+              {entry.isAutoBid ? (
+                <span className="ml-1.5 font-label text-[10px] font-bold normal-case tracking-wide text-primary">
+                  Auto
+                </span>
+              ) : null}
             </p>
           </div>
         </div>
         <span className="shrink-0 rounded-lg bg-white/80 px-2 py-1 font-body text-xs font-bold uppercase leading-4 text-[#1A4C99] dark:bg-surface-container-lowest/90 dark:text-primary">
-          Highest
+          {entry.isAutoBid && entry.isYourBid ? "Auto bid" : "Highest"}
         </span>
       </div>
     );
@@ -58,6 +63,11 @@ export function BidFeedEntry({ entry, className }: Props) {
         </p>
         <p className="font-body text-xs font-semibold uppercase leading-6 tabular-nums text-[#050505] dark:text-on-surface">
           {entry.amount}
+          {entry.isAutoBid ? (
+            <span className="ml-1.5 font-label text-[10px] font-bold normal-case tracking-wide text-primary">
+              Auto
+            </span>
+          ) : null}
         </p>
       </div>
     </div>
