@@ -4,10 +4,15 @@ import { SettingsField } from "@/components/dashboard/settings-field";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { SettingsTag } from "@/components/dashboard/settings-tag";
 import { ImageUploadField } from "@/components/forms/image-upload-field";
+import { PhoneNumberField } from "@/components/forms/phone-number-field";
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
-import { updateProfileImageAction } from "@/lib/actions/profile";
+import {
+  updateProfileImageAction,
+  updateProfilePhoneFromValuesAction,
+} from "@/lib/actions/profile";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
+import { useProfileMobileController } from "@/lib/forms/profile/use-profile-mobile-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
@@ -22,7 +27,7 @@ import {
 } from "@auction/ui/components/form";
 import { Separator } from "@auction/ui/components/separator";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { CreditCard, Pencil, Phone } from "lucide-react";
+import { CreditCard, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -43,6 +48,9 @@ export type ProfileAddressRow = {
 type Props = {
   initialName: string;
   initialImage: string | null;
+  initialMobile: string | null;
+  initialMobileCountry: string | null;
+  phoneDefaultCountry: string;
   addresses: ProfileAddressRow[];
   /** When set, shows email + verification in Personal details */
   email?: string;
@@ -64,6 +72,84 @@ function emailStatusVariant(
   if (status === "bounced" || status === "complained") return "danger";
   if (verified === false) return "warning";
   return "success";
+}
+
+function PersonalMobileBlock({
+  initialMobile,
+  initialMobileCountry,
+  phoneDefaultCountry,
+}: {
+  initialMobile: string | null;
+  initialMobileCountry: string | null;
+  phoneDefaultCountry: string;
+}) {
+  const router = useRouter();
+  const { form, onSubmit, isSubmitting } = useProfileMobileController(
+    initialMobile,
+    initialMobileCountry,
+    phoneDefaultCountry as import("libphonenumber-js").CountryCode,
+  );
+  const [removePending, startRemove] = useTransition();
+
+  return (
+    <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6">
+      <Form {...form}>
+        <form id="profile-mobile-form" onSubmit={onSubmit} className="space-y-3">
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field, fieldState }) => (
+              <PhoneNumberField
+                id="profile-phone"
+                defaultCountry={phoneDefaultCountry as import("libphonenumber-js").CountryCode}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                error={fieldState.error?.message ?? null}
+                description="Optional contact number for live bidding updates and fulfilment. We do not verify this number yet."
+              />
+            )}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="submit"
+              variant="secondaryOutline"
+              disabled={isSubmitting || removePending}
+              className="min-w-28"
+            >
+              {isSubmitting ? "Saving…" : "Save"}
+            </Button>
+            {initialMobile ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isSubmitting || removePending}
+                onClick={() => {
+                  startRemove(async () => {
+                    const r = await updateProfilePhoneFromValuesAction({
+                      phone: null,
+                      mobile: null,
+                    });
+                    if (r.ok) {
+                      notify.success("Phone number removed");
+                      form.reset({
+                        phone: { country: phoneDefaultCountry, number: "" },
+                      });
+                      router.refresh();
+                      return;
+                    }
+                    notify.error(r.error);
+                  });
+                }}
+              >
+                {removePending ? "Removing…" : "Remove"}
+              </Button>
+            ) : null}
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
 }
 
 function PersonalNameBlock({ initialName }: { initialName: string }) {
@@ -315,6 +401,9 @@ function addressTypeTags(a: ProfileAddressRow) {
 export function ProfileSettingsBoard({
   initialName,
   initialImage,
+  initialMobile,
+  initialMobileCountry,
+  phoneDefaultCountry,
   addresses,
   email,
   emailVerified,
@@ -412,32 +501,12 @@ export function ProfileSettingsBoard({
         <AddAddressBlock />
       </SettingsSection>
 
-      <SettingsSection
-        title="Phone book"
-        action={
-          <Link
-            href="/dashboard/settings/account"
-            className="inline-flex items-center gap-1 font-label text-sm font-semibold text-on-surface underline underline-offset-2"
-          >
-            <Phone className="size-3.5" aria-hidden />
-            Edit
-          </Link>
-        }
-      >
-        <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-label text-sm font-bold uppercase tracking-wide text-on-surface">
-              Mobile
-            </span>
-          </div>
-          <p className="mt-3 font-body text-base text-on-surface-variant">
-            Add a verified phone number in account settings so we can reach you about live bidding
-            and fulfilment.
-          </p>
-          <div className="mt-3">
-            <SettingsTag variant="outline">Primary phone</SettingsTag>
-          </div>
-        </div>
+      <SettingsSection title="Phone" bordered={false}>
+        <PersonalMobileBlock
+          initialMobile={initialMobile}
+          initialMobileCountry={initialMobileCountry}
+          phoneDefaultCountry={phoneDefaultCountry}
+        />
       </SettingsSection>
 
       <SettingsSection

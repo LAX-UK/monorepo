@@ -17,6 +17,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         id: user.id,
         email: user.email,
         name: user.name,
+        mobile: user.mobile,
+        mobileCountry: user.mobileCountry,
         image: user.image,
         role: user.role,
         staffRole: user.staffRole,
@@ -43,6 +45,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       id: row.id,
       email: row.email,
       name: row.name,
+      mobile: row.mobile ?? null,
+      mobileCountry: row.mobileCountry ?? null,
       image: row.image ?? null,
       role: row.role,
       staffRole: row.staffRole ?? null,
@@ -65,6 +69,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       .set({
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.image !== undefined ? { image: input.image } : {}),
+        ...(input.mobile !== undefined ? { mobile: input.mobile } : {}),
+        ...(input.mobileCountry !== undefined ? { mobileCountry: input.mobileCountry } : {}),
         updatedAt: new Date(),
       })
       .where(eq(user.id, userId));

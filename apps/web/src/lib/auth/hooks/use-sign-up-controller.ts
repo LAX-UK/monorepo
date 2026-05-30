@@ -12,7 +12,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 
-export function useSignUpController(opts?: { inviteToken?: string; next?: string }) {
+export function useSignUpController(opts?: {
+  inviteToken?: string;
+  next?: string;
+  phoneDefaultCountry?: string;
+}) {
   const router = useRouter();
   const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(signUpService);
   const siteKey = turnstileSiteKey();
@@ -25,7 +29,10 @@ export function useSignUpController(opts?: { inviteToken?: string; next?: string
       firstName: "",
       lastName: "",
       email: "",
-      mobile: "",
+      phone: {
+        country: opts?.phoneDefaultCountry ?? "GB",
+        number: "",
+      },
       password: "",
       persona: "individual",
       acceptTerms: false,
