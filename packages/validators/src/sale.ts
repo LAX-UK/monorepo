@@ -2,7 +2,7 @@ import { saleDeliveryModes, saleStatuses } from "@auction/types";
 import type { SaleDeliveryMode } from "@auction/types";
 import { z } from "zod";
 import { buyerPremiumTiersSchema } from "./buyer-premium.js";
-import { createNestedLotForSaleSchema } from "./lot.js";
+import { bulkIdListSchema, createNestedLotForSaleSchema } from "./lot.js";
 import { mediaReferenceSchema } from "./media.js";
 import { isUkPostcode, normalizeUkPostcode } from "./onsite-location.js";
 import { getSaleModeCapabilities } from "./sale-mode-policy.js";
@@ -246,6 +246,27 @@ export function saleDeleteConfirmationPhrase(title: string): string {
 export const deleteSaleBodySchema = z.object({
   confirmationPhrase: z.string().min(1).max(500),
 });
+
+/** Exact phrase staff must type to confirm bulk sale soft-delete (case-sensitive). */
+export function bulkSaleDeleteConfirmationPhrase(count: number): string {
+  return `DELETE ${count} DRAFT SALES`;
+}
+
+export const bulkSalesBodySchema = z
+  .object({
+    ids: bulkIdListSchema,
+    op: z.enum(["soft_delete"]),
+    confirmationPhrase: z.string().min(1).max(500),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.confirmationPhrase.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "confirmationPhrase is required",
+        path: ["confirmationPhrase"],
+      });
+    }
+  });
 
 export const markSaleEndedBodySchema = z.object({
   reason: z.string().max(500).optional(),

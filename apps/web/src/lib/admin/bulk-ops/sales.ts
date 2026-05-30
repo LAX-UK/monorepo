@@ -1,11 +1,13 @@
 import type { BulkOperation } from "@/components/admin/bulk-actions-toolbar";
 import {
+  adminBulkSalesResultAction,
   adminCancelSaleResultAction,
   adminPublishSaleResultAction,
 } from "@/lib/actions/admin-sales";
 import { toSequentialBulkResult } from "@/lib/admin/catalog-bulk-result-handler";
 import { actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import type { SaleStatus } from "@auction/types";
+import { bulkSaleDeleteConfirmationPhrase } from "@auction/validators";
 
 type SaleRowForPreflight = {
   saleId: string;
@@ -80,6 +82,24 @@ export function getSaleBulkOperations(canManageSales: boolean): BulkOperation[] 
         confirm:
           "Cancel selected sales? Live or scheduled sales will be cancelled. Registrations may need review.",
         run: (ids) => runSequential(ids, (id) => adminCancelSaleResultAction(id), "Cancel"),
+      },
+      {
+        id: "delete-drafts",
+        label: "Delete drafts",
+        destructive: true,
+        typedConfirm: {
+          title: "Delete selected draft sales?",
+          description:
+            "Sales and their lots are removed from the catalogue. Data is retained for audit. Ineligible sales in the selection will be skipped.",
+          actionLabel: "Delete sales",
+          confirmationPhrase: bulkSaleDeleteConfirmationPhrase,
+        },
+        run: (ids, opts) =>
+          adminBulkSalesResultAction({
+            ids,
+            op: "soft_delete",
+            confirmationPhrase: opts?.confirmationPhrase ?? "",
+          }),
       },
     );
   }
