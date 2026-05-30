@@ -71,7 +71,7 @@ export default async function SellerStripeConnectPage() {
         title="Payout setup"
         hideTitleOnMobile
         hideDescriptionOnMobile
-        description="Complete Stripe Express verification in-app so approved lots can be scheduled once finance enables settlement."
+        description="Verify your identity, then complete payout details in the secure form below so approved lots can be scheduled once finance enables settlement."
       />
 
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
