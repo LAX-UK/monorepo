@@ -2,6 +2,7 @@ import type { LotStatus } from "@auction/types";
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import { type ServiceResult, serviceSuccess } from "../http/service-result";
 import type {
+  BulkSalesBody,
   CancelSaleBody,
   CreateNestedLotForSaleInput,
   CreateSaleInput,
@@ -70,6 +71,14 @@ export class AdminSaleService implements IAdminSaleService {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ confirmationPhrase }),
+    });
+  }
+
+  async bulk(body: BulkSalesBody): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>("/sales/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
   }
 

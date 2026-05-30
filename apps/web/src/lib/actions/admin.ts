@@ -877,7 +877,12 @@ export async function adminBulkLotsResultAction(
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
     }
-    const access = parsed.data.op === "cancel" ? SALES_ACCESS : LOTS_ACCESS;
+    const access =
+      parsed.data.op === "soft_delete"
+        ? AUCTION_MANAGE_ACCESS
+        : parsed.data.op === "cancel"
+          ? SALES_ACCESS
+          : LOTS_ACCESS;
     const denied = await denyUnlessAdminCapability(access);
     if (denied) return denied;
     const { adminLots } = getWriteContainer();
@@ -890,6 +895,7 @@ export async function adminBulkLotsResultAction(
       return actionFailure("Unexpected bulk response from server");
     }
     revalidatePath("/admin/lots");
+    revalidatePath("/admin/sales");
     for (const lotId of parsed.data.ids) {
       revalidateAdminLotDetail(lotId);
     }

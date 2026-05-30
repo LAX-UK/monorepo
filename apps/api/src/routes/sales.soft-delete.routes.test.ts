@@ -1,4 +1,7 @@
-import { saleDeleteConfirmationPhrase } from "@auction/validators";
+import {
+  bulkSaleDeleteConfirmationPhrase,
+  saleDeleteConfirmationPhrase,
+} from "@auction/validators";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -14,10 +17,11 @@ describe("POST /sales/:id/delete", () => {
       Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
     }>();
     const softDelete = vi.fn();
+    const bulkSoftDelete = vi.fn();
     const container = {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       saleService: {},
-      saleSoftDeleteService: { softDelete, getDeleteEligibility: vi.fn() },
+      saleSoftDeleteService: { softDelete, bulkSoftDelete, getDeleteEligibility: vi.fn() },
       saleFollowService: {},
       saleBiddersService: { list: vi.fn() },
       mediaUrlResolver: {},
@@ -92,5 +96,90 @@ describe("POST /sales/:id/delete", () => {
     });
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /sales/bulk soft_delete", () => {
+  const saleId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const phrase = bulkSaleDeleteConfirmationPhrase(1);
+
+  function appWithAuth(role: string, staffRole: string | null) {
+    const app = new Hono<{
+      Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    }>();
+    const bulkSoftDelete = vi.fn();
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      saleService: {},
+      saleSoftDeleteService: { softDelete: vi.fn(), bulkSoftDelete, getDeleteEligibility: vi.fn() },
+      saleFollowService: {},
+      saleBiddersService: { list: vi.fn() },
+      mediaUrlResolver: {},
+      kycService: { isConfigured: () => false },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "staff-1",
+        role,
+        staffRole,
+      }),
+    };
+    app.route("/sales", createSaleRoutes(container, authenticator));
+    return { app, bulkSoftDelete };
+  }
+
+  it("returns bulk result when staff soft-deletes draft sales", async () => {
+    const { ok } = await import("neverthrow");
+    const { app, bulkSoftDelete } = appWithAuth("staff", "auction_manager");
+    bulkSoftDelete.mockResolvedValue(
+      ok({
+        attempted: 1,
+        failed: 0,
+        errors: [],
+      }),
+    );
+
+    const res = await app.request("http://t/sales/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids: [saleId],
+        op: "soft_delete",
+        confirmationPhrase: phrase,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { attempted: number; failed: number } };
+    expect(body.data.attempted).toBe(1);
+    expect(body.data.failed).toBe(0);
+    expect(bulkSoftDelete).toHaveBeenCalledWith(
+      "staff-1",
+      "staff",
+      [saleId],
+      phrase,
+      "auction_manager",
+    );
+  });
+
+  it("returns 403 when bulk delete is unauthorized", async () => {
+    const { err } = await import("neverthrow");
+    const { AuthzError } = await import("../lib/errors.js");
+    const { app, bulkSoftDelete } = appWithAuth("client", null);
+    bulkSoftDelete.mockResolvedValue(
+      err(new AuthzError("Only staff with auction.manage can delete sales", 403)),
+    );
+
+    const res = await app.request("http://t/sales/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids: [saleId],
+        op: "soft_delete",
+        confirmationPhrase: phrase,
+      }),
+    });
+
+    expect(res.status).toBe(403);
   });
 });

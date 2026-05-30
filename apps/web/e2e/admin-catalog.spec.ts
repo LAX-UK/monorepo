@@ -658,4 +658,77 @@ test.describe("catalog delete destructive", () => {
     await page.waitForURL(/\/admin\/lots(?:\?|$)/);
     await expect(page.getByRole("link", { name: lotTitle })).toHaveCount(0);
   });
+
+  test("auction manager can bulk delete draft lots from list", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+
+    const lotTitle = `E2E Bulk Delete ${Date.now()}`;
+    const bulkPhrase = "DELETE 1 DRAFT LOTS";
+
+    await page.goto("/admin/lots/new");
+    await expect(page.getByRole("heading", { name: /new lot/i })).toBeVisible();
+
+    await page.getByLabel(/title/i).first().fill(lotTitle);
+    await page.getByRole("button", { name: /continue/i }).click();
+
+    const saleSelect = page.getByLabel(/assign to sale/i);
+    await saleSelect.waitFor();
+    const saleOptions = saleSelect.locator("option:not([disabled])");
+    if ((await saleOptions.count()) === 0) {
+      test.skip(true, "No sales available in seed data");
+      return;
+    }
+    await saleSelect.selectOption({ index: 1 });
+
+    const sellerSearch = page.getByPlaceholder(/search by organisation/i);
+    await sellerSearch.click();
+    await page.waitForTimeout(400);
+    const sellerHit = page.locator(".absolute.z-20").getByRole("button").first();
+    const hasSeller = await sellerHit.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasSeller) {
+      test.skip(true, "No legal entities available in seed data");
+      return;
+    }
+    await sellerHit.click();
+
+    await page.getByRole("button", { name: /continue/i }).click();
+    await page
+      .getByLabel(/starting price/i)
+      .first()
+      .fill("100");
+
+    const categoryTrigger = page.getByRole("button", { name: /select categories/i });
+    if (await categoryTrigger.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await categoryTrigger.click();
+      await page.getByRole("option").first().click();
+    }
+
+    await page.getByRole("button", { name: /create draft/i }).click();
+    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+
+    await page.goto("/admin/lots?status=draft");
+    const lotRow = page.getByRole("row", { name: new RegExp(lotTitle) });
+    const lotLink = page.getByRole("link", { name: lotTitle });
+    const hasLot = await lotLink.isVisible({ timeout: 10000 }).catch(() => false);
+    if (!hasLot) {
+      test.skip(true, "Created lot not visible on draft list");
+      return;
+    }
+
+    const rowCheckbox = lotRow.getByRole("checkbox").first();
+    if (!(await rowCheckbox.isVisible({ timeout: 2000 }).catch(() => false))) {
+      const tableRow = page.locator("table tbody tr").filter({ hasText: lotTitle }).first();
+      await tableRow.getByRole("checkbox").check();
+    } else {
+      await rowCheckbox.check();
+    }
+
+    await page.getByRole("button", { name: /delete drafts/i }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("textbox").fill(bulkPhrase);
+    await page.getByRole("button", { name: /delete lots/i }).click();
+
+    await expect(page.getByRole("link", { name: lotTitle })).toHaveCount(0, { timeout: 15000 });
+  });
 });

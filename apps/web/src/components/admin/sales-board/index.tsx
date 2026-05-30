@@ -5,6 +5,7 @@ import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { useTableDensity } from "@/components/layout/density-provider";
+import { bulkSaleDeletePreflightWarning } from "@/lib/admin/bulk-ops/sale-bulk-result";
 import { bulkCancelPreflightWarning, getSaleBulkOperations } from "@/lib/admin/bulk-ops/sales";
 import { adminSaleEditHref, adminSaleHref } from "@/lib/admin/catalog-route-helpers";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
@@ -41,10 +42,13 @@ export function AdminSalesBoard({
   );
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
   const bulkOperations = useMemo(() => getSaleBulkOperations(canManageSales), [canManageSales]);
-  const bulkPreflightWarning = useMemo(
-    () => bulkCancelPreflightWarning(selectedIds, rows),
-    [selectedIds, rows],
-  );
+  const bulkPreflightWarning = useMemo(() => {
+    const hints = [
+      bulkCancelPreflightWarning(selectedIds, rows),
+      bulkSaleDeletePreflightWarning(selectedIds, rows),
+    ].filter(Boolean);
+    return hints.length > 0 ? hints.join(". ") : null;
+  }, [selectedIds, rows]);
 
   return (
     <div className="space-y-4">
