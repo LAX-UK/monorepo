@@ -39,7 +39,7 @@ describe("StripePaymentGateway", () => {
     expect(mockStripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_1");
   });
 
-  it("createCardCheckoutSession uses idempotency key and payment metadata", async () => {
+  it("createCardCheckoutSession uses idempotency key and lot display fields", async () => {
     const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
     const sessionsCreate = vi.fn().mockResolvedValue({
       id: "cs_1",
@@ -62,13 +62,57 @@ describe("StripePaymentGateway", () => {
       buyerEmail: "buyer@test.com",
       successUrl: "https://app/success",
       cancelUrl: "https://app/cancel",
+      lineItems: [
+        {
+          name: "Hammer price — Blue Study",
+          description: "Lot 42 · LAX auction settlement",
+          unitAmountCents: 10000,
+          images: ["https://cdn.test/lot.jpg"],
+        },
+        {
+          name: "Buyer's premium (25%)",
+          unitAmountCents: 2500,
+        },
+      ],
+      paymentIntentDescription: "Auction settlement — Blue Study (lot 42)",
+      statementDescriptorSuffix: "LOT 42",
     });
 
     expect(result.url).toContain("checkout.stripe.com");
     expect(result.paymentIntentId).toBe("pi_checkout");
     expect(sessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: expect.objectContaining({ paymentId: "pay_1", lotId: "lot_1" }),
+        locale: "en-GB",
+        metadata: expect.objectContaining({
+          paymentId: "pay_1",
+          lotId: "lot_1",
+          checkoutRail: "card",
+        }),
+        custom_text: expect.objectContaining({
+          submit: expect.objectContaining({ message: expect.stringContaining("LAX") }),
+        }),
+        line_items: [
+          expect.objectContaining({
+            price_data: expect.objectContaining({
+              unit_amount: 10000,
+              product_data: expect.objectContaining({
+                name: "Hammer price — Blue Study",
+                images: ["https://cdn.test/lot.jpg"],
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            price_data: expect.objectContaining({
+              unit_amount: 2500,
+              product_data: expect.objectContaining({ name: "Buyer's premium (25%)" }),
+            }),
+          }),
+        ],
+        payment_intent_data: expect.objectContaining({
+          description: "Auction settlement — Blue Study (lot 42)",
+          statement_descriptor_suffix: "LOT 42",
+          receipt_email: "buyer@test.com",
+        }),
       }),
       { idempotencyKey: "checkout:card:payment:pay_1" },
     );
@@ -98,6 +142,14 @@ describe("StripePaymentGateway", () => {
       successUrl: "https://app/success",
       cancelUrl: "https://app/cancel",
       stripeCustomerId: "cus_1",
+      lineItems: [
+        {
+          name: "High value lot",
+          unitAmountCents: 25000000,
+        },
+      ],
+      paymentIntentDescription: "Auction settlement — High value lot (lot 2)",
+      statementDescriptorSuffix: "LOT 2",
     });
 
     expect(sessionsCreate).toHaveBeenCalledWith(

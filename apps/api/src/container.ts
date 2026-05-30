@@ -1008,8 +1008,14 @@ export function createContainer(env: Env): Container {
 
   const stripeCheckoutService = stripePaymentGateway.isConfigured()
     ? new StripeCheckoutService([
-        new CardCheckoutRail(env, stripePaymentGateway, paymentRepo),
-        new BankTransferCheckoutRail(env, stripePaymentGateway, stripeCustomerGateway, paymentRepo),
+        new CardCheckoutRail(env, stripePaymentGateway, paymentRepo, mediaUrlResolver),
+        new BankTransferCheckoutRail(
+          env,
+          stripePaymentGateway,
+          stripeCustomerGateway,
+          paymentRepo,
+          mediaUrlResolver,
+        ),
       ])
     : null;
 
