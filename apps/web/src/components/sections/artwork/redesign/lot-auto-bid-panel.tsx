@@ -23,12 +23,40 @@ type Props = {
   loginNextPath: string;
   initialSettings: AutoBidSettings | null;
   approvedBidLimit?: number | null;
-  /** Sync max/step into manual bid form when user edits locally. */
   onDraftChange?: (draft: { maxAuto: string; step: string; dirty: boolean }) => void;
   onSettingsSaved?: (settings: AutoBidSettings | null) => void;
 };
 
 const ELIGIBLE: LotAuctionType[] = ["english", "buy_it_now"];
+
+function AutoBidRangeVisual({
+  currentPrice,
+  maxAuto,
+}: {
+  currentPrice: string;
+  maxAuto: string;
+}) {
+  const currentN = Number.parseFloat(currentPrice);
+  const maxN = Number.parseFloat(maxAuto);
+  if (!Number.isFinite(currentN) || !Number.isFinite(maxN) || maxN <= currentN) {
+    return null;
+  }
+  const pct = Math.min(100, Math.max(8, (currentN / maxN) * 100));
+  return (
+    <div className="mt-3 space-y-2" aria-hidden>
+      <div className="flex justify-between font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
+        <span>Current {formatMoney(currentPrice)}</span>
+        <span>Your max {formatMoney(maxAuto)}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-surface-container-high">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function LotAutoBidPanel({
   lot,
@@ -108,10 +136,6 @@ export function LotAutoBidPanel({
   const maxNumeric = Number.parseFloat(maxAuto);
   const stepNumeric = Number.parseFloat(step);
   const currentNumeric = Number.parseFloat(currentPrice);
-  const headroom =
-    Number.isFinite(maxNumeric) && Number.isFinite(currentNumeric)
-      ? Math.max(0, maxNumeric - currentNumeric)
-      : null;
 
   const nextAutoBid =
     Number.isFinite(currentNumeric) && Number.isFinite(stepNumeric)
@@ -246,34 +270,44 @@ export function LotAutoBidPanel({
     );
   }
 
-  const statusLine = activeSettings?.isActive
-    ? `Active — max ${formatMoney(activeSettings.maxAutoBidAmount)} · +${formatMoney(step)} per raise${
-        headroom != null ? ` · ${formatMoney(headroom.toFixed(2))} headroom` : ""
-      }`
-    : "Auto-bid off";
+  const isActive = Boolean(activeSettings?.isActive && activeSettings.maxAutoBidAmount);
 
   return (
     <div
       id="lot-auto-bid-card"
       className="rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-4 ring-1 ring-outline-variant/10 dark:bg-surface-container-low/40"
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Auto-bid
-          </p>
-          <p className="mt-1 font-body text-sm text-on-surface">{statusLine}</p>
-          {isDirty ? (
-            <p className="mt-0.5 font-label text-[10px] uppercase tracking-wider text-amber-800 dark:text-amber-200">
-              Unsaved changes
-            </p>
-          ) : null}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Auto-bid
+        </p>
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider",
+            isActive
+              ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+              : "bg-surface-container-high text-on-surface-variant",
+          )}
+        >
+          {isActive ? "On" : "Off"}
+        </span>
       </div>
 
       <BodyText className="mt-3 text-sm text-on-surface-variant">
         Each time you&apos;re outbid, we raise by your chosen step until your max is reached.
       </BodyText>
+
+      {isActive && activeSettings ? (
+        <AutoBidRangeVisual currentPrice={currentPrice} maxAuto={activeSettings.maxAutoBidAmount} />
+      ) : maxAuto.trim() !== "" && Number.isFinite(maxNumeric) ? (
+        <AutoBidRangeVisual currentPrice={currentPrice} maxAuto={maxAuto} />
+      ) : null}
+
+      {isDirty ? (
+        <p className="mt-2 font-label text-[10px] uppercase tracking-wider text-amber-800 dark:text-amber-200">
+          Unsaved changes
+        </p>
+      ) : null}
 
       <div className="mt-4 space-y-4">
         <div>
@@ -327,7 +361,7 @@ export function LotAutoBidPanel({
 
         <p className="font-body text-sm text-on-surface-variant">
           {isWinning
-            ? `You're high bidder — we'll defend up to ${formatMoney(maxAuto || "0")}.`
+            ? `You're high bidder — we'll defend up to ${formatMoney(maxAuto || activeSettings?.maxAutoBidAmount || "0")}.`
             : nextAutoBid != null
               ? `Next auto bid would be ${formatMoney(nextAutoBid.toFixed(2))}.`
               : null}
@@ -349,7 +383,7 @@ export function LotAutoBidPanel({
         <Button
           type="button"
           variant="outline"
-          disabled={disabled || saving || clearing || !activeSettings?.isActive}
+          disabled={disabled || saving || clearing || !isActive}
           onClick={() => void onClear()}
           className="h-auto px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
         >

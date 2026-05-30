@@ -72,6 +72,11 @@ const lot = (sellerId: string): Lot => ({
   marketingDetails: {},
 });
 
+/** Default entry mode is auto-bid; switch to manual before using the bid form. */
+function selectManualBidMode() {
+  fireEvent.click(screen.getByRole("button", { name: /place one bid now/i }));
+}
+
 describe("ArtworkBidPanel", () => {
   beforeEach(() => {
     placeBidMock.mockReset();
@@ -100,7 +105,7 @@ describe("ArtworkBidPanel", () => {
         initialAutoBidSettings={null}
       />,
     );
-    expect(screen.getByText(/this is your listing/i)).toBeInTheDocument();
+    expect(screen.getByText(/your listing/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
   });
 
@@ -126,6 +131,7 @@ describe("ArtworkBidPanel", () => {
         initialAutoBidSettings={null}
       />,
     );
+    selectManualBidMode();
     expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
   });
 
@@ -182,8 +188,8 @@ describe("ArtworkBidPanel", () => {
         initialAutoBidSettings={null}
       />,
     );
-    expect(screen.getByText(/^Auto-bid$/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save auto-bid/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/max amount/i)).toBeInTheDocument();
   });
 
   it("submits a bid on confirm and shows success", async () => {
@@ -223,6 +229,7 @@ describe("ArtworkBidPanel", () => {
         omitPricingHeader
       />,
     );
+    selectManualBidMode();
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
     fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
     await waitFor(() => {
@@ -261,6 +268,7 @@ describe("ArtworkBidPanel", () => {
         omitPricingHeader
       />,
     );
+    selectManualBidMode();
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
     fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
     await waitFor(() => {
@@ -297,6 +305,7 @@ describe("ArtworkBidPanel", () => {
         omitPricingHeader
       />,
     );
+    selectManualBidMode();
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
     fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
     await waitFor(() => expect(placeBidMock).toHaveBeenCalledTimes(1));
@@ -308,6 +317,109 @@ describe("ArtworkBidPanel", () => {
     const keys = placeBidMock.mock.calls.map((call) => call[0]?.idempotencyKey);
     expect(keys[0]).toBeTruthy();
     expect(keys.every((key) => key === keys[0])).toBe(true);
+  });
+
+  it("sticky bar offers Raise max when outbid with active auto-bid", () => {
+    render(
+      <ArtworkBidPanel
+        auction={lot("other-seller")}
+        initialHistory={[]}
+        initialLeadingBidderId="other-bidder"
+        initialOutbid
+        initialUserHasBid
+        sessionUser={{
+          id: "buyer-1",
+          email: "b@b.co",
+          name: "Buyer",
+          role: "client",
+        }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other-artist/other",
+          sellerImageUrl: null,
+        }}
+        initialAutoBidSettings={{
+          maxAutoBidAmount: "500",
+          autoBidStepAmount: "10",
+          isActive: true,
+        }}
+        omitPricingHeader
+      />,
+    );
+    expect(screen.getByRole("button", { name: /raise max/i })).toBeInTheDocument();
+  });
+
+  it("reveals manual bid form when Increase bid is clicked while outbid in auto mode", () => {
+    render(
+      <ArtworkBidPanel
+        auction={lot("other-seller")}
+        initialHistory={[]}
+        initialLeadingBidderId="other-bidder"
+        initialOutbid
+        initialUserHasBid
+        sessionUser={{
+          id: "buyer-1",
+          email: "b@b.co",
+          name: "Buyer",
+          role: "client",
+        }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other-artist/other",
+          sellerImageUrl: null,
+        }}
+        initialAutoBidSettings={{
+          maxAutoBidAmount: "500",
+          autoBidStepAmount: "10",
+          isActive: true,
+        }}
+        omitPricingHeader
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^increase bid$/i }));
+    expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
+  });
+
+  it("shows durable outbid position on SSR when user bid but is not leading", () => {
+    render(
+      <ArtworkBidPanel
+        auction={lot("other-seller")}
+        initialHistory={[
+          {
+            id: "b1",
+            bidderId: "buyer-1",
+            amount: "110",
+            at: Date.now(),
+          },
+        ]}
+        initialLeadingBidderId="other-bidder"
+        initialOutbid
+        initialUserHasBid
+        sessionUser={{
+          id: "buyer-1",
+          email: "b@b.co",
+          name: "Buyer",
+          role: "client",
+        }}
+        summarySeed={{
+          title: "Piece",
+          kicker: null,
+          estimateLine: null,
+          sellerName: "Seller",
+          sellerHref: "/artist/other-artist/other",
+          sellerImageUrl: null,
+        }}
+        initialAutoBidSettings={null}
+      />,
+    );
+    expect(screen.getByText(/you've been outbid/i)).toBeInTheDocument();
   });
 
   it("blocks review when bid exceeds approved registration limit", () => {
@@ -344,6 +456,7 @@ describe("ArtworkBidPanel", () => {
         }}
       />,
     );
+    selectManualBidMode();
     const input = screen.getByPlaceholderText("0.00");
     fireEvent.change(input, { target: { value: "600" } });
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));

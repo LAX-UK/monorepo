@@ -1,4 +1,5 @@
 import { CatalogByView } from "@/components/marketing/catalog-by-view";
+import { SaleroomLotListActions } from "@/components/marketing/lot-quick-look/saleroom-lot-list-actions";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { Button } from "@auction/ui";
@@ -11,7 +12,8 @@ import type { SaleLotCardVM } from "./view-models";
 type Props = {
   view: CatalogLayoutView;
   lots: SaleLotCardVM[];
-  /** OCP: callers render watchlist heart (or similar) on the image corner. */
+  isAuthenticated: boolean;
+  /** OCP: grid image overlays (watchlist + quick-look on tile). */
   renderCorner?: (lot: SaleLotCardVM) => ReactNode;
   /** OCP: callers render action slot per lot (Bid vs Results). */
   renderActions?: (lot: SaleLotCardVM) => ReactNode;
@@ -22,6 +24,7 @@ type Props = {
 export function SaleroomCatalogLotsByView({
   view,
   lots,
+  isAuthenticated,
   renderCorner,
   renderActions,
   emptyMessage,
@@ -59,7 +62,11 @@ export function SaleroomCatalogLotsByView({
             <li key={lot.id} className="px-0">
               <SaleroomLotCard
                 lot={lot}
-                cornerAction={renderCorner?.(lot)}
+                listActions={
+                  renderCorner ? (
+                    <SaleroomLotListActions lot={lot} isAuthenticated={isAuthenticated} />
+                  ) : undefined
+                }
                 actions={renderActions?.(lot)}
                 layout="row"
               />

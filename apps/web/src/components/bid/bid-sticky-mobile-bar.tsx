@@ -3,8 +3,15 @@
 import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { LotTimerState } from "@/components/lot-timer";
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
+import {
+  type LotBidPosition,
+  lotBidPositionAutoStickyLabel,
+  lotBidPositionShowOutbidCta,
+  lotBidPositionStickyLabel,
+} from "@/lib/bid/derive-lot-bid-position";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import { countdownTier } from "@/lib/format-countdown";
+import { formatMoney } from "@/lib/format-currency";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -30,11 +37,11 @@ type Props = {
   countdownClock: string;
   /** When true, slim bar (countdown only) when bid card is in view. */
   compact?: boolean;
-  /** Compact auto-bid badge label, e.g. "Auto £100". */
-  autoBidLabel?: string | null;
-  /** Show outbid CTA on sticky bar. */
-  outbid?: boolean;
-  onUpdateAutoBid?: () => void;
+  /** Unified bidder position — drives outbid CTA and auto badge. */
+  position?: LotBidPosition | null;
+  hasActiveAutoBid?: boolean;
+  onFocusManualBid?: () => void;
+  onFocusAutoBid?: () => void;
 };
 
 function saleRegistrationStickyAction(
@@ -93,10 +100,14 @@ export function BidStickyMobileBar({
   timerState,
   countdownClock,
   compact = false,
-  autoBidLabel = null,
-  outbid = false,
-  onUpdateAutoBid,
+  position = null,
+  hasActiveAutoBid = false,
+  onFocusManualBid,
+  onFocusAutoBid,
 }: Props) {
+  const outbid = position ? lotBidPositionShowOutbidCta(position) : false;
+  const autoBidLabel = position ? lotBidPositionAutoStickyLabel(position, formatMoney) : null;
+  const positionLabel = position ? lotBidPositionStickyLabel(position) : null;
   if (timerState.kind === "opensSoon") {
     return <UpcomingBar countdownClock={countdownClock} loginNextPath={loginNextPath} />;
   }
@@ -140,18 +151,18 @@ export function BidStickyMobileBar({
           </Link>
         ) : null}
         {!kycBlocked && regAction}
-        {!kycBlocked && !regAction && outbid && onUpdateAutoBid ? (
+        {!kycBlocked && !regAction && outbid ? (
           <Button
             type="button"
-            onClick={onUpdateAutoBid}
+            onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
             className="shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
           >
-            Update auto-bid
+            {hasActiveAutoBid ? "Raise max" : "Increase bid"}
           </Button>
         ) : null}
-        {!kycBlocked && !regAction && autoBidLabel ? (
+        {!kycBlocked && !regAction && (autoBidLabel || positionLabel) ? (
           <span className="shrink-0 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
-            {autoBidLabel}
+            {autoBidLabel ?? positionLabel}
           </span>
         ) : null}
       </MarketingStickyBidBar>
@@ -211,16 +222,18 @@ export function BidStickyMobileBar({
         right = null;
     }
   } else if (step === 1) {
-    right =
-      outbid && onUpdateAutoBid ? (
+    if (outbid && (onFocusAutoBid || onFocusManualBid)) {
+      right = (
         <Button
           type="button"
-          onClick={onUpdateAutoBid}
+          onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
           className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
         >
-          Update auto-bid
+          {hasActiveAutoBid ? "Raise auto-bid max" : "Increase bid"}
         </Button>
-      ) : (
+      );
+    } else {
+      right = (
         <Button
           type="button"
           onClick={onScrollToBid}
@@ -229,6 +242,7 @@ export function BidStickyMobileBar({
           Review bid
         </Button>
       );
+    }
   } else {
     right = (
       <Button
@@ -253,9 +267,9 @@ export function BidStickyMobileBar({
         >
           {currentPriceLabel}
         </p>
-        {autoBidLabel ? (
+        {autoBidLabel || positionLabel ? (
           <p className="mt-0.5 truncate font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
-            {autoBidLabel}
+            {autoBidLabel ?? positionLabel}
           </p>
         ) : null}
         <p

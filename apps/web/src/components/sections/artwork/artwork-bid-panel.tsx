@@ -2,20 +2,18 @@
 
 import { BidGate } from "@/components/bid/bid-gate";
 import { BidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar";
-import { classifyLotTimerState } from "@/components/lot-timer";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
-import type { BidDisplayStatus } from "@/components/sections/artwork/bid-display-status-banner";
 import { BidForm } from "@/components/sections/artwork/bid-form";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto-bid-panel";
-import { LotHighestBidderBanner } from "@/components/sections/artwork/redesign/lot-highest-bidder-banner";
+import { LotBidModeChooser } from "@/components/sections/artwork/redesign/lot-bid-mode-chooser";
+import { LotBidPositionSummary } from "@/components/sections/artwork/redesign/lot-bid-position-summary";
 import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
-import { LotMobilePricingStrip } from "@/components/sections/artwork/redesign/lot-mobile-pricing-strip";
-import { LotOutbidBanner } from "@/components/sections/artwork/redesign/lot-outbid-banner";
-import { useLotRealtime } from "@/hooks/use-lot-realtime";
-import { useNow } from "@/hooks/use-now";
+import { LotPricingStatusHeader } from "@/components/sections/artwork/redesign/lot-pricing-status-header";
+import { useLotBidState } from "@/hooks/use-lot-bid-state";
+import { type LotBidEntryMode, defaultLotBidEntryMode } from "@/lib/bid/lot-bid-entry-mode";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
 import { useLotPorts } from "@/lib/context/lot-ports";
@@ -23,13 +21,10 @@ import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
-import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
-import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { lotPath } from "@/lib/seo/url";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import { shouldStayOnBidConfirmStep } from "@/lib/ui/bid-error/confirm-step";
-import { notify } from "@/lib/ui/notify";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -41,23 +36,18 @@ type Props = {
   sessionUser: SessionUser | null;
   summarySeed: LotSummarySeedVM;
   initialAutoBidSettings?: AutoBidSettings | null;
-  /** Watchlist state for scheduled / no-sale notify CTAs in `LotInfoStack`. */
+  initialOutbid?: boolean;
+  initialUserHasBid?: boolean;
   initialWatching?: boolean;
   loginNextPath?: string;
-  /** When true, omit estimate/timer stack (e.g. online layout shows it in the queue sidebar). */
   omitPricingHeader?: boolean;
-  /** Show compact pricing strip on mobile when `omitPricingHeader` is true. */
   mobilePricingStrip?: boolean;
   kycSummary?: KycStatusSummaryDto | null;
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
-  /** Sale page path for registration error CTAs. */
   saleRegistrationPath?: string | null;
   orgModuleEnabled?: boolean;
-  /** Parent sale (when known) for pre-launch / draft-sale catalogue messaging. */
   saleForLifecycle?: Pick<Sale, "status" | "deliveryMode"> | null;
 };
-
-const HISTORY_CAP = 20;
 
 const FIGMA_PRIMARY =
   "rounded border border-outline bg-on-surface px-8 py-4 text-base font-semibold leading-6 tracking-wide text-on-surface-variant shadow-sm transition-colors hover:bg-surface-container-highest";
@@ -69,10 +59,12 @@ export function ArtworkBidPanel({
   sessionUser,
   summarySeed,
   initialAutoBidSettings = null,
+  initialOutbid = false,
+  initialUserHasBid = false,
   initialWatching = false,
   loginNextPath,
   omitPricingHeader = false,
-  mobilePricingStrip = false,
+  mobilePricingStrip: _mobilePricingStrip = false,
   kycSummary = null,
   saleRegistrationBidGate = null,
   saleRegistrationPath = null,
@@ -81,55 +73,65 @@ export function ArtworkBidPanel({
 }: Props) {
   const { bidWriter } = useLotPorts();
   const onlineLifecycle = useOnlineLotLifecycle();
-  const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
-  const [endTime, setEndTime] = useState(() => new Date(auction.endTime).getTime());
-  const startTimeMs = useMemo(() => new Date(auction.startTime).getTime(), [auction.startTime]);
+
+  const bidState = useLotBidState({
+    auction,
+    initialHistory,
+    initialLeadingBidderId,
+    sessionUser,
+    initialAutoBidSettings,
+    initialOutbid,
+    initialUserHasBid,
+    saleForLifecycle,
+  });
+
+  const {
+    currentPrice,
+    startTimeMs,
+    endTime,
+    lotStatus,
+    history,
+    activeAutoBid,
+    handleAutoBidSaved,
+    lifecycle,
+    countdownClock,
+    timerState,
+    remainingLabel,
+    saleEndLocalLabel,
+    saleStartLocalLabel,
+    position,
+    biddingLive,
+    priceFlash,
+    applyOwnBidResult,
+    scrollToBid,
+    scrollToAutoBid,
+    extendedByMs,
+    msRemaining,
+    markLotEndedLocally,
+    setActiveAutoBid,
+  } = bidState;
+
   const [amount, setAmount] = useState("");
   const [maxAuto, setMaxAuto] = useState(initialAutoBidSettings?.maxAutoBidAmount ?? "");
   const [autoBidStep, setAutoBidStep] = useState(initialAutoBidSettings?.autoBidStepAmount ?? "");
-  const [activeAutoBid, setActiveAutoBid] = useState<AutoBidSettings | null>(
-    initialAutoBidSettings,
-  );
   const [autoBidDraftDirty, setAutoBidDraftDirty] = useState(false);
+  const [entryMode, setEntryMode] = useState<LotBidEntryMode>(() =>
+    defaultLotBidEntryMode({
+      supportsAutoBid: auction.auctionType === "english" || auction.auctionType === "buy_it_now",
+      hasActiveAutoBid: Boolean(initialAutoBidSettings?.isActive),
+      userPreference: null,
+    }),
+  );
   const [step, setStep] = useState<1 | 2>(1);
   const [error, setError] = useState<BidErrorPresentation | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const now = useNow();
   const [bidSuccess, setBidSuccess] = useState(false);
-  const [history, setHistory] = useState<BidHistoryEntry[]>(initialHistory);
-  const [lotStatus, setLotStatus] = useState<Lot["status"]>(auction.status);
-  const [leadingBidderId, setLeadingBidderId] = useState<string | null>(initialLeadingBidderId);
-  const [priceFlash, setPriceFlash] = useState(false);
-  const [endedBanner, setEndedBanner] = useState<string | null>(null);
-  const [outbidBannerVisible, setOutbidBannerVisible] = useState(false);
   const confirmIdempotencyKeyRef = useRef<string | null>(null);
-  const lastOwnBidRef = useRef<{
-    bidId: string;
-    amount: string;
-    currentPrice: string;
-    leadingBidderId: string | null;
-    at: number;
-  } | null>(null);
-  const endTimeRef = useRef(endTime);
-  endTimeRef.current = endTime;
-
-  const triggerPriceFlash = useCallback(() => {
-    setPriceFlash(true);
-    window.setTimeout(() => setPriceFlash(false), 500);
-  }, []);
 
   const minNumeric = useMemo(
     () => getMinNextBidAmount(auction, currentPrice),
     [auction, currentPrice],
   );
-
-  const pushHistory = useCallback((entry: Omit<BidHistoryEntry, "at"> & { at?: number }) => {
-    setHistory((h) =>
-      [{ ...entry, at: entry.at ?? Date.now() }, ...h]
-        .filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i)
-        .slice(0, HISTORY_CAP),
-    );
-  }, []);
 
   const handleAutoBidDraft = useCallback(
     (draft: { maxAuto: string; step: string; dirty: boolean }) => {
@@ -140,111 +142,20 @@ export function ArtworkBidPanel({
     [],
   );
 
-  const handleAutoBidSaved = useCallback((settings: AutoBidSettings | null) => {
-    setActiveAutoBid(settings);
-    setAutoBidDraftDirty(false);
-    if (settings) {
-      setMaxAuto(settings.maxAutoBidAmount);
-      setAutoBidStep(settings.autoBidStepAmount ?? "");
-    } else {
-      setMaxAuto("");
-      setAutoBidStep("");
-    }
-  }, []);
-
-  useLotRealtime(auction.id, {
-    onBidUpdate: (e) => {
-      const own = lastOwnBidRef.current;
-      if (own && e.bidId === own.bidId) {
-        return;
-      }
-      if (
-        own &&
-        sessionUser?.id &&
-        own.leadingBidderId === sessionUser.id &&
-        Number.parseFloat(e.amount) < Number.parseFloat(own.amount) &&
-        Date.now() - own.at < 5000
-      ) {
-        return;
-      }
-      if (own && e.emittedAt != null && e.emittedAt < own.at) {
-        return;
-      }
-      setCurrentPrice(e.currentPrice);
-      setLeadingBidderId(e.bidderId);
-      triggerPriceFlash();
-      onlineLifecycle?.setExtendedDeltaMs(null);
-      pushHistory({
-        id: e.bidId,
-        bidderId: e.bidderId,
-        amount: e.amount,
-      });
-      if (e.endTime) {
-        setEndTime(new Date(e.endTime).getTime());
-      }
-      if (
-        sessionUser?.id &&
-        e.isAutoBid &&
-        e.placedByUserId === sessionUser.id &&
-        e.bidderId === sessionUser.id
-      ) {
-        notify.info("Auto-bid placed", {
-          id: `auto-bid-${e.bidId}`,
-          description: `Your proxy bid placed ${formatMoney(e.amount)}.`,
-          duration: 6500,
-        });
-      }
-      if (sessionUser?.id && e.outbidUserId === sessionUser.id) {
-        setOutbidBannerVisible(true);
-        notify.warning("You've been outbid", {
-          id: `outbid-${auction.id}`,
-          description: "Place a higher bid or raise your auto-bid max.",
-          duration: 6500,
-        });
-      }
-    },
-    onLotExtended: (payload) => {
-      const p = payload as { newEndTime?: string };
-      if (!p?.newEndTime) return;
-      const newMs = new Date(p.newEndTime).getTime();
-      const prev = endTimeRef.current;
-      const delta = Math.max(0, newMs - prev);
-      setEndTime(newMs);
-      if (delta > 0) {
-        onlineLifecycle?.setExtendedDeltaMs(delta);
-        notify.info("Closing time extended", {
-          id: `lot-extend-${auction.id}`,
-          description: `Anti-snipe added ${Math.round(delta / 1000)}s to the clock.`,
-          duration: 7000,
-        });
-      }
-    },
-    onLotEnded: (p) => {
-      setLotStatus("ended");
-      setCurrentPrice(p.currentPrice);
-      setLeadingBidderId(p.winnerId ?? null);
-      const noSale = Boolean(p.noSale) || !p.winnerId;
-      if (noSale) {
-        setEndedBanner("Reserve not met — this lot passed unsold.");
-      } else if (sessionUser?.id && p.winnerId === sessionUser.id) {
-        setEndedBanner("You won this lot — complete checkout from your dashboard.");
+  const onAutoBidSaved = useCallback(
+    (settings: AutoBidSettings | null) => {
+      handleAutoBidSaved(settings);
+      setAutoBidDraftDirty(false);
+      if (settings) {
+        setMaxAuto(settings.maxAutoBidAmount);
+        setAutoBidStep(settings.autoBidStepAmount ?? "");
       } else {
-        setEndedBanner("This lot has sold — thank you for participating.");
+        setMaxAuto("");
+        setAutoBidStep("");
       }
     },
-    onLotEvent: (payload) => {
-      if (!sessionUser?.id || !payload || typeof payload !== "object") return;
-      const o = payload as Record<string, unknown>;
-      if (o.type !== "proxy_cancelled") return;
-      if (o.bidderUserId !== sessionUser.id) return;
-      handleAutoBidSaved(null);
-      notify.warning("Auto-bid cancelled", {
-        id: `proxy-cancelled-${auction.id}`,
-        description: "Your auto-bid on this lot was cleared by the saleroom.",
-        duration: 8000,
-      });
-    },
-  });
+    [handleAutoBidSaved],
+  );
 
   useEffect(() => {
     const el = document.getElementById("bid-interactive-anchor");
@@ -280,90 +191,6 @@ export function ArtworkBidPanel({
     setAmount(minNumeric.toFixed(2));
   }, [useOnlineBidStepper, minNumeric, amount]);
 
-  const remainingLabel = now != null ? formatCountdownForDisplay(endTime - now) : "";
-
-  /** Fixed locale so SSR and client match (undefined follows Node vs browser locale and hydrates badly). */
-  const saleEndLocalLabel = useMemo(() => {
-    const d = new Date(endTime);
-    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  }, [endTime]);
-
-  const saleStartLocalLabel = useMemo(() => {
-    const d = new Date(startTimeMs);
-    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  }, [startTimeMs]);
-
-  const timerState = useMemo(
-    () =>
-      classifyLotTimerState(
-        {
-          status: lotStatus,
-          startTime: new Date(startTimeMs).toISOString(),
-          endTime: new Date(endTime).toISOString(),
-        },
-        now,
-      ),
-    [lotStatus, startTimeMs, endTime, now],
-  );
-
-  const lifecycleLot = useMemo(
-    () => ({
-      id: auction.id,
-      status: lotStatus,
-      startTime: new Date(startTimeMs),
-      endTime: new Date(endTime),
-      winnerId: lotStatus === "ended" ? leadingBidderId : auction.winnerId,
-      reservePrice: auction.reservePrice,
-      currentPrice,
-    }),
-    [
-      auction.id,
-      auction.winnerId,
-      auction.reservePrice,
-      lotStatus,
-      startTimeMs,
-      endTime,
-      currentPrice,
-      leadingBidderId,
-    ],
-  );
-
-  const lifecycle = useMemo(
-    () =>
-      classifyLotLifecycle(lifecycleLot, saleForLifecycle, now ?? 0, {
-        recentlyExtended: Boolean(
-          onlineLifecycle?.extendedByMs && onlineLifecycle.extendedByMs > 0,
-        ),
-      }),
-    [lifecycleLot, saleForLifecycle, now, onlineLifecycle?.extendedByMs],
-  );
-
-  const countdownClock = useMemo(() => {
-    if (now == null) return "";
-    if (
-      lifecycle.msLeft != null &&
-      (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
-    ) {
-      return formatCountdownForDisplay(lifecycle.msLeft);
-    }
-    return remainingLabel;
-  }, [lifecycle, remainingLabel, now]);
-
-  const ownLot = Boolean(sessionUser?.id && sessionUser.id === auction.sellerId);
-
-  const isWinning = Boolean(
-    sessionUser?.id &&
-      leadingBidderId &&
-      sessionUser.id === leadingBidderId &&
-      lotStatus === "active",
-  );
-
-  const bannerStatus: BidDisplayStatus = ownLot
-    ? { kind: "owner" }
-    : isWinning
-      ? { kind: "winning" }
-      : null;
-
   const loginNext = loginNextPath ?? lotPath(auction);
 
   const clearConfirmAttempt = useCallback(() => {
@@ -378,6 +205,36 @@ export function ArtworkBidPanel({
   }, []);
 
   const includeAutoBidOnManualBid = activeAutoBid?.isActive || autoBidDraftDirty;
+
+  const isWinning = position.kind === "winning" || position.kind === "winningByAuto";
+
+  const supportsAutoBidPanel =
+    auction.auctionType === "english" || auction.auctionType === "buy_it_now";
+
+  const focusBidEntry = useCallback(
+    (mode: LotBidEntryMode) => {
+      setEntryMode(mode);
+      requestAnimationFrame(() => {
+        if (mode === "auto") scrollToAutoBid();
+        else scrollToBid();
+      });
+    },
+    [scrollToAutoBid, scrollToBid],
+  );
+
+  useEffect(() => {
+    if (!supportsAutoBidPanel) return;
+    if (initialOutbid) {
+      setEntryMode(activeAutoBid?.isActive ? "auto" : "manual");
+    }
+  }, [activeAutoBid?.isActive, initialOutbid, supportsAutoBidPanel]);
+
+  useEffect(() => {
+    if (!supportsAutoBidPanel) return;
+    if (position.kind === "outbid" || position.kind === "inRunning") {
+      setEntryMode(activeAutoBid?.isActive ? "auto" : "manual");
+    }
+  }, [activeAutoBid?.isActive, position.kind, supportsAutoBidPanel]);
 
   const onReview = useCallback(() => {
     setError(null);
@@ -470,36 +327,12 @@ export function ArtworkBidPanel({
       return;
     }
     clearConfirmAttempt();
-    setOutbidBannerVisible(false);
-    setCurrentPrice(result.bid.amount);
-    const bidderId = result.bid.bidderId ?? result.bid.placedByUserId ?? "";
-    setLeadingBidderId(bidderId || null);
-    lastOwnBidRef.current = {
-      bidId: result.bid.id,
-      amount: result.bid.amount,
-      currentPrice: result.bid.amount,
-      leadingBidderId: bidderId || null,
-      at: Date.now(),
-    };
-    if (result.bid.maxAutoBidAmount) {
-      setActiveAutoBid({
-        maxAutoBidAmount: result.bid.maxAutoBidAmount,
-        autoBidStepAmount: result.bid.autoBidStepAmount ?? null,
-        isActive: true,
-      });
-      setMaxAuto(result.bid.maxAutoBidAmount);
-      if (result.bid.autoBidStepAmount) setAutoBidStep(result.bid.autoBidStepAmount);
-    } else {
+    applyOwnBidResult(result.bid);
+    if (!result.bid.maxAutoBidAmount) {
       setActiveAutoBid(null);
       setMaxAuto("");
       setAutoBidStep("");
     }
-    triggerPriceFlash();
-    pushHistory({
-      id: result.bid.id,
-      bidderId,
-      amount: result.bid.amount,
-    });
     setAmount("");
     setStep(1);
     setBidSuccess(true);
@@ -513,8 +346,7 @@ export function ArtworkBidPanel({
     const hitBuyNow =
       buyNow !== null && Number.isFinite(buyNow) && Number(result.bid.amount) + 1e-9 >= buyNow;
     if (auction.auctionType === "dutch" || hitBuyNow) {
-      setLotStatus("ended");
-      setEndedBanner(
+      markLotEndedLocally(
         auction.auctionType === "dutch"
           ? "Sale complete — this Dutch lot has closed."
           : "Buy now — this lot has sold at the buy-now price.",
@@ -522,51 +354,25 @@ export function ArtworkBidPanel({
     }
   }, [
     amount,
-    autoBidStep,
+    applyOwnBidResult,
     auction,
+    autoBidStep,
     bidWriter,
     clearConfirmAttempt,
     ensureConfirmIdempotencyKey,
     includeAutoBidOnManualBid,
     kycSummary?.feedback,
     loginNext,
+    markLotEndedLocally,
     maxAuto,
-    pushHistory,
     saleRegistrationPath,
-    triggerPriceFlash,
+    setActiveAutoBid,
   ]);
 
   const onUseMinimum = useCallback(() => {
     setAmount(minNumeric.toFixed(2));
     setError(null);
   }, [minNumeric]);
-
-  const scrollToBid = useCallback(() => {
-    document.getElementById("bid-interactive-anchor")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, []);
-
-  const scrollToAutoBid = useCallback(() => {
-    document.getElementById("lot-auto-bid-panel")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, []);
-
-  const autoBidStickyLabel =
-    activeAutoBid?.isActive && activeAutoBid.maxAutoBidAmount
-      ? `Auto ${formatMoney(activeAutoBid.maxAutoBidAmount)}`
-      : null;
-
-  const autoBidBannerProps =
-    activeAutoBid?.isActive && activeAutoBid.maxAutoBidAmount
-      ? { max: activeAutoBid.maxAutoBidAmount, step: activeAutoBid.autoBidStepAmount }
-      : null;
-
-  const biddingLive = lotStatus === "active";
-  const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
 
   const englishOnlySurfaceLock =
     isEnglishOnlyAuctionsLocked() &&
@@ -584,11 +390,14 @@ export function ArtworkBidPanel({
     !autoBidEligible &&
     (lifecycle.kind === "scheduled" || lifecycle.kind === "preLaunch");
 
-  useEffect(() => {
-    if (isWinning) setOutbidBannerVisible(false);
-  }, [isWinning]);
-
+  const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
   const bidCardInView = onlineLifecycle?.bidCardInView ?? true;
+  const showPricingHeader = omitPricingHeader;
+
+  const activeAutoBidNote =
+    includeAutoBidOnManualBid && maxAuto.trim() !== ""
+      ? { max: maxAuto, onChangeAutoBid: scrollToAutoBid }
+      : null;
 
   return (
     <BidGate
@@ -608,15 +417,19 @@ export function ArtworkBidPanel({
       {({ decision }) => (
         <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
           <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
-            {omitPricingHeader && mobilePricingStrip ? (
-              <LotMobilePricingStrip
+            {showPricingHeader ? (
+              <LotPricingStatusHeader
                 seed={summarySeed}
                 currentPrice={currentPrice}
                 minNextBid={minNumeric.toFixed(2)}
                 lotNumber={auction.lotNumber}
+                reservePrice={auction.reservePrice}
+                lifecycle={lifecycle}
+                countdownClock={countdownClock}
+                extendedByMs={extendedByMs}
               />
             ) : null}
-            {omitPricingHeader ? null : (
+            {!omitPricingHeader ? (
               <LotInfoStack
                 estimateLine={summarySeed.estimateLine}
                 currentPrice={currentPrice}
@@ -652,29 +465,23 @@ export function ArtworkBidPanel({
                   ) : null
                 }
               />
-            )}
+            ) : null}
 
-            <div className="mt-6">
-              {onlineLifecycle?.extendedByMs != null && onlineLifecycle.extendedByMs > 0 ? (
+            <div className="mt-6 space-y-3">
+              {extendedByMs != null && extendedByMs > 0 ? (
                 <p
-                  className="mb-3 inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-amber-900 dark:text-amber-200"
+                  className="inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-amber-900 dark:text-amber-200"
                   aria-live="polite"
                 >
-                  Extended +{Math.max(1, Math.round(onlineLifecycle.extendedByMs / 1000))}s
+                  Extended +{Math.max(1, Math.round(extendedByMs / 1000))}s
                 </p>
               ) : null}
-              <LotHighestBidderBanner
-                status={bannerStatus}
-                endedBanner={endedBanner}
-                autoBidActive={isWinning ? autoBidBannerProps : null}
+              <LotBidPositionSummary
+                position={position}
+                loginNextPath={loginNext}
+                onIncreaseBid={() => focusBidEntry("manual")}
+                {...(supportsAutoBid ? { onRaiseAutoBid: () => focusBidEntry("auto") } : {})}
               />
-              {outbidBannerVisible && !isWinning && !ownLot && biddingLive ? (
-                <LotOutbidBanner
-                  onDismiss={() => setOutbidBannerVisible(false)}
-                  onRebid={scrollToBid}
-                  onUpdateAutoBid={scrollToAutoBid}
-                />
-              ) : null}
             </div>
 
             {englishOnlySurfaceLock ? (
@@ -684,27 +491,32 @@ export function ArtworkBidPanel({
               </p>
             ) : null}
 
-            {autoBidEligible ? (
-              <>
-                <div id="lot-auto-bid-panel" className="mt-6 scroll-mt-28">
-                  <LotAutoBidPanel
-                    lot={auction}
-                    auctionType={auction.auctionType}
-                    currentPrice={currentPrice}
-                    minNextBid={minNumeric}
-                    isWinning={isWinning}
-                    disabled={gateBlocked(decision)}
-                    loginNextPath={loginNext}
-                    initialSettings={activeAutoBid}
-                    approvedBidLimit={saleRegistrationBidGate?.approvedBidLimit ?? null}
-                    onDraftChange={handleAutoBidDraft}
-                    onSettingsSaved={handleAutoBidSaved}
-                  />
-                </div>
-                <p className="mt-4 text-center font-body text-[13px] font-medium uppercase leading-[13px] text-[#474747] dark:text-on-surface-variant">
-                  OR enter bid manually
-                </p>
-              </>
+            {autoBidEligible && supportsAutoBid ? (
+              <div className="mt-6">
+                <LotBidModeChooser
+                  mode={entryMode}
+                  onModeChange={setEntryMode}
+                  disabled={gateBlocked(decision)}
+                />
+              </div>
+            ) : null}
+
+            {autoBidEligible && entryMode === "auto" ? (
+              <div id="lot-auto-bid-panel" className="mt-4 scroll-mt-28">
+                <LotAutoBidPanel
+                  lot={auction}
+                  auctionType={auction.auctionType}
+                  currentPrice={currentPrice}
+                  minNextBid={minNumeric}
+                  isWinning={isWinning}
+                  disabled={gateBlocked(decision)}
+                  loginNextPath={loginNext}
+                  initialSettings={activeAutoBid}
+                  approvedBidLimit={saleRegistrationBidGate?.approvedBidLimit ?? null}
+                  onDraftChange={handleAutoBidDraft}
+                  onSettingsSaved={onAutoBidSaved}
+                />
+              </div>
             ) : showAutoBidExplainer ? (
               <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
                 Auto-bid opens when this lot goes live
@@ -712,16 +524,14 @@ export function ArtworkBidPanel({
               </p>
             ) : null}
 
-            {!englishOnlySurfaceLock ? (
+            {!englishOnlySurfaceLock && (autoBidEligible ? entryMode === "manual" : true) ? (
               <>
                 <div
                   id="bid-interactive-anchor"
                   tabIndex={-1}
                   className={cn(
                     "scroll-mt-28 outline-none focus:outline-none",
-                    auction.auctionType === "english" || auction.auctionType === "buy_it_now"
-                      ? "mt-4"
-                      : "mt-6",
+                    autoBidEligible ? "mt-4" : "mt-6",
                   )}
                 >
                   {bidSuccess ? (
@@ -748,6 +558,7 @@ export function ArtworkBidPanel({
                       amountFieldVariant={useOnlineBidStepper ? "stepper" : "input"}
                       stepNumeric={bidStepNumeric}
                       step1ButtonLabel="Review bid"
+                      activeAutoBidNote={activeAutoBidNote}
                     />
                   ) : (
                     <BidConfirmation
@@ -800,13 +611,14 @@ export function ArtworkBidPanel({
               priceFlash={priceFlash}
               onScrollToBid={scrollToBid}
               remainingLabel={remainingLabel}
-              msRemaining={now != null ? endTime - now : 0}
+              msRemaining={msRemaining}
               timerState={timerState}
               countdownClock={countdownClock}
               compact={bidCardInView}
-              autoBidLabel={autoBidStickyLabel}
-              outbid={outbidBannerVisible && !isWinning}
-              onUpdateAutoBid={scrollToAutoBid}
+              position={position}
+              hasActiveAutoBid={Boolean(activeAutoBid?.isActive)}
+              onFocusManualBid={() => focusBidEntry("manual")}
+              onFocusAutoBid={() => focusBidEntry("auto")}
             />
           ) : null}
         </div>

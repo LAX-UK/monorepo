@@ -8,6 +8,8 @@ export type BidHistoryEntry = {
   bidderId: string;
   amount: string;
   at: number;
+  /** Proxy/engine-raised bid when true. */
+  isAutoBid?: boolean;
 };
 
 type Props = {
