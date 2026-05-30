@@ -14,7 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "./command.js";
-import { ResponsivePickerShell } from "./responsive-picker-shell.js";
+import { DetachedPickerShell } from "./detached-picker-shell.js";
 
 const DEBOUNCE_MS = 300;
 
@@ -45,7 +45,6 @@ export type AsyncComboboxProps<THit extends AsyncComboboxHit> = {
 
 type PickerComboboxTriggerProps = Omit<ButtonProps, "variant" | "asChild" | "type">;
 
-/** Stable forwardRef trigger for PopoverTrigger asChild — must not swap component types on selection. */
 const PickerComboboxTrigger = React.forwardRef<HTMLButtonElement, PickerComboboxTriggerProps>(
   ({ className, children, ...props }, ref) => (
     <Button ref={ref} type="button" variant="outline" className={className} {...props}>
@@ -78,7 +77,7 @@ function InlineActionButton({
   );
 }
 
-/** Debounced async search combobox built on Command + responsive overlay shell. */
+/** Debounced async search combobox with detached overlay shell (no Radix trigger refs). */
 export function AsyncCombobox<THit extends AsyncComboboxHit>({
   value,
   onChange,
@@ -108,16 +107,21 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
   const [resolving, setResolving] = React.useState(false);
   const lastSearchId = React.useRef(0);
   const lastSelectedIdRef = React.useRef<string | null>(null);
+  const lastSelectedRowRef = React.useRef<THit | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
     if (!value) {
       setResolved(null);
       setResolving(false);
       lastSelectedIdRef.current = null;
+      lastSelectedRowRef.current = null;
       return;
     }
-    if (lastSelectedIdRef.current === value) {
-      lastSelectedIdRef.current = null;
+    const cached = lastSelectedRowRef.current;
+    if (lastSelectedIdRef.current === value && cached?.id === value) {
+      setResolved(cached);
+      setResolving(false);
       return;
     }
     let cancelled = false;
@@ -168,33 +172,33 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
   }, [query, minQueryLen, searchHits]);
 
   function handleSelect(row: THit) {
+    lastSelectedIdRef.current = row.id;
+    lastSelectedRowRef.current = row;
     setOpen(false);
     setQuery("");
     setHits([]);
     setResolved(row);
     setResolving(false);
-    lastSelectedIdRef.current = row.id;
-    queueMicrotask(() => onChange(row.id, row));
+    onChange(row.id, row);
   }
 
   function handleClear() {
+    lastSelectedIdRef.current = null;
+    lastSelectedRowRef.current = null;
     setOpen(false);
     setQuery("");
     setHits([]);
     setResolved(null);
     setResolving(false);
-    lastSelectedIdRef.current = null;
-    queueMicrotask(() => onChange(null));
+    onChange(null);
   }
 
-  const comboboxA11y = {
-    id,
-    role: "combobox" as const,
-    "aria-expanded": open,
-    "aria-invalid": ariaInvalid,
-    "aria-describedby": ariaDescribedBy,
-    onBlur,
-  };
+  const selectedHit =
+    resolved ??
+    (value && lastSelectedRowRef.current?.id === value ? lastSelectedRowRef.current : null);
+
+  const showSelectedChrome = Boolean(value);
+  const triggerLabel = value ? changeLabel : placeholder;
 
   const searchPanel = (
     <Command shouldFilter={false}>
@@ -224,62 +228,81 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
     </Command>
   );
 
-  const selectedSummary =
-    value && resolving ? (
+  const selectedSummary = value ? (
+    resolving && !selectedHit ? (
       <p className="flex items-center gap-1 text-xs text-on-surface-variant">
         <Loader2 className="size-3.5 animate-spin" />
         Loading…
       </p>
-    ) : value && resolved ? (
-      renderSelected(resolved)
-    ) : value && renderSelectedFallback ? (
+    ) : selectedHit ? (
+      renderSelected(selectedHit)
+    ) : renderSelectedFallback ? (
       renderSelectedFallback(value)
-    ) : value ? (
+    ) : (
       <p className="text-xs text-on-surface-variant">Selected id: {value}</p>
-    ) : null;
+    )
+  ) : null;
 
   const pickerTrigger = (
     <PickerComboboxTrigger
-      {...comboboxA11y}
+      ref={triggerRef}
+      id={id}
+      // biome-ignore lint/a11y/useSemanticElements: searchable popover combobox; native select cannot host Command list
+      role="combobox"
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
+      {...(value ? { "aria-label": changeLabel } : {})}
+      onBlur={onBlur}
       disabled={disabled}
-      {...(value ? { "aria-label": changeLabel, size: "sm" } : {})}
+      data-selected={value ? "" : undefined}
+      onClick={() => {
+        if (disabled) return;
+        setOpen((prev) => !prev);
+      }}
       className={cn(
-        value
-          ? "inline-flex items-center gap-1.5 font-label text-[11px] uppercase tracking-wide"
-          : cn(
-              "min-h-11 w-full justify-start px-3 font-body text-sm font-normal text-on-surface-variant",
-              className,
-            ),
+        "min-h-11 w-full justify-start px-3 font-body text-sm font-normal text-on-surface-variant",
+        className,
       )}
     >
-      {value ? changeLabel : placeholder}
+      {triggerLabel}
     </PickerComboboxTrigger>
   );
 
   return (
-    <div
-      className={cn(
-        value &&
-          "flex flex-wrap items-center gap-2 rounded-md border border-outline-variant/40 bg-surface-container-lowest p-3",
-        value ? className : undefined,
-      )}
-    >
-      {value ? <div className="min-w-0 flex-1">{selectedSummary}</div> : null}
-      <div className={cn("flex flex-wrap items-center gap-2", !value && "w-full")}>
-        <ResponsivePickerShell
+    <div className="w-full">
+      <div
+        className={cn(
+          "mb-2 flex flex-wrap items-center gap-2 rounded-md border border-outline-variant/40 bg-surface-container-lowest p-3",
+          !showSelectedChrome && "hidden",
+        )}
+        aria-hidden={!showSelectedChrome}
+      >
+        <div className="min-w-0 flex-1">{selectedSummary}</div>
+        <InlineActionButton
+          onClick={handleClear}
+          disabled={disabled || !value}
+          aria-label={clearLabel}
+        >
+          <X className="size-3.5" />
+          {clearLabel}
+        </InlineActionButton>
+      </div>
+      <div
+        className="w-full"
+        data-slot="async-combobox-trigger"
+        data-testid="async-combobox-trigger-slot"
+      >
+        <DetachedPickerShell
           open={open}
           onOpenChange={setOpen}
+          anchorRef={triggerRef}
           trigger={pickerTrigger}
           panel={searchPanel}
           sheetTitle={searchPlaceholder}
-          popoverContentClassName="w-[var(--radix-popover-trigger-width)] p-0"
+          popoverContentClassName="p-0"
         />
-        {value ? (
-          <InlineActionButton onClick={handleClear} disabled={disabled} aria-label={clearLabel}>
-            <X className="size-3.5" />
-            {clearLabel}
-          </InlineActionButton>
-        ) : null}
       </div>
     </div>
   );

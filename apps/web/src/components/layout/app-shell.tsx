@@ -14,6 +14,7 @@ import { StaffRouteRecentTracker } from "@/components/layout/staff-route-recent-
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { TweaksPopover } from "@/components/layout/tweaks-popover";
 import type { SessionUser } from "@/lib/data/contracts";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { HotkeyProvider } from "@/lib/hotkeys/hotkey-provider";
 import { StaffGlobalHotkeys } from "@/lib/hotkeys/staff-global-hotkeys";
 import type { DashboardDensity } from "@/lib/preferences/density";
@@ -30,7 +31,7 @@ import {
 } from "@auction/ui/components/tooltip";
 import { ChevronLeft, ChevronRight, ExternalLink, Search } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 type Props = {
   user: SessionUser;
@@ -250,31 +251,36 @@ function SidebarEdgeHandle({
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  const hydrated = useHydrated();
   const label = collapsed ? "Expand sidebar" : "Collapse sidebar";
   const Icon = collapsed ? ChevronRight : ChevronLeft;
+  const [shortcutHint, setShortcutHint] = useState("(Ctrl+B)");
+
+  useEffect(() => {
+    setShortcutHint(/Mac|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "(⌘B)" : "(Ctrl+B)");
+  }, []);
+
+  const handle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={onToggle}
+      className="absolute right-0 top-1/2 z-50 size-7 min-h-7 min-w-7 translate-x-1/2 -translate-y-1/2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant opacity-80 shadow-sm transition-[background-color,color,opacity,transform] duration-150 hover:scale-105 hover:bg-surface-container-high hover:text-on-surface hover:opacity-100 focus-visible:opacity-100"
+      aria-label={label}
+      aria-pressed={collapsed}
+    >
+      <Icon className="size-3.5" aria-hidden />
+    </Button>
+  );
+
+  if (!hydrated) return handle;
 
   return (
     <Tooltip delayDuration={250}>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="absolute right-0 top-1/2 z-50 size-7 min-h-7 min-w-7 translate-x-1/2 -translate-y-1/2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant opacity-80 shadow-sm transition-[background-color,color,opacity,transform] duration-150 hover:scale-105 hover:bg-surface-container-high hover:text-on-surface hover:opacity-100 focus-visible:opacity-100"
-          aria-label={label}
-          aria-pressed={collapsed}
-        >
-          <Icon className="size-3.5" aria-hidden />
-        </Button>
-      </TooltipTrigger>
+      <TooltipTrigger asChild>{handle}</TooltipTrigger>
       <TooltipContent side="right">
-        {label}{" "}
-        <span className="text-on-surface-variant">
-          {typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform)
-            ? "(⌘B)"
-            : "(Ctrl+B)"}
-        </span>
+        {label} <span className="text-on-surface-variant">{shortcutHint}</span>
       </TooltipContent>
     </Tooltip>
   );

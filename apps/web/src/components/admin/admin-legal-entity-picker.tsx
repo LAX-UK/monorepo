@@ -82,12 +82,19 @@ export function AdminLegalEntityPicker({
           <p className="font-mono text-[11px] text-on-surface-variant">{row.id}</p>
         </>
       )}
-      renderSelectedFallback={(id) => (
-        <>
-          <p className="truncate font-medium text-on-surface">{displayLabel ?? id}</p>
-          <p className="font-mono text-[11px] text-on-surface-variant">{id}</p>
-        </>
-      )}
+      renderSelectedFallback={(id) => {
+        const trimmedLabel = displayLabel?.trim();
+        const title = trimmedLabel || id;
+        const showIdLine = Boolean(trimmedLabel) && trimmedLabel !== id;
+        return (
+          <>
+            <p className="truncate font-medium text-on-surface">{title}</p>
+            {showIdLine ? (
+              <p className="font-mono text-[11px] text-on-surface-variant">{id}</p>
+            ) : null}
+          </>
+        );
+      }}
     />
   );
 }
