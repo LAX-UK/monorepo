@@ -231,4 +231,63 @@ describe("AutoBidService", () => {
     expect(result.isErr()).toBe(true);
     expect(result._unsafeUnwrapErr().code).toBe("auto_bid_disabled");
   });
+
+  it("accepts max auto-bid exactly equal to next minimum bid", async () => {
+    const placeBid = vi.fn().mockResolvedValue(
+      ok({
+        id: "b2",
+        lotId: "lot-1",
+        amount: "110.00",
+        bidderId: "u1",
+        placedByUserId: "u1",
+        isWinning: true,
+        isAutoBid: true,
+        maxAutoBidAmount: "110.00",
+        autoBidStepAmount: "10.00",
+        createdAt: new Date(),
+      }),
+    );
+    const service = new AutoBidService({
+      repos: repos({}),
+      bidPlacer: { placeBid } as IBidPlacer,
+      bidEligibility: {
+        assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)),
+      } as unknown as IBidEligibility,
+      legalEntityRepository: { ensurePersonalEntity: vi.fn() } as never,
+    });
+    const result = await service.setAutoBid({
+      lotId: "lot-1",
+      placedByUserId: "u1",
+      buyerLegalEntityId: "u1",
+      maxAutoBidAmount: 110,
+      autoBidStepAmount: 10,
+    });
+    expect(result.isOk()).toBe(true);
+    expect(placeBid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 110,
+        maxAutoBidAmount: 110,
+      }),
+    );
+  });
+
+  it("rejects max auto-bid one cent below next minimum bid", async () => {
+    const placeBid = vi.fn();
+    const service = new AutoBidService({
+      repos: repos({}),
+      bidPlacer: { placeBid } as IBidPlacer,
+      bidEligibility: null,
+      legalEntityRepository: { ensurePersonalEntity: vi.fn() } as never,
+    });
+    const result = await service.setAutoBid({
+      lotId: "lot-1",
+      placedByUserId: "u1",
+      buyerLegalEntityId: "u1",
+      maxAutoBidAmount: 109.99,
+      autoBidStepAmount: 10,
+    });
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr().message).toContain("110.00");
+    expect(placeBid).not.toHaveBeenCalled();
+  });
 });

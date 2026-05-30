@@ -225,6 +225,12 @@ const envSchema = z
     ENGLISH_ONLY_AUCTIONS: z
       .preprocess((v) => v === "true" || v === true, z.boolean())
       .default(true),
+    /** Anti-sniping: extend end when bid arrives within this many ms of close. */
+    ANTI_SNIPING_WINDOW_MS: z.coerce.number().int().positive().default(120_000),
+    /** Anti-sniping: seconds added to lot endTime on extension. */
+    ANTI_SNIPING_EXTENSION_MS: z.coerce.number().int().positive().default(30_000),
+    /** Safety cap for proxy resolution (direct settlement uses 0–1 rows). */
+    MAX_PROXY_ROUNDS: z.coerce.number().int().positive().default(100),
     /** Platform org entity stamped on staff-created sales (`created_by_legal_entity_id`). Falls back to DB lookup when unset. */
     PLATFORM_CATALOG_LEGAL_ENTITY_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
     /** Support inbox for money-path alerts and ops (required in production). */
