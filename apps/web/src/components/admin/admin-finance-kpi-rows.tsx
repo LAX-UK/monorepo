@@ -1,6 +1,5 @@
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import type { AdminFinanceIssuesPayload } from "@/lib/data/http/admin.server";
-import Link from "next/link";
 
 type Props = {
   financeIssues: AdminFinanceIssuesPayload;
@@ -27,14 +26,8 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
               label: "Failed payouts",
               value: String(financeIssues.failedPayoutCount),
               semanticTone: financeIssues.failedPayoutCount > 0 ? "danger" : "default",
-              trendSlot: (
-                <Link
-                  href="/admin/payouts?status=failed"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Open list
-                </Link>
-              ),
+              href: "/admin/payouts?status=failed",
+              trendSlot: <span className="text-xs font-semibold text-primary">Open list</span>,
             },
             {
               id: "blocked",
@@ -42,14 +35,8 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
               value: String(financeIssues.staleBlockedScheduledPayoutCount),
               semanticTone:
                 financeIssues.staleBlockedScheduledPayoutCount > 0 ? "warning" : "default",
-              trendSlot: (
-                <Link
-                  href="/admin/payouts?status=scheduled"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Review
-                </Link>
-              ),
+              href: "/admin/payouts?status=scheduled",
+              trendSlot: <span className="text-xs font-semibold text-primary">Review</span>,
             },
             {
               id: "connect-req",
@@ -59,14 +46,8 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
                 financeIssues.legalEntitiesWithStripeConnectRequirementsCount > 0
                   ? "warning"
                   : "default",
-              trendSlot: (
-                <Link
-                  href="/admin/legal-entities?stripe=1"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Entities
-                </Link>
-              ),
+              href: "/admin/legal-entities?stripe=1",
+              trendSlot: <span className="text-xs font-semibold text-primary">Entities</span>,
             },
           ]}
         />
@@ -88,66 +69,36 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
               id: "entities",
               label: "Entities pending",
               value: String(financeIssues.entitiesPendingReviewCount ?? 0),
-              trendSlot: (
-                <Link
-                  href="/admin/onboarding-issues#entities-pending-review"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Queue
-                </Link>
-              ),
+              href: "/admin/onboarding-issues#entities-pending-review",
+              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
             },
             {
               id: "artists",
               label: "Artists pending",
               value: String(financeIssues.artistsPendingApprovalCount ?? 0),
-              trendSlot: (
-                <Link
-                  href="/admin/onboarding-issues#artists-pending"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Queue
-                </Link>
-              ),
+              href: "/admin/onboarding-issues#artists-pending",
+              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
             },
             {
               id: "identity",
               label: "Stale KYC",
               value: String(financeIssues.staleKycSessionsCount ?? 0),
-              trendSlot: (
-                <Link
-                  href="/admin/onboarding-issues#stale-kyc"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Queue
-                </Link>
-              ),
+              href: "/admin/onboarding-issues#stale-kyc",
+              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
             },
             {
               id: "documents",
               label: "Documents awaiting",
               value: String(financeIssues.documentsAwaitingReviewCount ?? 0),
-              trendSlot: (
-                <Link
-                  href="/admin/onboarding-issues#documents-awaiting"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Queue
-                </Link>
-              ),
+              href: "/admin/onboarding-issues#documents-awaiting",
+              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
             },
             {
               id: "lead-orgs",
               label: "Stale lead orgs",
               value: String(financeIssues.staleLeadOrganisationsCount ?? 0),
-              trendSlot: (
-                <Link
-                  href="/admin/onboarding-issues#stale-lead-orgs"
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Queue
-                </Link>
-              ),
+              href: "/admin/onboarding-issues#stale-lead-orgs",
+              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
             },
           ]}
         />

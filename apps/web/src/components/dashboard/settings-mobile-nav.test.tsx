@@ -21,7 +21,7 @@ describe("SettingsMobileHeader", () => {
     expect(screen.getByRole("navigation", { name: "Settings navigation" })).toBeInTheDocument();
   });
 
-  it("does not render a duplicate sticky sub-header on settings sub-pages", () => {
+  it("renders back link and title on settings sub-pages", () => {
     vi.mocked(usePathname).mockReturnValue("/dashboard/settings/profile");
 
     render(<SettingsMobileHeader />);
@@ -29,7 +29,10 @@ describe("SettingsMobileHeader", () => {
     expect(
       screen.queryByRole("navigation", { name: "Settings navigation" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Profile" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Settings/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All settings" })).toHaveAttribute(
+      "href",
+      "/dashboard/settings",
+    );
+    expect(screen.getByText("Profile")).toBeInTheDocument();
   });
 });

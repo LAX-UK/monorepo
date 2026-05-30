@@ -1,8 +1,8 @@
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { ArtistFollowSection } from "@/components/dashboard/artist-follow/artist-follow-section";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardEmptyState, DashboardSkeleton } from "@/components/dashboard/primitives";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
@@ -54,12 +54,62 @@ function toWatchlistRows(rows: WatchlistWithLotRow[]): WatchlistBoardRow[] {
   });
 }
 
+type PageSearchParams = {
+  sort?: string;
+  status?: string;
+  categoryIds?: string;
+  q?: string;
+  section?: string;
+};
+
 export default async function DashboardWatchlistPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; status?: string; categoryIds?: string; q?: string }>;
+  searchParams: Promise<PageSearchParams>;
 }) {
-  const filters = parseWatchlistParams(await searchParams);
+  const sp = await searchParams;
+  const isArtistsSection = sp.section === "artists";
+  const workspaceMeta = await readClientWorkspacePageMeta();
+
+  const tabs = (
+    <Surface variant="inset" padding="sm">
+      <SectionTabsNav
+        variant="underline"
+        ariaLabel="Watchlist sections"
+        sticky={false}
+        items={[
+          { href: "/dashboard/watchlist", label: "Lots", isActive: !isArtistsSection },
+          {
+            href: "/dashboard/watchlist?section=artists",
+            label: "Artists",
+            isActive: isArtistsSection,
+          },
+        ]}
+      />
+    </Surface>
+  );
+
+  if (isArtistsSection) {
+    return (
+      <DashboardListPage
+        meta={workspaceMeta}
+        title="Watchlist"
+        description="Track lots and artists you are following from the saleroom."
+        tabs={tabs}
+      >
+        <Suspense fallback={<DashboardSkeleton variant="list" />}>
+          <ArtistFollowSection
+            searchParams={Promise.resolve({
+              ...(sp.q ? { q: sp.q } : {}),
+              ...(sp.sort ? { sort: sp.sort } : {}),
+            })}
+          />
+        </Suspense>
+      </DashboardListPage>
+    );
+  }
+
+  const filters = parseWatchlistParams(sp);
   const c = await getServerDataContainer();
   let rows: Awaited<ReturnType<typeof c.watchlist.listMine>> = [];
   let categories: Category[] = [];
@@ -90,35 +140,23 @@ export default async function DashboardWatchlistPage({
   const hasActiveFilters = hasWatchlistActiveFilters(filters);
   const artistIds = rows.map((r) => r.lot?.artistId ?? null);
   const artistNameById = await resolveArtistNames(artistIds);
-  const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
-    <DashboardPage>
-      <DashboardPageHeader
-        meta={workspaceMeta}
-        title="Watchlist"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
-        description="Track lots and artists you are following from the saleroom."
-      />
-
-      <Surface variant="inset" padding="sm" className="mb-5">
-        <SectionTabsNav
-          variant="underline"
-          ariaLabel="Watchlist sections"
-          sticky={false}
-          items={[
-            { href: "/dashboard/watchlist", label: "Lots", isActive: true },
-            { href: "/dashboard/artist-follow", label: "Artists" },
-          ]}
-        />
-      </Surface>
-
-      {!loadFailure ? <WatchlistListToolbar filters={filters} categories={categories} /> : null}
-
-      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-      {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
-
+    <DashboardListPage
+      meta={workspaceMeta}
+      title="Watchlist"
+      description="Track lots and artists you are following from the saleroom."
+      tabs={tabs}
+      toolbar={
+        !loadFailure ? <WatchlistListToolbar filters={filters} categories={categories} /> : null
+      }
+      errorAlert={
+        <>
+          {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+          {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
+        </>
+      }
+    >
       {!loadFailure && tableRows.length === 0 ? (
         hasActiveFilters ? (
           <FilterEmptyState
@@ -153,6 +191,6 @@ export default async function DashboardWatchlistPage({
           />
         </Suspense>
       ) : null}
-    </DashboardPage>
+    </DashboardListPage>
   );
 }

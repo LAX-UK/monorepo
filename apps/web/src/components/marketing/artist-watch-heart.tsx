@@ -20,6 +20,8 @@ type Props = {
   loginNextPath: string;
   /** Injectable API transport (defaults to cookie-authenticated browser fetch). */
   client?: ArtistWatchlistClient;
+  /** Called after a follow/unfollow attempt completes. */
+  onWatchingChange?: (watching: boolean, ok: boolean) => void;
 };
 
 /** Compact heart-style follow toggle for directory cards. Stops link
@@ -31,6 +33,7 @@ export function ArtistWatchHeart({
   isAuthenticated,
   loginNextPath,
   client = defaultArtistWatchlistClient,
+  onWatchingChange,
 }: Props) {
   const router = useRouter();
   const [watching, setWatching] = useState(initialWatching);
@@ -49,16 +52,26 @@ export function ArtistWatchHeart({
       try {
         if (watching) {
           const ok = await client.unfollow(artistId);
-          if (ok) setWatching(false);
+          if (ok) {
+            setWatching(false);
+            onWatchingChange?.(false, true);
+          } else {
+            onWatchingChange?.(true, false);
+          }
         } else {
           const ok = await client.follow(artistId);
-          if (ok) setWatching(true);
+          if (ok) {
+            setWatching(true);
+            onWatchingChange?.(true, true);
+          } else {
+            onWatchingChange?.(false, false);
+          }
         }
       } finally {
         setBusy(false);
       }
     },
-    [artistId, busy, client, isAuthenticated, loginNextPath, router, watching],
+    [artistId, busy, client, isAuthenticated, loginNextPath, onWatchingChange, router, watching],
   );
 
   const label = watching ? `Unfollow ${artistName}` : `Follow ${artistName}`;

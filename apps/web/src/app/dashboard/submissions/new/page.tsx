@@ -2,6 +2,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
@@ -36,6 +37,7 @@ export default async function NewSubmissionPage({
         }
       />
       {error ? <DashboardSliceErrorAlert failure={describeSettingsActionError(error)} /> : null}
+      <SetMobileShellTitle title="New submission" />
       <SubmissionWizard mode={{ kind: "create" }} categories={categories} />
     </DashboardPage>
   );

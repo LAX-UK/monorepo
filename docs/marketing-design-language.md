@@ -103,24 +103,27 @@ This document is the single source of truth for the marketing surface (`apps/web
 
 ```
 ┌───────────────────────────────────────────────────────────── max --container-max
-│ [Logo]     Primary Nav · Primary Nav · Primary Nav     [Search————] [Theme] [Acct]
+│ Utility: About · Contact · FAQ
+│ [Logo]     Primary Nav · Primary Nav · Primary Nav  [Search] [Theme] [Acct ▾] [Bell?]
 │ ───────────────────────────────────────────────────────────────────────────────
-│ (mega panel: full-bleed below first row, hairline top, blur surface)
+│ (mega panel: full-bleed below first row; click-first on touch, hover on fine pointer)
 └─────────────────────────────────────────────────────────────
 ```
+
+Transparent home hero (`/`): header uses `data-header-tone="on-dark"` at scroll top for light chrome on imagery.
 
 ### Site header (mobile drawer)
 
 ```
 ┌────────────── drawer max-w-sm
 │ [Logo]                                    [Close]
-│ ─ Search input ─
+│ ─ Search (opens command palette) ─
+│ Theme toggle
 │ ▼ Section
 │   Link
-│   Link
 │ … utility links …
-│ [Sign in] [Register]
-│ Theme
+│ [Create account]  (primary)
+│ Sign in           (text link)
 └──────────────
 ```
 

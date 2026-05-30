@@ -26,7 +26,7 @@ export function HeroProgressBar({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 top-0 z-20 h-0.5 bg-white/20",
+        "pointer-events-none absolute inset-x-0 top-[var(--header-height)] z-20 h-0.5 bg-white/20",
         className,
       )}
       aria-hidden

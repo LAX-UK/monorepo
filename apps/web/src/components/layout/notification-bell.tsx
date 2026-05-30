@@ -6,6 +6,7 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { lotPath } from "@/lib/seo/url";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -15,7 +16,7 @@ import { useCallback, useRef, useState } from "react";
 
 const MENU_ID = "notification-menu";
 
-export function NotificationBell() {
+export function NotificationBell({ headerTone = "on-light" }: { headerTone?: SiteHeaderTone }) {
   const [open, setOpen] = useState(false);
   const { items, setItems, loaded, unread } = useUnreadNotifications();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -56,7 +57,7 @@ export function NotificationBell() {
         aria-busy="true"
         aria-label="Loading notifications"
       >
-        <Bell className="animate-pulse text-secondary" aria-hidden />
+        <Bell className={cn("animate-pulse", headerChromeIconClass(headerTone))} aria-hidden />
       </div>
     );
   }
@@ -67,7 +68,8 @@ export function NotificationBell() {
         ref={triggerRef}
         label="Notifications"
         className={cn(
-          "relative text-secondary transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none hover:bg-surface-container-low hover:text-primary",
+          "relative transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
+          headerChromeIconClass(headerTone),
         )}
         aria-expanded={open}
         aria-controls={MENU_ID}

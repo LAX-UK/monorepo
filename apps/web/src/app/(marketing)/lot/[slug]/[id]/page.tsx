@@ -1,6 +1,6 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
-import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
+import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
@@ -309,8 +309,24 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   return (
     <main id="main-content" className="pt-[calc(var(--header-height)+8px)]">
       <SetMarketingHeaderTitle title={auction.title} />
-      <div className={cn(MARKETING_PAGE_SHELL, "pb-2 md:hidden")}>
-        <MarketingMobileBackLink href={catalogBackHref} label={catalogBackLabel} />
+      <div className={cn(MARKETING_PAGE_SHELL, "pb-2 md:pb-4")}>
+        <MarketingDetailWayfinding
+          backHref={catalogBackHref}
+          backLabel={catalogBackLabel}
+          breadcrumbItems={
+            parentSale
+              ? [
+                  { label: "Home", href: "/" },
+                  { label: parentSale.title, href: salePath(parentSale) },
+                  { label: auction.title, current: true },
+                ]
+              : [
+                  { label: "Home", href: "/" },
+                  { label: "Search", href: "/search" },
+                  { label: auction.title, current: true },
+                ]
+          }
+        />
       </div>
       <ViewItemTracker
         lotId={auction.id}

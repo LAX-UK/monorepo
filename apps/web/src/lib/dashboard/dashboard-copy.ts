@@ -33,7 +33,7 @@ export const DASHBOARD_ROUTES = {
   portfolio: "/dashboard/portfolio",
   payments: "/dashboard/payments",
   watchlist: "/dashboard/watchlist",
-  artistFollow: "/dashboard/artist-follow",
+  artistFollow: "/dashboard/watchlist?section=artists",
   notifications: "/dashboard/notifications",
   seller: "/dashboard/seller",
   submissions: "/dashboard/submissions",

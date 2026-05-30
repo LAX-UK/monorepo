@@ -15,9 +15,17 @@ vi.mock("@/lib/auth/use-refetch-app-session", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({
     push: vi.fn(),
     refresh: vi.fn(),
+  }),
+}));
+
+vi.mock("@/lib/auth/use-auth-header-links", () => ({
+  useAuthHeaderLinks: () => ({
+    signInHref: "/login",
+    registerHref: "/register",
   }),
 }));
 
@@ -67,12 +75,13 @@ describe("HeaderAuthChip", () => {
     expect(screen.getByLabelText("Loading account")).toHaveAttribute("aria-busy", "true");
   });
 
-  it("renders the login pill when signed out", () => {
+  it("renders the guest account menu when signed out", () => {
     useAppSessionMock.mockReturnValue({ user: null, pending: false });
 
     render(<HeaderAuthChip variant="account" />);
 
-    expect(screen.getByRole("link", { name: /log in/i })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /log in/i })).not.toBeInTheDocument();
   });
 
   it("renders the account menu from SSR fallback without waiting on client session", () => {

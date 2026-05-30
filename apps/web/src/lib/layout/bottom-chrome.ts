@@ -30,7 +30,7 @@ export function pageBottomPadding(state: BottomChromeState): string {
     return `calc(${CHECKOUT_PAY_BAR} + 1rem + env(safe-area-inset-bottom, 0px) + ${consent})`;
   }
   if (state.dashboardTabBarActive && !state.hideDashboardTabBar) {
-    return `calc(${BOTTOM_CHROME.tab} + 1rem + ${consent})`;
+    return `calc(${BOTTOM_CHROME.tab} + 1rem + env(safe-area-inset-bottom, 0px) + ${consent})`;
   }
   if (state.marketingBidBarRoute) {
     return `calc(${BOTTOM_CHROME.bid} + 1.5rem + ${consent})`;

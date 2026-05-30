@@ -21,7 +21,6 @@ import {
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import { Button as UiButton } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
@@ -158,7 +157,7 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
         const a = row.original.lot;
         if (!a) return null;
         return (
-          <UiButton
+          <Button
             variant="ghost"
             size="sm"
             type="button"
@@ -167,7 +166,7 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
           >
             <History className="size-4" aria-hidden />
             <span className="ml-1 hidden sm:inline">History</span>
-          </UiButton>
+          </Button>
         );
       },
       enableSorting: false,
@@ -337,7 +336,7 @@ export function BidsBoard({
 
       {!loadFailure ? (
         <>
-          <Surface variant="inset" padding="sm" className="mb-5">
+          <Surface variant="inset" padding="sm" className="mb-5 lg:hidden">
             <SectionTabsNav
               variant="underline"
               ariaLabel="Bid status"
@@ -367,6 +366,7 @@ export function BidsBoard({
 
           <BidsListToolbar
             filters={filters}
+            tabCounts={{ active: active.length, won: won.length, lost: lost.length }}
             actions={
               <Button
                 type="button"

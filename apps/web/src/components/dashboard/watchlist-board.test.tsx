@@ -11,6 +11,10 @@ vi.mock("@/hooks/use-now", () => ({
   useNow: () => Date.parse("2026-01-01T12:00:00.000Z"),
 }));
 
+vi.mock("@/lib/shell/shell-config-context", () => ({
+  useShellConfig: () => ({ density: "normal" }),
+}));
+
 vi.mock("@/lib/watchlist/use-watchlist-toggle", () => ({
   useWatchlistToggle: () => ({
     watching: true,

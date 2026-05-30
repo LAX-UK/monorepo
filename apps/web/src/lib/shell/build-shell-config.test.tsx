@@ -49,6 +49,13 @@ describe("buildShellConfig", () => {
       role: "client",
       clientWorkspaceMode: "buying",
     });
+    expect(config.mobileNav.map((t) => t.id)).toEqual([
+      "overview",
+      "bids",
+      "watchlist",
+      "notifications",
+      "more",
+    ]);
     const tabIds = new Set(config.mobileNav.map((t) => t.id));
     if (config.moreSheetNav) {
       for (const entry of config.moreSheetNav) {

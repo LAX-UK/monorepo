@@ -4,7 +4,20 @@ import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminFinanceIssues } from "@/lib/data/http/admin.server";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
+
+const FINANCE_QUICK_LINKS = [
+  { href: "/admin/payments", label: "Payments" },
+  {
+    href: "/admin/payments?manualReview=1",
+    label: "Manual review",
+    countKey: "manualReviewCount" as const,
+  },
+  { href: "/admin/disputes", label: "Disputes" },
+  { href: "/admin/payouts", label: "Payouts" },
+  { href: "/admin/integrations/xero", label: "Xero integration" },
+] as const;
 
 export default async function FinanceAdminHomePage() {
   let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
@@ -47,33 +60,34 @@ export default async function FinanceAdminHomePage() {
             </ul>
           ) : null}
           {financeIssues ? <AdminFinanceKpiRows financeIssues={financeIssues} /> : null}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Link
-              href="/admin/payments"
-              className="rounded-lg border border-border-hairline p-4 font-label text-sm uppercase tracking-wide hover:bg-surface-container-low"
-            >
-              Payments
-            </Link>
-            <Link
-              href="/admin/payments?manualReview=1"
-              className="rounded-lg border border-border-hairline p-4 font-label text-sm uppercase tracking-wide hover:bg-surface-container-low"
-            >
-              Manual review
-              {navCounts.manualReviewCount > 0 ? ` (${navCounts.manualReviewCount})` : ""}
-            </Link>
-            <Link
-              href="/admin/disputes"
-              className="rounded-lg border border-border-hairline p-4 font-label text-sm uppercase tracking-wide hover:bg-surface-container-low"
-            >
-              Disputes
-            </Link>
-            <Link
-              href="/admin/payouts"
-              className="rounded-lg border border-border-hairline p-4 font-label text-sm uppercase tracking-wide hover:bg-surface-container-low"
-            >
-              Payouts
-            </Link>
-          </div>
+          <section
+            aria-label="Finance quick links"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {FINANCE_QUICK_LINKS.map((item) => {
+              const count = "countKey" in item && item.countKey ? navCounts[item.countKey] : 0;
+              return (
+                <Surface
+                  key={item.href}
+                  variant="quiet"
+                  padding="md"
+                  className="transition-colors hover:bg-surface-container-high"
+                >
+                  <Link
+                    href={item.href}
+                    className="flex min-h-11 items-center justify-between gap-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface"
+                  >
+                    <span>{item.label}</span>
+                    {count > 0 ? (
+                      <span className="rounded-full bg-primary-container px-2 py-0.5 text-[10px] font-bold text-primary">
+                        {count}
+                      </span>
+                    ) : null}
+                  </Link>
+                </Surface>
+              );
+            })}
+          </section>
         </div>
       }
     />

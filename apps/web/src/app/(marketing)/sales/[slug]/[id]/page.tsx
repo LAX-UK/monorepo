@@ -1,5 +1,6 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { SaleroomLotQuickLookCorner } from "@/components/marketing/lot-quick-look/saleroom-lot-quick-look-corner";
+import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingLoadMore } from "@/components/marketing/marketing-load-more";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import {
@@ -327,6 +328,19 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         locationLine={locationLine}
         {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
       />
+
+      <div className={cn(MARKETING_PAGE_SHELL, "hidden md:block")}>
+        <MarketingDetailWayfinding
+          backHref={calendarBackHref}
+          backLabel="Back to calendar"
+          breadcrumbItems={[
+            { label: "Home", href: "/" },
+            { label: "Auctions", href: "/sales" },
+            { label: bundle.sale.title, current: true },
+          ]}
+          className="pb-2"
+        />
+      </div>
 
       <SaleroomHero
         hero={heroVM}

@@ -3,7 +3,9 @@
 import type { HeroStateVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
+import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { LiveDot } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -17,7 +19,13 @@ export function LaxHeroLiveOverlayContent({
   watchOnYoutubeHref?: string | undefined;
 }) {
   return (
-    <div className="relative z-[2] flex min-h-[min(100svh,520px)] flex-col justify-end px-6 pb-16 pt-32 md:min-h-[min(100svh,760px)] md:px-10 md:pb-20 lg:px-10">
+    <div
+      className={cn(
+        "relative z-[2] flex flex-col justify-end px-6 pb-16 md:px-10 md:pb-20 lg:px-10",
+        HOME_HERO_MIN_H,
+        HOME_HERO_CONTENT_PT,
+      )}
+    >
       <div className="relative flex max-w-[684px] flex-col gap-8 md:gap-14">
         <div className="flex flex-col gap-6">
           <LiveIndicatorRow

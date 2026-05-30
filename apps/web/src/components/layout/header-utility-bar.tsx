@@ -1,13 +1,16 @@
 "use client";
 
+import { type SiteHeaderTone, headerUtilityLinkClass } from "@/lib/layout/header-chrome-tone";
 import { linkIsCurrent } from "@/lib/nav/is-current";
-import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HeaderAuthChip } from "./header-auth-chip";
-import { linkTop, utilityNav } from "./header-nav-config";
+import { utilityNav } from "./header-nav-config";
 
-export function HeaderUtilityBar() {
+type Props = {
+  headerTone?: SiteHeaderTone;
+};
+
+export function HeaderUtilityBar({ headerTone = "on-light" }: Props) {
   const pathname = usePathname();
 
   return (
@@ -18,14 +21,13 @@ export function HeaderUtilityBar() {
           <Link
             key={item.label}
             href={item.href}
-            className={cn(linkTop, current && "text-brand-900 dark:text-on-surface")}
+            className={headerUtilityLinkClass(headerTone, current)}
             aria-current={current ? "page" : undefined}
           >
             {item.label}
           </Link>
         );
       })}
-      <HeaderAuthChip variant="account" />
     </nav>
   );
 }

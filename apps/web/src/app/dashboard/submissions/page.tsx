@@ -1,7 +1,6 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardSkeleton } from "@/components/dashboard/primitives";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SubmissionsBoard } from "@/components/dashboard/submissions-board";
 import { DASHBOARD_CTA, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -78,24 +77,25 @@ export default async function DashboardSubmissionsPage({
   const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
-    <DashboardPage>
-      <DashboardPageHeader
-        meta={workspaceMeta}
-        title="Your submissions"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
-        description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
-        actions={
-          <Button variant="primary" asChild>
-            <Link href={DASHBOARD_ROUTES.submissionsNew}>
-              <Plus className="size-4" aria-hidden />
-              {DASHBOARD_CTA.newSubmission}
-            </Link>
-          </Button>
-        }
-      />
-      {queryFailure ? <DashboardSliceErrorAlert failure={queryFailure} /> : null}
-      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+    <DashboardListPage
+      meta={workspaceMeta}
+      title="Your submissions"
+      description="Submit item details for specialist review. When approved, a draft lot is created for cataloguing and scheduling."
+      actions={
+        <Button variant="primary" asChild>
+          <Link href={DASHBOARD_ROUTES.submissionsNew}>
+            <Plus className="size-4" aria-hidden />
+            {DASHBOARD_CTA.newSubmission}
+          </Link>
+        </Button>
+      }
+      errorAlert={
+        <>
+          {queryFailure ? <DashboardSliceErrorAlert failure={queryFailure} /> : null}
+          {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+        </>
+      }
+    >
       {!hasBlockingError ? (
         <Suspense fallback={<DashboardSkeleton variant="list" />}>
           <SubmissionsBoard
@@ -107,6 +107,6 @@ export default async function DashboardSubmissionsPage({
           />
         </Suspense>
       ) : null}
-    </DashboardPage>
+    </DashboardListPage>
   );
 }

@@ -2,8 +2,11 @@
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { megaMenuSectionActive } from "@/components/layout/header-nav-config";
-import { MEGA_NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
-import { cn } from "@auction/ui";
+import {
+  type SiteHeaderTone,
+  headerMegaNavChevronClass,
+  headerMegaNavTriggerClass,
+} from "@/lib/layout/header-chrome-tone";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
@@ -21,6 +24,7 @@ type HeaderMegaNavProps = {
   onOpenChange?: (open: boolean) => void;
   logo: ReactNode;
   trailing: ReactNode;
+  headerTone?: SiteHeaderTone;
 };
 
 export function HeaderMegaNav({
@@ -30,8 +34,10 @@ export function HeaderMegaNav({
   onOpenChange,
   logo,
   trailing,
+  headerTone = "on-light",
 }: HeaderMegaNavProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [finePointerHover, setFinePointerHover] = useState(false);
   /** Extra horizontal offset so mega menu links sit under the active nav trigger (px). */
   const [menuContentShiftPx, setMenuContentShiftPx] = useState(0);
   const openHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,6 +47,14 @@ export function HeaderMegaNav({
   const panelRef = useRef<HTMLElement | null>(null);
   const contentBlockRef = useRef<HTMLDivElement | null>(null);
   const focusFirstOnOpenRef = useRef(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const sync = () => setFinePointerHover(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const clearOpenHover = useCallback(() => {
     if (openHoverTimeoutRef.current) {
@@ -238,17 +252,20 @@ export function HeaderMegaNav({
       ref={rootRef}
       className="relative w-full"
       onMouseEnter={() => {
-        clearCloseHover();
+        if (finePointerHover) clearCloseHover();
       }}
       onMouseLeave={() => {
-        scheduleCloseHover();
+        if (finePointerHover) scheduleCloseHover();
       }}
     >
       <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-4">
-        <div className="flex min-w-0 shrink items-center gap-9">
+        <div className="flex min-w-0 shrink items-center gap-4 lg:gap-5 xl:gap-9">
           {logo}
 
-          <nav className="hidden items-center gap-9 lg:flex" aria-label="Primary">
+          <nav
+            className="hidden min-w-0 items-center gap-4 lg:flex lg:gap-5 xl:gap-9"
+            aria-label="Primary"
+          >
             {sections.map((item, index) => {
               const active = megaMenuSectionActive(pathname, item, searchParams);
               const open = openIndex === index;
@@ -261,21 +278,13 @@ export function HeaderMegaNav({
                     ref={(el) => {
                       triggerRefs.current[index] = el;
                     }}
-                    className={cn(
-                      `group h-auto gap-1 rounded-none border-b-2 border-transparent px-0 pb-1 ${MEGA_NAV_LABEL_CLASSES} hover:bg-transparent motion-reduce:transition-none`,
-                      active || open
-                        ? "text-brand-900 dark:text-on-surface"
-                        : "text-nav-text hover:text-brand-900 dark:hover:text-on-surface",
-                      open
-                        ? "border-brand-900 dark:border-on-surface"
-                        : "border-transparent hover:border-brand-900/40 dark:hover:border-on-surface/40",
-                    )}
+                    className={headerMegaNavTriggerClass(headerTone, { active, open })}
                     aria-current={active ? "page" : undefined}
                     aria-haspopup="true"
                     aria-expanded={open}
                     aria-controls={open ? MEGAMENU_PANEL_ID : undefined}
                     onMouseEnter={() => {
-                      scheduleOpenHover(index);
+                      if (finePointerHover) scheduleOpenHover(index);
                     }}
                     onClick={() => {
                       clearOpenHover();
@@ -286,10 +295,7 @@ export function HeaderMegaNav({
                   >
                     <span>{item.label}</span>
                     <ChevronDown
-                      className={cn(
-                        "text-base! text-brand-900 transition-[transform,color] duration-200 motion-reduce:transition-none dark:text-on-surface",
-                        open ? "rotate-180" : "rotate-0",
-                      )}
+                      className={headerMegaNavChevronClass(headerTone, open)}
                       aria-hidden
                     />
                   </Button>
@@ -309,7 +315,7 @@ export function HeaderMegaNav({
         aria-hidden={openIndex === null}
         inert={openIndex === null ? true : undefined}
         aria-label={section?.label}
-        className="header-megamenu absolute top-full z-40 bg-surface"
+        className="header-megamenu absolute top-full z-40"
         onKeyDown={onPanelKeyDown}
       >
         <div ref={contentBlockRef} className="header-megamenu__inner">
