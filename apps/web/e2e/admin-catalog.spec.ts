@@ -583,3 +583,79 @@ test.describe("catalog delete smoke", () => {
     await expect(page.getByRole("menuitem", { name: /delete sale/i })).toBeVisible();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Catalog delete — destructive E2E (create then delete draft lot)
+// ---------------------------------------------------------------------------
+
+test.describe("catalog delete destructive", () => {
+  test("auction manager can delete a draft lot from detail", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+
+    const lotTitle = `E2E Delete Lot ${Date.now()}`;
+    const deletePhrase = `DELETE ${lotTitle}`;
+
+    await page.goto("/admin/lots/new");
+    await expect(page.getByRole("heading", { name: /new lot/i })).toBeVisible();
+
+    await page.getByLabel(/title/i).first().fill(lotTitle);
+    await page.getByRole("button", { name: /continue/i }).click();
+
+    const saleSelect = page.getByLabel(/assign to sale/i);
+    await saleSelect.waitFor();
+    const saleOptions = saleSelect.locator("option:not([disabled])");
+    if ((await saleOptions.count()) === 0) {
+      test.skip(true, "No sales available in seed data");
+      return;
+    }
+    await saleSelect.selectOption({ index: 1 });
+
+    const sellerSearch = page.getByPlaceholder(/search by organisation/i);
+    await sellerSearch.click();
+    await page.waitForTimeout(400);
+    const sellerHit = page.locator(".absolute.z-20").getByRole("button").first();
+    const hasSeller = await sellerHit.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasSeller) {
+      test.skip(true, "No legal entities available in seed data");
+      return;
+    }
+    await sellerHit.click();
+
+    await page.getByRole("button", { name: /continue/i }).click();
+    await page
+      .getByLabel(/starting price/i)
+      .first()
+      .fill("100");
+
+    const categoryTrigger = page.getByRole("button", { name: /select categories/i });
+    if (await categoryTrigger.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await categoryTrigger.click();
+      await page.getByRole("option").first().click();
+    }
+
+    await page.getByRole("button", { name: /create draft/i }).click();
+    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+
+    const moreButton = page.getByRole("button", { name: /more lot actions/i });
+    const mobileDelete = page.getByRole("button", { name: /^delete lot$/i });
+    const hasMore = await moreButton.isVisible({ timeout: 3000 }).catch(() => false);
+    const hasMobileDelete = await mobileDelete.isVisible({ timeout: 1000 }).catch(() => false);
+    if (hasMore) {
+      await moreButton.click();
+      await page.getByRole("menuitem", { name: /delete lot/i }).click();
+    } else if (hasMobileDelete) {
+      await mobileDelete.click();
+    } else {
+      test.skip(true, "Delete lot action not available on lot detail");
+      return;
+    }
+
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("textbox").fill(deletePhrase);
+    await page.getByRole("button", { name: /^delete lot$/i }).click();
+
+    await page.waitForURL(/\/admin\/lots(?:\?|$)/);
+    await expect(page.getByRole("link", { name: lotTitle })).toHaveCount(0);
+  });
+});

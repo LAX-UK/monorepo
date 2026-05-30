@@ -99,6 +99,7 @@ import { DrizzleLegalEntityNotificationRecipientRepository } from "./repositorie
 import { DrizzleLegalEntityRepository } from "./repositories/drizzle-legal-entity.repository.js";
 import { DrizzleLotDocumentRepository } from "./repositories/drizzle-lot-document.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
+import { DrizzleLotSoftDeleteSideEffects } from "./repositories/drizzle-lot-soft-delete.side-effects.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
@@ -115,7 +116,6 @@ import { DrizzleSaleBiddersReader } from "./repositories/drizzle-sale-bidders.re
 import { DrizzleSaleDocumentRepository } from "./repositories/drizzle-sale-document.repository.js";
 import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.repository.js";
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
-import { DrizzleLotSoftDeleteSideEffects } from "./repositories/drizzle-lot-soft-delete.side-effects.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-soft-delete.side-effects.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
@@ -211,6 +211,7 @@ import { LotLifecycleQueryService } from "./services/lot-lifecycle-query.service
 import { LotLifecycleRecording } from "./services/lot-lifecycle-recording.service.js";
 import { LotLifecycleService } from "./services/lot-lifecycle.service.js";
 import { LotNotificationCoordinator } from "./services/lot-notification-coordinator.js";
+import { LotSoftDeleteService } from "./services/lot-soft-delete.service.js";
 import { LotTransitionOrchestrator } from "./services/lot-transition-orchestrator.js";
 import { LotService } from "./services/lot.service.js";
 import { MarketingEventService } from "./services/marketing-event.service.js";
@@ -243,7 +244,6 @@ import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
 import { SaleRegistrationService } from "./services/sale-registration.service.js";
-import { LotSoftDeleteService } from "./services/lot-soft-delete.service.js";
 import { SaleSoftDeleteService } from "./services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";

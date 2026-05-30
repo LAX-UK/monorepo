@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { lotDeleteConfirmationPhrase } from "@auction/validators";
+import { describe, expect, it } from "vitest";
 
 describe("lotDeleteConfirmationPhrase", () => {
   it("prefixes lot title with DELETE", () => {

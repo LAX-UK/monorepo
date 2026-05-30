@@ -18,10 +18,9 @@ describe("buildLotBoardMobileMenuItems", () => {
   });
 
   it("omits delete when server marks row not deletable", () => {
-    const ids = buildLotBoardMobileMenuItems(
-      { ...row, canDelete: false },
-      auctionManager,
-    ).map((i) => i.id);
+    const ids = buildLotBoardMobileMenuItems({ ...row, canDelete: false }, auctionManager).map(
+      (i) => i.id,
+    );
     expect(ids).not.toContain("delete");
   });
 

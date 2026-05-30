@@ -1,7 +1,7 @@
 "use client";
 
-import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { AdminLotOverviewPanel } from "@/components/admin/admin-lot-overview-panel";
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import { useLotDetailReadiness } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotEditResumeHref } from "@/lib/admin/catalog-readiness";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
