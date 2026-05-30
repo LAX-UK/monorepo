@@ -6,7 +6,14 @@ import {
 import { lotPath } from "@/lib/seo/url";
 import type { LotStatus } from "@auction/types";
 
-export type LotBoardMobileMenuItemKind = "open" | "edit" | "images" | "publish" | "site" | "copyId";
+export type LotBoardMobileMenuItemKind =
+  | "open"
+  | "edit"
+  | "images"
+  | "publish"
+  | "delete"
+  | "site"
+  | "copyId";
 
 export type LotBoardMobileMenuItem = {
   id: string;
@@ -19,10 +26,12 @@ type Row = {
   id: string;
   title: string;
   status: LotStatus;
+  canDelete?: boolean;
 };
 
 type Flags = {
   canManageCatalog: boolean;
+  canManageAuction: boolean;
 };
 
 function lotEditHrefForStatus(lotId: string, status: LotStatus): string | null {
@@ -67,6 +76,15 @@ export function buildLotBoardMobileMenuItems(row: Row, flags: Flags): LotBoardMo
         href: `${adminLotHref(row.id)}?focus=publish`,
       },
     );
+  }
+
+  if (flags.canManageAuction && row.canDelete) {
+    items.push({
+      id: "delete",
+      label: "Delete lot",
+      kind: "delete",
+      href: row.id,
+    });
   }
 
   items.push(

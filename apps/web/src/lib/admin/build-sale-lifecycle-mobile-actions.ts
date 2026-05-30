@@ -65,7 +65,8 @@ export function saleLifecycleConfirmCopy(kind: SaleLifecycleActionKind) {
     case "cancel":
       return {
         title: "Cancel entire sale?",
-        description: "This cancels the sale and remaining lots.",
+        description:
+          "This stops the sale and remaining lots. Cancelled sales stay visible in admin lists with a cancelled status.",
         actionLabel: "Cancel sale",
       };
     default:

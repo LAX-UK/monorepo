@@ -1,9 +1,11 @@
+import type { SaleDeleteEligibility } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
 
 export type AdminSaleBoardInput = {
   sale: Sale;
   lots: Lot[];
+  deleteEligibility?: SaleDeleteEligibility | null;
 };
 
 /** Count lots whose calendar end day falls in the next `days` days from local midnight (normalized 0–1). */
@@ -33,5 +35,6 @@ export function toAdminSaleBoardRow(row: AdminSaleBoardInput) {
     startTimeIso: row.sale.startTime.toISOString(),
     startTimeLabel: formatDateTime(row.sale.startTime),
     sparklineValues: scheduleEndingSparkline(row.lots, 7),
+    canDelete: row.deleteEligibility?.canDelete === true,
   };
 }

@@ -525,3 +525,61 @@ test.describe("scheduled sale draft lot publish", () => {
     await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Catalog delete smoke (staff with auction.manage)
+// ---------------------------------------------------------------------------
+
+test.describe("catalog delete smoke", () => {
+  test("auction manager sees delete on deletable draft lot detail", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/lots?status=draft");
+    const firstLot = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasDraft = await firstLot.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasDraft) {
+      test.skip(true, "No draft lots in seed data");
+      return;
+    }
+    await firstLot.click();
+    await page.waitForURL(/\/admin\/lots\/[^/]+$/);
+
+    const mobileDelete = page.getByRole("button", { name: /^delete lot$/i });
+    const moreButton = page.getByRole("button", { name: /more lot actions/i });
+    const hasMobileDelete = await mobileDelete.isVisible({ timeout: 2000 }).catch(() => false);
+    if (hasMobileDelete) {
+      await expect(mobileDelete).toBeVisible();
+      return;
+    }
+    const hasMore = await moreButton.isVisible({ timeout: 2000 }).catch(() => false);
+    if (!hasMore) {
+      test.skip(true, "Draft lot is not deletable in seed data");
+      return;
+    }
+    await moreButton.click();
+    await expect(page.getByRole("menuitem", { name: /delete lot/i })).toBeVisible();
+  });
+
+  test("auction manager sees delete on deletable draft sale detail", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/sales?status=draft");
+    const firstSale = page.locator("table tbody tr").first().getByRole("link").first();
+    const hasDraft = await firstSale.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasDraft) {
+      test.skip(true, "No draft sales in seed data");
+      return;
+    }
+    await firstSale.click();
+    await page.waitForURL(/\/admin\/sales\/[^/]+$/);
+
+    const moreButton = page.getByRole("button", { name: /more sale actions/i });
+    const hasMore = await moreButton.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasMore) {
+      test.skip(true, "Draft sale is not deletable in seed data");
+      return;
+    }
+    await moreButton.click();
+    await expect(page.getByRole("menuitem", { name: /delete sale/i })).toBeVisible();
+  });
+});

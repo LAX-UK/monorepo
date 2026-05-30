@@ -31,7 +31,7 @@ export const lotUnpublishedPayloadSchema = z.object({
 });
 
 export const lotCancelledPayloadSchema = z.object({
-  reason: z.enum(["manual", "sale_cancel", "sale_soft_delete", "withdrawal", "admin_override"]),
+  reason: z.enum(["manual", "sale_cancel", "sale_soft_delete", "soft_delete", "withdrawal", "admin_override"]),
 });
 
 export const lotEndedTriggerSchema = z.enum([

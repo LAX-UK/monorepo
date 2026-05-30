@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogDeleteEligibilityNotice } from "@/components/admin/catalog/catalog-delete-eligibility-notice";
 import {
   CatalogDetailSection,
   CatalogDetailSummaryStrip,
@@ -60,9 +61,19 @@ export function SaleOverviewTab({
         : null;
 
   const showContinueSetup = sale.status === "draft" && readiness && readiness.percent < 100;
+  const showDeleteBlockers =
+    readinessContext?.canManageSales &&
+    (sale.status === "draft" || sale.status === "scheduled") &&
+    (readinessContext.deleteBlockers?.length ?? 0) > 0;
 
   return (
     <div className="space-y-8">
+      {showDeleteBlockers ? (
+        <CatalogDeleteEligibilityNotice
+          blockers={readinessContext?.deleteBlockers ?? []}
+          entityLabel="sale"
+        />
+      ) : null}
       {showContinueSetup ? (
         <Link
           href={saleSetupResumeHref(saleId, {

@@ -89,7 +89,7 @@ export function buildLotDetailNavActions(flags: Flags): {
   };
 }
 
-export type LotLifecycleActionKind = "publish" | "cancel";
+export type LotLifecycleActionKind = "publish" | "cancel" | "delete";
 
 export type LotLifecycleActionItem = {
   id: string;
@@ -100,6 +100,7 @@ export type LotLifecycleActionItem = {
 type LifecycleFlags = {
   canPublish: boolean;
   canCancel: boolean;
+  canDelete?: boolean;
   /** When lot belongs to a draft sale, publish is via sale publish. */
   publishViaSale?: boolean;
 };
@@ -111,6 +112,9 @@ export function buildLotLifecycleActionItems(flags: LifecycleFlags): LotLifecycl
   }
   if (flags.canCancel) {
     items.push({ id: "cancel", label: "Cancel lot", kind: "cancel" });
+  }
+  if (flags.canDelete) {
+    items.push({ id: "delete", label: "Delete lot", kind: "delete" });
   }
   return items;
 }

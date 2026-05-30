@@ -1,6 +1,10 @@
 "use client";
 
 import { CancelLotButton } from "@/components/admin/lot-actions/cancel-lot-button";
+import {
+  DeleteLotDialog,
+  useDeleteLotDialog,
+} from "@/components/admin/lot-actions/delete-lot-button";
 import { PublishLotButton } from "@/components/admin/lot-actions/publish-lot-button";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
@@ -17,6 +21,7 @@ import Link from "next/link";
 
 type Props = {
   lotId: string;
+  lotTitle: string;
   publicHref: string;
   sellerLegalEntityId: string | null;
   canPublish: boolean;
@@ -26,6 +31,7 @@ type Props = {
   saleStatus?: string | null;
   publishReadiness?: CatalogReadinessResult | null;
   canCancel: boolean;
+  canDelete: boolean;
   showEditDraft: boolean;
   showEditLot: boolean;
   showEditCatalog: boolean;
@@ -33,6 +39,7 @@ type Props = {
 
 export function AdminLotDetailActions({
   lotId,
+  lotTitle,
   publicHref,
   sellerLegalEntityId,
   canPublish,
@@ -40,10 +47,12 @@ export function AdminLotDetailActions({
   saleStatus = null,
   publishReadiness = null,
   canCancel,
+  canDelete,
   showEditDraft,
   showEditLot,
   showEditCatalog,
 }: Props) {
+  const { open: deleteOpen, setOpen: setDeleteOpen } = useDeleteLotDialog();
   const editHref = showEditCatalog
     ? `/admin/lots/${lotId}/edit/catalog`
     : `/admin/lots/${lotId}/edit`;
@@ -87,6 +96,17 @@ export function AdminLotDetailActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
+          {canDelete ? (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={(e) => {
+                e.preventDefault();
+                setDeleteOpen(true);
+              }}
+            >
+              Delete lot
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem asChild>
             <Link href={`/admin/lots/new?fromLot=${encodeURIComponent(lotId)}`}>
               Duplicate draft
@@ -101,6 +121,14 @@ export function AdminLotDetailActions({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {canDelete ? (
+        <DeleteLotDialog
+          lotId={lotId}
+          lotTitle={lotTitle}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+        />
+      ) : null}
     </div>
   );
 }
