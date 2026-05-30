@@ -1,5 +1,6 @@
 "use client";
 
+import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
 import { ArtistPreview } from "@/components/admin/artist-form/artist-preview";
 import { ArtistScenarioBadge } from "@/components/admin/artist-form/scenario-badge";
 import {
@@ -15,6 +16,8 @@ import { LifespanSection } from "@/components/admin/artist-form/sections/lifespa
 import { MediaSection } from "@/components/admin/artist-form/sections/media-section";
 import { UserLinkSection } from "@/components/admin/artist-form/sections/user-link-section";
 import type { ArtistFormValues, ArtistScenario } from "@/components/admin/artist-form/types";
+import { CatalogFormSectionNav } from "@/components/admin/catalog/catalog-form-section-nav";
+import { useCatalogValidationBanner } from "@/components/admin/catalog/use-catalog-form-submit";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
 import { CatalogFormSection as ArtistFormSection } from "@/components/admin/forms/catalog-form-section";
 import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
@@ -56,6 +59,18 @@ export function AdminArtistForm({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [activeSection, setActiveSection] = useState("identity");
+  const { validationBanner, setValidationFailure, clearValidationBanner, notifyValidationFailure } =
+    useCatalogValidationBanner();
+
+  const editSections = [
+    { id: "identity", label: "Identity" },
+    { id: "lifespan", label: "Lifespan" },
+    { id: "biography", label: "Biography" },
+    { id: "media", label: "Media" },
+    { id: "catalogue", label: "Catalogue" },
+    { id: "visibility", label: "Visibility" },
+  ] as const;
   const form = useForm<ArtistFormValues>({
     resolver: zodResolver(adminCreateArtistBodySchema),
     defaultValues,
@@ -109,8 +124,10 @@ export function AdminArtistForm({
           id={htmlFormId}
           className="space-y-8"
           onSubmit={form.handleSubmit((values) => {
+            clearValidationBanner();
             if (mode === "create" && createScenario === "maker-seller" && !values.ownerUserId) {
-              notify.error("Link a platform user for a maker–seller profile.");
+              setValidationFailure("Link a platform user for a maker–seller profile.");
+              notifyValidationFailure({});
               return;
             }
             startTransition(async () => {
@@ -124,6 +141,8 @@ export function AdminArtistForm({
                 notify.success(mode === "create" ? "Artist created" : "Artist saved");
                 if (mode === "edit" && artistId) {
                   router.push(`/admin/artists/${artistId}`);
+                } else if (mode === "create" && result.data?.id) {
+                  router.push(`/admin/artists/${result.data.id}?created=1`);
                 } else {
                   router.push("/admin/artists");
                 }
@@ -132,7 +151,11 @@ export function AdminArtistForm({
               }
               if (result.fieldErrors) {
                 applyActionFieldErrors(form, result.fieldErrors);
+                setValidationFailure("Check the highlighted fields.");
+                notifyValidationFailure({});
+                return;
               }
+              setValidationFailure(result.error);
               notify.error(result.error);
             });
           })}
@@ -154,9 +177,24 @@ export function AdminArtistForm({
             </p>
           ) : null}
 
+          {validationBanner ? <WizardValidationBanner message={validationBanner} /> : null}
+
           {showFormBody ? (
             <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
               <div className="min-w-0 space-y-6">
+                {mode === "edit" ? (
+                  <CatalogFormSectionNav
+                    sections={editSections}
+                    activeSection={activeSection}
+                    onSectionChange={(id) => {
+                      setActiveSection(id);
+                      document
+                        .getElementById(`artist-section-${id}`)
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    aria-label="Artist form sections"
+                  />
+                ) : null}
                 {activeScenario === "maker-seller" ? (
                   <ArtistFormSection
                     title="Platform user"
@@ -172,6 +210,7 @@ export function AdminArtistForm({
                 ) : null}
 
                 <ArtistFormSection
+                  anchorId="artist-section-identity"
                   title="Identity"
                   description={
                     mode === "edit"
@@ -189,6 +228,7 @@ export function AdminArtistForm({
                 </ArtistFormSection>
 
                 <ArtistFormSection
+                  anchorId="artist-section-lifespan"
                   title="Lifespan"
                   description="Optional years for biographical context."
                   defaultOpen={false}
@@ -197,6 +237,7 @@ export function AdminArtistForm({
                 </ArtistFormSection>
 
                 <ArtistFormSection
+                  anchorId="artist-section-biography"
                   title="Biography"
                   description="Copy shown on the public artist profile."
                   defaultOpen
@@ -205,6 +246,7 @@ export function AdminArtistForm({
                 </ArtistFormSection>
 
                 <ArtistFormSection
+                  anchorId="artist-section-media"
                   title="Media"
                   description="Portrait, hero, and website links."
                   defaultOpen={false}
@@ -213,6 +255,7 @@ export function AdminArtistForm({
                 </ArtistFormSection>
 
                 <ArtistFormSection
+                  anchorId="artist-section-catalogue"
                   title="Catalogue"
                   description="Taxonomy and lifecycle for the registry."
                   defaultOpen
@@ -235,6 +278,7 @@ export function AdminArtistForm({
                 ) : null}
 
                 <ArtistFormSection
+                  anchorId="artist-section-visibility"
                   title="Visibility"
                   description="Featured, verified, and archive flags."
                   defaultOpen={false}

@@ -1,6 +1,8 @@
 "use client";
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
+import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
+import { useCatalogValidationBanner } from "@/components/admin/catalog/use-catalog-form-submit";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
 import {
@@ -53,7 +55,7 @@ type Props = {
   /** Skip redirect to /admin/categories after save (/detail tab + sheet layouts). */
   preventNavigateAfterSave?: boolean;
   /** Runs after `router.refresh()` when save succeeds while staying on-page. */
-  afterSuccessfulSave?: () => void;
+  afterSuccessfulSave?: (categoryId?: string) => void;
   /** Cancel button navigates here (defaults to `/admin/categories`). */
   cancelHref?: string;
   /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
@@ -74,6 +76,13 @@ export function AdminCategoryForm({
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
   const [pending, startTransition] = useTransition();
+  const {
+    validationBanner,
+    validationStepIndex,
+    setValidationFailure,
+    clearValidationBanner,
+    notifyValidationFailure,
+  } = useCatalogValidationBanner();
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(adminCategoryFormSchema),
@@ -87,11 +96,12 @@ export function AdminCategoryForm({
       const fields = CATEGORY_STEP_FIELDS[i];
       if (fields?.length && !(await validateWizardStep(form, adminCategoryFormSchema, fields))) {
         wizardGoToRef.current(i);
+        setValidationFailure("Complete this step before saving.", i);
         return false;
       }
     }
     return true;
-  }, [form]);
+  }, [form, setValidationFailure]);
 
   return (
     <>
@@ -102,7 +112,12 @@ export function AdminCategoryForm({
           className="space-y-8"
           onSubmit={form.handleSubmit((values) => {
             startTransition(async () => {
-              if (!(await validateAllWizardSteps())) return;
+              clearValidationBanner();
+              if (!(await validateAllWizardSteps())) {
+                setValidationFailure("Complete each step before saving.");
+                notifyValidationFailure({});
+                return;
+              }
               const parsedBody =
                 mode === "create"
                   ? adminCreateCategoryBodySchema.safeParse(values)
@@ -112,7 +127,8 @@ export function AdminCategoryForm({
                   const path = iss.path.length ? zodPathJoin(iss.path) : "root";
                   applyZodErrorsToForm(form, path, iss.message);
                 }
-                notify.error("Check the form for errors");
+                setValidationFailure("Check the form for errors");
+                notifyValidationFailure({});
                 return;
               }
               const result =
@@ -127,10 +143,13 @@ export function AdminCategoryForm({
               if (result.ok) {
                 notify.success(mode === "create" ? "Category created" : "Category saved");
                 router.refresh();
-                if (!preventNavigateAfterSave) {
+                const newId = mode === "create" ? result.data?.id : undefined;
+                if (!preventNavigateAfterSave && newId) {
+                  router.push(`/admin/categories/${newId}?created=1`);
+                } else if (!preventNavigateAfterSave) {
                   router.push("/admin/categories");
                 }
-                afterSuccessfulSave?.();
+                afterSuccessfulSave?.(newId);
                 return;
               }
               if (result.fieldErrors) {
@@ -138,11 +157,26 @@ export function AdminCategoryForm({
                   stepFields: CATEGORY_STEP_FIELDS,
                   goTo: wizardGoToRef.current,
                 });
+                setValidationFailure("Check the highlighted fields.");
+                notifyValidationFailure({});
+                return;
               }
+              setValidationFailure(result.error);
               notify.error(result.error);
             });
           })}
         >
+          {validationBanner ? (
+            <WizardValidationBanner
+              message={validationBanner}
+              {...(validationStepIndex != null && CATEGORY_FORM_STEPS[validationStepIndex]?.label
+                ? {
+                    stepLabel: CATEGORY_FORM_STEPS[validationStepIndex].label,
+                    onJumpToStep: () => wizardGoToRef.current(validationStepIndex),
+                  }
+                : {})}
+            />
+          ) : null}
           <AdminFormWizard
             className="space-y-6"
             steps={CATEGORY_FORM_STEPS}

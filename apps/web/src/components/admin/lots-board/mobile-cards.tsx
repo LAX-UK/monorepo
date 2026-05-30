@@ -2,6 +2,7 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
+import { CatalogVirtualizedList } from "@/components/admin/catalog/catalog-virtualized-list";
 import { LotBoardMobileActionMenu } from "@/components/admin/lots-board/mobile-action-menu";
 import type { AdminLotTableRow } from "@/components/admin/lots-board/types";
 import { adminLotEditHref, adminLotHref } from "@/lib/admin/catalog-route-helpers";
@@ -26,7 +27,7 @@ export function LotsMobileCards({
   onRowSelectionChange,
 }: Props) {
   return (
-    <ul className="space-y-3">
+    <CatalogVirtualizedList itemCount={rows.length}>
       {rows.map((r) => (
         <CatalogMobileCardShell
           key={r.id}
@@ -86,6 +87,6 @@ export function LotsMobileCards({
           <p className="font-headline text-sm tabular-nums">{r.currentPrice}</p>
         </CatalogMobileCardShell>
       ))}
-    </ul>
+    </CatalogVirtualizedList>
   );
 }

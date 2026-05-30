@@ -1,26 +1,37 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import { CatalogListCapBanner } from "@/components/admin/catalog/catalog-list-cap-banner";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogLotsFilterToolbar } from "@/components/admin/catalog/catalog-lots-filter-toolbar";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
+import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
+import { CatalogWorkQueueSection } from "@/components/admin/catalog/catalog-work-queue-section";
 import { LotFilterOptionsLoader } from "@/components/admin/lot-filter-options-loader";
 import { AdminLotsBoard } from "@/components/admin/lots-board";
 import { AdminWithdrawalsBoard } from "@/components/admin/withdrawals-board";
 import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { lotsListController } from "@/lib/admin/admin-list-controllers";
+import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildLotsListPageModel } from "@/lib/admin/build-lots-list-page-model";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import { buildLotsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminLotsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { getLotWithdrawalRequests } from "@/lib/data/http/admin.server";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import {
+  getAdminArtistById,
+  getAdminCategoryById,
+  getAdminSaleById,
+  getLotWithdrawalRequests,
+} from "@/lib/data/http/admin.server";
 import { toAdminLotTableRows } from "@/lib/data/view-models/admin-lots.vm";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -59,11 +70,7 @@ export default async function AdminLotsPage({
   const periodDays = parseAdminKpiPeriod(sp.period);
   const error = safeDecodeAdminErrorParam(sp.error);
 
-  const navCountsResult = await getAdminNavCounts().catch(() => ({
-    withdrawalsPending: 0,
-    submissionsPending: 0,
-    artistsPending: 0,
-  }));
+  const navCountsResult = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
   const model = buildLotsListPageModel(sp, {
     withdrawalsPending: navCountsResult.withdrawalsPending,
   });
@@ -111,6 +118,7 @@ export default async function AdminLotsPage({
       : null;
 
   const nav = navCountsResult;
+  const lensOwnedSort = activeLens === "ending" && !sp.sort;
 
   const listError =
     lotResult.status === "rejected"
@@ -119,14 +127,35 @@ export default async function AdminLotsPage({
         : "Could not load lots."
       : null;
 
+  const [artistRef, saleRef, categoryRef] = await Promise.all([
+    artistId.trim() ? getAdminArtistById(artistId).catch(() => null) : null,
+    saleId.trim() ? getAdminSaleById(saleId).catch(() => null) : null,
+    categoryId.trim() ? getAdminCategoryById(categoryId).catch(() => null) : null,
+  ]);
+
+  const activeFilterChips = buildLotsActiveFilterChips(sp, {
+    ...(q ? { q } : {}),
+    ...(artistId ? { artistId, artistName: artistRef?.displayName ?? null } : {}),
+    ...(saleId ? { saleId, saleTitle: saleRef?.sale.title ?? null } : {}),
+    ...(categoryId ? { categoryId, categoryName: categoryRef?.name ?? null } : {}),
+    ...(effectiveSort ? { sort: effectiveSort } : {}),
+    ...(effectiveStatus ? { status: effectiveStatus } : {}),
+    activeLens,
+    lensOwnedSort,
+  });
+
   const lotTableRows = toAdminLotTableRows(pageRows);
+  const hasAttentionContent =
+    attentionLens &&
+    !withdrawalLoadError &&
+    (withdrawalTasks.length > 0 || lotTableRows.length > 0);
   const activeOnPage = lotTableRows.filter((r) => r.status === "active").length;
   const draftOnPage = lotTableRows.filter((r) => r.status === "draft").length;
   const connectRequiredByLotId =
     pageRows.length > 0 ? await buildConnectRequiredByLotId(pageRows) : undefined;
 
   const pagination =
-    !listError && !viewPipeline && (query.offset > 0 || hasNextPage) ? (
+    !listError && (query.offset > 0 || hasNextPage) ? (
       <CatalogPagination
         offset={query.offset}
         limit={query.limit}
@@ -141,8 +170,8 @@ export default async function AdminLotsPage({
     ) : null;
 
   const empty =
-    !listError && !viewPipeline && lotRows.length === 0 ? (
-      <AdminEmptyState
+    !listError && !viewPipeline && lotRows.length === 0 && !hasAttentionContent ? (
+      <CatalogListEmptyState
         title={q || activeLens !== "all" ? "No matching lots" : "No lots yet"}
         description={
           q || activeLens !== "all"
@@ -151,12 +180,9 @@ export default async function AdminLotsPage({
         }
         action={
           !q && activeLens === "all" ? (
-            <Button variant="default" asChild>
-              <Link href="/admin/lots/new">
-                <Plus className="size-4" aria-hidden />
-                New lot
-              </Link>
-            </Button>
+            <CatalogPrimaryCta href="/admin/lots/new" icon={Plus}>
+              New lot
+            </CatalogPrimaryCta>
           ) : (
             <Button variant="secondary" asChild>
               <Link href="/admin/lots">Clear filters</Link>
@@ -166,25 +192,32 @@ export default async function AdminLotsPage({
       />
     ) : null;
 
+  const relatedExtra =
+    !attentionLens && nav.draftLotsMissingPhotos > 0
+      ? {
+          label: `${nav.draftLotsMissingPhotos} drafts missing photos`,
+          href: "/admin/lots?lens=attention",
+        }
+      : null;
+
   const listParamsForToggleFromModel = listParamsForToggle;
 
   return (
     <CatalogListShell
       title="Lots"
       description="Publish, schedule, and triage catalogue lots."
+      meta={<CatalogRelatedWork variant="lots" navCounts={nav} extra={relatedExtra} />}
       primaryAction={
-        <Button variant="default" asChild>
-          <Link href="/admin/lots/new">
-            <Plus className="size-4" aria-hidden />
-            New lot
-          </Link>
-        </Button>
+        <CatalogPrimaryCta href="/admin/lots/new" icon={Plus}>
+          New lot
+        </CatalogPrimaryCta>
       }
       filterBar={
         <CatalogLotsFilterToolbar
           lenses={lenses}
           activeLensId={activeLens}
           activeFilterCount={advancedFilterCount}
+          activeFilterChips={activeFilterChips}
           sheetFilters={
             <Suspense fallback={<PageSkeleton variant="table" />}>
               <LotFilterOptionsLoader
@@ -203,14 +236,19 @@ export default async function AdminLotsPage({
       }
       mobileSummary={
         <CatalogListMobileSummary
-          segments={[
-            lotsTrend.currentTotal > 0 ? `${lotsTrend.currentTotal} new (${periodDays}d)` : null,
-            `${lotTableRows.length} on page`,
-            activeOnPage > 0 ? `${activeOnPage} live` : null,
-            draftOnPage > 0 ? `${draftOnPage} draft` : null,
-            attentionLens && nav.withdrawalsPending > 0
-              ? `${nav.withdrawalsPending} need attention`
-              : null,
+          metrics={[
+            {
+              id: "new",
+              label: `New (${periodDays}d)`,
+              value: String(lotsTrend.currentTotal),
+            },
+            { id: "page", label: "On page", value: String(lotTableRows.length) },
+            ...(activeOnPage > 0
+              ? [{ id: "live", label: "Live", value: String(activeOnPage) }]
+              : []),
+            ...(draftOnPage > 0
+              ? [{ id: "draft", label: "Draft", value: String(draftOnPage) }]
+              : []),
           ]}
         />
       }
@@ -256,28 +294,64 @@ export default async function AdminLotsPage({
         <AdminListAlert title="Could not load withdrawals">{withdrawalLoadError}</AdminListAlert>
       ) : null}
       {attentionLens ? (
-        <p className="font-body text-sm text-on-surface-variant">
-          Export includes draft lots missing photos only; withdrawal requests are not included in
-          exports.
-        </p>
+        <div className="space-y-4">
+          <p className="font-body text-sm text-on-surface-variant">
+            Export includes draft lots missing photos only; withdrawal requests are not included in
+            exports.
+          </p>
+          {!withdrawalLoadError && withdrawalTasks.length > 0 ? (
+            <CatalogWorkQueueSection
+              id="withdrawals"
+              title="Withdrawal requests"
+              count={withdrawalTasks.length}
+              primaryAction={{ label: "View all lots", href: "/admin/lots" }}
+            >
+              <AdminWithdrawalsBoard tasks={withdrawalTasks} />
+            </CatalogWorkQueueSection>
+          ) : null}
+          {lotTableRows.length > 0 ? (
+            <CatalogWorkQueueSection
+              id="drafts-missing-photos"
+              title="Drafts missing photos"
+              count={lotTableRows.length}
+              defaultOpen
+            >
+              <p className="font-body text-sm text-on-surface-variant">
+                Add catalogue images before publishing these draft lots.
+              </p>
+              {!listError ? (
+                <Suspense fallback={<PageSkeleton variant="table" />}>
+                  <AdminLotsBoard
+                    rows={lotTableRows}
+                    fullLots={pageRows}
+                    viewPipeline={false}
+                    listError={listError}
+                    urlError={error}
+                    searchQuery={q}
+                    listParams={listParamsForToggleFromModel}
+                    canManageAuction={canManageAuction}
+                    canManageCatalog={userHasAccessTo(
+                      user.role as UserRole,
+                      user.staffRole ?? null,
+                      LOTS_ACCESS,
+                    )}
+                    columnSort={columnSort}
+                    {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
+                  />
+                </Suspense>
+              ) : null}
+            </CatalogWorkQueueSection>
+          ) : null}
+        </div>
       ) : null}
-      {attentionLens && !withdrawalLoadError && withdrawalTasks.length > 0 ? (
-        <section className="space-y-3">
-          <h2 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Withdrawal requests
-          </h2>
-          <AdminWithdrawalsBoard tasks={withdrawalTasks} />
-        </section>
+      {viewPipeline && hasNextPage && query.offset === 0 && lotTableRows.length >= 200 ? (
+        <CatalogListCapBanner
+          message="Pipeline view loads 200 lots per page. Use pagination below or switch to Table view for exports."
+          actionHref={buildListHref("/admin/lots", sp, { view: "", offset: 0 })}
+          actionLabel="Open table view"
+        />
       ) : null}
-      {attentionLens && lotTableRows.length > 0 ? (
-        <h2 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-          Drafts missing photos
-        </h2>
-      ) : null}
-      {viewPipeline && lotTableRows.length >= 200 ? (
-        <CatalogListCapBanner message="Pipeline view shows up to 200 lots. Use Table view with filters for full pagination." />
-      ) : null}
-      {!listError && (viewPipeline || lotTableRows.length > 0) ? (
+      {!listError && !attentionLens && (viewPipeline || lotTableRows.length > 0) ? (
         <Suspense fallback={<PageSkeleton variant="table" />}>
           <AdminLotsBoard
             rows={lotTableRows}

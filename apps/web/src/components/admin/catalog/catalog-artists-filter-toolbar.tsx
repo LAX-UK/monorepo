@@ -2,6 +2,10 @@
 
 import { AdminListSearch } from "@/components/admin/admin-list-search";
 import {
+  type CatalogActiveFilterChip,
+  CatalogActiveFiltersRow,
+} from "@/components/admin/catalog/catalog-active-filters-row";
+import {
   CatalogFilterBar,
   type CatalogSegmentItem,
 } from "@/components/admin/catalog/catalog-filter-bar";
@@ -139,6 +143,7 @@ type Props = {
   lenses: readonly CatalogSegmentItem[];
   activeLensId: string;
   activeFilterCount: number;
+  activeFilterChips?: readonly CatalogActiveFilterChip[];
   filterDefaults: FilterDefaults;
   /** When duplicates or lot backfill queues are showing, filters target the indexed list instead. */
   queueModesActive: boolean;
@@ -148,6 +153,7 @@ export function CatalogArtistsFilterToolbar({
   lenses,
   activeLensId,
   activeFilterCount,
+  activeFilterChips = [],
   filterDefaults,
   queueModesActive,
 }: Props) {
@@ -157,6 +163,7 @@ export function CatalogArtistsFilterToolbar({
       activeLensId={activeLensId}
       lensAriaLabel="Artist registry view"
       activeFilterCount={activeFilterCount}
+      activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}
       sheetTitle="Artist filters"
       searchSlot={
         queueModesActive ? undefined : (
