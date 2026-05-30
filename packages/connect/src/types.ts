@@ -50,6 +50,8 @@ export type ConnectGapState = {
   missing: ConnectGapMissingItem[];
   canReceivePayouts: boolean;
   canPublish: boolean;
+  /** Raw Stripe disabled_reason when present — used for copy branching. */
+  disabledReason?: string | null;
 };
 
 export type ConnectGapOptions = {
