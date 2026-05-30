@@ -5,7 +5,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import * as React from "react";
 
 import { cn } from "../../lib/utils.js";
-import { Button } from "./button.js";
+import { Button, type ButtonProps } from "./button.js";
 import {
   Command,
   CommandEmpty,
@@ -42,6 +42,18 @@ export type AsyncComboboxProps<THit extends AsyncComboboxHit> = {
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
 };
+
+type PickerComboboxTriggerProps = Omit<ButtonProps, "variant" | "asChild" | "type">;
+
+/** Stable forwardRef trigger for PopoverTrigger asChild — must not swap component types on selection. */
+const PickerComboboxTrigger = React.forwardRef<HTMLButtonElement, PickerComboboxTriggerProps>(
+  ({ className, children, ...props }, ref) => (
+    <Button ref={ref} type="button" variant="outline" className={className} {...props}>
+      {children}
+    </Button>
+  ),
+);
+PickerComboboxTrigger.displayName = "PickerComboboxTrigger";
 
 function InlineActionButton({
   onClick,
@@ -162,7 +174,7 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
     setResolved(row);
     setResolving(false);
     lastSelectedIdRef.current = row.id;
-    onChange(row.id, row);
+    queueMicrotask(() => onChange(row.id, row));
   }
 
   function handleClear() {
@@ -172,7 +184,7 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
     setResolved(null);
     setResolving(false);
     lastSelectedIdRef.current = null;
-    onChange(null);
+    queueMicrotask(() => onChange(null));
   }
 
   const comboboxA11y = {
@@ -226,23 +238,22 @@ export function AsyncCombobox<THit extends AsyncComboboxHit>({
       <p className="text-xs text-on-surface-variant">Selected id: {value}</p>
     ) : null;
 
-  const pickerTrigger = value ? (
-    <InlineActionButton {...comboboxA11y} disabled={disabled} aria-label={changeLabel}>
-      {changeLabel}
-    </InlineActionButton>
-  ) : (
-    <Button
-      type="button"
-      variant="outline"
-      disabled={disabled}
-      className={cn(
-        "min-h-11 w-full justify-start px-3 font-body text-sm font-normal text-on-surface-variant",
-        !value ? className : undefined,
-      )}
+  const pickerTrigger = (
+    <PickerComboboxTrigger
       {...comboboxA11y}
+      disabled={disabled}
+      {...(value ? { "aria-label": changeLabel, size: "sm" } : {})}
+      className={cn(
+        value
+          ? "inline-flex items-center gap-1.5 font-label text-[11px] uppercase tracking-wide"
+          : cn(
+              "min-h-11 w-full justify-start px-3 font-body text-sm font-normal text-on-surface-variant",
+              className,
+            ),
+      )}
     >
-      {placeholder}
-    </Button>
+      {value ? changeLabel : placeholder}
+    </PickerComboboxTrigger>
   );
 
   return (
