@@ -8,6 +8,7 @@ import {
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
@@ -23,7 +24,7 @@ import Link from "next/link";
 export default async function SellerStripeConnectPage() {
   const user = await requireAuthenticatedUser({
     shell: "client",
-    loginNext: "/dashboard/seller/connect",
+    loginNext: DASHBOARD_ROUTES.sellerConnect,
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
   const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
@@ -91,7 +92,7 @@ export default async function SellerStripeConnectPage() {
           onStartKyc={startKycVerification}
           isLaxManaged={isLaxManaged}
           entityStatus={entityStatus}
-          returnPath="/dashboard/seller/connect"
+          returnPath={DASHBOARD_ROUTES.sellerConnect}
           syncDegraded={syncDegraded}
         />
       ) : null}
@@ -102,7 +103,7 @@ export default async function SellerStripeConnectPage() {
           support@lax.bid
         </a>
         {" · "}
-        <Link href="/dashboard/seller" className="text-primary underline">
+        <Link href={DASHBOARD_ROUTES.seller} className="text-primary underline">
           Back to seller workspace
         </Link>
       </p>

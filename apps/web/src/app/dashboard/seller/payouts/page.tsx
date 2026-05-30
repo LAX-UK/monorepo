@@ -1,27 +1,31 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import {
   PayoutsDesktopList,
   PayoutsMobileList,
 } from "@/components/dashboard/list/payouts-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import {
   SellerOrgContextBanner,
   SellerProfileUnavailableAlert,
 } from "@/components/dashboard/seller-org-context-banner";
 import { ExportButton } from "@/components/exports/export-button";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { connectGapPayoutsBannerCopy } from "@/lib/connect/connect-gap-copy";
+import {
+  legalEntityToConnectFields,
+  resolveSellerConnectPresentation,
+} from "@/lib/connect/resolve-seller-connect-presentation";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
-import { buildSellerPayoutFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import {
+  buildSellerPayoutFailure,
+  buildSellerPayoutPreviewFailure,
+} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.server";
 import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
-import { getConnectGapState, isSellerConnectReady } from "@auction/connect";
 import type { Payout } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -41,7 +45,7 @@ function formatMoney(amount: string, currency: string): string {
 export default async function SellerPayoutsPage() {
   const user = await requireAuthenticatedUser({
     shell: "client",
-    loginNext: "/dashboard/seller/payouts",
+    loginNext: DASHBOARD_ROUTES.sellerPayouts,
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
   const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
@@ -49,9 +53,12 @@ export default async function SellerPayoutsPage() {
   const c = await getServerDataContainer();
   let payouts: Payout[] = [];
   let listFailure = null;
+  let previewFailure = null;
   let preview: SellerPayoutPendingPreview | null = null;
-  let showConnectBanner = false;
-  let connectBannerCopy: { title: string; description: string } | null = null;
+  let connectPresentation = resolveSellerConnectPresentation({
+    connectEnforced: false,
+    entity: null,
+  });
 
   if (sellerEntityId) {
     const hub = createOrganisationHubGateway();
@@ -68,58 +75,64 @@ export default async function SellerPayoutsPage() {
     }
     if (previewRes.ok) {
       preview = previewRes.data;
+    } else {
+      previewFailure = buildSellerPayoutPreviewFailure(previewRes.error);
     }
-    if (
-      clientConfig.connectEnforced &&
-      entity &&
-      !isSellerConnectReady({ ...entity, status: entity.status })
-    ) {
-      showConnectBanner = true;
-      connectBannerCopy = connectGapPayoutsBannerCopy(
-        getConnectGapState({ ...entity, status: entity.status }),
-      );
-    }
+    connectPresentation = resolveSellerConnectPresentation({
+      connectEnforced: clientConfig.connectEnforced,
+      entity: entity ? legalEntityToConnectFields(entity) : null,
+    });
   }
 
   const workspaceMeta = await readClientWorkspacePageMeta();
 
+  const connectBanner =
+    connectPresentation.showBanner && connectPresentation.bannerCopy ? (
+      <Alert>
+        <AlertTitle>{connectPresentation.bannerCopy.title}</AlertTitle>
+        <AlertDescription className="flex flex-wrap items-center gap-3">
+          <span>{connectPresentation.bannerCopy.description}</span>
+          <Button asChild variant="cta" size="sm">
+            <Link href={DASHBOARD_ROUTES.sellerConnect}>{DASHBOARD_CTA.openPayoutSetup}</Link>
+          </Button>
+        </AlertDescription>
+      </Alert>
+    ) : null;
+
+  const orgBanner = orgActingSelected ? <SellerOrgContextBanner /> : null;
+  const profileBanner = !sellerEntityId ? (
+    <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} />
+  ) : null;
+
   return (
-    <DashboardPage>
-      <DashboardPageHeader
-        meta={workspaceMeta}
-        title="Sold & payouts"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
-        description="Hammer prices, buyer premiums collected by LAX, seller commissions, and adjustments roll into each settlement batch."
-        actions={
-          payouts.length > 0 && sellerEntityId ? (
-            <ExportButton
-              entityType="payouts"
-              label="Export CSV"
-              filters={{ legalEntityId: sellerEntityId }}
-            />
-          ) : null
-        }
-      />
-
-      {orgActingSelected ? <SellerOrgContextBanner /> : null}
-      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
-
-      {showConnectBanner && connectBannerCopy ? (
-        <Alert>
-          <AlertTitle>{connectBannerCopy.title}</AlertTitle>
-          <AlertDescription className="flex flex-wrap items-center gap-3">
-            <span>{connectBannerCopy.description}</span>
-            <Button asChild variant="cta" size="sm">
-              <Link href="/dashboard/seller/connect">Open payout setup</Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {listFailure ? <DashboardSliceErrorAlert failure={listFailure} /> : null}
-
-      {preview && (
+    <DashboardListPage
+      meta={workspaceMeta}
+      title="Sold & payouts"
+      description="Hammer prices, buyer premiums collected by LAX, seller commissions, and adjustments roll into each settlement batch."
+      banner={
+        <>
+          {orgBanner}
+          {profileBanner}
+          {connectBanner}
+        </>
+      }
+      errorAlert={
+        <>
+          {listFailure ? <DashboardSliceErrorAlert failure={listFailure} /> : null}
+          {previewFailure ? <DashboardSliceErrorAlert failure={previewFailure} /> : null}
+        </>
+      }
+      actions={
+        payouts.length > 0 && sellerEntityId ? (
+          <ExportButton
+            entityType="payouts"
+            label="Export CSV"
+            filters={{ legalEntityId: sellerEntityId }}
+          />
+        ) : null
+      }
+    >
+      {preview ? (
         <Surface variant="section" padding="md" className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
             Next payout (preview)
@@ -158,7 +171,7 @@ export default async function SellerPayoutsPage() {
             </dl>
           )}
         </Surface>
-      )}
+      ) : null}
 
       {payouts.length === 0 && !listFailure ? (
         <DashboardEmptyState
@@ -168,7 +181,15 @@ export default async function SellerPayoutsPage() {
           description={DASHBOARD_EMPTY.sellerPayouts.description}
           action={
             <div className="flex flex-wrap justify-center gap-2">
-              <Button variant="primary" asChild>
+              {!connectPresentation.connectReady ? (
+                <Button variant="primary" asChild>
+                  <Link href={DASHBOARD_ROUTES.sellerConnect}>{DASHBOARD_CTA.openPayoutSetup}</Link>
+                </Button>
+              ) : null}
+              <Button
+                variant={connectPresentation.connectReady ? "primary" : "secondaryOutline"}
+                asChild
+              >
                 <Link href={DASHBOARD_ROUTES.sellerInSale}>{DASHBOARD_CTA.itemsInSale}</Link>
               </Button>
               <Button variant="secondaryOutline" asChild>
@@ -183,6 +204,6 @@ export default async function SellerPayoutsPage() {
           <PayoutsDesktopList payouts={payouts} sellerEntityId={sellerEntityId} />
         </>
       ) : null}
-    </DashboardPage>
+    </DashboardListPage>
   );
 }

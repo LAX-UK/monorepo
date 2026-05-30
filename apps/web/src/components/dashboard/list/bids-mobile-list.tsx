@@ -8,6 +8,7 @@ import {
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
@@ -117,7 +118,7 @@ export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
                   </Button>
                   {row.statusLabel === "Won" ? (
                     <Button variant="primary" size="sm" asChild>
-                      <Link href={`/dashboard/checkout/${lot.id}`}>Settle now</Link>
+                      <Link href={dashboardCheckoutLotUrl(lot.id)}>Settle now</Link>
                     </Button>
                   ) : lot.status === "active" ? (
                     <Button variant="primary" size="sm" asChild>

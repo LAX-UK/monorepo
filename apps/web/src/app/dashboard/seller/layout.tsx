@@ -15,7 +15,7 @@ export default async function SellerDashboardLayout({ children }: { children: Re
   return (
     <div className="space-y-8">
       <Suspense fallback={<DashboardComplianceStripSkeleton />}>
-        <DashboardComplianceStrip user={user} loginNext="/dashboard/seller" />
+        <DashboardComplianceStrip user={user} loginNext="/dashboard/seller" includePayoutSetup />
       </Suspense>
       {children}
     </div>

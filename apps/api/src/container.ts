@@ -991,8 +991,8 @@ export function createContainer(env: Env): Container {
     notificationFactory,
     legalEntityNotificationRecipients,
     {
-      ensureAwaitingPayment: (lotId, paymentId) =>
-        lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId),
+      ensureAwaitingPayment: (lotId, paymentId, addressSnapshot) =>
+        lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId, addressSnapshot),
       onPaymentCaptured: (lotId, paymentId) =>
         lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
     },
@@ -1027,8 +1027,8 @@ export function createContainer(env: Env): Container {
     stripePaymentGateway,
     mediaUrlResolver,
     {
-      ensureAwaitingPayment: (lotId, paymentId) =>
-        lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId),
+      ensureAwaitingPayment: (lotId, paymentId, addressSnapshot) =>
+        lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId, addressSnapshot),
       onPaymentCaptured: (lotId, paymentId) =>
         lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
     },
@@ -1040,6 +1040,7 @@ export function createContainer(env: Env): Container {
     payoutAdjustmentService,
     paymentRefundReconcileService,
     xeroPaymentRecorder,
+    addressRepo,
   );
 
   const stripePaymentWebhookServiceResolved: StripePaymentWebhookService | null =

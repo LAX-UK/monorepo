@@ -2,11 +2,21 @@
 
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
-import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
+import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout-lot-mobile-chrome";
+import {
+  type CheckoutPaymentActionData,
+  createCheckoutPaymentAction,
+} from "@/lib/actions/checkout";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics/events";
+import {
+  checkoutPaymentErrorMessage,
+  manualReviewReasonCopy,
+} from "@/lib/checkout/checkout-payment-errors";
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { notify } from "@/lib/ui/notify";
+import type { ManualReviewReason, PaymentStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardContent } from "@auction/ui/components/card";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -24,9 +34,10 @@ import {
   checkoutTermsAcceptanceSchema,
 } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
+import { Plus, ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 type Props = {
@@ -35,12 +46,13 @@ type Props = {
   hammer: string;
   buyerPremium: string;
   total: string;
-  /** Checkout total in minor units (for analytics). */
   totalMinor?: number;
-  /** ISO currency for analytics (defaults to GBP). */
   currency?: string;
   premiumPercentLabel: string;
   addresses: unknown[];
+  paymentComplete?: boolean;
+  openPaymentStatus?: PaymentStatus | null;
+  openPaymentManualReviewReason?: ManualReviewReason | null;
 };
 
 function settlementsEmail(): string {
@@ -70,6 +82,47 @@ function parseAddress(raw: unknown): ProfileAddressRow {
   };
 }
 
+function formatAddressLines(address: ProfileAddressRow): string {
+  const line2 = address.line2 ? `, ${address.line2}` : "";
+  return `${address.line1}${line2}, ${address.city}, ${address.postalCode}, ${address.country}`;
+}
+
+function addressesSettingsHref(lotId: string): string {
+  const next = encodeURIComponent(dashboardCheckoutLotUrl(lotId));
+  return `/dashboard/settings/addresses?next=${next}`;
+}
+
+function PaymentCompleteBlock() {
+  return (
+    <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10">
+      <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+        Payment recorded
+      </p>
+      <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
+      <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
+        Your payment is on file. Track fulfilment above and view this lot in your collection.
+      </p>
+      <Button asChild variant="secondaryOutline" className="mt-6">
+        <Link href="/dashboard/portfolio">View collection</Link>
+      </Button>
+    </output>
+  );
+}
+
+function ManualReviewBlock({ reason }: { reason: ManualReviewReason | null }) {
+  return (
+    <output className="block rounded-xl border border-border-hairline bg-surface-container-low/80 px-6 py-8 shadow-sm sm:px-8">
+      <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        Finance review
+      </p>
+      <p className="mt-3 font-body text-sm leading-relaxed text-on-surface-variant">
+        {manualReviewReasonCopy(reason)}
+      </p>
+      <p className="mt-4 break-all font-body text-sm text-on-surface">{settlementsEmail()}</p>
+    </output>
+  );
+}
+
 export function CheckoutPurchasePanel({
   sessionUser,
   lotId,
@@ -80,8 +133,14 @@ export function CheckoutPurchasePanel({
   currency = "GBP",
   premiumPercentLabel,
   addresses: rawAddresses,
+  paymentComplete = false,
+  openPaymentStatus = null,
+  openPaymentManualReviewReason = null,
 }: Props) {
   const [submitted, setSubmitted] = useState(false);
+  const [submittedReviewReason, setSubmittedReviewReason] = useState<ManualReviewReason | null>(
+    null,
+  );
   const addresses = rawAddresses.map(parseAddress);
   const checkoutAddresses = addresses.filter(
     (address) => address.addressType === "shipping" || address.addressType === "both",
@@ -95,149 +154,218 @@ export function CheckoutPurchasePanel({
   });
   const addressId = useWatch({ control: form.control, name: "addressId" });
   const termsAccepted = useWatch({ control: form.control, name: "termsAccepted" });
+  const selectedAddress = useMemo(
+    () => checkoutAddresses.find((a) => a.id === addressId) ?? null,
+    [checkoutAddresses, addressId],
+  );
   const canSubmit =
     Boolean(termsAccepted) &&
     Boolean(addressId) &&
     checkoutAddresses.some((address) => address.id === addressId);
 
   useEffect(() => {
-    if (totalMinor != null && totalMinor > 0) {
+    if (totalMinor != null && totalMinor > 0 && !paymentComplete) {
       trackBeginCheckout({ lotId, valueMinor: totalMinor, currency });
     }
-  }, [lotId, totalMinor, currency]);
+  }, [lotId, totalMinor, currency, paymentComplete]);
 
-  if (submitted) {
+  if (paymentComplete) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28">
-        <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-8 py-10 text-center shadow-sm">
+        <PaymentCompleteBlock />
+      </div>
+    );
+  }
+
+  if (openPaymentStatus === "requires_manual_review" && !submitted) {
+    return (
+      <div id="checkout-complete-purchase" className="scroll-mt-28">
+        <ManualReviewBlock reason={openPaymentManualReviewReason} />
+      </div>
+    );
+  }
+
+  if (submitted && !submittedReviewReason) {
+    return (
+      <div id="checkout-complete-purchase" className="scroll-mt-28">
+        <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10">
           <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
             Request received
           </p>
           <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
           <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
             Your payment record has been created. If checkout is available, you&apos;ll be
-            redirected to Stripe (card or UK bank transfer). High-value lots may require finance
-            review before checkout is issued.
+            redirected to Stripe (card or UK bank transfer).
           </p>
         </output>
       </div>
     );
   }
 
+  if (submitted && submittedReviewReason) {
+    return (
+      <div id="checkout-complete-purchase" className="scroll-mt-28">
+        <ManualReviewBlock reason={submittedReviewReason} />
+      </div>
+    );
+  }
+
+  const handlePaymentResult = (data: CheckoutPaymentActionData) => {
+    if (totalMinor != null && totalMinor > 0 && !data.checkoutUrl) {
+      trackPurchase({
+        lotId,
+        valueMinor: totalMinor,
+        currency,
+        transactionId: data.paymentId,
+      });
+    }
+    if (data.checkoutUrl) {
+      if (totalMinor != null && totalMinor > 0) {
+        trackPurchase({
+          lotId,
+          valueMinor: totalMinor,
+          currency,
+          transactionId: data.paymentId,
+        });
+      }
+      window.location.assign(data.checkoutUrl);
+      return;
+    }
+    if (data.manualReviewReason) {
+      setSubmittedReviewReason(data.manualReviewReason);
+      setSubmitted(true);
+      notify.success("Payment submitted for review", {
+        description: manualReviewReasonCopy(data.manualReviewReason),
+      });
+      return;
+    }
+    setSubmitted(true);
+    notify.success("Payment record created", {
+      description:
+        "Complete payment on Stripe when checkout opens, or wait for finance review if required.",
+    });
+  };
+
   return (
-    <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-10">
-      <Card className="max-lg:sticky max-lg:top-4 max-lg:z-10 border border-border-hairline bg-surface-container-low shadow-md max-lg:shadow-lg">
-        <CardContent className="p-8 pt-8">
-          <h2 className="mb-8 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+    <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
+      <Card className="min-w-0 border border-border-hairline bg-surface-container-low shadow-md max-lg:sticky max-lg:top-4 max-lg:z-10 lg:sticky lg:top-4 lg:z-10 lg:shadow-lg">
+        <CardContent className="p-6 sm:p-8">
+          <h2 className="mb-6 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Order summary
           </h2>
-          <dl className="space-y-4 font-body text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-on-surface-variant">Hammer price</dt>
-              <dd className="font-headline text-lg tabular-nums text-on-surface">{hammer}</dd>
+          <dl className="min-w-0 space-y-4 font-body text-sm">
+            <div className="flex min-w-0 justify-between gap-4">
+              <dt className="min-w-0 shrink text-on-surface-variant">Hammer price</dt>
+              <dd className="shrink-0 font-headline text-lg tabular-nums text-on-surface">
+                {hammer}
+              </dd>
             </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-on-surface-variant">
+            <div className="flex min-w-0 justify-between gap-4">
+              <dt className="min-w-0 break-words pr-2 text-on-surface-variant">
                 Buyer&apos;s premium ({premiumPercentLabel})
               </dt>
-              <dd className="font-headline text-lg tabular-nums text-primary">{buyerPremium}</dd>
+              <dd className="shrink-0 font-headline text-lg tabular-nums text-primary">
+                {buyerPremium}
+              </dd>
             </div>
             <Separator className="bg-outline-variant/10" />
-            <div className="flex justify-between gap-4">
-              <dt className="text-on-surface-variant">Shipping &amp; logistics</dt>
-              <dd className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            <div className="flex min-w-0 justify-between gap-4">
+              <dt className="min-w-0 text-on-surface-variant">Shipping &amp; logistics</dt>
+              <dd className="shrink-0 text-right font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Quoted after payment
               </dd>
             </div>
             <Separator className="bg-outline-variant/15" />
-            <div className="flex justify-between gap-4 pt-2">
+            <div className="flex min-w-0 justify-between gap-4 pt-2">
               <dt className="font-headline text-xl text-on-surface">Total due</dt>
-              <dd className="font-headline text-3xl tabular-nums text-primary">{total}</dd>
+              <dd className="shrink-0 font-headline text-2xl tabular-nums text-primary sm:text-3xl">
+                {total}
+              </dd>
             </div>
           </dl>
         </CardContent>
       </Card>
 
-      <Card className="border border-border-hairline bg-surface-container-high/40 shadow-sm">
-        <CardContent className="p-8 pt-8">
+      <Card className="min-w-0 border border-border-hairline bg-surface-container-high/40 shadow-sm">
+        <CardContent className="p-6 sm:p-8">
           <h2 className="mb-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Payment
           </h2>
           <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
             Pay by card (up to £100,000) or UK bank transfer via secure Stripe Checkout. High-value
-            purchases may require finance review before checkout is issued. Contact concierge below
-            if you need help.
+            purchases may require finance review before checkout is issued.
           </p>
           <p className="font-body text-sm text-on-surface">
             <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
               Concierge
             </span>
             <br />
-            {settlementsEmail()}
+            <span className="break-all">{settlementsEmail()}</span>
             <br />
             <span className="text-on-surface-variant">{settlementsPhone()}</span>
           </p>
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-border-hairline py-6 font-label text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-        <span className="inline-flex items-center gap-2">
-          <ShieldCheck className="size-4 text-primary" aria-hidden />
-          Payment protection
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <VerifiedIcon className="size-4 text-primary" aria-hidden />
-          Certificate included
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <Truck className="size-4 text-primary" aria-hidden />
-          Insured shipping
-        </span>
-      </div>
+      <ul className="flex min-w-0 flex-col gap-3 border-y border-border-hairline py-5 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.18em)] text-on-surface-variant sm:flex-row sm:flex-wrap sm:gap-x-6">
+        <li className="inline-flex min-w-0 items-center gap-2">
+          <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden />
+          <span>Payment protection</span>
+        </li>
+        <li className="inline-flex min-w-0 items-center gap-2">
+          <VerifiedIcon className="size-4 shrink-0 text-primary" aria-hidden />
+          <span>Certificate included</span>
+        </li>
+        <li className="inline-flex min-w-0 items-center gap-2">
+          <Truck className="size-4 shrink-0 text-primary" aria-hidden />
+          <span>Insured shipping</span>
+        </li>
+      </ul>
 
       <BuyerGate user={sessionUser}>
         <Form {...form}>
           <form
             id="checkout-purchase-form"
-            className="space-y-6"
+            className="min-w-0 space-y-6"
             onSubmit={form.handleSubmit(async (values) => {
               form.clearErrors("root");
               const r = await createCheckoutPaymentAction(lotId, values.addressId);
               if (!r.ok) {
                 notifyAdminCannotBuyIfNeeded(r.error, r.status ?? 500);
-                form.setError("root", { message: r.error });
+                const msg = r.errorCode
+                  ? checkoutPaymentErrorMessage(r.error, r.errorCode)
+                  : r.error;
+                form.setError("root", { message: msg });
                 return;
               }
-              const checkoutUrl = r.ok ? (r.data?.checkoutUrl ?? null) : null;
-              const paymentId = r.ok ? r.data?.paymentId : undefined;
-              if (totalMinor != null && totalMinor > 0) {
-                trackPurchase({
-                  lotId,
-                  valueMinor: totalMinor,
-                  currency,
-                  ...(paymentId ? { transactionId: paymentId } : {}),
-                });
-              }
-              if (checkoutUrl) {
-                window.location.assign(checkoutUrl);
-                return;
-              }
-              setSubmitted(true);
-              notify.success("Payment record created", {
-                description:
-                  "Complete payment on Stripe when checkout opens, or wait for finance review if your lot requires manual approval.",
-              });
+              if (r.data) handlePaymentResult(r.data);
             })}
           >
             <FormField
               control={form.control}
               name="addressId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="min-w-0">
                   <div className="space-y-3">
-                    <FormLabel className="font-label text-xs font-bold uppercase tracking-[0.2em] text-secondary">
-                      Shipping / invoice address
-                    </FormLabel>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <FormLabel className="font-label text-xs font-bold uppercase tracking-[0.2em] text-secondary">
+                        Shipping / invoice address
+                      </FormLabel>
+                      {checkoutAddresses.length > 0 ? (
+                        <Button
+                          type="button"
+                          variant="tertiary"
+                          size="sm"
+                          asChild
+                          className="h-auto"
+                        >
+                          <Link href={addressesSettingsHref(lotId)} className="inline-flex gap-1">
+                            <Plus className="size-3.5" aria-hidden />
+                            Add new address
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
                     {checkoutAddresses.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-outline-variant/40 p-4">
                         <p className="font-body text-sm text-on-surface-variant">
@@ -245,11 +373,11 @@ export function CheckoutPurchasePanel({
                           and logistics details.
                         </p>
                         {billingOnlyAddresses.length > 0 ? (
-                          <p className="mt-3 font-body text-sm text-on-surface-variant">
+                          <p className="mt-3 break-words font-body text-sm text-on-surface-variant">
                             You only have billing-specific profiles. Update one to include shipping
                             or choose “Billing & shipping” in{" "}
                             <Link
-                              href="/dashboard/settings/addresses"
+                              href={addressesSettingsHref(lotId)}
                               className="text-primary underline"
                             >
                               addresses
@@ -258,12 +386,12 @@ export function CheckoutPurchasePanel({
                           </p>
                         ) : null}
                         <Button asChild variant="secondary" className="mt-4">
-                          <Link href="/dashboard/settings/addresses">Add address</Link>
+                          <Link href={addressesSettingsHref(lotId)}>Add address</Link>
                         </Button>
                       </div>
                     ) : (
                       <div
-                        className="grid gap-3"
+                        className="grid min-w-0 gap-3"
                         role="radiogroup"
                         aria-label="Select shipping or invoice address"
                         onKeyDown={(event) => {
@@ -292,7 +420,7 @@ export function CheckoutPurchasePanel({
                               aria-checked={selected}
                               tabIndex={selected ? 0 : -1}
                               onClick={() => field.onChange(address.id)}
-                              className={`w-full justify-start rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                              className={`h-auto min-h-11 w-full min-w-0 justify-start whitespace-normal rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                                 selected
                                   ? "border-primary bg-primary-container/10"
                                   : "border-border-hairline bg-surface-container-low/30 hover:border-primary/50"
@@ -302,10 +430,8 @@ export function CheckoutPurchasePanel({
                                 {address.label}
                                 {address.isDefault ? " · Default" : ""}
                               </span>
-                              <span className="mt-1 block font-body text-sm text-on-surface-variant">
-                                {address.line1}
-                                {address.line2 ? `, ${address.line2}` : ""}, {address.city},{" "}
-                                {address.postalCode}, {address.country}
+                              <span className="mt-1 block break-words font-body text-sm text-on-surface-variant">
+                                {formatAddressLines(address)}
                               </span>
                             </Button>
                           );
@@ -318,23 +444,31 @@ export function CheckoutPurchasePanel({
               )}
             />
             {billingOnlyAddresses.length > 0 && checkoutAddresses.length > 0 ? (
-              <p className="font-body text-xs text-on-surface-variant" role="note">
+              <p className="break-words font-body text-xs text-on-surface-variant" role="note">
                 Separate billing addresses remain on file for invoicing. The selection above covers
                 shipment and primary invoice delivery unless operations specifies otherwise.
               </p>
+            ) : null}
+            {selectedAddress ? (
+              <output className="block break-words font-body text-sm text-on-surface-variant">
+                <span className="font-medium text-on-surface">Shipping to:</span>{" "}
+                {selectedAddress.label}
+                {" — "}
+                {formatAddressLines(selectedAddress)}
+              </output>
             ) : null}
             <FormField
               control={form.control}
               name="termsAccepted"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                <FormItem className="flex min-w-0 flex-row items-start gap-3 space-y-0">
                   <FormControl>
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={(v) => field.onChange(v === true)}
                     />
                   </FormControl>
-                  <div className="space-y-1 leading-none">
+                  <div className="min-w-0 space-y-1 leading-none">
                     <FormLabel className="cursor-pointer font-body text-sm font-normal text-on-surface-variant">
                       I agree to the{" "}
                       <Link
@@ -351,7 +485,7 @@ export function CheckoutPurchasePanel({
               )}
             />
             {form.formState.errors.root ? (
-              <p className="text-sm text-error" role="alert">
+              <p className="break-words text-sm text-error" role="alert">
                 {form.formState.errors.root.message}
               </p>
             ) : null}
@@ -365,6 +499,13 @@ export function CheckoutPurchasePanel({
           </form>
         </Form>
       </BuyerGate>
+
+      <CheckoutLotMobileChrome
+        totalLabel={total}
+        formId="checkout-purchase-form"
+        isSubmitting={form.formState.isSubmitting}
+        disabled={!canSubmit}
+      />
     </div>
   );
 }

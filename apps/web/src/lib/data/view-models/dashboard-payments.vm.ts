@@ -1,3 +1,4 @@
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
 import { formatMoney } from "@/lib/format-currency";
 import { getPaymentStatusView } from "@/lib/presenters/payment-status";
@@ -44,7 +45,7 @@ function buildPrimaryAction(row: MyPaymentRow): PaymentDisplayRow["primaryAction
   if (row.status === "pending") {
     return {
       kind: "pay",
-      href: `/dashboard/checkout/${row.lotId}`,
+      href: dashboardCheckoutLotUrl(row.lotId),
       label: "Pay now",
     };
   }

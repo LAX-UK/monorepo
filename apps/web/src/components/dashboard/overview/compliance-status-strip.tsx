@@ -11,8 +11,14 @@ import {
   MapPin,
   ShieldAlert,
   ShieldCheck,
+  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+
+export type PayoutSetupPill = {
+  ready: boolean;
+  href: string;
+};
 
 type PillTone = KycCompliancePillTone;
 
@@ -49,6 +55,8 @@ type ComplianceStatusStripProps = {
   className?: string;
   /** When true, omit the identity pill (e.g. KYC blocking banner already covers it). */
   hideIdentityPill?: boolean;
+  /** Seller workspace: payout setup readiness pill. */
+  payoutSetup?: PayoutSetupPill | null;
 };
 
 /** Persistent identity & readiness strip for the dashboard.
@@ -63,8 +71,23 @@ export function ComplianceStatusStrip({
   addressesCount,
   className,
   hideIdentityPill = false,
+  payoutSetup = null,
 }: ComplianceStatusStripProps) {
   const pills: StatusPill[] = [];
+
+  if (payoutSetup) {
+    pills.push({
+      id: "payout-setup",
+      icon: WalletCards,
+      label: "Payouts",
+      value: payoutSetup.ready ? "Ready" : "Setup needed",
+      href: payoutSetup.href,
+      tone: payoutSetup.ready ? "ok" : "warn",
+      hint: payoutSetup.ready
+        ? "Payout account is ready for settlement"
+        : "Complete payout setup to receive transfers",
+    });
+  }
 
   // Identity verification
   if (!hideIdentityPill) {

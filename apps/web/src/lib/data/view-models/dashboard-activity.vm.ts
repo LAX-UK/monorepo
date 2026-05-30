@@ -1,3 +1,4 @@
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
@@ -106,7 +107,7 @@ export function buildDashboardActivityVm(input: {
       tone: "warning",
       title: `Payment due: ${row.lot.title}`,
       description: label,
-      href: `/dashboard/checkout/${row.lot.id}`,
+      href: dashboardCheckoutLotUrl(row.lot.id),
       at: row.lot.endTime.toISOString(),
     });
   }

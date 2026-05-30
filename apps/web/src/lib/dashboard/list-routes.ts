@@ -6,7 +6,6 @@ const COMPACT_BANNER_PREFIXES = [
   "/dashboard/portfolio",
   "/dashboard/notifications",
   "/dashboard/submissions",
-  "/dashboard/artist-follow",
   "/dashboard/seller/in-sale",
   "/dashboard/seller",
   "/dashboard/settings",
