@@ -1,15 +1,17 @@
 import { AdminCategoriesBoard } from "@/components/admin/admin-categories-board";
 import { AdminCategoryCreateSheet } from "@/components/admin/admin-category-create-sheet";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { CatalogCategoriesFilterToolbar } from "@/components/admin/catalog/catalog-categories-filter-toolbar";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
 import { categoriesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { buildCategoriesActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
@@ -70,7 +72,7 @@ export default async function AdminCategoriesPage({
 
   const empty =
     !listError && categories.length === 0 ? (
-      <AdminEmptyState
+      <CatalogListEmptyState
         title={hasFilters ? "No matching categories" : "No categories yet"}
         description={
           hasFilters
@@ -83,19 +85,20 @@ export default async function AdminCategoriesPage({
               <Link href="/admin/categories">Clear filters</Link>
             </Button>
           ) : (
-            <Button variant="primary" asChild>
-              <Link href="/admin/categories?new=1">
-                <Plus className="size-4" aria-hidden />
-                New category
-              </Link>
-            </Button>
+            <CatalogPrimaryCta href="/admin/categories?new=1" icon={Plus}>
+              New category
+            </CatalogPrimaryCta>
           )
         }
       />
     ) : null;
 
+  const activeFilterChips = buildCategoriesActiveFilterChips(sp, { q });
+
   const view =
-    !listError && categories.length > 0 ? <AdminCategoriesBoard categories={categories} /> : null;
+    !listError && categories.length > 0 ? (
+      <AdminCategoriesBoard categories={categories} searchQuery={q} />
+    ) : null;
 
   const pagination =
     !listError && total > 0 && (query.offset > 0 || query.offset + categories.length < total) ? (
@@ -129,19 +132,18 @@ export default async function AdminCategoriesPage({
         title="Categories"
         description="Manage the taxonomy used by sales, lots, and submissions. Archive used categories instead of deleting them."
         primaryAction={
-          <Button variant="primary" asChild>
-            <Link href="/admin/categories?new=1">
-              <Plus className="size-4" aria-hidden />
-              New category
-            </Link>
-          </Button>
+          <CatalogPrimaryCta href="/admin/categories?new=1" icon={Plus}>
+            New category
+          </CatalogPrimaryCta>
         }
+        empty={empty}
         errorAlert={errorAlert}
         filterBar={
           <CatalogCategoriesFilterToolbar
             lenses={lenses}
             activeLensId={activeLensId}
             activeFilterCount={activeFilterCount}
+            activeFilterChips={activeFilterChips}
           />
         }
         mobileSummary={
@@ -173,11 +175,17 @@ export default async function AdminCategoriesPage({
             />
           ) : null
         }
+        pagination={pagination}
       >
         {view}
-        {empty}
-        {pagination}
       </CatalogListShell>
+      {!listError ? (
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] end-4 z-40 lg:hidden">
+          <CatalogPrimaryCta href="/admin/categories?new=1" icon={Plus}>
+            New category
+          </CatalogPrimaryCta>
+        </div>
+      ) : null}
     </>
   );
 }

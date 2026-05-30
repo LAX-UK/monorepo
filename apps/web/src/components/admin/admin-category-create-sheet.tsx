@@ -62,9 +62,12 @@ export function AdminCategoryCreateSheet({ categories, sheetFromQuery }: Props) 
             categories={categories}
             preventNavigateAfterSave
             htmlFormId={CATALOG_FORM_IDS.category}
-            afterSuccessfulSave={() => {
+            afterSuccessfulSave={(categoryId) => {
               setOpen(false);
               stripNewParam();
+              if (categoryId) {
+                router.push(`/admin/categories/${categoryId}?created=1`);
+              }
             }}
             cancelHref="/admin/categories"
             defaultValues={{

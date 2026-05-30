@@ -1,19 +1,24 @@
 import { AdminArtistsBoard } from "@/components/admin/admin-artists-board";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { ArtistBackfillReviewSection } from "@/components/admin/artist-backfill-review-section";
 import { ArtistDuplicateReviewSection } from "@/components/admin/artist-duplicate-review-section";
 import { CatalogArtistsFilterToolbar } from "@/components/admin/catalog/catalog-artists-filter-toolbar";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
+import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { artistsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { ArtistPresetId } from "@/lib/admin/artist-list-presets";
 import { artistListActivePreset, artistListPresetHref } from "@/lib/admin/artist-list-presets";
+import { buildArtistsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
@@ -33,6 +38,7 @@ export default async function AdminArtistsPage({
   const showBackfill = sp.backfill === "1";
   const showDuplicates = sp.duplicates === "1";
   const skipIndexedList = showBackfill || showDuplicates;
+  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
 
   const query = artistsListController.parseQuery(sp);
   const q = query.q;
@@ -121,6 +127,18 @@ export default async function AdminArtistsPage({
     },
   ];
 
+  const activeFilterChips = skipIndexedList
+    ? []
+    : buildArtistsActiveFilterChips(sp, {
+        ...(q ? { q } : {}),
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.kind ? { kind: query.kind } : {}),
+        ...(query.sort ? { sort: query.sort } : {}),
+        ...(query.featured === true ? { featured: true } : {}),
+        ...(query.verified === true ? { verified: true } : {}),
+        ...(query.includeArchived === true ? { includeArchived: true } : {}),
+      });
+
   const activeFilterCount = skipIndexedList
     ? 0
     : [
@@ -152,7 +170,7 @@ export default async function AdminArtistsPage({
 
   const empty = skipIndexedList ? null : !loadError && artists.length === 0 ? (
     total === 0 ? (
-      <AdminEmptyState
+      <CatalogListEmptyState
         title={hasFilters ? "No matching artists" : "No artists yet"}
         description={
           hasFilters
@@ -165,17 +183,14 @@ export default async function AdminArtistsPage({
               <Link href="/admin/artists">Clear filters</Link>
             </Button>
           ) : (
-            <Button variant="primary" asChild>
-              <Link href="/admin/artists/new">
-                <Plus className="size-4" aria-hidden />
-                New artist
-              </Link>
-            </Button>
+            <CatalogPrimaryCta href="/admin/artists/new" icon={Plus}>
+              New artist
+            </CatalogPrimaryCta>
           )
         }
       />
     ) : (
-      <AdminEmptyState
+      <CatalogListEmptyState
         title="No rows on this page"
         description="Try the previous page or clear filters — results may have shifted."
         action={
@@ -220,19 +235,19 @@ export default async function AdminArtistsPage({
     <CatalogListShell
       title="Artists"
       description="Manage canonical public artist profiles, client ownership links, featured state, and attribution targets."
+      meta={skipIndexedList ? null : <CatalogRelatedWork variant="artists" navCounts={navCounts} />}
       primaryAction={
-        <Button variant="primary" asChild>
-          <Link href="/admin/artists/new">
-            <Plus className="size-4" aria-hidden />
-            New artist
-          </Link>
-        </Button>
+        <CatalogPrimaryCta href="/admin/artists/new" icon={Plus}>
+          New artist
+        </CatalogPrimaryCta>
       }
+      empty={empty}
       filterBar={
         <CatalogArtistsFilterToolbar
           lenses={lenses}
           activeLensId={activeLensId}
           activeFilterCount={activeFilterCount}
+          activeFilterChips={activeFilterChips}
           queueModesActive={skipIndexedList}
           filterDefaults={{
             q,
@@ -258,7 +273,10 @@ export default async function AdminArtistsPage({
       mobileSummary={
         skipIndexedList ? null : (
           <CatalogListMobileSummary
-            segments={[total > 0 ? `${total} total` : null, `${artists.length} on page`]}
+            metrics={[
+              { id: "total", label: "Total", value: String(total) },
+              { id: "page", label: "On page", value: String(artists.length) },
+            ]}
           />
         )
       }
@@ -278,10 +296,9 @@ export default async function AdminArtistsPage({
         ) : null
       }
       errorAlert={errorAlert}
+      pagination={pagination}
     >
       {view}
-      {empty}
-      {pagination}
     </CatalogListShell>
   );
 }

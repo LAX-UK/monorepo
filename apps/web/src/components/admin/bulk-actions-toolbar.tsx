@@ -6,10 +6,18 @@ import { handleBulkActionResult } from "@/lib/admin/catalog-bulk-result-handler"
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
+import {
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetHeader,
+  BottomSheetTitle,
+  BottomSheetTrigger,
+} from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 export type BulkTypedConfirmConfig = {
   title: string;
@@ -37,6 +45,8 @@ type Props = {
   onClear: () => void;
   /** Shown above actions when bulk publish may fail (connect / draft-sale lots). */
   preflightWarning?: string | null;
+  pageRowCount?: number;
+  onSelectAllOnPage?: () => void;
 };
 
 export function BulkActionsToolbar({
@@ -44,10 +54,13 @@ export function BulkActionsToolbar({
   operations,
   onClear,
   preflightWarning = null,
+  pageRowCount = 0,
+  onSelectAllOnPage,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [confirmOp, setConfirmOp] = useState<BulkOperation | null>(null);
   const [typedConfirmOp, setTypedConfirmOp] = useState<BulkOperation | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const router = useRouter();
   if (selectedIds.length === 0) return null;
 
@@ -79,7 +92,26 @@ export function BulkActionsToolbar({
     });
   };
 
+  const orderedOperations = useMemo(
+    () =>
+      [...operations].sort((a, b) => {
+        if (a.destructive === b.destructive) return 0;
+        return a.destructive ? 1 : -1;
+      }),
+    [operations],
+  );
+
+  const primaryOps = useMemo(
+    () => orderedOperations.filter((op) => !op.destructive),
+    [orderedOperations],
+  );
+  const destructiveOps = useMemo(
+    () => orderedOperations.filter((op) => op.destructive),
+    [orderedOperations],
+  );
+
   const run = (operation: BulkOperation) => {
+    setMoreOpen(false);
     if (operation.typedConfirm) {
       setTypedConfirmOp(operation);
       return;
@@ -90,6 +122,22 @@ export function BulkActionsToolbar({
     }
     execute(operation);
   };
+
+  const renderOpButton = (
+    operation: BulkOperation,
+    variant: "default" | "secondary" | "destructive",
+  ) => (
+    <Button
+      key={operation.id}
+      type="button"
+      variant={variant}
+      disabled={pending}
+      onClick={() => run(operation)}
+      className="min-h-10"
+    >
+      {operation.label}
+    </Button>
+  );
 
   return (
     <>
@@ -115,18 +163,56 @@ export function BulkActionsToolbar({
             {selectedIds.length} selected
           </p>
           <div className="flex flex-wrap gap-2">
-            {operations.map((operation) => (
+            {onSelectAllOnPage && pageRowCount > 0 && selectedIds.length < pageRowCount ? (
               <Button
-                key={operation.id}
                 type="button"
-                variant={operation.destructive ? "destructive" : "secondary"}
+                variant="outline"
                 disabled={pending}
-                onClick={() => run(operation)}
+                onClick={onSelectAllOnPage}
                 className="min-h-10"
               >
-                {operation.label}
+                Select all on page ({pageRowCount})
               </Button>
-            ))}
+            ) : null}
+            {primaryOps.map((operation, index) =>
+              renderOpButton(operation, index === 0 ? "default" : "secondary"),
+            )}
+            {destructiveOps.length > 0 ? (
+              <>
+                <div className="hidden flex-wrap gap-2 lg:flex">
+                  {destructiveOps.map((operation) => renderOpButton(operation, "destructive"))}
+                </div>
+                <div className="lg:hidden">
+                  <BottomSheet open={moreOpen} onOpenChange={setMoreOpen}>
+                    <BottomSheetTrigger asChild>
+                      <Button type="button" variant="outline" className="min-h-10 gap-1">
+                        <MoreHorizontal className="size-4" aria-hidden />
+                        More
+                      </Button>
+                    </BottomSheetTrigger>
+                    <BottomSheetContent>
+                      <BottomSheetHeader>
+                        <BottomSheetTitle>More actions</BottomSheetTitle>
+                      </BottomSheetHeader>
+                      <div className="flex flex-col gap-2 p-4">
+                        {destructiveOps.map((operation) => (
+                          <Button
+                            key={operation.id}
+                            type="button"
+                            variant="destructive"
+                            disabled={pending}
+                            className="min-h-11 w-full"
+                            onClick={() => run(operation)}
+                          >
+                            {operation.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </BottomSheetContent>
+                  </BottomSheet>
+                </div>
+              </>
+            ) : null}
             <Button
               type="button"
               variant="ghost"

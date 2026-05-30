@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoriesMobileList } from "@/components/admin/categories-board/mobile-list";
 import { EditableCell } from "@/components/admin/editable-cell";
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import {
@@ -19,6 +20,7 @@ import { useMemo, useState, useTransition } from "react";
 
 type Props = {
   categories: AdminCategory[];
+  searchQuery?: string;
 };
 
 type CategoryNode = AdminCategory & { children: CategoryNode[] };
@@ -48,7 +50,7 @@ function buildTree(categories: AdminCategory[]): CategoryNode[] {
   return sortNodes(roots);
 }
 
-export function AdminCategoriesBoard({ categories }: Props) {
+export function AdminCategoriesBoard({ categories, searchQuery = "" }: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<PendingAction | null>(null);
@@ -75,54 +77,59 @@ export function AdminCategoriesBoard({ categories }: Props) {
   };
 
   return (
-    <Surface variant="section" padding="md" className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="font-headline text-lg font-semibold text-on-surface">Category tree</h3>
-        <p className="font-body text-sm text-on-surface-variant">
-          Manage catalog taxonomy, usage, and parent relationships.
-        </p>
-      </div>
-      <div>
-        {tree.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-outline-variant/40 p-6 text-sm text-on-surface-variant">
-            No categories match this search.
+    <>
+      <CategoriesMobileList categories={categories} query={searchQuery} />
+      <Surface variant="section" padding="md" className="hidden space-y-4 lg:block">
+        <div className="space-y-1">
+          <h3 className="font-headline text-lg font-semibold text-on-surface">Category tree</h3>
+          <p className="font-body text-sm text-on-surface-variant">
+            Manage catalog taxonomy, usage, and parent relationships.
           </p>
-        ) : (
-          <ul className="space-y-2">
-            {tree.map((node) => (
-              <CategoryTreeRow
-                key={node.id}
-                node={node}
-                depth={0}
-                pending={pending}
-                pendingId={pendingId}
-                onRequestAction={(category, action) => setConfirmAction({ category, action })}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
-      {confirmAction ? (
-        <TypedConfirmationDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setConfirmAction(null);
-          }}
-          title={
-            confirmAction.action === "archive" ? "Archive this category?" : "Delete this category?"
-          }
-          description={
-            confirmAction.action === "archive"
-              ? "Archived categories stay in the tree but are hidden from new assignments."
-              : "This permanently removes an unused category. This cannot be undone."
-          }
-          actionLabel={confirmAction.action === "archive" ? "Archive" : "Delete"}
-          confirmationPhrase={confirmAction.category.slug}
-          severity={confirmAction.action === "delete" ? "danger" : "warning"}
-          onConfirm={() => runAction(confirmAction.category, confirmAction.action)}
-        />
-      ) : null}
-    </Surface>
+        </div>
+        <div>
+          {tree.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-outline-variant/40 p-6 text-sm text-on-surface-variant">
+              No categories match this search.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {tree.map((node) => (
+                <CategoryTreeRow
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  pending={pending}
+                  pendingId={pendingId}
+                  onRequestAction={(category, action) => setConfirmAction({ category, action })}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+        {confirmAction ? (
+          <TypedConfirmationDialog
+            open
+            onOpenChange={(open) => {
+              if (!open) setConfirmAction(null);
+            }}
+            title={
+              confirmAction.action === "archive"
+                ? "Archive this category?"
+                : "Delete this category?"
+            }
+            description={
+              confirmAction.action === "archive"
+                ? "Archived categories stay in the tree but are hidden from new assignments."
+                : "This permanently removes an unused category. This cannot be undone."
+            }
+            actionLabel={confirmAction.action === "archive" ? "Archive" : "Delete"}
+            confirmationPhrase={confirmAction.category.slug}
+            severity={confirmAction.action === "delete" ? "danger" : "warning"}
+            onConfirm={() => runAction(confirmAction.category, confirmAction.action)}
+          />
+        ) : null}
+      </Surface>
+    </>
   );
 }
 

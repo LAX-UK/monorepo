@@ -3,6 +3,7 @@ import { AppScreen } from "@/components/dashboard/dashboard-page";
 import type { AdminActivityRow, AdminAttentionRow } from "@/lib/admin/admin-home-types";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
+import { buildSyntheticAttentionRows } from "@/lib/admin/build-synthetic-attention-rows";
 import {
   ADMIN_DASHBOARD_WIDGETS_COOKIE,
   parseDashboardWidgetsCookie,
@@ -67,7 +68,7 @@ export default async function AdminHomePage({
       id: item.id,
       title: item.title,
       hint: item.hint,
-      href: item.href,
+      href: item.kind === "lot_draft_past_start" ? "/admin/lots?lens=attention" : item.href,
       ctaLabel: item.ctaLabel ?? "Open",
     }));
     recentLots = recent;
@@ -115,6 +116,9 @@ export default async function AdminHomePage({
     failedPayouts: financeIssues?.failedPayoutCount ?? 0,
   });
 
+  const syntheticAttention = buildSyntheticAttentionRows(navCounts);
+  const attentionForDashboard = [...syntheticAttention, ...attention];
+
   return (
     <AppScreen>
       <PersonalDashboard
@@ -125,7 +129,7 @@ export default async function AdminHomePage({
         trends={trends}
         bidsPerMinute={bidsPerMinute}
         activeLotIds={activeLotIds}
-        attention={attention}
+        attention={attentionForDashboard}
         activity={activity}
         anomalies={anomalies}
       />

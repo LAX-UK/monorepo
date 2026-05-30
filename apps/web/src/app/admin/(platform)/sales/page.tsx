@@ -1,10 +1,12 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
+import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { CatalogSalesFilterToolbar } from "@/components/admin/catalog/catalog-sales-filter-toolbar";
 import { SaleFilterForm } from "@/components/admin/sale-filter-form";
 import { AdminSalesBoard } from "@/components/admin/sales-board";
@@ -13,9 +15,12 @@ import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { salesListController } from "@/lib/admin/admin-list-controllers";
 import { buildSalesListPageModel } from "@/lib/admin/build-sales-list-page-model";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import { buildSalesActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminSalesKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
+import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -53,6 +58,7 @@ export default async function AdminSalesPage({
   const model = buildSalesListPageModel(sp);
   const {
     query,
+    statusFilter,
     lifecycleSlug,
     deliveryFilter,
     activeLensId,
@@ -83,6 +89,14 @@ export default async function AdminSalesPage({
     err = e instanceof Error ? e.message : "Could not load sales.";
   }
 
+  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+
+  const activeFilterChips = buildSalesActiveFilterChips(sp, {
+    ...(query.q ? { q: query.q } : {}),
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(deliveryFilter ? { deliveryMode: deliveryFilter } : {}),
+  });
+
   const boardRows = rows.map(toAdminSaleBoardRow);
   const liveOnPage = boardRows.filter((r) => r.status === "active").length;
   const draftOnPage = boardRows.filter((r) => r.status === "draft").length;
@@ -107,7 +121,7 @@ export default async function AdminSalesPage({
 
   const empty =
     !err && rows.length === 0 ? (
-      <AdminEmptyState
+      <CatalogListEmptyState
         title={hasListFilters ? "No matching sales" : "No sales yet"}
         description={
           hasListFilters
@@ -120,12 +134,9 @@ export default async function AdminSalesPage({
               <Link href="/admin/sales">Clear filters</Link>
             </Button>
           ) : canManageSales ? (
-            <Button variant="default" asChild>
-              <Link href="/admin/sales/new">
-                <Plus className="size-4" aria-hidden />
-                New sale
-              </Link>
-            </Button>
+            <CatalogPrimaryCta href="/admin/sales/new" icon={Plus}>
+              New sale
+            </CatalogPrimaryCta>
           ) : null
         }
       />
@@ -135,14 +146,12 @@ export default async function AdminSalesPage({
     <CatalogListShell
       title="Sales"
       description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
+      meta={<CatalogRelatedWork variant="sales" navCounts={navCounts} />}
       primaryAction={
         canManageSales ? (
-          <Button variant="default" asChild>
-            <Link href="/admin/sales/new">
-              <Plus className="size-4" aria-hidden />
-              New sale
-            </Link>
-          </Button>
+          <CatalogPrimaryCta href="/admin/sales/new" icon={Plus}>
+            New sale
+          </CatalogPrimaryCta>
         ) : undefined
       }
       filterBar={
@@ -150,6 +159,7 @@ export default async function AdminSalesPage({
           lenses={lensesItems}
           activeLensId={activeLensId}
           activeFilterCount={activeFilterCountValue}
+          activeFilterChips={activeFilterChips}
           sheetFilters={
             <SaleFilterForm
               activeLensId={activeLensId}

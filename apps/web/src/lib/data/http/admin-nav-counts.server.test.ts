@@ -18,6 +18,8 @@ function mockFetchers(overrides: Partial<Record<keyof typeof EMPTY_ADMIN_NAV_COU
     getPayoutsFailed: vi.fn().mockResolvedValue(overrides.payoutsFailed ?? 0),
     getSaleroomLiveCount: vi.fn().mockResolvedValue(overrides.saleroomLiveCount ?? 0),
     getInvitationsPending: vi.fn().mockResolvedValue(overrides.invitationsPending ?? 0),
+    getDraftSalesNeedingSetup: vi.fn().mockResolvedValue(overrides.draftSalesNeedingSetup ?? 0),
+    getDraftLotsMissingPhotos: vi.fn().mockResolvedValue(overrides.draftLotsMissingPhotos ?? 0),
   };
 }
 

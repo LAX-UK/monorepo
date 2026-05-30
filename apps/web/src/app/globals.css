@@ -1105,3 +1105,14 @@ html.dark {
     backdrop-filter: none !important;
   }
 }
+
+/* Catalog mobile lists: defer off-screen card paint without full virtual scroll. */
+.catalog-virtualized-list > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 9rem;
+}
+
+.admin-data-table-virtualized tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3rem;
+}

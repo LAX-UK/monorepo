@@ -1,5 +1,6 @@
 import "server-only";
 
+import { saleNeedsSetup } from "@/lib/admin/catalog/sales-lenses";
 import { categorizeOnboardingIssues } from "@/lib/admin/onboarding-categorization";
 import {
   type AdminNavCounts,
@@ -11,6 +12,7 @@ import {
   getAdminFinanceDisputeDomainEvents,
   getAdminFinanceIssues,
   getAdminLotFulfilmentList,
+  getAdminLotList,
   getAdminManualReviewPayments,
   getAdminOnboardingIssues,
   getAdminSaleroomSession,
@@ -33,6 +35,8 @@ export type AdminNavCountFetchers = {
   getPayoutsFailed: () => Promise<number>;
   getSaleroomLiveCount: () => Promise<number>;
   getInvitationsPending: () => Promise<number>;
+  getDraftSalesNeedingSetup: () => Promise<number>;
+  getDraftLotsMissingPhotos: () => Promise<number>;
 };
 
 const defaultFetchers: AdminNavCountFetchers = {
@@ -102,6 +106,14 @@ const defaultFetchers: AdminNavCountFetchers = {
     const rows = await getAdminInvitations();
     return rows.filter((i) => i.status === "pending").length;
   },
+  getDraftSalesNeedingSetup: async () => {
+    const rows = await getAdminSalesList({ status: "draft", needsSetup: true, limit: 100 });
+    return rows.filter((row) => saleNeedsSetup(row.sale, row.lots.length)).length;
+  },
+  getDraftLotsMissingPhotos: async () => {
+    const rows = await getAdminLotList({ status: "draft", needsPhotos: true, limit: 200 });
+    return rows.length;
+  },
 };
 
 async function loadAdminNavCounts(
@@ -119,6 +131,8 @@ async function loadAdminNavCounts(
     payoutsFailed,
     saleroomLiveCount,
     invitationsPending,
+    draftSalesNeedingSetup,
+    draftLotsMissingPhotos,
   ] = await Promise.all([
     fetchers.getSubmissionsPending().catch(() => 0),
     fetchers.getArtistsPending().catch(() => 0),
@@ -131,6 +145,8 @@ async function loadAdminNavCounts(
     fetchers.getPayoutsFailed().catch(() => 0),
     fetchers.getSaleroomLiveCount().catch(() => 0),
     fetchers.getInvitationsPending().catch(() => 0),
+    fetchers.getDraftSalesNeedingSetup().catch(() => 0),
+    fetchers.getDraftLotsMissingPhotos().catch(() => 0),
   ]);
 
   return {
@@ -145,6 +161,8 @@ async function loadAdminNavCounts(
     payoutsFailed,
     saleroomLiveCount,
     invitationsPending,
+    draftSalesNeedingSetup,
+    draftLotsMissingPhotos,
   };
 }
 
