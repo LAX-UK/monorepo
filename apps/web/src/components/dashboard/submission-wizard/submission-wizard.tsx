@@ -93,7 +93,14 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
       form.setValue("provenance", sanitized.provenance, { shouldDirty: true });
       form.setValue("exhibitions", sanitized.exhibitions, { shouldDirty: true });
     }
-    return form.trigger([...currentStep.fields], { shouldFocus: true });
+    const ok = await form.trigger([...currentStep.fields], { shouldFocus: true });
+    if (!ok) {
+      window.requestAnimationFrame(() => {
+        const firstInvalid = document.querySelector("[aria-invalid='true']");
+        firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+    return ok;
   }, [currentStep, form]);
 
   const handleNext = useCallback(async () => {

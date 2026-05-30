@@ -1,5 +1,5 @@
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
 import { PaymentsMobileList } from "@/components/dashboard/list/payments-mobile-list";
@@ -7,7 +7,6 @@ import { PaymentRowCard } from "@/components/dashboard/payments/payment-row-card
 import { PaymentsListToolbar } from "@/components/dashboard/payments/payments-list-toolbar";
 import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -67,22 +66,16 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
   const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (
-    <DashboardPage>
-      <DashboardPageHeader
-        meta={workspaceMeta}
-        title="My payments"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
-        description="Invoices and receipts for lots you have won. Each row links to the lot and, when issued, the hosted invoice."
-      />
-
-      {!loadFailure ? <PaymentsListToolbar filters={filters} years={years} /> : null}
-
+    <DashboardListPage
+      meta={workspaceMeta}
+      title="My payments"
+      description="Invoices and receipts for lots you have won. Each row links to the lot and, when issued, the hosted invoice."
+      toolbar={!loadFailure ? <PaymentsListToolbar filters={filters} years={years} /> : null}
+      errorAlert={loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
+    >
       {!loadFailure ? (
         <DashboardFilterResultsAnnouncer count={displayRows.length} entityLabel="payments" />
       ) : null}
-
-      {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
 
       <section>
         {!loadFailure && displayRows.length === 0 ? (
@@ -116,6 +109,6 @@ export default async function DashboardPaymentsPage({ searchParams }: PageProps)
           </DashboardSection>
         ) : null}
       </section>
-    </DashboardPage>
+    </DashboardListPage>
   );
 }

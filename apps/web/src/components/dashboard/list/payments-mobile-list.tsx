@@ -1,10 +1,11 @@
 "use client";
 
+import { DashboardMobileLotThumbnail } from "@/components/dashboard/list/dashboard-mobile-lot-thumbnail";
 import {
   DashboardListRowCard,
   DashboardMobileList,
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
-import { MediaImage } from "@/components/ui/media-image";
+import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
@@ -54,19 +55,19 @@ type Props = {
 };
 
 export function PaymentsMobileList({ rows }: Props) {
+  const rowPadding = useDashboardListRowPaddingClass();
   return (
     <DashboardMobileList>
       {rows.map((row) => (
         <li key={row.id}>
           <DashboardListRowCard
+            className={rowPadding}
             thumbnail={
-              <Link
+              <DashboardMobileLotThumbnail
                 href={lotPath({ id: row.lotId, title: row.lotTitle })}
-                className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                aria-label={`View ${row.lotTitle}`}
-              >
-                <MediaImage src={row.lotImageUrl} alt="" label="Lot artwork" sizes="56px" />
-              </Link>
+                src={row.lotImageUrl}
+                alt={`${row.lotTitle} thumbnail`}
+              />
             }
             title={
               <Link

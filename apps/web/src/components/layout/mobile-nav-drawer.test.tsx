@@ -12,7 +12,7 @@ vi.mock("@/components/layout/header-auth-chip", () => ({
 }));
 
 vi.mock("@/components/layout/header-search", () => ({
-  HeaderSearchForm: () => null,
+  HeaderSearchPaletteTrigger: () => null,
 }));
 
 vi.mock("@/components/layout/lax-logo", () => ({

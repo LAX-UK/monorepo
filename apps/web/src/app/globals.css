@@ -1015,11 +1015,16 @@ html.dark {
   padding-bottom: 1.5rem;
 }
 
+.header-megamenu[data-open="false"] {
+  background: transparent;
+}
+
 .header-megamenu[data-open="true"] {
   grid-template-rows: 1fr;
   transform: translateY(0);
   opacity: 1;
   pointer-events: auto;
+  background: var(--color-surface);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1115,4 +1120,41 @@ html.dark {
 .admin-data-table-virtualized tbody tr {
   content-visibility: auto;
   contain-intrinsic-size: auto 3rem;
+}
+
+/* Marketing site header — light chrome over immersive home hero */
+[data-chrome-variant="transparentUntilScroll"][data-at-top="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.42), transparent 85%);
+}
+
+[data-header-tone="on-dark"] .site-header-search-icon,
+[data-header-tone="on-dark"] .site-header-search-placeholder {
+  color: var(--color-hero-foreground);
+}
+
+[data-header-tone="on-dark"] .site-header-search-placeholder {
+  opacity: 0.72;
+}
+
+[data-header-tone="on-dark"] .site-header-search-kbd {
+  color: var(--color-hero-foreground);
+  border-color: color-mix(in srgb, var(--color-hero-foreground) 45%, transparent);
+}
+
+[data-header-tone="on-dark"] .site-header-logo img {
+  filter: brightness(0) invert(1);
+}
+
+.dark [data-header-tone="on-light"] .site-header-logo img {
+  filter: brightness(0) invert(1);
+}
+
+[data-header-tone="on-dark"] .site-header-page-title {
+  color: var(--color-hero-foreground);
+  border-color: color-mix(in srgb, var(--color-hero-foreground) 25%, transparent);
 }

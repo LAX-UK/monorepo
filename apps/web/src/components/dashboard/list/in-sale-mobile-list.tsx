@@ -1,13 +1,14 @@
 "use client";
 
 import type { InSaleDisplayRow } from "@/app/dashboard/seller/in-sale/in-sale.vm";
+import { DashboardMobileLotThumbnail } from "@/components/dashboard/list/dashboard-mobile-lot-thumbnail";
 import {
   DashboardDesktopList,
   DashboardListRowCard,
   DashboardMobileList,
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
-import { MediaImage } from "@/components/ui/media-image";
+import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
@@ -45,19 +46,14 @@ type Props = {
 };
 
 export function InSaleMobileList({ rows }: Props) {
+  const rowPadding = useDashboardListRowPaddingClass();
   return (
     <DashboardMobileList>
       {rows.map((row) => (
         <li key={row.id}>
           <DashboardListRowCard
-            thumbnail={
-              <Link
-                href={row.lotHref}
-                className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-container-high"
-              >
-                <MediaImage src={row.imageUrl} alt="" label="Lot artwork" sizes="56px" />
-              </Link>
-            }
+            className={rowPadding}
+            thumbnail={<DashboardMobileLotThumbnail href={row.lotHref} src={row.imageUrl} />}
             title={
               <>
                 <span className="font-mono text-[10px] text-on-surface-variant tabular-nums">

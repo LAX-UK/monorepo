@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
-  usePathname: () => "/dashboard/artist-follow",
-  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/dashboard/watchlist",
+  useSearchParams: () => new URLSearchParams("section=artists"),
 }));
 
 describe("ArtistFollowListToolbar", () => {

@@ -35,6 +35,15 @@ function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): stri
     if (item.href.startsWith("/admin/catalog")) return "Catalog";
     return "Admin";
   }
+  if (item.id === "organisations" || item.id === "invitations") return "Organisations";
+  if (
+    item.id === "notifications" ||
+    item.id === "settings" ||
+    item.href.includes("/settings") ||
+    item.id === "payments"
+  ) {
+    return "Account";
+  }
   if (
     item.href.includes("/seller") ||
     item.id.startsWith("seller") ||
@@ -43,11 +52,9 @@ function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): stri
     item.id === "payouts" ||
     item.id === "artist"
   ) {
-    return "Selling";
+    return "Workspace";
   }
-  if (item.href.includes("/settings")) return "Settings";
-  if (item.id === "organisations" || item.id === "invitations") return "Account";
-  return "Collection";
+  return "Workspace";
 }
 
 function groupNavItems(items: AppShellNavItem[], variant: "client" | "staff") {
@@ -103,6 +110,14 @@ function MobileProfileStrip({
       </div>
       <div className="mt-3 grid gap-2">
         <Link
+          href="/dashboard/settings"
+          onClick={onNavigate}
+          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary-container/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary-container/20"
+        >
+          All settings
+          <ChevronRight className="size-4 shrink-0" aria-hidden />
+        </Link>
+        <Link
           href="/dashboard/settings/profile"
           onClick={onNavigate}
           className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-border-hairline px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
@@ -143,6 +158,9 @@ export function MobileMoreSheet({
           </BottomSheetTitle>
         </BottomSheetHeader>
         <div className="space-y-5 px-6 pt-4 pb-6">
+          {variant === "client" ? (
+            <WorkspaceModeSwitcher mode={clientWorkspaceMode} variant="inline" />
+          ) : null}
           {variant === "client" && user ? (
             <MobileProfileStrip user={user} onNavigate={() => onOpenChange(false)} />
           ) : null}
@@ -158,16 +176,13 @@ export function MobileMoreSheet({
             Quick go
           </button>
           <p className="text-center text-xs text-on-surface-variant">
-            Jump to settings, payments, organisations, and more
+            Jump to collection, payments, organisations, and more
           </p>
-          {variant === "client" ? (
-            <WorkspaceModeSwitcher mode={clientWorkspaceMode} variant="inline" />
-          ) : null}
           {grouped.length > 0 ? (
             <div className="space-y-4">
               {grouped.map(([group, groupItems]) => (
                 <div key={group}>
-                  <p className="mb-2 font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  <p className="mb-2 font-label text-[11px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
                     {group}
                   </p>
                   <nav aria-label={`${group} destinations`} className="grid gap-2">

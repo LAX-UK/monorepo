@@ -9,6 +9,7 @@ import { HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton
 import { LaxUpcomingAuctionsMarketing } from "@/components/sections/home/upcoming-auctions-marketing/lax-upcoming-auctions-marketing";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { HOME_HERO_BLEED } from "@/lib/marketing/home-hero-layout";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import {
@@ -104,7 +105,9 @@ async function MarketingHomeContent({
           {structuredData}
         </script>
       ) : null}
-      <LaxHero state={heroState} />
+      <div className={HOME_HERO_BLEED}>
+        <LaxHero state={heroState} />
+      </div>
       {urgencySection.variant !== "none" ? (
         <LaxUrgencySection
           variant={urgencySection.variant}
@@ -139,7 +142,7 @@ export default async function HomePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   return (
-    <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
+    <main id="main-content" className="bg-page-bg">
       <Suspense fallback={<HomeSkeleton />}>
         <MarketingHomeContent searchParams={searchParams} />
       </Suspense>

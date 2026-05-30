@@ -1,5 +1,6 @@
 "use client";
 
+import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { setClientWorkspaceModeAction } from "@/lib/actions/workspace";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
@@ -87,30 +88,49 @@ export function WorkspaceModeSwitcher({ mode, hidden, variant = "sheet" }: Props
       </div>
 
       <div className="lg:hidden">
-        <BottomSheet open={open} onOpenChange={setOpen}>
-          <BottomSheetTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              className="h-auto min-h-11 w-full justify-between gap-2 border-outline-variant/30 py-2 font-label text-[11px] uppercase tracking-[0.14em]"
-              aria-label={`Workspace: ${mode === "buying" ? "Buying" : "Selling and artist"}`}
-            >
-              <span>{mode === "buying" ? "Buying" : "Selling"}</span>
-              <ChevronDown className="size-4 shrink-0 opacity-70" aria-hidden />
-            </Button>
-          </BottomSheetTrigger>
-          <BottomSheetContent className="border-outline-variant">
-            <BottomSheetHeader>
-              <BottomSheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                Workspace
-              </BottomSheetTitle>
-            </BottomSheetHeader>
-            <div className="grid gap-3 px-6 pb-6">{workspaceButtons}</div>
-          </BottomSheetContent>
-        </BottomSheet>
+        <HydrationDeferred
+          fallback={<WorkspaceModeMobileTrigger mode={mode} pending={pending} hydrationPending />}
+        >
+          <BottomSheet open={open} onOpenChange={setOpen}>
+            <BottomSheetTrigger asChild>
+              <WorkspaceModeMobileTrigger mode={mode} pending={pending} />
+            </BottomSheetTrigger>
+            <BottomSheetContent className="border-outline-variant">
+              <BottomSheetHeader>
+                <BottomSheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                  Workspace
+                </BottomSheetTitle>
+              </BottomSheetHeader>
+              <div className="grid gap-3 px-6 pb-6">{workspaceButtons}</div>
+            </BottomSheetContent>
+          </BottomSheet>
+        </HydrationDeferred>
       </div>
     </>
+  );
+}
+
+function WorkspaceModeMobileTrigger({
+  mode,
+  pending,
+  hydrationPending,
+}: {
+  mode: ClientWorkspaceMode;
+  pending: boolean;
+  hydrationPending?: boolean;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={pending || hydrationPending}
+      className="h-auto min-h-11 w-full justify-between gap-2 border-outline-variant/30 py-2 font-label text-[11px] uppercase tracking-[0.14em]"
+      aria-label={`Workspace: ${mode === "buying" ? "Buying" : "Selling and artist"}`}
+      {...(hydrationPending ? { "aria-busy": true as const } : {})}
+    >
+      <span>{mode === "buying" ? "Buying" : "Selling"}</span>
+      <ChevronDown className="size-4 shrink-0 opacity-70" aria-hidden />
+    </Button>
   );
 }
 

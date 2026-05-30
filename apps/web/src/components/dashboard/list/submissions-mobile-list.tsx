@@ -6,6 +6,7 @@ import {
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import type { SubmissionTableRow } from "@/components/dashboard/submissions-board";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -14,11 +15,13 @@ type Props = {
 };
 
 export function SubmissionsMobileList({ rows }: Props) {
+  const rowPadding = useDashboardListRowPaddingClass();
   return (
     <DashboardMobileList>
       {rows.map((row) => (
         <li key={row.id}>
           <DashboardListRowCard
+            className={rowPadding}
             title={
               <Link
                 href={`/dashboard/submissions/${row.id}`}

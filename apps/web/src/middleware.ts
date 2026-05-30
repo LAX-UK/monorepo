@@ -8,6 +8,7 @@ import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
 import { seedDefaultThemeCookieIfNeeded } from "@/lib/preferences/seed-theme-cookie";
 import { X_ROBOTS_TAG_NOINDEX, isIndexingAllowedForHost } from "@/lib/seo/is-indexing-allowed";
+import { syncClientWorkspaceCookie } from "@/lib/workspace/sync-client-workspace-cookie";
 import { type NextRequest, NextResponse } from "next/server";
 
 /** Generate a cryptographically random nonce string for CSP. */
@@ -111,6 +112,7 @@ export async function middleware(request: NextRequest) {
   }
 
   seedDefaultThemeCookieIfNeeded(request, baseResponse);
+  syncClientWorkspaceCookie(request, baseResponse);
 
   const hostname = request.nextUrl.hostname;
   if (!isOrgModuleEnabled(hostname)) {
