@@ -7,6 +7,7 @@ import { type Result, err, ok } from "neverthrow";
 import { mergeLotMarketingDetailsPatch } from "../lib/lot-marketing-details-merge.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
+  BuyerConditionReportListRow,
   ConditionReportRequestListRow,
   ConditionReportRequestRow,
   ConditionReportServiceError,
@@ -15,8 +16,27 @@ import type {
 } from "./interfaces/condition-report.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
+import { notificationRowToPayload } from "./notification-payload.js";
+import type { NotificationDispatcher } from "./notification.dispatcher.js";
+import type { NotificationFactory } from "./notification.factory.js";
 
 const OPEN_LOT_STATUSES = new Set<Lot["status"]>(["scheduled", "active"]);
+const OPEN_REQUEST_STATUSES = ["pending", "in_progress"] as const;
+
+function extractConditionReportDownloadUrl(
+  marketingDetails: Lot["marketingDetails"] | null | undefined,
+): string | null {
+  const cr = marketingDetails?.conditionReport;
+  const url = cr?.downloadUrl;
+  if (typeof url !== "string" || url.trim() === "") return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
 
 function mapRequestRow(r: typeof conditionReportRequest.$inferSelect): ConditionReportRequestRow {
   return {
@@ -40,7 +60,21 @@ export class ConditionReportService implements IConditionReportService {
     private readonly lotRepo: ILotRepository,
     private readonly legalEntityRepository: ILegalEntityRepository | null,
     private readonly domainEventPublisher: DomainEventPublisher | null,
+    private readonly notificationDispatcher: NotificationDispatcher | null,
+    private readonly notificationFactory: NotificationFactory,
   ) {}
+
+  private async notifyBuyerBestEffort(
+    userId: string,
+    payload: ReturnType<NotificationFactory["createConditionReportReady"]>,
+  ): Promise<void> {
+    if (!this.notificationDispatcher) return;
+    try {
+      await this.notificationDispatcher.dispatch(userId, notificationRowToPayload(payload));
+    } catch {
+      /* notification must not fail fulfilment */
+    }
+  }
 
   async createRequest(input: {
     userId: string;
@@ -90,6 +124,24 @@ export class ConditionReportService implements IConditionReportService {
       .limit(1);
     if (existing) {
       return ok(mapRequestRow(existing));
+    }
+
+    const [priorRequest] = await this.db
+      .select()
+      .from(conditionReportRequest)
+      .where(
+        and(
+          eq(conditionReportRequest.lotId, input.lotId),
+          eq(conditionReportRequest.requestedByUserId, input.userId),
+        ),
+      )
+      .limit(1);
+    if (priorRequest) {
+      return err({
+        message: "You have already requested a condition report for this lot",
+        status: 409,
+        code: "condition_report_already_requested",
+      });
     }
 
     const [inserted] = await this.db
@@ -165,6 +217,75 @@ export class ConditionReportService implements IConditionReportService {
     return { items, total };
   }
 
+  async findForBuyerOnLot(input: {
+    userId: string;
+    lotId: string;
+  }): Promise<ConditionReportRequestRow | null> {
+    const rows = await this.db
+      .select()
+      .from(conditionReportRequest)
+      .where(
+        and(
+          eq(conditionReportRequest.lotId, input.lotId),
+          eq(conditionReportRequest.requestedByUserId, input.userId),
+        ),
+      )
+      .orderBy(desc(conditionReportRequest.createdAt));
+
+    if (rows.length === 0) return null;
+
+    const open = rows.find((r) => (OPEN_REQUEST_STATUSES as readonly string[]).includes(r.status));
+    const chosen = open ?? rows[0];
+    if (!chosen) return null;
+    return mapRequestRow(chosen);
+  }
+
+  async listForBuyer(input: {
+    userId: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ items: BuyerConditionReportListRow[]; total: number }> {
+    const whereClause = eq(conditionReportRequest.requestedByUserId, input.userId);
+
+    const [totalRow] = await this.db
+      .select({ n: count() })
+      .from(conditionReportRequest)
+      .where(whereClause);
+    const total = Number(totalRow?.n ?? 0);
+
+    const rows = await this.db
+      .select({
+        r: conditionReportRequest,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        marketingDetails: lot.marketingDetails,
+      })
+      .from(conditionReportRequest)
+      .innerJoin(lot, eq(lot.id, conditionReportRequest.lotId))
+      .where(whereClause)
+      .orderBy(desc(conditionReportRequest.createdAt))
+      .limit(input.limit)
+      .offset(input.offset);
+
+    const items: BuyerConditionReportListRow[] = rows.map(
+      ({ r, lotTitle, lotNumber, marketingDetails }) => {
+        const base = mapRequestRow(r);
+        const downloadUrl =
+          base.status === "fulfilled"
+            ? extractConditionReportDownloadUrl(marketingDetails as Lot["marketingDetails"])
+            : null;
+        return {
+          ...base,
+          lotTitle: lotTitle ?? "Lot",
+          lotNumber,
+          downloadUrl,
+        };
+      },
+    );
+
+    return { items, total };
+  }
+
   async fulfill(
     input: FulfillConditionReportInput,
   ): Promise<Result<Lot, ConditionReportServiceError>> {
@@ -233,6 +354,10 @@ export class ConditionReportService implements IConditionReportService {
       if (!refreshed) {
         return err({ message: "Lot not found after update", status: 500 });
       }
+      await this.notifyBuyerBestEffort(
+        reqRow.requestedByUserId,
+        this.notificationFactory.createConditionReportReady(refreshed, reqRow.requestedByUserId),
+      );
       return ok(refreshed);
     } catch (e) {
       const status = (e as { status?: number }).status ?? 500;
@@ -282,6 +407,18 @@ export class ConditionReportService implements IConditionReportService {
         });
       }
     });
+
+    const lotRow = await this.lotRepo.findById(reqRow.lotId);
+    if (lotRow) {
+      await this.notifyBuyerBestEffort(
+        reqRow.requestedByUserId,
+        this.notificationFactory.createConditionReportDeclined(
+          lotRow,
+          reqRow.requestedByUserId,
+          input.responseNote ?? null,
+        ),
+      );
+    }
 
     return ok(undefined);
   }
