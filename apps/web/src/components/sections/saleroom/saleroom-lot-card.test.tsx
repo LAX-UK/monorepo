@@ -66,6 +66,22 @@ describe("SaleroomLotCard", () => {
     expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
   });
 
+  it("renders listActions beside the title, not on the list thumb", () => {
+    const { container } = render(
+      <SaleroomLotCard
+        lot={lot}
+        layout="row"
+        listActions={<span data-testid="list-actions">Actions</span>}
+      />,
+    );
+
+    const thumb = container.querySelector(".size-24");
+    const listActions = screen.getByTestId("list-actions");
+    expect(thumb).toBeInTheDocument();
+    expect(thumb).not.toContainElement(listActions);
+    expect(container.querySelector(".pointer-events-none.absolute.inset-0")).toBeNull();
+  });
+
   it("reserves equal text block heights on tile cards", () => {
     const { container } = render(
       <SaleroomLotCard lot={{ ...lot, lotLabel: null, artistOrMedium: null }} />,

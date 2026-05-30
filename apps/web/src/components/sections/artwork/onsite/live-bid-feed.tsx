@@ -6,13 +6,15 @@ import {
 } from "@/components/sections/artwork/artwork-view-models";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { BidFeedEntry } from "@/components/sections/artwork/onsite/bid-feed-entry";
-import { getLiveFeedHeaderMeta } from "@/components/sections/artwork/onsite/live-feed-header";
-import { useLotRealtime } from "@/hooks/use-lot-realtime";
+import {
+  type LiveFeedHeaderMeta,
+  getLiveFeedHeaderMeta,
+} from "@/components/sections/artwork/onsite/live-feed-header";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import { cn } from "@auction/ui";
 import { Gavel } from "lucide-react";
 import type { CSSProperties } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 function statusDotClass(tone: "live" | "upcoming" | "ended"): string {
   switch (tone) {
@@ -26,8 +28,8 @@ function statusDotClass(tone: "live" | "upcoming" | "ended"): string {
 }
 
 type Props = {
-  lotId: string;
-  initialHistory: BidHistoryEntry[];
+  /** Bid history owned by parent (e.g. `OnlineBidsView` + single realtime subscription). */
+  entries: BidHistoryEntry[];
   currentUserId: string | null;
   className?: string;
   headerMode?: "bids" | "watching" | "none";
@@ -35,44 +37,22 @@ type Props = {
   /** Unified lifecycle — drives header label when `headerMode` is `watching`. */
   lifecycleKind?: LotLifecycleKind;
   countdownClock?: string;
+  /** When true, header shows bid count only (countdown lives elsewhere). */
+  compactHeader?: boolean;
   listMaxHeightClass?: string;
 };
 
 export function LiveBidFeed({
-  lotId,
-  initialHistory,
+  entries,
   currentUserId,
   className,
   headerMode = "bids",
   watcherCount = null,
   lifecycleKind = "preLaunch",
   countdownClock = "",
+  compactHeader = false,
   listMaxHeightClass = "max-h-[min(55vh,520px)]",
 }: Props) {
-  const [entries, setEntries] = useState<BidHistoryEntry[]>(initialHistory);
-
-  const onBidUpdate = useCallback((e: { bidId: string; bidderId: string; amount: string }) => {
-    setEntries((prev) => {
-      const next: BidHistoryEntry = {
-        id: e.bidId,
-        bidderId: e.bidderId,
-        amount: e.amount,
-        at: Date.now(),
-      };
-      return [next, ...prev].filter((x, i, arr) => arr.findIndex((y) => y.id === x.id) === i);
-    });
-  }, []);
-
-  useLotRealtime(lotId, {
-    onBidUpdate: (e) => {
-      onBidUpdate({
-        bidId: e.bidId,
-        bidderId: e.bidderId,
-        amount: e.amount,
-      });
-    },
-  });
-
   const rows: BidFeedEntryVM[] = useMemo(
     () => mapBidHistoryToFeedEntries(entries, currentUserId),
     [entries, currentUserId],
@@ -86,14 +66,26 @@ export function LiveBidFeed({
 
   const showHeader = headerMode !== "none";
 
-  const watchingHeader = useMemo(
-    () =>
-      getLiveFeedHeaderMeta(lifecycleKind, {
-        countdownClock,
-        watcherCount,
-      }),
-    [lifecycleKind, countdownClock, watcherCount],
-  );
+  const watchingHeader = useMemo(() => {
+    if (compactHeader) {
+      const tone: LiveFeedHeaderMeta["tone"] =
+        lifecycleKind === "live" || lifecycleKind === "extended"
+          ? "live"
+          : lifecycleKind === "scheduled" || lifecycleKind === "preLaunch"
+            ? "upcoming"
+            : "ended";
+      return {
+        title: "Live Feed",
+        statusLabel: bidCountLabel,
+        pulse: tone === "live",
+        tone,
+      };
+    }
+    return getLiveFeedHeaderMeta(lifecycleKind, {
+      countdownClock,
+      watcherCount,
+    });
+  }, [compactHeader, lifecycleKind, countdownClock, watcherCount, bidCountLabel]);
 
   return (
     <div className={cn("flex w-full flex-col overflow-hidden lg:max-w-[440px]", className)}>

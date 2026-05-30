@@ -26,28 +26,32 @@ export function BidConfirmation({
   return (
     <div className="space-y-8">
       <div className="border-l-4 border-primary bg-surface-container-high/60 p-6 ring-1 ring-outline-variant/10">
-        <p className="mb-1 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Confirming your bid of
-        </p>
-        <p className="font-headline text-3xl text-primary">{formatMoney(amount)}</p>
-        {maxAuto ? (
-          <div className="mt-4 space-y-1 font-body text-sm text-on-surface-variant">
-            <p>
-              Max auto-bid cap:{" "}
-              <span className="font-headline text-on-surface">{formatMoney(maxAuto)}</span>
-            </p>
-            {autoBidStep ? (
-              <p>
-                Raise by{" "}
-                <span className="font-headline text-on-surface">{formatMoney(autoBidStep)}</span>{" "}
-                each time you&apos;re outbid.
-              </p>
-            ) : null}
-            <p className="text-on-surface-variant">
-              Auto-bid will continue defending after this bid until your max is reached.
-            </p>
+        <dl className="space-y-4">
+          <div>
+            <dt className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              This bid
+            </dt>
+            <dd className="font-headline text-3xl text-primary">{formatMoney(amount)}</dd>
           </div>
-        ) : null}
+          {maxAuto ? (
+            <div className="border-t border-outline-variant/20 pt-4">
+              <dt className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                Auto-bid max (stays active)
+              </dt>
+              <dd className="mt-1 font-headline text-xl text-on-surface">{formatMoney(maxAuto)}</dd>
+              {autoBidStep ? (
+                <p className="mt-2 font-body text-sm text-on-surface-variant">
+                  Raises by {formatMoney(autoBidStep)} each time you&apos;re outbid, until your max
+                  is reached.
+                </p>
+              ) : (
+                <p className="mt-2 font-body text-sm text-on-surface-variant">
+                  We&apos;ll keep defending after this bid until your max is reached.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </dl>
         <p className="mt-4 font-label text-xs leading-relaxed text-on-surface-variant">
           By placing a bid you agree to the{" "}
           <Link href="/terms" className="text-primary underline-offset-2 hover:underline">
