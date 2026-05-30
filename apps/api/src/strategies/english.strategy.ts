@@ -1,20 +1,26 @@
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
-import type { ILotStrategy } from "../services/interfaces/auction-strategy.js";
+import {
+  bidAmountBelowMinimum,
+  lotMinIncrementMoney,
+  minBidAmountMoney,
+} from "../services/bid/bid-money.js";
+import type { BidPolicyConfig } from "../services/bid/bid-policy.js";
+import type { ILotStrategy, ValidateBidContext } from "../services/interfaces/auction-strategy.js";
+import { isOperatorPlacement } from "../services/interfaces/auction-strategy.js";
 import { determineHighestBid } from "./highest-bid-winner.js";
 
-function minIncrement(lot: Lot): number {
-  const n = Number.parseFloat(lot.minBidIncrement);
-  return Number.isFinite(n) && n > 0 ? n : 0.01;
-}
-
 export class EnglishAuctionStrategy implements ILotStrategy {
-  validateBid(lot: Lot, bid: NewBid): Result<void, BidError> {
-    const current = Number(lot.currentPrice);
-    const inc = minIncrement(lot);
-    if (bid.amount + 1e-9 < current + inc) {
-      return err(new BidError(`Bid must be at least ${(current + inc).toFixed(2)}`));
+  validateBid(lot: Lot, bid: NewBid, ctx?: ValidateBidContext): Result<void, BidError> {
+    const inc = lotMinIncrementMoney(lot);
+    if (bidAmountBelowMinimum(bid.amount, lot.currentPrice, inc)) {
+      return err(new BidError(`Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`));
+    }
+    const winnerId = ctx?.currentWinnerId;
+    const bidderKey = bid.placedByUserId ?? bid.bidderId;
+    if (!isOperatorPlacement(ctx?.placedVia) && winnerId && bidderKey && winnerId === bidderKey) {
+      return err(new BidError("You are already the highest bidder", 400, "already_leading"));
     }
     if (
       bid.buyerLegalEntityId && lot.sellerLegalEntityId
@@ -27,12 +33,17 @@ export class EnglishAuctionStrategy implements ILotStrategy {
   }
 
   getNextPrice(lot: Lot, currentBidAmount: number): number {
-    return Math.max(Number(lot.currentPrice), currentBidAmount);
+    const currentMinor = Number.parseFloat(lot.currentPrice);
+    return Math.max(currentMinor, currentBidAmount);
   }
 
-  shouldExtendTime(lot: Lot, _bid: NewBid): boolean {
+  shouldExtendTime(lot: Lot, _bid: NewBid, policy: BidPolicyConfig): boolean {
     const msRemaining = lot.endTime.getTime() - Date.now();
-    return msRemaining > 0 && msRemaining < 2 * 60 * 1000;
+    return msRemaining > 0 && msRemaining < policy.antiSnipingWindowMs;
+  }
+
+  validateSelfServiceAllowed(_lot: Lot, _englishOnlyAuctions: boolean): Result<void, BidError> {
+    return ok(undefined);
   }
 
   determineWinner(_lot: Lot, bids: Bid[]): Bid | null {

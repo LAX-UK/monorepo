@@ -1,6 +1,7 @@
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
+import type { BidPolicyConfig } from "../services/bid/bid-policy.js";
 import type { ILotStrategy } from "../services/interfaces/auction-strategy.js";
 
 export class SealedBidAuctionStrategy implements ILotStrategy {
@@ -26,8 +27,21 @@ export class SealedBidAuctionStrategy implements ILotStrategy {
     return Math.max(Number(lot.currentPrice), currentBidAmount);
   }
 
-  shouldExtendTime(): boolean {
+  shouldExtendTime(_lot: Lot, _bid: NewBid, _policy: BidPolicyConfig): boolean {
     return false;
+  }
+
+  validateSelfServiceAllowed(lot: Lot, englishOnlyAuctions: boolean): Result<void, BidError> {
+    if (englishOnlyAuctions && lot.auctionType !== "english" && lot.auctionType !== "buy_it_now") {
+      return err(
+        new BidError(
+          "Self-service bidding is only available for English and buy-now lots while English-only mode is enabled.",
+          400,
+          "english_only_catalogue",
+        ),
+      );
+    }
+    return ok(undefined);
   }
 
   determineWinner(_lot: Lot, bids: Bid[]): Bid | null {

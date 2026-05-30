@@ -445,12 +445,12 @@ describe("BidService.placeBid", () => {
         {
           bidderId: "buyer-1",
           buyerLegalEntityId: "00000000-0000-4000-8000-000000000020",
-          ceiling: 200,
+          ceiling: "200.00",
         },
         {
           bidderId: "seller-member",
           buyerLegalEntityId: "00000000-0000-4000-8000-000000000021",
-          ceiling: 500,
+          ceiling: "500.00",
         },
       ]),
       bidderHasProxyMaxOnLot: vi
@@ -488,7 +488,7 @@ describe("BidService.placeBid", () => {
     expect(result.isOk()).toBe(true);
     expect(bidRepo.create).toHaveBeenCalledTimes(1);
     expect(bidRepo.create).not.toHaveBeenCalledWith(
-      expect.objectContaining({ bidderId: "seller-member" }),
+      expect.objectContaining({ placedByUserId: "seller-member" }),
     );
     expect(antiShillingGuard.violatesAntiShilling).toHaveBeenCalledWith(
       expect.objectContaining({ bidderUserId: "seller-member", lot: active }),
@@ -520,11 +520,11 @@ describe("BidService.placeBid", () => {
     });
     const proxyBid = createBid({
       id: "bid-proxy",
-      bidderId: "buyer-b",
-      amount: "130.00",
+      bidderId: "buyer-a",
+      amount: "310.00",
       isAutoBid: true,
-      maxAutoBidAmount: "300.00",
-      autoBidStepAmount: "20.00",
+      maxAutoBidAmount: "500.00",
+      autoBidStepAmount: "10.00",
     });
     const lotRepo = baseLotRepo({
       findByIdForUpdate: vi.fn().mockResolvedValue(active),
@@ -538,14 +538,14 @@ describe("BidService.placeBid", () => {
           {
             bidderId: "buyer-a",
             buyerLegalEntityId: "buyer-a",
-            ceiling: 500,
-            autoBidStepAmount: 10,
+            ceiling: "500.00",
+            autoBidStepAmount: "10.00",
           },
           {
             bidderId: "buyer-b",
             buyerLegalEntityId: "buyer-b",
-            ceiling: 300,
-            autoBidStepAmount: 20,
+            ceiling: "300.00",
+            autoBidStepAmount: "20.00",
           },
         ])
         .mockResolvedValue([]),
@@ -575,10 +575,10 @@ describe("BidService.placeBid", () => {
     expect(bidRepo.create).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        placedByUserId: "buyer-b",
-        amount: "130.00",
+        placedByUserId: "buyer-a",
+        amount: "310.00",
         isAutoBid: true,
-        autoBidStepAmount: "20.00",
+        autoBidStepAmount: "10.00",
       }),
     );
   });
@@ -824,6 +824,218 @@ describe("BidService.placeBid", () => {
     expect(cancelLotJobs).toHaveBeenCalledWith("auc-1");
     expect(notifyLotEnded).toHaveBeenCalledOnce();
   });
+
+  it("extends lot end time and reschedules jobs when bid arrives in anti-sniping window", async () => {
+    const now = Date.now();
+    const active = lot({
+      currentPrice: "100.00",
+      endTime: new Date(now + 60_000),
+    });
+    const created = createBid({ amount: "150.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn(),
+    });
+    const notifyLotExtended = vi.fn().mockResolvedValue(undefined);
+    const rescheduleEnd = vi.fn().mockResolvedValue(undefined);
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
+        { notifyLotExtended, notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: null,
+      lotJobs: { rescheduleEnd, cancelLotJobs: vi.fn() },
+      bidPolicy: {
+        antiSnipingWindowMs: 120_000,
+        antiSnipingExtensionMs: 30_000,
+        maxProxyRounds: 100,
+      },
+    });
+
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
+    expect(result.isOk()).toBe(true);
+    expect(lotRepo.updateEndTime).toHaveBeenCalledOnce();
+    expect(notifyLotExtended).toHaveBeenCalledOnce();
+    expect(rescheduleEnd).toHaveBeenCalledOnce();
+  });
+
+  it("rejects bid when bidder is already leading", async () => {
+    const active = lot({ currentPrice: "150.00" });
+    const previousWinner = createBid({
+      id: "bid-prev",
+      bidderId: "bidder-1",
+      amount: "150.00",
+    });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      findWinningBid: vi.fn().mockResolvedValue(previousWinner),
+    });
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
+
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 160));
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("already_leading");
+    }
+    expect(bidRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("allows operator telephone bid when buyer is already leading", async () => {
+    const active = lot({ currentPrice: "150.00" });
+    const previousWinner = createBid({
+      id: "bid-prev",
+      bidderId: "buyer-1",
+      amount: "150.00",
+    });
+    const created = createBid({ id: "bid-tel", bidderId: "buyer-1", amount: "160.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      findWinningBid: vi.fn().mockResolvedValue(previousWinner),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
+
+    const result = await service.placeBid({
+      placedByUserId: "buyer-1",
+      buyerLegalEntityId: "buyer-1",
+      lotId: "auc-1",
+      amount: 160,
+      placement: { placedVia: "telephone" },
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(bidRepo.create).toHaveBeenCalledOnce();
+  });
+
+  it("dispatches outbid notification to previous winner", async () => {
+    const active = lot({ currentPrice: "100.00" });
+    const previousWinner = createBid({
+      id: "bid-prev",
+      bidderId: "bidder-prev",
+      amount: "125.00",
+    });
+    const created = createBid({ id: "bid-new", bidderId: "bidder-new", amount: "150.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      findWinningBid: vi.fn().mockResolvedValue(previousWinner),
+      markWinningBid: vi.fn(),
+    });
+    const dispatch = vi.fn().mockResolvedValue(undefined);
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        {
+          notifyBidPlaced: vi.fn().mockResolvedValue(undefined),
+        },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: { dispatch } as never,
+      lotJobs: null,
+    });
+
+    const result = await service.placeBid(personalBid("bidder-new", "auc-1", 150));
+    expect(result.isOk()).toBe(true);
+    expect(dispatch).toHaveBeenCalledWith("bidder-prev", expect.any(Object));
+  });
+
+  it("settles proxy in one step for large ceiling gap", async () => {
+    const active = lot({ currentPrice: "100.00", minBidIncrement: "1.00" });
+    const directBid = createBid({
+      id: "bid-direct",
+      bidderId: "buyer-high",
+      amount: "101.00",
+      isAutoBid: true,
+      maxAutoBidAmount: "10000.00",
+    });
+    const proxyBid = createBid({
+      id: "bid-proxy",
+      bidderId: "buyer-high",
+      amount: "5001.00",
+      isAutoBid: true,
+      maxAutoBidAmount: "10000.00",
+    });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValueOnce(directBid).mockResolvedValueOnce(proxyBid),
+      markWinningBid: vi.fn(),
+      listBidderCeilingStates: vi.fn().mockResolvedValue([
+        {
+          bidderId: "buyer-high",
+          buyerLegalEntityId: "buyer-high",
+          ceiling: "10000.00",
+          autoBidStepAmount: "1.00",
+          maxCreatedAt: new Date("2020-01-01T00:00:00Z"),
+        },
+        {
+          bidderId: "buyer-low",
+          buyerLegalEntityId: "buyer-low",
+          ceiling: "5000.00",
+          autoBidStepAmount: "1.00",
+          maxCreatedAt: new Date("2020-01-02T00:00:00Z"),
+        },
+      ]),
+    });
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: null,
+      lotJobs: null,
+    });
+
+    const result = await service.placeBid({
+      ...personalBid("buyer-high", "auc-1", 101, 10_000),
+      autoBidStepAmount: 1,
+    });
+    expect(result.isOk()).toBe(true);
+    expect(bidRepo.create).toHaveBeenCalledTimes(2);
+    expect(bidRepo.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ amount: "5001.00", placedByUserId: "buyer-high" }),
+    );
+  });
 });
 
 describe("BidService.placeBidWithIdempotency", () => {
@@ -1016,5 +1228,94 @@ describe("BidService.placeBidWithIdempotency", () => {
     expect(out.type).toBe("ok");
     expect(ensurePersonalEntity).not.toHaveBeenCalled();
     expect(legalEntityRepository.findById).toHaveBeenCalledWith(orgEntityId);
+  });
+
+  it("stores idempotency replay even when post-commit cache notify fails", async () => {
+    const created = createBid({ id: "bid-cache-fail" });
+    const idempotencyStore: IIdempotencyStore = {
+      get: vi.fn().mockResolvedValue(null),
+      setWithExpiry: vi.fn(),
+      tryClaim: vi.fn().mockResolvedValue(true),
+      delete: vi.fn(),
+    };
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(lot({ currentPrice: "100.00" })),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn(),
+    });
+    const legalEntityRepository = {
+      ensurePersonalEntity: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
+      findById: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: {
+        set: vi.fn().mockRejectedValue(new Error("redis down")),
+        get: vi.fn(),
+        del: vi.fn(),
+      },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: null,
+      lotJobs: null,
+      idempotencyStore,
+      legalEntityRepository: legalEntityRepository as never,
+    });
+
+    const out = await service.placeBidWithIdempotency({
+      placedByUserId: "u1",
+      idempotencyKey: "k-cache-fail",
+      lotId: "auc-1",
+      amount: 150,
+    });
+
+    expect(out.type).toBe("ok");
+    expect(idempotencyStore.setWithExpiry).toHaveBeenCalledOnce();
+    expect(idempotencyStore.delete).not.toHaveBeenCalled();
+  });
+
+  it("releases idempotency claim when placeBid throws (transaction rollback)", async () => {
+    const idempotencyStore: IIdempotencyStore = {
+      get: vi.fn().mockResolvedValue(null),
+      setWithExpiry: vi.fn(),
+      tryClaim: vi.fn().mockResolvedValue(true),
+      delete: vi.fn(),
+    };
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockRejectedValue(new Error("connection reset")),
+    });
+    const legalEntityRepository = {
+      ensurePersonalEntity: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
+      findById: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, baseBidRepo()),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: null,
+      lotJobs: null,
+      idempotencyStore,
+      legalEntityRepository: legalEntityRepository as never,
+    });
+
+    await expect(
+      service.placeBidWithIdempotency({
+        placedByUserId: "u1",
+        idempotencyKey: "k-throw",
+        lotId: "auc-1",
+        amount: 150,
+      }),
+    ).rejects.toThrow("connection reset");
+
+    expect(idempotencyStore.delete).toHaveBeenCalledOnce();
   });
 });

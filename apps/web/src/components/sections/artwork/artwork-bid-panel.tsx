@@ -103,6 +103,13 @@ export function ArtworkBidPanel({
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
   const [outbidBannerVisible, setOutbidBannerVisible] = useState(false);
   const confirmIdempotencyKeyRef = useRef<string | null>(null);
+  const lastOwnBidRef = useRef<{
+    bidId: string;
+    amount: string;
+    currentPrice: string;
+    leadingBidderId: string | null;
+    at: number;
+  } | null>(null);
   const endTimeRef = useRef(endTime);
   endTimeRef.current = endTime;
 
@@ -147,6 +154,22 @@ export function ArtworkBidPanel({
 
   useLotRealtime(auction.id, {
     onBidUpdate: (e) => {
+      const own = lastOwnBidRef.current;
+      if (own && e.bidId === own.bidId) {
+        return;
+      }
+      if (
+        own &&
+        sessionUser?.id &&
+        own.leadingBidderId === sessionUser.id &&
+        Number.parseFloat(e.amount) < Number.parseFloat(own.amount) &&
+        Date.now() - own.at < 5000
+      ) {
+        return;
+      }
+      if (own && e.emittedAt != null && e.emittedAt < own.at) {
+        return;
+      }
       setCurrentPrice(e.currentPrice);
       setLeadingBidderId(e.bidderId);
       triggerPriceFlash();
@@ -451,6 +474,13 @@ export function ArtworkBidPanel({
     setCurrentPrice(result.bid.amount);
     const bidderId = result.bid.bidderId ?? result.bid.placedByUserId ?? "";
     setLeadingBidderId(bidderId || null);
+    lastOwnBidRef.current = {
+      bidId: result.bid.id,
+      amount: result.bid.amount,
+      currentPrice: result.bid.amount,
+      leadingBidderId: bidderId || null,
+      at: Date.now(),
+    };
     if (result.bid.maxAutoBidAmount) {
       setActiveAutoBid({
         maxAutoBidAmount: result.bid.maxAutoBidAmount,

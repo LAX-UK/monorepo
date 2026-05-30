@@ -1,5 +1,6 @@
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_BID_POLICY } from "../services/bid/bid-policy.js";
 import { EnglishAuctionStrategy } from "./english.strategy.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
@@ -132,5 +133,44 @@ describe("EnglishAuctionStrategy", () => {
       },
     ];
     expect(strategy.determineWinner(a, bids)?.id).toBe("b-early");
+  });
+
+  it("shouldExtendTime when less than policy window remains", () => {
+    const now = Date.now();
+    const a = mkLot({ endTime: new Date(now + 30_000) });
+    expect(strategy.shouldExtendTime(a, { bidderId: "u1", amount: 101 }, DEFAULT_BID_POLICY)).toBe(
+      true,
+    );
+  });
+
+  it("rejects bid when bidder is already leading", () => {
+    const a = mkLot({ currentPrice: "150.00" });
+    const r = strategy.validateBid(
+      a,
+      { bidderId: "u1", placedByUserId: "u1", amount: 160 },
+      { currentWinnerId: "u1" },
+    );
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) expect(r.error.code).toBe("already_leading");
+  });
+
+  it("allows operator telephone bid when buyer is already leading", () => {
+    const a = mkLot({ currentPrice: "150.00" });
+    const r = strategy.validateBid(
+      a,
+      { bidderId: "u1", placedByUserId: "u1", amount: 160 },
+      { currentWinnerId: "u1", placedVia: "telephone" },
+    );
+    expect(r.isOk()).toBe(true);
+  });
+
+  it("allows absentee bid when buyer is already leading", () => {
+    const a = mkLot({ currentPrice: "150.00" });
+    const r = strategy.validateBid(
+      a,
+      { bidderId: "u1", placedByUserId: "u1", amount: 160 },
+      { currentWinnerId: "u1", placedVia: "absentee" },
+    );
+    expect(r.isOk()).toBe(true);
   });
 });

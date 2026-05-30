@@ -152,6 +152,7 @@ import { AuthAuditPublisher } from "./services/auth-audit.publisher.js";
 import { AutoBidService } from "./services/auto-bid.service.js";
 import { BidEligibilityService } from "./services/bid-eligibility.service.js";
 import { BidService } from "./services/bid.service.js";
+import { DEFAULT_BID_POLICY } from "./services/bid/bid-policy.js";
 import { CategoryService } from "./services/category.service.js";
 import { ConditionReportService } from "./services/condition-report.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
@@ -1082,6 +1083,12 @@ export function createContainer(env: Env): Container {
     bidEligibility: bidEligibilityService,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     lotLifecycleRecording,
+    bidPolicy: {
+      ...DEFAULT_BID_POLICY,
+      antiSnipingWindowMs: env.ANTI_SNIPING_WINDOW_MS,
+      antiSnipingExtensionMs: env.ANTI_SNIPING_EXTENSION_MS,
+      maxProxyRounds: env.MAX_PROXY_ROUNDS,
+    },
   });
   const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
   const autoBidService = new AutoBidService({
