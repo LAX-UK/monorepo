@@ -2,7 +2,7 @@
 
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
 import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
-import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
+import { CatalogReadinessChecklist } from "@/components/admin/catalog/catalog-readiness-checklist";
 import {
   ActivitySnapshotRail,
   KpiStackRail,
@@ -12,6 +12,7 @@ import {
 import type { QuickActionItem } from "@/components/admin/detail-rail/quick-actions-rail";
 import { sumLotHammers } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
+import { shouldShowCatalogReadinessRail } from "@/lib/admin/catalog-detail-readiness-surface";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { saleDetailReadinessDismissKey } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
@@ -56,7 +57,10 @@ export function SaleContextRail({
 }: Props) {
   const { isPostCreateBannerActive } = useCatalogPostCreateSession();
   const readiness = draftSetupReadiness;
-  const hideRailReadiness = isPostCreateBannerActive(readiness);
+  const showRailReadiness = shouldShowCatalogReadinessRail({
+    readiness,
+    isPostCreateBannerActive: isPostCreateBannerActive(readiness),
+  });
 
   const pendingRegs =
     liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;
@@ -113,12 +117,12 @@ export function SaleContextRail({
             </Link>
           </Button>
         ) : null}
-        {readiness && !hideRailReadiness ? (
-          <CatalogPublishReadiness
+        {showRailReadiness && readiness ? (
+          <CatalogReadinessChecklist
             title="Publish readiness"
             readiness={readiness}
+            variant="compact"
             dismissKey={saleDetailReadinessDismissKey(saleId)}
-            compact
           />
         ) : null}
         {deleteBlockers.length > 0 && canManageSales ? (

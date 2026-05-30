@@ -1,13 +1,14 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminLotsBoard } from "@/components/admin/admin-lots-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import { CatalogListCapBanner } from "@/components/admin/catalog/catalog-list-cap-banner";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogLotsFilterToolbar } from "@/components/admin/catalog/catalog-lots-filter-toolbar";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { LotFilterOptionsLoader } from "@/components/admin/lot-filter-options-loader";
+import { AdminLotsBoard } from "@/components/admin/lots-board";
 import { AdminWithdrawalsBoard } from "@/components/admin/withdrawals-board";
 import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
@@ -233,6 +234,7 @@ export default async function AdminLotsPage({
       }
       toolbarEnd={
         <>
+          <CatalogKpiPeriodToggle current={periodDays} className="hidden md:flex" />
           <Link
             href="/sales"
             className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"

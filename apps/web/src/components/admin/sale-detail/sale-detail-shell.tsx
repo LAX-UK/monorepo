@@ -17,6 +17,7 @@ import { SaleDetailConnectNotice } from "@/components/admin/sale-detail/sale-det
 import { isSaleLiveish, venueOneLiner } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleDetailReadinessProvider } from "@/components/admin/sale-detail/sale-detail-readiness-context";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
+import { SaleSetupProgressChip } from "@/components/admin/sale-detail/sale-setup-progress-chip";
 import {
   buildSaleDetailNavActions,
   saleNavItemsToMobileBar,
@@ -170,6 +171,9 @@ export function SaleDetailShell({
             <Badge variant="secondary" className="capitalize">
               {sale.deliveryMode}
             </Badge>
+            {sale.status === "draft" && setupReadiness && draftSetupHref ? (
+              <SaleSetupProgressChip readiness={setupReadiness} setupHref={draftSetupHref} />
+            ) : null}
           </div>
         }
         actions={

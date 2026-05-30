@@ -99,6 +99,9 @@ export function AdminSaleForm({
     reValidateMode: "onChange",
   });
 
+  const getValuesRef = useRef(form.getValues);
+  getValuesRef.current = form.getValues;
+
   const validateAllWizardSteps = useCallback(async () => {
     return validateAllSaleWizardSteps(form, formSchema, wizardGoToRef.current);
   }, [form, formSchema]);
@@ -227,6 +230,11 @@ export function AdminSaleForm({
             pending={pending}
             hideStickyOnMobile={Boolean(htmlFormId)}
             showSubmitOnAllSteps
+            draft={{
+              entityKind: "sale",
+              entityId: saleId,
+              getValues: () => getValuesRef.current() as Record<string, unknown>,
+            }}
             onStepControl={({ goTo }) => {
               wizardGoToRef.current = goTo;
             }}

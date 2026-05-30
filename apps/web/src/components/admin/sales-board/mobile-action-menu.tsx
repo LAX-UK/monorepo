@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  adminSaleEditHref,
-  adminSaleHref,
-  adminSaleSetupHref,
-} from "@/lib/admin/catalog-route-helpers";
-import { salePath } from "@/lib/seo/url";
+import { buildSaleBoardMobileMenuItems } from "@/lib/admin/build-sale-board-mobile-menu";
 import { notify } from "@/lib/ui/notify";
 import { InlineActionMenu } from "@auction/ui";
 import { useRouter } from "next/navigation";
@@ -19,40 +14,26 @@ export function SaleBoardMobileActionMenu({
   canManageSales: boolean;
 }) {
   const router = useRouter();
-  const publicPath = salePath({ id: row.saleId, title: row.title });
-  const items = [
-    {
-      type: "item" as const,
-      label: "Manage",
-      onSelect: () => router.push(adminSaleHref(row.saleId)),
-    },
-    {
-      type: "item" as const,
-      label: "Edit",
-      onSelect: () => router.push(adminSaleEditHref(row.saleId)),
-    },
-    {
-      type: "item" as const,
-      label: "View on site",
-      onSelect: () => window.open(publicPath, "_blank", "noopener,noreferrer"),
-    },
-    {
-      type: "item" as const,
-      label: "Copy sale ID",
-      onSelect: () => {
-        void navigator.clipboard.writeText(row.saleId).then(
+  const defs = buildSaleBoardMobileMenuItems(row, { canManageSales });
+
+  const items = defs.map((def) => ({
+    type: "item" as const,
+    label: def.label,
+    onSelect: () => {
+      if (def.kind === "copyId") {
+        void navigator.clipboard.writeText(def.href).then(
           () => notify.success("Copied to clipboard"),
           () => notify.error("Could not copy to clipboard"),
         );
-      },
+        return;
+      }
+      if (def.kind === "site") {
+        window.open(def.href, "_blank", "noopener,noreferrer");
+        return;
+      }
+      router.push(def.href);
     },
-  ];
-  if (canManageSales && row.status === "draft") {
-    items.splice(2, 0, {
-      type: "item" as const,
-      label: "Continue setup",
-      onSelect: () => router.push(adminSaleSetupHref(row.saleId)),
-    });
-  }
+  }));
+
   return <InlineActionMenu label={`Actions for ${row.title}`} items={items} />;
 }

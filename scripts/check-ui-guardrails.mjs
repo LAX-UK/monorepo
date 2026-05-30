@@ -72,6 +72,14 @@ for (const file of files) {
       `${rel}: native dialog — use ConfirmDialog from '@auction/ui/components/confirm-dialog'`,
     );
   }
+
+  if (rel.startsWith("components/admin/catalog/")) {
+    if (/MarketingFilterSheet/.test(text)) {
+      violations.push(
+        `${rel}: MarketingFilterSheet in admin catalog — use SplitFilterSheet from '@/components/ui/split-filter-sheet'`,
+      );
+    }
+  }
 }
 
 if (violations.length > 0) {

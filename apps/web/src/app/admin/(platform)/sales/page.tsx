@@ -1,12 +1,13 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminSalesBoard } from "@/components/admin/admin-sales-board";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { CatalogSalesFilterToolbar } from "@/components/admin/catalog/catalog-sales-filter-toolbar";
 import { SaleFilterForm } from "@/components/admin/sale-filter-form";
+import { AdminSalesBoard } from "@/components/admin/sales-board";
 import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { salesListController } from "@/lib/admin/admin-list-controllers";
@@ -30,6 +31,7 @@ export default async function AdminSalesPage({
   searchParams: Promise<{
     status?: string;
     lifecycle?: string;
+    lens?: string;
     delivery?: string;
     q?: string;
     error?: string;
@@ -153,6 +155,7 @@ export default async function AdminSalesPage({
               activeLensId={activeLensId}
               {...(lifecycleSlug ? { lifecycle: lifecycleSlug } : {})}
               {...(deliveryFilter ? { delivery: deliveryFilter } : {})}
+              {...(model.sort ? { sort: model.sort } : {})}
             />
           }
         />
@@ -169,6 +172,7 @@ export default async function AdminSalesPage({
       }
       toolbarEnd={
         <>
+          <CatalogKpiPeriodToggle current={periodDays} className="hidden md:flex" />
           <Link
             href="/sales"
             className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"
@@ -208,8 +212,8 @@ export default async function AdminSalesPage({
         <Suspense fallback={<PageSkeleton variant="table" />}>
           <AdminSalesBoard
             rows={boardRows}
-            toolbarEnd={null}
             canManageSales={canManageSales}
+            listError={err}
             columnSort={columnSort}
           />
         </Suspense>

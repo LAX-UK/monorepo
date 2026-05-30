@@ -564,6 +564,7 @@ export function SaleSetupWizard({
                       lots={lots}
                       pendingRegistrationCount={pendingRegistrationCount}
                       canPublish={canManageSale}
+                      onEditSummary={() => wizardGoToRef.current(0)}
                       {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
                     />
                   ) : null}

@@ -2,6 +2,7 @@
 
 import { useCatalogPostCreateSession } from "@/components/admin/catalog/catalog-post-create-session";
 import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
+import { shouldShowCatalogReadinessBanner } from "@/lib/admin/catalog-detail-readiness-surface";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { useEffect } from "react";
 
@@ -25,7 +26,15 @@ export function CatalogWhatsNextBanner({ entityLabel, readiness, dismissKey }: P
     }
   }, [dismissKey, registerBannerDismiss]);
 
-  if (!isPostCreateBannerActive(readiness) || !readiness) return null;
+  if (
+    !shouldShowCatalogReadinessBanner({
+      readiness,
+      isPostCreateBannerActive: isPostCreateBannerActive(readiness),
+    }) ||
+    !readiness
+  ) {
+    return null;
+  }
 
   return (
     <CatalogPublishReadiness

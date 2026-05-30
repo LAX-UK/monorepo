@@ -4,6 +4,7 @@ import {
   clearWizardDraft,
   wizardDraftCookieKey,
 } from "@/components/admin/admin-form-wizard/wizard-draft";
+import { notifyCatalogActionFailure } from "@/components/admin/catalog/use-catalog-form-submit";
 import {
   adminCreateSaleResultAction,
   adminPublishSaleResultAction,
@@ -27,7 +28,6 @@ import {
   safeParseCreateSaleFromForm,
   safeParseUpdateSaleFromForm,
 } from "@/lib/forms/schemas/admin-sale-form";
-import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
 import { useRouter } from "next/navigation";
@@ -76,15 +76,14 @@ export function useSaleSetupSubmit({
         }
         const r = await adminCreateSaleResultAction(api.data, createIdempotencyKeyRef.current);
         if (!r.ok) {
-          notify.error(
-            humanizeSetupError({
-              message: actionFailureNotifyMessage(r.error, {
-                status: r.status,
-                errorCode: r.errorCode,
-                meta: r.meta,
-              }),
-              errorCode: r.errorCode,
-            }),
+          notifyCatalogActionFailure(
+            r.error,
+            {
+              ...(r.status !== undefined ? { status: r.status } : {}),
+              ...(r.errorCode !== undefined ? { errorCode: r.errorCode } : {}),
+              ...(r.meta !== undefined ? { meta: r.meta } : {}),
+            },
+            humanizeSetupError,
           );
           return null;
         }
@@ -118,15 +117,14 @@ export function useSaleSetupSubmit({
       }
       const r = await adminUpdateSaleResultAction(saleId, api.data);
       if (!r.ok) {
-        notify.error(
-          humanizeSetupError({
-            message: actionFailureNotifyMessage(r.error, {
-              status: r.status,
-              errorCode: r.errorCode,
-              meta: r.meta,
-            }),
-            errorCode: r.errorCode,
-          }),
+        notifyCatalogActionFailure(
+          r.error,
+          {
+            ...(r.status !== undefined ? { status: r.status } : {}),
+            ...(r.errorCode !== undefined ? { errorCode: r.errorCode } : {}),
+            ...(r.meta !== undefined ? { meta: r.meta } : {}),
+          },
+          humanizeSetupError,
         );
         return null;
       }
@@ -155,15 +153,14 @@ export function useSaleSetupSubmit({
       }
       const r = await adminPublishSaleResultAction(currentSaleId);
       if (!r.ok) {
-        notify.error(
-          humanizeSetupError({
-            message: actionFailureNotifyMessage(r.error, {
-              status: r.status,
-              errorCode: r.errorCode,
-              meta: r.meta,
-            }),
-            errorCode: r.errorCode,
-          }),
+        notifyCatalogActionFailure(
+          r.error,
+          {
+            ...(r.status !== undefined ? { status: r.status } : {}),
+            ...(r.errorCode !== undefined ? { errorCode: r.errorCode } : {}),
+            ...(r.meta !== undefined ? { meta: r.meta } : {}),
+          },
+          humanizeSetupError,
         );
         return false;
       }

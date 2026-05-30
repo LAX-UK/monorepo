@@ -1,7 +1,6 @@
 "use client";
 
-import { adminLotEditHref, adminLotHref } from "@/lib/admin/catalog-route-helpers";
-import { lotPath } from "@/lib/seo/url";
+import { buildLotBoardMobileMenuItems } from "@/lib/admin/build-lot-board-mobile-menu";
 import { notify } from "@/lib/ui/notify";
 import { InlineActionMenu } from "@auction/ui";
 import { useRouter } from "next/navigation";
@@ -15,40 +14,26 @@ export function LotBoardMobileActionMenu({
   canManageCatalog?: boolean;
 }) {
   const router = useRouter();
-  const publicHref = lotPath({ id: row.id, title: row.title });
-  const items = [
-    {
-      type: "item" as const,
-      label: "Open detail",
-      onSelect: () => router.push(adminLotHref(row.id)),
-    },
-    {
-      type: "item" as const,
-      label: "Edit",
-      onSelect: () => router.push(adminLotEditHref(row.id)),
-    },
-    {
-      type: "item" as const,
-      label: "View on site",
-      onSelect: () => window.open(publicHref, "_blank", "noopener,noreferrer"),
-    },
-    {
-      type: "item" as const,
-      label: "Copy lot ID",
-      onSelect: () => {
-        void navigator.clipboard.writeText(row.id).then(
+  const defs = buildLotBoardMobileMenuItems(row, { canManageCatalog });
+
+  const items = defs.map((def) => ({
+    type: "item" as const,
+    label: def.label,
+    onSelect: () => {
+      if (def.kind === "copyId") {
+        void navigator.clipboard.writeText(def.href).then(
           () => notify.success("Copied to clipboard"),
           () => notify.error("Could not copy to clipboard"),
         );
-      },
+        return;
+      }
+      if (def.kind === "site") {
+        window.open(def.href, "_blank", "noopener,noreferrer");
+        return;
+      }
+      router.push(def.href);
     },
-  ];
-  if (canManageCatalog && row.status === "draft") {
-    items.splice(2, 0, {
-      type: "item" as const,
-      label: "Publish",
-      onSelect: () => router.push(`${adminLotHref(row.id)}?focus=publish`),
-    });
-  }
+  }));
+
   return <InlineActionMenu label={`Actions for ${row.title}`} items={items} />;
 }

@@ -16,7 +16,6 @@ import {
   useLotEditSectionDirty,
 } from "@/components/admin/lot-form/lot-edit-form-context";
 import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
-import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-tabs";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { applyLotTypeFieldReset } from "@/lib/admin/lot-catalogue";
 import { buildLotEditTabFields, buildLotStepFields } from "@/lib/admin/lot-form-field-ownership";
@@ -104,6 +103,15 @@ export function AdminLotForm({
   baselineRef.current = defaultValues;
   const wizardGoToRef = useRef<(index: number) => void>(() => {});
   const tabGoToRef = useRef<(tabValue: string) => void>(() => {});
+  tabGoToRef.current = (tabValue: string) => {
+    const sectionId =
+      tabValue === "overview"
+        ? "lot-edit-identity"
+        : tabValue === "sale"
+          ? "lot-edit-sale"
+          : "lot-edit-catalogue";
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const [validationBanner, setValidationBanner] = useState<string | null>(null);
   const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
   const salesById = useMemo(() => {
@@ -283,43 +291,36 @@ export function AdminLotForm({
             />
           ) : null}
           {mode === "edit" ? (
-            <AdminDetailTabs
-              defaultValue="overview"
-              onTabControl={({ goTo }) => {
-                tabGoToRef.current = goTo;
-              }}
-              tabs={[
-                {
-                  value: "overview",
-                  label: "Overview",
-                  content: (
-                    <LotIdentityStep
-                      form={form}
-                      auctionTypeOptions={auctionTypeOptions}
-                      englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
-                    />
-                  ),
-                },
-                {
-                  value: "sale",
-                  label: "Sale & seller",
-                  content: <LotSaleSellerStep form={form} sales={sales} />,
-                },
-                {
-                  value: "catalogue",
-                  label: "Catalogue",
-                  content: (
-                    <LotCatalogueStep
-                      form={form}
-                      categories={categories}
-                      artists={artists}
-                      sales={sales}
-                      showArtistField={showArtistField}
-                    />
-                  ),
-                },
-              ]}
-            />
+            <div className="space-y-10">
+              <section id="lot-edit-identity" className="scroll-mt-24 space-y-4">
+                <h3 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                  Identity
+                </h3>
+                <LotIdentityStep
+                  form={form}
+                  auctionTypeOptions={auctionTypeOptions}
+                  englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+                />
+              </section>
+              <section id="lot-edit-sale" className="scroll-mt-24 space-y-4">
+                <h3 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                  Sale & seller
+                </h3>
+                <LotSaleSellerStep form={form} sales={sales} />
+              </section>
+              <section id="lot-edit-catalogue" className="scroll-mt-24 space-y-4">
+                <h3 className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                  Catalogue
+                </h3>
+                <LotCatalogueStep
+                  form={form}
+                  categories={categories}
+                  artists={artists}
+                  sales={sales}
+                  showArtistField={showArtistField}
+                />
+              </section>
+            </div>
           ) : (
             <AdminFormWizard
               steps={LOT_FORM_STEPS}
