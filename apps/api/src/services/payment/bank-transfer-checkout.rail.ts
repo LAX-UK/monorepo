@@ -7,8 +7,13 @@ import type {
 } from "../interfaces/checkout-rail.js";
 import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { IStripeCustomerGateway } from "../interfaces/stripe-customer.js";
+import type { MediaUrlResolver } from "../media-url-resolver.js";
 import { createOrRenewCheckoutSession } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
+import {
+  buildCreateCheckoutSessionInput,
+  resolveCheckoutLotHeroImage,
+} from "./stripe-checkout-product-display.js";
 
 export class BankTransferCheckoutRail implements ICheckoutRail {
   readonly kind = "gb_bank_transfer" as const;
@@ -18,6 +23,7 @@ export class BankTransferCheckoutRail implements ICheckoutRail {
     private readonly gateway: IStripePaymentGateway,
     private readonly stripeCustomers: IStripeCustomerGateway,
     private readonly payments: IPaymentWriteRepository,
+    private readonly mediaUrlResolver?: MediaUrlResolver,
   ) {}
 
   async createCheckout(ctx: PaymentCheckoutContext): Promise<PaymentCheckoutResult> {
@@ -39,21 +45,20 @@ export class BankTransferCheckoutRail implements ICheckoutRail {
         buyerEmail: ctx.buyerEmail,
         buyerName: ctx.buyerName,
       });
+      const imageUrl = await resolveCheckoutLotHeroImage(ctx.lot, this.mediaUrlResolver);
       const outcome = await createOrRenewCheckoutSession(
         this.gateway,
         "bank",
         ctx.paymentId,
         (idempotencyKey) =>
           this.gateway.createBankTransferCheckoutSession({
-            paymentId: ctx.paymentId,
-            lotId: ctx.lot.id,
-            amountCents: ctx.amountPence,
-            currency: "gbp",
-            buyerEmail: ctx.buyerEmail,
-            successUrl,
-            cancelUrl,
+            ...buildCreateCheckoutSessionInput(ctx, {
+              successUrl,
+              cancelUrl,
+              idempotencyKey,
+              imageUrl,
+            }),
             stripeCustomerId,
-            idempotencyKey,
           }),
       );
 

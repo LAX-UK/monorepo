@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PaymentCheckoutContext } from "../interfaces/checkout-rail.js";
 import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
+import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { CardCheckoutRail } from "./card-checkout.rail.js";
 
@@ -16,7 +17,7 @@ const ctx: PaymentCheckoutContext = {
     description: null,
     medium: null,
     dimensions: null,
-    images: [],
+    images: ["uploads/lot.jpg"],
     categoryId: "cat-1",
     auctionType: "english",
     startingPrice: "100.00",
@@ -24,6 +25,13 @@ const ctx: PaymentCheckoutContext = {
     buyNowPrice: null,
     currentPrice: "100.00",
     buyerPremiumRate: "0.25",
+    checkoutPricing: {
+      hammerMajor: "100.00",
+      premiumMajor: "25.00",
+      totalMajor: "125.00",
+      policyId: "flat:0.25",
+      kind: "flat",
+    },
     minBidIncrement: "1.00",
     dutchDecrementAmount: null,
     dutchDecrementIntervalMs: 60_000,
@@ -70,7 +78,17 @@ describe("CardCheckoutRail", () => {
       updateStripePaymentIntentId: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPaymentWriteRepository;
 
-    const rail = new CardCheckoutRail({ WEB_ORIGIN: "https://app.test" }, gateway, payments);
+    const mediaUrlResolver = {
+      resolve: vi.fn().mockResolvedValue("https://cdn.test/lot.jpg"),
+      resolveMany: vi.fn(),
+    } as unknown as MediaUrlResolver;
+
+    const rail = new CardCheckoutRail(
+      { WEB_ORIGIN: "https://app.test" },
+      gateway,
+      payments,
+      mediaUrlResolver,
+    );
     const result = await rail.createCheckout(ctx);
 
     expect(result).toEqual({
@@ -83,6 +101,12 @@ describe("CardCheckoutRail", () => {
         lotId: "lot-1",
         amountCents: 12_500,
         buyerEmail: "buyer@test.com",
+        lineItems: expect.arrayContaining([
+          expect.objectContaining({ name: expect.stringContaining("Hammer price") }),
+          expect.objectContaining({ name: expect.stringContaining("Buyer's premium") }),
+        ]),
+        paymentIntentDescription: expect.stringContaining("Test lot"),
+        statementDescriptorSuffix: "LOT 1",
       }),
     );
     expect(payments.updateStripePaymentIntentId).toHaveBeenCalledWith("pay-1", "pi_1");

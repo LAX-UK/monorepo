@@ -108,7 +108,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             />
 
             <Suspense fallback={null}>
-              <CheckoutReturnBanner />
+              <CheckoutReturnBanner lotTitle={auction.title} />
             </Suspense>
 
             <DashboardSection id="checkout-flow" title="Invoice and payment">
@@ -144,6 +144,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                     <CheckoutPurchasePanel
                       sessionUser={user}
                       lotId={auction.id}
+                      lotTitle={auction.title}
                       hammer={hammerLabel}
                       buyerPremium={formatMoney(premium.toFixed(2))}
                       total={totalLabel}
