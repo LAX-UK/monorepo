@@ -21,6 +21,7 @@ export type BulkLotsActionResult = {
   failed: number;
   succeeded: number;
   errors: BulkLotErrorEntry[];
+  orphanDraftSales?: Array<{ id: string; title: string }>;
 };
 
 function parseBulkLotErrorEntry(raw: unknown): BulkLotErrorEntry | null {
@@ -52,11 +53,21 @@ export function parseBulkLotsApiResponse(body: unknown): BulkLotsActionResult | 
   const errors = rawErrors
     .map(parseBulkLotErrorEntry)
     .filter((entry): entry is BulkLotErrorEntry => entry != null);
+  const rawOrphans = Array.isArray(row.orphanDraftSales) ? row.orphanDraftSales : [];
+  const orphanDraftSales = rawOrphans
+    .map((raw) => {
+      if (!raw || typeof raw !== "object") return null;
+      const o = raw as Record<string, unknown>;
+      if (typeof o.id !== "string" || typeof o.title !== "string") return null;
+      return { id: o.id, title: o.title };
+    })
+    .filter((o): o is { id: string; title: string } => o != null);
   return {
     attempted,
     failed,
     succeeded: Math.max(0, attempted - failed),
     errors,
+    ...(orphanDraftSales.length > 0 ? { orphanDraftSales } : {}),
   };
 }
 
@@ -124,4 +135,22 @@ export function bulkPublishPreflightWarning(
     hints.push(draftSaleLotPublishBanner());
   }
   return hints.length > 0 ? hints.join(". ") : null;
+}
+
+/** Client-side hint before bulk delete when selection includes ineligible lots. */
+export function bulkLotDeletePreflightWarning(
+  selectedIds: readonly string[],
+  rows: readonly { id: string; canDelete: boolean }[],
+): string | null {
+  if (selectedIds.length === 0) return null;
+  const selected = new Set(selectedIds);
+  let blocked = 0;
+  for (const row of rows) {
+    if (!selected.has(row.id)) continue;
+    if (!row.canDelete) blocked++;
+  }
+  if (blocked === 0) return null;
+  return blocked === 1
+    ? "1 selected lot cannot be deleted — it may be live, blocked, or missing auction.manage eligibility."
+    : `${blocked} selected lots cannot be deleted — they may be live, blocked, or missing eligibility.`;
 }

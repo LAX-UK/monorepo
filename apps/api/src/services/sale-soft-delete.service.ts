@@ -6,7 +6,10 @@ import {
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
-import { saleDeleteConfirmationPhrase } from "@auction/validators";
+import {
+  bulkSaleDeleteConfirmationPhrase,
+  saleDeleteConfirmationPhrase,
+} from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
@@ -28,6 +31,18 @@ export type SaleDeleteEligibility = {
   confirmationPhrase: string | null;
   guards: SaleSoftDeleteGuardCounts;
   blockers: string[];
+};
+
+export type SaleBulkSoftDeleteError = {
+  saleId: string;
+  message: string;
+  blockers?: string[];
+};
+
+export type SaleBulkSoftDeleteResult = {
+  attempted: number;
+  failed: number;
+  errors: SaleBulkSoftDeleteError[];
 };
 
 export class SaleSoftDeleteService {
@@ -113,22 +128,107 @@ export class SaleSoftDeleteService {
       return err(new LotError(`Type exactly: ${expected}`, 400));
     }
 
-    const lots = await this.lotRepo.findBySaleId(saleId);
-    const guards = await this.sideEffects.countGuardsForSale(saleId);
+    return this.executeSoftDelete(actorUserId, sale);
+  }
 
-    const ctx: SaleSoftDeleteContext = { sale, lots, guards };
-    const validation = validateSaleSoftDelete(ctx);
+  async bulkSoftDelete(
+    actorUserId: string,
+    userRole: string,
+    ids: string[],
+    confirmationPhrase: string,
+    userStaffRole?: string | null,
+  ): Promise<Result<SaleBulkSoftDeleteResult, AuthzError | LotError>> {
+    if (
+      !roleHasCapability(
+        userRole as UserRole,
+        "auction.manage",
+        normalizeUserStaffRole(userStaffRole ?? undefined),
+      )
+    ) {
+      return err(new AuthzError("Only staff with auction.manage can delete sales", 403));
+    }
+
+    const expected = bulkSaleDeleteConfirmationPhrase(ids.length);
+    if (confirmationPhrase !== expected) {
+      return err(new LotError(`Type exactly: ${expected}`, 400));
+    }
+
+    const saleRows = await Promise.all(ids.map((id) => this.saleRepo.findById(id)));
+    const salesFound = saleRows.filter((sale): sale is Sale => sale != null);
+    const guardsBySale =
+      salesFound.length > 0
+        ? await this.sideEffects.countGuardsForSales(salesFound.map((s) => s.id))
+        : new Map<string, SaleSoftDeleteGuardCounts>();
+    const lotsBySaleCache = new Map<string, Lot[]>();
+
+    const errors: SaleBulkSoftDeleteError[] = [];
+
+    for (const [i, saleId] of ids.entries()) {
+      const sale = saleRows[i];
+      if (!sale) {
+        errors.push({ saleId, message: "Sale not found" });
+        continue;
+      }
+
+      let lots = lotsBySaleCache.get(saleId);
+      if (!lots) {
+        lots = await this.lotRepo.findBySaleId(saleId);
+        lotsBySaleCache.set(saleId, lots);
+      }
+      const guards = guardsBySale.get(saleId) ?? {
+        bidCount: 0,
+        paymentCount: 0,
+        approvedRegistrationCount: 0,
+      };
+      const ctx: SaleSoftDeleteContext = { sale, lots, guards };
+      const blockers = listSaleSoftDeleteBlockers(ctx);
+      if (!canSaleSoftDelete(ctx)) {
+        errors.push({
+          saleId,
+          message: blockers[0] ?? "Sale cannot be deleted",
+          ...(blockers.length > 0 ? { blockers } : {}),
+        });
+        continue;
+      }
+
+      const result = await this.executeSoftDelete(actorUserId, sale, ctx);
+      if (result.isErr()) {
+        errors.push({ saleId, message: result.error.message });
+      }
+    }
+
+    return ok({
+      attempted: ids.length,
+      failed: errors.length,
+      errors,
+    });
+  }
+
+  private async executeSoftDelete(
+    actorUserId: string,
+    sale: Sale,
+    ctx?: SaleSoftDeleteContext,
+  ): Promise<Result<void, LotError>> {
+    const resolvedCtx =
+      ctx ??
+      (await (async () => {
+        const lots = await this.lotRepo.findBySaleId(sale.id);
+        const guards = await this.sideEffects.countGuardsForSale(sale.id);
+        return { sale, lots, guards };
+      })());
+
+    const validation = validateSaleSoftDelete(resolvedCtx);
     if (validation.isErr()) return err(validation.error);
 
-    for (const l of lots) {
+    for (const l of resolvedCtx.lots) {
       await this.jobScheduler?.cancelLotJobs(l.id);
     }
 
     const deletedAt = new Date();
-    const lotIds = lots.map((l) => l.id);
+    const lotIds = resolvedCtx.lots.map((l) => l.id);
     try {
       await this.sideEffects.softDeleteCascade({
-        saleId,
+        saleId: sale.id,
         actorUserId,
         deletedAt,
         lotIds,
@@ -138,7 +238,7 @@ export class SaleSoftDeleteService {
       throw error;
     }
 
-    await this.publishEvent(actorUserId, sale, lots.length, deletedAt);
+    await this.publishEvent(actorUserId, sale, resolvedCtx.lots.length, deletedAt);
 
     return ok(undefined);
   }
