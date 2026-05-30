@@ -1,8 +1,5 @@
 import { type LotDetailContext, fetchLotDetailContext } from "@/lib/admin/lot-detail-context";
-import {
-  getAdminLotDetail,
-  type LotDeleteEligibility,
-} from "@/lib/data/http/admin.server";
+import { type LotDeleteEligibility, getAdminLotDetail } from "@/lib/data/http/admin.server";
 import type { Lot } from "@auction/types";
 import { notFound } from "next/navigation";
 import { cache } from "react";

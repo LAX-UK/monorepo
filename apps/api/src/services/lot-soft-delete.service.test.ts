@@ -230,4 +230,37 @@ describe("LotSoftDeleteService", () => {
     }
     expect(publish).not.toHaveBeenCalled();
   });
+
+  it("batch delete eligibility skips non-draft lots", async () => {
+    const draftLot = baseLot({ id: "l1", status: "draft" });
+    const activeLot = baseLot({ id: "l2", status: "active", title: "Active" });
+    const saleRow = baseSale();
+    const guardsMap = new Map([
+      ["l1", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
+    ]);
+    const sideEffects = {
+      countGuardsForLot: vi.fn(),
+      countGuardsForLots: vi.fn().mockResolvedValue(guardsMap),
+      softDeleteLot: vi.fn(),
+    } as unknown as ILotSoftDeleteSideEffects;
+    const saleRepo = {
+      findByIds: vi.fn().mockResolvedValue([saleRow]),
+    } as unknown as ISaleRepository;
+
+    const svc = new LotSoftDeleteService(
+      {} as ILotRepository,
+      saleRepo,
+      sideEffects,
+      null,
+      null,
+      null,
+    );
+
+    const result = await svc.getDeleteEligibilityBatch([draftLot, activeLot]);
+
+    expect(result.size).toBe(1);
+    expect(result.get("l1")?.canDelete).toBe(true);
+    expect(result.has("l2")).toBe(false);
+    expect(sideEffects.countGuardsForLots).toHaveBeenCalledWith([{ lotId: "l1", saleId: "s1" }]);
+  });
 });

@@ -4,8 +4,8 @@ import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-d
 import { adminSoftDeleteSaleResultAction } from "@/lib/actions/admin-sales";
 import { buildSaleBoardMobileMenuItems } from "@/lib/admin/build-sale-board-mobile-menu";
 import { notify } from "@/lib/ui/notify";
-import { saleDeleteConfirmationPhrase } from "@auction/validators";
 import { InlineActionMenu } from "@auction/ui";
+import { saleDeleteConfirmationPhrase } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AdminSaleBoardRow } from "./types";

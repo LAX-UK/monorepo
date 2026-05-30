@@ -26,6 +26,10 @@ const VOIDABLE_ABSENTEE_STATUSES = ["scheduled", "executing"] as const;
 const CANCELLABLE_TELEPHONE_STATUSES = ["requested", "confirmed", "in_progress"] as const;
 const OPEN_SALEROOM_STATUSES = ["pending", "live", "paused"] as const;
 
+function emptySaleGuardCounts(): SaleSoftDeleteGuardCounts {
+  return { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 };
+}
+
 export class DrizzleSaleSoftDeleteSideEffects implements ISaleSoftDeleteSideEffects {
   constructor(
     private readonly db: Database,
@@ -55,6 +59,52 @@ export class DrizzleSaleSoftDeleteSideEffects implements ISaleSoftDeleteSideEffe
       paymentCount: paymentRow?.n ?? 0,
       approvedRegistrationCount: regRow?.n ?? 0,
     };
+  }
+
+  async countGuardsForSales(saleIds: string[]): Promise<Map<string, SaleSoftDeleteGuardCounts>> {
+    const unique = [...new Set(saleIds.filter(Boolean))];
+    const map = new Map<string, SaleSoftDeleteGuardCounts>();
+    for (const id of unique) {
+      map.set(id, emptySaleGuardCounts());
+    }
+    if (unique.length === 0) return map;
+
+    const bidRows = await this.db
+      .select({ saleId: lot.saleId, n: sql<number>`count(*)::int` })
+      .from(bid)
+      .innerJoin(lot, eq(bid.lotId, lot.id))
+      .where(and(inArray(lot.saleId, unique), isNull(lot.deletedAt)))
+      .groupBy(lot.saleId);
+
+    const paymentRows = await this.db
+      .select({ saleId: lot.saleId, n: sql<number>`count(*)::int` })
+      .from(payment)
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .where(and(inArray(lot.saleId, unique), isNull(lot.deletedAt)))
+      .groupBy(lot.saleId);
+
+    const regRows = await this.db
+      .select({ saleId: saleRegistration.saleId, n: sql<number>`count(*)::int` })
+      .from(saleRegistration)
+      .where(and(inArray(saleRegistration.saleId, unique), eq(saleRegistration.status, "approved")))
+      .groupBy(saleRegistration.saleId);
+
+    for (const row of bidRows) {
+      if (!row.saleId) continue;
+      const current = map.get(row.saleId) ?? emptySaleGuardCounts();
+      map.set(row.saleId, { ...current, bidCount: row.n ?? 0 });
+    }
+    for (const row of paymentRows) {
+      if (!row.saleId) continue;
+      const current = map.get(row.saleId) ?? emptySaleGuardCounts();
+      map.set(row.saleId, { ...current, paymentCount: row.n ?? 0 });
+    }
+    for (const row of regRows) {
+      const current = map.get(row.saleId) ?? emptySaleGuardCounts();
+      map.set(row.saleId, { ...current, approvedRegistrationCount: row.n ?? 0 });
+    }
+
+    return map;
   }
 
   async softDeleteCascade(input: {

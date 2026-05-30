@@ -6,6 +6,7 @@ export type SaleSoftDeleteGuardCounts = {
 
 export interface ISaleSoftDeleteSideEffects {
   countGuardsForSale(saleId: string): Promise<SaleSoftDeleteGuardCounts>;
+  countGuardsForSales(saleIds: string[]): Promise<Map<string, SaleSoftDeleteGuardCounts>>;
   softDeleteCascade(input: {
     saleId: string;
     actorUserId: string;

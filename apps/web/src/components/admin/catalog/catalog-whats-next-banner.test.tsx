@@ -28,7 +28,13 @@ const auction = {
   updatedAt: new Date(),
 } as unknown as Lot;
 
-const context: LotDetailContext = { sale: null, artist: null, seller: null, categories: [] };
+const context: LotDetailContext = {
+  sale: null,
+  parentSaleLotCount: null,
+  artist: null,
+  seller: null,
+  categories: [],
+};
 
 function PostCreateFixture() {
   return (

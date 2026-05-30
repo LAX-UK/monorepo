@@ -3,6 +3,7 @@
 import { CancelLotButton } from "@/components/admin/lot-actions/cancel-lot-button";
 import {
   DeleteLotDialog,
+  type DeleteLotParentSale,
   useDeleteLotDialog,
 } from "@/components/admin/lot-actions/delete-lot-button";
 import { PublishLotButton } from "@/components/admin/lot-actions/publish-lot-button";
@@ -32,6 +33,7 @@ type Props = {
   publishReadiness?: CatalogReadinessResult | null;
   canCancel: boolean;
   canDelete: boolean;
+  parentSale?: DeleteLotParentSale | null;
   showEditDraft: boolean;
   showEditLot: boolean;
   showEditCatalog: boolean;
@@ -48,6 +50,7 @@ export function AdminLotDetailActions({
   publishReadiness = null,
   canCancel,
   canDelete,
+  parentSale = null,
   showEditDraft,
   showEditLot,
   showEditCatalog,
@@ -127,6 +130,7 @@ export function AdminLotDetailActions({
           lotTitle={lotTitle}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
+          parentSale={parentSale}
         />
       ) : null}
     </div>

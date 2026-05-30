@@ -31,7 +31,14 @@ export const lotUnpublishedPayloadSchema = z.object({
 });
 
 export const lotCancelledPayloadSchema = z.object({
-  reason: z.enum(["manual", "sale_cancel", "sale_soft_delete", "soft_delete", "withdrawal", "admin_override"]),
+  reason: z.enum([
+    "manual",
+    "sale_cancel",
+    "sale_soft_delete",
+    "soft_delete",
+    "withdrawal",
+    "admin_override",
+  ]),
 });
 
 export const lotEndedTriggerSchema = z.enum([
@@ -67,6 +74,13 @@ export const lotReturnedToInventoryPayloadSchema = z.object({
   reason: z.string(),
 });
 
+export const lotSoftDeletedPayloadSchema = z.object({
+  title: z.string(),
+  from_status: z.string(),
+  saleId: z.string().uuid().nullable(),
+  deleted_at: z.string().datetime(),
+});
+
 export const LotEventSchemas = {
   "lot.created": lotCreatedPayloadSchema,
   "lot.activated": lotActivatedPayloadSchema,
@@ -79,6 +93,7 @@ export const LotEventSchemas = {
   "lot.voided": lotVoidedPayloadSchema,
   "lot.withdrawal_requested": lotWithdrawalRequestedPayloadSchema,
   "lot.returned_to_inventory": lotReturnedToInventoryPayloadSchema,
+  "lot.soft_deleted": lotSoftDeletedPayloadSchema,
 } as const;
 
 export type LotEventType = keyof typeof LotEventSchemas;

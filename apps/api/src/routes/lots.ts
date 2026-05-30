@@ -124,17 +124,14 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       });
     }
     if (roleHasCapability(viewerRole, "auction.manage", staff) && rows.length > 0) {
-      rows = await Promise.all(
-        rows.map(async (lotRow) => {
-          if (lotRow.status !== "draft" && lotRow.status !== "scheduled") {
-            return lotRow;
-          }
-          const deleteEligibility = await container.lotSoftDeleteService.getDeleteEligibility(
-            lotRow.id,
-          );
-          return deleteEligibility ? { ...lotRow, deleteEligibility } : lotRow;
-        }),
-      );
+      const eligibilityByLot = await container.lotSoftDeleteService.getDeleteEligibilityBatch(rows);
+      rows = rows.map((lotRow) => {
+        if (lotRow.status !== "draft" && lotRow.status !== "scheduled") {
+          return lotRow;
+        }
+        const deleteEligibility = eligibilityByLot.get(lotRow.id);
+        return deleteEligibility ? { ...lotRow, deleteEligibility } : lotRow;
+      });
     }
     const withPricing = await lotsWithCheckoutPricing(container, rows);
     return c.json({ data: withPricing });
