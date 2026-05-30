@@ -21,6 +21,12 @@ export type ConditionReportRequestListRow = ConditionReportRequestRow & {
   requesterEmail: string | null;
 };
 
+export type BuyerConditionReportListRow = ConditionReportRequestRow & {
+  lotTitle: string;
+  lotNumber: number | null;
+  downloadUrl: string | null;
+};
+
 export type ConditionReportServiceError = { message: string; status: number; code?: string };
 
 export type FulfillConditionReportInput = {
@@ -53,4 +59,15 @@ export interface IConditionReportService {
     fulfilledByUserId: string;
     responseNote?: string | undefined;
   }): Promise<Result<void, ConditionReportServiceError>>;
+
+  findForBuyerOnLot(input: {
+    userId: string;
+    lotId: string;
+  }): Promise<ConditionReportRequestRow | null>;
+
+  listForBuyer(input: {
+    userId: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ items: BuyerConditionReportListRow[]; total: number }>;
 }

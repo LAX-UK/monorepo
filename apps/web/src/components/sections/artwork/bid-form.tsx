@@ -29,6 +29,8 @@ type Props = {
   stepNumeric?: number;
   /** Label for the primary step-1 action (default Review bid). */
   step1ButtonLabel?: string;
+  /** Shown when manual bid will also send an active auto-bid max. */
+  activeAutoBidNote?: { max: string; onChangeAutoBid?: () => void } | null;
 };
 
 const CHIP_ADDS = [500, 1000, 5000] as const;
@@ -49,6 +51,7 @@ export function BidForm({
   amountFieldVariant = "input",
   stepNumeric = 0.01,
   step1ButtonLabel = "Review bid",
+  activeAutoBidNote = null,
 }: Props) {
   const minStr = minNumeric.toFixed(2);
   const amountInputId = useId();
@@ -77,7 +80,7 @@ export function BidForm({
         {showIncrementChips
           ? CHIP_ADDS.map((add) => {
               const v = minNumeric + add;
-              const label = add >= 1000 ? `+$${add / 1000}k` : `+$${add}`;
+              const label = `+${formatMoney(add)}`;
               return (
                 <Button
                   key={add}
@@ -125,7 +128,7 @@ export function BidForm({
             Enter bid amount (min. {formatMoney(minStr)})
           </label>
           <div className="flex items-center border-b-2 border-outline-variant/40 py-4 transition-colors focus-within:border-primary">
-            <span className="mr-4 font-headline text-2xl text-on-surface">$</span>
+            <span className="mr-4 font-headline text-2xl text-on-surface">£</span>
             <UnderlineInput
               id={amountInputId}
               inputMode="decimal"
@@ -146,7 +149,7 @@ export function BidForm({
             Set max auto-bid (optional)
           </label>
           <div className="flex items-center border-b-2 border-outline-variant/30 py-3 transition-colors focus-within:border-primary">
-            <span className="mr-4 font-headline text-xl text-on-surface">$</span>
+            <span className="mr-4 font-headline text-xl text-on-surface">£</span>
             <UnderlineInput
               id="bid-max-auto"
               inputMode="decimal"
@@ -157,6 +160,27 @@ export function BidForm({
             />
           </div>
         </div>
+      ) : null}
+      {activeAutoBidNote ? (
+        <p className="rounded-md border border-primary/25 bg-primary-container/10 px-4 py-3 font-body text-sm text-on-surface-variant">
+          Your auto-bid max of{" "}
+          <span className="font-semibold text-on-surface">
+            {formatMoney(activeAutoBidNote.max)}
+          </span>{" "}
+          stays active after this bid.
+          {activeAutoBidNote.onChangeAutoBid ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+                onClick={activeAutoBidNote.onChangeAutoBid}
+              >
+                Change auto-bid
+              </button>
+            </>
+          ) : null}
+        </p>
       ) : null}
       <BidErrorView error={error} />
       <div className="space-y-2">

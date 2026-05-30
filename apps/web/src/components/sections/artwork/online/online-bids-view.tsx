@@ -1,26 +1,34 @@
 "use client";
 
-import { mapUserBidsHistoryVM } from "@/components/sections/artwork/artwork-view-models";
+import {
+  type UserBidsHistoryVM,
+  mapUserBidsHistoryVM,
+} from "@/components/sections/artwork/artwork-view-models";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import { prependBidHistoryEntry } from "@/components/sections/artwork/bid-history-utils";
 import { UserBidsHistory } from "@/components/sections/artwork/online/user-bids-history";
 import { LiveBidFeed } from "@/components/sections/artwork/onsite/live-bid-feed";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useNow } from "@/hooks/use-now";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
+import { formatMoney } from "@/lib/format-currency";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import type { Lot, LotEndedEvent } from "@auction/types";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   lotId: string;
   lot: Pick<Lot, "status" | "winnerId">;
   initialHistory: BidHistoryEntry[];
   currentUserId: string | null;
-  /** Presence-tracked count when available (shown when lot is live). */
   watcherCount?: number | null;
+  /** Omit duplicate countdown in feed header (pricing header owns the clock). */
+  compactFeedHeader?: boolean;
+  initialOutbid?: boolean;
+  currentPrice?: string;
   children: ReactNode;
   className?: string;
 };
@@ -32,16 +40,24 @@ export function OnlineBidsView({
   initialHistory,
   currentUserId,
   watcherCount = null,
+  compactFeedHeader = false,
+  initialOutbid = false,
+  currentPrice = "0",
   children,
   className,
 }: Props) {
   const now = useNow();
   const onlineCtx = useOnlineLotLifecycle();
   const [entries, setEntries] = useState<BidHistoryEntry[]>(initialHistory);
+  const [liveCurrentPrice, setLiveCurrentPrice] = useState(currentPrice);
   const [lotSnap, setLotSnap] = useState(() => ({
     status: lot.status,
     winnerId: lot.winnerId ?? null,
   }));
+
+  useEffect(() => {
+    setLiveCurrentPrice(currentPrice);
+  }, [currentPrice]);
 
   useEffect(() => {
     setEntries(initialHistory);
@@ -54,25 +70,17 @@ export function OnlineBidsView({
     });
   }, [lot.status, lot.winnerId]);
 
-  const onBidUpdate = useCallback((e: { bidId: string; bidderId: string; amount: string }) => {
-    setEntries((prev) => {
-      const next: BidHistoryEntry = {
-        id: e.bidId,
-        bidderId: e.bidderId,
-        amount: e.amount,
-        at: Date.now(),
-      };
-      return [next, ...prev].filter((x, i, arr) => arr.findIndex((y) => y.id === x.id) === i);
-    });
-  }, []);
-
   useLotRealtime(lotId, {
     onBidUpdate: (e) => {
-      onBidUpdate({
-        bidId: e.bidId,
-        bidderId: e.bidderId,
-        amount: e.amount,
-      });
+      setLiveCurrentPrice(e.currentPrice);
+      setEntries((prev) =>
+        prependBidHistoryEntry(prev, {
+          id: e.bidId,
+          bidderId: e.bidderId,
+          amount: e.amount,
+          ...(e.isAutoBid ? { isAutoBid: true } : {}),
+        }),
+      );
     },
     onLotEnded: (p) => {
       const ev = p as LotEndedEvent;
@@ -80,7 +88,7 @@ export function OnlineBidsView({
     },
   });
 
-  const userBidsVm = useMemo(
+  const userBidsVmBase = useMemo(
     () =>
       mapUserBidsHistoryVM(entries, currentUserId, {
         status: lotSnap.status,
@@ -88,6 +96,17 @@ export function OnlineBidsView({
       }),
     [entries, currentUserId, lotSnap.status, lotSnap.winnerId],
   );
+
+  const userBidsVm = useMemo((): UserBidsHistoryVM | null => {
+    if (!userBidsVmBase) return null;
+    if (!initialOutbid || !currentUserId) return userBidsVmBase;
+    const myLatest = entries.find((e) => e.bidderId === currentUserId);
+    if (!myLatest) return userBidsVmBase;
+    return {
+      ...userBidsVmBase,
+      contextLine: `Your last bid ${formatMoney(myLatest.amount)} — current high ${formatMoney(liveCurrentPrice)}`,
+    };
+  }, [userBidsVmBase, initialOutbid, currentUserId, entries, liveCurrentPrice]);
 
   const lifecycle = useMemo(() => {
     if (!onlineCtx) {
@@ -124,18 +143,20 @@ export function OnlineBidsView({
   return (
     <div className={cn("flex w-full min-w-0 flex-col gap-6", className)}>
       <LiveBidFeed
-        lotId={lotId}
-        initialHistory={initialHistory}
+        entries={entries}
         currentUserId={currentUserId}
         headerMode="watching"
         watcherCount={watcherCount}
         lifecycleKind={lifecycle.kind}
         countdownClock={countdownClock}
+        compactHeader={compactFeedHeader}
         listMaxHeightClass="max-h-[40vh] md:max-h-[50vh] lg:max-h-[min(55vh,520px)]"
         className="lg:max-w-none"
       />
       {children}
-      {userBidsVm ? <UserBidsHistory vm={userBidsVm} /> : null}
+      {userBidsVm ? (
+        <UserBidsHistory vm={userBidsVm} defaultOpen={Boolean(userBidsVm.rows.length)} />
+      ) : null}
     </div>
   );
 }
