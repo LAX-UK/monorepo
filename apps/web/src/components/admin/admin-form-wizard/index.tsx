@@ -54,6 +54,8 @@ export type AdminFormWizardProps = {
   onDraftResume?: (payload: WizardDraftPayload) => void;
   /** Return false to block advancing to the next step (e.g. field validation). */
   onBeforeNext?: (stepIndex: number) => boolean | Promise<boolean>;
+  /** Fired when navigating to an earlier step (Back button or backward step click). */
+  onStepBack?: (toIndex: number) => void;
   /** Hide duplicate sticky submit on mobile when CatalogMobileActionBar submits the form. */
   hideStickyOnMobile?: boolean;
   /** When true, submitSlot is shown on every step (edit flows). */
@@ -82,6 +84,7 @@ export function AdminFormWizard({
   hideStickyOnMobile = false,
   showSubmitOnAllSteps = false,
   onStepControl,
+  onStepBack,
   mobilePrimaryAction = null,
   mobileCancelAction = null,
 }: AdminFormWizardProps) {
@@ -184,6 +187,7 @@ export function AdminFormWizard({
       if (stepJumpPending || targetIndex === stepIndex) return;
       if (targetIndex < stepIndex) {
         persistDraft();
+        onStepBack?.(targetIndex);
         goTo(targetIndex);
         return;
       }
@@ -204,13 +208,14 @@ export function AdminFormWizard({
         setStepJumpPending(false);
       }
     },
-    [goTo, onBeforeNext, persistDraft, stepIndex, stepJumpPending],
+    [goTo, onBeforeNext, onStepBack, persistDraft, stepIndex, stepJumpPending],
   );
 
   const handleBack = useCallback(() => {
     persistDraft();
+    onStepBack?.(Math.max(0, stepIndex - 1));
     goPrev();
-  }, [goPrev, persistDraft]);
+  }, [goPrev, onStepBack, persistDraft, stepIndex]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
