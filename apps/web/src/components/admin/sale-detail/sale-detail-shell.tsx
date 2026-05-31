@@ -11,6 +11,7 @@ import {
 import { CatalogPostCreateSessionRoot } from "@/components/admin/catalog/catalog-post-create-session";
 import { CatalogWhatsNextBanner } from "@/components/admin/catalog/catalog-whats-next-banner";
 import { AdminSaleEditableTitle } from "@/components/admin/editable-titles";
+import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-button";
 import { SaleDetailMobileLifecycleTrailing } from "@/components/admin/sale-detail-mobile-lifecycle-trailing";
 import { SaleContextRail } from "@/components/admin/sale-detail/sale-context-rail";
 import { SaleDetailConnectNotice } from "@/components/admin/sale-detail/sale-detail-connect-notice";
@@ -179,6 +180,9 @@ export function SaleDetailShell({
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <AdminPinPageButton label={sale.title} />
+            {canManageSales ? (
+              <AdminQrCodeButton entityType="sale" entityId={saleId} title={sale.title} />
+            ) : null}
             <AdminSaleHeaderActions
               saleId={saleId}
               saleTitle={sale.title}

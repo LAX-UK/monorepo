@@ -47,6 +47,7 @@ import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
 import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statements.js";
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
+import { createQrRoutes } from "./routes/qr.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleRoutes } from "./routes/sales.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
@@ -118,6 +119,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/users/*", createRateLimitMiddleware(container.redis));
   app.use("/auth/*", createRateLimitMiddleware(container.redis));
   app.use("/payments/*", createRateLimitMiddleware(container.redis));
+  app.use("/q/*", createRateLimitMiddleware(container.redis));
   app.use("/categories/*", createRateLimitMiddleware(container.redis));
   app.use("/submissions/*", createRateLimitMiddleware(container.redis));
   app.use("/uploads/*", createRateLimitMiddleware(container.redis));
@@ -209,6 +211,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/newsletter", createNewsletterRoutes(container))
     .route("/auth", createAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
+    .route("/q", createQrRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator))
     .route("/marketing", createMarketingRoutes(container, authenticator))
     .route("/submissions", createSubmissionRoutes(container, authenticator))

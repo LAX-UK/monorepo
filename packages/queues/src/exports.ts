@@ -8,5 +8,13 @@ export type DataExportJobPayload = {
   filters: Record<string, unknown>;
 };
 
+export type QrCodeScanJobPayload = {
+  qrCodeId: string;
+  ip?: string | null;
+  userAgent?: string | null;
+  referrer?: string | null;
+  requestId?: string | null;
+};
+
 /** @deprecated Use DataExportJobPayload */
 export type ExportJobPayload = DataExportJobPayload;

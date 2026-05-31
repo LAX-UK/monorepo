@@ -25,7 +25,9 @@ import {
   PAYOUT_STATEMENTS_QUEUE_NAME,
   PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME,
   PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
+  PURGE_QR_CODE_SCANS_QUEUE_NAME,
   PURGE_SOFT_DELETED_USERS_QUEUE_NAME,
+  QR_CODE_SCAN_QUEUE_NAME,
   QUEUE_REGISTRY,
   type QueueName,
   VALIDATE_UPLOAD_QUEUE_NAME,
@@ -34,7 +36,7 @@ import {
   listWorkerHeartbeatKeys,
   registerDlqHandlers,
 } from "@auction/queues";
-import type { DataExportJobPayload } from "@auction/queues";
+import type { DataExportJobPayload, QrCodeScanJobPayload } from "@auction/queues";
 import type { MarketingEvent, ResolvedMarketingEvent } from "@auction/types";
 import { serve } from "@hono/node-server";
 import { type Job, Queue, Worker } from "bullmq";
@@ -62,9 +64,11 @@ import {
 } from "./jobs/marketing-event-processor.js";
 import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
+import { purgeQrCodeScans } from "./jobs/purge-qr-code-scans.js";
 import { purgeSoftDeletedUsers } from "./jobs/purge-soft-deleted-users.js";
 import { purgeStaleMarketingClickIds } from "./jobs/purge-stale-marketing-click-ids.js";
 import { purgeStaleMarketingOutbox } from "./jobs/purge-stale-marketing-outbox.js";
+import { recordQrCodeScanJob } from "./jobs/qr-code-scan.js";
 import {
   type SendEmailJobData,
   enqueueStaleEmailOutboxRows,
@@ -219,6 +223,23 @@ const imageCleanupWorker = new Worker(
 imageCleanupWorker.on("completed", () => void heartbeat("image-cleanup"));
 imageCleanupWorker.on("failed", (job, err) => {
   reportWorkerJobFailure(IMAGE_CLEANUP_QUEUE_NAME, job, err);
+});
+
+const qrCodeScanWorker = new Worker<QrCodeScanJobPayload>(
+  QR_CODE_SCAN_QUEUE_NAME,
+  async (job) => {
+    await recordQrCodeScanJob({ db, data: job.data, log });
+    await heartbeat("qr-code-scan");
+  },
+  {
+    ...bullConnection,
+    concurrency: 10,
+    limiter: { max: 300, duration: 1000 },
+  },
+);
+qrCodeScanWorker.on("completed", () => void heartbeat("qr-code-scan"));
+qrCodeScanWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure(QR_CODE_SCAN_QUEUE_NAME, job, err);
 });
 
 const gcUploadQueue = new Queue(
@@ -623,6 +644,37 @@ void purgeSoftDeletedUsersQueue.add(
   },
 );
 
+const purgeQrCodeScansQueue = new Queue(
+  PURGE_QR_CODE_SCANS_QUEUE_NAME,
+  queueOpts(PURGE_QR_CODE_SCANS_QUEUE_NAME),
+);
+const purgeQrCodeScansWorker = new Worker(
+  PURGE_QR_CODE_SCANS_QUEUE_NAME,
+  async () => {
+    await withSentryCronMonitor("purge-qr-code-scans", sentryMonitorSlugs, async () => {
+      const { deleted } = await purgeQrCodeScans({
+        db,
+        log,
+        retentionDays: env.QR_SCAN_RETENTION_DAYS,
+      });
+      log.info({ deleted, retentionDays: env.QR_SCAN_RETENTION_DAYS }, "purge-qr-code-scans: done");
+    });
+  },
+  bullConnection,
+);
+purgeQrCodeScansWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure(PURGE_QR_CODE_SCANS_QUEUE_NAME, job, err);
+});
+void purgeQrCodeScansQueue.add(
+  "purge",
+  {},
+  {
+    jobId: "purge-qr-code-scans-daily",
+    repeat: { every: 24 * 60 * 60 * 1000 },
+    removeOnComplete: 5,
+  },
+);
+
 let payoutSettlementQueue: Queue | undefined;
 let payoutSettlementWorker: Worker | undefined;
 if (env.CRON_INTERNAL_SECRET) {
@@ -670,6 +722,7 @@ registerWorkerErrorHandlers([
   { worker: webhookWorker, queue: WEBHOOK_EVENTS_QUEUE_NAME },
   { worker: validateUploadWorker, queue: VALIDATE_UPLOAD_QUEUE_NAME },
   { worker: imageCleanupWorker, queue: IMAGE_CLEANUP_QUEUE_NAME },
+  { worker: qrCodeScanWorker, queue: QR_CODE_SCAN_QUEUE_NAME },
   { worker: gcPendingUploadsWorker, queue: GC_PENDING_UPLOADS_QUEUE_NAME },
   { worker: emailWorker, queue: EMAIL_QUEUE_NAME },
   { worker: marketingSyncWorker, queue: MARKETING_SYNC_QUEUE_NAME },
@@ -679,6 +732,7 @@ registerWorkerErrorHandlers([
   { worker: impersonationSweeperWorker, queue: IMPERSONATION_SWEEPER_QUEUE_NAME },
   { worker: purgeVerificationsWorker, queue: PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME },
   { worker: purgeSoftDeletedUsersWorker, queue: PURGE_SOFT_DELETED_USERS_QUEUE_NAME },
+  { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
   ...(marketingCapiBatchWorker
     ? [{ worker: marketingCapiBatchWorker, queue: MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME }]
     : []),
@@ -721,6 +775,7 @@ void Promise.all([
   heartbeat("webhook-events"),
   heartbeat("validate-upload"),
   heartbeat("image-cleanup"),
+  heartbeat("qr-code-scan"),
   heartbeat("gc-pending-uploads"),
   heartbeat("email"),
   heartbeat("marketing-sync"),
@@ -823,6 +878,7 @@ function shutdown(signal: NodeJS.Signals) {
         webhookWorker.close(),
         validateUploadWorker.close(),
         imageCleanupWorker.close(),
+        qrCodeScanWorker.close(),
         gcPendingUploadsWorker.close(),
         gcUploadQueue.close(),
         emailWorker.close(),
@@ -841,6 +897,8 @@ function shutdown(signal: NodeJS.Signals) {
         purgeVerificationsQueue.close(),
         purgeSoftDeletedUsersWorker.close(),
         purgeSoftDeletedUsersQueue.close(),
+        purgeQrCodeScansWorker.close(),
+        purgeQrCodeScansQueue.close(),
         ...(payoutSettlementWorker ? [payoutSettlementWorker.close()] : []),
         ...(payoutSettlementQueue ? [payoutSettlementQueue.close()] : []),
         deadLetterQueue.close(),

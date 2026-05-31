@@ -20,11 +20,12 @@ import {
   MARKETING_EVENTS_QUEUE_NAME,
   MARKETING_SYNC_QUEUE_NAME,
   PAYOUT_STATEMENTS_QUEUE_NAME,
+  QR_CODE_SCAN_QUEUE_NAME,
   type QueueName,
   VALIDATE_UPLOAD_QUEUE_NAME,
   createBullQueueOptions,
 } from "@auction/queues";
-import type { DataExportJobPayload } from "@auction/queues";
+import type { DataExportJobPayload, QrCodeScanJobPayload } from "@auction/queues";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
@@ -241,6 +242,7 @@ import { StripeCheckoutService } from "./services/payment/stripe-checkout.servic
 import { PayoutService } from "./services/payout.service.js";
 import { PayoutAdjustmentService } from "./services/payout/payout-adjustment.service.js";
 import { ProfileService } from "./services/profile.service.js";
+import { QrCodeService } from "./services/qr-code.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
@@ -311,6 +313,7 @@ export type Container = {
   dashboardQueryService: DashboardQueryService;
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
+  qrCodeService: QrCodeService;
   paymentRefundReconcileService: PaymentRefundReconcileService;
   accountingProvider: IInvoiceAccountingProvider;
   /** bill-to resolver for Xero + payment-invoice email. */
@@ -683,6 +686,10 @@ export function createContainer(env: Env): Container {
     IMAGE_CLEANUP_QUEUE_NAME,
     queueOpts(IMAGE_CLEANUP_QUEUE_NAME),
   );
+  const qrCodeScanQueue = new Queue<QrCodeScanJobPayload>(
+    QR_CODE_SCAN_QUEUE_NAME,
+    queueOpts(QR_CODE_SCAN_QUEUE_NAME),
+  );
   const marketingSyncQueue = new Queue(
     MARKETING_SYNC_QUEUE_NAME,
     queueOpts(MARKETING_SYNC_QUEUE_NAME),
@@ -808,6 +815,14 @@ export function createContainer(env: Env): Container {
   );
   const lotLifecycleQueryService = new LotLifecycleQueryService(db);
   const adminLotBrowseService = new AdminLotBrowseService(db);
+  const qrCodeService = new QrCodeService(
+    db,
+    redis,
+    env.API_PUBLIC_URL,
+    env.WEB_ORIGIN,
+    createBaseLogger(env).child({ component: "qr_code" }),
+    qrCodeScanQueue,
+  );
 
   const lotNotificationCoordinator = new LotNotificationCoordinator(
     notificationWriteRepo,
@@ -831,6 +846,7 @@ export function createContainer(env: Env): Container {
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     lotLifecycleRecording,
     lotTransitionOrchestrator,
+    qrCodeService,
   });
 
   const conditionReportService = new ConditionReportService(
@@ -861,6 +877,7 @@ export function createContainer(env: Env): Container {
     lotLifecycleRecording,
     legalEntityRepository,
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
+    qrCodeService,
   });
   const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db, lotLifecycleRecording);
   const saleSoftDeleteService = new SaleSoftDeleteService(
@@ -1231,6 +1248,7 @@ export function createContainer(env: Env): Container {
       legalEntityArchiveQueue.close(),
       uploadValidationQueue.close(),
       imageCleanupQueue.close(),
+      qrCodeScanQueue.close(),
       marketingSyncQueue.close(),
       marketingEventsBullQueue.close(),
       payoutStatementQueue.close(),
@@ -1303,6 +1321,7 @@ export function createContainer(env: Env): Container {
     dashboardQueryService,
     notificationQueryService,
     paymentService,
+    qrCodeService,
     paymentRefundReconcileService,
     accountingProvider,
     invoiceAddressingService,

@@ -21,3 +21,4 @@ export * from "./onboarding-steps.js";
 export * from "./document.js";
 export * from "./marketing-events.js";
 export * from "./gallery.js";
+export * from "./catalog-url.js";
