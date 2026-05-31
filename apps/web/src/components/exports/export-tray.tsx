@@ -6,12 +6,26 @@ import { ExportManagerSheet } from "@/components/exports/export-manager-sheet";
 import { Button } from "@auction/ui/components/button";
 import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function ExportTray() {
-  const { jobs, trayOpen, setTrayOpen, activeCount, cancelJob, downloadJob } = useExportJobs();
+  const {
+    jobs,
+    trayOpen,
+    setTrayOpen,
+    activeCount,
+    jobsLoading,
+    jobsLoadError,
+    ensureJobsLoaded,
+    cancelJob,
+    downloadJob,
+  } = useExportJobs();
   const [managerOpen, setManagerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (trayOpen || managerOpen) void ensureJobsLoaded();
+  }, [ensureJobsLoaded, managerOpen, trayOpen]);
 
   const visible = jobs.slice(0, 5);
   if (visible.length === 0 && activeCount === 0) return null;
@@ -67,6 +81,12 @@ export function ExportTray() {
         </div>
         {!collapsed ? (
           <div className="max-h-80 space-y-2 overflow-y-auto p-3">
+            {jobsLoading ? (
+              <p className="font-body text-xs text-on-surface-variant">Loading export history…</p>
+            ) : null}
+            {jobsLoadError ? (
+              <p className="font-body text-xs text-warning">{jobsLoadError}</p>
+            ) : null}
             {visible.map((job) => (
               <ExportJobRow key={job.id} job={job} onCancel={cancelJob} onDownload={downloadJob} />
             ))}

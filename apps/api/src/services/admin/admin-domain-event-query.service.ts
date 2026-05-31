@@ -2,7 +2,6 @@ import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
 import { redactDomainEventPayload } from "@auction/types";
 import { and, asc, desc, eq, like, sql } from "drizzle-orm";
-import { formatDomainEventsExportCsv } from "../../lib/domain-event-export-csv.js";
 import type {
   IAdminDomainEventQueryService,
   RedactedDomainEventRow,
@@ -86,35 +85,5 @@ export class AdminDomainEventQueryService implements IAdminDomainEventQueryServi
     }
     const [row] = await this.db.select({ n: sql<number>`count(*)::int` }).from(domainEvent);
     return row?.n ?? 0;
-  }
-
-  async listForExport(input: {
-    includePii: boolean;
-    aggregateType?: string;
-    aggregateId?: string;
-    limit?: number;
-  }): Promise<RedactedDomainEventRow[]> {
-    const aggType = input.aggregateType?.trim();
-    const aggId = input.aggregateId?.trim();
-    const cap = Math.min(5000, Math.max(1, input.limit ?? 5000));
-    if (aggType && aggId) {
-      const rows = await this.db
-        .select(DOMAIN_EVENT_LIST_COLUMNS)
-        .from(domainEvent)
-        .where(and(eq(domainEvent.aggregateType, aggType), eq(domainEvent.aggregateId, aggId)))
-        .orderBy(asc(domainEvent.occurredAt), asc(domainEvent.id))
-        .limit(cap);
-      return redactRows(rows, input.includePii);
-    }
-    const rows = await this.db
-      .select(DOMAIN_EVENT_LIST_COLUMNS)
-      .from(domainEvent)
-      .orderBy(desc(domainEvent.id))
-      .limit(cap);
-    return redactRows(rows, input.includePii);
-  }
-
-  formatExportCsv(rows: RedactedDomainEventRow[]): string {
-    return formatDomainEventsExportCsv(rows);
   }
 }

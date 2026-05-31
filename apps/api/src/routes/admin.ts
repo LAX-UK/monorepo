@@ -17,7 +17,6 @@ import {
   adminConveyorPipelineQuerySchema,
   adminCreateArtistBodySchema,
   adminCreateCategoryBodySchema,
-  adminDomainEventsExportQuerySchema,
   adminDomainEventsQuerySchema,
   adminFinanceDisputeDomainEventsQuerySchema,
   adminListEventsQuerySchema,
@@ -922,38 +921,6 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
           : {}),
       });
       return c.json({ data });
-    },
-  );
-
-  /** GET /admin/audit/domain-events/export — redacted JSON/CSV export (PII bypass requires audit.read_pii). */
-  platform.get(
-    "/audit/domain-events/export",
-    zValidator("query", adminDomainEventsExportQuerySchema),
-    async (c) => {
-      const role = normalizeUserRoleOrClient(c.get("userRole"));
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-      const includePii =
-        c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
-      const q = c.req.valid("query");
-      const format = q.format;
-
-      const redacted = await container.admin.domainEvents.listForExport({
-        includePii,
-        limit: q.limit,
-        ...(q.aggregateType !== undefined && q.aggregateId !== undefined
-          ? { aggregateType: q.aggregateType, aggregateId: q.aggregateId }
-          : {}),
-      });
-
-      if (format === "json") {
-        return c.json({ data: redacted });
-      }
-
-      const csv = container.admin.domainEvents.formatExportCsv(redacted);
-      return c.text(csv, 200, {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="domain-events.csv"',
-      });
     },
   );
 

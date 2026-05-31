@@ -43,27 +43,6 @@ export const adminDomainEventsQuerySchema = z
     }
   });
 
-/** GET /admin/audit/domain-events/export — optional aggregate filter (same pairing rules as feed). */
-export const adminDomainEventsExportQuerySchema = z
-  .object({
-    format: z.enum(["csv", "json"]).optional().default("json"),
-    limit: z.coerce.number().int().min(1).max(5000).optional().default(5000),
-    aggregateType: aggregateTypeField.optional(),
-    aggregateId: aggregateIdField.optional(),
-  })
-  .superRefine((data, ctx) => {
-    const at = data.aggregateType?.trim() ?? "";
-    const aid = data.aggregateId?.trim() ?? "";
-    const hasHalf = at.length > 0 !== aid.length > 0;
-    if (hasHalf) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "aggregateType and aggregateId must both be set together",
-        path: ["aggregateId"],
-      });
-    }
-  });
-
 /** Finance-only: Stripe dispute-related domain events (`payment.dispute%`). */
 export const adminFinanceDisputeDomainEventsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(200),
