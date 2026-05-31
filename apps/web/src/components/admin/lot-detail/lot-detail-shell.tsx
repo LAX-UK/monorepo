@@ -20,6 +20,7 @@ import { LotDetailConnectNotice } from "@/components/admin/lot-detail/lot-detail
 import { LotDetailReadinessProvider } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journey";
+import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-button";
 import { buildLotDetailNavActions } from "@/lib/admin/build-lot-mobile-actions";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import {
@@ -174,6 +175,9 @@ export function LotDetailShell({
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <AdminPinPageButton label={auction.title} />
+            {canManageCatalog ? (
+              <AdminQrCodeButton entityType="lot" entityId={lotId} title={auction.title} />
+            ) : null}
             {canManageAuction ? (
               <ReturnToInventoryButton
                 lotId={lotId}

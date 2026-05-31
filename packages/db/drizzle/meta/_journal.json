@@ -596,6 +596,13 @@
       "when": 1784200000000,
       "tag": "0087_creator_registry",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1784300000000,
+      "tag": "0088_qr_code",
+      "breakpoints": true
     }
   ]
 }
