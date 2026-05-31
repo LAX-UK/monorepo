@@ -2,7 +2,11 @@ import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helper
 import { SaleDetailShell } from "@/components/admin/sale-detail/sale-detail-shell";
 import { computeSaleDetailReadiness } from "@/lib/admin/compute-sale-detail-readiness";
 import { loadSaleConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
-import { loadAdminSaleDetail, loadAdminSaleRegistrationCount } from "@/lib/admin/load-sale-detail";
+import {
+  loadAdminSaleDetail,
+  loadAdminSalePendingRegistrationCount,
+  loadAdminSaleRegistrationCount,
+} from "@/lib/admin/load-sale-detail";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
@@ -24,8 +28,15 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     SALES_ACCESS,
   );
   const bundle = await loadAdminSaleDetail(id);
-  const [registrationCount, documents, activityEvents, connectRequiredByLotId] = await Promise.all([
+  const [
+    registrationCount,
+    pendingRegistrationCount,
+    documents,
+    activityEvents,
+    connectRequiredByLotId,
+  ] = await Promise.all([
     loadAdminSaleRegistrationCount(id, bundle.sale),
+    loadAdminSalePendingRegistrationCount(id, bundle.sale),
     getServerSaleDocuments(id).catch(() => []),
     getAdminDomainEventsForAggregate({ aggregateType: "sale", aggregateId: id, limit: 5 }).catch(
       () => [],
@@ -34,7 +45,9 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
   ]);
   const liveish = isSaleLiveish(bundle.sale);
   const pendingRegs =
-    liveish && registrationCount != null && registrationCount > 0 ? registrationCount : null;
+    liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
+      ? pendingRegistrationCount
+      : null;
   const draftSetupReadiness = computeSaleDetailReadiness({
     saleId: id,
     sale: bundle.sale,
@@ -48,6 +61,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       saleId={id}
       bundle={bundle}
       registrationCount={registrationCount}
+      pendingRegistrationCount={pendingRegistrationCount}
       documentCount={documents.length}
       activityEvents={activityEvents}
       canManageSales={canManageSales}

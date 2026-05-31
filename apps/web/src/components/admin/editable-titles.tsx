@@ -14,10 +14,16 @@ type TitleProps = {
   as?: "h1" | "span";
 };
 
-export function AdminLotEditableTitle({ lotId, value, ...rest }: TitleProps & { lotId: string }) {
+export function AdminLotEditableTitle({
+  lotId,
+  value,
+  editable = true,
+  ...rest
+}: TitleProps & { lotId: string; editable?: boolean }) {
   return (
     <AdminEditableTitle
       value={value}
+      editable={editable}
       onSave={(next) => adminUpdateLotTitleFieldAction(lotId, next)}
       {...rest}
     />

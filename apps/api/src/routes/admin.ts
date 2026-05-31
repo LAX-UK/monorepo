@@ -42,6 +42,7 @@ import {
   adminTelephonePlaceBidBodySchema,
   adminUpdateArtistBodySchema,
   adminUpdateCategoryBodySchema,
+  adminUserIdsLookupQuerySchema,
   adminUserListQuerySchema,
   artistIdParamSchema,
   categoryIdParamSchema,
@@ -297,6 +298,25 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         offset: q.offset,
       });
       return c.json({ data: { items, total, limit: q.limit, offset: q.offset } });
+    },
+  );
+
+  platform.post(
+    "/condition-report-requests/:id/mark-in-progress",
+    requireSpecialistCatalogueOrAuctionManage,
+    zValidator("param", conditionReportRequestIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.conditionReportService.markInProgress({
+        id,
+        actorUserId: userId,
+      });
+      return result.match(
+        (data) => c.json({ data }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
     },
   );
 
@@ -578,19 +598,25 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminLotFulfilmentListQuerySchema),
     async (c) => {
       const query = adminLotFulfilmentListQuerySchema.parse(c.req.valid("query"));
-      const rows = await container.lotFulfilmentService.listForAdmin(
-        query.status === undefined ? {} : { status: query.status as LotFulfilmentStatusCol },
-      );
-      const limit = query.limit ?? rows.length;
+      const limit = query.limit ?? 50;
       const offset = query.offset ?? 0;
-      const statusCounts: Record<string, number> = {};
-      for (const row of rows) {
-        statusCounts[row.status] = (statusCounts[row.status] ?? 0) + 1;
-      }
-      const data = rows.slice(offset, offset + limit);
+      const result = await container.lotFulfilmentService.listForAdmin(
+        query.status === undefined
+          ? {
+              ...(query.q ? { q: query.q } : {}),
+              limit,
+              offset,
+            }
+          : {
+              status: query.status as LotFulfilmentStatusCol,
+              ...(query.q ? { q: query.q } : {}),
+              limit,
+              offset,
+            },
+      );
       return c.json({
-        data,
-        meta: { total: rows.length, limit, offset, statusCounts },
+        data: result.items,
+        meta: { total: result.total, limit, offset, statusCounts: result.statusCounts },
       });
     },
   );
@@ -1118,6 +1144,12 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.admin.users.list(mapAdminUserListQuery(q));
+    return c.json({ data });
+  });
+
+  platform.get("/users/lookup", zValidator("query", adminUserIdsLookupQuerySchema), async (c) => {
+    const { ids } = c.req.valid("query");
+    const data = await container.admin.users.getByIds(ids);
     return c.json({ data });
   });
 

@@ -7,6 +7,7 @@ import type {
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
+  AdminUserListRow,
 } from "../interfaces/admin-user.js";
 
 export class AdminUserApplicationService implements IAdminUserApplicationService {
@@ -18,6 +19,10 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
 
   getById(id: string): Promise<AdminUserDetail | null> {
     return this.adminUsers.getById(id);
+  }
+
+  getByIds(ids: string[]): Promise<AdminUserListRow[]> {
+    return this.adminUsers.getByIds(ids);
   }
 
   async setRole(

@@ -34,12 +34,16 @@ import {
 } from "@/lib/data/http/admin.server";
 import { toAdminLotTableRows } from "@/lib/data/view-models/admin-lots.vm";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForPrivate("Lots", "Catalogue and manage auction lots.");
 
 export default async function AdminLotsPage({
   searchParams,
@@ -263,7 +267,7 @@ export default async function AdminLotsPage({
                 value: String(lotTableRows.length),
                 compareHint: `Live ${activeOnPage} · draft ${draftOnPage}`,
               },
-              buildTrendKpiTile("Catalog activity", lotsTrend, periodDays, {
+              buildTrendKpiTile("New lots trend", lotsTrend, periodDays, {
                 trendTone: "secondary",
               }),
             ]}

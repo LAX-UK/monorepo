@@ -81,6 +81,7 @@ export function AdminUserDetailShell({
   return (
     <AdminEntityDetailShell
       detailHeader
+      detailHeaderSticky={false}
       backHref={listHref}
       backLabel={listLabel}
       title={<AdminClientDisplayNameEditableTitle userId={user.id} value={user.name} />}
@@ -143,6 +144,7 @@ export function AdminUserDetailShell({
           {accountControls}
         </div>
       }
+      railSticky={false}
     >
       <AdminDetailTabs
         defaultValue={tabs[0]?.id ?? "overview"}

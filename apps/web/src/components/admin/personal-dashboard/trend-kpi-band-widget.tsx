@@ -12,21 +12,32 @@ type Props = {
 
 export function TrendKpiBandWidget({ periodDays, metrics, trends, bidsPerMinute }: Props) {
   const tiles = [
-    buildTrendKpiTile("Live lots", trends.lots, periodDays, {
-      formatValue: () => String(metrics.liveLots),
+    {
+      label: "Live lots",
+      value: String(metrics.liveLots),
+      deltaDirection: "flat" as const,
+      deltaPercent: "—",
+      deltaTone: "neutral" as const,
+      compareHint: `${metrics.endingWithinHour} ending < 1h`,
       emphasize: true,
-      trendTone: "primary",
-    }),
+      trend: [],
+      trendTone: "primary" as const,
+    },
     buildTrendKpiTile("New lots", trends.lots, periodDays, { trendTone: "secondary" }),
     buildTrendKpiTile("Payments", trends.payments, periodDays, {
       trendTone: "primary",
     }),
-    buildTrendKpiTile("Stale payments", trends.payments, periodDays, {
-      formatValue: () => String(metrics.stalePendingPayments),
-      higherIsBetter: false,
-      trendTone: "live-red",
-      semanticTone: metrics.stalePendingPayments > 0 ? "warning" : "default",
-    }),
+    {
+      label: "Stale payments",
+      value: String(metrics.stalePendingPayments),
+      deltaDirection: "flat" as const,
+      deltaPercent: "—",
+      deltaTone: "neutral" as const,
+      compareHint: "Pending > 48h",
+      trend: [],
+      trendTone: "live-red" as const,
+      semanticTone: metrics.stalePendingPayments > 0 ? ("warning" as const) : ("default" as const),
+    },
     {
       label: "Revenue today",
       value: metrics.revenueToday,
@@ -34,9 +45,7 @@ export function TrendKpiBandWidget({ periodDays, metrics, trends, bidsPerMinute 
       deltaPercent: "—",
       deltaTone: "neutral" as const,
       compareHint: "Captured UTC",
-      trend: trends.payments.dailyCounts.length
-        ? trends.payments.dailyCounts.map((n) => n / Math.max(...trends.payments.dailyCounts, 1))
-        : [],
+      trend: [],
       trendTone: "primary" as const,
     },
     {

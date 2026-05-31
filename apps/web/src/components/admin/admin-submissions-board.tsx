@@ -10,12 +10,16 @@ import { SubmissionInlineActions } from "@/components/admin/submission-inline-ac
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
+import {
+  areSubmissionBulkIdsActionable,
+  mergeSubmissionStatuses,
+} from "@/lib/admin/submission-bulk-selection";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { Button, EntityList } from "@auction/ui";
 import type { ColumnDef, OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
   return [
@@ -140,6 +144,16 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
   const columns = useMemo(() => submissionColumns(), []);
   const bulkOperations = useMemo(() => getSubmissionBulkOperations(), []);
   const pageIds = useMemo(() => rows.map((r) => r.id), [rows]);
+  const [statusById, setStatusById] = useState<Map<string, string>>(() => new Map());
+
+  useEffect(() => {
+    setStatusById((prev) => mergeSubmissionStatuses(prev, rows));
+  }, [rows]);
+
+  const selectedBulkActionable = useMemo(
+    () => areSubmissionBulkIdsActionable(selectedIds, statusById),
+    [selectedIds, statusById],
+  );
 
   return (
     <div className="space-y-4">
@@ -178,8 +192,13 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
       />
       <BulkActionsToolbar
         selectedIds={selectedIds}
-        operations={bulkOperations}
+        operations={selectedBulkActionable ? bulkOperations : []}
         onClear={clear}
+        preflightWarning={
+          selectedIds.length > 0 && !selectedBulkActionable
+            ? "Bulk approve and reject are available only for submissions already under review. Start review on submitted rows first."
+            : null
+        }
         pageRowCount={pageIds.length}
         onSelectAllOnPage={() => selectAllOnPage(pageIds)}
       />

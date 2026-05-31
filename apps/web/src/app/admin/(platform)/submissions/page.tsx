@@ -20,11 +20,19 @@ import { submissionsDecisionQueueHref } from "@/lib/admin/list-presets/submissio
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminCategoryById } from "@/lib/data/http/admin.server";
+import { getAdminCategoryById, getAdminLegalEntityById } from "@/lib/data/http/admin.server";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Submissions",
+  "Review seller submissions and decision queues.",
+);
 
 const DECISION_TABS: { id: SubmissionDecisionQueue; label: string }[] = [
   { id: "awaiting", label: "Awaiting" },
@@ -61,9 +69,24 @@ export default async function AdminSubmissionsPage({
     loadError = e instanceof Error ? e.message : "Could not load submissions.";
   }
 
+  const sellerIds = [
+    ...new Set(
+      rows.map((s) => s.legalEntityId ?? s.sellerId).filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const sellerNameEntries = await Promise.all(
+    sellerIds.map(async (id) => {
+      const entity = await getAdminLegalEntityById(id).catch(() => null);
+      return [id, entity?.displayName ?? null] as const;
+    }),
+  );
+  const sellerNameById = new Map(sellerNameEntries);
+
   const submissionRows: AdminSubmissionTableRow[] = rows.map((s) => {
     const entityId = s.legalEntityId ?? s.sellerId ?? "";
-    const sellerPreview = entityId ? `ID: ${entityId.slice(0, 8)}…` : "Unknown seller";
+    const sellerPreview = entityId
+      ? (sellerNameById.get(entityId) ?? `ID: ${entityId.slice(0, 8)}…`)
+      : "Unknown seller";
     return {
       id: s.id,
       title: s.title,
@@ -113,7 +136,16 @@ export default async function AdminSubmissionsPage({
     ? await getAdminCategoryById(query.categoryId).catch(() => null)
     : null;
 
-  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+  const [navCounts, categories] = await Promise.all([
+    getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS),
+    (async () => {
+      try {
+        return await (await getServerCategoryReader()).tree();
+      } catch {
+        return [];
+      }
+    })(),
+  ]);
 
   const activeFilterChips = buildSubmissionsActiveFilterChips(sp, {
     ...(initialQ ? { q: initialQ } : {}),
@@ -224,6 +256,8 @@ export default async function AdminSubmissionsPage({
             activeFilterCount={activeFilterCount}
             activeFilterChips={activeFilterChips}
             initialQ={initialQ}
+            initialCategoryId={query.categoryId ?? null}
+            categories={categories}
             queue={activeQueue}
           />
         </Suspense>

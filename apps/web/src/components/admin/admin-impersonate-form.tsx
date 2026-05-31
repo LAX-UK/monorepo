@@ -5,6 +5,7 @@ import { notify } from "@/lib/ui/notify";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AdminLegalEntityPicker } from "./admin-legal-entity-picker";
 
@@ -42,6 +43,7 @@ function formatImpersonationError(result: {
 }
 
 export function AdminImpersonateForm() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,6 +64,8 @@ export function AdminImpersonateForm() {
             return;
           }
           notify.success("Impersonation started");
+          router.push("/dashboard");
+          router.refresh();
         });
       }}
     >

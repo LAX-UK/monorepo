@@ -1,6 +1,9 @@
 "use client";
 
-import { readPalettePinned } from "@/components/layout/palette/palette-cookie-client";
+import {
+  PALETTE_PINNED_CHANGE_EVENT,
+  readPalettePinned,
+} from "@/components/layout/palette/palette-cookie-client";
 import type { PalettePinnedRef } from "@/components/layout/palette/pinned-store";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -25,7 +28,11 @@ export function StaffSidebarPinnedRecents({ labelsHidden, onNavigate }: Props) {
   useEffect(() => {
     const refresh = () => setPinned(readPalettePinned());
     window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
+    window.addEventListener(PALETTE_PINNED_CHANGE_EVENT, refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(PALETTE_PINNED_CHANGE_EVENT, refresh);
+    };
   }, []);
 
   if (labelsHidden) return null;

@@ -1,9 +1,5 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
-export default function PaymentsLoading() {
-  return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8">
-      <PageSkeleton variant="table" />
-    </div>
-  );
+export default function AdminPaymentsLoading() {
+  return <AdminListPageSkeleton title="Payments" kpiTiles={4} />;
 }
