@@ -22,6 +22,17 @@ import { getAdminClientsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { PaginationFooter } from "@auction/ui";
 
+function safelyDecodeQueryParam(value: string | string[] | undefined): string | null {
+  if (!value) return null;
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 export default async function AdminClientsPage({
   searchParams,
 }: {
@@ -29,7 +40,7 @@ export default async function AdminClientsPage({
 }) {
   const sp = await searchParams;
   const periodDays = parseAdminKpiPeriod(firstString(sp.period));
-  const error = sp.error ? decodeURIComponent(String(sp.error)) : null;
+  const error = safelyDecodeQueryParam(sp.error);
   const query = usersListController.parseQuery({ ...sp, role: "client" });
   const listFilters = parseUsersListFilters({ ...sp, role: "client" });
 
@@ -130,15 +141,15 @@ export default async function AdminClientsPage({
                 compareHint: `${rows.length} on this page`,
               },
               {
-                label: "Active",
+                label: "Active on page",
                 value: String(rows.filter((r) => !r.suspendedAt).length),
-                compareHint: rows.length > 0 ? "Current page" : "—",
+                compareHint: `${rows.length} loaded`,
                 deltaTone: "positive",
               },
               {
-                label: "Suspended",
+                label: "Suspended on page",
                 value: String(rows.filter((r) => r.suspendedAt).length),
-                compareHint: "Current page",
+                compareHint: `${rows.length} loaded`,
                 semanticTone: rows.some((r) => r.suspendedAt) ? "warning" : "default",
               },
             ]}
@@ -164,14 +175,18 @@ export default async function AdminClientsPage({
       }
       view={
         !loadError && rows.length > 0 ? (
-          <AdminClientsBoard rows={rows} totalMatches={total} />
+          <AdminClientsBoard rows={rows} totalMatches={total} hasActiveFilters={hasFilters} />
         ) : null
       }
       empty={
         !loadError && rows.length === 0 ? (
           <AdminEmptyState
             title="No clients"
-            description="Try a different search query or clear filters."
+            description={
+              hasFilters
+                ? "Try a different search query or clear filters."
+                : "Client accounts will appear here once users sign up."
+            }
           />
         ) : null
       }
