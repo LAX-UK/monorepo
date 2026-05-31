@@ -11,6 +11,7 @@ import {
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { resolvePhoneDefaultCountry } from "@/lib/phone/resolve-phone-default-country";
 
 export default async function ProfileSettingsPage({
   searchParams,
@@ -29,6 +30,12 @@ export default async function ProfileSettingsPage({
   let addresses: ProfileAddressRow[] = [];
   let addressLoadFailure = null;
   const addressRes = await Promise.allSettled([c.addresses.listMine()]);
+  const defaultAddress =
+    addressRes[0].status === "fulfilled"
+      ? (addressRes[0].value.find((a) => a.isDefault) ?? addressRes[0].value[0])
+      : undefined;
+  const phoneDefaultCountry = await resolvePhoneDefaultCountry(defaultAddress?.country);
+
   if (addressRes[0].status === "fulfilled") {
     addresses = addressRes[0].value;
   } else {
@@ -50,6 +57,9 @@ export default async function ProfileSettingsPage({
       <ProfileSettingsBoard
         initialName={me.name}
         initialImage={me.image ?? null}
+        initialMobile={me.mobile ?? null}
+        initialMobileCountry={me.mobileCountry ?? null}
+        phoneDefaultCountry={phoneDefaultCountry}
         addresses={addresses}
         email={me.email}
         {...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {})}

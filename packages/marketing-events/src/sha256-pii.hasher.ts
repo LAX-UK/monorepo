@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { phoneDigitsForPiiHash } from "@auction/validators";
 import type { IPiiHasher } from "./interfaces/pii-hasher.js";
 
 function normalizeEmail(email: string): string {
@@ -16,7 +17,7 @@ function normalizeEmail(email: string): string {
 }
 
 function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, "");
+  return phoneDigitsForPiiHash(phone);
 }
 
 function normalizeName(name: string): string {

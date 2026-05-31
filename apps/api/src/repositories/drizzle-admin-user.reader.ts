@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { type SQL, and, count, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type {
   AdminActivityEntry,
@@ -13,51 +13,27 @@ import type {
   IAdminUserRoleManager,
   IAdminUserSuspender,
 } from "../services/interfaces/admin-user.js";
+import {
+  adminUserListSelect,
+  buildAdminUserListOrderBy,
+  buildAdminUserListWhere,
+  mapAdminUserListRow,
+} from "./admin-user-list-sql.js";
 
 export class DrizzleAdminUserReader implements IAdminUserReader {
   constructor(private readonly db: Database) {}
 
   async list(filter: AdminUserListFilter): Promise<AdminUserListResult> {
-    const q = filter.q?.trim();
-    const clauses: SQL[] = [];
-    if (q) {
-      const searchClause = or(ilike(user.email, `%${q}%`), ilike(user.name, `%${q}%`));
-      if (searchClause) clauses.push(searchClause);
-    }
-    if (filter.role) {
-      clauses.push(eq(user.role, filter.role));
-    }
-    if (filter.staffRole) {
-      clauses.push(
-        eq(user.staffRole, filter.staffRole as (typeof userStaffRoleEnum.enumValues)[number]),
-      );
-    }
-    if (filter.suspendedOnly) {
-      clauses.push(isNotNull(user.suspendedAt));
-    }
-    const whereClause = clauses.length > 0 ? and(...clauses) : undefined;
+    const whereClause = buildAdminUserListWhere(filter);
 
     const countQuery = this.db.select({ n: count() }).from(user);
     const [countRow] = whereClause ? await countQuery.where(whereClause) : await countQuery;
     const total = Number(countRow?.n ?? 0);
 
     const base = this.db
-      .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        staffRole: user.staffRole,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        suspendedAt: user.suspendedAt,
-        image: user.image,
-        emailVerified: user.emailVerified,
-        kycStatus: user.kycStatus,
-        kycVerifiedAt: user.kycVerifiedAt,
-      })
+      .select(adminUserListSelect)
       .from(user)
-      .orderBy(desc(user.createdAt))
+      .orderBy(buildAdminUserListOrderBy(filter.sort))
       .limit(filter.limit)
       .offset(filter.offset);
 
@@ -65,58 +41,33 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 
     return {
       total,
-      rows: rows.map((r) => ({
-        id: r.id,
-        email: r.email,
-        name: r.name,
-        role: r.role,
-        staffRole: r.staffRole ?? null,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-        suspendedAt: r.suspendedAt ?? null,
-        image: r.image ?? null,
-        emailVerified: r.emailVerified,
-        kycStatus: r.kycStatus,
-        kycVerifiedAt: r.kycVerifiedAt ?? null,
-      })),
+      rows: rows.map(mapAdminUserListRow),
     };
   }
 
   async getById(id: string): Promise<AdminUserDetail | null> {
     const [row] = await this.db
       .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        staffRole: user.staffRole,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        suspendedAt: user.suspendedAt,
+        ...adminUserListSelect,
         suspendedReason: user.suspendedReason,
-        image: user.image,
-        emailVerified: user.emailVerified,
-        kycStatus: user.kycStatus,
-        kycVerifiedAt: user.kycVerifiedAt,
+        dateOfBirth: user.dateOfBirth,
+        emailStatusChangedAt: user.emailStatusChangedAt,
+        pendingNewEmail: user.pendingNewEmail,
+        emailChangeExpiresAt: user.emailChangeExpiresAt,
+        currentKycSessionId: user.currentKycSessionId,
       })
       .from(user)
       .where(eq(user.id, id))
       .limit(1);
     if (!row) return null;
     return {
-      id: row.id,
-      email: row.email,
-      name: row.name,
-      role: row.role,
-      staffRole: row.staffRole ?? null,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      suspendedAt: row.suspendedAt ?? null,
+      ...mapAdminUserListRow(row),
       suspendedReason: row.suspendedReason ?? null,
-      image: row.image ?? null,
-      emailVerified: row.emailVerified,
-      kycStatus: row.kycStatus,
-      kycVerifiedAt: row.kycVerifiedAt ?? null,
+      dateOfBirth: row.dateOfBirth ?? null,
+      emailStatusChangedAt: row.emailStatusChangedAt ?? null,
+      pendingNewEmail: row.pendingNewEmail ?? null,
+      emailChangeExpiresAt: row.emailChangeExpiresAt ?? null,
+      currentKycSessionId: row.currentKycSessionId ?? null,
     };
   }
 }

@@ -5,6 +5,7 @@ import {
   AdminUserWonLotsPanel,
 } from "@/components/admin/admin-user-commerce-panel";
 import { AdminUserDetailShell } from "@/components/admin/admin-user-detail-shell";
+import { AdminUserKycHistoryPanel } from "@/components/admin/admin-user-kyc-history-panel";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import {
   getAdminArtistsByOwnerUserId,
@@ -12,6 +13,7 @@ import {
   getAdminLotsWonByUser,
   getAdminPaymentsForUser,
   getAdminUserById,
+  getAdminUserKycSessions,
 } from "@/lib/data/http/admin.server";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 import { notFound, redirect } from "next/navigation";
@@ -31,11 +33,12 @@ export default async function AdminClientDetailPage({ params }: Props) {
     redirect(`/admin/staff/${id}`);
   }
 
-  const [linkedArtists, payments, wonLots, legalEntities] = await Promise.all([
+  const [linkedArtists, payments, wonLots, legalEntities, kycSessions] = await Promise.all([
     getAdminArtistsByOwnerUserId(user.id).catch(() => []),
     getAdminPaymentsForUser(user.id).catch(() => []),
     getAdminLotsWonByUser(user.id).catch(() => []),
     getAdminLegalEntitiesForUser(user.id).catch(() => []),
+    getAdminUserKycSessions(user.id).catch(() => []),
   ]);
 
   const lifetimeSpend = payments
@@ -80,6 +83,7 @@ export default async function AdminClientDetailPage({ params }: Props) {
           content: (
             <div className="space-y-8">
               <AdminUserProfilePanel user={user} />
+              <AdminUserKycHistoryPanel sessions={kycSessions} />
               <AdminClientArtistProfilesPanel
                 userId={user.id}
                 userName={user.name}

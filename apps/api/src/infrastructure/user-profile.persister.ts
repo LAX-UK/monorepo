@@ -13,6 +13,7 @@ export class DrizzleUserProfilePersister implements IUserProfilePersister {
     lastName: string;
     persona: SignupPersona;
     mobile?: string;
+    mobileCountry?: string;
   }): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
       await this.db
@@ -21,6 +22,7 @@ export class DrizzleUserProfilePersister implements IUserProfilePersister {
           firstName: input.firstName,
           lastName: input.lastName,
           mobile: input.mobile ?? null,
+          mobileCountry: input.mobileCountry ?? null,
           signupPersona: input.persona,
           updatedAt: new Date(),
         })

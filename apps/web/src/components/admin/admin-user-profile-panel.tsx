@@ -7,6 +7,7 @@ import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
+import { formatPhoneDisplay } from "@auction/validators";
 import type { ReactNode } from "react";
 
 function ProfileSection({
@@ -28,6 +29,7 @@ function ProfileSection({
 
 export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }) {
   const isStaff = user.role === "staff";
+  const mobileDisplay = formatPhoneDisplay(user.mobile);
 
   return (
     <div className="space-y-4">
@@ -36,6 +38,11 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
           <AdminUserAvatar user={user} size="lg" />
           <div>
             <p className="font-headline text-lg">{user.name}</p>
+            {(user.firstName || user.lastName) && (
+              <p className="text-sm text-on-surface-variant">
+                {[user.firstName, user.lastName].filter(Boolean).join(" ")}
+              </p>
+            )}
             <p className="text-sm text-on-surface-variant">{user.email}</p>
           </div>
         </div>
@@ -46,6 +53,25 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
               <AdminCopyField value={user.id} label="User ID" />
             </dd>
           </div>
+          {mobileDisplay ? (
+            <div>
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">Mobile</dt>
+              <dd>
+                {mobileDisplay}
+                {user.mobileCountry ? (
+                  <span className="text-on-surface-variant"> ({user.mobileCountry})</span>
+                ) : null}
+              </dd>
+            </div>
+          ) : null}
+          {user.dateOfBirth ? (
+            <div>
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                Date of birth
+              </dt>
+              <dd>{user.dateOfBirth}</dd>
+            </div>
+          ) : null}
           {user.image ? (
             <div className="md:col-span-2">
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">
@@ -72,6 +98,10 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             </div>
           ) : null}
           <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Persona</dt>
+            <dd className="capitalize">{user.signupPersona ?? "Not set"}</dd>
+          </div>
+          <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Created</dt>
             <dd>{formatAdminUserDate(user.createdAt)}</dd>
           </div>
@@ -93,6 +123,14 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
               <dd className="text-error">{user.suspendedReason}</dd>
             </div>
           ) : null}
+          {user.deletionRequestedAt ? (
+            <div className="md:col-span-2">
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                Deletion requested
+              </dt>
+              <dd className="text-warning">{formatAdminUserDate(user.deletionRequestedAt)}</dd>
+            </div>
+          ) : null}
         </dl>
       </ProfileSection>
 
@@ -110,6 +148,33 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             </dd>
           </div>
           <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+              Email deliverability
+            </dt>
+            <dd className="capitalize">{user.emailStatus}</dd>
+          </div>
+          {user.emailStatusChangedAt ? (
+            <div>
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                Email status changed
+              </dt>
+              <dd>{formatAdminUserDate(user.emailStatusChangedAt)}</dd>
+            </div>
+          ) : null}
+          {user.pendingNewEmail ? (
+            <div className="md:col-span-2">
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                Pending email change
+              </dt>
+              <dd className="break-all">{user.pendingNewEmail}</dd>
+              {user.emailChangeExpiresAt ? (
+                <p className="text-xs text-on-surface-variant">
+                  Expires {formatAdminUserDate(user.emailChangeExpiresAt)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">KYC</dt>
             <dd>
               <AdminStatusBadge domain="kyc" status={user.kycStatus ?? ""} size="sm" />
@@ -123,6 +188,38 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
               <dd>{formatAdminUserDate(user.kycVerifiedAt)}</dd>
             </div>
           ) : null}
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+              KYC retries
+            </dt>
+            <dd>{user.kycRetryCount}</dd>
+          </div>
+          {user.currentKycSessionId ? (
+            <div className="md:col-span-2">
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                Current KYC session
+              </dt>
+              <dd className="break-all font-mono text-xs">{user.currentKycSessionId}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </ProfileSection>
+
+      <ProfileSection title="Security">
+        <dl className="grid gap-3 text-sm md:grid-cols-2">
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+              Two-factor authentication
+            </dt>
+            <dd>
+              <AdminStatusBadge
+                domain="kyc"
+                status={user.twoFactorEnabled ? "approved" : "unverified"}
+                label={user.twoFactorEnabled ? "Enabled" : "Disabled"}
+                size="sm"
+              />
+            </dd>
+          </div>
         </dl>
       </ProfileSection>
     </div>

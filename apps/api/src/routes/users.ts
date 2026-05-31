@@ -14,6 +14,7 @@ import {
   artistWatchlistBodySchema,
   biddingPreferencesPatchSchema,
   createAddressBodySchema,
+  formatPhoneDisplay,
   listMyConditionReportRequestsQuerySchema,
   notificationIdUuidParamSchema,
   notificationPreferencePatchSchema,
@@ -107,7 +108,9 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       password: reg.password,
       persona: reg.persona,
       ...(reg.inviteToken !== undefined ? { inviteToken: reg.inviteToken } : {}),
-      ...(reg.mobile !== undefined ? { mobile: reg.mobile } : {}),
+      ...("mobile" in reg && reg.mobile !== undefined
+        ? { mobile: reg.mobile, mobileCountry: reg.mobileCountry }
+        : {}),
     });
     if (!result.ok) {
       return c.json({ error: result.message }, result.status as 400);
@@ -850,6 +853,9 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         id: row.id,
         email: row.email,
         name: row.name,
+        mobile: row.mobile,
+        mobileCountry: row.mobileCountry,
+        mobileDisplay: formatPhoneDisplay(row.mobile),
         role: row.role,
         staffRole: row.staffRole,
         image,

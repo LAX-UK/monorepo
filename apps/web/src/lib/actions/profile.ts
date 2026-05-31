@@ -12,6 +12,8 @@ import {
 } from "@/lib/forms/form-result";
 import {
   createAddressBodySchema,
+  mediaReferenceSchema,
+  type phoneInputSchema,
   updateAddressBodySchema,
   updateProfileNameFormSchema,
   updateProfileSchema,
@@ -42,11 +44,33 @@ export async function updateProfileNameFromValuesAction(input: {
   });
 }
 
+export async function updateProfilePhoneFromValuesAction(input: {
+  phone: z.infer<typeof phoneInputSchema> | null;
+  mobile?: null;
+}): Promise<ActionResult<void>> {
+  return instrumentServerAction("updateProfilePhoneFromValuesAction", async () => {
+    const parsed = updateProfileSchema.safeParse(
+      input.phone === null ? { phone: null, mobile: null } : { phone: input.phone },
+    );
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { profile } = getWriteContainer();
+    const r = await profile.updateProfile(parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/dashboard/settings/profile");
+    revalidatePath("/dashboard");
+    return actionSuccess();
+  });
+}
+
 export async function updateProfileImageAction(input: {
   image: string | null;
 }): Promise<ActionResult<void>> {
   return instrumentServerAction("updateProfileImageAction", async () => {
-    const parsed = updateProfileSchema.pick({ image: true }).required().safeParse(input);
+    const parsed = z.object({ image: mediaReferenceSchema.nullable() }).safeParse(input);
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
     }

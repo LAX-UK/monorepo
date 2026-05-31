@@ -1262,32 +1262,80 @@ export type AdminUserRow = {
   id: string;
   email: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
   role: string;
   staffRole: string | null;
   createdAt: string;
   updatedAt: string;
   suspendedAt: string | null;
   image: string | null;
+  mobile: string | null;
+  mobileCountry: string | null;
   emailVerified: boolean;
+  emailStatus: string;
+  signupPersona: string | null;
+  twoFactorEnabled: boolean;
   kycStatus: string;
   kycVerifiedAt: string | null;
+  kycRetryCount: number;
+  deletionRequestedAt: string | null;
 };
 
-export async function getAdminUserList(params: {
+export type GetAdminUserListParams = {
   q?: string;
   limit?: number;
   offset?: number;
   role?: string;
   staffRole?: string;
   suspendedOnly?: boolean;
-}): Promise<{ rows: AdminUserRow[]; total: number }> {
+  accountStatus?: "active" | "suspended";
+  emailVerified?: boolean;
+  emailStatus?: "ok" | "bounced" | "complained";
+  kycStatus?: string;
+  kycStatuses?: string[];
+  persona?: "individual" | "organisation" | "none";
+  twoFactorEnabled?: boolean;
+  deletionRequestedOnly?: boolean;
+  hasMobile?: boolean;
+  createdFrom?: string;
+  createdTo?: string;
+  kycVerifiedFrom?: string;
+  kycVerifiedTo?: string;
+  lastActiveFrom?: string;
+  lastActiveTo?: string;
+  sort?: string;
+};
+
+export async function getAdminUserList(
+  params: GetAdminUserListParams,
+): Promise<{ rows: AdminUserRow[]; total: number }> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   qs.set("limit", String(params.limit ?? 25));
   qs.set("offset", String(params.offset ?? 0));
   if (params.role) qs.set("role", params.role);
   if (params.staffRole) qs.set("staffRole", params.staffRole);
-  if (params.suspendedOnly) qs.set("suspended", "1");
+  if (params.accountStatus) qs.set("status", params.accountStatus);
+  else if (params.suspendedOnly) qs.set("suspended", "1");
+  if (params.emailVerified === true) qs.set("emailVerified", "1");
+  else if (params.emailVerified === false) qs.set("emailVerified", "0");
+  if (params.emailStatus) qs.set("emailStatus", params.emailStatus);
+  if (params.kycStatuses?.length) qs.set("kycStatuses", params.kycStatuses.join(","));
+  else if (params.kycStatus) qs.set("kycStatus", params.kycStatus);
+  if (params.persona) qs.set("persona", params.persona);
+  if (params.twoFactorEnabled === true) qs.set("twoFactor", "1");
+  else if (params.twoFactorEnabled === false) qs.set("twoFactor", "0");
+  if (params.deletionRequestedOnly) qs.set("deletionRequested", "1");
+  if (params.hasMobile === true) qs.set("hasMobile", "1");
+  else if (params.hasMobile === false) qs.set("hasMobile", "0");
+  if (params.createdFrom) qs.set("createdFrom", params.createdFrom);
+  if (params.createdTo) qs.set("createdTo", params.createdTo);
+  if (params.kycVerifiedFrom) qs.set("kycVerifiedFrom", params.kycVerifiedFrom);
+  if (params.kycVerifiedTo) qs.set("kycVerifiedTo", params.kycVerifiedTo);
+  if (params.lastActiveFrom) qs.set("lastActiveFrom", params.lastActiveFrom);
+  if (params.lastActiveTo) qs.set("lastActiveTo", params.lastActiveTo);
+  if (params.sort) qs.set("sort", params.sort);
   const res = await authedServerFetch(`/admin/users?${qs.toString()}`);
   if (!res.ok) {
     throw new Error(`Failed to load users: ${res.status}`);
@@ -1296,7 +1344,40 @@ export async function getAdminUserList(params: {
   return json.data;
 }
 
-export type AdminUserDetailPayload = AdminUserRow & { suspendedReason: string | null };
+export type AdminUserDetailPayload = AdminUserRow & {
+  suspendedReason: string | null;
+  dateOfBirth: string | null;
+  emailStatusChangedAt: string | null;
+  pendingNewEmail: string | null;
+  emailChangeExpiresAt: string | null;
+  currentKycSessionId: string | null;
+};
+
+export type AdminKycSessionRow = {
+  id: string;
+  provider: string;
+  providerSessionId: string;
+  providerAttemptId: string | null;
+  status: string;
+  verifiedFirstName: string | null;
+  verifiedLastName: string | null;
+  verifiedDateOfBirth: string | null;
+  verifiedIdNumberLast4: string | null;
+  verifiedIdCountry: string | null;
+  verifiedIdType: string | null;
+  verifiedIdExpiry: string | null;
+  createdAt: string;
+  decisionAt: string | null;
+};
+
+export async function getAdminUserKycSessions(userId: string): Promise<AdminKycSessionRow[]> {
+  const res = await authedServerFetch(`/admin/users/${encodeURIComponent(userId)}/kyc-sessions`);
+  if (!res.ok) {
+    throw new Error(`Failed to load KYC sessions: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: AdminKycSessionRow[] };
+  return body.data;
+}
 
 export async function getAdminUserById(id: string): Promise<AdminUserDetailPayload | null> {
   const res = await authedServerFetch(`/admin/users/${encodeURIComponent(id)}`);

@@ -6,9 +6,12 @@ import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
 import {
   userJoinedColumn,
+  userKycVerifiedAtColumn,
   userLastActivityColumn,
+  userPersonaColumn,
   userRowActionsColumn,
   userStatusColumn,
+  userTwoFactorColumn,
 } from "@/components/admin/users-board";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
@@ -54,6 +57,9 @@ function clientColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRo
       },
     },
     userStatusColumn(),
+    userPersonaColumn(),
+    userTwoFactorColumn(),
+    userKycVerifiedAtColumn(),
     userJoinedColumn(),
     userLastActivityColumn(),
     userRowActionsColumn(onOpen),
@@ -91,12 +97,18 @@ export function AdminClientMobileCard({ u, onOpen }: { u: AdminUserRow; onOpen: 
       <div className="min-w-0 flex-1">
         <p className="truncate font-headline text-base text-on-surface">{u.name}</p>
         <p className="truncate text-xs text-on-surface-variant">{u.email}</p>
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <AdminStatusBadge
             domain="user"
             status={u.suspendedAt ? "suspended" : "active"}
             size="sm"
           />
+          {u.emailVerified ? (
+            <span className="text-[10px] text-success">Email ✓</span>
+          ) : (
+            <span className="text-[10px] text-on-surface-variant">Email unverified</span>
+          )}
+          <AdminStatusBadge domain="kyc" status={u.kycStatus ?? ""} size="sm" />
           <span className="text-[10px] text-on-surface-variant">
             Joined {formatAdminUserDate(u.createdAt)}
           </span>
@@ -113,6 +125,18 @@ function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
       <div>
         <dt className="font-label text-[10px] uppercase text-on-surface-variant">Email</dt>
         <dd className="break-all">{u.email}</dd>
+      </div>
+      {u.mobile ? (
+        <div>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Mobile</dt>
+          <dd>{u.mobile}</dd>
+        </div>
+      ) : null}
+      <div>
+        <dt className="font-label text-[10px] uppercase text-on-surface-variant">KYC</dt>
+        <dd>
+          <AdminStatusBadge domain="kyc" status={u.kycStatus ?? ""} size="sm" />
+        </dd>
       </div>
       <div>
         <dt className="font-label text-[10px] uppercase text-on-surface-variant">User ID</dt>

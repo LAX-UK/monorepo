@@ -301,6 +301,9 @@ importers:
       hono:
         specifier: ^4.6.14
         version: 4.12.12
+      libphonenumber-js:
+        specifier: ^1.12.9
+        version: 1.13.4
       lucide-react:
         specifier: ^1.8.0
         version: 1.8.0(react@19.2.5)
@@ -595,6 +598,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../validators
       '@better-auth/utils':
         specifier: 0.4.0
         version: 0.4.0
@@ -699,6 +705,9 @@ importers:
       '@auction/types':
         specifier: workspace:*
         version: link:../types
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../validators
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
@@ -749,6 +758,9 @@ importers:
       drizzle-orm:
         specifier: ^0.41.0
         version: 0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
@@ -886,9 +898,6 @@ importers:
 
   packages/validators:
     dependencies:
-      '@auction/queues':
-        specifier: workspace:*
-        version: link:../queues
       '@auction/types':
         specifier: workspace:*
         version: link:../types
@@ -898,6 +907,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      libphonenumber-js:
+        specifier: ^1.12.9
+        version: 1.13.4
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -5640,6 +5652,9 @@ packages:
 
   leac@0.6.0:
     resolution: {integrity: sha512-y+SqErxb8h7nE/fiEX07jsbuhrpO9lL8eca7/Y1nuWV2moNlXhyd59iDGcRf6moVyDMbmTNzL40SUyrFU/yDpg==}
+
+  libphonenumber-js@1.13.4:
+    resolution: {integrity: sha512-/lhWr7vq8foWN9Apksnd9v8/cfwzW6g6qKOCo25XBGkNaVCHucXO57hLy4CWHGvytvLz6Nt3J5Gs8p3jlCGFXA==}
 
   lighthouse-logger@1.2.0:
     resolution: {integrity: sha512-wzUvdIeJZhRsG6gpZfmSCfysaxNEr43i+QT+Hie94wvHDKFLi4n7C2GqZ4sTC+PH5b5iktmXJvU87rWvhP3lHw==}
@@ -12245,6 +12260,8 @@ snapshots:
   kysely@0.28.15: {}
 
   leac@0.6.0: {}
+
+  libphonenumber-js@1.13.4: {}
 
   lighthouse-logger@1.2.0:
     dependencies:

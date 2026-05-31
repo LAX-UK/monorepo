@@ -18,9 +18,14 @@ import { useEffect } from "react";
 type Props = {
   inviteToken?: string;
   orgModuleEnabled?: boolean;
+  phoneDefaultCountry?: string;
 };
 
-export function SignUpForm({ inviteToken, orgModuleEnabled = true }: Props) {
+export function SignUpForm({
+  inviteToken,
+  orgModuleEnabled = true,
+  phoneDefaultCountry = "GB",
+}: Props) {
   const searchParams = useSearchParams();
   const rawNext = searchParams.get("next");
   const safeNext = rawNext && isSafeNextPath(rawNext) ? rawNext : undefined;
@@ -28,10 +33,11 @@ export function SignUpForm({ inviteToken, orgModuleEnabled = true }: Props) {
   const loginHref = buildAuthHref("/login", {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
   });
-  const controllerOpts =
-    inviteToken || safeNext
-      ? { ...(inviteToken ? { inviteToken } : {}), ...(safeNext ? { next: safeNext } : {}) }
-      : undefined;
+  const controllerOpts = {
+    ...(inviteToken ? { inviteToken } : {}),
+    ...(safeNext ? { next: safeNext } : {}),
+    phoneDefaultCountry,
+  };
   const {
     form,
     onSubmit,
@@ -92,7 +98,11 @@ export function SignUpForm({ inviteToken, orgModuleEnabled = true }: Props) {
       ) : null}
       {(!inviteToken || orgModuleEnabled) && (
         <>
-          <SignUpFields control={form.control} orgModuleEnabled={orgModuleEnabled} />
+          <SignUpFields
+            control={form.control}
+            orgModuleEnabled={orgModuleEnabled}
+            phoneDefaultCountry={phoneDefaultCountry}
+          />
           <SignUpLegalConsent control={form.control} />
           <TurnstileWidget
             siteKey={turnstileSiteKey}

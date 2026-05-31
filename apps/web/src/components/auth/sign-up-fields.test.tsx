@@ -1,4 +1,5 @@
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
+import { Form } from "@auction/ui/components/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useForm } from "react-hook-form";
@@ -18,14 +19,18 @@ function Harness({
       firstName: "",
       lastName: "",
       email: "",
-      mobile: "",
+      phone: { country: "GB", number: "" },
       password: "",
       persona: "individual",
       acceptTerms: false,
       ...defaults,
     },
   });
-  return <SignUpFields control={form.control} orgModuleEnabled={orgModuleEnabled} />;
+  return (
+    <Form {...form}>
+      <SignUpFields control={form.control} orgModuleEnabled={orgModuleEnabled} />
+    </Form>
+  );
 }
 
 describe("SignUpFields persona selector", () => {
