@@ -1,4 +1,5 @@
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
+import { AdminSaleLotQrPrintButton } from "@/components/admin/qr-code/admin-sale-lot-qr-print-button";
 import { SaleLotsTabSection } from "@/components/admin/sale-lots-tab-section";
 import { saleSetupHref } from "@/lib/admin/sale-setup";
 import type { Lot, Sale } from "@auction/types";
@@ -25,14 +26,21 @@ export function SaleLotsTab({ saleId, sale, lots, canManageAuction = false }: Pr
           <span className="font-medium tabular-nums text-on-surface">{lots.length}</span> lot
           {lots.length === 1 ? "" : "s"} in this sale
         </p>
-        {canEdit ? (
-          <Link
-            href={saleSetupHref(saleId, "lots")}
-            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-          >
-            Add lots in setup →
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {canManageAuction ? (
+            <AdminSaleLotQrPrintButton
+              lots={lots.map((l) => ({ id: l.id, title: l.title, lotNumber: l.lotNumber }))}
+            />
+          ) : null}
+          {canEdit ? (
+            <Link
+              href={saleSetupHref(saleId, "lots")}
+              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+            >
+              Add lots in setup →
+            </Link>
+          ) : null}
+        </div>
       </div>
       <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
         <SaleLotsTabSection

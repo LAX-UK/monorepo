@@ -1,5 +1,5 @@
 const PII_KEY_PATTERN =
-  /^(email|phone|password|passwordHash|token|bearerToken|stripeSecret|accessToken|refreshToken|secret|authorization|body|html|text|vars)$/i;
+  /^(email|phone|ip|ipAddress|ipPrefix|password|passwordHash|token|bearerToken|stripeSecret|accessToken|refreshToken|secret|authorization|body|html|text|vars)$/i;
 
 const MAX_REDACT_DEPTH = 8;
 

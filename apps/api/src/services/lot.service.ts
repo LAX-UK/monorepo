@@ -47,6 +47,7 @@ import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notific
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
+import type { QrCodeService } from "./qr-code.service.js";
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
@@ -114,6 +115,7 @@ export type LotServiceOptions = {
   englishOnlyAuctions?: boolean;
   lotLifecycleRecording?: LotLifecycleRecording | null;
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
+  qrCodeService?: QrCodeService | null;
 };
 
 export class LotService {
@@ -133,6 +135,7 @@ export class LotService {
   private readonly englishOnlyAuctions: boolean;
   private readonly lotLifecycleRecording: LotLifecycleRecording | null;
   private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
+  private readonly qrCodeService: QrCodeService | null;
 
   constructor(opts: LotServiceOptions) {
     this.lotRepo = opts.lotRepo;
@@ -151,6 +154,7 @@ export class LotService {
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
+    this.qrCodeService = opts.qrCodeService ?? null;
   }
 
   returnToInventory(
@@ -204,6 +208,10 @@ export class LotService {
         });
         return row;
       });
+      await this.qrCodeService?.getOrCreateDefault({
+        entityType: "lot",
+        entityId: created.id,
+      });
       return ok(created);
     }
     const created = await this.lotRepo.create(timingResult.value);
@@ -212,6 +220,10 @@ export class LotService {
         lot: created,
         source: "staff_create",
       });
+    });
+    await this.qrCodeService?.getOrCreateDefault({
+      entityType: "lot",
+      entityId: created.id,
     });
     return ok(created);
   }
