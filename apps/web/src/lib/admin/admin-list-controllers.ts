@@ -269,6 +269,8 @@ export type ArtistsListQuery = AdminListQueryBase & {
   kinds?: string | undefined;
   status?: string | undefined;
   ownerUserId?: string | undefined;
+  categoryId?: string | undefined;
+  country?: string | undefined;
   featured?: boolean | undefined;
   verified?: boolean | undefined;
   linked?: "any" | "yes" | "no" | undefined;
@@ -285,6 +287,8 @@ export const artistsListController: IAdminListController<AdminArtistListRow, Art
     const kinds = firstString(sp.kinds);
     const status = firstString(sp.status);
     const ownerUserId = firstString(sp.ownerUserId);
+    const categoryId = firstString(sp.categoryId);
+    const country = firstString(sp.country);
     const featured = firstString(sp.featured) === "true" || firstString(sp.featured) === "1";
     const verified = firstString(sp.verified) === "true" || firstString(sp.verified) === "1";
     const linkedRaw = firstString(sp.linked);
@@ -298,6 +302,8 @@ export const artistsListController: IAdminListController<AdminArtistListRow, Art
       kinds,
       status,
       ownerUserId,
+      categoryId,
+      country,
       featured: featured || undefined,
       verified: verified || undefined,
       linked,
@@ -319,6 +325,8 @@ export const artistsListController: IAdminListController<AdminArtistListRow, Art
     if (q.kinds !== undefined && q.kinds !== "") p.kinds = q.kinds;
     if (q.status !== undefined && q.status !== "") p.status = q.status;
     if (q.ownerUserId !== undefined && q.ownerUserId !== "") p.ownerUserId = q.ownerUserId;
+    if (q.categoryId !== undefined && q.categoryId !== "") p.categoryId = q.categoryId;
+    if (q.country !== undefined && q.country !== "") p.country = q.country;
     if (q.featured) p.featured = true;
     if (q.verified) p.verified = true;
     const { rows, total } = await getAdminArtistList(p);

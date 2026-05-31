@@ -13,7 +13,28 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 
-export const artistKindEnum = pgEnum("artist_kind", ["artist", "maker", "brand", "marque"]);
+export const artistKindEnum = pgEnum("artist_kind", [
+  // Original taxonomy
+  "artist",
+  "maker",
+  "brand",
+  "marque",
+  // Fine art / design
+  "designer",
+  "studio",
+  // Manufacturing / automobilia
+  "manufacturer",
+  "coachbuilder",
+  // Books & manuscripts / literature
+  "author",
+  "publisher",
+  "printer",
+  // Numismatics
+  "mint",
+  "issuing_authority",
+  // Wine & spirits
+  "producer",
+]);
 
 export const artistStatusEnum = pgEnum("artist_status", [
   "pending",
@@ -35,10 +56,18 @@ export const artistProfile = pgTable(
     statement: text("statement"),
     nationality: text("nationality"),
     location: text("location"),
+    /** ISO 3166-1 alpha-2 country code for uniform faceting across kinds (origin country). */
+    countryCode: text("country_code"),
+    /** Person-kind lifespan (artist, maker, designer, author). */
     birthYear: text("birth_year"),
     deathYear: text("death_year"),
+    /** Organisation-kind lifespan (brand, marque, mint, studio, publisher...). */
+    foundedYear: text("founded_year"),
+    dissolvedYear: text("dissolved_year"),
     websiteUrl: text("website_url"),
     socialLinks: jsonb("social_links").$type<Record<string, string>>().notNull().default({}),
+    /** Kind-specific rich data validated by the creator-kind config registry. */
+    attributes: jsonb("attributes").$type<Record<string, string>>().notNull().default({}),
     featured: boolean("featured").notNull().default(false),
     verified: boolean("verified").notNull().default(false),
     archived: boolean("archived").notNull().default(false),
@@ -70,6 +99,8 @@ export const artistProfile = pgTable(
     index("artist_profile_slug_idx").on(table.slug),
     index("artist_profile_status_idx").on(table.status),
     index("artist_profile_kind_status_idx").on(table.kind, table.status),
+    index("artist_profile_country_code_idx").on(table.countryCode),
+    index("artist_profile_attributes_gin_idx").using("gin", table.attributes),
     uniqueIndex("artist_profile_merged_into_uidx")
       .on(table.mergedIntoArtistId)
       .where(sql`${table.mergedIntoArtistId} IS NOT NULL`),

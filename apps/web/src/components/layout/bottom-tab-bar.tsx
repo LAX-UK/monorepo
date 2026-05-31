@@ -7,6 +7,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -76,14 +77,15 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
             return (
               <li key={item.id} className="min-w-0">
                 {more ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     className={tabClassName}
                     onClick={() => setMoreOpen(true)}
                     aria-label="Open more dashboard actions"
                   >
                     {content}
-                  </button>
+                  </Button>
                 ) : (
                   <Link
                     href={item.href}

@@ -20,6 +20,8 @@ import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-p
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import type { CategoryNode } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +29,19 @@ import Link from "next/link";
 const NAV_PRESETS = new Set<ArtistPresetId>(["all", "pending", "makers", "featured"]);
 
 type SearchParams = Record<string, string | string[] | undefined>;
+
+/** Flatten the category tree into indented options for the department facet. */
+function flattenCategoryOptions(
+  nodes: readonly CategoryNode[],
+  depth = 0,
+): Array<{ value: string; label: string }> {
+  const out: Array<{ value: string; label: string }> = [];
+  for (const node of nodes) {
+    out.push({ value: node.id, label: `${"\u2014 ".repeat(depth)}${node.name}` });
+    if (node.children.length > 0) out.push(...flattenCategoryOptions(node.children, depth + 1));
+  }
+  return out;
+}
 
 export default async function AdminArtistsPage({
   searchParams,
@@ -42,6 +57,15 @@ export default async function AdminArtistsPage({
 
   const query = artistsListController.parseQuery(sp);
   const q = query.q;
+
+  const categoryOptions = await (async () => {
+    if (skipIndexedList) return [];
+    try {
+      return flattenCategoryOptions(await (await getServerCategoryReader()).tree());
+    } catch {
+      return [];
+    }
+  })();
 
   const hasFilters = Boolean(
     showDuplicates ||
@@ -249,10 +273,13 @@ export default async function AdminArtistsPage({
           activeFilterCount={activeFilterCount}
           activeFilterChips={activeFilterChips}
           queueModesActive={skipIndexedList}
+          categoryOptions={categoryOptions}
           filterDefaults={{
             q,
             status: query.status,
             kind: query.kind ?? "",
+            categoryId: query.categoryId ?? "",
+            country: query.country ?? "",
             sort: query.sort,
             featured: query.featured,
             verified: query.verified,

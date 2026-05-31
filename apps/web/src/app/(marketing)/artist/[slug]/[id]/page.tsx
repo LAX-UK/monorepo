@@ -8,7 +8,11 @@ import { ArtistRelatedDirectorySection } from "@/components/sections/artists/art
 import { ArtistStickyFollow } from "@/components/sections/artists/artist-sticky-follow";
 import { ArtistWorksEmptyState } from "@/components/sections/artists/artist-works-empty-state";
 import { ArtistWorksGrid } from "@/components/sections/artists/artist-works-grid";
-import { normalizeDecadeSegment, slugifyNationality } from "@/lib/artists/directory-presets";
+import {
+  kindDirectorySlug,
+  normalizeDecadeSegment,
+  slugifyNationality,
+} from "@/lib/artists/directory-presets";
 import { loadRelatedDirectoryArtists } from "@/lib/artists/related-directory-artists.server";
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import {
@@ -23,15 +27,15 @@ import { artistDirectoryBackHref } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { metadataForNotFound, metadataForSeller } from "@/lib/seo/metadata-factory";
 import {
-  brandOrOrganizationJsonLd,
   breadcrumbJsonLd,
+  creatorJsonLd,
   itemListJsonLd,
   jsonLdScript,
   personJsonLd,
-  visualArtistJsonLd,
 } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { getCreatorKindConfig } from "@auction/types";
 import type { Lot, ArtistProfile as RegistryArtist } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -224,7 +228,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
   const profilePath = artistPath(artist);
   const profileUrl = `${base}${profilePath}`;
 
-  const isBrand = registry?.kind === "brand" || registry?.kind === "marque";
+  const kindConfig = getCreatorKindConfig(registry?.kind);
   const aliasesList = aliases.slice(0, 6);
 
   const crumbs = breadcrumbJsonLd([
@@ -237,27 +241,20 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
     (artist.tagline ?? artist.bio) ? ((artist.tagline ?? artist.bio) as string) : undefined;
   const sameAs = registry?.websiteUrl ? [registry.websiteUrl] : undefined;
 
-  const subjectLd = isBrand
-    ? brandOrOrganizationJsonLd({
-        type: registry?.kind === "marque" ? "Organization" : "Brand",
-        name: artist.name,
-        url: profileUrl,
-        ...(artist.portraitUrl ? { image: artist.portraitUrl } : {}),
-        ...(description ? { description } : {}),
-        ...(sameAs ? { sameAs } : {}),
-        ...(aliasesList.length > 0 ? { alternateName: aliasesList } : {}),
-      })
-    : visualArtistJsonLd({
-        name: artist.name,
-        url: profileUrl,
-        ...(artist.portraitUrl ? { image: artist.portraitUrl } : {}),
-        ...(description ? { description } : {}),
-        ...(sameAs ? { sameAs } : {}),
-        ...(registry?.birthYear ? { birthDate: registry.birthYear } : {}),
-        ...(registry?.deathYear ? { deathDate: registry.deathYear } : {}),
-        ...(registry?.nationality ? { nationality: registry.nationality } : {}),
-        ...(aliasesList.length > 0 ? { alternateName: aliasesList } : {}),
-      });
+  const subjectLd = creatorJsonLd({
+    kind: registry?.kind ?? null,
+    name: artist.name,
+    url: profileUrl,
+    ...(artist.portraitUrl ? { image: artist.portraitUrl } : {}),
+    ...(description ? { description } : {}),
+    ...(sameAs ? { sameAs } : {}),
+    ...(aliasesList.length > 0 ? { alternateName: aliasesList } : {}),
+    ...(registry?.birthYear ? { birthDate: registry.birthYear } : {}),
+    ...(registry?.deathYear ? { deathDate: registry.deathYear } : {}),
+    ...(registry?.foundedYear ? { foundingDate: registry.foundedYear } : {}),
+    ...(registry?.dissolvedYear ? { dissolutionDate: registry.dissolvedYear } : {}),
+    ...(registry?.nationality ? { nationality: registry.nationality } : {}),
+  });
 
   const itemsLd =
     sellerLots.length > 0
@@ -267,20 +264,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
     ...(itemsLd ? [crumbs, subjectLd, itemsLd] : [crumbs, subjectLd]),
   );
 
-  const kindSegment: string | null = (() => {
-    switch (registry?.kind) {
-      case "artist":
-        return "artists";
-      case "maker":
-        return "makers";
-      case "brand":
-        return "brands";
-      case "marque":
-        return "marques";
-      default:
-        return null;
-    }
-  })();
+  const kindSegment: string | null = registry?.kind ? kindDirectorySlug(registry.kind) : null;
   const relatedRows = await loadRelatedDirectoryArtists(id, registry);
   const browseHref = kindSegment ? `/artists/kind/${kindSegment}` : "/artists";
 
@@ -313,20 +297,25 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
     });
   }
   if (kindSegment) {
-    const kindLabel =
-      kindSegment === "artists"
-        ? "More artists"
-        : kindSegment === "makers"
-          ? "More makers"
-          : kindSegment === "brands"
-            ? "More brands"
-            : "More marques";
     pivotChips.push({
       href: `/artists/kind/${kindSegment}`,
-      label: kindLabel,
-      aria: `Browse all ${kindSegment}`,
+      label: `More ${kindConfig.pluralLabel.toLowerCase()}`,
+      aria: `Browse all ${kindConfig.pluralLabel.toLowerCase()}`,
     });
   }
+
+  // Department chips link to the collecting-category directory slice. Built from
+  // the registry-backed categories attached to this profile.
+  const categoryChips = (registry?.categories ?? []).slice(0, 6);
+
+  // Kind-specific attribute rows (e.g. movement/medium, marque country/founder)
+  // surfaced from the JSONB attributes via the config registry (OCP).
+  const attributeRows = kindConfig.attributes
+    .map((field) => ({
+      label: field.label,
+      value: registry?.attributes?.[field.key]?.trim() ?? "",
+    }))
+    .filter((entry) => entry.value.length > 0);
 
   // Compose hero scenario chips + alias chips into the hero `actions` slot's
   // sibling area. We keep `ArtistHero`'s contract (vm + actions) untouched and
@@ -353,6 +342,23 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
           </div>
         ) : null}
       </div>
+      {categoryChips.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+            Departments
+          </span>
+          {categoryChips.map((c) => (
+            <Link
+              key={c.id}
+              href={`/artists?category=${encodeURIComponent(c.slug)}`}
+              aria-label={`Browse ${kindConfig.pluralLabel.toLowerCase()} in ${c.name}`}
+              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/40 hover:bg-surface-container-high hover:text-primary"
+            >
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      ) : null}
       {pivotChips.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
@@ -440,6 +446,23 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
               <span className="font-headline text-3xl text-on-surface">{s.value}</span>
             </div>
           ))}
+        </section>
+      ) : null}
+      {attributeRows.length > 0 ? (
+        <section className="mb-20">
+          <h2 className="mb-6 font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            {kindConfig.label} details
+          </h2>
+          <dl className="grid grid-cols-1 gap-y-5 border-y border-outline-variant/40 py-8 sm:grid-cols-2 md:grid-cols-3">
+            {attributeRows.map((row) => (
+              <div key={row.label} className="flex flex-col gap-1 px-0 md:pr-5">
+                <dt className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                  {row.label}
+                </dt>
+                <dd className="font-headline text-lg text-on-surface">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
       ) : null}
       <section id="works">

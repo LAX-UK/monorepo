@@ -20,6 +20,10 @@ export type PublicArtistBrowseParams = {
   living?: boolean;
   historical?: boolean;
   nationality?: string;
+  /** ISO 3166-1 alpha-2 origin country code. */
+  country?: string;
+  /** Collecting category (department) slug, e.g. `motor-cars`. */
+  categorySlug?: string;
   featuredOnly?: boolean;
   featuredFirst?: boolean;
   /** Decade slug (e.g. `1900s`, `pre-1800`) — filters by `birth_year`. */
@@ -35,9 +39,10 @@ function emptyFacets(): PublicArtistDirectoryFacets {
     featured: 0,
     living: 0,
     historical: 0,
-    byKind: { artist: 0, maker: 0, brand: 0, marque: 0 },
+    byKind: {},
     hasUpcoming: 0,
     topNationalities: [],
+    topCategories: [],
     topDecades: [],
     letters: [],
   };
@@ -62,6 +67,8 @@ export async function fetchPublicArtistBrowse(
   if (params.living === true) sp.set("living", "true");
   if (params.historical === true) sp.set("historical", "true");
   if (params.nationality?.trim()) sp.set("nationality", params.nationality.trim());
+  if (params.country?.trim()) sp.set("country", params.country.trim());
+  if (params.categorySlug?.trim()) sp.set("categorySlug", params.categorySlug.trim());
   if (params.featuredOnly === true) sp.set("featuredOnly", "true");
   if (params.featuredFirst === true) sp.set("featuredFirst", "true");
   if (params.decade?.trim()) sp.set("decade", params.decade.trim());
