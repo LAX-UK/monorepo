@@ -6,7 +6,7 @@ export function SaleCardTitle(props: SaleCardTitleProps) {
   const { title, className } = props;
 
   const titleClass = cn(
-    "font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 transition-colors sm:text-lg sm:leading-6",
+    "min-w-0 max-w-full break-words font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 transition-colors sm:text-lg sm:leading-6",
     "href" in props && "hover:underline",
     className,
   );

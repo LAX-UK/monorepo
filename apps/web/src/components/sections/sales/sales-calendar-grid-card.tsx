@@ -52,11 +52,11 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
           />
 
           <div className="flex min-w-0 flex-1 flex-col gap-1.5 md:gap-2">
-            <div className="flex flex-col gap-0.5 md:flex-row md:flex-wrap md:items-center md:gap-2 md:gap-2.5">
-              <span className="font-body text-[0.65rem] font-normal leading-snug text-on-surface sm:text-xs md:text-sm">
+            <div className="flex min-w-0 flex-col gap-0.5 md:flex-row md:flex-wrap md:items-center md:gap-2 md:gap-2.5">
+              <span className="min-w-0 max-w-full break-words font-body text-[0.65rem] font-normal leading-snug text-on-surface sm:text-xs md:text-sm">
                 {vm.auctionTypeLabel}
               </span>
-              <span className="font-body text-[0.6rem] font-normal uppercase leading-snug text-on-surface-variant md:border-l md:border-on-surface-variant md:pl-2 md:text-xs">
+              <span className="min-w-0 max-w-full break-words font-body text-[0.6rem] font-normal uppercase leading-snug text-on-surface-variant md:border-l md:border-on-surface-variant md:pl-2 md:text-xs">
                 {vm.dateLabel}
               </span>
             </div>
@@ -64,11 +64,11 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
             <SaleCardTitle
               href={vm.href}
               title={vm.title}
-              className={cn("line-clamp-2 text-xs sm:text-sm md:text-base md:leading-snug")}
+              className={cn("line-clamp-2 block text-xs sm:text-sm md:text-base md:leading-snug")}
             />
 
             {metaLine ? (
-              <p className="line-clamp-2 font-body text-[10px] leading-snug text-on-surface-variant md:text-xs">
+              <p className="line-clamp-2 min-w-0 max-w-full break-words font-body text-[10px] leading-snug text-on-surface-variant md:text-xs">
                 {metaLine}
               </p>
             ) : null}

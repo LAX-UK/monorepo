@@ -375,26 +375,16 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
   const getPageHref = (page: number) => {
     const nextOffset = (page - 1) * PAGE_SIZE;
-    return artistDirectoryWithQuery(preset.canonicalPath, sp, {
-      offset: nextOffset <= 0 ? null : nextOffset,
-      view: layoutView,
-    });
+    return artistDirectoryWithQuery(
+      preset.canonicalPath,
+      sp,
+      {
+        offset: nextOffset <= 0 ? null : nextOffset,
+        view: layoutView,
+      },
+      { preserveOffset: true },
+    );
   };
-  const prevHref =
-    offset > 0
-      ? artistDirectoryWithQuery(preset.canonicalPath, sp, {
-          offset: offset - PAGE_SIZE <= 0 ? null : offset - PAGE_SIZE,
-          view: layoutView,
-        })
-      : null;
-  const nextHref =
-    offset + rows.length < total
-      ? artistDirectoryWithQuery(preset.canonicalPath, sp, {
-          offset: offset + PAGE_SIZE,
-          view: layoutView,
-        })
-      : null;
-
   const rangeStart = total > 0 ? Math.min(offset + 1, total) : 0;
   const rangeEnd = total > 0 ? Math.min(offset + rows.length, total) : 0;
   const countLabel =
@@ -558,8 +548,6 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               <ArtistsDirectoryPagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                prevHref={prevHref}
-                nextHref={nextHref}
                 getPageHref={getPageHref}
               />
             ) : null}
