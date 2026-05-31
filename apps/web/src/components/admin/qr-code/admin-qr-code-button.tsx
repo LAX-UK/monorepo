@@ -35,6 +35,7 @@ type Props = {
 
 export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
   const [open, setOpen] = useState(false);
+  const [confirmRegenerateOpen, setConfirmRegenerateOpen] = useState(false);
   const [item, setItem] = useState<QrCodeItem | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -73,7 +74,7 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
     const svg = document.getElementById(qrId);
     if (!svg) return;
     downloadBlob(
-      new Blob([svg.outerHTML], { type: "image/svg+xml;charset=utf-8" }),
+      new Blob([serializeSvg(svg)], { type: "image/svg+xml;charset=utf-8" }),
       `${entityType}-${entityId}-qr.svg`,
     );
   };
@@ -81,7 +82,7 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
   const downloadPng = async () => {
     const svg = document.getElementById(qrId);
     if (!svg) return;
-    const blob = new Blob([svg.outerHTML], { type: "image/svg+xml;charset=utf-8" });
+    const blob = new Blob([serializeSvg(svg)], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     try {
       const img = new Image();
@@ -101,6 +102,8 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
       canvas.toBlob((png) => {
         if (png) downloadBlob(png, `${entityType}-${entityId}-qr.png`);
       }, "image/png");
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : "Could not render QR PNG");
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -108,10 +111,14 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
 
   const print = () => {
     if (!item) return;
-    const svg = document.getElementById(qrId)?.outerHTML;
+    const svgElement = document.getElementById(qrId);
+    const svg = svgElement ? serializeSvg(svgElement) : null;
     if (!svg) return;
-    const win = window.open("", "_blank", "noopener,noreferrer");
-    if (!win) return;
+    const win = openPrintWindow();
+    if (!win) {
+      notify.error("Could not open print window. Please allow pop-ups and try again.");
+      return;
+    }
     win.document.write(`<!doctype html><html><head><title>QR code</title><style>
       body{font-family:Arial,sans-serif;margin:32px;text-align:center;color:#111}
       .qr{display:inline-block;border:1px solid #ddd;padding:24px;margin:24px auto}
@@ -119,17 +126,10 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
     </style></head><body><h1>Scan to view</h1><p>${escapeHtml(title)}</p><div class="qr">${svg}</div><p>${escapeHtml(item.shortUrl)}</p></body></html>`);
     win.document.close();
     win.focus();
-    win.print();
+    setTimeout(() => win.print(), 0);
   };
 
   const regenerate = async () => {
-    if (
-      !window.confirm(
-        "Regenerate this QR code? Existing printed QR codes for this item will stop working.",
-      )
-    ) {
-      return;
-    }
     setRegenerating(true);
     try {
       const result = await adminRegenerateQrCodeResultAction(entityType, entityId);
@@ -140,6 +140,7 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
       setItem(result.data ?? null);
       setAnalytics(null);
       notify.success("QR code regenerated");
+      setConfirmRegenerateOpen(false);
       await load();
     } catch (error) {
       notify.error(error instanceof Error ? error.message : "Could not regenerate QR code");
@@ -196,7 +197,7 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => void regenerate()}
+                onClick={() => setConfirmRegenerateOpen(true)}
                 disabled={regenerating}
               >
                 <RotateCcw className="size-4" aria-hidden />
@@ -213,6 +214,30 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
           </div>
         ) : null}
       </DialogContent>
+      <Dialog open={confirmRegenerateOpen} onOpenChange={setConfirmRegenerateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Regenerate QR code?</DialogTitle>
+            <DialogDescription>
+              This creates a new QR link and disables the current one. Existing printed QR codes for
+              this {entityType} will stop working.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmRegenerateOpen(false)}
+              disabled={regenerating}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void regenerate()} disabled={regenerating}>
+              {regenerating ? "Regenerating..." : "Regenerate QR code"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
@@ -224,6 +249,30 @@ function downloadBlob(blob: Blob, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function openPrintWindow(): Window | null {
+  const win = window.open("", "_blank");
+  if (win) win.opener = null;
+  return win;
+}
+
+function serializeSvg(svg: Element): string {
+  const clone = svg.cloneNode(true);
+  if (!(clone instanceof SVGSVGElement)) {
+    return svg.outerHTML;
+  }
+
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+  if (!clone.getAttribute("width")) clone.setAttribute("width", "224");
+  if (!clone.getAttribute("height")) clone.setAttribute("height", "224");
+  if (!clone.getAttribute("viewBox")) {
+    const width = clone.getAttribute("width") ?? "224";
+    const height = clone.getAttribute("height") ?? "224";
+    clone.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  }
+  return new XMLSerializer().serializeToString(clone);
 }
 
 function escapeHtml(value: string): string {
