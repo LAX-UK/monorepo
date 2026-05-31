@@ -19,9 +19,20 @@ type Props = {
 
 export function AdminSaleLotQrPrintButton({ lots }: Props) {
   const print = async () => {
+    const win = openPrintWindow();
+    if (!win) {
+      notify.error("Could not open print window. Please allow pop-ups and try again.");
+      return;
+    }
+    win.document.write(`<!doctype html><html><head><title>Lot QR labels</title></head><body>
+      <p style="font-family:Arial,sans-serif;margin:24px">Preparing QR labels...</p>
+    </body></html>`);
+    win.document.close();
+
     try {
       const result = await adminEnsureLotQrCodesForPrintResultAction(lots);
       if (!result.ok) {
+        win.close();
         notify.error(result.error);
         return;
       }
@@ -35,8 +46,7 @@ export function AdminSaleLotQrPrintButton({ lots }: Props) {
           return `<section class="label"><h2>${escapeHtml(heading)}</h2><p>${escapeHtml(row.title)}</p><div>${svg}</div><small>${escapeHtml(row.shortUrl)}</small></section>`;
         })
         .join("");
-      const win = window.open("", "_blank", "noopener,noreferrer");
-      if (!win) return;
+      win.document.open();
       win.document.write(`<!doctype html><html><head><title>Lot QR labels</title><style>
         body{font-family:Arial,sans-serif;color:#111;margin:24px}
         .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
@@ -47,8 +57,9 @@ export function AdminSaleLotQrPrintButton({ lots }: Props) {
       </style></head><body><h1>Scan to view</h1><div class="grid">${labels}</div></body></html>`);
       win.document.close();
       win.focus();
-      win.print();
+      setTimeout(() => win.print(), 0);
     } catch (error) {
+      win.close();
       notify.error(error instanceof Error ? error.message : "Could not print lot QR labels");
     }
   };
@@ -65,6 +76,12 @@ export function AdminSaleLotQrPrintButton({ lots }: Props) {
       Print lot QR labels
     </Button>
   );
+}
+
+function openPrintWindow(): Window | null {
+  const win = window.open("", "_blank");
+  if (win) win.opener = null;
+  return win;
 }
 
 function escapeHtml(value: string): string {
