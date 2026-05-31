@@ -21,6 +21,7 @@ import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.serv
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { deriveHasMorePage } from "@/lib/marketing/pagination";
 import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
 import { fetchHasLiveSales } from "@/lib/marketing/sales-calendar-live.server";
 import {
@@ -194,12 +195,20 @@ export default async function SalesListPage({
   let saleRows: SaleListRow[] = [];
   let calendarHasMore = false;
   let newLots: Lot[] = [];
+  let newLotsHasMore = false;
   let err: string | null = null;
 
   try {
     if (tab === "newLots") {
       const reader = await getServerLotReader();
-      newLots = await reader.list({ limit: 36, sort: "createdDesc" });
+      const rows = await reader.list({
+        limit: CALENDAR_PAGE_SIZE + 1,
+        offset: (calendarPage - 1) * CALENDAR_PAGE_SIZE,
+        sort: "createdDesc",
+      });
+      const page = deriveHasMorePage(rows, CALENDAR_PAGE_SIZE);
+      newLots = page.items;
+      newLotsHasMore = page.hasMore;
     } else if (tab === "privateSales") {
       saleRows = [];
     } else {
@@ -357,6 +366,11 @@ export default async function SalesListPage({
                     {...(newLotsCatalogLinkParams
                       ? { catalogLinkParams: newLotsCatalogLinkParams }
                       : {})}
+                  />
+                  <SalesCalendarPagination
+                    state={calendarState}
+                    page={calendarPage}
+                    hasMore={newLotsHasMore}
                   />
                 </div>
               ) : null}

@@ -1,8 +1,8 @@
-import { MarketingPagination } from "@/components/marketing/marketing-pagination";
-import Link from "next/link";
+import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
 
 export type SearchPaginationBarProps = {
   offset: number;
+  pageSize: number;
   resultCount: number;
   hasNext: boolean;
   hasPrev: boolean;
@@ -12,6 +12,7 @@ export type SearchPaginationBarProps = {
 
 export function SearchPaginationBar({
   offset,
+  pageSize,
   resultCount,
   hasNext,
   hasPrev,
@@ -21,11 +22,19 @@ export function SearchPaginationBar({
   const start = resultCount === 0 ? 0 : offset + 1;
   const end = offset + resultCount;
   const approxSuffix = hasNext ? "+" : "";
+  const currentPage = Math.floor(offset / pageSize) + 1;
 
   return (
-    <div className="mt-12 space-y-6 border-t border-border-hairline pt-10">
-      <p className="text-center font-body text-sm text-on-surface-variant">
-        {resultCount === 0 ? (
+    <MarketingPaginationControls
+      ariaLabel="Search results pagination"
+      currentPage={currentPage}
+      prevHref={hasPrev ? prevHref : null}
+      nextHref={hasNext ? nextHref : null}
+      showPageLinks={false}
+      className="mt-12 space-y-6 border-t border-border-hairline pt-10"
+      scroll={false}
+      rangeLabel={
+        resultCount === 0 ? (
           "No lots on this page"
         ) : (
           <>
@@ -44,29 +53,8 @@ export function SearchPaginationBar({
               </>
             )}
           </>
-        )}
-      </p>
-      <MarketingPagination
-        aria-label="Search results pagination"
-        className="flex justify-center"
-        prev={{
-          href: hasPrev ? prevHref : null,
-        }}
-        next={{
-          href: hasNext ? nextHref : null,
-        }}
-        pages={[]}
-        renderLink={({ href, className, children, "aria-current": ariaCurrent }) => (
-          <Link
-            href={href}
-            className={className}
-            {...(ariaCurrent ? { "aria-current": ariaCurrent } : {})}
-            scroll={false}
-          >
-            {children}
-          </Link>
-        )}
-      />
-    </div>
+        )
+      }
+    />
   );
 }

@@ -353,6 +353,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 </div>
                 <SearchPaginationBar
                   offset={offset}
+                  pageSize={PAGE_SIZE}
                   resultCount={filtered.length}
                   hasNext={hasNext}
                   hasPrev={hasPrev}

@@ -28,6 +28,8 @@ export function CatalogViewSwitcher({
       startTransition(() => {
         const nextParams = new URLSearchParams(searchParams.toString());
         nextParams.set("view", next);
+        nextParams.delete("page");
+        nextParams.delete("offset");
         const qs = nextParams.toString();
         const secure = typeof window !== "undefined" && window.location.protocol === "https:";
         document.cookie = `${viewCookieName(routeKey)}=${next}; path=/; max-age=${VIEW_COOKIE_MAX_AGE_SEC}; SameSite=Lax${secure ? "; Secure" : ""}`;
