@@ -349,6 +349,9 @@ export function SaleSetupWizard({
             onStepControl={({ goTo }) => {
               wizardGoToRef.current = goTo;
             }}
+            onStepBack={(toIndex) => {
+              if (saleId) router.replace(saleSetupHref(saleId, saleSetupStepId(toIndex)));
+            }}
             onBeforeNext={async (stepIndex) => {
               const stepId = saleSetupStepId(stepIndex);
               if (stepIndex <= 2) {
@@ -368,32 +371,29 @@ export function SaleSetupWizard({
                   let ok = false;
                   await new Promise<void>((resolve) => {
                     startTransition(async () => {
-                      ok = (await persistSale({ savedNoticeStep: "documents" })) != null;
+                      ok =
+                        (await persistSale({
+                          savedNoticeStep: "documents",
+                          nextStep: "documents",
+                        })) != null;
                       resolve();
                     });
                   });
                   return ok;
                 }
                 if (stepIndex === 2) {
-                  if (!saleId) {
-                    let ok = false;
-                    await new Promise<void>((resolve) => {
-                      startTransition(async () => {
-                        ok = (await persistSale({ savedNoticeStep: "lots" })) != null;
-                        resolve();
-                      });
+                  let ok = false;
+                  await new Promise<void>((resolve) => {
+                    startTransition(async () => {
+                      ok =
+                        (await persistSale({
+                          savedNoticeStep: "lots",
+                          nextStep: "lots",
+                        })) != null;
+                      resolve();
                     });
-                    if (!ok) return false;
-                  } else {
-                    let ok = false;
-                    await new Promise<void>((resolve) => {
-                      startTransition(async () => {
-                        ok = (await persistSale({ savedNoticeStep: "lots" })) != null;
-                        resolve();
-                      });
-                    });
-                    return ok;
-                  }
+                  });
+                  return ok;
                 }
                 return true;
               }
