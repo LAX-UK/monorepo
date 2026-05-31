@@ -18,7 +18,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForPrivate(
-  "Condition reports",
+  "Condition report requests",
   "Respond to buyer condition report requests.",
 );
 

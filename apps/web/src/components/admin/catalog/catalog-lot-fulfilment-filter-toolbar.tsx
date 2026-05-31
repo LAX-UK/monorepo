@@ -10,6 +10,7 @@ import {
   type CatalogSegmentItem,
 } from "@/components/admin/catalog/catalog-filter-bar";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { FULFILMENT_STATUS_LABELS } from "@/lib/admin/catalog-active-filter-chips";
 
 const FILTER_STATUSES = [
   "awaiting_payment",
@@ -28,7 +29,7 @@ type Props = {
 };
 
 function statusLabel(status: string): string {
-  return status.replaceAll("_", " ");
+  return FULFILMENT_STATUS_LABELS[status] ?? status.replaceAll("_", " ");
 }
 
 export function CatalogLotFulfilmentFilterToolbar({
