@@ -1,5 +1,8 @@
-export type ArtistKind = "artist" | "maker" | "brand" | "marque";
-export type ArtistStatus = "pending" | "approved" | "rejected" | "merged_into";
+import type { ArtistKind, ArtistStatus } from "@auction/types";
+
+// Re-export so existing consumers importing from this module keep working,
+// while @auction/types stays the single source of truth for the taxonomy.
+export type { ArtistKind, ArtistStatus };
 
 export type ArtistSearchMatchType = "exact" | "alias" | "partial" | "fuzzy";
 
@@ -42,10 +45,19 @@ export type ArtistRecord = {
 export type CreateArtistInput = {
   displayName: string;
   kind?: ArtistKind | undefined;
+  status?: ArtistStatus | undefined;
   shortBio?: string | undefined;
   nationality?: string | undefined;
+  countryCode?: string | undefined;
   birthYear?: string | undefined;
   deathYear?: string | undefined;
+  foundedYear?: string | undefined;
+  dissolvedYear?: string | undefined;
+  /** Kind-specific rich data; cleaned per kind before persistence. */
+  attributes?: Record<string, string> | undefined;
+  /** Collecting categories (departments) to attach. */
+  categoryIds?: string[] | undefined;
+  ownerUserId?: string | null | undefined;
 };
 
 export type ProposeMatchesInput = {

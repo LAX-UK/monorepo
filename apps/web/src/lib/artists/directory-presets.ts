@@ -1,4 +1,4 @@
-import type { ArtistKind } from "@auction/types";
+import { type ArtistKind, artistKinds, getCreatorKindConfig } from "@auction/types";
 
 /** A single, declarative description of a public directory slice (OCP).
  * Adding a new slice means adding one entry here, not branching JSX or
@@ -47,9 +47,9 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     id: "all",
     canonicalPath: "/artists",
     label: "All",
-    heroTitle: "Artists & makers",
+    heroTitle: "Artists & Makers",
     heroDescription:
-      "Explore living and historical artists, makers, and luxury brands behind LAX.BID auction lots.",
+      "Explore the artists, makers, brands, marques, authors, mints, and producers behind LAX.BID auction lots.",
     filter: {},
   },
   {
@@ -131,25 +131,75 @@ export function artistDirectoryPresetById(
   return found;
 }
 
-/** Map a `kind` URL slug to its preset (paths are pluralised in the URL). */
+/**
+ * Stable, pluralised URL slug per kind. The four original kinds keep their
+ * historical slugs (no SEO regression); every other kind derives a clean slug
+ * from the registry. Adding a kind only needs an entry here when the default
+ * `${kind}s` pluralisation is wrong (OCP-friendly: most kinds need nothing).
+ */
+const KIND_SLUG_OVERRIDES: Partial<Record<ArtistKind, string>> = {
+  artist: "artists",
+  maker: "makers",
+  brand: "brands",
+  marque: "marques",
+  studio: "studios",
+  issuing_authority: "issuing-authorities",
+};
+
+/** Resolve the canonical directory slug for a kind. */
+export function kindDirectorySlug(kind: ArtistKind): string {
+  return KIND_SLUG_OVERRIDES[kind] ?? `${kind.replace(/_/g, "-")}s`;
+}
+
+/** Reverse lookup: a directory slug (or singular kind) back to its kind. */
+export function kindFromDirectorySlug(slug: string): ArtistKind | null {
+  const norm = slug.trim().toLowerCase();
+  for (const kind of artistKinds) {
+    if (kindDirectorySlug(kind) === norm) return kind;
+    if (kind.replace(/_/g, "-") === norm) return kind;
+  }
+  return null;
+}
+
+/** Build a kind-locked directory preset from the registry (OCP — no per-kind
+ * JSX or route edits needed for new kinds). */
+export function kindPreset(kind: ArtistKind): ArtistDirectoryPreset {
+  const config = getCreatorKindConfig(kind);
+  const slug = kindDirectorySlug(kind);
+  const departments = config.departmentHints.slice(0, 3).join(", ");
+  return {
+    id: `kind-${slug}` as ArtistDirectoryPresetId,
+    canonicalPath: `/artists/kind/${slug}`,
+    label: config.pluralLabel,
+    heroTitle: config.pluralLabel,
+    heroDescription: `Browse ${config.pluralLabel.toLowerCase()}${
+      departments ? ` across ${departments}` : ""
+    } with works appearing in LAX.BID auctions.`,
+    filter: { kinds: [kind] },
+  };
+}
+
+/** Map a `kind` URL slug to its preset (paths are pluralised in the URL). The
+ * four original kinds keep their curated copy; all other kinds resolve to a
+ * registry-derived preset so every taxonomy value has a landing page. */
 export function presetForKindSlug(kindSlug: string): ArtistDirectoryPreset | null {
   const k = kindSlug.toLowerCase();
-  switch (k) {
-    case "artists":
-    case "artist":
-      return ARTIST_DIRECTORY_PRESETS.find((p) => p.id === "kind-artists") ?? null;
-    case "makers":
-    case "maker":
-      return ARTIST_DIRECTORY_PRESETS.find((p) => p.id === "kind-makers") ?? null;
-    case "brands":
-    case "brand":
-      return ARTIST_DIRECTORY_PRESETS.find((p) => p.id === "kind-brands") ?? null;
-    case "marques":
-    case "marque":
-      return ARTIST_DIRECTORY_PRESETS.find((p) => p.id === "kind-marques") ?? null;
-    default:
-      return null;
+  const curated: Record<string, ArtistDirectoryPresetId> = {
+    artists: "kind-artists",
+    artist: "kind-artists",
+    makers: "kind-makers",
+    maker: "kind-makers",
+    brands: "kind-brands",
+    brand: "kind-brands",
+    marques: "kind-marques",
+    marque: "kind-marques",
+  };
+  const curatedId = curated[k];
+  if (curatedId) {
+    return ARTIST_DIRECTORY_PRESETS.find((p) => p.id === curatedId) ?? null;
   }
+  const kind = kindFromDirectorySlug(k);
+  return kind ? kindPreset(kind) : null;
 }
 
 /** A letter-slice preset built dynamically from a single character or `other`. */
@@ -167,8 +217,11 @@ export function letterPreset(letter: string): ArtistDirectoryPreset {
   };
 }
 
-export const KIND_SEGMENTS = ["artists", "makers", "brands", "marques"] as const;
-export type KindSegment = (typeof KIND_SEGMENTS)[number];
+/** Every kind's directory slug — drives `generateStaticParams` + the sitemap so
+ * all taxonomy values get a crawlable landing page (OCP — derived from the
+ * registry, no manual upkeep when a kind is added). */
+export const KIND_SEGMENTS: readonly string[] = artistKinds.map(kindDirectorySlug);
+export type KindSegment = string;
 
 /** Static list of decade segments we pre-render. `pre-1800` covers everything
  * before 1800; the rest are decadal buckets up through the current decade. */

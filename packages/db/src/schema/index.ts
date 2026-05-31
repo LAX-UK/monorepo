@@ -26,6 +26,7 @@ export * from "./payments.js";
 export * from "./watchlist.js";
 export * from "./artist-watchlist.js";
 export * from "./artist-profiles.js";
+export * from "./artist-categories.js";
 export * from "./sale-follow.js";
 export * from "./item-submissions.js";
 export * from "./submission-categories.js";

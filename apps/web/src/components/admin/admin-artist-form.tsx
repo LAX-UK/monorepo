@@ -1,38 +1,63 @@
 "use client";
 
+import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
+import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
 import { WizardValidationBanner } from "@/components/admin/admin-form-wizard/wizard-validation-banner";
 import { ArtistPreview } from "@/components/admin/artist-form/artist-preview";
-import { ArtistScenarioBadge } from "@/components/admin/artist-form/scenario-badge";
 import {
-  SCENARIO_REGISTRY,
-  scenarioFromOwnerUserId,
-} from "@/components/admin/artist-form/scenario-config";
-import { ScenarioSelector } from "@/components/admin/artist-form/scenario-selector";
+  ARTIST_SETUP_STEPS,
+  ARTIST_STEP_FIELD_GROUPS,
+  artistSetupStepLabel,
+  artistSetupWizardValidationMessage,
+} from "@/components/admin/artist-form/artist-setup-steps";
+import { KindSelector } from "@/components/admin/artist-form/kind-selector";
+import { ArtistScenarioBadge } from "@/components/admin/artist-form/scenario-badge";
+import { scenarioFromOwnerUserId } from "@/components/admin/artist-form/scenario-config";
+import { AttributesSection } from "@/components/admin/artist-form/sections/attributes-section";
 import { BiographySection } from "@/components/admin/artist-form/sections/biography-section";
-import { CatalogueSection } from "@/components/admin/artist-form/sections/catalogue-section";
+import { CategoriesSection } from "@/components/admin/artist-form/sections/categories-section";
 import { FlagsSection } from "@/components/admin/artist-form/sections/flags-section";
 import { IdentitySection } from "@/components/admin/artist-form/sections/identity-section";
 import { LifespanSection } from "@/components/admin/artist-form/sections/lifespan-section";
 import { MediaSection } from "@/components/admin/artist-form/sections/media-section";
 import { UserLinkSection } from "@/components/admin/artist-form/sections/user-link-section";
 import type { ArtistFormValues, ArtistScenario } from "@/components/admin/artist-form/types";
-import { CatalogFormSectionNav } from "@/components/admin/catalog/catalog-form-section-nav";
-import { useCatalogValidationBanner } from "@/components/admin/catalog/use-catalog-form-submit";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
 import { CatalogFormSection as ArtistFormSection } from "@/components/admin/forms/catalog-form-section";
+import { RhfSelect } from "@/components/ui/rhf-select";
+import { LabelCaps } from "@/components/ui/typography";
 import { adminCreateArtistResultAction, adminUpdateArtistResultAction } from "@/lib/actions/admin";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
+import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { notify } from "@/lib/ui/notify";
-import type { ArtistKind } from "@auction/types";
+import {
+  type ArtistKind,
+  type ArtistStatus,
+  type CategoryNode,
+  getCreatorKindConfig,
+} from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import { Form } from "@auction/ui/components/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { adminCreateArtistBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
+
+const ARTIST_STATUS_OPTIONS: ReadonlyArray<{ value: ArtistStatus; label: string }> = [
+  { value: "approved", label: "Approved (visible to public)" },
+  { value: "pending", label: "Pending review" },
+  { value: "rejected", label: "Rejected (hidden)" },
+];
 
 type Props = {
   mode: "create" | "edit";
@@ -40,6 +65,8 @@ type Props = {
   /** Read-only slug for edit display (not part of form values). */
   slug?: string;
   defaultValues: ArtistFormValues;
+  /** Collecting categories (departments) for the multiselect. */
+  categories?: CategoryNode[];
   /** From URL `?scenario=historical` or `maker-seller` */
   initialScenario?: ArtistScenario | null;
   /** When true all fields are disabled (e.g. merged artist) */
@@ -48,277 +75,388 @@ type Props = {
   htmlFormId?: string;
 };
 
+/** Map a form field error key (e.g. "attributes.movement") to its wizard step index. */
+function stepIndexForField(field: string): number {
+  const head = field.split(".")[0] ?? field;
+  const idx = ARTIST_STEP_FIELD_GROUPS.findIndex((group) => group.some((f) => String(f) === head));
+  return idx >= 0 ? idx : ARTIST_SETUP_STEPS.length - 1;
+}
+
 export function AdminArtistForm({
   mode,
   artistId,
   slug,
   defaultValues,
-  initialScenario = null,
+  categories = [],
+  initialScenario: _initialScenario = null,
   readOnly = false,
   htmlFormId,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [activeSection, setActiveSection] = useState("identity");
-  const { validationBanner, setValidationFailure, clearValidationBanner, notifyValidationFailure } =
-    useCatalogValidationBanner();
+  const [validationBanner, setValidationBanner] = useState<string | null>(null);
+  const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
+  const wizardGoToRef = useRef<(index: number) => void>(() => {});
+  const baselineRef = useRef(defaultValues);
+  baselineRef.current = defaultValues;
 
-  const editSections = [
-    { id: "identity", label: "Identity" },
-    { id: "lifespan", label: "Lifespan" },
-    { id: "biography", label: "Biography" },
-    { id: "media", label: "Media" },
-    { id: "catalogue", label: "Catalogue" },
-    { id: "visibility", label: "Visibility" },
-  ] as const;
   const form = useForm<ArtistFormValues>({
     resolver: zodResolver(adminCreateArtistBodySchema),
     defaultValues,
   });
 
-  const editScenario = useMemo(
-    () => scenarioFromOwnerUserId(defaultValues.ownerUserId),
-    [defaultValues.ownerUserId],
-  );
-
-  const [createScenario, setCreateScenario] = useState<ArtistScenario | null>(() => {
-    if (mode === "edit") return null;
-    if (defaultValues.ownerUserId) return "maker-seller";
-    if (initialScenario) return initialScenario;
-    return null;
-  });
-
-  const activeScenario: ArtistScenario =
-    mode === "edit" ? editScenario : (createScenario ?? "historical");
+  const getValuesRef = useRef(form.getValues);
+  getValuesRef.current = form.getValues;
 
   const watchedDisplay = useWatch({ control: form.control, name: "displayName" }) ?? "";
   const watchedKind =
     (useWatch({ control: form.control, name: "kind" }) as ArtistKind | undefined) ?? "artist";
   const watchedShortBio = useWatch({ control: form.control, name: "shortBio" }) ?? "";
   const watchedPortrait = useWatch({ control: form.control, name: "portraitUrl" }) ?? "";
+  const watchedOwnerUserId =
+    (useWatch({ control: form.control, name: "ownerUserId" }) as string | null | undefined) ?? null;
 
-  function applyScenarioChange(next: ArtistScenario) {
-    setCreateScenario(next);
-    if (next === "historical") {
-      form.setValue("ownerUserId", null);
-      const kind = form.getValues("kind");
-      if (kind === "maker") {
-        form.setValue("kind", SCENARIO_REGISTRY.historical.defaultKind);
+  const activeScenario: ArtistScenario = useMemo(() => {
+    if (mode === "edit") return scenarioFromOwnerUserId(watchedOwnerUserId);
+    if (watchedOwnerUserId) return "maker-seller";
+    return watchedKind === "maker" ? "maker-seller" : "historical";
+  }, [mode, watchedKind, watchedOwnerUserId]);
+  const kindConfig = getCreatorKindConfig(watchedKind);
+
+  const clearBanner = useCallback(() => {
+    setValidationBanner(null);
+    setValidationStepIndex(null);
+  }, []);
+
+  const handleBeforeNext = useCallback(
+    async (stepIndex: number) => {
+      if (readOnly) return true;
+      const fields = ARTIST_STEP_FIELD_GROUPS[stepIndex];
+      if (
+        fields?.length &&
+        !(await validateWizardStep(form, adminCreateArtistBodySchema, fields))
+      ) {
+        setValidationStepIndex(stepIndex);
+        setValidationBanner(artistSetupWizardValidationMessage(stepIndex));
+        return false;
       }
+      clearBanner();
+      return true;
+    },
+    [clearBanner, form, readOnly],
+  );
+
+  const submit = form.handleSubmit((values) => {
+    clearBanner();
+    if (mode === "create" && activeScenario === "maker-seller" && !values.ownerUserId) {
+      setValidationStepIndex(1);
+      setValidationBanner("Link a platform user for a maker–seller profile.");
+      wizardGoToRef.current(1);
+      notify.error("Link a platform user for a maker–seller profile.");
       return;
     }
-    const currentKind = form.getValues("kind");
-    if (currentKind === "artist" || currentKind === undefined) {
-      form.setValue("kind", SCENARIO_REGISTRY["maker-seller"].defaultKind);
-    }
-  }
+    startTransition(async () => {
+      const result =
+        mode === "create"
+          ? await adminCreateArtistResultAction(values)
+          : artistId
+            ? await adminUpdateArtistResultAction(artistId, values)
+            : { ok: false as const, error: "Missing artist" };
+      if (result.ok) {
+        notify.success(mode === "create" ? "Artist created" : "Artist saved");
+        if (mode === "edit" && artistId) {
+          router.push(`/admin/artists/${artistId}`);
+        } else if (mode === "create" && result.data?.id) {
+          router.push(`/admin/artists/${result.data.id}?created=1`);
+        } else {
+          router.push("/admin/artists");
+        }
+        router.refresh();
+        return;
+      }
+      if (result.fieldErrors) {
+        applyActionFieldErrors(form, result.fieldErrors);
+        const firstStep = Math.min(...Object.keys(result.fieldErrors).map(stepIndexForField));
+        setValidationStepIndex(firstStep);
+        setValidationBanner(artistSetupWizardValidationMessage(firstStep));
+        wizardGoToRef.current(firstStep);
+        return;
+      }
+      setValidationBanner(result.error);
+      notify.error(result.error);
+    });
+  });
 
-  const showFormBody = mode === "edit" || createScenario !== null;
-  const showPreview = showFormBody;
+  const draftExtras =
+    mode === "create"
+      ? {
+          draft: {
+            entityKind: "admin_artist_new",
+            entityId: "new",
+            getValues: () => getValuesRef.current() as Record<string, unknown>,
+          },
+          onDraftResume: (payload: WizardDraftPayload) => {
+            form.reset({
+              ...baselineRef.current,
+              ...(payload.values as Partial<ArtistFormValues>),
+            });
+          },
+        }
+      : {};
+
+  const submitSlot = (
+    <LoadingButton
+      type="submit"
+      loading={pending}
+      loadingLabel="Saving…"
+      disabled={readOnly}
+      data-wizard-submit="true"
+      className="min-h-11 w-full sm:w-auto"
+    >
+      {mode === "create" ? "Create artist" : "Save artist"}
+    </LoadingButton>
+  );
 
   return (
     <>
       <FormDirtyGuard isDirty={form.formState.isDirty} />
       <Form {...form}>
-        <form
-          id={htmlFormId}
-          className="space-y-8"
-          onSubmit={form.handleSubmit((values) => {
-            clearValidationBanner();
-            if (mode === "create" && createScenario === "maker-seller" && !values.ownerUserId) {
-              setValidationFailure("Link a platform user for a maker–seller profile.");
-              notifyValidationFailure({});
-              return;
-            }
-            startTransition(async () => {
-              const result =
-                mode === "create"
-                  ? await adminCreateArtistResultAction(values)
-                  : artistId
-                    ? await adminUpdateArtistResultAction(artistId, values)
-                    : { ok: false as const, error: "Missing artist" };
-              if (result.ok) {
-                notify.success(mode === "create" ? "Artist created" : "Artist saved");
-                if (mode === "edit" && artistId) {
-                  router.push(`/admin/artists/${artistId}`);
-                } else if (mode === "create" && result.data?.id) {
-                  router.push(`/admin/artists/${result.data.id}?created=1`);
-                } else {
-                  router.push("/admin/artists");
-                }
-                router.refresh();
-                return;
-              }
-              if (result.fieldErrors) {
-                applyActionFieldErrors(form, result.fieldErrors);
-                setValidationFailure("Check the highlighted fields.");
-                notifyValidationFailure({});
-                return;
-              }
-              setValidationFailure(result.error);
-              notify.error(result.error);
-            });
-          })}
-        >
-          {mode === "edit" ? <ArtistScenarioBadge scenario={editScenario} /> : null}
+        <form id={htmlFormId} className="space-y-8" onSubmit={submit}>
+          {mode === "edit" ? <ArtistScenarioBadge scenario={activeScenario} /> : null}
 
-          {mode === "create" ? (
-            <ScenarioSelector
-              value={createScenario}
-              onChange={applyScenarioChange}
-              disabled={pending}
+          {validationBanner ? (
+            <WizardValidationBanner
+              message={validationBanner}
+              {...(validationStepIndex != null
+                ? {
+                    stepLabel: artistSetupStepLabel(validationStepIndex),
+                    onJumpToStep: () => wizardGoToRef.current(validationStepIndex),
+                  }
+                : {})}
             />
           ) : null}
 
-          {mode === "create" && createScenario === null ? (
-            <p className="text-sm text-on-surface-variant">
-              Choose a profile type above to continue. Fields stay tailored to catalogue-only vs
-              linked maker–seller workflows.
-            </p>
-          ) : null}
+          <AdminFormWizard
+            steps={ARTIST_SETUP_STEPS}
+            isDirty={form.formState.isDirty}
+            pending={pending}
+            hideStickyOnMobile
+            showSubmitOnAllSteps={mode === "edit"}
+            onStepControl={({ goTo }) => {
+              wizardGoToRef.current = goTo;
+            }}
+            onBeforeNext={handleBeforeNext}
+            onStepBack={clearBanner}
+            submitSlot={submitSlot}
+            leadingSlot={
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                className="min-h-11 w-full sm:w-auto"
+                onClick={() => router.push("/admin/artists")}
+              >
+                Cancel
+              </Button>
+            }
+            {...draftExtras}
+          >
+            {(stepIndex) => (
+              <div className="mx-auto max-w-2xl">
+                <div className="min-w-0 space-y-6">
+                  {stepIndex === 0 ? (
+                    <div className="space-y-3">
+                      <div>
+                        <h2 className="font-display text-lg font-semibold tracking-tight">
+                          What kind of creator is this?
+                        </h2>
+                        <p className="text-sm text-on-surface-variant">
+                          The form adapts its labels, lifespan fields, and attributes to the
+                          selected kind.
+                        </p>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="kind"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <KindSelector
+                                value={(field.value as ArtistKind | undefined) ?? "artist"}
+                                onChange={(k) => field.onChange(k)}
+                                onBlur={field.onBlur}
+                                disabled={pending || readOnly}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ) : null}
 
-          {validationBanner ? <WizardValidationBanner message={validationBanner} /> : null}
+                  {stepIndex === 1 ? (
+                    <>
+                      {activeScenario === "maker-seller" ? (
+                        <ArtistFormSection
+                          title="Platform user"
+                          description="Who this catalogue profile represents when they sell their own work."
+                          defaultOpen
+                        >
+                          <UserLinkSection
+                            control={form.control}
+                            disabled={pending || readOnly}
+                            emphasize
+                          />
+                        </ArtistFormSection>
+                      ) : null}
+                      <ArtistFormSection
+                        title="Identity"
+                        description={
+                          mode === "edit"
+                            ? "Public name and place. URL slug is set at creation."
+                            : "Public name and place — a unique slug is generated when you save."
+                        }
+                        defaultOpen
+                      >
+                        <IdentitySection
+                          control={form.control}
+                          mode={mode}
+                          {...(mode === "edit" && slug ? { slug } : {})}
+                          disabled={pending || readOnly}
+                        />
+                      </ArtistFormSection>
+                      <ArtistFormSection
+                        title="Lifespan & origin"
+                        description={
+                          kindConfig.lifespanMode === "organisation"
+                            ? "Founded / dissolved years and country of origin."
+                            : "Birth / death years and country."
+                        }
+                        defaultOpen
+                      >
+                        <LifespanSection
+                          control={form.control}
+                          kind={watchedKind}
+                          disabled={pending || readOnly}
+                        />
+                      </ArtistFormSection>
+                    </>
+                  ) : null}
 
-          {showFormBody ? (
-            <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-              <div className="min-w-0 space-y-6">
-                {mode === "edit" ? (
-                  <CatalogFormSectionNav
-                    sections={editSections}
-                    activeSection={activeSection}
-                    onSectionChange={(id) => {
-                      setActiveSection(id);
-                      document
-                        .getElementById(`artist-section-${id}`)
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                    aria-label="Artist form sections"
-                  />
-                ) : null}
-                {activeScenario === "maker-seller" ? (
-                  <ArtistFormSection
-                    title="Platform user"
-                    description="Who this catalogue profile represents when they sell their own work."
-                    defaultOpen
-                  >
-                    <UserLinkSection
-                      control={form.control}
-                      disabled={pending || readOnly}
-                      emphasize
-                    />
-                  </ArtistFormSection>
-                ) : null}
+                  {stepIndex === 2 ? (
+                    <>
+                      <ArtistFormSection
+                        title="Biography"
+                        description="Copy shown on the public artist profile."
+                        defaultOpen
+                      >
+                        <BiographySection control={form.control} disabled={pending || readOnly} />
+                      </ArtistFormSection>
+                      <ArtistFormSection
+                        title="Media"
+                        description="Portrait, hero, and website links."
+                        defaultOpen
+                      >
+                        <MediaSection control={form.control} disabled={pending || readOnly} />
+                      </ArtistFormSection>
+                    </>
+                  ) : null}
 
-                <ArtistFormSection
-                  anchorId="artist-section-identity"
-                  title="Identity"
-                  description={
-                    mode === "edit"
-                      ? "Public name and place. URL slug is set at creation."
-                      : "Public name and place — a unique slug is generated when you save."
-                  }
-                  defaultOpen
-                >
-                  <IdentitySection
-                    control={form.control}
-                    mode={mode}
-                    {...(mode === "edit" && slug ? { slug } : {})}
-                    disabled={pending || readOnly}
-                  />
-                </ArtistFormSection>
+                  {stepIndex === 3 ? (
+                    <>
+                      <ArtistFormSection
+                        title="Departments"
+                        description="Collecting categories this creator belongs to."
+                        defaultOpen
+                      >
+                        <CategoriesSection
+                          control={form.control}
+                          categories={categories}
+                          disabled={pending || readOnly}
+                        />
+                      </ArtistFormSection>
+                      <ArtistFormSection
+                        title={`${kindConfig.label} attributes`}
+                        description="Kind-specific details surfaced on the public profile."
+                        defaultOpen
+                      >
+                        <AttributesSection
+                          control={form.control}
+                          kind={watchedKind}
+                          disabled={pending || readOnly}
+                        />
+                      </ArtistFormSection>
+                    </>
+                  ) : null}
 
-                <ArtistFormSection
-                  anchorId="artist-section-lifespan"
-                  title="Lifespan"
-                  description="Optional years for biographical context."
-                  defaultOpen={false}
-                >
-                  <LifespanSection control={form.control} disabled={pending || readOnly} />
-                </ArtistFormSection>
-
-                <ArtistFormSection
-                  anchorId="artist-section-biography"
-                  title="Biography"
-                  description="Copy shown on the public artist profile."
-                  defaultOpen
-                >
-                  <BiographySection control={form.control} disabled={pending || readOnly} />
-                </ArtistFormSection>
-
-                <ArtistFormSection
-                  anchorId="artist-section-media"
-                  title="Media"
-                  description="Portrait, hero, and website links."
-                  defaultOpen={false}
-                >
-                  <MediaSection control={form.control} disabled={pending || readOnly} />
-                </ArtistFormSection>
-
-                <ArtistFormSection
-                  anchorId="artist-section-catalogue"
-                  title="Catalogue"
-                  description="Taxonomy and lifecycle for the registry."
-                  defaultOpen
-                >
-                  <CatalogueSection control={form.control} disabled={pending || readOnly} />
-                </ArtistFormSection>
-
-                {activeScenario === "historical" ? (
-                  <ArtistFormSection
-                    title="Optional user link"
-                    description="Rarely needed for external profiles; use maker–seller path when the seller is the maker."
-                    defaultOpen={false}
-                  >
-                    <UserLinkSection
-                      control={form.control}
-                      disabled={pending || readOnly}
-                      emphasize={false}
-                    />
-                  </ArtistFormSection>
-                ) : null}
-
-                <ArtistFormSection
-                  anchorId="artist-section-visibility"
-                  title="Visibility"
-                  description="Featured, verified, and archive flags."
-                  defaultOpen={false}
-                >
-                  <FlagsSection control={form.control} disabled={pending || readOnly} />
-                </ArtistFormSection>
-
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push("/admin/artists")}
-                  >
-                    Cancel
-                  </Button>
-                  <LoadingButton
-                    type="submit"
-                    loading={pending}
-                    loadingLabel="Saving…"
-                    disabled={readOnly}
-                  >
-                    {mode === "create" ? "Create artist" : "Save artist"}
-                  </LoadingButton>
+                  {stepIndex === 4 ? (
+                    <>
+                      <ArtistPreview
+                        scenario={activeScenario}
+                        data={{
+                          displayName: String(watchedDisplay),
+                          kindLabel: artistKindMeta(watchedKind).label,
+                          shortBio: String(watchedShortBio ?? ""),
+                          portraitUrl: String(watchedPortrait ?? ""),
+                        }}
+                      />
+                      <ArtistFormSection
+                        title="Catalogue status"
+                        description="Controls public visibility of the profile."
+                        defaultOpen
+                      >
+                        <FormField
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                <LabelCaps>Status</LabelCaps>
+                              </FormLabel>
+                              <RhfSelect
+                                value={field.value ?? "approved"}
+                                onValueChange={(v) => field.onChange(v as ArtistStatus)}
+                                onBlur={field.onBlur}
+                                disabled={pending || readOnly}
+                                options={[...ARTIST_STATUS_OPTIONS]}
+                                triggerClassName="min-h-11 w-full font-body text-sm"
+                              />
+                              <p className="text-xs text-on-surface-variant">
+                                Approved profiles appear in the public directory. Pending hides the
+                                profile and flags attached lots for review.
+                              </p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </ArtistFormSection>
+                      <ArtistFormSection
+                        title="Visibility"
+                        description="Featured, verified, and archive flags."
+                        defaultOpen
+                      >
+                        <FlagsSection control={form.control} disabled={pending || readOnly} />
+                      </ArtistFormSection>
+                      {activeScenario === "historical" ? (
+                        <ArtistFormSection
+                          title="Optional user link"
+                          description="Rarely needed for external profiles; use the maker–seller path when the seller is the maker."
+                          defaultOpen={false}
+                        >
+                          <UserLinkSection
+                            control={form.control}
+                            disabled={pending || readOnly}
+                            emphasize={false}
+                          />
+                        </ArtistFormSection>
+                      ) : null}
+                    </>
+                  ) : null}
                 </div>
               </div>
-
-              {showPreview ? (
-                <ArtistPreview
-                  className="lg:sticky lg:top-4"
-                  scenario={activeScenario}
-                  data={{
-                    displayName: String(watchedDisplay),
-                    kindLabel: artistKindMeta(watchedKind).label,
-                    shortBio: String(watchedShortBio ?? ""),
-                    portraitUrl: String(watchedPortrait ?? ""),
-                  }}
-                />
-              ) : null}
-            </div>
-          ) : null}
+            )}
+          </AdminFormWizard>
         </form>
       </Form>
     </>

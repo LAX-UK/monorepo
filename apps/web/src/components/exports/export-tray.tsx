@@ -2,11 +2,11 @@
 
 import { ExportJobRow } from "@/components/exports/export-job-row";
 import { useExportJobs } from "@/components/exports/export-jobs-provider";
+import { ExportManagerSheet } from "@/components/exports/export-manager-sheet";
 import { Button } from "@auction/ui/components/button";
 import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useState } from "react";
-import { ExportManagerSheet } from "./export-manager-sheet";
 
 export function ExportTray() {
   const { jobs, trayOpen, setTrayOpen, activeCount, cancelJob, downloadJob } = useExportJobs();
@@ -18,13 +18,14 @@ export function ExportTray() {
 
   if (!trayOpen && activeCount > 0) {
     return (
-      <button
+      <Button
         type="button"
+        variant="outline"
         className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-outline-variant/50 bg-surface px-4 py-2 font-label text-xs shadow-lg"
         onClick={() => setTrayOpen(true)}
       >
         {activeCount} export{activeCount === 1 ? "" : "s"} running
-      </button>
+      </Button>
     );
   }
 

@@ -2,6 +2,7 @@ export * from "./lot.js";
 export * from "./sale.js";
 export * from "./category.js";
 export * from "./artist.js";
+export * from "./creator-kind.js";
 export * from "./payment.js";
 export * from "./notification.js";
 export * from "./bid.js";
