@@ -62,6 +62,7 @@ export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
     "first_name",
     "last_name",
     "mobile",
+    "mobile_country",
     "image",
     "email_status",
     "email_status_changed_at",
