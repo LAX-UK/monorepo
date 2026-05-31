@@ -44,4 +44,13 @@ describe("SalesPrimaryTabs", () => {
     expect(links[0]).toHaveTextContent("Live Now");
     expect(links[1]).toHaveTextContent("Upcoming");
   });
+
+  it("clears stale page params when changing tabs", () => {
+    render(<SalesPrimaryTabs state={{ ...baseState, page: 3 }} />);
+
+    expect(screen.getByRole("link", { name: /New Lots/i })).toHaveAttribute(
+      "href",
+      "/sales?tab=newLots",
+    );
+  });
 });
