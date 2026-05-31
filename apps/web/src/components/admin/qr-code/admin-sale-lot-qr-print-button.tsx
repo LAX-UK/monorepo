@@ -5,6 +5,7 @@ import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 type LotQrRow = {
@@ -18,12 +19,15 @@ type Props = {
 };
 
 export function AdminSaleLotQrPrintButton({ lots }: Props) {
+  const [preparing, setPreparing] = useState(false);
+
   const print = async () => {
     const win = openPrintWindow();
     if (!win) {
       notify.error("Could not open print window. Please allow pop-ups and try again.");
       return;
     }
+    setPreparing(true);
     win.document.write(`<!doctype html><html><head><title>Lot QR labels</title></head><body>
       <p style="font-family:Arial,sans-serif;margin:24px">Preparing QR labels...</p>
     </body></html>`);
@@ -61,6 +65,8 @@ export function AdminSaleLotQrPrintButton({ lots }: Props) {
     } catch (error) {
       win.close();
       notify.error(error instanceof Error ? error.message : "Could not print lot QR labels");
+    } finally {
+      setPreparing(false);
     }
   };
 
@@ -70,10 +76,11 @@ export function AdminSaleLotQrPrintButton({ lots }: Props) {
       variant="outline"
       size="sm"
       onClick={() => void print()}
-      disabled={lots.length === 0}
+      disabled={lots.length === 0 || preparing}
+      aria-busy={preparing || undefined}
     >
       <Printer className="size-4" aria-hidden />
-      Print lot QR labels
+      {preparing ? "Preparing labels..." : "Print lot QR labels"}
     </Button>
   );
 }
