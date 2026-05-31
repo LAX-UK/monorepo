@@ -1,6 +1,7 @@
 import {
   ARTIST_DIRECTORY_PRESETS,
   DECADE_SEGMENTS,
+  KIND_SEGMENTS,
   NATIONALITY_SEGMENTS,
 } from "@/lib/artists/directory-presets";
 import { fetchArtistsForSitemap } from "@/lib/data/http/artist.server";
@@ -87,12 +88,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // `ARTIST_DIRECTORY_PRESETS` already covers `/artists`, `/artists/featured`,
   // `/artists/living`, `/artists/historical`, and the four kind paths, so we
   // only spread it once and add letter + decade slices on top.
+  // Kind directory slices beyond the four curated presets (designers, mints,
+  // authors, producers, …). The curated kind paths are already in
+  // `ARTIST_DIRECTORY_PRESETS`, so filter those out to avoid duplicates.
+  const curatedKindPaths = new Set(
+    ARTIST_DIRECTORY_PRESETS.map((p) => p.canonicalPath).filter((path) =>
+      path.startsWith("/artists/kind/"),
+    ),
+  );
+  const extraKindSlices = KIND_SEGMENTS.map((slug) => `/artists/kind/${slug}`).filter(
+    (path) => !curatedKindPaths.has(path),
+  );
+
   const directorySlices: MetadataRoute.Sitemap = [
     ...ARTIST_DIRECTORY_PRESETS.map((p) => ({
       url: `${base}${p.canonicalPath}`,
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: p.id === "all" ? 0.7 : 0.6,
+    })),
+    ...extraKindSlices.map((path) => ({
+      url: `${base}${path}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.55,
     })),
     ...NATIONALITY_SEGMENTS.map((n) => ({
       url: `${base}/artists/nationality/${n.slug}`,

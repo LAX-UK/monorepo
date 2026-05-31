@@ -171,13 +171,15 @@ export function BidForm({
           {activeAutoBidNote.onChangeAutoBid ? (
             <>
               {" "}
-              <button
+              <Button
                 type="button"
+                variant="link"
+                size="link"
                 className="font-semibold text-primary underline-offset-2 hover:underline"
                 onClick={activeAutoBidNote.onChangeAutoBid}
               >
                 Change auto-bid
-              </button>
+              </Button>
             </>
           ) : null}
         </p>

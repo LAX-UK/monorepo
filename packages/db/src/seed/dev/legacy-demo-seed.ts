@@ -164,6 +164,13 @@ const CAT = {
   impressionist: "c1000008-0000-4000-8000-000000000008",
   bronze: "c1000009-0000-4000-8000-000000000009",
   finePrints: "c1000010-0000-4000-8000-000000000010",
+  // ── Creator-registry departments (new kinds) ──────────────────────────────
+  motorCars: "c1000011-0000-4000-8000-000000000011",
+  watches: "c1000012-0000-4000-8000-000000000012",
+  books: "c1000013-0000-4000-8000-000000000013",
+  coins: "c1000014-0000-4000-8000-000000000014",
+  wine: "c1000015-0000-4000-8000-000000000015",
+  design: "c1000016-0000-4000-8000-000000000016",
 } as const;
 
 const S = {
@@ -202,6 +209,13 @@ const ARTIST = {
   carolina: "a1000001-0000-4000-8000-000000000001",
   robert: "a1000002-0000-4000-8000-000000000002",
   pendingStudio: "a1000003-0000-4000-8000-000000000003",
+  // ── Creator-registry: new kinds ───────────────────────────────────────────
+  ferrarispa: "a1000004-0000-4000-8000-000000000004", // marque
+  patekPhilippe: "a1000005-0000-4000-8000-000000000005", // brand/manufacturer
+  janeAusten: "a1000006-0000-4000-8000-000000000006", // author
+  royalMint: "a1000007-0000-4000-8000-000000000007", // mint
+  chateauPetrus: "a1000008-0000-4000-8000-000000000008", // producer
+  northbankDesign: "a1000009-0000-4000-8000-000000000009", // studio
 } as const;
 
 const PAY = {
@@ -288,6 +302,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   const {
     adminReviewTask,
     artistAlias,
+    artistCategories,
     artistProfile,
     artistWatchlist,
     emailEvent,
@@ -364,6 +379,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(saleCategories);
   await db.delete(sale);
   await db.delete(artistAlias);
+  await db.delete(artistCategories);
   await db.delete(artistProfile);
   await db.delete(legalEntityDocument);
   await db.delete(legalEntityAddress);
@@ -397,6 +413,7 @@ export async function runLegacyDemoSeed() {
   const {
     adminReviewTask,
     artistAlias,
+    artistCategories,
     artistProfile,
     user,
     account,
@@ -2497,6 +2514,18 @@ export async function runLegacyDemoSeed() {
       parentId: CAT.paintings,
     },
     { id: CAT.bronze, name: "Bronze", slug: "bronze", parentId: CAT.sculpture },
+    // ── New collecting departments for the creator-kind registry ─────────────
+    { id: CAT.motorCars, name: "Motor Cars", slug: "motor-cars", parentId: null },
+    { id: CAT.watches, name: "Watches & Clocks", slug: "watches-clocks", parentId: null },
+    { id: CAT.books, name: "Books & Manuscripts", slug: "books-manuscripts", parentId: null },
+    { id: CAT.coins, name: "Coins & Medals", slug: "coins-medals", parentId: null },
+    { id: CAT.wine, name: "Wine & Spirits", slug: "wine-spirits", parentId: null },
+    {
+      id: CAT.design,
+      name: "Design & Decorative Arts",
+      slug: "design-decorative-arts",
+      parentId: null,
+    },
   ]);
 
   // ── Artist profiles ────────────────────────────────────────────────────────
@@ -2513,9 +2542,11 @@ export async function runLegacyDemoSeed() {
         "Carolina Price works across oil, pigment, and assemblage. This catalogue profile is admin-curated (same model as production): it drives public artist pages, lot attribution via lot.artist_id, and featured states.",
       nationality: "British",
       location: "London, UK",
+      countryCode: "GB",
       birthYear: "1990",
       websiteUrl: "https://example.com/carolina-price",
       socialLinks: { instagram: "https://instagram.com/carolina.seed" },
+      attributes: { movement: "Contemporary Abstraction", medium: "Oil on canvas" },
       featured: true,
       verified: true,
       kind: "artist",
@@ -2540,8 +2571,10 @@ export async function runLegacyDemoSeed() {
         "Admin-curated catalogue profile for Robert Thorne (client): registry + lot attribution demos.",
       nationality: "British",
       location: "Manchester, UK",
+      countryCode: "GB",
       birthYear: "1982",
       socialLinks: {},
+      attributes: { movement: "Figurative", medium: "Acrylic" },
       featured: false,
       verified: true,
       kind: "artist",
@@ -2564,7 +2597,9 @@ export async function runLegacyDemoSeed() {
         "Pending maker catalogue row created by admin on behalf of the gallery org (merge/review queue demos).",
       nationality: "British",
       location: "London, UK",
+      countryCode: "GB",
       socialLinks: {},
+      attributes: { discipline: "Ceramics", materials: "Stoneware, porcelain" },
       featured: false,
       verified: false,
       kind: "maker",
@@ -2574,6 +2609,185 @@ export async function runLegacyDemoSeed() {
       createdAt: new Date(now - 5 * day),
       updatedAt: stamp,
     },
+    // ── New creator-kind registry profiles ────────────────────────────────────
+    {
+      id: ARTIST.ferrarispa,
+      displayName: "Ferrari S.p.A.",
+      slug: "ferrari-spa",
+      shortBio: "Italian sports-car marque founded by Enzo Ferrari in Maranello, 1939.",
+      longBio:
+        "Ferrari S.p.A. is one of the world's most celebrated automotive marques. Its road and racing cars have appeared at major auction houses since the 1980s, with rare models regularly achieving record results.",
+      nationality: "Italian",
+      location: "Maranello, Italy",
+      countryCode: "IT",
+      foundedYear: "1939",
+      websiteUrl: "https://www.ferrari.com",
+      socialLinks: {},
+      attributes: {
+        countryOfOrigin: "Italy",
+        founderName: "Enzo Ferrari",
+        parentCompany: "Stellantis (partial)",
+        status: "Active",
+      },
+      featured: true,
+      verified: true,
+      kind: "marque",
+      status: "approved",
+      createdByUserId: ADMIN_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 30 * day),
+      createdAt: new Date(now - 45 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ARTIST.patekPhilippe,
+      displayName: "Patek Philippe SA",
+      slug: "patek-philippe-sa",
+      shortBio:
+        "Swiss watchmaker founded in Geneva, 1839. Produces some of the world's most collectible timepieces.",
+      nationality: "Swiss",
+      location: "Geneva, Switzerland",
+      countryCode: "CH",
+      foundedYear: "1839",
+      websiteUrl: "https://www.patek.com",
+      socialLinks: {},
+      attributes: {
+        headquarters: "Geneva, Switzerland",
+        parentCompany: "Stern family (private)",
+      },
+      featured: true,
+      verified: true,
+      kind: "manufacturer",
+      status: "approved",
+      createdByUserId: ADMIN_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 20 * day),
+      createdAt: new Date(now - 35 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ARTIST.janeAusten,
+      displayName: "Jane Austen",
+      slug: "jane-austen",
+      shortBio:
+        "English novelist (1775–1817), author of Sense and Sensibility, Pride and Prejudice, and Emma.",
+      longBio:
+        "Jane Austen's manuscripts, first editions, and personal correspondence are among the most sought-after items in the books and manuscripts market, attracting bibliophiles and literary collectors worldwide.",
+      nationality: "British",
+      location: "Steventon, Hampshire, England",
+      countryCode: "GB",
+      birthYear: "1775",
+      deathYear: "1817",
+      socialLinks: {},
+      attributes: {
+        penNames: "A Lady",
+        languages: "English",
+        genres: "Novel, Romance, Social satire",
+      },
+      featured: false,
+      verified: true,
+      kind: "author",
+      status: "approved",
+      createdByUserId: ADMIN_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 14 * day),
+      createdAt: new Date(now - 20 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ARTIST.royalMint,
+      displayName: "The Royal Mint",
+      slug: "the-royal-mint",
+      shortBio: "The official mint of the United Kingdom, producing coins since 886 AD.",
+      nationality: "British",
+      location: "Llantrisant, Wales, UK",
+      countryCode: "GB",
+      foundedYear: "886",
+      websiteUrl: "https://www.royalmint.com",
+      socialLinks: {},
+      attributes: {
+        mintMarks: "Various (see catalogue)",
+        location: "Llantrisant, Wales",
+        region: "United Kingdom",
+      },
+      featured: false,
+      verified: true,
+      kind: "mint",
+      status: "approved",
+      createdByUserId: ADMIN_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 10 * day),
+      createdAt: new Date(now - 15 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ARTIST.chateauPetrus,
+      displayName: "Château Pétrus",
+      slug: "chateau-petrus",
+      shortBio: "Iconic Pomerol estate producing one of the world's most collectible wines.",
+      nationality: "French",
+      location: "Pomerol, Bordeaux, France",
+      countryCode: "FR",
+      foundedYear: "1878",
+      websiteUrl: "https://www.petrus.com",
+      socialLinks: {},
+      attributes: {
+        region: "Pomerol, Bordeaux",
+        appellation: "Pomerol AOC",
+        estate: "Château Pétrus",
+      },
+      featured: false,
+      verified: true,
+      kind: "producer",
+      status: "approved",
+      createdByUserId: ADMIN_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 8 * day),
+      createdAt: new Date(now - 12 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: ARTIST.northbankDesign,
+      displayName: "Northbank Design Studio",
+      slug: "northbank-design-studio",
+      shortBio:
+        "London-based design and furniture studio founded in 2001, specialising in limited-edition objects.",
+      nationality: "British",
+      location: "Shoreditch, London, UK",
+      countryCode: "GB",
+      foundedYear: "2001",
+      socialLinks: {},
+      attributes: {
+        foundedLocation: "Shoreditch, London",
+        principals: "Marcus Webb, Lily Chen",
+      },
+      featured: false,
+      verified: false,
+      kind: "studio",
+      status: "approved",
+      createdByUserId: ADMIN_ID,
+      reviewedByUserId: ADMIN_ID,
+      reviewedAt: new Date(now - 3 * day),
+      createdAt: new Date(now - 6 * day),
+      updatedAt: stamp,
+    },
+  ]);
+
+  // ── Artist categories (department associations) ─────────────────────────────
+  await db.insert(artistCategories).values([
+    // Original artist profiles → fine-art departments
+    { artistProfileId: ARTIST.carolina, categoryId: CAT.paintings, sortOrder: 0 },
+    { artistProfileId: ARTIST.carolina, categoryId: CAT.mixed, sortOrder: 1 },
+    { artistProfileId: ARTIST.robert, categoryId: CAT.paintings, sortOrder: 0 },
+    // pendingStudio: decorative arts / design
+    { artistProfileId: ARTIST.pendingStudio, categoryId: CAT.design, sortOrder: 0 },
+    // New kind profiles → matching departments
+    { artistProfileId: ARTIST.ferrarispa, categoryId: CAT.motorCars, sortOrder: 0 },
+    { artistProfileId: ARTIST.patekPhilippe, categoryId: CAT.watches, sortOrder: 0 },
+    { artistProfileId: ARTIST.janeAusten, categoryId: CAT.books, sortOrder: 0 },
+    { artistProfileId: ARTIST.royalMint, categoryId: CAT.coins, sortOrder: 0 },
+    { artistProfileId: ARTIST.chateauPetrus, categoryId: CAT.wine, sortOrder: 0 },
+    { artistProfileId: ARTIST.northbankDesign, categoryId: CAT.design, sortOrder: 0 },
   ]);
 
   await db.insert(artistAlias).values([
@@ -3990,7 +4204,13 @@ export async function runLegacyDemoSeed() {
   console.log("    Platform (all 4 statuses) : pending · accepted · revoked · expired");
   console.log("    Entity   (3 of 4 statuses): pending · accepted · revoked");
   console.log("");
-  console.log("  Also includes: 2 sales · 16 lots · 3 artists · 26 bids · 8 watchlist rows");
+  console.log(
+    "  Also includes: 2 sales · 16 lots · 9 creator profiles · 26 bids · 8 watchlist rows",
+  );
+  console.log("  Creator registry kinds: artist · maker · studio · marque · manufacturer");
+  console.log("                          author · mint · producer");
+  console.log("  New departments: Motor Cars · Watches & Clocks · Books & Manuscripts");
+  console.log("                   Coins & Medals · Wine & Spirits · Design & Decorative Arts");
   console.log("  sale/artist follows · notifications · payments (captured/pending/refunded)");
   console.log("  payouts (paid/scheduled-retry/clawback) · KYB documents · domain events");
   console.log("  user addresses · legal entity addresses · retired payout method");

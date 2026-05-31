@@ -1,5 +1,5 @@
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
-import { publicArtistBrowseQuerySchema } from "@auction/validators";
+import { artistKindEnum, publicArtistBrowseQuerySchema } from "@auction/validators";
 import { artistDeleteBodySchema } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -29,11 +29,19 @@ const proposeBodySchema = z.object({
 
 const createArtistSchema = z.object({
   displayName: z.string().min(1).max(200),
-  kind: z.enum(["artist", "maker", "brand", "marque"]).optional(),
+  kind: artistKindEnum.optional(),
   shortBio: z.string().max(1000).optional(),
   nationality: z.string().max(100).optional(),
+  countryCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{2}$/)
+    .optional(),
   birthYear: z.string().max(10).optional(),
   deathYear: z.string().max(10).optional(),
+  foundedYear: z.string().max(10).optional(),
+  dissolvedYear: z.string().max(10).optional(),
+  categoryIds: z.array(z.string().uuid()).max(20).optional(),
 });
 
 const checkNameSchema = z.object({
@@ -119,6 +127,8 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
       ...(q.living === true ? { living: true } : {}),
       ...(q.historical === true ? { historical: true } : {}),
       ...(q.nationality ? { nationality: q.nationality } : {}),
+      ...(q.country ? { country: q.country } : {}),
+      ...(q.categorySlug ? { categorySlug: q.categorySlug } : {}),
       ...(q.featuredOnly === true ? { featuredOnly: true } : {}),
       ...(q.featuredFirst === true ? { featuredFirst: true } : {}),
       ...(q.decade ? { decade: q.decade } : {}),

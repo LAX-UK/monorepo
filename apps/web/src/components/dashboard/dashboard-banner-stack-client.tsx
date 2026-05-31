@@ -14,6 +14,7 @@ import {
   BottomSheetHeader,
   BottomSheetTitle,
 } from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
 import { BellRing } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -49,8 +50,9 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => setAlertsOpen(true)}
         className={cn(
           "flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-container/20 px-4 py-2 text-left transition-colors hover:bg-warning-container/30",
@@ -67,7 +69,7 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
         <span className="shrink-0 font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
           View
         </span>
-      </button>
+      </Button>
       <BottomSheet open={alertsOpen} onOpenChange={setAlertsOpen}>
         <BottomSheetContent className="border-outline-variant bg-surface-container-lowest">
           <BottomSheetHeader className="px-6 pt-2 pb-1 text-left">
