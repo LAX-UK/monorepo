@@ -110,6 +110,11 @@ export const WORKER_FULL_TABLES = [
   "upload_object",
   "marketing_click_ids",
 ] as const;
+/** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
+export const WORKER_QR_CODE_SCAN_TABLES = [
+  "qr_code_scan",
+  "qr_code_scan_daily",
+] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 
@@ -290,6 +295,11 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     for (const tableName of WORKER_PROVISIONING_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+    }
+    /** FK target when inserting scan rows. */
+    await grantIfExists(client, "worker_app", "qr_code", "SELECT");
+    for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
     }
 
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
