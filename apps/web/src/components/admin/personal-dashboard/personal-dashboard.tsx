@@ -10,12 +10,14 @@ import type { AdminActivityRow, AdminAttentionRow } from "@/lib/admin/admin-home
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import type { AdminAnomaly } from "@/lib/admin/anomaly-detection";
 import {
+  type DashboardWidgetId,
   type DashboardWidgetState,
   isDashboardWidgetVisible,
 } from "@/lib/admin/dashboard-widgets.vm";
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
 import { LabelCaps } from "@auction/ui";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 type Props = {
   userName: string;
@@ -28,6 +30,7 @@ type Props = {
   attention: readonly AdminAttentionRow[];
   activity: readonly AdminActivityRow[];
   anomalies: readonly AdminAnomaly[];
+  loadWarning?: string | null;
 };
 
 export function PersonalDashboard({
@@ -41,8 +44,63 @@ export function PersonalDashboard({
   attention,
   activity,
   anomalies,
+  loadWarning = null,
 }: Props) {
   const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(widgets, id);
+  const orderOf = (id: DashboardWidgetId) => widgets.find((w) => w.id === id)?.order ?? 999;
+  const blocks = [
+    {
+      id: "greeting",
+      order: orderOf("greeting"),
+      node: show("greeting") ? <GreetingWidget name={userName} /> : null,
+    },
+    {
+      id: "anomalies",
+      order: orderOf("anomalies"),
+      node:
+        show("anomalies") && anomalies.length > 0 ? (
+          <AnomalyCalloutsWidget anomalies={anomalies} />
+        ) : null,
+    },
+    {
+      id: "kpi-band",
+      order: orderOf("kpi-band"),
+      node: show("kpi-band") ? (
+        <TrendKpiBandWidget
+          periodDays={periodDays}
+          metrics={metrics}
+          trends={trends}
+          bidsPerMinute={bidsPerMinute}
+        />
+      ) : null,
+    },
+    {
+      id: "queue-saleroom",
+      order: Math.min(orderOf("my-queue"), orderOf("saleroom-live")),
+      node:
+        show("my-queue") || show("saleroom-live") ? (
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            {show("my-queue") ? (
+              <section className="lg:col-span-7">
+                <MyQueueWidget attention={attention} />
+              </section>
+            ) : null}
+            {show("saleroom-live") ? (
+              <aside className={show("my-queue") ? "lg:col-span-5" : "lg:col-span-12"}>
+                <SaleroomLiveWidget bidsPerMinute={bidsPerMinute} activeLotIds={activeLotIds} />
+              </aside>
+            ) : null}
+          </div>
+        ) : null,
+    },
+    {
+      id: "activity",
+      order: orderOf("activity"),
+      node: show("activity") ? <RecentActivityWidget activity={activity} /> : null,
+    },
+  ]
+    .filter((block) => block.node)
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="space-y-8">
@@ -53,35 +111,16 @@ export function PersonalDashboard({
         actions={<PersonalDashboardCustomizeSheet widgets={widgets} />}
       />
 
-      {show("greeting") ? <GreetingWidget name={userName} /> : null}
-
-      {show("anomalies") && anomalies.length > 0 ? (
-        <AnomalyCalloutsWidget anomalies={anomalies} />
+      {loadWarning ? (
+        <Alert variant="destructive">
+          <AlertTitle>Some dashboard data could not load</AlertTitle>
+          <AlertDescription>{loadWarning}</AlertDescription>
+        </Alert>
       ) : null}
 
-      {show("kpi-band") ? (
-        <TrendKpiBandWidget
-          periodDays={periodDays}
-          metrics={metrics}
-          trends={trends}
-          bidsPerMinute={bidsPerMinute}
-        />
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {show("my-queue") ? (
-          <section className="lg:col-span-7">
-            <MyQueueWidget attention={attention} />
-          </section>
-        ) : null}
-        {show("saleroom-live") ? (
-          <aside className={show("my-queue") ? "lg:col-span-5" : "lg:col-span-12"}>
-            <SaleroomLiveWidget bidsPerMinute={bidsPerMinute} activeLotIds={activeLotIds} />
-          </aside>
-        ) : null}
-      </div>
-
-      {show("activity") ? <RecentActivityWidget activity={activity} /> : null}
+      {blocks.map((block) => (
+        <div key={block.id}>{block.node}</div>
+      ))}
     </div>
   );
 }

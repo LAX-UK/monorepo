@@ -36,6 +36,7 @@ import type {
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
+  AdminUserListRow,
 } from "./admin-user.js";
 import type { AdminAnalyticsDashboard, DateRange } from "./analytics.js";
 import type { ArtistSearchHit } from "./artist-registry.js";
@@ -204,6 +205,7 @@ export interface IAdminRequestLifecycleService {
 export interface IAdminUserApplicationService {
   list(filter: AdminUserListFilter): Promise<AdminUserListResult>;
   getById(id: string): Promise<AdminUserDetail | null>;
+  getByIds(ids: string[]): Promise<AdminUserListRow[]>;
   setRole(
     actorRole: string,
     actorUserId: string,

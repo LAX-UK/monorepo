@@ -8,6 +8,7 @@ import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { type AdminLotTableRow, lotColumns } from "@/components/admin/lots-board/columns";
 import { LotsLayoutToggle } from "@/components/admin/lots-board/layout-toggle";
 import { LotsMobileCards } from "@/components/admin/lots-board/mobile-cards";
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { TableScroll } from "@/components/ui/table-scroll";
 import {
@@ -139,6 +140,14 @@ export function AdminLotsBoard({
               getRowEditHref={(r) => adminLotEditHref(r.id)}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
+              emptyComponent={
+                <FilterEmptyState
+                  entity="lots"
+                  segment="admin"
+                  hasActiveFilters={Boolean(statusChips)}
+                  title="No lots in this view"
+                />
+              }
               density={density}
               showColumnPicker
               columnVisibilityStorageKey="admin-lots-columns"

@@ -19,6 +19,7 @@ import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
+import { Badge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { formatPhoneDisplay } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -208,12 +209,9 @@ function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
       </DetailItem>
       <DetailItem label="Persona">{formatPersona(u.signupPersona)}</DetailItem>
       <DetailItem label="2FA">
-        <AdminStatusBadge
-          domain="kyc"
-          status={u.twoFactorEnabled ? "approved" : "unverified"}
-          label={u.twoFactorEnabled ? "On" : "Off"}
-          size="sm"
-        />
+        <Badge variant={u.twoFactorEnabled ? "default" : "secondary"}>
+          {u.twoFactorEnabled ? "On" : "Off"}
+        </Badge>
       </DetailItem>
       <DetailItem label="Joined">{formatAdminUserDate(u.createdAt)}</DetailItem>
       <DetailItem label="Updated">{relativeFromIso(u.updatedAt)}</DetailItem>

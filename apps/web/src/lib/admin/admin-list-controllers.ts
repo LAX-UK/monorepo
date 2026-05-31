@@ -25,6 +25,7 @@ import {
   getAdminPayoutList,
   getAdminSalesList,
   getAdminUserList,
+  getAdminUsersByIds,
 } from "@/lib/data/http/admin.server";
 import {
   type AdminInvitationSummary,
@@ -414,7 +415,14 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
         getAdminLotFulfilmentList().catch(() => []),
       ]);
       const lots = await getAdminLotsByIds(payments.map((p) => p.lotId));
-      const allRows = buildAdminPaymentTableRows(payments, lots, fulfilmentRows);
+      let allRows = buildAdminPaymentTableRows(payments, lots, fulfilmentRows);
+      const buyerIds = [...new Set(allRows.map((row) => row.buyerId).filter(Boolean))];
+      const buyers = await getAdminUsersByIds(buyerIds).catch(() => []);
+      const buyerLabels = new Map(buyers.map((b) => [b.id, b.name || b.email || null]));
+      allRows = allRows.map((row) => ({
+        ...row,
+        buyerLabel: buyerLabels.get(row.buyerId) ?? null,
+      }));
       let filtered = filterPaymentTableRowsByStatus(allRows, q.status);
       const needle = q.q?.trim().toLowerCase();
       if (needle) {
@@ -422,6 +430,7 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
           (r) =>
             r.lotTitle.toLowerCase().includes(needle) ||
             r.buyerId.toLowerCase().includes(needle) ||
+            (r.buyerLabel?.toLowerCase().includes(needle) ?? false) ||
             r.id.toLowerCase().includes(needle) ||
             (r.fulfilmentStatus?.toLowerCase().includes(needle) ?? false),
         );
@@ -429,7 +438,7 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
       const { rows, total } = sliceAdminListWindow(filtered, q.offset, q.limit);
       return {
         rows,
-        rowsForSummary: allRows,
+        rowsForSummary: filtered,
         total,
         offset: q.offset,
         limit: q.limit,
@@ -544,20 +553,14 @@ export const conditionReportsListController: IAdminListController<
       lens === "in_progress" ||
       lens === "fulfilled" ||
       lens === "declined"
-        ? lens === "open"
-          ? undefined
-          : lens
+        ? lens
         : undefined;
     const { items, total, limit, offset } = await getAdminConditionReportRequests({
       ...(status ? { status } : {}),
       limit: q.limit,
       offset: q.offset,
     });
-    const rows =
-      lens === "open"
-        ? items.filter((r) => r.status === "pending" || r.status === "in_progress")
-        : items;
-    return { rows, total: lens === "open" ? rows.length : total, limit, offset };
+    return { rows: items, total, limit, offset };
   },
 };
 

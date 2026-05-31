@@ -23,7 +23,18 @@ export function artistListPresetHref(
 ): string {
   switch (id) {
     case "all":
-      return buildListHref(PRESET_BASE, current, { ...queueClearPatch, offset: 0 });
+      return buildListHref(PRESET_BASE, current, {
+        ...queueClearPatch,
+        status: null,
+        kinds: null,
+        kind: null,
+        linked: null,
+        featured: null,
+        verified: null,
+        archivedOnly: null,
+        includeArchived: null,
+        offset: 0,
+      });
     case "pending":
       return buildListHref(PRESET_BASE, current, {
         ...queueClearPatch,

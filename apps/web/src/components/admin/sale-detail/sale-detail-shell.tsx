@@ -41,6 +41,7 @@ type Props = {
   saleId: string;
   bundle: AdminSaleListRow;
   registrationCount?: number | null;
+  pendingRegistrationCount?: number | null;
   documentCount?: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
   canManageSales?: boolean;
@@ -54,6 +55,7 @@ export function SaleDetailShell({
   saleId,
   bundle,
   registrationCount = null,
+  pendingRegistrationCount = null,
   documentCount = null,
   activityEvents = [],
   canManageSales = false,
@@ -82,7 +84,9 @@ export function SaleDetailShell({
     canManageSales && isOnsite && (sale.status === "active" || sale.status === "scheduled");
 
   const pendingRegs =
-    liveish && registrationCount != null && registrationCount > 0 ? registrationCount : 0;
+    liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
+      ? pendingRegistrationCount
+      : 0;
 
   const setupReadiness =
     draftSetupReadinessProp !== undefined
@@ -137,7 +141,7 @@ export function SaleDetailShell({
       ? saleSetupResumeHref(saleId, {
           sale,
           lots,
-          pendingRegistrationCount: registrationCount,
+          pendingRegistrationCount,
           ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
         })
       : undefined;

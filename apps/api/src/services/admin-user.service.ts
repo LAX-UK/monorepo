@@ -33,6 +33,10 @@ export class AdminUserService {
     return this.reader.getById(id);
   }
 
+  getByIds(ids: string[]) {
+    return this.reader.getByIds(ids);
+  }
+
   async setRole(
     actorRole: string,
     actorUserId: string,
