@@ -438,6 +438,32 @@ describe("ItemSubmissionService", () => {
     expect(r.kind).toBe("bad_request");
   });
 
+  it("bulkApproveOrReject fails when any submission is not under review", async () => {
+    hoisted.txSubFindById.mockResolvedValue(
+      mkSubmission({ id: "sub-1", status: "submitted", legalEntityId: "ent-1" }),
+    );
+    const db = {
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+    } as unknown as Database;
+    const svc = new ItemSubmissionService(
+      db,
+      {} as IItemSubmissionRepository,
+      {} as unknown as IUserRepository,
+      {} as NotificationDispatcher,
+    );
+    const r = await svc.bulkApproveOrReject({
+      adminId: "admin-1",
+      ids: ["sub-1"],
+      op: "approve",
+      reviewNotes: "Bulk approved",
+    });
+    expect(r.kind).toBe("err");
+    if (r.kind === "err") {
+      expect(r.error.message).toContain("under review");
+      expect(r.error.status).toBeGreaterThanOrEqual(400);
+    }
+  });
+
   it("getSubmissionForViewerApi uses admin path when role is platform admin", async () => {
     const row = mkSubmission({ id: "s1", status: "draft", legalEntityId: "ent-1" });
     const submissions: IItemSubmissionRepository = {

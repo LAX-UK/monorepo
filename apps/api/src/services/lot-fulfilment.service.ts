@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { lot, lotFulfilment } from "@auction/db/schema";
-import { desc, eq, getTableColumns } from "drizzle-orm";
+import { and, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import type { LotFulfilmentAddressSnapshot } from "./interfaces/lot-fulfilment-payment-hook.js";
 
@@ -97,27 +97,73 @@ export class LotFulfilmentService {
     return ok(row ?? null);
   }
 
-  async listForAdmin(options?: { status?: LotFulfilmentRow["status"] }): Promise<
-    LotFulfilmentListRow[]
-  > {
-    const base = this.db
+  async listForAdmin(options?: {
+    status?: LotFulfilmentRow["status"];
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    items: LotFulfilmentListRow[];
+    total: number;
+    statusCounts: Record<string, number>;
+  }> {
+    const limit = Math.min(100, Math.max(1, options?.limit ?? 50));
+    const offset = Math.max(0, options?.offset ?? 0);
+    const needle = options?.q?.trim();
+    const needleIsUuid =
+      needle != null &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(needle);
+    const filters = [
+      ...(options?.status !== undefined ? [eq(lotFulfilment.status, options.status)] : []),
+      ...(needle
+        ? [
+            or(
+              ilike(lot.title, `%${needle}%`),
+              ...(needleIsUuid
+                ? [eq(lotFulfilment.lotId, needle), eq(lotFulfilment.id, needle)]
+                : []),
+            ),
+          ]
+        : []),
+    ];
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+    const countBase = this.db
+      .select({ n: count() })
+      .from(lotFulfilment)
+      .innerJoin(lot, eq(lotFulfilment.lotId, lot.id));
+    const [totalRow] = whereClause ? await countBase.where(whereClause) : await countBase;
+    const total = Number(totalRow?.n ?? 0);
+
+    const statusCountBase = this.db
+      .select({ status: lotFulfilment.status, n: count() })
+      .from(lotFulfilment)
+      .innerJoin(lot, eq(lotFulfilment.lotId, lot.id))
+      .groupBy(lotFulfilment.status);
+    const statusRows = whereClause
+      ? await statusCountBase.where(whereClause)
+      : await statusCountBase;
+    const statusCounts = Object.fromEntries(
+      statusRows.map((row) => [row.status, Number(row.n ?? 0)]),
+    );
+
+    const listBase = this.db
       .select({
         ...getTableColumns(lotFulfilment),
         lotTitle: lot.title,
       })
       .from(lotFulfilment)
-      .innerJoin(lot, eq(lotFulfilment.lotId, lot.id));
-    const rows =
-      options?.status !== undefined
-        ? await base
-            .where(eq(lotFulfilment.status, options.status))
-            .orderBy(desc(lotFulfilment.updatedAt))
-            .limit(200)
-        : await base.orderBy(desc(lotFulfilment.updatedAt)).limit(200);
-    return rows.map((r) => {
+      .innerJoin(lot, eq(lotFulfilment.lotId, lot.id))
+      .orderBy(desc(lotFulfilment.updatedAt))
+      .limit(limit)
+      .offset(offset);
+    const rows = whereClause ? await listBase.where(whereClause) : await listBase;
+    const items = rows.map((r) => {
       const { lotTitle: title, ...rest } = r;
       return { ...rest, lotTitle: title };
     });
+
+    return { items, total, statusCounts };
   }
 
   async getByLotIdForAdmin(lotId: string): Promise<LotFulfilmentRow | null> {

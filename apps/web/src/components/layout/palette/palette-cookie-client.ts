@@ -15,6 +15,7 @@ import {
 const RECENTS_COOKIE = "lax_palette_recents";
 const PINNED_COOKIE = "lax_palette_pinned";
 const MAX_AGE_SEC = 60 * 60 * 24 * 90;
+export const PALETTE_PINNED_CHANGE_EVENT = "lax:palette-pinned-change";
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -54,5 +55,6 @@ export function togglePalettePinned(entry: Omit<PalettePinnedRef, "pinnedAt">): 
   const exists = prev.some((p) => p.kind === entry.kind && p.id === entry.id);
   const next = togglePinned(prev, entry);
   writeCookie(PINNED_COOKIE, serializePinnedCookie(next));
+  window.dispatchEvent(new Event(PALETTE_PINNED_CHANGE_EVENT));
   return !exists;
 }

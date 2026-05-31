@@ -11,11 +11,15 @@ import { PaletteSearch } from "@/components/layout/palette/palette-search";
 import { buildActionPaletteItems } from "@/components/layout/palette/sources/actions-source";
 import { artistsPaletteSource } from "@/components/layout/palette/sources/artists-source";
 import { clientsPaletteSource } from "@/components/layout/palette/sources/clients-source";
+import { conditionReportsPaletteSource } from "@/components/layout/palette/sources/condition-reports-source";
 import { invitationsPaletteSource } from "@/components/layout/palette/sources/invitations-source";
+import { lotFulfilmentPaletteSource } from "@/components/layout/palette/sources/lot-fulfilment-source";
 import { lotsPaletteSource } from "@/components/layout/palette/sources/lots-source";
 import { buildNavPaletteSections } from "@/components/layout/palette/sources/nav-source";
 import { paymentsPaletteSource } from "@/components/layout/palette/sources/payments-source";
+import { payoutsPaletteSource } from "@/components/layout/palette/sources/payouts-source";
 import { salesPaletteSource } from "@/components/layout/palette/sources/sales-source";
+import { submissionsPaletteSource } from "@/components/layout/palette/sources/submissions-source";
 import type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
 import { useDebouncedPaletteSearch } from "@/components/layout/palette/use-debounced-palette-search";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -33,6 +37,10 @@ const ADMIN_ASYNC_SOURCES = [
   paymentsPaletteSource,
   artistsPaletteSource,
   invitationsPaletteSource,
+  submissionsPaletteSource,
+  conditionReportsPaletteSource,
+  lotFulfilmentPaletteSource,
+  payoutsPaletteSource,
 ] as const;
 
 const EMPTY_ASYNC_SOURCES: readonly (typeof ADMIN_ASYNC_SOURCES)[number][] = [];

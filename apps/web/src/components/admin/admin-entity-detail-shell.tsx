@@ -14,9 +14,11 @@ export type AdminEntityDetailShellProps = {
   children: ReactNode;
   /** Stripe-style sticky context rail (lg+) with mobile sheet */
   rail?: ReactNode;
+  railSticky?: boolean;
   className?: string | undefined;
   /** Use sticky `DashboardDetailHeader` (v3) instead of `DashboardPageHeader`. */
   detailHeader?: boolean;
+  detailHeaderSticky?: boolean;
   backHref?: string;
   backLabel?: string;
   eyebrow?: ReactNode;
@@ -34,8 +36,10 @@ export function AdminEntityDetailShell({
   actions,
   children,
   rail,
+  railSticky = true,
   className,
   detailHeader = false,
+  detailHeaderSticky = true,
   backHref,
   backLabel,
   eyebrow,
@@ -50,7 +54,7 @@ export function AdminEntityDetailShell({
     <AppScreen className={className ?? "space-y-8"}>
       {detailHeader ? (
         <DashboardDetailHeader
-          sticky
+          sticky={detailHeaderSticky}
           title={title}
           {...(description ? { description } : {})}
           {...(breadcrumbs ? { crumbs: breadcrumbs } : {})}
@@ -75,7 +79,9 @@ export function AdminEntityDetailShell({
         {...(publicHref ? { publicHref, publicLabel } : {})}
       />
       {contextRail ? (
-        <DetailRailLayout rail={contextRail}>{children}</DetailRailLayout>
+        <DetailRailLayout rail={contextRail} sticky={railSticky}>
+          {children}
+        </DetailRailLayout>
       ) : (
         <div className="mx-auto max-w-6xl">
           <div className="min-w-0 space-y-6">{children}</div>

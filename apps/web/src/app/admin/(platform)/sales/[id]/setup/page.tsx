@@ -4,7 +4,10 @@ import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard"
 import { firstString } from "@/lib/admin/admin-list-params";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
-import { loadAdminSaleDetail, loadAdminSaleRegistrationCount } from "@/lib/admin/load-sale-detail";
+import {
+  loadAdminSaleDetail,
+  loadAdminSalePendingRegistrationCount,
+} from "@/lib/admin/load-sale-detail";
 import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sale-setup";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
@@ -44,19 +47,20 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
 
   const stepParam = firstString(sp.step)?.trim() as SaleSetupStepId | undefined;
 
-  const [categories, artistResult, registrationCount, connectRequiredByLotId] = await Promise.all([
-    (await getServerCategoryReader()).tree(),
-    getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
-    loadAdminSaleRegistrationCount(id, sale),
-    buildConnectRequiredByLotId(lots),
-  ]);
+  const [categories, artistResult, pendingRegistrationCount, connectRequiredByLotId] =
+    await Promise.all([
+      (await getServerCategoryReader()).tree(),
+      getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
+      loadAdminSalePendingRegistrationCount(id, sale),
+      buildConnectRequiredByLotId(lots),
+    ]);
 
   const initialStep =
     stepParam ??
     resolveFirstIncompleteStep({
       sale,
       lots,
-      pendingRegistrationCount: registrationCount,
+      pendingRegistrationCount,
       connectRequiredByLotId,
     });
 
@@ -97,7 +101,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         previewUrlByKey={previewUrlByKey}
         canManageSale={canManageSale}
         canEditCatalog={canEditCatalog}
-        pendingRegistrationCount={registrationCount}
+        pendingRegistrationCount={pendingRegistrationCount}
         connectRequiredByLotId={connectRequiredByLotId}
       />
     </CatalogFormShell>

@@ -106,26 +106,35 @@ export function AdminUserListShell({
                   title={selected.name}
                   fullPageHref={detailHref(selected)}
                   subtitle={
-                    <p className="truncate font-body text-sm text-on-surface-variant">
-                      {selected.email}
-                    </p>
+                    <div className="space-y-2">
+                      <p className="truncate font-body text-sm text-on-surface-variant">
+                        {selected.email}
+                      </p>
+                      <AdminStatusBadge
+                        domain="user"
+                        status={selected.suspendedAt ? "suspended" : "active"}
+                        size="sm"
+                      />
+                    </div>
                   }
                 />
               ) : null}
-              <div className="flex items-start gap-3 border-b border-border-hairline pb-4">
-                <AdminUserAvatar user={selected} size="lg" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-headline text-lg text-on-surface">{selected.name}</p>
-                  <p className="truncate text-sm text-on-surface-variant">{selected.email}</p>
-                  <div className="mt-2">
-                    <AdminStatusBadge
-                      domain="user"
-                      status={selected.suspendedAt ? "suspended" : "active"}
-                      size="sm"
-                    />
+              {!detailHref ? (
+                <div className="flex items-start gap-3 border-b border-border-hairline pb-4">
+                  <AdminUserAvatar user={selected} size="lg" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-headline text-lg text-on-surface">{selected.name}</p>
+                    <p className="truncate text-sm text-on-surface-variant">{selected.email}</p>
+                    <div className="mt-2">
+                      <AdminStatusBadge
+                        domain="user"
+                        status={selected.suspendedAt ? "suspended" : "active"}
+                        size="sm"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
               {renderDrawerActions ? (
                 <Tabs defaultValue="overview" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">

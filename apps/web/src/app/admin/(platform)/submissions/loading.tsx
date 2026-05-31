@@ -1,13 +1,5 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
 export default function AdminSubmissionsLoading() {
-  return (
-    <CatalogListPageSkeleton
-      title="Submissions"
-      description="Loading submissions…"
-      kpiTiles={3}
-      tableRows={10}
-      tableColumns={5}
-    />
-  );
+  return <AdminListPageSkeleton title="Submissions" kpiTiles={3} />;
 }

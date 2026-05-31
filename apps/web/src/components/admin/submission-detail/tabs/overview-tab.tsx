@@ -14,9 +14,11 @@ import Link from "next/link";
 function InnerMeta({
   submission,
   categories,
+  submitterDisplayName,
 }: {
   submission: ItemSubmission;
   categories: { id: string; name: string }[];
+  submitterDisplayName: string | null;
 }) {
   const s = submission;
   return (
@@ -30,11 +32,16 @@ function InnerMeta({
       {(s.sellerId || s.legalEntityId) && (
         <div className="sm:col-span-2">
           <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-            Legal entity / seller identifiers
+            Legal entity / seller
           </dt>
-          <dd className="space-y-1 font-mono text-xs text-on-surface">
-            {s.legalEntityId ? <p>Legal entity: {s.legalEntityId}</p> : null}
-            {s.sellerId ? <p>Seller (legacy): {s.sellerId}</p> : null}
+          <dd className="space-y-1 text-xs text-on-surface">
+            {submitterDisplayName ? <p className="font-medium">{submitterDisplayName}</p> : null}
+            {s.legalEntityId ? (
+              <p className="font-mono text-on-surface-variant">Legal entity: {s.legalEntityId}</p>
+            ) : null}
+            {s.sellerId ? (
+              <p className="font-mono text-on-surface-variant">Seller (legacy): {s.sellerId}</p>
+            ) : null}
           </dd>
         </div>
       )}
@@ -198,7 +205,11 @@ export function SubmissionOverviewTab({
           ) : null}
 
           <SubmissionInternalDetailsCollapsible>
-            <InnerMeta submission={s} categories={categories} />
+            <InnerMeta
+              submission={s}
+              categories={categories}
+              submitterDisplayName={submitterDisplayName}
+            />
           </SubmissionInternalDetailsCollapsible>
         </div>
       </CatalogDetailSection>

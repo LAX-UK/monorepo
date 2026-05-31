@@ -35,7 +35,6 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
   const [reviewNotes, setReviewNotes] = useState("");
   const approveNotesFieldId = useId();
   const rejectReasonFieldId = useId();
-  const rejectInternalNotesFieldId = useId();
 
   function startReview() {
     startTransition(async () => {
@@ -91,93 +90,6 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
           <PlayCircle className="size-3.5" aria-hidden />
           Start review
         </Button>
-
-        <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
-          <DialogTrigger asChild>
-            <Button type="button" size="sm" disabled={pending}>
-              <CheckCircle className="size-3.5" aria-hidden />
-              Approve
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Approve submission</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-on-surface-variant">
-              This will create a draft lot. You can assign the artist on the lot detail page after
-              approval.
-            </p>
-            <label htmlFor={approveNotesFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                Internal notes (optional)
-              </span>
-              <Textarea
-                id={approveNotesFieldId}
-                rows={3}
-                value={reviewNotes}
-                onChange={(e) => setReviewNotes(e.target.value)}
-                placeholder="Internal notes…"
-                disabled={pending}
-              />
-            </label>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setApproveOpen(false)} disabled={pending}>
-                Cancel
-              </Button>
-              <Button onClick={approve} disabled={pending}>
-                {pending ? "Approving…" : "Approve"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-          <DialogTrigger asChild>
-            <Button type="button" variant="destructive" size="sm" disabled={pending}>
-              <XCircle className="size-3.5" aria-hidden />
-              Reject
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reject submission</DialogTitle>
-            </DialogHeader>
-            <label htmlFor={rejectReasonFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                Rejection reason (required, shown to seller)
-              </span>
-              <Textarea
-                id={rejectReasonFieldId}
-                rows={4}
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Reason for rejection…"
-                disabled={pending}
-              />
-            </label>
-            <label htmlFor={rejectInternalNotesFieldId} className="flex flex-col gap-1.5">
-              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                Internal notes (optional)
-              </span>
-              <Textarea
-                id={rejectInternalNotesFieldId}
-                rows={2}
-                value={reviewNotes}
-                onChange={(e) => setReviewNotes(e.target.value)}
-                placeholder="Internal notes…"
-                disabled={pending}
-              />
-            </label>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={pending}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={reject} disabled={pending}>
-                {pending ? "Rejecting…" : "Reject"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     );
   }

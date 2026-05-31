@@ -4,7 +4,6 @@ import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import type { AdminPaymentRow } from "@/lib/data/http/admin.server";
 import { formatMoney } from "@/lib/format-currency";
-import { lotPath } from "@/lib/seo/url";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, Lot } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
@@ -87,7 +86,7 @@ export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
               className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
             >
               <Link
-                href={lotPath(lot)}
+                href={`/admin/lots/${lot.id}`}
                 className="min-w-0 truncate text-sm font-medium text-primary hover:underline"
               >
                 {lot.title}

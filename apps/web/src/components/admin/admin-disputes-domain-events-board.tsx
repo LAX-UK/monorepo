@@ -1,14 +1,16 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
-import { AdminMobileCardList } from "@/components/admin/admin-mobile-card-list";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { TableScroll } from "@/components/ui/table-scroll";
 import { getDisputeBulkOperations } from "@/lib/admin/bulk-ops/disputes";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
+import { formatDateTime } from "@/lib/ui/format";
 import { EntityList } from "@auction/ui";
+import { Checkbox } from "@auction/ui/components/checkbox";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -19,7 +21,7 @@ function columns(): ColumnDef<AdminDomainEventRow>[] {
       header: "When",
       cell: ({ row }) => (
         <span className="whitespace-nowrap font-body text-xs text-on-surface-variant">
-          {row.original.occurredAt.toISOString()}
+          {formatDateTime(row.original.occurredAt)}
         </span>
       ),
     },
@@ -81,6 +83,12 @@ export function AdminDisputesDomainEventsBoard({ rows }: { rows: AdminDomainEven
               data={rows}
               getRowId={(r) => r.id}
               density={density}
+              emptyComponent={
+                <AdminEmptyState
+                  title="No dispute events"
+                  description="Payment dispute events will appear here when the payment provider sends them."
+                />
+              }
               enableRowSelection
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
@@ -90,19 +98,34 @@ export function AdminDisputesDomainEventsBoard({ rows }: { rows: AdminDomainEven
           </TableScroll>
         }
         cards={
-          <AdminMobileCardList rows={rows} getRowId={(r) => r.id}>
-            {(r) => (
-              <>
-                <p className="font-mono text-xs text-on-surface">{r.eventType}</p>
-                <p className="mt-1 font-body text-xs text-on-surface-variant">
-                  {r.occurredAt.toISOString()}
-                </p>
-                <p className="mt-1 font-mono text-[10px] text-on-surface-variant">
-                  {r.aggregateType}:{r.aggregateId.slice(0, 8)}…
-                </p>
-              </>
-            )}
-          </AdminMobileCardList>
+          rows.length > 0 ? (
+            <ul className="space-y-3 md:hidden">
+              {rows.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex gap-3 rounded-lg border border-border-hairline bg-surface-container-low/30 p-3"
+                >
+                  <Checkbox
+                    checked={Boolean(rowSelection[r.id])}
+                    onCheckedChange={(checked) =>
+                      setRowSelection((prev) => ({ ...prev, [r.id]: checked === true }))
+                    }
+                    aria-label={`Select ${r.eventType}`}
+                    className="mt-1"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-xs text-on-surface">{r.eventType}</p>
+                    <p className="mt-1 font-body text-xs text-on-surface-variant">
+                      {formatDateTime(r.occurredAt)}
+                    </p>
+                    <p className="mt-1 font-mono text-[10px] text-on-surface-variant">
+                      {r.aggregateType}:{r.aggregateId.slice(0, 8)}…
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null
         }
       />
       <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />

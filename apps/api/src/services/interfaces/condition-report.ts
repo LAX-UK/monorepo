@@ -46,13 +46,18 @@ export interface IConditionReportService {
   }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>>;
 
   listForAdmin(input: {
-    status?: "pending" | "in_progress" | "fulfilled" | "declined" | undefined;
+    status?: "open" | "pending" | "in_progress" | "fulfilled" | "declined" | undefined;
     lotId?: string | undefined;
     limit: number;
     offset: number;
   }): Promise<{ items: ConditionReportRequestListRow[]; total: number }>;
 
   fulfill(input: FulfillConditionReportInput): Promise<Result<Lot, ConditionReportServiceError>>;
+
+  markInProgress(input: {
+    id: string;
+    actorUserId: string;
+  }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>>;
 
   decline(input: {
     id: string;

@@ -66,14 +66,14 @@ export function detectAnomalies(
   if (manual > (merged.manualReviewCount ?? 1)) {
     push(
       "manual-review",
-      "warning",
+      "critical",
       `${manual} payment${manual === 1 ? "" : "s"} need manual review before capture`,
       "/admin/payments?manualReview=1",
     );
   } else if (manual > 0) {
     push(
       "manual-review",
-      "critical",
+      "warning",
       `${manual} payment${manual === 1 ? "" : "s"} awaiting manual review`,
       "/admin/payments?manualReview=1",
     );

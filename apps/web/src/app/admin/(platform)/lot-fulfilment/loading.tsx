@@ -1,13 +1,5 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
 export default function AdminLotFulfilmentLoading() {
-  return (
-    <CatalogListPageSkeleton
-      title="Lot fulfilment"
-      description="Loading fulfilment queue…"
-      kpiTiles={0}
-      tableRows={8}
-      tableColumns={6}
-    />
-  );
+  return <AdminListPageSkeleton title="Lot fulfilment" kpiTiles={3} />;
 }
