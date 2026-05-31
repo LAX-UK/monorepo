@@ -15,16 +15,22 @@ import {
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
 import { MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 type Props = {
   submissionId: string;
   status: ItemSubmissionStatus;
+  showDecisionActions?: boolean;
 };
 
 /** Workflow actions for submission detail mobile bar trailing slot. */
-export function SubmissionDetailMobileTrailing({ submissionId, status }: Props) {
+export function SubmissionDetailMobileTrailing({
+  submissionId,
+  status,
+  showDecisionActions = false,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const { can } = useViewerCapabilities();
@@ -60,7 +66,13 @@ export function SubmissionDetailMobileTrailing({ submissionId, status }: Props) 
   }
 
   if (status === "under_review") {
-    return <SubmissionDecisionMobileActions />;
+    return showDecisionActions ? (
+      <SubmissionDecisionMobileActions />
+    ) : (
+      <Button type="button" size="sm" className="min-h-11" asChild>
+        <Link href={`/admin/submissions/${submissionId}/decision`}>Open decision</Link>
+      </Button>
+    );
   }
 
   return null;

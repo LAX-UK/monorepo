@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminListSearch } from "@/components/admin/admin-list-search";
 import {
   type CatalogActiveFilterChip,
   CatalogActiveFiltersRow,
@@ -52,6 +53,9 @@ export function CatalogLotFulfilmentFilterToolbar({
       activeLensId={activeLensId}
       lensAriaLabel="Fulfilment status"
       sheetTitle="Fulfilment filters"
+      searchSlot={
+        <AdminListSearch placeholder="Search lots or fulfilment ID…" className="w-full" />
+      }
       sheetFilters={<span className="sr-only">No additional filters</span>}
       showFilterTrigger={false}
       activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}

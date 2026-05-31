@@ -101,7 +101,7 @@ export default async function AdminStaffPage({
 
   const roleBreakdown =
     rows.length > 0 ? (
-      <p className="mb-4 font-body text-xs text-on-surface-variant">
+      <p key="staff-role-breakdown" className="mb-4 font-body text-xs text-on-surface-variant">
         On this page:{" "}
         {[...roleCounts.entries()]
           .map(

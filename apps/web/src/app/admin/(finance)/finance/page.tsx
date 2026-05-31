@@ -1,4 +1,6 @@
+import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminFinanceKpiRows } from "@/components/admin/admin-finance-kpi-rows";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
@@ -14,16 +16,18 @@ const FINANCE_QUICK_LINKS = [
     label: "Manual review",
     countKey: "manualReviewCount" as const,
   },
-  { href: "/admin/disputes", label: "Disputes" },
-  { href: "/admin/payouts", label: "Payouts" },
+  { href: "/admin/disputes", label: "Disputes", countKey: "disputesOpen" as const },
+  { href: "/admin/payouts", label: "Payouts", countKey: "payoutsFailed" as const },
   { href: "/admin/integrations/xero", label: "Xero integration" },
 ] as const;
 
 export default async function FinanceAdminHomePage() {
   let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
+  let financeIssuesLoadError: string | null = null;
   try {
     financeIssues = await getAdminFinanceIssues();
-  } catch {
+  } catch (e) {
+    financeIssuesLoadError = e instanceof Error ? e.message : "Could not load finance KPI data.";
     financeIssues = null;
   }
 
@@ -45,19 +49,12 @@ export default async function FinanceAdminHomePage() {
       view={
         <div className="space-y-8">
           {anomalies.length > 0 ? (
-            <ul className="space-y-2 font-body text-sm">
-              {anomalies.map((a) => (
-                <li key={a.id}>
-                  {a.href ? (
-                    <Link href={a.href} className="text-primary underline-offset-4 hover:underline">
-                      {a.message}
-                    </Link>
-                  ) : (
-                    <span>{a.message}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <AdminAnomalyBanner anomalies={anomalies} storageKey="finance-home" />
+          ) : null}
+          {financeIssuesLoadError ? (
+            <AdminListAlert title="Could not load finance KPIs">
+              {financeIssuesLoadError}
+            </AdminListAlert>
           ) : null}
           {financeIssues ? <AdminFinanceKpiRows financeIssues={financeIssues} /> : null}
           <section

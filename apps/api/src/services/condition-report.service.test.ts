@@ -125,3 +125,132 @@ describe("ConditionReportService notifications on decline", () => {
     expect(payload.type).toBe("condition_report_declined");
   });
 });
+
+function serviceForMarkInProgress(
+  reqRow: ReturnType<typeof makeRequestRow>,
+  updatedRow?: ReturnType<typeof makeRequestRow>,
+) {
+  const updated = updatedRow ?? { ...reqRow, status: "in_progress" as const };
+  const publish = vi.fn().mockResolvedValue(undefined);
+  const db = {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(async () => [reqRow]),
+        })),
+      })),
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn(() => ({
+          returning: vi.fn(async () => [updated]),
+        })),
+      })),
+    })),
+  } as unknown as Database;
+
+  const lotRepo = { findById: vi.fn() } as unknown as ILotRepository;
+  const svc = new ConditionReportService(
+    db,
+    lotRepo,
+    null,
+    { publish } as never,
+    null,
+    new NotificationFactory(),
+  );
+  return { svc, publish };
+}
+
+describe("ConditionReportService.markInProgress", () => {
+  it("moves pending request to in_progress", async () => {
+    const pending = makeRequestRow({ id: "req-pending", status: "pending" });
+    const { svc, publish } = serviceForMarkInProgress(pending);
+    const result = await svc.markInProgress({ id: "req-pending", actorUserId: "staff-1" });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.status).toBe("in_progress");
+    }
+    expect(publish).toHaveBeenCalledOnce();
+  });
+
+  it("is idempotent when already in progress", async () => {
+    const inProgress = makeRequestRow({ id: "req-ip", status: "in_progress" });
+    const { svc, publish } = serviceForMarkInProgress(inProgress);
+    const result = await svc.markInProgress({ id: "req-ip", actorUserId: "staff-1" });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.status).toBe("in_progress");
+    }
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("rejects fulfilled requests", async () => {
+    const fulfilled = makeRequestRow({ id: "req-done", status: "fulfilled" });
+    const { svc } = serviceForMarkInProgress(fulfilled);
+    const result = await svc.markInProgress({ id: "req-done", actorUserId: "staff-1" });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status).toBe(400);
+      expect(result.error.message).toContain("pending");
+    }
+  });
+});
+
+function serviceForListForAdmin(
+  rows: Array<{
+    r: ReturnType<typeof makeRequestRow>;
+    lotTitle: string;
+    requesterEmail: string;
+  }>,
+) {
+  const db = {
+    select: vi.fn((sel: { n?: unknown }) => {
+      if (sel && "n" in sel) {
+        return {
+          from: vi.fn(() => ({
+            where: vi.fn(async () => [{ n: rows.length }]),
+          })),
+        };
+      }
+      return {
+        from: vi.fn(() => ({
+          innerJoin: vi.fn(() => ({
+            leftJoin: vi.fn(() => ({
+              orderBy: vi.fn(() => ({
+                limit: vi.fn(() => ({
+                  offset: vi.fn(() => ({
+                    where: vi.fn(async () => rows),
+                  })),
+                })),
+              })),
+            })),
+          })),
+        })),
+      };
+    }),
+  } as unknown as Database;
+
+  const lotRepo = { findById: vi.fn() } as unknown as ILotRepository;
+  return new ConditionReportService(db, lotRepo, null, null, null, new NotificationFactory());
+}
+
+describe("ConditionReportService.listForAdmin", () => {
+  it("returns open-queue rows and total when status is open", async () => {
+    const svc = serviceForListForAdmin([
+      {
+        r: makeRequestRow({ id: "open-pending", status: "pending" }),
+        lotTitle: "Vase",
+        requesterEmail: "buyer@example.com",
+      },
+      {
+        r: makeRequestRow({ id: "open-ip", status: "in_progress" }),
+        lotTitle: "Bowl",
+        requesterEmail: "buyer2@example.com",
+      },
+    ]);
+    const result = await svc.listForAdmin({ status: "open", limit: 10, offset: 0 });
+    expect(result.total).toBe(2);
+    expect(result.items).toHaveLength(2);
+    expect(result.items.map((i) => i.id)).toEqual(["open-pending", "open-ip"]);
+  });
+});

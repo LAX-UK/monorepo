@@ -5,6 +5,7 @@ import { SaleDocumentsSection } from "@/components/admin/sale-form/sale-document
 import { LabelCaps } from "@/components/ui/typography";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import type { EntityDocument } from "@auction/types";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import {
   FormControl,
   FormField,
@@ -19,9 +20,15 @@ type Props = {
   form: UseFormReturn<AdminSaleFormValues>;
   saleId: string;
   initialSaleDocuments: EntityDocument[];
+  termsReadOnly?: boolean;
 };
 
-export function SaleDocumentsStep({ form, saleId, initialSaleDocuments }: Props) {
+export function SaleDocumentsStep({
+  form,
+  saleId,
+  initialSaleDocuments,
+  termsReadOnly = false,
+}: Props) {
   return (
     <CatalogFormSection title="Documents & terms" collapsible={false}>
       <div className="space-y-2">
@@ -30,6 +37,16 @@ export function SaleDocumentsStep({ form, saleId, initialSaleDocuments }: Props)
         </p>
         <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
       </div>
+
+      {termsReadOnly ? (
+        <Alert>
+          <AlertTitle>Terms are locked after publish</AlertTitle>
+          <AlertDescription>
+            Terms of sale cannot be changed after a sale is published. PDF attachments can still be
+            managed from this section.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <FormField
         control={form.control}
@@ -40,10 +57,19 @@ export function SaleDocumentsStep({ form, saleId, initialSaleDocuments }: Props)
               <LabelCaps>Terms of sale</LabelCaps>
             </FormLabel>
             <FormControl>
-              <Textarea id="terms" rows={4} className="font-body text-sm" {...field} />
+              <Textarea
+                id="terms"
+                rows={4}
+                className="font-body text-sm"
+                readOnly={termsReadOnly}
+                aria-readonly={termsReadOnly}
+                {...field}
+              />
             </FormControl>
             <p className="font-body text-xs text-on-surface-variant">
-              Shown to bidders on the public sale page when filled in.
+              {termsReadOnly
+                ? "Existing terms remain visible to bidders on the public sale page."
+                : "Shown to bidders on the public sale page when filled in."}
             </p>
             <FormMessage />
           </FormItem>

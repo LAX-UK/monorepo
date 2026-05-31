@@ -18,6 +18,7 @@ import type {
 import { getSocket } from "@/lib/socket";
 import type { Lot } from "@auction/types";
 import type { SaleroomRealtimePayload } from "@auction/types";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Label } from "@auction/ui/components/label";
 import {
   Select,
@@ -63,9 +64,10 @@ export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }
   return (
     <div className="space-y-8">
       {error ? (
-        <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 font-body text-sm text-red-200">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertTitle>Could not load saleroom state</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="rounded-lg border border-outline-variant/25 p-4">

@@ -11,6 +11,7 @@ import {
   type CatalogSegmentItem,
 } from "@/components/admin/catalog/catalog-filter-bar";
 import type { SubmissionDecisionQueue } from "@/lib/admin/admin-list-controllers";
+import type { CategoryNode } from "@auction/types";
 
 type Props = {
   lenses: readonly CatalogSegmentItem[];
@@ -18,6 +19,8 @@ type Props = {
   activeFilterCount: number;
   activeFilterChips?: readonly CatalogActiveFilterChip[];
   initialQ: string;
+  initialCategoryId?: string | null;
+  categories: CategoryNode[];
   queue: SubmissionDecisionQueue;
 };
 
@@ -27,6 +30,8 @@ export function CatalogSubmissionsFilterToolbar({
   activeFilterCount,
   activeFilterChips = [],
   initialQ,
+  initialCategoryId = null,
+  categories,
   queue,
 }: Props) {
   return (
@@ -38,7 +43,14 @@ export function CatalogSubmissionsFilterToolbar({
       activeFilterCount={activeFilterCount}
       searchSlot={<AdminListSearch placeholder="Search submissions…" className="w-full" />}
       activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}
-      sheetFilters={<AdminSubmissionsTitleFilterForm initialQ={initialQ} queue={queue} />}
+      sheetFilters={
+        <AdminSubmissionsTitleFilterForm
+          initialQ={initialQ}
+          initialCategoryId={initialCategoryId}
+          categories={categories}
+          queue={queue}
+        />
+      }
     />
   );
 }

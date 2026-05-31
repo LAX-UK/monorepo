@@ -101,6 +101,7 @@ export type AdminActivityEntry = {
 export interface IAdminUserReader {
   list(filter: AdminUserListFilter): Promise<AdminUserListResult>;
   getById(id: string): Promise<AdminUserDetail | null>;
+  getByIds(ids: string[]): Promise<AdminUserListRow[]>;
 }
 
 export interface IAdminUserKycReader {
