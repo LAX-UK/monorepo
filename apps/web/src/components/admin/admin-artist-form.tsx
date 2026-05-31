@@ -50,7 +50,7 @@ import { LoadingButton } from "@auction/ui/components/loading-button";
 import { adminCreateArtistBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 const ARTIST_STATUS_OPTIONS: ReadonlyArray<{ value: ArtistStatus; label: string }> = [
@@ -93,7 +93,7 @@ export function AdminArtistForm({
   htmlFormId,
 }: Props) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationBanner, setValidationBanner] = useState<string | null>(null);
   const [validationStepIndex, setValidationStepIndex] = useState<number | null>(null);
   const wizardGoToRef = useRef<(index: number) => void>(() => {});
@@ -146,7 +146,7 @@ export function AdminArtistForm({
     [clearBanner, form, readOnly],
   );
 
-  const submit = form.handleSubmit((values) => {
+  const submit = form.handleSubmit(async (values) => {
     clearBanner();
     if (mode === "create" && activeScenario === "maker-seller" && !values.ownerUserId) {
       setValidationStepIndex(1);
@@ -155,7 +155,8 @@ export function AdminArtistForm({
       notify.error("Link a platform user for a maker–seller profile.");
       return;
     }
-    startTransition(async () => {
+    setIsSubmitting(true);
+    try {
       const result =
         mode === "create"
           ? await adminCreateArtistResultAction(values)
@@ -163,6 +164,7 @@ export function AdminArtistForm({
             ? await adminUpdateArtistResultAction(artistId, values)
             : { ok: false as const, error: "Missing artist" };
       if (result.ok) {
+        form.reset(values);
         notify.success(mode === "create" ? "Artist created" : "Artist saved");
         if (mode === "edit" && artistId) {
           router.push(`/admin/artists/${artistId}`);
@@ -171,7 +173,6 @@ export function AdminArtistForm({
         } else {
           router.push("/admin/artists");
         }
-        router.refresh();
         return;
       }
       if (result.fieldErrors) {
@@ -184,7 +185,9 @@ export function AdminArtistForm({
       }
       setValidationBanner(result.error);
       notify.error(result.error);
-    });
+    } finally {
+      setIsSubmitting(false);
+    }
   });
 
   const draftExtras =
@@ -207,7 +210,7 @@ export function AdminArtistForm({
   const submitSlot = (
     <LoadingButton
       type="submit"
-      loading={pending}
+      loading={isSubmitting}
       loadingLabel="Saving…"
       disabled={readOnly}
       data-wizard-submit="true"
@@ -239,7 +242,7 @@ export function AdminArtistForm({
           <AdminFormWizard
             steps={ARTIST_SETUP_STEPS}
             isDirty={form.formState.isDirty}
-            pending={pending}
+            pending={isSubmitting}
             hideStickyOnMobile
             showSubmitOnAllSteps={mode === "edit"}
             onStepControl={({ goTo }) => {
@@ -252,7 +255,7 @@ export function AdminArtistForm({
               <Button
                 type="button"
                 variant="outline"
-                disabled={pending}
+                disabled={isSubmitting}
                 className="min-h-11 w-full sm:w-auto"
                 onClick={() => router.push("/admin/artists")}
               >
@@ -285,7 +288,7 @@ export function AdminArtistForm({
                                 value={(field.value as ArtistKind | undefined) ?? "artist"}
                                 onChange={(k) => field.onChange(k)}
                                 onBlur={field.onBlur}
-                                disabled={pending || readOnly}
+                                disabled={isSubmitting || readOnly}
                               />
                             </FormControl>
                             <FormMessage />
@@ -305,7 +308,7 @@ export function AdminArtistForm({
                         >
                           <UserLinkSection
                             control={form.control}
-                            disabled={pending || readOnly}
+                            disabled={isSubmitting || readOnly}
                             emphasize
                           />
                         </ArtistFormSection>
@@ -323,7 +326,7 @@ export function AdminArtistForm({
                           control={form.control}
                           mode={mode}
                           {...(mode === "edit" && slug ? { slug } : {})}
-                          disabled={pending || readOnly}
+                          disabled={isSubmitting || readOnly}
                         />
                       </ArtistFormSection>
                       <ArtistFormSection
@@ -338,7 +341,7 @@ export function AdminArtistForm({
                         <LifespanSection
                           control={form.control}
                           kind={watchedKind}
-                          disabled={pending || readOnly}
+                          disabled={isSubmitting || readOnly}
                         />
                       </ArtistFormSection>
                     </>
@@ -351,14 +354,17 @@ export function AdminArtistForm({
                         description="Copy shown on the public artist profile."
                         defaultOpen
                       >
-                        <BiographySection control={form.control} disabled={pending || readOnly} />
+                        <BiographySection
+                          control={form.control}
+                          disabled={isSubmitting || readOnly}
+                        />
                       </ArtistFormSection>
                       <ArtistFormSection
                         title="Media"
                         description="Portrait, hero, and website links."
                         defaultOpen
                       >
-                        <MediaSection control={form.control} disabled={pending || readOnly} />
+                        <MediaSection control={form.control} disabled={isSubmitting || readOnly} />
                       </ArtistFormSection>
                     </>
                   ) : null}
@@ -373,7 +379,7 @@ export function AdminArtistForm({
                         <CategoriesSection
                           control={form.control}
                           categories={categories}
-                          disabled={pending || readOnly}
+                          disabled={isSubmitting || readOnly}
                         />
                       </ArtistFormSection>
                       <ArtistFormSection
@@ -384,7 +390,7 @@ export function AdminArtistForm({
                         <AttributesSection
                           control={form.control}
                           kind={watchedKind}
-                          disabled={pending || readOnly}
+                          disabled={isSubmitting || readOnly}
                         />
                       </ArtistFormSection>
                     </>
@@ -418,7 +424,7 @@ export function AdminArtistForm({
                                 value={field.value ?? "approved"}
                                 onValueChange={(v) => field.onChange(v as ArtistStatus)}
                                 onBlur={field.onBlur}
-                                disabled={pending || readOnly}
+                                disabled={isSubmitting || readOnly}
                                 options={[...ARTIST_STATUS_OPTIONS]}
                                 triggerClassName="min-h-11 w-full font-body text-sm"
                               />
@@ -436,7 +442,7 @@ export function AdminArtistForm({
                         description="Featured, verified, and archive flags."
                         defaultOpen
                       >
-                        <FlagsSection control={form.control} disabled={pending || readOnly} />
+                        <FlagsSection control={form.control} disabled={isSubmitting || readOnly} />
                       </ArtistFormSection>
                       {activeScenario === "historical" ? (
                         <ArtistFormSection
@@ -446,7 +452,7 @@ export function AdminArtistForm({
                         >
                           <UserLinkSection
                             control={form.control}
-                            disabled={pending || readOnly}
+                            disabled={isSubmitting || readOnly}
                             emphasize={false}
                           />
                         </ArtistFormSection>
