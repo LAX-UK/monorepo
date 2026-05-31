@@ -1,3 +1,4 @@
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminLegalEntityOpenForm } from "@/components/admin/admin-legal-entity-open-form";
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
@@ -100,9 +101,10 @@ export default async function AdminLegalEntitiesLookupPage({
             ))}
           </ul>
         ) : (
-          <p className="font-body text-sm text-on-surface-variant">
-            No entities returned. Use search to open a known entity.
-          </p>
+          <AdminEmptyState
+            title="No recent entities"
+            description="Use search to open a known entity by name."
+          />
         )}
       </Surface>
     </AdminPanelPage>
