@@ -19,6 +19,7 @@ import {
 import {
   humanizeSetupError,
   saleSavedMessage,
+  saleSetupHref,
   saveDraftSuccessMessage,
   scheduleLotConflictPersistBlocked,
 } from "@/lib/admin/sale-setup";
@@ -36,7 +37,11 @@ import { useCallback, useRef } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { saleSetupZodIssuePath } from "./use-sale-setup-steps";
 
-type PersistOpts = { savedNoticeStep?: SaleSetupStepId };
+type PersistOpts = {
+  savedNoticeStep?: SaleSetupStepId;
+  /** When set, advance to this step with a single navigation instead of router.refresh(). */
+  nextStep?: SaleSetupStepId;
+};
 
 type UseSaleSetupSubmitArgs = {
   form: UseFormReturn<AdminSaleFormValues>;
@@ -92,8 +97,9 @@ export function useSaleSetupSubmit({
         const newId = r.data.id;
         setSaleId(newId);
         setShowFirstSaveNudge(true);
-        router.replace(`/admin/sales/${newId}/setup?step=schedule`);
-        setStepNotice(saleSavedMessage("schedule"));
+        const nextStep = opts?.savedNoticeStep ?? "documents";
+        router.replace(saleSetupHref(newId, nextStep));
+        setStepNotice(saleSavedMessage(nextStep));
         return newId;
       }
 
@@ -129,7 +135,11 @@ export function useSaleSetupSubmit({
         return null;
       }
       setStepNotice(saleSavedMessage(opts?.savedNoticeStep ?? "lots"));
-      router.refresh();
+      if (opts?.nextStep) {
+        router.replace(saleSetupHref(saleId, opts.nextStep));
+      } else {
+        router.refresh();
+      }
       return saleId;
     },
     [
