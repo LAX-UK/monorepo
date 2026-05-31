@@ -1,15 +1,23 @@
 import { AdminClientsBoard } from "@/components/admin/admin-clients-board";
-import { AdminClientsSearchForm } from "@/components/admin/admin-clients-search-form";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPage } from "@/components/admin/admin-list-page";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { AdminUsersFilterToolbar } from "@/components/admin/admin-users-filter-toolbar";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { usersListController } from "@/lib/admin/admin-list-controllers";
+import { firstString } from "@/lib/admin/admin-list-params";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import { buildUsersActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
+import {
+  countUsersListActiveFilters,
+  hasUsersListActiveFilters,
+  parseUsersListFilters,
+  usersListFiltersToExportFilters,
+} from "@/lib/admin/users-list-query";
 import { getAdminClientsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { PaginationFooter } from "@auction/ui";
@@ -17,19 +25,13 @@ import { PaginationFooter } from "@auction/ui";
 export default async function AdminClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    error?: string;
-    q?: string;
-    suspended?: string;
-    limit?: string;
-    offset?: string;
-    period?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const periodDays = parseAdminKpiPeriod(sp.period);
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const periodDays = parseAdminKpiPeriod(firstString(sp.period));
+  const error = sp.error ? decodeURIComponent(String(sp.error)) : null;
   const query = usersListController.parseQuery({ ...sp, role: "client" });
+  const listFilters = parseUsersListFilters({ ...sp, role: "client" });
 
   let rows: AdminUserRow[] = [];
   let total = 0;
@@ -48,37 +50,43 @@ export default async function AdminClientsPage({
     loadError = e instanceof Error ? e.message : "Could not load clients.";
   }
 
-  const suspendedOnly = query.suspendedOnly ?? false;
-  const q = query.q ?? "";
-
-  const activeOnPage = rows.filter((r) => !r.suspendedAt).length;
-  const suspendedOnPage = rows.filter((r) => r.suspendedAt).length;
-  const activePct = rows.length > 0 ? Math.round((activeOnPage / rows.length) * 100) : 0;
-
   const chip = (patch: Record<string, string | number | boolean | undefined | null | "">) =>
     buildListHref("/admin/clients", sp, { ...patch, offset: 0 });
 
-  const suspendedChip = (
+  const statusChip = (
     <FilterChipRow
-      label="Status"
+      label="Quick status"
       chips={[
         {
           id: "all",
-          label: "All clients",
-          href: chip({ suspended: false }),
-          active: !suspendedOnly,
+          label: "All",
+          href: chip({ status: false, suspended: false }),
+          active: !listFilters.accountStatus && !listFilters.suspendedOnly,
+        },
+        {
+          id: "active",
+          label: "Active",
+          href: chip({ status: "active", suspended: false }),
+          active: listFilters.accountStatus === "active",
         },
         {
           id: "suspended",
-          label: "Suspended only",
-          href: suspendedOnly ? chip({ suspended: false }) : chip({ suspended: true }),
-          active: suspendedOnly,
+          label: "Suspended",
+          href: chip({ status: "suspended", suspended: false }),
+          active: listFilters.accountStatus === "suspended" || Boolean(listFilters.suspendedOnly),
         },
       ]}
     />
   );
 
-  const hasFilters = Boolean(q || suspendedOnly);
+  const activeFilterChips = buildUsersActiveFilterChips("/admin/clients", sp, listFilters);
+  const activeFilterCount = countUsersListActiveFilters(listFilters);
+  const hasFilters = hasUsersListActiveFilters(listFilters);
+
+  const exportFilters = {
+    role: "client" as const,
+    ...usersListFiltersToExportFilters(listFilters),
+  };
 
   const pagination =
     !loadError && total > 0 ? (
@@ -107,7 +115,7 @@ export default async function AdminClientsPage({
   return (
     <AdminListPage
       title="Clients"
-      description="Browse collector and seller accounts. Search by name or email, filter by suspension, and open a profile for activity and catalogue links."
+      description="Browse collector and seller accounts. Filter by verification, KYC, persona, activity dates, and more."
       hasFilters={hasFilters}
       resetHref="/admin/clients"
       kpiStrip={
@@ -123,15 +131,15 @@ export default async function AdminClientsPage({
               },
               {
                 label: "Active",
-                value: String(activeOnPage),
-                compareHint: rows.length > 0 ? `${activePct}% on page` : "Current page",
+                value: String(rows.filter((r) => !r.suspendedAt).length),
+                compareHint: rows.length > 0 ? "Current page" : "—",
                 deltaTone: "positive",
               },
               {
                 label: "Suspended",
-                value: String(suspendedOnPage),
+                value: String(rows.filter((r) => r.suspendedAt).length),
                 compareHint: "Current page",
-                semanticTone: suspendedOnPage > 0 ? "warning" : "default",
+                semanticTone: rows.some((r) => r.suspendedAt) ? "warning" : "default",
               },
             ]}
           />
@@ -142,19 +150,17 @@ export default async function AdminClientsPage({
           <AdminListAlert title="Could not load clients">{loadError ?? error}</AdminListAlert>
         ) : null
       }
-      chips={suspendedChip}
-      listToolbarEnd={
-        <ExportButton
-          entityType="clients"
-          filters={{
-            role: "client",
-            ...(q ? { q } : {}),
-            ...(suspendedOnly ? { suspendedOnly: true } : {}),
-          }}
-        />
-      }
+      chips={statusChip}
+      listToolbarEnd={null}
       filters={
-        !loadError ? <AdminClientsSearchForm initialQ={q} suspendedOnly={suspendedOnly} /> : null
+        !loadError ? (
+          <AdminUsersFilterToolbar
+            filterDefaults={listFilters}
+            activeFilterCount={activeFilterCount}
+            activeFilterChips={activeFilterChips}
+            toolbarEnd={<ExportButton entityType="clients" filters={exportFilters} />}
+          />
+        ) : null
       }
       view={
         !loadError && rows.length > 0 ? (

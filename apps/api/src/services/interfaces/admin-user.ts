@@ -1,28 +1,63 @@
+import type { UserEmailStatus, UserKycStatus } from "@auction/types";
+
+export type AdminUserListSort =
+  | "created_desc"
+  | "created_asc"
+  | "name_asc"
+  | "name_desc"
+  | "last_active_desc"
+  | "kyc_status";
+
+export type AdminUserAccountStatus = "active" | "suspended";
+
 export type AdminUserListFilter = {
   q?: string | undefined;
   limit: number;
   offset: number;
-  /** When set, only users with this `user.role` value. */
   role?: string | undefined;
-  /** When set, only staff users with this internal `staff_role`. */
   staffRole?: string | undefined;
-  /** When true, only users with non-null `suspendedAt`. */
+  /** When true, only users with non-null `suspendedAt`. Legacy; prefer `accountStatus`. */
   suspendedOnly?: boolean | undefined;
+  accountStatus?: AdminUserAccountStatus | undefined;
+  emailVerified?: boolean | undefined;
+  emailStatus?: UserEmailStatus | undefined;
+  kycStatus?: UserKycStatus | undefined;
+  kycStatuses?: UserKycStatus[] | undefined;
+  persona?: "individual" | "organisation" | "none" | undefined;
+  twoFactorEnabled?: boolean | undefined;
+  deletionRequestedOnly?: boolean | undefined;
+  hasMobile?: boolean | undefined;
+  createdFrom?: Date | undefined;
+  createdToExclusive?: Date | undefined;
+  kycVerifiedFrom?: Date | undefined;
+  kycVerifiedToExclusive?: Date | undefined;
+  lastActiveFrom?: Date | undefined;
+  lastActiveToExclusive?: Date | undefined;
+  sort?: AdminUserListSort | undefined;
 };
 
 export type AdminUserListRow = {
   id: string;
   email: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
   role: string;
   staffRole: string | null;
   createdAt: Date;
   updatedAt: Date;
   suspendedAt: Date | null;
   image: string | null;
+  mobile: string | null;
+  mobileCountry: string | null;
   emailVerified: boolean;
+  emailStatus: string;
+  signupPersona: string | null;
+  twoFactorEnabled: boolean;
   kycStatus: string;
   kycVerifiedAt: Date | null;
+  kycRetryCount: number;
+  deletionRequestedAt: Date | null;
 };
 
 export type AdminUserListResult = {
@@ -32,6 +67,28 @@ export type AdminUserListResult = {
 
 export type AdminUserDetail = AdminUserListRow & {
   suspendedReason: string | null;
+  dateOfBirth: string | null;
+  emailStatusChangedAt: Date | null;
+  pendingNewEmail: string | null;
+  emailChangeExpiresAt: Date | null;
+  currentKycSessionId: string | null;
+};
+
+export type AdminKycSession = {
+  id: string;
+  provider: string;
+  providerSessionId: string;
+  providerAttemptId: string | null;
+  status: string;
+  verifiedFirstName: string | null;
+  verifiedLastName: string | null;
+  verifiedDateOfBirth: string | null;
+  verifiedIdNumberLast4: string | null;
+  verifiedIdCountry: string | null;
+  verifiedIdType: string | null;
+  verifiedIdExpiry: string | null;
+  createdAt: Date;
+  decisionAt: Date | null;
 };
 
 export type AdminActivityEntry = {
@@ -44,6 +101,10 @@ export type AdminActivityEntry = {
 export interface IAdminUserReader {
   list(filter: AdminUserListFilter): Promise<AdminUserListResult>;
   getById(id: string): Promise<AdminUserDetail | null>;
+}
+
+export interface IAdminUserKycReader {
+  listSessionsForUser(userId: string, limit?: number): Promise<AdminKycSession[]>;
 }
 
 export interface IAdminUserRoleManager {

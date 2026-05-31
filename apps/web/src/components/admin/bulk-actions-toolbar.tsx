@@ -62,6 +62,25 @@ export function BulkActionsToolbar({
   const [typedConfirmOp, setTypedConfirmOp] = useState<BulkOperation | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const router = useRouter();
+
+  const orderedOperations = useMemo(
+    () =>
+      [...operations].sort((a, b) => {
+        if (a.destructive === b.destructive) return 0;
+        return a.destructive ? 1 : -1;
+      }),
+    [operations],
+  );
+
+  const primaryOps = useMemo(
+    () => orderedOperations.filter((op) => !op.destructive),
+    [orderedOperations],
+  );
+  const destructiveOps = useMemo(
+    () => orderedOperations.filter((op) => op.destructive),
+    [orderedOperations],
+  );
+
   if (selectedIds.length === 0) return null;
 
   const execute = (operation: BulkOperation, options?: BulkOperationRunOptions) => {
@@ -91,24 +110,6 @@ export function BulkActionsToolbar({
       })();
     });
   };
-
-  const orderedOperations = useMemo(
-    () =>
-      [...operations].sort((a, b) => {
-        if (a.destructive === b.destructive) return 0;
-        return a.destructive ? 1 : -1;
-      }),
-    [operations],
-  );
-
-  const primaryOps = useMemo(
-    () => orderedOperations.filter((op) => !op.destructive),
-    [orderedOperations],
-  );
-  const destructiveOps = useMemo(
-    () => orderedOperations.filter((op) => op.destructive),
-    [orderedOperations],
-  );
 
   const run = (operation: BulkOperation) => {
     setMoreOpen(false);

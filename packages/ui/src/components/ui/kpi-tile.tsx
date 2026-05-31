@@ -95,7 +95,7 @@ export function KpiTile({
   return (
     <div
       className={cn(
-        "relative flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
+        "relative flex h-full min-h-[8.5rem] min-w-0 flex-col overflow-hidden rounded-xl border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
         semanticToneClass[semanticTone],
         clickable &&
           "cursor-pointer hover:shadow-[var(--shadow-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -151,28 +151,42 @@ function KpiTileBody({
 }) {
   const valueTitle = typeof value === "string" ? value : undefined;
 
+  const hasTrendSlot = Boolean(trendSlot);
+  const showSparkline = Boolean(trend && trend.length > 0);
+
   return (
-    <div className="mt-3 flex min-w-0 items-end justify-between gap-2">
-      <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "truncate font-headline text-xl font-bold tabular-nums text-on-surface sm:text-2xl lg:text-[length:var(--text-display-kpi,2.25rem)]",
-            emphasize && "border-b-2 border-primary pb-0.5",
-          )}
-          style={{ fontFeatureSettings: "var(--font-feature-tabular)" }}
-          {...(valueTitle ? { title: valueTitle } : {})}
-        >
-          {value}
-        </p>
-        {resolvedDelta ? <div className="mt-1 min-w-0 truncate">{resolvedDelta}</div> : null}
+    <div className="mt-3 flex min-h-0 flex-1 flex-col">
+      <div className="flex min-w-0 items-end justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "truncate font-headline text-xl font-bold tabular-nums text-on-surface sm:text-2xl lg:text-[length:var(--text-display-kpi,2.25rem)]",
+              emphasize && "border-b-2 border-primary pb-0.5",
+            )}
+            style={{ fontFeatureSettings: "var(--font-feature-tabular)" }}
+            {...(valueTitle ? { title: valueTitle } : {})}
+          >
+            {value}
+          </p>
+        </div>
+        {hasTrendSlot ? (
+          <div className="shrink-0">{trendSlot}</div>
+        ) : (
+          <div className="h-7 w-[72px] shrink-0" aria-hidden={!showSparkline}>
+            {showSparkline && trend ? (
+              <Sparkline values={trend} tone={trendTone} width={72} height={28} />
+            ) : null}
+          </div>
+        )}
+      </div>
+      <div className="mt-auto min-h-[2.75rem] pt-1">
+        {resolvedDelta ? <div className="min-w-0 truncate">{resolvedDelta}</div> : null}
         {compareHint ? (
-          <p className="mt-0.5 font-body text-[10px] text-on-surface-variant">{compareHint}</p>
+          <p className="line-clamp-2 font-body text-[10px] text-on-surface-variant">
+            {compareHint}
+          </p>
         ) : null}
       </div>
-      {trend && trend.length > 0 ? (
-        <Sparkline values={trend} tone={trendTone} width={72} height={28} />
-      ) : null}
-      {trendSlot ? <div className="shrink-0">{trendSlot}</div> : null}
     </div>
   );
 }

@@ -60,6 +60,7 @@ import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-browse.js";
+import { mapAdminUserListQuery } from "../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { presentLotImages } from "../lib/media-presenters.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -1063,14 +1064,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const data = await container.admin.users.list({
-      q: q.q,
-      limit: q.limit,
-      offset: q.offset,
-      role: q.role,
-      staffRole: q.staffRole,
-      suspendedOnly: q.suspended === "1",
-    });
+    const data = await container.admin.users.list(mapAdminUserListQuery(q));
     return c.json({ data });
   });
 
@@ -1091,6 +1085,12 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const row = await container.admin.users.getById(userId);
     if (!row) return c.json({ error: "Not found" }, 404);
     return c.json({ data: row });
+  });
+
+  platform.get("/users/:userId/kyc-sessions", zValidator("param", userIdParamSchema), async (c) => {
+    const { userId } = c.req.valid("param");
+    const data = await container.admin.users.kycSessionsFor(userId);
+    return c.json({ data });
   });
 
   platform.patch(

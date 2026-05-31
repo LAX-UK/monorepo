@@ -116,7 +116,7 @@ export function FilterSelect({
       <SelectTrigger className={className} aria-busy={pending} aria-label={ariaLabel}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="z-[var(--z-floating,70)]">
         {options.map((o) => (
           <SelectItem key={o.value || "__all__"} value={o.value || "__all__"}>
             {o.label}

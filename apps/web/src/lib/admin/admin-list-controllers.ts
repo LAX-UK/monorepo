@@ -4,6 +4,7 @@ import {
   sliceAdminListWindow,
 } from "@/lib/admin/admin-list-params";
 import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
+import { type UsersListFilters, parseUsersListFilters } from "@/lib/admin/users-list-query";
 import type { ListLotsParams } from "@/lib/data/contracts";
 import {
   type AdminConditionReportRequestRow,
@@ -140,11 +141,7 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
 export type { SalesListExportFilters } from "./sales-list-export-filters";
 export { salesListExportFilters } from "./sales-list-export-filters";
 
-export type UsersListQuery = AdminListQueryBase & {
-  role?: string | undefined;
-  staffRole?: string | undefined;
-  suspendedOnly?: boolean | undefined;
-};
+export type UsersListQuery = AdminListQueryBase & UsersListFilters;
 
 export const usersListController: IAdminListController<
   Awaited<ReturnType<typeof getAdminUserList>>["rows"][number],
@@ -153,21 +150,45 @@ export const usersListController: IAdminListController<
   id: "users",
   parseQuery(sp) {
     const base = parseListSearchParams(sp);
+    const filters = parseUsersListFilters(sp);
     const role = firstString(sp.role);
     const staffRole = firstString(sp.staffRole);
-    const suspendedOnly = firstString(sp.suspended) === "1";
-    return { ...base, role, staffRole, suspendedOnly, limit: Math.min(100, base.limit) };
+    const query: UsersListQuery = {
+      limit: Math.min(100, base.limit),
+      offset: base.offset,
+      ...filters,
+    };
+    if (filters.q) query.q = filters.q;
+    else if (base.q) query.q = base.q;
+    if (filters.sort) query.sort = filters.sort;
+    if (role) query.role = role;
+    if (staffRole) query.staffRole = staffRole;
+    return query;
   },
   async fetch(q) {
-    const p: Parameters<typeof getAdminUserList>[0] = {
+    const data = await getAdminUserList({
       limit: q.limit,
       offset: q.offset,
-    };
-    if (q.q !== undefined && q.q !== "") p.q = q.q;
-    if (q.role !== undefined && q.role !== "") p.role = q.role;
-    if (q.staffRole !== undefined && q.staffRole !== "") p.staffRole = q.staffRole;
-    if (q.suspendedOnly) p.suspendedOnly = true;
-    const data = await getAdminUserList(p);
+      ...(q.q ? { q: q.q } : {}),
+      ...(q.role ? { role: q.role } : {}),
+      ...(q.staffRole ? { staffRole: q.staffRole } : {}),
+      ...(q.accountStatus ? { accountStatus: q.accountStatus } : {}),
+      ...(q.suspendedOnly ? { suspendedOnly: true } : {}),
+      ...(q.emailVerified !== undefined ? { emailVerified: q.emailVerified } : {}),
+      ...(q.kycStatuses?.length ? { kycStatuses: q.kycStatuses } : {}),
+      ...(q.kycStatus ? { kycStatus: q.kycStatus } : {}),
+      ...(q.persona ? { persona: q.persona } : {}),
+      ...(q.twoFactorEnabled !== undefined ? { twoFactorEnabled: q.twoFactorEnabled } : {}),
+      ...(q.deletionRequestedOnly ? { deletionRequestedOnly: true } : {}),
+      ...(q.hasMobile !== undefined ? { hasMobile: q.hasMobile } : {}),
+      ...(q.createdFrom ? { createdFrom: q.createdFrom } : {}),
+      ...(q.createdTo ? { createdTo: q.createdTo } : {}),
+      ...(q.kycVerifiedFrom ? { kycVerifiedFrom: q.kycVerifiedFrom } : {}),
+      ...(q.kycVerifiedTo ? { kycVerifiedTo: q.kycVerifiedTo } : {}),
+      ...(q.lastActiveFrom ? { lastActiveFrom: q.lastActiveFrom } : {}),
+      ...(q.lastActiveTo ? { lastActiveTo: q.lastActiveTo } : {}),
+      ...(q.sort ? { sort: q.sort } : {}),
+    });
     return { rows: data.rows, total: data.total, offset: q.offset, limit: q.limit };
   },
 };

@@ -5,6 +5,7 @@ import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { InlineActionMenu } from "@auction/ui";
+import { formatPhoneDisplay } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export function userStatusColumn(): ColumnDef<AdminUserRow> {
@@ -36,6 +37,73 @@ export function userLastActivityColumn(header = "Last activity"): ColumnDef<Admi
     cell: ({ row }) => (
       <span className="text-xs text-on-surface-variant">
         {relativeFromIso(row.original.updatedAt)}
+      </span>
+    ),
+  };
+}
+
+export function userMobileColumn(): ColumnDef<AdminUserRow> {
+  return {
+    id: "mobile",
+    header: "Mobile",
+    cell: ({ row }) => {
+      const u = row.original;
+      const display = formatPhoneDisplay(u.mobile);
+      if (!display) return <span className="text-xs text-on-surface-variant">—</span>;
+      return (
+        <span className="text-xs text-on-surface-variant" title={u.mobile ?? undefined}>
+          {display}
+          {u.mobileCountry ? ` (${u.mobileCountry})` : ""}
+        </span>
+      );
+    },
+  };
+}
+
+export function userPersonaColumn(): ColumnDef<AdminUserRow> {
+  return {
+    id: "persona",
+    header: "Persona",
+    cell: ({ row }) => (
+      <span className="text-xs capitalize text-on-surface-variant">
+        {row.original.signupPersona ?? "—"}
+      </span>
+    ),
+  };
+}
+
+export function userTwoFactorColumn(): ColumnDef<AdminUserRow> {
+  return {
+    id: "twoFactor",
+    header: "2FA",
+    cell: ({ row }) => (
+      <AdminStatusBadge
+        domain="kyc"
+        status={row.original.twoFactorEnabled ? "approved" : "unverified"}
+        label={row.original.twoFactorEnabled ? "On" : "Off"}
+        size="sm"
+      />
+    ),
+  };
+}
+
+export function userEmailStatusColumn(): ColumnDef<AdminUserRow> {
+  return {
+    id: "emailStatus",
+    header: "Email health",
+    cell: ({ row }) => (
+      <span className="text-xs capitalize text-on-surface-variant">{row.original.emailStatus}</span>
+    ),
+  };
+}
+
+export function userKycVerifiedAtColumn(): ColumnDef<AdminUserRow> {
+  return {
+    id: "kycVerifiedAt",
+    header: "KYC verified",
+    cell: ({ row }) => (
+      <span className="text-xs text-on-surface-variant">
+        {row.original.kycVerifiedAt ? formatAdminUserDate(row.original.kycVerifiedAt) : "—"}
       </span>
     ),
   };
