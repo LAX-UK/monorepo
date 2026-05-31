@@ -224,11 +224,14 @@ function BoardTable({
   );
 }
 
+const CSV_FORMULA_PREFIX = /^[=+\-@]/;
+
 function csvCell(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const safeValue = CSV_FORMULA_PREFIX.test(value) ? `'${value}` : value;
+  if (/[",\n\r]/.test(safeValue)) {
+    return `"${safeValue.replace(/"/g, '""')}"`;
   }
-  return value;
+  return safeValue;
 }
 
 function exportRowsToCsv(rows: BidBoardRow[], artistNameById: Record<string, string>): string {

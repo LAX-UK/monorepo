@@ -24,7 +24,6 @@ export type CreateExportRequest = {
   format?: ExportFormat;
   filters?: Record<string, unknown>;
   forceAsync?: boolean;
-  idempotencyKey?: string;
 };
 
 export type CreateExportResponse =
