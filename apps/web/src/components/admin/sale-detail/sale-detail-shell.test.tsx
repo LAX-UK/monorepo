@@ -68,6 +68,10 @@ vi.mock("@/components/admin/admin-pin-page-button", () => ({
   AdminPinPageButton: () => null,
 }));
 
+vi.mock("@/components/admin/qr-code/admin-qr-code-button", () => ({
+  AdminQrCodeButton: () => <button type="button">QR code</button>,
+}));
+
 const baseBundle = {
   sale: {
     id: "s1",
@@ -109,6 +113,7 @@ describe("SaleDetailShell", () => {
     );
     expect(screen.queryByText("Publish sale")).not.toBeInTheDocument();
     expect(screen.queryByText("Edit draft")).not.toBeInTheDocument();
+    expect(screen.queryByText("QR code")).not.toBeInTheDocument();
     expect(screen.getByText("Tab content")).toBeInTheDocument();
   });
 
@@ -120,5 +125,6 @@ describe("SaleDetailShell", () => {
     );
     expect(screen.getByText("Publish sale")).toBeInTheDocument();
     expect(screen.getByText("Edit draft")).toBeInTheDocument();
+    expect(screen.getByText("QR code")).toBeInTheDocument();
   });
 });

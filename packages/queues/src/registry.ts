@@ -12,6 +12,8 @@ export const MARKETING_EVENTS_QUEUE_NAME = "marketing-events" as const;
 export const MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME = "marketing-events-capi-batch" as const;
 export const MARKETING_OUTBOX_POLLER_QUEUE_NAME = "marketing-outbox-poller" as const;
 export const PURGE_MARKETING_CLICK_IDS_QUEUE_NAME = "purge-marketing-click-ids" as const;
+export const QR_CODE_SCAN_QUEUE_NAME = "qr-code-scan" as const;
+export const PURGE_QR_CODE_SCANS_QUEUE_NAME = "purge-qr-code-scans" as const;
 export const WEBHOOK_EVENTS_QUEUE_NAME = "webhook-events" as const;
 export const GC_PENDING_UPLOADS_QUEUE_NAME = "gc-pending-uploads" as const;
 export const IMPERSONATION_SWEEPER_QUEUE_NAME = "impersonation-sweeper" as const;
@@ -195,6 +197,42 @@ export const QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Purge stale marketing click IDs and outbox",
+  },
+  [QR_CODE_SCAN_QUEUE_NAME]: {
+    producers: ["api"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "qr-code-scan",
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: true,
+    repeatable: false,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+      removeOnComplete: 500,
+      removeOnFail: 200,
+    },
+    description: "QR code scan analytics write-behind",
+  },
+  [PURGE_QR_CODE_SCANS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+      removeOnComplete: 5,
+      removeOnFail: 50,
+    },
+    description: "Daily purge for raw QR scan analytics",
   },
   [WEBHOOK_EVENTS_QUEUE_NAME]: {
     producers: [],

@@ -55,6 +55,7 @@ const envSchema = z
     GA4_MEASUREMENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     META_GRAPH_API_VERSION: z.preprocess(emptyToUndefined, z.string().optional()),
     MARKETING_EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
+    QR_SCAN_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
