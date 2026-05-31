@@ -1,7 +1,13 @@
+import { userEmailStatuses, userKycStatuses, userRoles, userStaffRoles } from "@auction/types";
 import { z } from "zod";
 import { listSubmissionsQuerySchema } from "./item-submission.js";
 import { listLotsQuerySchema } from "./lot.js";
 import { listSalesQuerySchema } from "./sale.js";
+import {
+  adminUserListPersonaFilterEnum,
+  adminUserListSortEnum,
+  adminUserListStatusEnum,
+} from "./user.js";
 
 const aggregateTypeField = z
   .string()
@@ -33,12 +39,35 @@ const exportSubmissionsFiltersSchema = listSubmissionsQuerySchema.omit({
   offset: true,
 });
 
-const exportClientsFiltersSchema = z.object({
+const exportClientsIsoDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+
+export const exportClientsFiltersSchema = z.object({
   q: z.string().trim().max(200).optional(),
-  role: z.string().optional(),
-  staffRole: z.string().optional(),
+  role: z.enum(userRoles).optional(),
+  staffRole: z.enum(userStaffRoles).optional(),
   suspendedOnly: z.coerce.boolean().optional(),
+  accountStatus: adminUserListStatusEnum.optional(),
+  emailVerified: z.coerce.boolean().optional(),
+  emailStatus: z.enum(userEmailStatuses).optional(),
+  kycStatus: z.enum(userKycStatuses).optional(),
+  kycStatuses: z.array(z.enum(userKycStatuses)).optional(),
+  persona: adminUserListPersonaFilterEnum.optional(),
+  twoFactorEnabled: z.coerce.boolean().optional(),
+  deletionRequestedOnly: z.coerce.boolean().optional(),
+  hasMobile: z.coerce.boolean().optional(),
+  createdFrom: exportClientsIsoDateSchema.optional(),
+  createdTo: exportClientsIsoDateSchema.optional(),
+  kycVerifiedFrom: exportClientsIsoDateSchema.optional(),
+  kycVerifiedTo: exportClientsIsoDateSchema.optional(),
+  lastActiveFrom: exportClientsIsoDateSchema.optional(),
+  lastActiveTo: exportClientsIsoDateSchema.optional(),
+  sort: adminUserListSortEnum.optional(),
 });
+
+export type ExportClientsFilters = z.infer<typeof exportClientsFiltersSchema>;
 
 const exportPaymentsFiltersSchema = z.object({
   status: z.string().optional(),

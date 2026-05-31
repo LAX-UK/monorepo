@@ -6,10 +6,11 @@ import {
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
+import type { ExportClientsFilters } from "@auction/validators";
 import { AuthzError } from "../lib/errors.js";
+import { mapExportClientsFilters } from "../lib/map-export-clients-filters.js";
 import type { AdminDomainEventQueryService } from "../services/admin/admin-domain-event-query.service.js";
 import type { IAdminUserReader } from "../services/interfaces/admin-user.js";
-import type { AdminUserListFilter } from "../services/interfaces/admin-user.js";
 import type { IAnalyticsService } from "../services/interfaces/analytics.js";
 import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import type {
@@ -224,7 +225,7 @@ export function createExportProviders(
     filterSummary: (_ctx, filters) => summarizeFilters(filters as Record<string, unknown>),
   };
 
-  const clientsProvider: ExportProvider<AdminUserListFilter> = {
+  const clientsProvider: ExportProvider<ExportClientsFilters> = {
     entityType: "clients",
     authorize(ctx) {
       requirePlatformAdminAccess(ctx);
@@ -235,16 +236,30 @@ export function createExportProviders(
       { key: "name", header: "name" },
       { key: "role", header: "role" },
       { key: "staffRole", header: "staff_role" },
+      { key: "mobile", header: "mobile" },
+      { key: "mobileCountry", header: "mobile_country" },
+      { key: "emailVerified", header: "email_verified" },
+      { key: "emailStatus", header: "email_status" },
+      { key: "kycStatus", header: "kyc_status" },
+      { key: "kycVerifiedAt", header: "kyc_verified_at" },
+      { key: "signupPersona", header: "signup_persona" },
+      { key: "twoFactorEnabled", header: "two_factor" },
+      { key: "suspendedAt", header: "suspended_at" },
       { key: "createdAt", header: "created_at" },
+      { key: "updatedAt", header: "updated_at" },
     ],
     async estimateCount(_ctx, filters) {
-      const result = await deps.adminUserReader.list({ ...filters, limit: 1, offset: 0 });
+      const result = await deps.adminUserReader.list(
+        mapExportClientsFilters(filters, { limit: 1, offset: 0 }),
+      );
       return result.total;
     },
     streamRows(_ctx, filters) {
       return batchedRows(
         async (offset, limit) => {
-          const result = await deps.adminUserReader.list({ ...filters, offset, limit });
+          const result = await deps.adminUserReader.list(
+            mapExportClientsFilters(filters, { offset, limit }),
+          );
           return result.rows;
         },
         (u) => ({
@@ -253,7 +268,17 @@ export function createExportProviders(
           name: u.name ?? "",
           role: u.role,
           staffRole: u.staffRole ?? "",
+          mobile: u.mobile ?? "",
+          mobileCountry: u.mobileCountry ?? "",
+          emailVerified: u.emailVerified ? "true" : "false",
+          emailStatus: u.emailStatus,
+          kycStatus: u.kycStatus,
+          kycVerifiedAt: u.kycVerifiedAt?.toISOString() ?? "",
+          signupPersona: u.signupPersona ?? "",
+          twoFactorEnabled: u.twoFactorEnabled ? "true" : "false",
+          suspendedAt: u.suspendedAt?.toISOString() ?? "",
           createdAt: u.createdAt.toISOString(),
+          updatedAt: u.updatedAt.toISOString(),
         }),
       );
     },

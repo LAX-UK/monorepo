@@ -229,6 +229,10 @@ export interface IAdminUserApplicationService {
   suspend(actorRole: string, userId: string, reason: string | null): Promise<void>;
   unsuspend(actorRole: string, userId: string): Promise<void>;
   activityFor(userId: string, limit: number): Promise<AdminActivityEntry[]>;
+  kycSessionsFor(
+    userId: string,
+    limit?: number,
+  ): Promise<import("./admin-user.js").AdminKycSession[]>;
   bulkSuspendOrUnsuspend(input: {
     actorRole: string;
     ids: string[];

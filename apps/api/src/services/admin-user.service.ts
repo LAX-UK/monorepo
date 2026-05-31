@@ -7,8 +7,10 @@ import {
 } from "@auction/types";
 import { AuthzError } from "../lib/errors.js";
 import type {
+  AdminKycSession,
   AdminUserListFilter,
   IAdminUserActivityReader,
+  IAdminUserKycReader,
   IAdminUserReader,
   IAdminUserRoleManager,
   IAdminUserSuspender,
@@ -20,6 +22,7 @@ export class AdminUserService {
     private readonly roles: IAdminUserRoleManager,
     private readonly suspender: IAdminUserSuspender,
     private readonly activity: IAdminUserActivityReader,
+    private readonly kyc?: IAdminUserKycReader,
   ) {}
 
   list(filter: AdminUserListFilter) {
@@ -95,5 +98,10 @@ export class AdminUserService {
 
   activityFor(userId: string, limit: number) {
     return this.activity.getRecentSessions(userId, limit);
+  }
+
+  kycSessionsFor(userId: string, limit?: number): Promise<AdminKycSession[]> {
+    if (!this.kyc) return Promise.resolve([]);
+    return this.kyc.listSessionsForUser(userId, limit);
   }
 }

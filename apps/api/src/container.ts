@@ -80,6 +80,7 @@ import {
   createSubmissionsLegalEntityContext,
 } from "./middleware/require-legal-entity-context.js";
 import { DrizzleAddressRepository } from "./repositories/drizzle-address.repository.js";
+import { DrizzleAdminUserKycReader } from "./repositories/drizzle-admin-user-kyc.reader.js";
 import {
   DrizzleAdminUserActivityReader,
   DrizzleAdminUserReader,
@@ -1184,6 +1185,7 @@ export function createContainer(env: Env): Container {
   const orgModuleGate = createOrgModuleGate(env.WEB_ORIGIN);
 
   const adminUserReader = new DrizzleAdminUserReader(db);
+  const adminUserKycReader = new DrizzleAdminUserKycReader(db);
   const adminRoleManager = new DrizzleAdminUserRoleManager(db);
   const adminSuspender = new DrizzleAdminUserSuspender(db, sessionRevocation, {
     emailService,
@@ -1196,6 +1198,7 @@ export function createContainer(env: Env): Container {
     adminRoleManager,
     adminSuspender,
     adminActivityReader,
+    adminUserKycReader,
   );
   const attentionFeedReader = new DrizzleAttentionFeedReader(db);
   const conveyorPipelineReader = new DrizzleConveyorPipelineReader(db);
