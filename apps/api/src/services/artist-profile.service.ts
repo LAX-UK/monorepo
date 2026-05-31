@@ -86,6 +86,8 @@ export class ArtistProfileService {
     living?: boolean;
     historical?: boolean;
     nationality?: string;
+    country?: string;
+    categorySlug?: string;
     featuredOnly?: boolean;
     featuredFirst?: boolean;
     decade?: string;

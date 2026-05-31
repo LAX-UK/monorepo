@@ -968,6 +968,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       ...(q.kinds ? { kinds: q.kinds } : {}),
       ...(q.status ? { status: q.status } : {}),
       ...(q.ownerUserId ? { ownerUserId: q.ownerUserId } : {}),
+      ...(q.categoryId ? { categoryId: q.categoryId } : {}),
+      ...(q.country ? { country: q.country } : {}),
       ...(q.featured === true ? { featured: true } : {}),
       ...(q.verified === true ? { verified: true } : {}),
       linked: q.linked,

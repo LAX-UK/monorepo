@@ -2,6 +2,7 @@
 
 import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import type { ArtistKind, ArtistStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Loader2, UserPlus } from "lucide-react";
@@ -11,8 +12,8 @@ export type ArtistSearchHit = {
   id: string;
   displayName: string;
   slug: string;
-  kind: "artist" | "maker" | "brand" | "marque";
-  status: "pending" | "approved" | "rejected" | "merged_into";
+  kind: ArtistKind;
+  status: ArtistStatus;
   matchedAlias: string | null;
   matchType: "exact" | "alias" | "partial" | "fuzzy";
   score: number;

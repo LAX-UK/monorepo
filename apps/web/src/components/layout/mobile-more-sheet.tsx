@@ -18,6 +18,7 @@ import {
   BottomSheetHeader,
   BottomSheetTitle,
 } from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
 import { ChevronRight, Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -168,8 +169,9 @@ export function MobileMoreSheet({
           {variant === "client" && user ? (
             <MobileProfileStrip user={user} onNavigate={() => onOpenChange(false)} />
           ) : null}
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => {
               onOpenChange(false);
               openCommandPalette();
@@ -178,7 +180,7 @@ export function MobileMoreSheet({
           >
             <Compass className="size-4 shrink-0" aria-hidden />
             Quick go
-          </button>
+          </Button>
           <p className="text-center text-xs text-on-surface-variant">
             Jump to collection, payments, organisations, and more
           </p>

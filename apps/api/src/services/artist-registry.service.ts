@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
-import { adminReviewTask, artistAlias, artistProfile, lot } from "@auction/db/schema";
+import {
+  adminReviewTask,
+  artistAlias,
+  artistCategories,
+  artistProfile,
+  lot,
+} from "@auction/db/schema";
+import { parseCreatorAttributes } from "@auction/validators";
 import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
@@ -61,6 +68,23 @@ export async function resolveUniqueArtistSlug(
   throw new Error("artist_slug_resolution_failed");
 }
 
+/** Replace the category (department) links for an artist inside a transaction.
+ * Centralised so the inline-create path, admin create, and admin update share
+ * one policy (delete-then-insert, idempotent). */
+export async function replaceArtistCategoriesInTx(
+  tx: Database,
+  artistProfileId: string,
+  categoryIds: readonly string[],
+): Promise<void> {
+  await tx.delete(artistCategories).where(eq(artistCategories.artistProfileId, artistProfileId));
+  const unique = [...new Set(categoryIds)];
+  if (unique.length === 0) return;
+  await tx
+    .insert(artistCategories)
+    .values(unique.map((categoryId, index) => ({ artistProfileId, categoryId, sortOrder: index })))
+    .onConflictDoNothing();
+}
+
 /** Insert a new `artist_profile` row inside the supplied transaction handle.
  * Used by both `ArtistRegistryService.create` and the submission approve flow
  * so the slug logic stays in one place. Defaults to `status = 'pending'` for
@@ -68,25 +92,33 @@ export async function resolveUniqueArtistSlug(
 export async function insertArtistInTx(
   tx: Database,
   creatorUserId: string | null,
-  input: CreateArtistInput & { status?: ArtistStatus; ownerUserId?: string | null | undefined },
+  input: CreateArtistInput,
 ): Promise<ArtistRecord> {
   const slug = await resolveUniqueArtistSlug(tx, input.displayName);
+  const kind = input.kind ?? "artist";
   const [row] = await tx
     .insert(artistProfile)
     .values({
       displayName: input.displayName,
       slug,
-      kind: input.kind ?? "artist",
+      kind,
       status: input.status ?? "pending",
       shortBio: input.shortBio ?? null,
       nationality: input.nationality ?? null,
+      countryCode: input.countryCode ?? null,
       birthYear: input.birthYear ?? null,
       deathYear: input.deathYear ?? null,
+      foundedYear: input.foundedYear ?? null,
+      dissolvedYear: input.dissolvedYear ?? null,
+      attributes: parseCreatorAttributes(kind, input.attributes),
       createdByUserId: creatorUserId,
       ownerUserId: input.ownerUserId ?? null,
     })
     .returning();
   if (!row) throw new Error("artist_create_failed");
+  if (input.categoryIds && input.categoryIds.length > 0) {
+    await replaceArtistCategoriesInTx(tx, row.id as string, input.categoryIds);
+  }
   return rowToRecord(row);
 }
 

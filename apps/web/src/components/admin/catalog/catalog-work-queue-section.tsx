@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
@@ -39,8 +40,9 @@ export function CatalogWorkQueueSection({
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-hairline/60 px-3 py-3">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
           aria-expanded={open}
           aria-controls={panelId}
@@ -60,7 +62,7 @@ export function CatalogWorkQueueSection({
               <span className="ms-2 font-mono tabular-nums text-on-surface">({count})</span>
             ) : null}
           </span>
-        </button>
+        </Button>
         {primaryAction ? (
           <Link
             href={primaryAction.href}

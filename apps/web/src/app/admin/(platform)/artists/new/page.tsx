@@ -2,7 +2,7 @@ import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { parseScenarioParam } from "@/components/admin/artist-form/scenario-config";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { Surface } from "@auction/ui/components/surface";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import Link from "next/link";
 
 type Search = { ownerUserId?: string; displayName?: string; scenario?: string };
@@ -17,6 +17,13 @@ export default async function NewAdminArtistPage({
   const displayFromUrl = sp.displayName?.trim() ?? "";
   const ownerUserId = ownerFromUrl.length > 0 ? ownerFromUrl : null;
   const initialScenario = parseScenarioParam(sp.scenario?.trim());
+  const categories = await (async () => {
+    try {
+      return await (await getServerCategoryReader()).tree();
+    } catch {
+      return [];
+    }
+  })();
 
   return (
     <CatalogFormShell
@@ -31,49 +38,42 @@ export default async function NewAdminArtistPage({
       }
       title="New artist"
       description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
-      mobileActions={[
-        {
-          id: "save",
-          label: "Create artist",
-          variant: "primary",
-          htmlForm: CATALOG_FORM_IDS.artist,
-        },
-        {
-          id: "cancel",
-          label: "Cancel",
-          variant: "secondary",
-          href: "/admin/artists",
-        },
-      ]}
+      wizardMobile={{
+        formId: CATALOG_FORM_IDS.artist,
+        submitLabel: "Create artist",
+        cancelHref: "/admin/artists",
+      }}
     >
-      <Surface variant="card">
-        <div className="pt-6">
-          <AdminArtistForm
-            mode="create"
-            initialScenario={initialScenario}
-            htmlFormId={CATALOG_FORM_IDS.artist}
-            defaultValues={{
-              displayName: displayFromUrl,
-              kind: "artist",
-              status: "approved",
-              portraitUrl: "",
-              heroImageUrl: "",
-              shortBio: "",
-              longBio: "",
-              statement: "",
-              nationality: "",
-              location: "",
-              birthYear: "",
-              deathYear: "",
-              websiteUrl: "",
-              ownerUserId,
-              featured: false,
-              verified: false,
-              archived: false,
-            }}
-          />
-        </div>
-      </Surface>
+      <AdminArtistForm
+        mode="create"
+        initialScenario={initialScenario}
+        htmlFormId={CATALOG_FORM_IDS.artist}
+        categories={categories}
+        defaultValues={{
+          displayName: displayFromUrl,
+          kind: "artist",
+          status: "approved",
+          portraitUrl: "",
+          heroImageUrl: "",
+          shortBio: "",
+          longBio: "",
+          statement: "",
+          nationality: "",
+          location: "",
+          countryCode: "",
+          birthYear: "",
+          deathYear: "",
+          foundedYear: "",
+          dissolvedYear: "",
+          websiteUrl: "",
+          ownerUserId,
+          featured: false,
+          verified: false,
+          archived: false,
+          categoryIds: [],
+          attributes: {},
+        }}
+      />
     </CatalogFormShell>
   );
 }

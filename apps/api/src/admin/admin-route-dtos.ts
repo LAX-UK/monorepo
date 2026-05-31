@@ -90,6 +90,10 @@ export type AdminArtistListOptions = {
   kinds?: ArtistKind[];
   status?: ArtistStatus;
   ownerUserId?: string;
+  /** Filter by collecting category (department) id. */
+  categoryId?: string;
+  /** Filter by ISO 3166-1 alpha-2 origin country code. */
+  country?: string;
   featured?: boolean;
   verified?: boolean;
   linked?: AdminArtistListLinkedFilter;

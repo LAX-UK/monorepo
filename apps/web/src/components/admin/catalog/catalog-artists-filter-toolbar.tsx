@@ -11,11 +11,19 @@ import {
 } from "@/components/admin/catalog/catalog-filter-bar";
 import { FilterCheckboxGroup } from "@/components/ui/filter-checkbox-group";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { creatorKindConfigList } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
+
+const KIND_FILTER_OPTIONS = [
+  { value: "", label: "Any" },
+  ...creatorKindConfigList.map((c) => ({ value: c.kind, label: c.label })),
+];
+
+export type ArtistCategoryFilterOption = { value: string; label: string };
 
 const inputCls = "h-10 w-full font-body text-sm";
 const selectCls = "h-10 w-full font-body text-sm";
@@ -26,6 +34,8 @@ type FilterDefaults = {
   q?: string | null | undefined;
   status?: string | null | undefined;
   kind?: string | null | undefined;
+  categoryId?: string | null | undefined;
+  country?: string | null | undefined;
   sort?: string | null | undefined;
   featured?: boolean | null | undefined;
   verified?: boolean | null | undefined;
@@ -34,8 +44,10 @@ type FilterDefaults = {
 
 function ArtistRegistryFilterForm({
   defaults,
+  categoryOptions = [],
 }: {
   defaults: FilterDefaults;
+  categoryOptions?: readonly ArtistCategoryFilterOption[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -56,6 +68,11 @@ function ArtistRegistryFilterForm({
           const nextQ = String(fd.get("q") ?? "").trim();
           if (nextQ) params.set("q", nextQ);
           else params.delete("q");
+          const nextCountry = String(fd.get("country") ?? "")
+            .trim()
+            .toUpperCase();
+          if (nextCountry) params.set("country", nextCountry);
+          else params.delete("country");
           const qs = params.toString();
           startTransition(() => {
             router.push(qs ? `${pathname}?${qs}` : pathname);
@@ -71,6 +88,19 @@ function ArtistRegistryFilterForm({
             defaultValue={defaults.q ?? ""}
             placeholder="Name or slug…"
             className={inputCls}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1" htmlFor="catalog-artists-country">
+          <span className={labelCapsCls}>Country (ISO code)</span>
+          <Input
+            id="catalog-artists-country"
+            name="country"
+            type="text"
+            maxLength={2}
+            defaultValue={defaults.country ?? ""}
+            placeholder="e.g. FR"
+            className={`${inputCls} uppercase`}
           />
         </label>
 
@@ -101,15 +131,21 @@ function ArtistRegistryFilterForm({
           param="kind"
           resetParams={{ offset: "0" }}
           className={selectCls}
-          options={[
-            { value: "", label: "Any" },
-            { value: "artist", label: "Artist" },
-            { value: "maker", label: "Maker" },
-            { value: "brand", label: "Brand" },
-            { value: "marque", label: "Marque" },
-          ]}
+          options={KIND_FILTER_OPTIONS}
         />
       </div>
+
+      {categoryOptions.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <span className={labelCapsCls}>Department</span>
+          <FilterSelect
+            param="categoryId"
+            resetParams={{ offset: "0" }}
+            className={selectCls}
+            options={[{ value: "", label: "Any" }, ...categoryOptions]}
+          />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1">
         <span className={labelCapsCls}>Sort</span>
@@ -145,6 +181,7 @@ type Props = {
   activeFilterCount: number;
   activeFilterChips?: readonly CatalogActiveFilterChip[];
   filterDefaults: FilterDefaults;
+  categoryOptions?: readonly ArtistCategoryFilterOption[];
   /** When duplicates or lot backfill queues are showing, filters target the indexed list instead. */
   queueModesActive: boolean;
 };
@@ -155,6 +192,7 @@ export function CatalogArtistsFilterToolbar({
   activeFilterCount,
   activeFilterChips = [],
   filterDefaults,
+  categoryOptions = [],
   queueModesActive,
 }: Props) {
   return (
@@ -185,7 +223,7 @@ export function CatalogArtistsFilterToolbar({
             </Link>
           </div>
         ) : (
-          <ArtistRegistryFilterForm defaults={filterDefaults} />
+          <ArtistRegistryFilterForm defaults={filterDefaults} categoryOptions={categoryOptions} />
         )
       }
     />

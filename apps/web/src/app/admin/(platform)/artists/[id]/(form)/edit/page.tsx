@@ -7,7 +7,7 @@ import {
 } from "@/components/admin/catalog";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
-import { Surface } from "@auction/ui/components/surface";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -20,9 +20,16 @@ export default async function EditAdminArtistPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const [artist, lots] = await Promise.all([
+  const [artist, lots, categories] = await Promise.all([
     getAdminArtistById(id),
     getAdminLotList({ artistId: id, limit: 25 }).catch(() => []),
+    (async () => {
+      try {
+        return await (await getServerCategoryReader()).tree();
+      } catch {
+        return [];
+      }
+    })(),
   ]);
   if (!artist) notFound();
 
@@ -60,74 +67,72 @@ export default async function EditAdminArtistPage({
       }
       title={`Edit ${artist.displayName}`}
       description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
-      mobileActions={
-        isMerged
-          ? [
+      {...(isMerged
+        ? {
+            mobileActions: [
               {
-                id: "back",
+                id: "back" as const,
                 label: "Back to profile",
-                variant: "secondary",
+                variant: "secondary" as const,
                 href: detailHref,
               },
-            ]
-          : [
-              {
-                id: "save",
-                label: "Save artist",
-                variant: "primary",
-                htmlForm: CATALOG_FORM_IDS.artist,
-              },
-              {
-                id: "cancel",
-                label: "Cancel",
-                variant: "secondary",
-                href: detailHref,
-              },
-            ]
-      }
+            ],
+          }
+        : {
+            wizardMobile: {
+              formId: CATALOG_FORM_IDS.artist,
+              submitLabel: "Save artist",
+              cancelHref: detailHref,
+              alwaysShowSubmit: true,
+            },
+          })}
     >
-      <CatalogDetailActionError error={sp.error} title="Could not save artist" />
-      {mergedNotice}
+      <div className="space-y-8">
+        <CatalogDetailActionError error={sp.error} title="Could not save artist" />
+        {mergedNotice}
 
-      <Surface variant="card">
-        <div className="pt-6">
-          <AdminArtistForm
-            mode="edit"
-            artistId={artist.id}
-            slug={artist.slug}
-            readOnly={isMerged}
-            htmlFormId={CATALOG_FORM_IDS.artist}
-            defaultValues={{
-              displayName: artist.displayName,
-              kind: artist.kind ?? "artist",
-              status: artist.status ?? "approved",
-              portraitUrl: artist.portraitUrl ?? "",
-              heroImageUrl: artist.heroImageUrl ?? "",
-              shortBio: artist.shortBio ?? "",
-              longBio: artist.longBio ?? "",
-              statement: artist.statement ?? "",
-              nationality: artist.nationality ?? "",
-              location: artist.location ?? "",
-              birthYear: artist.birthYear ?? "",
-              deathYear: artist.deathYear ?? "",
-              websiteUrl: artist.websiteUrl ?? "",
-              ownerUserId: artist.ownerUserId,
-              featured: artist.featured,
-              verified: artist.verified,
-              archived: artist.archived,
-            }}
-          />
-        </div>
-      </Surface>
+        <AdminArtistForm
+          mode="edit"
+          artistId={artist.id}
+          slug={artist.slug}
+          readOnly={isMerged}
+          htmlFormId={CATALOG_FORM_IDS.artist}
+          categories={categories}
+          defaultValues={{
+            displayName: artist.displayName,
+            kind: artist.kind ?? "artist",
+            status: artist.status ?? "approved",
+            portraitUrl: artist.portraitUrl ?? "",
+            heroImageUrl: artist.heroImageUrl ?? "",
+            shortBio: artist.shortBio ?? "",
+            longBio: artist.longBio ?? "",
+            statement: artist.statement ?? "",
+            nationality: artist.nationality ?? "",
+            location: artist.location ?? "",
+            countryCode: artist.countryCode ?? "",
+            birthYear: artist.birthYear ?? "",
+            deathYear: artist.deathYear ?? "",
+            foundedYear: artist.foundedYear ?? "",
+            dissolvedYear: artist.dissolvedYear ?? "",
+            websiteUrl: artist.websiteUrl ?? "",
+            ownerUserId: artist.ownerUserId,
+            featured: artist.featured,
+            verified: artist.verified,
+            archived: artist.archived,
+            categoryIds: (artist.categories ?? []).map((c) => c.id),
+            attributes: artist.attributes ?? {},
+          }}
+        />
 
-      <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold tracking-tight">Lots by this artist</h2>
-        <p className="text-sm text-on-surface-variant">
-          Read-only summary of the lots currently attached via the catalogue FK. To reassign a lot,
-          open it and use the artist picker on the lot edit page.
-        </p>
-        <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
-      </section>
+        <section className="space-y-3">
+          <h2 className="font-display text-xl font-semibold tracking-tight">Lots by this artist</h2>
+          <p className="text-sm text-on-surface-variant">
+            Read-only summary of the lots currently attached via the catalogue FK. To reassign a
+            lot, open it and use the artist picker on the lot edit page.
+          </p>
+          <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
+        </section>
+      </div>
     </CatalogFormShell>
   );
 }

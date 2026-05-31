@@ -93,6 +93,20 @@ function parseAdminCategory(raw: unknown): AdminCategory {
   };
 }
 
+function parseArtistCategoryRefs(raw: unknown): NonNullable<ArtistProfile["categories"]> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      const o = entry as Record<string, unknown>;
+      return {
+        id: String(o.id ?? ""),
+        name: String(o.name ?? ""),
+        slug: String(o.slug ?? ""),
+      };
+    })
+    .filter((c) => c.id.length > 0);
+}
+
 function parseArtistProfile(raw: unknown): ArtistProfile {
   const o = raw as Record<string, unknown>;
   const rawKind = o.kind;
@@ -116,18 +130,26 @@ function parseArtistProfile(raw: unknown): ArtistProfile {
     statement: o.statement == null ? null : String(o.statement),
     nationality: o.nationality == null ? null : String(o.nationality),
     location: o.location == null ? null : String(o.location),
+    countryCode: o.countryCode == null ? null : String(o.countryCode),
     birthYear: o.birthYear == null ? null : String(o.birthYear),
     deathYear: o.deathYear == null ? null : String(o.deathYear),
+    foundedYear: o.foundedYear == null ? null : String(o.foundedYear),
+    dissolvedYear: o.dissolvedYear == null ? null : String(o.dissolvedYear),
     websiteUrl: o.websiteUrl == null ? null : String(o.websiteUrl),
     socialLinks:
       o.socialLinks && typeof o.socialLinks === "object"
         ? (o.socialLinks as Record<string, string>)
+        : {},
+    attributes:
+      o.attributes && typeof o.attributes === "object"
+        ? (o.attributes as Record<string, string>)
         : {},
     featured: Boolean(o.featured),
     verified: Boolean(o.verified),
     archived: Boolean(o.archived),
     ...(kind !== undefined ? { kind } : {}),
     ...(status !== undefined ? { status } : {}),
+    categories: parseArtistCategoryRefs(o.categories),
     ownerUserId: o.ownerUserId == null ? null : String(o.ownerUserId),
     ownerLegalEntityId: o.ownerLegalEntityId == null ? null : String(o.ownerLegalEntityId),
     mergedIntoArtistId: o.mergedIntoArtistId == null ? null : String(o.mergedIntoArtistId),
@@ -321,6 +343,8 @@ export type GetAdminArtistListParams = {
   kinds?: string;
   status?: string;
   ownerUserId?: string;
+  categoryId?: string;
+  country?: string;
   featured?: boolean;
   verified?: boolean;
   linked?: "yes" | "no";
@@ -343,6 +367,8 @@ export async function getAdminArtistList(
   if (params.kinds) qs.set("kinds", params.kinds);
   if (params.status) qs.set("status", params.status);
   if (params.ownerUserId) qs.set("ownerUserId", params.ownerUserId);
+  if (params.categoryId) qs.set("categoryId", params.categoryId);
+  if (params.country) qs.set("country", params.country);
   if (params.featured === true) qs.set("featured", "true");
   if (params.verified === true) qs.set("verified", "true");
   if (params.linked) qs.set("linked", params.linked);

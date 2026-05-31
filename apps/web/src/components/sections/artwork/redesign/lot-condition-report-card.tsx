@@ -43,13 +43,15 @@ function CardShell({
 
 export function LotConditionReportRestoreLink({ onRestore }: { onRestore: () => void }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="link"
+      size="link"
       onClick={onRestore}
       className="font-body text-xs font-medium text-primary underline-offset-2 hover:underline"
     >
       Show condition report
-    </button>
+    </Button>
   );
 }
 
@@ -91,8 +93,9 @@ export function LotConditionReportCard({
     <CardShell tone={shellTone} className="space-y-0 p-0 overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3">
         <FileSearch className="size-4 shrink-0 text-primary" aria-hidden />
-        <button
+        <Button
           type="button"
+          variant="ghost"
           className="flex min-w-0 flex-1 items-center gap-2 text-left font-body text-sm font-medium text-on-surface"
           aria-expanded={expanded}
           aria-controls={panelId}
@@ -106,15 +109,17 @@ export function LotConditionReportCard({
             )}
             aria-hidden
           />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onHide}
           className="shrink-0 rounded p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
           aria-label="Hide condition report for this lot"
         >
           <X className="size-4" aria-hidden />
-        </button>
+        </Button>
       </div>
 
       {expanded ? (

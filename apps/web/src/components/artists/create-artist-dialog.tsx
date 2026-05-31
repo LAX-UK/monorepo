@@ -2,6 +2,7 @@
 
 import { adminCreateArtistResultAction } from "@/lib/actions/admin";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { type ArtistKind, creatorKindConfigList } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Dialog,
@@ -43,14 +44,12 @@ type Props = {
   approveOnCreate?: boolean;
 };
 
-const KINDS = [
-  { value: "artist", label: "Artist" },
-  { value: "maker", label: "Maker" },
-  { value: "brand", label: "Brand" },
-  { value: "marque", label: "Marque" },
-] as const;
+type Kind = ArtistKind;
 
-type Kind = (typeof KINDS)[number]["value"];
+const KINDS: ReadonlyArray<{ value: Kind; label: string }> = creatorKindConfigList.map((c) => ({
+  value: c.kind,
+  label: c.label,
+}));
 
 export function CreateArtistDialog({
   open,
