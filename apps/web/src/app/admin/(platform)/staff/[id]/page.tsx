@@ -20,13 +20,6 @@ export default async function AdminStaffDetailPage({ params }: Props) {
     redirect(`/admin/clients/${id}`);
   }
 
-  const notesPlaceholder = (
-    <p className="font-body text-sm text-on-surface-variant">
-      Internal notes & tags require user_note / user_tag migrations before collaborative workflows
-      unlock.
-    </p>
-  );
-
   return (
     <AdminUserDetailShell
       user={user}
@@ -46,11 +39,6 @@ export default async function AdminStaffDetailPage({ params }: Props) {
               staffRole={(user.staffRole as UserStaffRole | null) ?? null}
             />
           ),
-        },
-        {
-          id: "notes",
-          label: "Notes",
-          content: notesPlaceholder,
         },
       ]}
     />

@@ -61,7 +61,7 @@ export function AdminUserListShell({
   const columns = useMemo(() => buildColumns(onOpen), [buildColumns, onOpen]);
 
   const cards = (
-    <ul className="space-y-3 md:hidden">
+    <ul className="space-y-3 lg:hidden">
       {rows.map((u) => (
         <li key={u.id}>{renderMobileCard(u, () => onOpen(u))}</li>
       ))}
@@ -73,7 +73,7 @@ export function AdminUserListShell({
       <p className="mb-3 font-body text-xs text-on-surface-variant">
         Showing {rows.length} of {totalMatches} matching accounts on this page.
       </p>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <AdminDataTable
           ariaLabel={tableAriaLabel}
           columns={columns}

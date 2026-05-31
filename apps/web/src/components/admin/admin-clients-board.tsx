@@ -268,7 +268,12 @@ export function AdminClientsBoard({ rows, totalMatches, hasActiveFilters }: Prop
       drawerTitle="Client"
       tableAriaLabel="Clients"
       emptyComponent={
-        <FilterEmptyState entity="clients" segment="admin" hasActiveFilters={hasActiveFilters} />
+        <FilterEmptyState
+          entity="clients"
+          segment="admin"
+          hasActiveFilters={hasActiveFilters}
+          clearFiltersHref="/admin/clients"
+        />
       }
       renderDrawerOverview={renderDrawerOverview}
       renderDrawerActions={renderDrawerActions}

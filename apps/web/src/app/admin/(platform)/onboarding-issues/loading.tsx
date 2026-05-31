@@ -1,14 +1,11 @@
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { TabbedQueueSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
-export default function OnboardingIssuesLoading() {
+export default function AdminOnboardingIssuesLoading() {
   return (
-    <AdminListPage
-      title="Onboarding issues"
-      description="Loading queues…"
-      hasFilters={false}
-      resetHref="/admin/onboarding-issues"
-      view={<TabbedQueueSkeleton tabs={5} />}
+    <AdminListPageSkeleton
+      title="Onboarding & verification queues"
+      kpiTiles={0}
+      showToolbar={false}
     />
   );
 }

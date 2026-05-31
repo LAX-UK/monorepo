@@ -8,6 +8,7 @@ import {
   userRowActionsColumn,
   userStatusColumn,
 } from "@/components/admin/users-board";
+import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
@@ -56,23 +57,31 @@ function staffColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow
   ];
 }
 
-function StaffDrawerContent({ u }: { u: AdminUserRow }) {
+function StaffDrawerOverview({ u }: { u: AdminUserRow }) {
   return (
-    <div className="space-y-6">
-      <dl className="grid grid-cols-1 gap-3 text-sm">
-        <div>
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Name</dt>
-          <dd className="font-headline text-lg">{u.name}</dd>
-        </div>
-        <div>
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Email</dt>
-          <dd className="break-all">{u.email}</dd>
-        </div>
-        <div>
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Staff role</dt>
-          <dd className="capitalize">{staffRoleLabel(u.staffRole as UserStaffRole | null)}</dd>
-        </div>
-      </dl>
+    <dl className="grid grid-cols-1 gap-3 text-sm">
+      <div>
+        <dt className="font-label text-[10px] uppercase text-on-surface-variant">Name</dt>
+        <dd className="font-headline text-lg">{u.name}</dd>
+      </div>
+      <div>
+        <dt className="font-label text-[10px] uppercase text-on-surface-variant">Email</dt>
+        <dd className="break-all">{u.email}</dd>
+      </div>
+      <div>
+        <dt className="font-label text-[10px] uppercase text-on-surface-variant">Staff role</dt>
+        <dd className="capitalize">{staffRoleLabel(u.staffRole as UserStaffRole | null)}</dd>
+      </div>
+    </dl>
+  );
+}
+
+function StaffDrawerActions({ u }: { u: AdminUserRow }) {
+  return (
+    <div className="space-y-4">
+      <Button variant="secondary" className="w-full font-label uppercase" asChild>
+        <Link href={`/admin/staff/${u.id}`}>Open full profile</Link>
+      </Button>
       <div className="space-y-4 border-t border-border-hairline pt-4">
         <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Internal staff role
@@ -81,11 +90,6 @@ function StaffDrawerContent({ u }: { u: AdminUserRow }) {
           userId={u.id}
           defaultStaffRole={(u.staffRole as UserStaffRole | null) ?? null}
         />
-      </div>
-      <div className="border-t border-border-hairline pt-4">
-        <Button variant="secondary" className="w-full font-label uppercase" asChild>
-          <Link href={`/admin/staff/${u.id}`}>Open full profile</Link>
-        </Button>
       </div>
       <div className="border-t border-border-hairline pt-4">
         <UserSuspendAction userId={u.id} suspendedAt={u.suspendedAt} fullWidthButton />
@@ -97,13 +101,15 @@ function StaffDrawerContent({ u }: { u: AdminUserRow }) {
 type Props = {
   rows: AdminUserRow[];
   totalMatches: number;
+  hasActiveFilters: boolean;
   roleBreakdown?: ReactNode;
 };
 
-export function AdminStaffBoard({ rows, totalMatches, roleBreakdown }: Props) {
+export function AdminStaffBoard({ rows, totalMatches, hasActiveFilters, roleBreakdown }: Props) {
   const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
-  const renderDrawerOverview = useCallback((u: AdminUserRow) => <StaffDrawerContent u={u} />, []);
+  const renderDrawerOverview = useCallback((u: AdminUserRow) => <StaffDrawerOverview u={u} />, []);
+  const renderDrawerActions = useCallback((u: AdminUserRow) => <StaffDrawerActions u={u} />, []);
 
   const renderMobileCard = useCallback(
     (u: AdminUserRow, onOpen: () => void) => (
@@ -135,8 +141,16 @@ export function AdminStaffBoard({ rows, totalMatches, roleBreakdown }: Props) {
         bulkOperations={bulkOperations}
         drawerTitle="Staff member"
         tableAriaLabel="Staff directory"
-        emptyMessage="No staff match this filter."
+        emptyComponent={
+          <FilterEmptyState
+            entity="staff"
+            segment="admin"
+            hasActiveFilters={hasActiveFilters}
+            clearFiltersHref="/admin/staff"
+          />
+        }
         renderDrawerOverview={renderDrawerOverview}
+        renderDrawerActions={renderDrawerActions}
         renderMobileCard={renderMobileCard}
         buildColumns={staffColumns}
         detailHref={(u) => `/admin/staff/${u.id}`}

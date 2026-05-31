@@ -173,6 +173,7 @@ export default async function AdminClientsPage({
           />
         ) : null
       }
+      filtersSelfContained
       view={
         !loadError && rows.length > 0 ? (
           <AdminClientsBoard rows={rows} totalMatches={total} hasActiveFilters={hasFilters} />
