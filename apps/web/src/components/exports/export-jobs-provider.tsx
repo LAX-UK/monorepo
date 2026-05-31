@@ -28,6 +28,10 @@ type ExportJobsContextValue = {
   trayOpen: boolean;
   setTrayOpen: (open: boolean) => void;
   activeCount: number;
+  jobsLoaded: boolean;
+  jobsLoading: boolean;
+  jobsLoadError: string | null;
+  ensureJobsLoaded: () => Promise<void>;
   startExport: (req: CreateExportRequest) => Promise<void>;
   refreshJobs: () => Promise<void>;
   cancelJob: (id: string) => Promise<void>;
@@ -52,20 +56,36 @@ type Props = { children: ReactNode };
 export function ExportJobsProvider({ children }: Props) {
   const [jobs, setJobs] = useState<ExportJobView[]>([]);
   const [trayOpen, setTrayOpen] = useState(false);
+  const [jobsLoaded, setJobsLoaded] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsLoadError, setJobsLoadError] = useState<string | null>(null);
   const pollRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const loadPromiseRef = useRef<Promise<void> | null>(null);
 
   const refreshJobs = useCallback(async () => {
+    setJobsLoading(true);
+    setJobsLoadError(null);
     try {
       const data = await listExportJobs();
       setJobs(data);
+      setJobsLoaded(true);
     } catch {
-      /* ignore background refresh errors */
+      setJobsLoadError("Could not load previous exports. New exports still work.");
+    } finally {
+      setJobsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void refreshJobs();
-  }, [refreshJobs]);
+  const ensureJobsLoaded = useCallback(async () => {
+    if (jobsLoaded) return;
+    if (loadPromiseRef.current) return loadPromiseRef.current;
+
+    const promise = refreshJobs().finally(() => {
+      loadPromiseRef.current = null;
+    });
+    loadPromiseRef.current = promise;
+    return promise;
+  }, [jobsLoaded, refreshJobs]);
 
   const stopPolling = useCallback((id: string) => {
     const handle = pollRef.current.get(id);
@@ -212,12 +232,28 @@ export function ExportJobsProvider({ children }: Props) {
       trayOpen,
       setTrayOpen,
       activeCount,
+      jobsLoaded,
+      jobsLoading,
+      jobsLoadError,
+      ensureJobsLoaded,
       startExport,
       refreshJobs,
       cancelJob,
       downloadJob,
     }),
-    [jobs, trayOpen, activeCount, startExport, refreshJobs, cancelJob, downloadJob],
+    [
+      jobs,
+      trayOpen,
+      activeCount,
+      jobsLoaded,
+      jobsLoading,
+      jobsLoadError,
+      ensureJobsLoaded,
+      startExport,
+      refreshJobs,
+      cancelJob,
+      downloadJob,
+    ],
   );
 
   return <ExportJobsContext.Provider value={value}>{children}</ExportJobsContext.Provider>;

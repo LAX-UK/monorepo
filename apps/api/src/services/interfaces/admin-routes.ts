@@ -103,13 +103,6 @@ export interface IAdminDomainEventQueryService {
     aggregateId?: string;
     includePii: boolean;
   }): Promise<RedactedDomainEventRow[]>;
-  listForExport(input: {
-    includePii: boolean;
-    aggregateType?: string;
-    aggregateId?: string;
-    limit?: number;
-  }): Promise<RedactedDomainEventRow[]>;
-  formatExportCsv(rows: RedactedDomainEventRow[]): string;
 }
 
 export type FinanceIssueSnapshot = {

@@ -1,4 +1,10 @@
-import { userEmailStatuses, userKycStatuses, userRoles, userStaffRoles } from "@auction/types";
+import {
+  paymentStatuses,
+  userEmailStatuses,
+  userKycStatuses,
+  userRoles,
+  userStaffRoles,
+} from "@auction/types";
 import { z } from "zod";
 import { listSubmissionsQuerySchema } from "./item-submission.js";
 import { listLotsQuerySchema } from "./lot.js";
@@ -70,7 +76,7 @@ export const exportClientsFiltersSchema = z.object({
 export type ExportClientsFilters = z.infer<typeof exportClientsFiltersSchema>;
 
 const exportPaymentsFiltersSchema = z.object({
-  status: z.string().optional(),
+  status: z.enum(paymentStatuses).optional(),
   manualReview: z.coerce.boolean().optional(),
 });
 
@@ -125,7 +131,7 @@ export const createExportBodySchema = z
   .object({
     format: exportFormatSchema.default("csv"),
     forceAsync: z.boolean().optional(),
-    idempotencyKey: z.string().trim().max(128).optional(),
+    idempotencyKey: z.never().optional(),
   })
   .and(exportFiltersByEntitySchema);
 
