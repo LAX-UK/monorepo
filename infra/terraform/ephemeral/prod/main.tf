@@ -189,6 +189,7 @@ locals {
         { key = "REQUIRE_EMAIL_VERIFICATION", value = var.require_email_verification, type = "GENERAL", scope = "RUN_TIME" },
         { key = "ENABLE_WHATSAPP_CHANNEL", value = var.enable_whatsapp_channel, type = "GENERAL", scope = "RUN_TIME" },
         { key = "ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_TIME" },
+        { key = "ENABLE_BULL_BOARD", value = "true", type = "GENERAL", scope = "RUN_TIME" },
         { key = "PLATFORM_CATALOG_LEGAL_ENTITY_ID", value = "30000000-0000-4000-9000-000000000001", type = "GENERAL", scope = "RUN_TIME" },
         { key = "STRIPE_SECRET_KEY", value = var.stripe_secret_key, type = "SECRET", scope = "RUN_TIME" },
         { key = "STRIPE_PUBLISHABLE_KEY", value = var.stripe_publishable_key, type = "SECRET", scope = "RUN_TIME" },
