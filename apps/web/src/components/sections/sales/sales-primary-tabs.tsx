@@ -24,7 +24,7 @@ export function SalesPrimaryTabs({ state, hasLiveSales = false }: Props) {
       >
         {tabs.map((t) => {
           const isActive = state.tab === t.id;
-          const href = calendarSalesHrefFromState(state, { tab: t.id });
+          const href = calendarSalesHrefFromState(state, { tab: t.id, page: undefined });
           return (
             <Link
               key={t.id}

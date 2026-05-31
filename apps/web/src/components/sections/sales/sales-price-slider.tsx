@@ -24,12 +24,17 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
   const [hi, setHi] = useState(() => Math.max(initialMin, initialMax));
 
   const applyHref = useMemo(
-    () => calendarSalesHrefFromState(state, { minPrice: lo, maxPrice: hi }),
+    () => calendarSalesHrefFromState(state, { minPrice: lo, maxPrice: hi, page: undefined }),
     [state, lo, hi],
   );
 
   const clearHref = useMemo(
-    () => calendarSalesHrefFromState(state, { minPrice: undefined, maxPrice: undefined }),
+    () =>
+      calendarSalesHrefFromState(state, {
+        minPrice: undefined,
+        maxPrice: undefined,
+        page: undefined,
+      }),
     [state],
   );
 

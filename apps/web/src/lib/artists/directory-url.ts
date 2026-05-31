@@ -13,6 +13,7 @@ export function artistDirectoryWithQuery(
   basePath: string,
   current: Record<string, string | string[] | undefined>,
   patch: Record<string, string | number | null | undefined>,
+  options: { preserveOffset?: boolean } = {},
 ): string {
   const out = new URLSearchParams();
   for (const [k, v] of Object.entries(current)) {
@@ -26,7 +27,9 @@ export function artistDirectoryWithQuery(
     }
     out.set(k, String(v));
   }
-  out.delete("offset");
+  if (!options.preserveOffset) {
+    out.delete("offset");
+  }
   const q = out.toString();
   return q ? `${basePath}?${q}` : basePath;
 }
