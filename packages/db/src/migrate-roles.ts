@@ -111,10 +111,7 @@ export const WORKER_FULL_TABLES = [
   "marketing_click_ids",
 ] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
-export const WORKER_QR_CODE_SCAN_TABLES = [
-  "qr_code_scan",
-  "qr_code_scan_daily",
-] as const;
+export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 
