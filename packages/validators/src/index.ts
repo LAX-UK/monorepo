@@ -37,7 +37,6 @@ export * from "./checkout.js";
 export * from "./xero.js";
 export * from "./admin-email.js";
 export * from "./admin-marketing-events.js";
-export * from "./admin-queues.js";
 export * from "./admin-audit.js";
 export * from "./admin-lot.js";
 export * from "./admin-ops.js";

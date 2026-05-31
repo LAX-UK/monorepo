@@ -16,7 +16,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@auction/queues": "workspace:*",
     "@auction/types": "workspace:*",
     "@date-fns/tz": "^1.5.0",
     "date-fns": "^4.1.0",

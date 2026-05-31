@@ -4,7 +4,7 @@ import {
   adminQueueJobsQuerySchema,
   adminQueueNameParamSchema,
   adminQueueReplayDlqBodySchema,
-} from "@auction/validators";
+} from "@auction/queues";
 import type { Hono } from "hono";
 import type { Container } from "../container.js";
 import {

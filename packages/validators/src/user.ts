@@ -1,4 +1,4 @@
-import { userRoles, userStaffRoles } from "@auction/types";
+import { userEmailStatuses, userKycStatuses, userRoles, userStaffRoles } from "@auction/types";
 import { z } from "zod";
 import { mediaReferenceSchema } from "./media.js";
 import { phoneCountrySchema, phoneInputSchema } from "./mobile.js";
@@ -80,14 +80,101 @@ export const notificationIdUuidParamSchema = z.object({
   notificationId: z.string().uuid(),
 });
 
-export const adminUserListQuerySchema = z.object({
-  q: z.string().max(200).optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(25),
-  offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
-  role: z.enum(userRoles).optional(),
-  staffRole: z.enum(userStaffRoles).optional(),
-  suspended: z.enum(["1"]).optional(),
-});
+const adminUserListTriStateSchema = z.enum(["1", "0"]);
+
+const adminUserListIsoDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+
+export const adminUserListSortEnum = z.enum([
+  "created_desc",
+  "created_asc",
+  "name_asc",
+  "name_desc",
+  "last_active_desc",
+  "kyc_status",
+]);
+
+export const adminUserListStatusEnum = z.enum(["active", "suspended"]);
+
+export const adminUserListPersonaFilterEnum = z.enum([
+  "individual",
+  "organisation",
+  "none",
+] as const);
+
+const kycStatusEnum = z.enum(userKycStatuses);
+
+export const adminUserListQuerySchema = z
+  .object({
+    q: z.string().trim().max(200).optional(),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(25),
+    offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
+    role: z.enum(userRoles).optional(),
+    staffRole: z.enum(userStaffRoles).optional(),
+    /** @deprecated Prefer `status=suspended`. Kept for bookmarked URLs. */
+    suspended: z.enum(["1"]).optional(),
+    status: adminUserListStatusEnum.optional(),
+    emailVerified: adminUserListTriStateSchema.optional(),
+    emailStatus: z.enum(userEmailStatuses).optional(),
+    kycStatus: kycStatusEnum.optional(),
+    /** Comma-separated KYC statuses; takes precedence over `kycStatus` when both sent. */
+    kycStatuses: z
+      .string()
+      .trim()
+      .max(80)
+      .optional()
+      .transform((raw) => {
+        if (!raw) return undefined;
+        const tokens = raw
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+        const out: z.infer<typeof kycStatusEnum>[] = [];
+        for (const t of tokens) {
+          const p = kycStatusEnum.safeParse(t);
+          if (p.success) out.push(p.data);
+        }
+        return out.length ? out : undefined;
+      }),
+    persona: adminUserListPersonaFilterEnum.optional(),
+    twoFactor: adminUserListTriStateSchema.optional(),
+    deletionRequested: z.enum(["1"]).optional(),
+    hasMobile: adminUserListTriStateSchema.optional(),
+    createdFrom: adminUserListIsoDateSchema.optional(),
+    createdTo: adminUserListIsoDateSchema.optional(),
+    kycVerifiedFrom: adminUserListIsoDateSchema.optional(),
+    kycVerifiedTo: adminUserListIsoDateSchema.optional(),
+    lastActiveFrom: adminUserListIsoDateSchema.optional(),
+    lastActiveTo: adminUserListIsoDateSchema.optional(),
+    sort: adminUserListSortEnum.optional().default("created_desc"),
+  })
+  .superRefine((data, ctx) => {
+    const ranges: [string | undefined, string | undefined, string][] = [
+      [data.createdFrom, data.createdTo, "created"],
+      [data.kycVerifiedFrom, data.kycVerifiedTo, "kycVerified"],
+      [data.lastActiveFrom, data.lastActiveTo, "lastActive"],
+    ];
+    for (const [from, to, label] of ranges) {
+      if (from && to && from > to) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${label}From must be on or before ${label}To`,
+          path: [`${label}From`],
+        });
+      }
+    }
+    if (data.suspended === "1" && data.status === "active") {
+      ctx.addIssue({
+        code: "custom",
+        message: "status=active conflicts with suspended=1",
+        path: ["status"],
+      });
+    }
+  });
+
+export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
 
 export const adminSuspendBodySchema = z.object({
   reason: z.string().max(500).optional(),

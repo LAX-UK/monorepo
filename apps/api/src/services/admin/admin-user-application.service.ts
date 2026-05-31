@@ -3,6 +3,7 @@ import type { AdminUserService } from "../admin-user.service.js";
 import type { IAdminUserApplicationService } from "../interfaces/admin-routes.js";
 import type {
   AdminActivityEntry,
+  AdminKycSession,
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
@@ -75,6 +76,10 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
 
   activityFor(userId: string, limit: number): Promise<AdminActivityEntry[]> {
     return this.adminUsers.activityFor(userId, limit);
+  }
+
+  kycSessionsFor(userId: string, limit?: number): Promise<AdminKycSession[]> {
+    return this.adminUsers.kycSessionsFor(userId, limit);
   }
 
   async bulkSuspendOrUnsuspend(input: {
