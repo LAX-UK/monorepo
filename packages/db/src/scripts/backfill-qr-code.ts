@@ -3,7 +3,7 @@
  *
  *   DATABASE_URL=... pnpm --filter @auction/db db:backfill-qr-code
  */
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { createDb } from "../client.js";
 import { lot } from "../schema/lots.js";
 import { qrCode } from "../schema/qr-code.js";
@@ -31,8 +31,8 @@ async function main() {
   }
 
   const [sales, lots] = await Promise.all([
-    db.select({ id: sale.id }).from(sale),
-    db.select({ id: lot.id }).from(lot),
+    db.select({ id: sale.id }).from(sale).orderBy(asc(sale.id)),
+    db.select({ id: lot.id }).from(lot).orderBy(asc(lot.id)),
   ]);
 
   let sequence = 1n;
