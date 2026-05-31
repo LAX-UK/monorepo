@@ -53,7 +53,12 @@ export class RegistrationService implements IRegistrationService {
       firstName: input.firstName,
       lastName: input.lastName,
       persona: input.persona,
-      ...(input.mobile !== undefined ? { mobile: input.mobile } : {}),
+      ...(input.mobile !== undefined
+        ? {
+            mobile: input.mobile,
+            ...(input.mobileCountry !== undefined ? { mobileCountry: input.mobileCountry } : {}),
+          }
+        : {}),
     });
     if (!profile.ok) {
       console.error("[registration] profile columns not persisted after signup", {

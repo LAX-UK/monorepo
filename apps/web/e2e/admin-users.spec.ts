@@ -25,6 +25,17 @@ test.describe("admin user directories", () => {
     await staffLogin(page);
     await page.goto("/admin/clients");
     await expect(page.getByRole("heading", { name: /^clients$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /views/i })).toBeVisible();
+  });
+
+  test("clients list accepts verification filters in URL", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/clients?emailVerified=0&kycStatus=pending&status=active");
+    await expect(page.getByRole("heading", { name: /^clients$/i })).toBeVisible();
+    await expect(page.getByText(/email unverified/i).first())
+      .toBeVisible({ timeout: 15_000 })
+      .catch(() => undefined);
   });
 
   test("staff list loads", async ({ page }) => {

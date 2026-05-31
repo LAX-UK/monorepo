@@ -3,6 +3,7 @@ import { SignUpForm } from "@/components/auth/sign-up-form";
 import { OrgModuleComingSoon } from "@/components/organisations/org-module-coming-soon";
 import { redirectIfAuthenticated } from "@/lib/auth/guards.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import { resolvePhoneDefaultCountry } from "@/lib/phone/resolve-phone-default-country";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -25,6 +26,7 @@ export default async function RegisterPage({
   const inviteToken = typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : undefined;
   const next = typeof sp.next === "string" ? sp.next : undefined;
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  const phoneDefaultCountry = await resolvePhoneDefaultCountry();
   if (inviteToken != null && !orgModuleEnabled) {
     return (
       <main id="main-content">
@@ -47,6 +49,7 @@ export default async function RegisterPage({
           <SignUpForm
             {...(inviteToken != null ? { inviteToken } : {})}
             orgModuleEnabled={orgModuleEnabled}
+            phoneDefaultCountry={phoneDefaultCountry}
           />
         </Suspense>
       </AuthLayout>

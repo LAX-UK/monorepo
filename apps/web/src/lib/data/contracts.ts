@@ -111,6 +111,12 @@ export type SessionUser = {
   staffRole?: UserStaffRole | null;
   /** Profile / OAuth avatar when present. */
   image?: string | null;
+  /** E.164 contact phone from GET /users/me. */
+  mobile?: string | null;
+  /** ISO 3166-1 alpha-2 for formatting `mobile`. */
+  mobileCountry?: string | null;
+  /** Formatted display string from API. */
+  mobileDisplay?: string | null;
   /** When true (if API exposes it), bidding UI is blocked client-side. */
   suspended?: boolean;
   emailVerified?: boolean;

@@ -227,6 +227,8 @@
   /* Stacking — site chrome vs overlays vs toasts */
   --z-site-chrome: 50;
   --z-overlay: 60;
+  /** Portaled selects, popovers, and menus above sheets/dialogs (--z-overlay). */
+  --z-floating: 70;
   --z-toast: 70;
 
   /* Fixed bottom chrome heights */

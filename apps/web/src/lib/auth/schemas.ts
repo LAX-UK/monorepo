@@ -16,7 +16,8 @@ export const signUpFormSchema = registerBodySchema.and(
   }),
 );
 
-export type SignUpFormValues = z.infer<typeof signUpFormSchema>;
+/** Form model (includes `phone` before server normalizes to E.164 `mobile`). */
+export type SignUpFormValues = z.input<typeof signUpFormSchema>;
 
 export const forgotPasswordFormSchema = z.object({
   email: z.string().email("Enter a valid email address"),
