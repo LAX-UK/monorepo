@@ -38,6 +38,7 @@ export * from "./oauth.js";
 export * from "./webhook-events.js";
 export * from "./marketing-event-outbox.js";
 export * from "./marketing-click-ids.js";
+export * from "./qr-code.js";
 export * from "./processed-stripe-events.js";
 export * from "./processed-webhook-events.js";
 export * from "./domain-events.js";

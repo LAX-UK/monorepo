@@ -46,6 +46,7 @@ import type { ILegalEntityRepository } from "./interfaces/legal-entity-repositor
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
+import type { QrCodeService } from "./qr-code.service.js";
 
 /** Optional follow state for public sale detail responses. */
 export type SaleFollowReader = {
@@ -70,6 +71,7 @@ export type SaleServiceOptions = {
   lotLifecycleRecording?: LotLifecycleRecording | null;
   legalEntityRepository?: ILegalEntityRepository | null;
   enforceIndividualConnectOnPublish?: boolean;
+  qrCodeService?: QrCodeService | null;
 };
 
 export class SaleService {
@@ -86,6 +88,7 @@ export class SaleService {
   private readonly lotLifecycleRecording: LotLifecycleRecording | null;
   private readonly legalEntityRepository: ILegalEntityRepository | null;
   private readonly enforceIndividualConnectOnPublish: boolean;
+  private readonly qrCodeService: QrCodeService | null;
 
   constructor(opts: SaleServiceOptions) {
     this.saleRepo = opts.saleRepo;
@@ -101,6 +104,7 @@ export class SaleService {
     this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
     this.legalEntityRepository = opts.legalEntityRepository ?? null;
     this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
+    this.qrCodeService = opts.qrCodeService ?? null;
   }
 
   private async recordLotLifecycle(fn: (tx: Database) => Promise<void>): Promise<void> {
@@ -136,6 +140,11 @@ export class SaleService {
       );
     }
     const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId });
+    await this.qrCodeService?.getOrCreateDefault({
+      entityType: "sale",
+      entityId: sale.id,
+      actorUserId: adminId,
+    });
     if (input.lots?.length) {
       for (const row of input.lots) {
         const lockMsg = englishOnlyAdminLotAuctionTypeViolation({
@@ -151,7 +160,7 @@ export class SaleService {
           throw new LotError(resolved.message, 400);
         }
         if (this.db && this.lotLifecycleRecording) {
-          await this.db.transaction(async (tx) => {
+          const created = await this.db.transaction(async (tx) => {
             const lotRepo = new DrizzleLotRepository(tx);
             const created = await lotRepo.create({
               ...lotFields,
@@ -164,6 +173,12 @@ export class SaleService {
               lot: created,
               source: "sale_create",
             });
+            return created;
+          });
+          await this.qrCodeService?.getOrCreateDefault({
+            entityType: "lot",
+            entityId: created.id,
+            actorUserId: adminId,
           });
         } else {
           const created = await this.lotRepo.create({
@@ -178,6 +193,11 @@ export class SaleService {
               lot: created,
               source: "sale_create",
             });
+          });
+          await this.qrCodeService?.getOrCreateDefault({
+            entityType: "lot",
+            entityId: created.id,
+            actorUserId: adminId,
           });
         }
       }
