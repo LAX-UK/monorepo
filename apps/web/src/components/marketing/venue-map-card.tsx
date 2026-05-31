@@ -61,8 +61,9 @@ export function VenueMapCard({
       ) : null}
 
       {embedUrl && !mapVisible ? (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={showMap}
           className="relative flex w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-high/60 px-4 py-10 text-center transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           aria-expanded={false}
@@ -73,7 +74,7 @@ export function VenueMapCard({
           <span className="mt-1 max-w-xs font-body text-xs text-on-surface-variant">
             Loads Google Maps when you choose to preview the venue
           </span>
-        </button>
+        </Button>
       ) : null}
 
       {embedUrl && mapVisible ? (

@@ -7,7 +7,7 @@ import {
 import { MediaImage } from "@/components/ui/media-image";
 import { buildArtistSummaryItems } from "@/lib/admin/build-artist-summary-items";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
-import type { ArtistProfile } from "@auction/types";
+import { type ArtistProfile, getCreatorKindConfig } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
@@ -21,6 +21,12 @@ type Props = {
 export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }: Props) {
   const summaryItems = buildArtistSummaryItems(artistId, artist, lotCount, duplicateCount);
   const portraitSrc = resolveMediaSrc(artist.portraitUrl);
+
+  const kindConfig = getCreatorKindConfig(artist.kind);
+  const categories = artist.categories ?? [];
+  const attributeEntries = kindConfig.attributes
+    .map((field) => ({ label: field.label, value: artist.attributes?.[field.key]?.trim() ?? "" }))
+    .filter((entry) => entry.value.length > 0);
 
   const mergedBanner =
     artist.status === "merged_into" && artist.mergedIntoArtistId ? (
@@ -104,6 +110,66 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
                 alt={`${artist.displayName} portrait`}
                 className="aspect-square w-full max-w-[8rem] rounded-lg object-cover"
               />
+            ) : null}
+          </div>
+        </Surface>
+      </CatalogDetailSection>
+
+      <CatalogDetailSection title="Classification">
+        <Surface variant="card" padding="md">
+          <div className="space-y-4">
+            <div className="grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
+              <p>
+                <span className="font-medium text-on-surface">Kind</span>
+                <br />
+                {kindConfig.label}
+              </p>
+              {artist.countryCode?.trim() ? (
+                <p>
+                  <span className="font-medium text-on-surface">Country</span>
+                  <br />
+                  {artist.countryCode.toUpperCase()}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                Departments
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {categories.length > 0 ? (
+                  categories.map((c) => (
+                    <span
+                      key={c.id}
+                      className="rounded-full border border-outline-variant/50 bg-surface-container-low/40 px-3 py-1 font-body text-xs text-on-surface"
+                    >
+                      {c.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="font-body text-sm text-on-surface-variant">
+                    No departments assigned.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {attributeEntries.length > 0 ? (
+              <div>
+                <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                  {kindConfig.label} attributes
+                </span>
+                <div className="mt-2 grid gap-3 font-body text-sm text-on-surface-variant sm:grid-cols-2">
+                  {attributeEntries.map((entry) => (
+                    <p key={entry.label}>
+                      <span className="font-medium text-on-surface">{entry.label}</span>
+                      <br />
+                      {entry.value}
+                    </p>
+                  ))}
+                </div>
+              </div>
             ) : null}
           </div>
         </Surface>

@@ -101,6 +101,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
   const decadeIsLocked = Boolean(preset.filter.decade);
   const hasUpcomingRaw = firstString(sp.hasUpcoming)?.trim();
   const hasUpcoming = hasUpcomingRaw === "true" || hasUpcomingRaw === "1";
+  const categorySlug = firstString(sp.category)?.trim();
   const sortRaw = firstString(sp.sort)?.trim();
   const sort: "name_asc" | "popular" | "recent" =
     sortRaw === "popular" || sortRaw === "recent" ? sortRaw : "name_asc";
@@ -132,10 +133,12 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
     ...(preset.filter.letter ? { letter: preset.filter.letter } : {}),
     ...(nationality ? { nationality } : {}),
     ...(decade ? { decade } : {}),
+    ...(categorySlug ? { categorySlug } : {}),
     ...(hasUpcoming ? { hasUpcoming: true } : {}),
   };
 
   const { rows, total, facets } = await fetchPublicArtistBrowse(browseParams);
+  const topCategories = facets.topCategories ?? [];
 
   // Carry params survive across slice navigation. We never carry `decade` or
   // `nationality` as query strings — when a user picks either we send them to
@@ -144,6 +147,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
     q: q ?? null,
     sort: sort === "name_asc" ? null : sort,
     hasUpcoming: hasUpcoming ? "true" : null,
+    category: categorySlug ?? null,
     view: layoutView,
   };
 
@@ -225,6 +229,35 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
         },
       ],
     },
+    ...(topCategories.length > 0 || categorySlug
+      ? [
+          {
+            id: "department",
+            title: "Department",
+            links: [
+              {
+                label: "Any department",
+                href: artistDirectoryWithQuery(preset.canonicalPath, sp, {
+                  category: null,
+                  offset: null,
+                  view: layoutView,
+                }),
+                active: !categorySlug,
+              },
+              ...topCategories.map((c) => ({
+                label: c.name,
+                href: artistDirectoryWithQuery(preset.canonicalPath, sp, {
+                  category: c.slug,
+                  offset: null,
+                  view: layoutView,
+                }),
+                count: c.count,
+                active: categorySlug === c.slug,
+              })),
+            ],
+          },
+        ]
+      : []),
     ...(facets.topDecades.length > 0 || decadeIsLocked
       ? [
           {
@@ -319,6 +352,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
     Boolean(q) ||
     Boolean(nationalityFromQuery) ||
     Boolean(decadeFromQuery) ||
+    Boolean(categorySlug) ||
     hasUpcoming ||
     Boolean(sortRaw && sortRaw !== "name_asc");
 
@@ -370,6 +404,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
     (q ? 1 : 0) +
     (nationalityFromQuery && !nationalityIsLocked ? 1 : 0) +
     (decadeFromQuery && !decadeIsLocked ? 1 : 0) +
+    (categorySlug ? 1 : 0) +
     (hasUpcoming ? 1 : 0) +
     (sort !== "name_asc" ? 1 : 0);
 

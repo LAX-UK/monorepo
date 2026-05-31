@@ -1,10 +1,19 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
-import { artistAlias, artistProfile, artistWatchlist, lot, user } from "@auction/db/schema";
+import {
+  artistAlias,
+  artistCategories,
+  artistProfile,
+  artistWatchlist,
+  category,
+  lot,
+  user,
+} from "@auction/db/schema";
 import type {
   AdminArtistListResult,
   AdminArtistListRow,
   AdminArtistStats,
+  ArtistCategoryRef,
   ArtistDeleteGuardCounts,
   ArtistKind,
   ArtistProfile,
@@ -13,10 +22,15 @@ import type {
   PublicArtistDirectoryResult,
   PublicArtistDirectoryRow,
 } from "@auction/types";
-import type { adminCreateArtistBodySchema, adminUpdateArtistBodySchema } from "@auction/validators";
+import {
+  type adminCreateArtistBodySchema,
+  type adminUpdateArtistBodySchema,
+  parseCreatorAttributes,
+} from "@auction/validators";
 import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { AdminArtistListOptions } from "../admin/admin-route-dtos.js";
+import { replaceArtistCategoriesInTx } from "../services/artist-registry.service.js";
 import type { DbTransaction } from "../services/interfaces/artist-delete.js";
 
 export type CreateArtistInput = z.infer<typeof adminCreateArtistBodySchema> & {
@@ -40,10 +54,14 @@ function mapArtist(row: typeof artistProfile.$inferSelect): ArtistProfile {
     statement: row.statement,
     nationality: row.nationality,
     location: row.location,
+    countryCode: row.countryCode ?? null,
     birthYear: row.birthYear,
     deathYear: row.deathYear,
+    foundedYear: row.foundedYear ?? null,
+    dissolvedYear: row.dissolvedYear ?? null,
     websiteUrl: row.websiteUrl,
     socialLinks: row.socialLinks ?? {},
+    attributes: row.attributes ?? {},
     featured: row.featured,
     verified: row.verified,
     archived: row.archived,
@@ -93,6 +111,14 @@ function buildAdminListFilters(options: AdminArtistListOptions) {
   if (options.status) filters.push(eq(artistProfile.status, options.status));
   if (options.ownerUserId?.trim()) {
     filters.push(eq(artistProfile.ownerUserId, options.ownerUserId.trim()));
+  }
+  if (options.country?.trim()) {
+    filters.push(eq(artistProfile.countryCode, options.country.trim().toUpperCase()));
+  }
+  if (options.categoryId) {
+    filters.push(
+      sql`exists (select 1 from ${artistCategories} where ${artistCategories.artistProfileId} = ${artistProfile.id} and ${artistCategories.categoryId} = ${options.categoryId})`,
+    );
   }
   if (options.featured === true) filters.push(eq(artistProfile.featured, true));
   if (options.verified === true) filters.push(eq(artistProfile.verified, true));
@@ -154,6 +180,43 @@ function orderByClause(sort: AdminArtistListOptions["sort"]) {
 export class DrizzleArtistProfileRepository {
   constructor(private readonly db: Database) {}
 
+  /** Ordered category (department) refs for one artist. */
+  private async loadCategories(artistProfileId: string): Promise<ArtistCategoryRef[]> {
+    const rows = await this.db
+      .select({ id: category.id, name: category.name, slug: category.slug })
+      .from(artistCategories)
+      .innerJoin(category, eq(category.id, artistCategories.categoryId))
+      .where(eq(artistCategories.artistProfileId, artistProfileId))
+      .orderBy(asc(artistCategories.sortOrder), asc(category.name));
+    return rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug }));
+  }
+
+  /** Batch category loader for list views (avoids N+1). */
+  private async loadCategoriesForArtists(
+    artistProfileIds: string[],
+  ): Promise<Map<string, ArtistCategoryRef[]>> {
+    const map = new Map<string, ArtistCategoryRef[]>();
+    if (artistProfileIds.length === 0) return map;
+    const rows = await this.db
+      .select({
+        artistProfileId: artistCategories.artistProfileId,
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        sortOrder: artistCategories.sortOrder,
+      })
+      .from(artistCategories)
+      .innerJoin(category, eq(category.id, artistCategories.categoryId))
+      .where(inArray(artistCategories.artistProfileId, artistProfileIds))
+      .orderBy(asc(artistCategories.sortOrder), asc(category.name));
+    for (const row of rows) {
+      const list = map.get(row.artistProfileId) ?? [];
+      list.push({ id: row.id, name: row.name, slug: row.slug });
+      map.set(row.artistProfileId, list);
+    }
+    return map;
+  }
+
   async list(
     options: {
       includeArchived?: boolean;
@@ -209,16 +272,19 @@ export class DrizzleArtistProfileRepository {
       .limit(limit)
       .offset(offset);
 
+    const categoriesById = await this.loadCategoriesForArtists(rows.map((r) => r.ap.id));
+
     return {
       total,
-      rows: rows.map((r) =>
-        mapAdminListRow(r.ap, {
+      rows: rows.map((r) => ({
+        ...mapAdminListRow(r.ap, {
           lotCount: Number(r.lotCount ?? 0),
           aliasCount: Number(r.aliasCount ?? 0),
           ownerDisplayName: r.ownerDisplayName ?? null,
           ownerImage: r.ownerImage ?? null,
         }),
-      ),
+        categories: categoriesById.get(r.ap.id) ?? [],
+      })),
     };
   }
 
@@ -254,7 +320,8 @@ export class DrizzleArtistProfileRepository {
       .from(artistProfile)
       .where(eq(artistProfile.id, id))
       .limit(1);
-    return row ? mapArtist(row) : null;
+    if (!row) return null;
+    return { ...mapArtist(row), categories: await this.loadCategories(id) };
   }
 
   /** Public marketing directory: approved, not archived, server-paged.
@@ -273,6 +340,8 @@ export class DrizzleArtistProfileRepository {
     living?: boolean;
     historical?: boolean;
     nationality?: string;
+    country?: string;
+    categorySlug?: string;
     featuredOnly?: boolean;
     featuredFirst?: boolean;
     decade?: string;
@@ -298,6 +367,14 @@ export class DrizzleArtistProfileRepository {
     if (options.historical === true) refinedFilters.push(isNotNull(artistProfile.deathYear));
     if (options.nationality?.trim()) {
       refinedFilters.push(ilike(artistProfile.nationality, `%${options.nationality.trim()}%`));
+    }
+    if (options.country?.trim()) {
+      refinedFilters.push(eq(artistProfile.countryCode, options.country.trim().toUpperCase()));
+    }
+    if (options.categorySlug?.trim()) {
+      refinedFilters.push(
+        sql`exists (select 1 from ${artistCategories} inner join ${category} on ${category.id} = ${artistCategories.categoryId} where ${artistCategories.artistProfileId} = ${artistProfile.id} and ${category.slug} = ${options.categorySlug.trim()})`,
+      );
     }
     const decadeFilter = decadeWhereClause(options.decade);
     if (decadeFilter) refinedFilters.push(decadeFilter);
@@ -363,14 +440,43 @@ export class DrizzleArtistProfileRepository {
         featured: sql<number>`count(*) filter (where ${artistProfile.featured})::int`,
         living: sql<number>`count(*) filter (where ${artistProfile.deathYear} is null)::int`,
         historical: sql<number>`count(*) filter (where ${artistProfile.deathYear} is not null)::int`,
-        kindArtist: sql<number>`count(*) filter (where ${artistProfile.kind} = 'artist')::int`,
-        kindMaker: sql<number>`count(*) filter (where ${artistProfile.kind} = 'maker')::int`,
-        kindBrand: sql<number>`count(*) filter (where ${artistProfile.kind} = 'brand')::int`,
-        kindMarque: sql<number>`count(*) filter (where ${artistProfile.kind} = 'marque')::int`,
         hasUpcoming: sql<number>`count(*) filter (where exists (select 1 from ${lot} where ${lot.artistId} = ${artistProfile.id} and ${lot.status} in ('active','scheduled')))::int`,
       })
       .from(artistProfile)
       .where(baseWhere);
+
+    // Kind counts grouped dynamically so new kinds appear without code changes (OCP).
+    const kindRows = await this.db
+      .select({ kind: artistProfile.kind, n: sql<number>`count(*)::int` })
+      .from(artistProfile)
+      .where(baseWhere)
+      .groupBy(artistProfile.kind);
+    const byKind: Partial<Record<ArtistKind, number>> = {};
+    for (const row of kindRows) {
+      byKind[row.kind as ArtistKind] = Number(row.n ?? 0);
+    }
+
+    // Top collecting categories (departments) for the directory side rail.
+    const categoryFacetRows = await this.db
+      .select({
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(artistCategories)
+      .innerJoin(category, eq(category.id, artistCategories.categoryId))
+      .innerJoin(artistProfile, eq(artistProfile.id, artistCategories.artistProfileId))
+      .where(and(baseWhere, eq(category.archived, false)))
+      .groupBy(category.id, category.name, category.slug)
+      .orderBy(sql`count(*) desc`)
+      .limit(12);
+    const topCategories = categoryFacetRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      count: Number(r.n ?? 0),
+    }));
 
     const letterBucketExpr = sql<string>`case
       when lower(left(trim(${artistProfile.displayName}), 1)) ~ '^[a-z]' then lower(left(trim(${artistProfile.displayName}), 1))
@@ -443,14 +549,10 @@ export class DrizzleArtistProfileRepository {
       featured: Number(agg?.featured ?? 0),
       living: Number(agg?.living ?? 0),
       historical: Number(agg?.historical ?? 0),
-      byKind: {
-        artist: Number(agg?.kindArtist ?? 0),
-        maker: Number(agg?.kindMaker ?? 0),
-        brand: Number(agg?.kindBrand ?? 0),
-        marque: Number(agg?.kindMarque ?? 0),
-      },
+      byKind,
       hasUpcoming: Number(agg?.hasUpcoming ?? 0),
       topNationalities,
+      topCategories,
       topDecades,
       letters,
     };
@@ -474,16 +576,18 @@ export class DrizzleArtistProfileRepository {
       .from(artistProfile)
       .where(eq(artistProfile.slug, slug))
       .limit(1);
-    return row ? mapArtist(row) : null;
+    if (!row) return null;
+    return { ...mapArtist(row), categories: await this.loadCategories(row.id) };
   }
 
   async create(input: CreateArtistInput): Promise<ArtistProfile> {
+    const kind = input.kind ?? "artist";
     const [row] = await this.db
       .insert(artistProfile)
       .values({
         displayName: input.displayName,
         slug: input.slug,
-        kind: input.kind ?? "artist",
+        kind,
         status: input.status ?? "approved",
         portraitUrl: input.portraitUrl ?? null,
         heroImageUrl: input.heroImageUrl ?? null,
@@ -492,8 +596,12 @@ export class DrizzleArtistProfileRepository {
         statement: input.statement ?? null,
         nationality: input.nationality ?? null,
         location: input.location ?? null,
+        countryCode: input.countryCode ?? null,
         birthYear: input.birthYear ?? null,
         deathYear: input.deathYear ?? null,
+        foundedYear: input.foundedYear ?? null,
+        dissolvedYear: input.dissolvedYear ?? null,
+        attributes: parseCreatorAttributes(kind, input.attributes),
         websiteUrl: input.websiteUrl ?? null,
         ownerUserId: input.ownerUserId ?? null,
         createdByUserId: input.createdByUserId ?? null,
@@ -503,10 +611,29 @@ export class DrizzleArtistProfileRepository {
       })
       .returning();
     if (!row) throw new Error("Artist create failed");
-    return mapArtist(row);
+    if (input.categoryIds && input.categoryIds.length > 0) {
+      await replaceArtistCategoriesInTx(this.db, row.id, input.categoryIds);
+    }
+    return { ...mapArtist(row), categories: await this.loadCategories(row.id) };
   }
 
   async update(id: string, input: UpdateArtistInput): Promise<ArtistProfile | null> {
+    // Attributes are validated/cleaned against the *effective* kind (the patch
+    // kind, or the current row's kind when the patch leaves kind untouched).
+    let attributesSet: Record<string, string> | undefined;
+    if (input.attributes !== undefined) {
+      let effectiveKind = input.kind;
+      if (!effectiveKind) {
+        const [current] = await this.db
+          .select({ kind: artistProfile.kind })
+          .from(artistProfile)
+          .where(eq(artistProfile.id, id))
+          .limit(1);
+        effectiveKind = (current?.kind as ArtistKind | undefined) ?? "artist";
+      }
+      attributesSet = parseCreatorAttributes(effectiveKind, input.attributes);
+    }
+
     const [row] = await this.db
       .update(artistProfile)
       .set({
@@ -521,8 +648,14 @@ export class DrizzleArtistProfileRepository {
         ...(input.statement !== undefined ? { statement: input.statement ?? null } : {}),
         ...(input.nationality !== undefined ? { nationality: input.nationality ?? null } : {}),
         ...(input.location !== undefined ? { location: input.location ?? null } : {}),
+        ...(input.countryCode !== undefined ? { countryCode: input.countryCode ?? null } : {}),
         ...(input.birthYear !== undefined ? { birthYear: input.birthYear ?? null } : {}),
         ...(input.deathYear !== undefined ? { deathYear: input.deathYear ?? null } : {}),
+        ...(input.foundedYear !== undefined ? { foundedYear: input.foundedYear ?? null } : {}),
+        ...(input.dissolvedYear !== undefined
+          ? { dissolvedYear: input.dissolvedYear ?? null }
+          : {}),
+        ...(attributesSet !== undefined ? { attributes: attributesSet } : {}),
         ...(input.websiteUrl !== undefined ? { websiteUrl: input.websiteUrl ?? null } : {}),
         ...(input.ownerUserId !== undefined ? { ownerUserId: input.ownerUserId ?? null } : {}),
         ...(input.featured !== undefined ? { featured: input.featured } : {}),
@@ -532,7 +665,11 @@ export class DrizzleArtistProfileRepository {
       })
       .where(eq(artistProfile.id, id))
       .returning();
-    return row ? mapArtist(row) : null;
+    if (!row) return null;
+    if (input.categoryIds !== undefined) {
+      await replaceArtistCategoriesInTx(this.db, id, input.categoryIds);
+    }
+    return { ...mapArtist(row), categories: await this.loadCategories(id) };
   }
 
   /** Count of `lot` rows currently attached to a given artist via FK. Used by
