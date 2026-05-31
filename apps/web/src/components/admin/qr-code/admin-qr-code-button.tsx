@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@auction/ui/components/dialog";
+import { Skeleton } from "@auction/ui/components/skeleton";
 import { Download, Printer, QrCode, RotateCcw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useId, useState } from "react";
@@ -38,22 +39,30 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
   const [confirmRegenerateOpen, setConfirmRegenerateOpen] = useState(false);
   const [item, setItem] = useState<QrCodeItem | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [renderingPng, setRenderingPng] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const qrId = useId().replace(/:/g, "");
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const result = await adminLoadQrCodeDialogResultAction(entityType, entityId);
       if (!result.ok) {
+        setLoadError(result.error);
         notify.error(result.error);
         return;
       }
       setItem(result.data?.item ?? null);
       setAnalytics(result.data?.analytics ?? null);
+      setLoadError(null);
     } catch (error) {
-      notify.error(error instanceof Error ? error.message : "Could not load QR code");
+      const message = error instanceof Error ? error.message : "Could not load QR code";
+      setLoadError(message);
+      notify.error(message);
     } finally {
       setLoading(false);
     }
@@ -81,7 +90,11 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
 
   const downloadPng = async () => {
     const svg = document.getElementById(qrId);
-    if (!svg) return;
+    if (!svg) {
+      notify.error("QR code is still rendering. Please try again.");
+      return;
+    }
+    setRenderingPng(true);
     const blob = new Blob([serializeSvg(svg)], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     try {
@@ -106,16 +119,23 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
       notify.error(error instanceof Error ? error.message : "Could not render QR PNG");
     } finally {
       URL.revokeObjectURL(url);
+      setRenderingPng(false);
     }
   };
 
   const print = () => {
     if (!item) return;
+    setPrinting(true);
     const svgElement = document.getElementById(qrId);
     const svg = svgElement ? serializeSvg(svgElement) : null;
-    if (!svg) return;
+    if (!svg) {
+      setPrinting(false);
+      notify.error("QR code is still rendering. Please try again.");
+      return;
+    }
     const win = openPrintWindow();
     if (!win) {
+      setPrinting(false);
       notify.error("Could not open print window. Please allow pop-ups and try again.");
       return;
     }
@@ -126,7 +146,10 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
     </style></head><body><h1>Scan to view</h1><p>${escapeHtml(title)}</p><div class="qr">${svg}</div><p>${escapeHtml(item.shortUrl)}</p></body></html>`);
     win.document.close();
     win.focus();
-    setTimeout(() => win.print(), 0);
+    setTimeout(() => {
+      win.print();
+      setPrinting(false);
+    }, 0);
   };
 
   const regenerate = async () => {
@@ -149,6 +172,8 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
     }
   };
 
+  const actionsDisabled = loading || renderingPng || printing || regenerating;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -164,10 +189,25 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
             Dynamic QR link for printed gallery and campaign material.
           </DialogDescription>
         </DialogHeader>
-        {loading ? <p className="text-sm text-on-surface-variant">Loading QR code...</p> : null}
+        {loading && !item ? <QrCodeDialogSkeleton /> : null}
+        {!loading && loadError && !item ? (
+          <div className="rounded-lg border border-error/30 bg-error-container/20 p-4 text-sm">
+            <p className="font-medium text-on-surface">Could not load QR code</p>
+            <p className="mt-1 text-on-surface-variant">{loadError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => void load()}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : null}
         {item ? (
           <div className="space-y-5">
-            <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-5">
+            <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-5 dark:bg-surface-container-highest">
               <QRCodeSVG id={qrId} value={item.shortUrl} size={224} level="M" includeMargin />
             </div>
             <div className="space-y-1 text-sm">
@@ -178,39 +218,58 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" onClick={() => void copy()}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void copy()}
+                disabled={actionsDisabled}
+              >
                 Copy link
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={downloadSvg}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={downloadSvg}
+                disabled={actionsDisabled}
+              >
                 <Download className="size-4" aria-hidden />
                 SVG
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => void downloadPng()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void downloadPng()}
+                disabled={actionsDisabled}
+                aria-busy={renderingPng || undefined}
+              >
                 <Download className="size-4" aria-hidden />
-                PNG
+                {renderingPng ? "Rendering..." : "PNG"}
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={print}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={print}
+                disabled={actionsDisabled}
+                aria-busy={printing || undefined}
+              >
                 <Printer className="size-4" aria-hidden />
-                Print
+                {printing ? "Opening print..." : "Print"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setConfirmRegenerateOpen(true)}
-                disabled={regenerating}
+                disabled={actionsDisabled}
               >
                 <RotateCcw className="size-4" aria-hidden />
                 {regenerating ? "Regenerating..." : "Regenerate"}
               </Button>
             </div>
-            <div className="rounded-lg bg-surface-container-high p-3 text-sm">
-              <p className="font-medium text-on-surface">Last 30 days</p>
-              <p className="text-on-surface-variant">
-                {analytics?.totalScans ?? 0} scans
-                {analytics?.byDevice[0] ? `, top device: ${analytics.byDevice[0].deviceType}` : ""}
-              </p>
-            </div>
+            <QrAnalyticsSummary analytics={analytics} />
           </div>
         ) : null}
       </DialogContent>
@@ -220,7 +279,7 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
             <DialogTitle>Regenerate QR code?</DialogTitle>
             <DialogDescription>
               This creates a new QR link and disables the current one. Existing printed QR codes for
-              this {entityType} will stop working.
+              this {entityType} will return inactive, while analytics history stays preserved.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -232,7 +291,13 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
             >
               Cancel
             </Button>
-            <Button type="button" onClick={() => void regenerate()} disabled={regenerating}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void regenerate()}
+              disabled={regenerating}
+              aria-busy={regenerating || undefined}
+            >
               {regenerating ? "Regenerating..." : "Regenerate QR code"}
             </Button>
           </div>
@@ -240,6 +305,70 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
       </Dialog>
     </Dialog>
   );
+}
+
+function QrCodeDialogSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-label="Loading QR code details">
+      <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-5 dark:bg-surface-container-highest">
+        <Skeleton className="size-56 rounded-lg" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-3 w-4/5" />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Skeleton className="h-9 w-24" />
+        <Skeleton className="h-9 w-16" />
+        <Skeleton className="h-9 w-16" />
+        <Skeleton className="h-9 w-20" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Skeleton className="h-20 rounded-lg" />
+        <Skeleton className="h-20 rounded-lg" />
+        <Skeleton className="h-20 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+function QrAnalyticsSummary({ analytics }: { analytics: Analytics | null }) {
+  const totalScans = analytics?.totalScans ?? 0;
+  const topDevice = analytics?.byDevice[0]?.deviceType ?? "None yet";
+  const topCountry = analytics?.byCountry[0]?.country ?? "None yet";
+
+  return (
+    <div className="space-y-2 rounded-lg bg-surface-container-high p-3 text-sm">
+      <div>
+        <p className="font-medium text-on-surface">Last 30 days</p>
+        {totalScans === 0 ? (
+          <p className="text-on-surface-variant">
+            No scans yet. Printed labels will appear here after scanning.
+          </p>
+        ) : null}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <QrStatCard label="Scans" value={String(totalScans)} />
+        <QrStatCard label="Top device" value={formatStatValue(topDevice)} />
+        <QrStatCard label="Top country" value={formatStatValue(topCountry)} />
+      </div>
+    </div>
+  );
+}
+
+function QrStatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border-hairline bg-surface-container-lowest p-2">
+      <p className="text-[11px] uppercase tracking-wide text-on-surface-variant">{label}</p>
+      <p className="mt-1 truncate font-medium text-on-surface">{value}</p>
+    </div>
+  );
+}
+
+function formatStatValue(value: string): string {
+  return value === "unknown" ? "Unknown" : value;
 }
 
 function downloadBlob(blob: Blob, filename: string) {

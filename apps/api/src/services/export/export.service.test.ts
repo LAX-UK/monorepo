@@ -365,6 +365,70 @@ describe("ExportService", () => {
     expect(preview).toEqual({ estimatedRows: 42, syncMaxRows: 5000 });
   });
 
+  it("listExports only reads live Redis progress for active jobs", async () => {
+    const provider = mockProvider({ filterSummary: vi.fn(() => "All records") });
+    const now = new Date();
+    const completedRow = {
+      id: "exp-completed",
+      userId: "user-1",
+      userRole: "staff",
+      userStaffRole: "auction_manager",
+      entityType: "lots",
+      format: "csv",
+      filters: {},
+      filtersHash: "hash-completed",
+      status: "completed",
+      phase: null,
+      progress: 100,
+      totalRows: 2,
+      processedRows: 2,
+      s3Key: "exports/exp-completed.csv",
+      fileSizeBytes: 100,
+      errorMessage: null,
+      expiresAt: new Date(Date.now() + 86_400_000),
+      createdAt: now,
+      completedAt: now,
+      cancelledAt: null,
+    };
+    const activeRow = {
+      ...completedRow,
+      id: "exp-active",
+      filtersHash: "hash-active",
+      status: "processing",
+      phase: "writing",
+      progress: 20,
+      s3Key: null,
+      expiresAt: null,
+      completedAt: null,
+    };
+    const limit = vi.fn().mockResolvedValue([completedRow, activeRow]);
+    const orderBy = vi.fn().mockReturnValue({ limit });
+    const where = vi.fn().mockReturnValue({ orderBy });
+    const db = { select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where }) }) };
+    const redis = {
+      get: vi
+        .fn()
+        .mockResolvedValue(JSON.stringify({ phase: "writing", processedRows: 1, totalRows: 5 })),
+      set: vi.fn(),
+    };
+    const service = new ExportService(
+      db as never,
+      redis as never,
+      { createPresignedGet: vi.fn() } as never,
+      { add: vi.fn(), getJob: vi.fn() } as never,
+      new Map([["lots", provider]]) as never,
+      { syncMaxRows: 5000, staleProcessingMs: 1_800_000 },
+    );
+
+    const jobs = await service.listExports("user-1");
+
+    expect(jobs).toHaveLength(2);
+    expect(redis.get).toHaveBeenCalledTimes(1);
+    expect(redis.get).toHaveBeenCalledWith("export:progress:exp-active");
+    expect(provider.filterSummary).not.toHaveBeenCalled();
+    expect(jobs[1]?.processedRows).toBe(1);
+  });
+
   it("enforces daily export limits", async () => {
     const { service } = createService({
       rateLimitDaily: 20,

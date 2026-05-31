@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
@@ -124,7 +125,7 @@ export function userRowActionsColumn(onOpen: (u: AdminUserRow) => void): ColumnD
               {
                 type: "item",
                 label: "Copy user ID",
-                onSelect: () => void navigator.clipboard.writeText(u.id),
+                onSelect: () => void copyTextToClipboard(u.id),
               },
             ]}
           />

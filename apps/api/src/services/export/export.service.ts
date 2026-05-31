@@ -332,7 +332,7 @@ export class ExportService {
       .where(and(eq(dataExport.userId, userId), gte(dataExport.createdAt, since)))
       .orderBy(desc(dataExport.createdAt))
       .limit(50);
-    return Promise.all(rows.map((r) => this.toJobView(r)));
+    return Promise.all(rows.map((r) => this.toJobListView(r)));
   }
 
   async cancelExport(userId: string, exportId: string): Promise<ExportJobView | null> {
@@ -486,15 +486,6 @@ export class ExportService {
   }
 
   private async toJobView(row: typeof dataExport.$inferSelect): Promise<ExportJobView> {
-    const cached = await this.redis.get(progressKey(row.id));
-    const progress = cached
-      ? (JSON.parse(cached) as {
-          phase?: ExportPhase;
-          processedRows?: number;
-          totalRows?: number;
-        })
-      : {};
-
     const provider = this.providers.get(row.entityType as ExportEntityType);
     const filterSummary = provider
       ? provider.filterSummary(
@@ -506,7 +497,34 @@ export class ExportService {
           row.filters as Record<string, unknown>,
         )
       : undefined;
+    return this.buildJobView(row, await this.readProgress(row.id), filterSummary);
+  }
 
+  private async toJobListView(row: typeof dataExport.$inferSelect): Promise<ExportJobView> {
+    const isActive = row.status === "pending" || row.status === "processing";
+    return this.buildJobView(row, isActive ? await this.readProgress(row.id) : {}, undefined);
+  }
+
+  private async readProgress(exportId: string): Promise<{
+    phase?: ExportPhase;
+    processedRows?: number;
+    totalRows?: number;
+  }> {
+    const cached = await this.redis.get(progressKey(exportId));
+    return cached
+      ? (JSON.parse(cached) as {
+          phase?: ExportPhase;
+          processedRows?: number;
+          totalRows?: number;
+        })
+      : {};
+  }
+
+  private buildJobView(
+    row: typeof dataExport.$inferSelect,
+    progress: { phase?: ExportPhase; processedRows?: number; totalRows?: number },
+    filterSummary: string | undefined,
+  ): ExportJobView {
     const view: ExportJobView = {
       id: row.id,
       entityType: row.entityType as ExportEntityType,
