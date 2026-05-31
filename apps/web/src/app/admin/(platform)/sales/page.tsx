@@ -102,6 +102,11 @@ export default async function AdminSalesPage({
     ...(query.q ? { q: query.q } : {}),
     ...(statusFilter ? { status: statusFilter } : {}),
     ...(deliveryFilter ? { deliveryMode: deliveryFilter } : {}),
+    ...(lifecycleSlug ? { lifecycle: lifecycleSlug } : {}),
+    ...(model.sort ? { sort: model.sort } : {}),
+    activeLensId,
+    lensOwnedLifecycle: activeLensId !== "all" && activeLensId !== "setup" && !sp.lifecycle,
+    setupLens: model.setupLens,
   });
 
   const boardRows = rows.map(toAdminSaleBoardRow);
