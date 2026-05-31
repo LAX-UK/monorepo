@@ -149,9 +149,9 @@ export default async function AdminStaffPage({
           <AdminListKpiStrip
             ariaLabel="Staff summary"
             tiles={[
-              { label: "Total staff", value: total, delta: `${rows.length} on page` },
-              { label: "Active", value: activeOnPage, delta: "Current page" },
-              { label: "Suspended", value: suspendedOnPage, delta: "Current page" },
+              { label: "Total staff", value: total, delta: `${rows.length} on this page` },
+              { label: "Active", value: activeOnPage, delta: "On this page" },
+              { label: "Suspended", value: suspendedOnPage, delta: "On this page" },
               {
                 label: "Roles on page",
                 value: new Set(rows.map((r) => r.staffRole ?? "legacy")).size,
@@ -183,7 +183,12 @@ export default async function AdminStaffPage({
       }
       view={
         !loadError && rows.length > 0 ? (
-          <AdminStaffBoard rows={rows} totalMatches={total} roleBreakdown={roleBreakdown} />
+          <AdminStaffBoard
+            rows={rows}
+            totalMatches={total}
+            hasActiveFilters={hasFilters}
+            roleBreakdown={roleBreakdown}
+          />
         ) : null
       }
       empty={

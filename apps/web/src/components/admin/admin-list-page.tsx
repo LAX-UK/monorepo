@@ -20,6 +20,8 @@ export type AdminListPageProps = {
   /** Persisted saved-view chips (client); rendered in toolbar when set. */
   savedViews?: ReactNode;
   filters?: ReactNode;
+  /** Filters include their own mobile sheet (e.g. AdminUsersFilterToolbar). */
+  filtersSelfContained?: boolean;
   toolbarEnd?: ReactNode;
   listToolbarEnd?: ReactNode;
   hasFilters?: boolean | undefined;
@@ -54,6 +56,7 @@ export function AdminListPage({
   chips,
   savedViews,
   filters,
+  filtersSelfContained = false,
   toolbarEnd,
   listToolbarEnd,
   hasFilters,
@@ -88,6 +91,7 @@ export function AdminListPage({
           showToolbar ? (
             <AdminListToolbar
               filters={filters}
+              filtersSelfContained={filtersSelfContained}
               extra={toolbarEnd}
               toolbarEnd={
                 savedViews || listToolbarEnd ? (

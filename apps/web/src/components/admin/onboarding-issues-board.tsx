@@ -41,7 +41,7 @@ function IssuesTable<T extends { id: string }>({
 }) {
   const { density } = useTableDensity();
   if (rows.length === 0) {
-    return <AdminEmptyState title="Clear" description={emptyTitle} />;
+    return <AdminEmptyState title={emptyTitle} description="Nothing in this queue right now." />;
   }
 
   const cards = renderCard ? (
@@ -122,7 +122,7 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       },
       linkColumn(
         (r) => `/admin/clients/${encodeURIComponent(r.userId)}`,
-        () => "User",
+        () => "Open client",
       ),
     ],
     [],
@@ -252,7 +252,7 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
                 href={`/admin/clients/${encodeURIComponent(r.userId)}`}
                 className="mt-2 inline-block text-sm text-primary underline"
               >
-                User
+                Open client
               </Link>
             </>
           )}
