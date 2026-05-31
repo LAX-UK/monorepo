@@ -13,7 +13,14 @@ import { buildConditionReportsActiveFilterChips } from "@/lib/admin/catalog-acti
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Condition reports",
+  "Respond to buyer condition report requests.",
+);
 
 type Props = {
   searchParams: Promise<{ error?: string; limit?: string; offset?: string; lens?: string }>;

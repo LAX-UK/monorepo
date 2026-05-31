@@ -40,6 +40,7 @@ type FilterDefaults = {
   featured?: boolean | null | undefined;
   verified?: boolean | null | undefined;
   includeArchived?: boolean | null | undefined;
+  linked?: "any" | "yes" | "no" | null | undefined;
 };
 
 function ArtistRegistryFilterForm({
@@ -132,6 +133,21 @@ function ArtistRegistryFilterForm({
           resetParams={{ offset: "0" }}
           className={selectCls}
           options={KIND_FILTER_OPTIONS}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Linked account</span>
+        <FilterSelect
+          param="linked"
+          resetParams={{ offset: "0" }}
+          defaultValue={defaults.linked ?? "any"}
+          className={selectCls}
+          options={[
+            { value: "any", label: "Any" },
+            { value: "yes", label: "Has owner account" },
+            { value: "no", label: "No owner account" },
+          ]}
         />
       </div>
 

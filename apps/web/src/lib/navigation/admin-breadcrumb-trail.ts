@@ -14,7 +14,7 @@ export function buildAdminBreadcrumbTrail(
   sessionUser: SessionUser,
   clientWorkspaceMode: ClientWorkspaceMode = "buying",
 ): BreadcrumbItem[] {
-  const workspaceHref = role === "finance" ? "/admin/payments" : "/admin";
+  const workspaceHref = role === "finance" ? "/admin/finance" : "/admin";
   const workspaceLabel = role === "finance" ? "Finance" : "Admin";
   const parent = getRouteParentLabel(pathname, role, clientWorkspaceMode, sessionUser);
   const current = getRouteLabel(pathname, role, clientWorkspaceMode, sessionUser);

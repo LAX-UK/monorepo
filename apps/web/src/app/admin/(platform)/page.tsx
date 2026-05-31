@@ -46,6 +46,7 @@ export default async function AdminHomePage({
   let attention: AdminAttentionRow[] = [];
   let recentLots: Awaited<ReturnType<typeof getAdminLotList>> = [];
   let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
+  let dashboardLoadWarning: string | null = null;
   let trends: Awaited<ReturnType<typeof getAdminHomeKpiTrends>> = {
     lots: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
     submissions: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
@@ -73,13 +74,16 @@ export default async function AdminHomePage({
     }));
     recentLots = recent;
     trends = trendBundle;
-  } catch {
-    /* overview still renders */
+  } catch (e) {
+    dashboardLoadWarning =
+      e instanceof Error ? e.message : "Could not load all dashboard overview data.";
   }
 
   try {
     financeIssues = await getAdminFinanceIssues();
-  } catch {
+  } catch (e) {
+    dashboardLoadWarning ??=
+      e instanceof Error ? e.message : "Could not load finance dashboard alerts.";
     financeIssues = null;
   }
 
@@ -95,7 +99,7 @@ export default async function AdminHomePage({
     return {
       id: l.id,
       title: l.title,
-      meta: `${l.status} \u00B7 ends ${l.endTime.toISOString().slice(0, 16)}`,
+      meta: `${l.status} · ends ${formatDateTime(l.endTime)}`,
       href: `/admin/lots/${l.id}`,
       statusLabel: l.status,
       statusTone,
@@ -132,6 +136,7 @@ export default async function AdminHomePage({
         attention={attentionForDashboard}
         activity={activity}
         anomalies={anomalies}
+        loadWarning={dashboardLoadWarning}
       />
     </AppScreen>
   );

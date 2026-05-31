@@ -17,12 +17,14 @@ type Props = {
 export default async function AdminSaleroomSalePage({ params, searchParams }: Props) {
   const { saleId } = await params;
   const { error } = await searchParams;
+  let saleroomLoadError: string | null = null;
 
   const [saleRow, saleroomResult] = await Promise.all([
     getAdminSaleById(saleId),
-    getAdminSaleroomSession(saleId).catch(
-      (): AdminSaleroomSessionSnapshot => ({ session: null, events: [] }),
-    ),
+    getAdminSaleroomSession(saleId).catch((e): AdminSaleroomSessionSnapshot => {
+      saleroomLoadError = e instanceof Error ? e.message : "Could not load the saleroom session.";
+      return { session: null, events: [] };
+    }),
   ]);
   if (!saleRow) notFound();
   const saleroom = saleroomResult;
@@ -50,7 +52,7 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         saleTitle={saleRow.sale.title ?? "Sale"}
         initial={saleroom}
         lots={saleRow.lots}
-        error={error ?? null}
+        error={error ?? saleroomLoadError}
       />
     </AdminEntityDetailShell>
   );

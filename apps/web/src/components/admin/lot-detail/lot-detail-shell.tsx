@@ -79,6 +79,9 @@ export function LotDetailShell({
   const canEditDraft = auction.status === "draft";
   const canEditLot = auction.status === "scheduled";
   const showEditCatalog = auction.status === "active";
+  const canEditTitle =
+    canManageCatalog &&
+    (auction.status === "draft" || auction.status === "scheduled" || auction.status === "active");
   const canDelete = canManageAuction && bundle.deleteEligibility?.canDelete === true;
   const deleteBlockers =
     auction.status === "draft" || auction.status === "scheduled"
@@ -162,7 +165,9 @@ export function LotDetailShell({
           />
         }
         eyebrow="Catalogue lot"
-        title={<AdminLotEditableTitle lotId={lotId} value={auction.title} />}
+        title={
+          <AdminLotEditableTitle lotId={lotId} value={auction.title} editable={canEditTitle} />
+        }
         {...(subtitle ? { description: subtitle } : {})}
         meta={
           <div className="flex flex-wrap items-center gap-2">

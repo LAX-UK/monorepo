@@ -7,6 +7,7 @@ import {
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 
 export function paymentColumns(
   onOpen: (row: AdminPaymentTableRow) => void,
@@ -30,7 +31,13 @@ export function paymentColumns(
       accessorKey: "buyerId",
       header: "Buyer",
       cell: ({ row }) => (
-        <span className="max-w-[10rem] truncate font-mono text-xs">{row.original.buyerId}</span>
+        <Link
+          href={`/admin/clients/${row.original.buyerId}`}
+          className="block max-w-[12rem] truncate text-sm font-medium text-primary underline-offset-2 hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {row.original.buyerLabel ?? `ID: ${row.original.buyerId.slice(0, 8)}…`}
+        </Link>
       ),
     },
     {

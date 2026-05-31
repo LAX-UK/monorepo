@@ -139,6 +139,8 @@ export function buildArtistsActiveFilterChips(
     featured?: boolean;
     verified?: boolean;
     includeArchived?: boolean;
+    archivedOnly?: boolean;
+    linked?: "yes" | "no";
   },
 ): CatalogActiveFilterChip[] {
   const chips: CatalogActiveFilterChip[] = [];
@@ -191,6 +193,20 @@ export function buildArtistsActiveFilterChips(
       id: "includeArchived",
       label: "Include archived",
       clearHref: omitParamsHref(base, sp, ["includeArchived"]),
+    });
+  }
+  if (ctx.archivedOnly) {
+    chips.push({
+      id: "archivedOnly",
+      label: "Archived only",
+      clearHref: omitParamsHref(base, sp, ["archivedOnly", "includeArchived"]),
+    });
+  }
+  if (ctx.linked) {
+    chips.push({
+      id: "linked",
+      label: ctx.linked === "yes" ? "Linked account" : "No linked account",
+      clearHref: omitParamsHref(base, sp, ["linked"]),
     });
   }
 
@@ -410,14 +426,22 @@ export function buildUsersActiveFilterChips(
 
 export function buildFulfilmentActiveFilterChips(
   sp: SearchParams,
-  ctx: { status?: string },
+  ctx: { status?: string; q?: string },
 ): CatalogActiveFilterChip[] {
-  if (!ctx.status?.trim()) return [];
-  return [
-    {
+  const chips: CatalogActiveFilterChip[] = [];
+  if (ctx.q?.trim()) {
+    chips.push({
+      id: "q",
+      label: `Search: ${ctx.q.trim()}`,
+      clearHref: omitParamsHref("/admin/lot-fulfilment", sp, ["q"]),
+    });
+  }
+  if (ctx.status?.trim()) {
+    chips.push({
       id: "status",
       label: `Status: ${FULFILMENT_STATUS_LABELS[ctx.status] ?? ctx.status.replaceAll("_", " ")}`,
       clearHref: omitParamsHref("/admin/lot-fulfilment", sp, ["status"]),
-    },
-  ];
+    });
+  }
+  return chips;
 }

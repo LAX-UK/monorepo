@@ -1,0 +1,42 @@
+import { paletteApiBase } from "@/components/layout/palette/api-base";
+import type { PaletteSource } from "@/components/layout/palette/types";
+
+const LIMIT = 5;
+
+type PayoutRow = {
+  id: string;
+  legalEntityId: string;
+  status: string;
+  netAmount: string;
+};
+
+export const payoutsPaletteSource: PaletteSource = {
+  id: "payouts",
+  heading: "Payouts",
+  enabled: true,
+  async search(query) {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const qs = new URLSearchParams({ limit: "25", offset: "0" });
+    const res = await fetch(`${paletteApiBase()}/admin/payouts?${qs.toString()}`, {
+      credentials: "include",
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { data: PayoutRow[] };
+    return body.data
+      .filter(
+        (row) =>
+          row.id.toLowerCase().includes(q) ||
+          row.legalEntityId.toLowerCase().includes(q) ||
+          row.status.toLowerCase().includes(q) ||
+          row.netAmount.toLowerCase().includes(q),
+      )
+      .slice(0, LIMIT)
+      .map((row) => ({
+        id: `payout-${row.id}`,
+        href: `/admin/payouts?legalEntityId=${encodeURIComponent(row.legalEntityId)}`,
+        label: `Payout ${row.netAmount}`,
+        hint: row.status,
+      }));
+  },
+};

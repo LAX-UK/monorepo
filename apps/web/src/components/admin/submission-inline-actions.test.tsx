@@ -16,11 +16,11 @@ vi.mock("next/navigation", () => ({
 import { SubmissionInlineActions } from "./submission-inline-actions";
 
 describe("SubmissionInlineActions", () => {
-  it("shows Start review, Approve and Reject buttons when status is submitted", () => {
+  it("shows only Start review when status is submitted", () => {
     render(<SubmissionInlineActions submissionId="abc" status="submitted" />);
     expect(screen.getByRole("button", { name: /start review/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /approve/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /reject/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /reject/i })).not.toBeInTheDocument();
   });
 
   it("shows Approve and Reject but not Start review when status is under_review", () => {
