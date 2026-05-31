@@ -30,6 +30,7 @@ type Props = {
   isOnsite: boolean;
   venueLines: string[];
   registrationCount: number | null;
+  pendingRegistrationCount?: number | null;
   connectRequiredByLotId?: ConnectRequiredByLotId;
 };
 
@@ -41,6 +42,7 @@ export function SaleOverviewTab({
   isOnsite,
   venueLines,
   registrationCount,
+  pendingRegistrationCount = null,
   connectRequiredByLotId,
 }: Props) {
   const readinessContext = useSaleDetailReadiness();
@@ -57,7 +59,7 @@ export function SaleOverviewTab({
     sale.status === "draft"
       ? (readinessContext?.draftSetupReadiness ?? null)
       : sale.status === "scheduled"
-        ? buildSalePublishReadiness(saleId, sale, lots.length, registrationCount)
+        ? buildSalePublishReadiness(saleId, sale, lots.length, pendingRegistrationCount)
         : null;
 
   const showContinueSetup = sale.status === "draft" && readiness && readiness.percent < 100;
@@ -79,7 +81,7 @@ export function SaleOverviewTab({
           href={saleSetupResumeHref(saleId, {
             sale,
             lots,
-            pendingRegistrationCount: registrationCount,
+            pendingRegistrationCount,
             ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
           })}
           className="block rounded-xl border border-primary/30 bg-primary/5 p-5 transition-colors hover:bg-primary/10"

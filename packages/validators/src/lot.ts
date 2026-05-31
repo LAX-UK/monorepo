@@ -301,7 +301,7 @@ export const conditionReportRequestIdParamSchema = z.object({
 });
 
 export const adminConditionReportListQuerySchema = z.object({
-  status: z.enum(["pending", "in_progress", "fulfilled", "declined"]).optional(),
+  status: z.enum(["open", "pending", "in_progress", "fulfilled", "declined"]).optional(),
   lotId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   offset: z.coerce.number().int().min(0).optional().default(0),

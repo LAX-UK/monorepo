@@ -307,6 +307,7 @@ export function AdminSaleForm({
                       form={form}
                       saleId={saleId}
                       initialSaleDocuments={initialSaleDocuments}
+                      termsReadOnly={!isDraft}
                     />
                   ) : null}
                   {stepIndex === 3 ? (

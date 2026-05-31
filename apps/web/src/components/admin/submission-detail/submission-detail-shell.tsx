@@ -15,6 +15,7 @@ import { SubmissionDetailMobileTrailing } from "@/components/admin/submission-de
 import { submissionDetailTabHref } from "@/components/admin/submission-detail/submission-detail-types";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import type { ItemSubmission } from "@auction/types";
+import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo } from "react";
 
 type Props = {
@@ -40,8 +41,10 @@ export function SubmissionDetailShell({
   activityEvents = [],
   children,
 }: Props) {
+  const pathname = usePathname();
   const status = submission.status;
   const statusBadge = <AdminStatusBadge domain="submission" status={status} />;
+  const isDecisionTab = pathname.endsWith("/decision");
 
   const mobileActions = useMemo((): CatalogMobileAction[] => {
     return [
@@ -82,7 +85,11 @@ export function SubmissionDetailShell({
       actions={<AdminPinPageButton label={title} />}
       mobileActions={mobileActions}
       mobileActionBarTrailing={
-        <SubmissionDetailMobileTrailing submissionId={submissionId} status={status} />
+        <SubmissionDetailMobileTrailing
+          submissionId={submissionId}
+          status={status}
+          showDecisionActions={isDecisionTab}
+        />
       }
       mobileMeta={
         <CatalogDetailMobileMeta
@@ -125,7 +132,7 @@ export function SubmissionDetailShell({
             status={statusBadge}
             activityEvents={activityEvents}
           />
-          <div className="hidden min-w-0 lg:block">{asideDecision}</div>
+          {!isDecisionTab ? <div className="hidden min-w-0 lg:block">{asideDecision}</div> : null}
         </>
       }
       stickySubnav={

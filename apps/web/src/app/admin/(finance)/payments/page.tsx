@@ -17,13 +17,20 @@ import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { getAdminPaymentsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminManualReviewPayments } from "@/lib/data/http/admin.server";
+import { getAdminManualReviewPayments, getAdminUsersByIds } from "@/lib/data/http/admin.server";
 import { buildPaymentsSummary } from "@/lib/data/view-models/admin-payments-summary.vm";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatCompactMoney } from "@/lib/ui/format";
 import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Payments",
+  "Capture, review, and reconcile buyer payments.",
+);
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -75,6 +82,18 @@ export default async function AdminPaymentsPage({
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load payments.";
   }
+
+  const buyerIds = [...new Set(paymentRows.map((row) => row.buyerId).filter(Boolean))];
+  const buyers = await getAdminUsersByIds(buyerIds).catch(() => []);
+  const buyerLabels = new Map(buyers.map((b) => [b.id, b.name || b.email || null]));
+  paymentRows = paymentRows.map((row) => ({
+    ...row,
+    buyerLabel: row.buyerLabel ?? buyerLabels.get(row.buyerId) ?? null,
+  }));
+  summaryRows = summaryRows.map((row) => ({
+    ...row,
+    buyerLabel: row.buyerLabel ?? buyerLabels.get(row.buyerId) ?? null,
+  }));
 
   const summary = buildPaymentsSummary(summaryRows);
   let navCounts = EMPTY_ADMIN_NAV_COUNTS;
@@ -159,7 +178,7 @@ export default async function AdminPaymentsPage({
           ) : null
         }
         empty={
-          !manualReviewLoadError && manualReviewRows.length === 0 ? (
+          !manualReviewLoadError && !success && manualReviewRows.length === 0 ? (
             <AdminEmptyState
               title="No manual review payments"
               description="Archived-seller winning payments will appear here before capture."

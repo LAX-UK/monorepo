@@ -176,6 +176,24 @@ export const adminUserListQuerySchema = z
 
 export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
 
+/** Batch lookup for admin tables (payments buyer labels, lot bids, etc.). */
+export const adminUserIdsLookupQuerySchema = z.object({
+  ids: z
+    .string()
+    .trim()
+    .min(1)
+    .max(2000)
+    .transform((raw) =>
+      raw
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().uuid()).min(1).max(50)),
+});
+
+export type AdminUserIdsLookupQuery = z.infer<typeof adminUserIdsLookupQuerySchema>;
+
 export const adminSuspendBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });

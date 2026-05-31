@@ -6,6 +6,7 @@ import {
   type DashboardWidgetId,
   type DashboardWidgetState,
 } from "@/lib/admin/dashboard-widgets.vm";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -24,7 +25,7 @@ const WIDGET_LABELS: Record<DashboardWidgetId, { label: string; description: str
   "kpi-band": { label: "Trend KPIs", description: "Period comparison metrics with sparklines" },
   "my-queue": { label: "My queue", description: "Attention items needing action" },
   anomalies: { label: "Anomalies", description: "Operational callouts above threshold" },
-  "saleroom-live": { label: "Saleroom live", description: "Live bidding placeholder" },
+  "saleroom-live": { label: "Saleroom live", description: "Live bidding pulse and saleroom link" },
   activity: { label: "Recent activity", description: "Latest catalog movement" },
 };
 
@@ -37,6 +38,7 @@ export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DashboardWidgetState[]>([...widgets]);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const toggle = (id: DashboardWidgetId) => {
     setSelected((prev) => prev.map((w) => (w.id === id ? { ...w, hidden: !w.hidden } : w)));
@@ -44,9 +46,17 @@ export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
 
   const save = () => {
     startTransition(async () => {
-      await persistAdminDashboardWidgetsAction(selected);
-      setOpen(false);
-      router.refresh();
+      setError(null);
+      try {
+        await persistAdminDashboardWidgetsAction(selected);
+        notify.success("Dashboard layout saved");
+        setOpen(false);
+        router.refresh();
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Could not save dashboard layout.";
+        setError(message);
+        notify.error(message);
+      }
     });
   };
 
@@ -55,7 +65,16 @@ export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) {
+          setSelected([...widgets]);
+          setError(null);
+        }
+      }}
+    >
       <SheetTrigger asChild>
         <Button type="button" variant="secondary" size="sm" className="min-h-9 gap-1">
           <Settings2 className="size-4" aria-hidden />
@@ -66,6 +85,11 @@ export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
         <SheetHeader>
           <SheetTitle>Dashboard widgets</SheetTitle>
         </SheetHeader>
+        {error ? (
+          <p className="mt-4 rounded-md border border-error/30 bg-error-container/20 p-3 text-sm text-on-surface">
+            {error}
+          </p>
+        ) : null}
         <ul className="mt-6 space-y-3">
           {selected.map((w) => {
             const meta = WIDGET_LABELS[w.id];

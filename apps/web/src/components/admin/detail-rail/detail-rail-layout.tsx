@@ -14,10 +14,11 @@ import type { ReactNode } from "react";
 type Props = {
   rail: ReactNode;
   children: ReactNode;
+  sticky?: boolean;
 };
 
 /** Two-column detail layout with sticky rail on lg+; collapses to a Context sheet on small screens. */
-export function DetailRailLayout({ rail, children }: Props) {
+export function DetailRailLayout({ rail, children, sticky = true }: Props) {
   return (
     <>
       <div className="mb-4 lg:hidden">
@@ -38,7 +39,13 @@ export function DetailRailLayout({ rail, children }: Props) {
       </div>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]">
         <div className="min-w-0">{children}</div>
-        <aside className="hidden min-w-0 space-y-6 lg:sticky lg:top-24 lg:block lg:self-start">
+        <aside
+          className={
+            sticky
+              ? "hidden min-w-0 space-y-6 lg:sticky lg:top-24 lg:block lg:self-start"
+              : "hidden min-w-0 space-y-6 lg:block lg:self-start"
+          }
+        >
           {rail}
         </aside>
       </div>

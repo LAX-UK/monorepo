@@ -46,7 +46,7 @@ export function AdminPaymentsBoard({ rows }: Props) {
             <div className="space-y-4 pt-2">
               <AdminPreviewSheetHeader
                 title={`Payment ${selected.id.slice(0, 8)}…`}
-                fullPageHref={`/admin/payments?highlight=${selected.id}`}
+                fullPageHref="/admin/payments"
                 subtitle={
                   <p className="truncate font-body text-sm text-on-surface-variant">
                     {selected.lotTitle}

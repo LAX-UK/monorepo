@@ -23,12 +23,19 @@ import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Sales",
+  "Plan, publish, and manage auctions.",
+);
 
 export default async function AdminSalesPage({
   searchParams,
@@ -203,7 +210,7 @@ export default async function AdminSalesPage({
                 value: String(boardRows.length),
                 compareHint: `Live ${liveOnPage} · draft ${draftOnPage}`,
               },
-              buildTrendKpiTile("Scheduled activity", salesTrend, periodDays, {
+              buildTrendKpiTile("New sales trend", salesTrend, periodDays, {
                 trendTone: "secondary",
               }),
             ]}

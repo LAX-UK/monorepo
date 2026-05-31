@@ -32,16 +32,24 @@ function parseStatusFilter(raw: string | undefined): string | undefined {
 }
 
 type Props = {
-  searchParams: Promise<{ error?: string; status?: string; limit?: string; offset?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    status?: string;
+    q?: string;
+    limit?: string;
+    offset?: string;
+  }>;
 };
 
 export default async function AdminLotFulfilmentQueuePage({ searchParams }: Props) {
   const sp = await searchParams;
   const statusFilter = parseStatusFilter(typeof sp.status === "string" ? sp.status : undefined);
+  const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const error = safeDecodeAdminErrorParam(sp.error);
   const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
   const activeFilterChips = buildFulfilmentActiveFilterChips(sp, {
     ...(statusFilter ? { status: statusFilter } : {}),
+    ...(q ? { q } : {}),
   });
 
   const limit = Math.min(100, Math.max(1, Number(sp.limit) || 25));
@@ -49,6 +57,7 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
 
   const loaded = await loadAdminLotFulfilmentQueue({
     ...(statusFilter !== undefined ? { status: statusFilter } : {}),
+    ...(q ? { q } : {}),
     limit,
     offset,
   });
@@ -109,6 +118,13 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
 
   const errorAlert = error ? <AdminListAlert title="Action failed">{error}</AdminListAlert> : null;
 
+  const searchHint =
+    q && !statusFilter && total >= 25 ? (
+      <AdminListAlert title="Many matches">
+        Add a status filter to narrow fulfilment search results.
+      </AdminListAlert>
+    ) : null;
+
   const pagination =
     total > 0 && (offset > 0 || offset + rows.length < total) ? (
       <CatalogPagination
@@ -135,8 +151,8 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
       <CatalogListEmptyState
         title="Nothing in this view"
         description={
-          statusFilter
-            ? "No lots match this filter. Try “All” or another status."
+          statusFilter || q
+            ? "No lots match this filter. Try another status, search term, or clear filters."
             : "No fulfilment rows yet."
         }
       />
@@ -152,7 +168,12 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
       meta={<CatalogRelatedWork variant="fulfilment" navCounts={navCounts} />}
       breadcrumbs={<CatalogOpsBreadcrumb current="Fulfilment" />}
       filterBar={filterBar}
-      errorAlert={errorAlert}
+      errorAlert={
+        <>
+          {searchHint}
+          {errorAlert}
+        </>
+      }
       kpiStrip={
         total > 0 ? (
           <AdminListKpiStrip
