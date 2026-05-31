@@ -67,7 +67,7 @@ export function CatalogListShell({
       {errorAlert}
       {showResults ? children : null}
       {showEmpty ? empty : null}
-      {showResults && !showEmpty ? pagination : null}
+      {pagination}
     </AppScreen>
   );
 }

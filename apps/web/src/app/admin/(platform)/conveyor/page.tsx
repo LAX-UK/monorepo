@@ -1,11 +1,19 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListPage } from "@/components/admin/admin-list-page";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { AdminConveyorTableBoard } from "@/components/admin/conveyor-board";
 import { ConveyorLayoutToggle } from "@/components/admin/conveyor-board/layout-toggle";
 import { conveyorListController } from "@/lib/admin/admin-list-controllers";
 import { buildConveyorColumns } from "@/lib/admin/conveyor-pipeline.vm";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Conveyor",
+  "Pipeline view of submissions through review, catalogue, sale, and settlement.",
+);
 
 export default async function AdminConveyorPage({
   searchParams,
@@ -13,7 +21,7 @@ export default async function AdminConveyorPage({
   searchParams: Promise<{ limit?: string; offset?: string; error?: string; view?: string }>;
 }) {
   const sp = await searchParams;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const viewTable = sp.view === "table";
   const query = conveyorListController.parseQuery(sp);
 
@@ -87,7 +95,7 @@ export default async function AdminConveyorPage({
 
   const empty =
     !loadError && rows.length === 0 ? (
-      <AdminEmptyState
+      <CatalogListEmptyState
         title="Pipeline is empty"
         description="No submissions in the conveyor view yet."
       />
@@ -102,13 +110,14 @@ export default async function AdminConveyorPage({
     ) : null;
 
   return (
-    <AdminListPage
+    <CatalogListShell
       className="max-w-[1600px]"
       title="Conveyor"
       description="Single view of seller submissions through specialist review, catalogue build, live sale, and settlement hand-off."
       errorAlert={errorAlert}
-      view={view}
       empty={empty}
-    />
+    >
+      {view}
+    </CatalogListShell>
   );
 }

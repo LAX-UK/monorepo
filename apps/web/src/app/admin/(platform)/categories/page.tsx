@@ -13,10 +13,17 @@ import { categoriesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildCategoriesActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Categories",
+  "Browse and manage the catalogue taxonomy.",
+);
 
 export default async function AdminCategoriesPage({
   searchParams,
@@ -81,7 +88,7 @@ export default async function AdminCategoriesPage({
         }
         action={
           hasFilters ? (
-            <Button variant="secondaryOutline" asChild>
+            <Button variant="secondary" asChild>
               <Link href="/admin/categories">Clear filters</Link>
             </Button>
           ) : (
@@ -179,13 +186,6 @@ export default async function AdminCategoriesPage({
       >
         {view}
       </CatalogListShell>
-      {!listError ? (
-        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] end-4 z-40 lg:hidden">
-          <CatalogPrimaryCta href="/admin/categories?new=1" icon={Plus}>
-            New category
-          </CatalogPrimaryCta>
-        </div>
-      ) : null}
     </>
   );
 }

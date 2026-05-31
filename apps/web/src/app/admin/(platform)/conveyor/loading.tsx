@@ -1,16 +1,14 @@
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { KanbanSkeleton } from "@/components/admin/admin-loading-skeletons";
-import { Skeleton } from "@auction/ui/components/skeleton";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function ConveyorLoading() {
   return (
-    <AdminListPage
+    <CatalogListPageSkeleton
       title="Conveyor"
       description="Loading pipeline…"
-      hasFilters={false}
-      resetHref="/admin/conveyor"
-      view={<KanbanSkeleton columns={5} />}
-      pagination={<Skeleton className="h-10 w-48" />}
+      kpiTiles={0}
+      tableRows={0}
+      tableColumns={5}
+      showFilterBar={false}
     />
   );
 }
