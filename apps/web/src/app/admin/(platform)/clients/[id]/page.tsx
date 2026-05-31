@@ -95,12 +95,12 @@ export default async function AdminClientDetailPage({ params }: Props) {
         },
         {
           id: "bids",
-          label: "Bids",
+          label: "Won lots",
           content: <AdminUserWonLotsPanel wonLots={wonLots} />,
         },
         {
           id: "payouts",
-          label: "Payouts",
+          label: "Payments",
           content: <AdminUserPaymentsPanel payments={payments} />,
         },
         {

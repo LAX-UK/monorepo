@@ -28,3 +28,12 @@ export const loadAdminSaleRegistrationCount = cache(
     return registrations.length;
   },
 );
+
+/** Pending registration count for readiness checks and attention badges. */
+export const loadAdminSalePendingRegistrationCount = cache(
+  async (saleId: string, sale: Sale): Promise<number | null> => {
+    if (!isSaleLiveish(sale)) return null;
+    const registrations = await loadAdminSaleRegistrations(saleId);
+    return registrations.filter((registration) => registration.status === "pending").length;
+  },
+);

@@ -176,13 +176,15 @@ export class ConditionReportService implements IConditionReportService {
   }
 
   async listForAdmin(input: {
-    status?: "pending" | "in_progress" | "fulfilled" | "declined" | undefined;
+    status?: "open" | "pending" | "in_progress" | "fulfilled" | "declined" | undefined;
     lotId?: string | undefined;
     limit: number;
     offset: number;
   }): Promise<{ items: ConditionReportRequestListRow[]; total: number }> {
     const filters = [] as ReturnType<typeof eq>[];
-    if (input.status) {
+    if (input.status === "open") {
+      filters.push(inArray(conditionReportRequest.status, [...OPEN_REQUEST_STATUSES]));
+    } else if (input.status) {
       filters.push(eq(conditionReportRequest.status, input.status));
     }
     if (input.lotId) {
@@ -238,6 +240,50 @@ export class ConditionReportService implements IConditionReportService {
     const chosen = open ?? rows[0];
     if (!chosen) return null;
     return mapRequestRow(chosen);
+  }
+
+  async markInProgress(input: {
+    id: string;
+    actorUserId: string;
+  }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>> {
+    const [reqRow] = await this.db
+      .select()
+      .from(conditionReportRequest)
+      .where(eq(conditionReportRequest.id, input.id))
+      .limit(1);
+    if (!reqRow) {
+      return err({ message: "Request not found", status: 404 });
+    }
+    if (reqRow.status === "in_progress") {
+      return ok(mapRequestRow(reqRow));
+    }
+    if (reqRow.status !== "pending") {
+      return err({ message: "Only pending requests can be marked in progress", status: 400 });
+    }
+
+    const [updated] = await this.db
+      .update(conditionReportRequest)
+      .set({ status: "in_progress" })
+      .where(eq(conditionReportRequest.id, input.id))
+      .returning();
+    if (!updated) {
+      return err({ message: "Could not update condition report request", status: 500 });
+    }
+
+    if (this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "lot",
+        aggregateId: reqRow.lotId,
+        eventType: "condition_report.in_progress",
+        payload: {
+          requestId: input.id,
+          markedByUserId: input.actorUserId,
+        },
+        actorUserId: input.actorUserId,
+      });
+    }
+
+    return ok(mapRequestRow(updated));
   }
 
   async listForBuyer(input: {

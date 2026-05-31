@@ -51,7 +51,7 @@ export function AdminPayoutsBoard({ rows, statusChips, settlementBand, kpiStrip 
             <div className="space-y-4 pt-2">
               <AdminPreviewSheetHeader
                 title={`Payout ${selected.id.slice(0, 8)}…`}
-                fullPageHref={`/admin/payouts?highlight=${selected.id}`}
+                fullPageHref="/admin/payouts"
                 subtitle={
                   <p className="truncate font-body text-sm text-on-surface-variant">
                     Entity {selected.legalEntityId.slice(0, 8)}…

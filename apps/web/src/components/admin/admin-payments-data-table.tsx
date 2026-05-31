@@ -11,6 +11,7 @@ import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments
 import { notify } from "@/lib/ui/notify";
 import type { PaymentStatus } from "@auction/types";
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useTransition } from "react";
 
@@ -131,7 +132,12 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
       accessorKey: "buyerId",
       header: "Buyer",
       cell: ({ row }) => (
-        <span className="max-w-[10rem] truncate font-mono text-xs">{row.original.buyerId}</span>
+        <Link
+          href={`/admin/clients/${row.original.buyerId}`}
+          className="block max-w-[12rem] truncate text-sm font-medium text-primary underline-offset-2 hover:underline"
+        >
+          {row.original.buyerLabel ?? `ID: ${row.original.buyerId.slice(0, 8)}…`}
+        </Link>
       ),
     },
     {
