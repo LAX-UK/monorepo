@@ -76,6 +76,13 @@ function IssuesTable<T extends { id: string }>({
 }
 
 export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPayload }) {
+  const totalIssues =
+    data.entitiesPendingReview.length +
+    data.artistsPendingApproval.length +
+    data.staleKycSessions.length +
+    data.staleLeadOrganisations.length +
+    data.documentsAwaitingReview.length;
+
   const entityColumns = useMemo(
     (): ColumnDef<AdminOnboardingIssuesPayload["entitiesPendingReview"][number]>[] => [
       { accessorKey: "displayName", header: "Entity" },
@@ -319,6 +326,15 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
       ),
     },
   ] as const;
+
+  if (totalIssues === 0) {
+    return (
+      <AdminEmptyState
+        title="All onboarding queues are clear"
+        description="New legal entities, artists, stale verification sessions, lead organisations, and documents will appear here when they need staff review."
+      />
+    );
+  }
 
   return <AdminDetailTabs defaultValue="entities" tabs={tabs} />;
 }

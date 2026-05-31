@@ -13,7 +13,11 @@ import { useMemo } from "react";
 
 const BID_FETCH_LIMIT = 100;
 
-function columns(): ColumnDef<Bid>[] {
+function bidderLabel(bidderId: string, bidderLabels: Readonly<Record<string, string>>): string {
+  return bidderLabels[bidderId] ?? `${bidderId.slice(0, 8)}…`;
+}
+
+function columns(bidderLabels: Readonly<Record<string, string>>): ColumnDef<Bid>[] {
   return [
     {
       accessorKey: "amount",
@@ -58,7 +62,7 @@ function columns(): ColumnDef<Bid>[] {
             href={`/admin/clients/${bidderId}`}
             className="font-mono text-xs text-primary hover:underline"
           >
-            {bidderId.slice(0, 8)}…
+            {bidderLabel(bidderId, bidderLabels)}
           </Link>
         );
       },
@@ -89,9 +93,10 @@ type Props = {
   lotId: string;
   bids: Bid[];
   capped?: boolean;
+  bidderLabels?: Readonly<Record<string, string>>;
 };
 
-export function AdminLotBidsTable({ lotId, bids, capped = false }: Props) {
+export function AdminLotBidsTable({ lotId, bids, capped = false, bidderLabels = {} }: Props) {
   const sortedBids = useMemo(
     () =>
       [...bids].sort((a, b) => {
@@ -102,7 +107,7 @@ export function AdminLotBidsTable({ lotId, bids, capped = false }: Props) {
       }),
     [bids],
   );
-  const tableColumns = useMemo(() => columns(), []);
+  const tableColumns = useMemo(() => columns(bidderLabels), [bidderLabels]);
   const high = highestBidAmount(sortedBids);
 
   const cards = (
@@ -130,7 +135,7 @@ export function AdminLotBidsTable({ lotId, bids, capped = false }: Props) {
               href={`/admin/clients/${bid.bidderId}`}
               className="mt-2 inline-block font-mono text-xs text-primary hover:underline"
             >
-              {bid.bidderId.slice(0, 8)}…
+              {bidderLabel(bid.bidderId, bidderLabels)}
             </Link>
           ) : null}
         </li>

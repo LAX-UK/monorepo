@@ -409,6 +409,7 @@ export function conditionReportStatusToBadgeVariant(
     case "in_progress":
       return "info";
     case "requested":
+    case "pending":
       return "warning";
     case "declined":
       return "danger";
@@ -594,6 +595,7 @@ export function adminStatusLabel(domain: AdminStatusDomain, status: string): str
     case "fulfilment":
       return lotFulfilmentStatusLabel[status as LotFulfilmentStatus] ?? status.replaceAll("_", " ");
     case "conditionReport":
+      if (status === "pending") return "Requested";
       return (
         conditionReportStatusLabel[status as ConditionReportStatus] ?? status.replaceAll("_", " ")
       );

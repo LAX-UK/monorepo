@@ -31,7 +31,7 @@ export const paymentsPaletteSource: PaletteSource = {
       .slice(0, LIMIT)
       .map((p) => ({
         id: `payment-${p.id}`,
-        href: `/admin/payments?highlight=${encodeURIComponent(p.id)}`,
+        href: `/admin/payments?q=${encodeURIComponent(p.id)}`,
         label: p.lotTitle ?? p.buyerEmail ?? p.id,
         hint: p.status,
       }));

@@ -56,8 +56,7 @@ export default async function AdminLegalEntityDetailPage({
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
   const success = sp.success ? decodeURIComponent(sp.success) : null;
-  const activeTab =
-    sp.tab === "stripe" || sp.tab === "lifecycle" || sp.tab === "activity" ? sp.tab : "overview";
+  const activeTab = sp.tab === "stripe" || sp.tab === "lifecycle" ? sp.tab : "overview";
 
   let entity: Awaited<ReturnType<typeof getAdminLegalEntityById>> = null;
   try {

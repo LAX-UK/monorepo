@@ -701,7 +701,7 @@ function parseAdminConditionReportRequestRow(raw: unknown): AdminConditionReport
 }
 
 export async function getAdminConditionReportRequests(params?: {
-  status?: AdminConditionReportRequestRow["status"];
+  status?: "open" | AdminConditionReportRequestRow["status"];
   lotId?: string;
   limit?: number;
   offset?: number;
@@ -830,6 +830,7 @@ function parseAdminLotFulfilmentListRow(raw: unknown): AdminLotFulfilmentListRow
 
 async function fetchAdminLotFulfilmentListResponse(params?: {
   status?: string;
+  q?: string;
   limit?: number;
   offset?: number;
 }): Promise<
@@ -844,6 +845,7 @@ async function fetchAdminLotFulfilmentListResponse(params?: {
 > {
   const qs = new URLSearchParams();
   if (params?.status) qs.set("status", params.status);
+  if (params?.q) qs.set("q", params.q);
   if (params?.limit != null) qs.set("limit", String(params.limit));
   if (params?.offset != null) qs.set("offset", String(params.offset));
   const suffix = qs.size ? `?${qs.toString()}` : "";
@@ -867,6 +869,7 @@ async function fetchAdminLotFulfilmentListResponse(params?: {
 /** Operations fulfilment capability; returns empty when the user cannot access the queue. */
 export async function getAdminLotFulfilmentList(params?: {
   status?: string;
+  q?: string;
   limit?: number;
   offset?: number;
 }): Promise<AdminLotFulfilmentListRow[]> {
@@ -889,6 +892,7 @@ export type LotFulfilmentQueueLoadResult =
 /** Same list as {@link getAdminLotFulfilmentList}, but distinguishes 403 from an empty queue. */
 export async function loadAdminLotFulfilmentQueue(params?: {
   status?: string;
+  q?: string;
   limit?: number;
   offset?: number;
 }): Promise<LotFulfilmentQueueLoadResult> {
@@ -1411,6 +1415,30 @@ export async function getAdminUserById(id: string): Promise<AdminUserDetailPaylo
   if (!res.ok) throw new Error(`Failed to load user: ${res.status}`);
   const body = (await res.json()) as { data: AdminUserDetailPayload };
   return body.data;
+}
+
+export type AdminUserLookupRow = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export async function getAdminUsersByIds(ids: string[]): Promise<AdminUserLookupRow[]> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return [];
+  const qs = new URLSearchParams({ ids: unique.join(",") });
+  const res = await authedServerFetch(`/admin/users/lookup?${qs.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load users: ${res.status}`);
+  const body = (await res.json()) as {
+    data: { id: string; name: string; email: string }[];
+  };
+  return body.data.map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+  }));
 }
 
 export type AdminUserActivityEntry = {

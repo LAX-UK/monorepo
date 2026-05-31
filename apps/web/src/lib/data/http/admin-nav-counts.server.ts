@@ -11,13 +11,13 @@ import {
   getAdminConditionReportRequests,
   getAdminFinanceDisputeDomainEvents,
   getAdminFinanceIssues,
-  getAdminLotFulfilmentList,
   getAdminLotList,
   getAdminManualReviewPayments,
   getAdminOnboardingIssues,
   getAdminSaleroomSession,
   getAdminSalesList,
   getLotWithdrawalRequests,
+  loadAdminLotFulfilmentQueue,
 } from "@/lib/data/http/admin.server";
 import { getAdminInvitations } from "@/lib/data/http/invitations.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
@@ -61,7 +61,8 @@ const defaultFetchers: AdminNavCountFetchers = {
     return categorizeOnboardingIssues(issues).reduce((sum, bucket) => sum + bucket.count, 0);
   },
   getLotFulfilmentPending: async () => {
-    const rows = await getAdminLotFulfilmentList();
+    const loaded = await loadAdminLotFulfilmentQueue({ limit: 1, offset: 0 });
+    if (loaded.access !== "ok") return 0;
     const actionable = new Set([
       "awaiting_payment",
       "awaiting_release",
@@ -69,7 +70,10 @@ const defaultFetchers: AdminNavCountFetchers = {
       "released",
       "in_transit",
     ]);
-    return rows.filter((r) => actionable.has(r.status)).length;
+    return Object.entries(loaded.statusCounts).reduce(
+      (sum, [status, count]) => sum + (actionable.has(status) ? count : 0),
+      0,
+    );
   },
   getWithdrawalsPending: async () => {
     const rows = await getLotWithdrawalRequests();

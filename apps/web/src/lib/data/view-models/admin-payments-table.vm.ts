@@ -6,6 +6,7 @@ export type AdminPaymentTableRow = {
   lotId: string;
   lotTitle: string;
   buyerId: string;
+  buyerLabel?: string | null;
   sellerId: string;
   amount: string;
   platformFee: string;

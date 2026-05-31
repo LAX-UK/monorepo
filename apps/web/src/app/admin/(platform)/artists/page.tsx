@@ -26,7 +26,7 @@ import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
-const NAV_PRESETS = new Set<ArtistPresetId>(["all", "pending", "makers", "featured"]);
+const NAV_PRESETS = new Set<ArtistPresetId>(["all", "pending", "makers", "featured", "archived"]);
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -143,6 +143,7 @@ export default async function AdminArtistsPage({
     { id: "pending", label: "Pending", href: artistListPresetHref("pending", sp) },
     { id: "makers", label: "Maker–sellers", href: artistListPresetHref("makers", sp) },
     { id: "featured", label: "Featured", href: artistListPresetHref("featured", sp) },
+    { id: "archived", label: "Archived", href: artistListPresetHref("archived", sp) },
     {
       id: "queues",
       label: "Queues",
@@ -161,6 +162,8 @@ export default async function AdminArtistsPage({
         ...(query.featured === true ? { featured: true } : {}),
         ...(query.verified === true ? { verified: true } : {}),
         ...(query.includeArchived === true ? { includeArchived: true } : {}),
+        ...(query.archivedOnly === true ? { archivedOnly: true } : {}),
+        ...(query.linked && query.linked !== "any" ? { linked: query.linked } : {}),
       });
 
   const activeFilterCount = skipIndexedList
@@ -284,6 +287,7 @@ export default async function AdminArtistsPage({
             featured: query.featured,
             verified: query.verified,
             includeArchived: query.includeArchived,
+            linked: query.linked,
           }}
         />
       }

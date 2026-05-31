@@ -1,13 +1,5 @@
-import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
+import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
 
 export default function AdminConditionReportsLoading() {
-  return (
-    <CatalogListPageSkeleton
-      title="Condition report requests"
-      description="Loading condition report requests…"
-      kpiTiles={0}
-      tableRows={8}
-      tableColumns={5}
-    />
-  );
+  return <AdminListPageSkeleton title="Condition reports" kpiTiles={0} showToolbar />;
 }

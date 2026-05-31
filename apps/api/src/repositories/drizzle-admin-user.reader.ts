@@ -1,13 +1,14 @@
 import type { Database } from "@auction/db";
 import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, inArray } from "drizzle-orm";
 import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
+  AdminUserListRow,
   IAdminUserActivityReader,
   IAdminUserReader,
   IAdminUserRoleManager,
@@ -69,6 +70,12 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       emailChangeExpiresAt: row.emailChangeExpiresAt ?? null,
       currentKycSessionId: row.currentKycSessionId ?? null,
     };
+  }
+
+  async getByIds(ids: string[]): Promise<AdminUserListRow[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db.select(adminUserListSelect).from(user).where(inArray(user.id, ids));
+    return rows.map(mapAdminUserListRow);
   }
 }
 

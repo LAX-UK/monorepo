@@ -110,6 +110,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const headerRightSlot = (
     <AdminShellHeaderActions
       pendingSubmissionCount={pendingSubmissionCount}
+      manualReviewCount={navCounts.manualReviewCount}
       showPlatformLinks={canAccessPlatformAdminRoutes(
         user.role as UserRole,
         user.staffRole ?? null,

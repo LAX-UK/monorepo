@@ -24,6 +24,10 @@ export function RecentActivityWidget({ activity }: Props) {
       </div>
       <EntityList
         responsiveMode="auto"
+        empty={{
+          title: "No recent lot activity",
+          description: "Recently updated lots will appear here once catalogue work starts.",
+        }}
         table={
           <div className="hidden overflow-x-auto rounded-md border border-border-hairline md:block">
             <table className="w-full text-left text-sm">

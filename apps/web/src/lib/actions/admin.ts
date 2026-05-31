@@ -1333,6 +1333,37 @@ const conditionReportRequestIdActionSchema = z.object({
   requestId: z.string().uuid(),
 });
 
+export async function adminMarkConditionReportInProgressAction(formData: FormData): Promise<void> {
+  return instrumentServerAction(
+    "adminMarkConditionReportInProgressAction",
+    async () => {
+      const parsed = conditionReportRequestIdActionSchema.safeParse({
+        requestId: String(formData.get("requestId") ?? "").trim(),
+      });
+      if (!parsed.success) {
+        redirect(`/admin/condition-reports?error=${encodeURIComponent("Invalid request")}`);
+      }
+      const res = await authedServerFetch(
+        `/admin/condition-report-requests/${encodeURIComponent(parsed.data.requestId)}/mark-in-progress`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        redirect(
+          `/admin/condition-reports?error=${encodeURIComponent(payload.error ?? "Could not mark in progress")}`,
+        );
+      }
+      revalidatePath("/admin/condition-reports");
+      redirect("/admin/condition-reports?success=Condition%20report%20marked%20in%20progress");
+    },
+    { formData },
+  );
+}
+
 export async function adminFulfillConditionReportAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminFulfillConditionReportAction",

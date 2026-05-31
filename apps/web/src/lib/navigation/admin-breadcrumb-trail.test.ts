@@ -13,7 +13,7 @@ const sessionUser = {
 describe("buildAdminBreadcrumbTrail", () => {
   it("starts with Finance workspace for finance role", () => {
     const items = buildAdminBreadcrumbTrail("/admin/payments", "finance", sessionUser);
-    expect(items[0]).toEqual({ label: "Finance", href: "/admin/payments" });
+    expect(items[0]).toEqual({ label: "Finance", href: "/admin/finance" });
     expect(items.at(-1)?.label).toBeTruthy();
   });
 
@@ -34,7 +34,7 @@ describe("buildAdminBreadcrumbTrail", () => {
       "finance",
       sessionUser,
     );
-    expect(payments[0]?.href).toBe("/admin/payments");
+    expect(payments[0]?.href).toBe("/admin/finance");
 
     const saleroom = buildAdminBreadcrumbTrail("/admin/saleroom", "platform", sessionUser);
     expect(

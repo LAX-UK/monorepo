@@ -24,6 +24,24 @@ type Props = {
   collapsed?: boolean;
 };
 
+const FINANCE_ADMIN_PREFIXES = [
+  "/admin/finance",
+  "/admin/payments",
+  "/admin/payouts",
+  "/admin/disputes",
+  "/admin/integrations",
+] as const;
+
+export function isFinanceAdminPath(pathname: string): boolean {
+  return FINANCE_ADMIN_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function isPlatformAdminPath(pathname: string): boolean {
+  return pathname === "/admin" || (pathname.startsWith("/admin/") && !isFinanceAdminPath(pathname));
+}
+
 /** Switch between platform admin, finance admin, and public gallery. */
 export function StaffWorkspaceSwitcher({ user, collapsed = false }: Props) {
   const pathname = usePathname();
@@ -37,25 +55,16 @@ export function StaffWorkspaceSwitcher({ user, collapsed = false }: Props) {
       label: "Platform",
       href: "/admin",
       icon: Building2,
-      active:
-        pathname.startsWith("/admin") &&
-        !pathname.startsWith("/admin/payments") &&
-        !pathname.startsWith("/admin/payouts") &&
-        !pathname.startsWith("/admin/disputes") &&
-        !pathname.startsWith("/admin/integrations"),
+      active: isPlatformAdminPath(pathname),
     });
   }
   if (canAccessFinanceAdminRoutes(role, staffRole)) {
     links.push({
       id: "finance",
       label: "Finance",
-      href: "/admin/payments",
+      href: "/admin/finance",
       icon: CreditCard,
-      active:
-        pathname.startsWith("/admin/payments") ||
-        pathname.startsWith("/admin/payouts") ||
-        pathname.startsWith("/admin/disputes") ||
-        pathname.startsWith("/admin/integrations"),
+      active: isFinanceAdminPath(pathname),
     });
   }
   links.push({
@@ -91,6 +100,7 @@ export function StaffWorkspaceSwitcher({ user, collapsed = false }: Props) {
                   collapsed && "justify-center px-2",
                 )}
                 title={collapsed ? link.label : undefined}
+                aria-current={link.active ? "page" : undefined}
               >
                 <Icon className="size-4 shrink-0" aria-hidden />
                 {!collapsed ? <span>{link.label}</span> : null}
