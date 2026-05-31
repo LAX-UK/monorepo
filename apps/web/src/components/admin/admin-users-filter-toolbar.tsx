@@ -12,11 +12,10 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { SplitFilterSheet } from "@/components/ui/split-filter-sheet";
 import type { UsersListFilters } from "@/lib/admin/users-list-query";
 import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
+import { DateRangePicker, type DateRangeValue } from "@auction/ui/components/date-range-picker";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
-const inputCls = "h-10 w-full font-body text-sm";
 const selectCls = "h-10 w-full font-body text-sm";
 const labelCapsCls =
   "font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
@@ -29,108 +28,71 @@ const triStateOptions = [
 
 type FilterDefaults = UsersListFilters;
 
+function dateRangeFromDefaults(from?: string, to?: string): DateRangeValue {
+  return { from: from ?? "", to: to ?? "" };
+}
+
+function applyDateRangeToParams(
+  params: URLSearchParams,
+  fromKey: string,
+  toKey: string,
+  range: DateRangeValue,
+) {
+  const from = range.from.trim();
+  const to = range.to.trim();
+  if (from) params.set(fromKey, from);
+  else params.delete(fromKey);
+  if (to) params.set(toKey, to);
+  else params.delete(toKey);
+}
+
 function AdminUsersFilterForm({ defaults }: { defaults: FilterDefaults }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
+  const [joined, setJoined] = useState(() =>
+    dateRangeFromDefaults(defaults.createdFrom, defaults.createdTo),
+  );
+  const [kycVerified, setKycVerified] = useState(() =>
+    dateRangeFromDefaults(defaults.kycVerifiedFrom, defaults.kycVerifiedTo),
+  );
+  const [lastActive, setLastActive] = useState(() =>
+    dateRangeFromDefaults(defaults.lastActiveFrom, defaults.lastActiveTo),
+  );
+
+  const applyDates = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("offset", "0");
+    applyDateRangeToParams(params, "createdFrom", "createdTo", joined);
+    applyDateRangeToParams(params, "kycVerifiedFrom", "kycVerifiedTo", kycVerified);
+    applyDateRangeToParams(params, "lastActiveFrom", "lastActiveTo", lastActive);
+    const qs = params.toString();
+    startTransition(() => {
+      router.push(qs ? `${pathname}?${qs}` : pathname);
+    });
+  };
+
   return (
-    <form
-      className="space-y-4"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget);
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("offset", "0");
-
-        const dateFields = [
-          "createdFrom",
-          "createdTo",
-          "kycVerifiedFrom",
-          "kycVerifiedTo",
-          "lastActiveFrom",
-          "lastActiveTo",
-        ] as const;
-        for (const key of dateFields) {
-          const v = String(fd.get(key) ?? "").trim();
-          if (v) params.set(key, v);
-          else params.delete(key);
-        }
-
-        const qs = params.toString();
-        startTransition(() => {
-          router.push(qs ? `${pathname}?${qs}` : pathname);
-        });
-      }}
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1" htmlFor="users-filter-created-from">
-          <span className={labelCapsCls}>Joined from</span>
-          <Input
-            id="users-filter-created-from"
-            name="createdFrom"
-            type="date"
-            defaultValue={defaults.createdFrom ?? ""}
-            className={inputCls}
-          />
-        </label>
-        <label className="flex flex-col gap-1" htmlFor="users-filter-created-to">
-          <span className={labelCapsCls}>Joined to</span>
-          <Input
-            id="users-filter-created-to"
-            name="createdTo"
-            type="date"
-            defaultValue={defaults.createdTo ?? ""}
-            className={inputCls}
-          />
-        </label>
-        <label className="flex flex-col gap-1" htmlFor="users-filter-kyc-from">
-          <span className={labelCapsCls}>KYC verified from</span>
-          <Input
-            id="users-filter-kyc-from"
-            name="kycVerifiedFrom"
-            type="date"
-            defaultValue={defaults.kycVerifiedFrom ?? ""}
-            className={inputCls}
-          />
-        </label>
-        <label className="flex flex-col gap-1" htmlFor="users-filter-kyc-to">
-          <span className={labelCapsCls}>KYC verified to</span>
-          <Input
-            id="users-filter-kyc-to"
-            name="kycVerifiedTo"
-            type="date"
-            defaultValue={defaults.kycVerifiedTo ?? ""}
-            className={inputCls}
-          />
-        </label>
-        <label className="flex flex-col gap-1 sm:col-span-2" htmlFor="users-filter-active-from">
-          <span className={labelCapsCls}>Last active from</span>
-          <Input
-            id="users-filter-active-from"
-            name="lastActiveFrom"
-            type="date"
-            defaultValue={defaults.lastActiveFrom ?? ""}
-            className={inputCls}
-          />
-        </label>
-        <label className="flex flex-col gap-1 sm:col-span-2" htmlFor="users-filter-active-to">
-          <span className={labelCapsCls}>Last active to</span>
-          <Input
-            id="users-filter-active-to"
-            name="lastActiveTo"
-            type="date"
-            defaultValue={defaults.lastActiveTo ?? ""}
-            className={inputCls}
-          />
-        </label>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Joined</span>
+        <DateRangePicker value={joined} onChange={setJoined} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>KYC verified</span>
+        <DateRangePicker value={kycVerified} onChange={setKycVerified} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className={labelCapsCls}>Last active</span>
+        <DateRangePicker value={lastActive} onChange={setLastActive} />
       </div>
 
-      <Button type="submit" className="h-10 w-full shrink-0">
+      <Button type="button" className="h-10 w-full shrink-0" onClick={applyDates}>
         Apply dates
       </Button>
-    </form>
+    </div>
   );
 }
 
@@ -258,7 +220,17 @@ export function AdminUsersFilterToolbar({
         options={[{ param: "deletionRequested", label: "Deletion requested", checkedValue: "1" }]}
       />
 
-      <AdminUsersFilterForm defaults={filterDefaults} />
+      <AdminUsersFilterForm
+        key={[
+          filterDefaults.createdFrom,
+          filterDefaults.createdTo,
+          filterDefaults.kycVerifiedFrom,
+          filterDefaults.kycVerifiedTo,
+          filterDefaults.lastActiveFrom,
+          filterDefaults.lastActiveTo,
+        ].join("|")}
+        defaults={filterDefaults}
+      />
     </div>
   );
 
