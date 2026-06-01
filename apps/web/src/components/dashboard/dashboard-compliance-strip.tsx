@@ -1,15 +1,8 @@
 import { ComplianceStatusStrip } from "@/components/dashboard/overview/compliance-status-strip";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import {
-  legalEntityToConnectFields,
-  resolveSellerConnectPresentation,
-} from "@/lib/connect/resolve-seller-connect-presentation";
-import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import { resolveSellerPayoutSetupPill } from "@/lib/connect/resolve-seller-payout-setup";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
-import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
-import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
-import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 
 export type DashboardComplianceStripUser = Pick<
   SessionUser,
@@ -46,23 +39,10 @@ export async function DashboardComplianceStrip({
 
   let payoutSetup = null;
   if (includePayoutSetup) {
-    const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
-    if (sellerCtx.sellerEntityId) {
-      const hub = createOrganisationHubGateway();
-      const [clientConfig, entity] = await Promise.all([
-        getServerStripeConnectClientConfig(),
-        hub.getEntityDetail(sellerCtx.sellerEntityId).catch(() => null),
-      ]);
-      const presentation = resolveSellerConnectPresentation({
-        connectEnforced: clientConfig.connectEnforced,
-        entity: entity ? legalEntityToConnectFields(entity) : null,
-      });
-      if (clientConfig.connectEnforced && !presentation.connectReady) {
-        payoutSetup = { ready: false, href: DASHBOARD_ROUTES.sellerConnect };
-      } else if (clientConfig.connectEnforced && presentation.connectReady) {
-        payoutSetup = { ready: true, href: DASHBOARD_ROUTES.sellerPayouts };
-      }
-    }
+    payoutSetup = await resolveSellerPayoutSetupPill({
+      role: user.role,
+      staffRole: user.staffRole ?? null,
+    });
   }
 
   return (

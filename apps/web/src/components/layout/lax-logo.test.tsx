@@ -10,6 +10,7 @@ describe("LaxLogo", () => {
     expect(img).toHaveAttribute("src", "/logo.svg");
     expect(img).toHaveAttribute("loading", "eager");
     expect(img).toHaveAttribute("fetchpriority", "high");
+    expect(img).toHaveClass("lax-logo-img");
   });
 
   it("header variant uses eager native img for svg", () => {
@@ -19,6 +20,7 @@ describe("LaxLogo", () => {
     expect(img).toHaveAttribute("src", "/logo.svg");
     expect(img).toHaveAttribute("loading", "eager");
     expect(img).toHaveAttribute("fetchpriority", "high");
+    expect(img).toHaveClass("lax-logo-img");
   });
 
   it("footer variant lazy-loads svg", () => {
@@ -27,5 +29,6 @@ describe("LaxLogo", () => {
     const img = screen.getByRole("img", { name: /London Auction House/i });
     expect(img).toHaveAttribute("loading", "lazy");
     expect(img).toHaveAttribute("fetchpriority", "auto");
+    expect(img).toHaveClass("lax-logo-img");
   });
 });
