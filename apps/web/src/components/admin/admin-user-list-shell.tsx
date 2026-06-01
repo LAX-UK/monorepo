@@ -4,6 +4,8 @@ import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
+import { useAdminUserPreviewActions } from "@/components/admin/admin-user-preview-provider";
+import type { AdminUserListBulkBridge } from "@/components/admin/admin-user-preview-provider";
 import { BulkActionsToolbar, type BulkOperation } from "@/components/admin/bulk-actions-toolbar";
 import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { useTableDensity } from "@/components/layout/density-provider";
@@ -13,7 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type AdminUserListKpi = KpiRowTile & { id?: string };
 
@@ -28,7 +30,9 @@ type Props = {
   emptyComponent?: ReactNode;
   renderDrawerOverview: (user: AdminUserRow) => ReactNode;
   renderDrawerActions?: (user: AdminUserRow) => ReactNode;
-  renderMobileCard: (user: AdminUserRow, onOpen: () => void) => ReactNode;
+  renderMobileCard?: (user: AdminUserRow, onOpen: () => void) => ReactNode;
+  /** When true, mobile cards are rendered by the parent list shell. */
+  externalMobileCards?: boolean;
   filtersSlot?: ReactNode;
   /** e.g. (id) => `/admin/clients/${id}` */
   detailHref?: (user: AdminUserRow) => string;
@@ -48,6 +52,7 @@ export function AdminUserListShell({
   renderDrawerOverview,
   renderDrawerActions,
   renderMobileCard,
+  externalMobileCards = false,
   filtersSlot,
   detailHref,
   showColumnPicker = false,
@@ -56,42 +61,85 @@ export function AdminUserListShell({
   const { density: shellDensity } = useTableDensity();
   const tableDensity = shellDensity === "compact" ? "compact" : "comfortable";
   const [selected, setSelected] = useState<AdminUserRow | null>(null);
+  const previewActions = useAdminUserPreviewActions();
+  const registerOpenUser = previewActions?.registerOpenUser;
+  const registerBulk = previewActions?.registerBulk;
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
   const onOpen = useCallback((u: AdminUserRow) => setSelected(u), []);
+
+  useEffect(() => {
+    if (!registerOpenUser || !externalMobileCards) return;
+    registerOpenUser((userId) => {
+      const user = rows.find((row) => row.id === userId);
+      if (user) setSelected(user);
+    });
+  }, [registerOpenUser, externalMobileCards, rows]);
+
+  useEffect(() => {
+    if (!registerBulk || !externalMobileCards) {
+      registerBulk?.(null);
+      return;
+    }
+
+    const bulkBridge: AdminUserListBulkBridge = {
+      selectedIds,
+      operations: bulkOperations,
+      clear,
+      isSelected: (userId) => Boolean(rowSelection[userId]),
+      toggleSelected: (userId, checked) => {
+        setRowSelection((prev) => ({ ...prev, [userId]: checked }));
+      },
+    };
+    registerBulk(bulkBridge);
+    return () => registerBulk(null);
+  }, [
+    registerBulk,
+    externalMobileCards,
+    selectedIds,
+    bulkOperations,
+    clear,
+    rowSelection,
+    setRowSelection,
+  ]);
   const columns = useMemo(() => buildColumns(onOpen), [buildColumns, onOpen]);
 
-  const cards = (
-    <ul className="space-y-3 lg:hidden">
-      {rows.map((u) => (
-        <li key={u.id}>{renderMobileCard(u, () => onOpen(u))}</li>
-      ))}
-    </ul>
+  const table = (
+    <AdminDataTable
+      ariaLabel={tableAriaLabel}
+      columns={columns}
+      data={rows}
+      {...(emptyComponent ? { emptyComponent } : { emptyMessage })}
+      density={tableDensity}
+      stickyFirstColumn
+      enableRowSelection
+      getRowId={(row) => row.id}
+      rowSelection={rowSelection}
+      onRowSelectionChange={setRowSelection}
+      showColumnPicker={showColumnPicker}
+      {...(columnVisibilityStorageKey ? { columnVisibilityStorageKey } : {})}
+    />
   );
+
+  const cards =
+    !externalMobileCards && renderMobileCard ? (
+      <ul className="space-y-3 lg:hidden">
+        {rows.map((u) => (
+          <li key={u.id}>{renderMobileCard(u, () => onOpen(u))}</li>
+        ))}
+      </ul>
+    ) : null;
 
   return (
     <>
       <p className="mb-3 font-body text-xs text-on-surface-variant">
         Showing {rows.length} of {totalMatches} matching accounts on this page.
       </p>
-      <div className="hidden lg:block">
-        <AdminDataTable
-          ariaLabel={tableAriaLabel}
-          columns={columns}
-          data={rows}
-          {...(emptyComponent ? { emptyComponent } : { emptyMessage })}
-          density={tableDensity}
-          stickyFirstColumn
-          enableRowSelection
-          getRowId={(row) => row.id}
-          rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
-          showColumnPicker={showColumnPicker}
-          {...(columnVisibilityStorageKey ? { columnVisibilityStorageKey } : {})}
-        />
-      </div>
+      {externalMobileCards ? table : <div className="hidden lg:block">{table}</div>}
       {cards}
       {filtersSlot}
-      <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
+      {!externalMobileCards ? (
+        <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
+      ) : null}
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
           {selected ? (

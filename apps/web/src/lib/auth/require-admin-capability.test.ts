@@ -15,7 +15,11 @@ vi.mock("next/navigation", () => ({
   redirect: (url: string) => redirect(url),
 }));
 
-import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  ANALYTICS_ACCESS,
+  LOTS_ACCESS,
+  USERS_DIRECTORY_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { requireAdminCapability } from "./require-admin-capability";
 
 describe("requireAdminCapability", () => {
@@ -46,5 +50,25 @@ describe("requireAdminCapability", () => {
       staffRole: "staff_viewer",
     });
     await expect(requireAdminCapability(LOTS_ACCESS, "/admin/lots")).rejects.toThrow("REDIRECT:");
+  });
+
+  it("redirects staff_viewer away from clients directory", async () => {
+    getServerSessionUser.mockResolvedValue({
+      role: "staff",
+      staffRole: "staff_viewer",
+    });
+    await expect(requireAdminCapability(USERS_DIRECTORY_ACCESS, "/admin/clients")).rejects.toThrow(
+      "REDIRECT:",
+    );
+  });
+
+  it("redirects specialist away from analytics", async () => {
+    getServerSessionUser.mockResolvedValue({
+      role: "staff",
+      staffRole: "specialist",
+    });
+    await expect(requireAdminCapability(ANALYTICS_ACCESS, "/admin/analytics")).rejects.toThrow(
+      "REDIRECT:",
+    );
   });
 });

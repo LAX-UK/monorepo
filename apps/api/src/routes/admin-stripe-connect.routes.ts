@@ -2,7 +2,7 @@ import type { Hono } from "hono";
 import { z } from "zod";
 import { assertConnectUrlAllowed } from "../lib/stripe-connect-return-url.js";
 import { zValidator } from "../lib/z-validator.js";
-import { createRequireCapability } from "../middleware/require-capability.js";
+import { requireLegalEntityBrowse } from "../middleware/require-capability.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import { StripeConnectNotConfiguredError } from "../services/interfaces/stripe-connect.js";
 
@@ -15,8 +15,6 @@ const linkBodySchema = z.object({
   refreshUrl: z.string().url(),
 });
 
-const requireLegalEntityRead = createRequireCapability("legal_entity.read");
-
 /** Admin ops: sync Connect state and mint fallback onboarding links for sellers. */
 export function attachAdminStripeConnectRoutes(
   platform: Hono<{ Variables: { userId?: string; userRole?: string } }>,
@@ -26,7 +24,7 @@ export function attachAdminStripeConnectRoutes(
 ) {
   platform.post(
     "/legal-entities/:id/stripe-connect/sync",
-    requireLegalEntityRead,
+    requireLegalEntityBrowse,
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
@@ -47,7 +45,7 @@ export function attachAdminStripeConnectRoutes(
 
   platform.post(
     "/legal-entities/:id/stripe-connect/onboarding-link",
-    requireLegalEntityRead,
+    requireLegalEntityBrowse,
     zValidator("param", legalEntityIdParamSchema),
     zValidator("json", linkBodySchema),
     async (c) => {

@@ -8,13 +8,23 @@ import {
  * Grouped for accordion UI; flattened for command palette and legacy consumers.
  */
 import {
+  ANALYTICS_ACCESS,
+  ARTISTS_ACCESS,
   CATEGORIES_ACCESS,
   CONDITION_REPORTS_ACCESS,
   CONVEYOR_ACCESS,
+  FINANCE_ACCESS,
+  INVITATIONS_ACCESS,
+  LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
+  LOT_FULFILMENT_ACCESS,
+  ONBOARDING_QUEUES_ACCESS,
+  PLATFORM_ADMIN_ACCESS,
+  SALEROOM_ACCESS,
   SALE_CATALOG_ACCESS,
   STAFF_OVERVIEW_ACCESS,
   SUBMISSIONS_ACCESS,
+  USERS_DIRECTORY_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import type { NavBadgeTone } from "@/lib/shell/contracts";
 import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/types";
@@ -138,7 +148,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/analytics",
           label: "Analytics",
           icon: BarChart3,
-          requirement: "platform.admin.full",
+          requirement: ANALYTICS_ACCESS,
         },
       ],
     },
@@ -179,7 +189,7 @@ function buildStaffNavGroupSpecs(
           label: "Artists",
           icon: Brush,
           ...(pendingArtistCount > 0 ? { badge: pendingArtistCount } : {}),
-          requirement: "artist.read",
+          requirement: ARTISTS_ACCESS,
         },
         submissions,
         {
@@ -196,7 +206,7 @@ function buildStaffNavGroupSpecs(
           label: "Lot fulfilment",
           icon: Truck,
           match: (pathname) => pathname.startsWith("/admin/lot-fulfilment"),
-          requirement: "operations.fulfilment",
+          requirement: LOT_FULFILMENT_ACCESS,
           ...navBadge(navCounts.lotFulfilmentPending, "warning"),
         },
       ],
@@ -211,7 +221,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/saleroom",
           label: "Saleroom",
           icon: MonitorPlay,
-          requirement: "auction.manage",
+          requirement: SALEROOM_ACCESS,
           ...navBadge(navCounts.saleroomLiveCount, "live"),
         },
         {
@@ -228,7 +238,7 @@ function buildStaffNavGroupSpecs(
           label: "Onboarding issues",
           icon: AlertTriangle,
           match: (pathname) => pathname.startsWith("/admin/onboarding-issues"),
-          requirement: STAFF_OVERVIEW_ACCESS,
+          requirement: ONBOARDING_QUEUES_ACCESS,
           ...navBadge(navCounts.onboardingIssuesTotal, "warning"),
         },
       ],
@@ -247,7 +257,7 @@ function buildStaffNavGroupSpecs(
             pathname === "/admin/payments" ||
             (pathname.startsWith("/admin/payments/") &&
               !pathname.startsWith("/admin/payments/manual-review")),
-          requirement: "finance.read",
+          requirement: FINANCE_ACCESS,
           ...navBadge(navCounts.manualReviewCount, "danger"),
         },
         {
@@ -255,7 +265,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/disputes",
           label: "Disputes",
           icon: ShieldAlert,
-          requirement: "finance.read",
+          requirement: FINANCE_ACCESS,
           ...navBadge(navCounts.disputesOpen, "danger"),
         },
         {
@@ -263,7 +273,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/payouts",
           label: "Payouts",
           icon: Banknote,
-          requirement: "finance.read",
+          requirement: FINANCE_ACCESS,
           ...navBadge(navCounts.payoutsFailed, "danger"),
         },
         {
@@ -271,7 +281,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/integrations/xero",
           label: "Xero",
           icon: Plug,
-          requirement: "finance.read",
+          requirement: FINANCE_ACCESS,
         },
       ],
     },
@@ -285,14 +295,14 @@ function buildStaffNavGroupSpecs(
           href: "/admin/clients",
           label: "Clients",
           icon: Users,
-          requirement: "platform.admin.full",
+          requirement: USERS_DIRECTORY_ACCESS,
         },
         {
           id: "staff",
           href: "/admin/staff",
           label: "Staff",
           icon: ShieldCheck,
-          requirement: "platform.admin.full",
+          requirement: USERS_DIRECTORY_ACCESS,
         },
         {
           id: "legal-entities",
@@ -300,14 +310,14 @@ function buildStaffNavGroupSpecs(
           label: "Legal entities",
           icon: Building2,
           match: (pathname) => pathname.startsWith("/admin/legal-entities"),
-          requirement: "legal_entity.read",
+          requirement: LEGAL_ENTITY_BROWSE_ACCESS,
         },
         {
           id: "invitations",
           href: "/admin/invitations",
           label: "Invitations",
           icon: Mail,
-          requirement: "platform.admin.full",
+          requirement: INVITATIONS_ACCESS,
           ...navBadge(navCounts.invitationsPending, "default"),
         },
         {
@@ -315,7 +325,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/impersonation",
           label: "Impersonate",
           icon: MonitorSmartphone,
-          requirement: "platform.admin.full",
+          requirement: PLATFORM_ADMIN_ACCESS,
         },
       ],
     },

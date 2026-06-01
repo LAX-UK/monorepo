@@ -1,12 +1,14 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { AdminListSearchGet } from "@/components/admin/admin-list-search";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
+import { PaymentsFilterToolbar } from "@/components/admin/finance/payments-filter-toolbar";
 import { AdminManualReviewBoard } from "@/components/admin/manual-review-board";
 import { ExportButton } from "@/components/exports/export-button";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
@@ -14,6 +16,7 @@ import { paymentStatusesForChip, paymentsListController } from "@/lib/admin/admi
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { detectAnomalies, detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminPaymentsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
@@ -48,9 +51,9 @@ export default async function AdminPaymentsPage({
 }) {
   const sp = await searchParams;
   const manualReviewQueue = sp.manualReview === "1";
-  const success = sp.success ? decodeURIComponent(sp.success) : null;
+  const success = safeDecodeAdminErrorParam(sp.success);
   const periodDays = parseAdminKpiPeriod(sp.period);
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const query = paymentsListController.parseQuery(sp);
 
   const paymentsTrend = await getAdminPaymentsKpiTrend(periodDays).catch(() => ({
@@ -143,7 +146,7 @@ export default async function AdminPaymentsPage({
       { manualReviewCount: 0 },
     );
     return (
-      <AdminListPage
+      <AdminListShell
         variant="queue"
         title="Manual payment review"
         description="Winning payments paused because the seller entity was archived before capture."
@@ -162,6 +165,7 @@ export default async function AdminPaymentsPage({
             <AdminAnomalyBanner anomalies={manualAnomalies} storageKey="manual-review" />
           ) : null
         }
+        wrapView={false}
         view={
           !manualReviewLoadError && (success || manualReviewRows.length > 0) ? (
             <div className="space-y-4">
@@ -185,48 +189,88 @@ export default async function AdminPaymentsPage({
             />
           ) : null
         }
-        pagination={null}
       />
     );
   }
 
-  const errorAlert =
-    error || loadError ? (
-      <AdminListAlert title="Could not load payments">{loadError ?? error}</AdminListAlert>
-    ) : null;
+  const paymentQ = query.q ?? "";
+  const searchFilterChips =
+    paymentQ.trim().length > 0
+      ? [
+          {
+            id: "q",
+            label: `Search: ${paymentQ.trim()}`,
+            clearHref: buildListHref("/admin/payments", sp, { q: "", offset: 0 }),
+          },
+        ]
+      : [];
 
-  const empty =
-    !loadError && summaryRows.length === 0 ? (
-      <AdminEmptyState
-        title="No payments"
-        description="No payment records match the current filters."
+  const pagination =
+    !loadError && total > 0 ? (
+      <PaginationFooter
+        offset={query.offset}
+        limit={query.limit}
+        countOnPage={paymentRows.length}
+        total={total}
+        prevHref={
+          query.offset > 0
+            ? buildListHref("/admin/payments", sp, {
+                offset: Math.max(0, query.offset - query.limit),
+              })
+            : null
+        }
+        nextHref={
+          query.offset + paymentRows.length < total
+            ? buildListHref("/admin/payments", sp, {
+                offset: query.offset + query.limit,
+              })
+            : null
+        }
       />
     ) : null;
 
-  const view =
-    !loadError && summaryRows.length > 0 ? (
-      <Suspense fallback={<PageSkeleton variant="table" />}>
-        <AdminPaymentsBoard rows={paymentRows} />
-      </Suspense>
-    ) : null;
-
-  const paymentQ = query.q ?? "";
-
   return (
-    <AdminListPage
+    <AdminListShell
       title="Payments"
       description="Filter by status, search payments, and use the drawer for capture/refund on touch devices."
       hasFilters={Boolean(query.status || paymentQ)}
       resetHref="/admin/payments"
+      chips={statusChips}
       filters={
-        <AdminListSearchGet
-          action="/admin/payments"
-          defaultValue={paymentQ}
-          placeholder="Search lot, buyer, or payment id…"
-          {...(query.status ? { hiddenFields: { status: String(sp.status) } } : {})}
+        <PaymentsFilterToolbar
+          activeFilterChips={searchFilterChips}
+          toolbarEnd={<CatalogKpiPeriodToggle current={periodDays} className="hidden lg:flex" />}
         />
       }
-      errorAlert={errorAlert}
+      filtersSelfContained
+      listToolbarEnd={
+        <ExportButton
+          entityType="payments"
+          disabled={Boolean(query.q?.trim())}
+          disabledReason="Clear search to export all payments matching the status filters"
+          filters={{
+            ...(query.status ? { status: query.status } : {}),
+          }}
+        />
+      }
+      mobileSummary={
+        !loadError && summaryRows.length > 0 ? (
+          <div className="space-y-3">
+            <CatalogListMobileSummary
+              metrics={[
+                { id: "volume", label: "Volume", value: formatCompactMoney(summary.totalVolume) },
+                {
+                  id: "pending",
+                  label: "Awaiting action",
+                  value: formatCompactMoney(summary.pending),
+                },
+                { id: "captured", label: "Settled", value: formatCompactMoney(summary.captured) },
+              ]}
+            />
+            <CatalogKpiPeriodToggle current={periodDays} className="lg:hidden" />
+          </div>
+        ) : null
+      }
       kpiStrip={
         !loadError && summaryRows.length > 0 ? (
           <>
@@ -262,44 +306,29 @@ export default async function AdminPaymentsPage({
           </>
         ) : null
       }
-      chips={statusChips}
-      listToolbarEnd={
-        <ExportButton
-          entityType="payments"
-          disabled={Boolean(query.q?.trim())}
-          disabledReason="Clear search to export all payments matching the status filters"
-          filters={{
-            ...(query.status ? { status: query.status } : {}),
-            ...(manualReviewQueue ? { manualReview: true } : {}),
-          }}
-        />
+      errorAlert={
+        error || loadError ? (
+          <AdminListAlert title="Could not load payments">{loadError ?? error}</AdminListAlert>
+        ) : null
       }
-      view={view}
-      empty={empty}
-      pagination={
-        !loadError && total > 0 ? (
-          <PaginationFooter
-            offset={query.offset}
-            limit={query.limit}
-            countOnPage={paymentRows.length}
-            total={total}
-            prevHref={
-              query.offset > 0
-                ? buildListHref("/admin/payments", sp, {
-                    offset: Math.max(0, query.offset - query.limit),
-                  })
-                : null
-            }
-            nextHref={
-              query.offset + paymentRows.length < total
-                ? buildListHref("/admin/payments", sp, {
-                    offset: query.offset + query.limit,
-                  })
-                : null
-            }
+      showCommandPaletteHint
+      wrapView={false}
+      view={
+        !loadError && summaryRows.length > 0 ? (
+          <Suspense fallback={<PageSkeleton variant="table" />}>
+            <AdminPaymentsBoard rows={paymentRows} />
+          </Suspense>
+        ) : null
+      }
+      empty={
+        !loadError && summaryRows.length === 0 ? (
+          <AdminEmptyState
+            title="No payments"
+            description="No payment records match the current filters."
           />
         ) : null
       }
+      pagination={pagination}
     />
   );
 }

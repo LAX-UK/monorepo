@@ -136,7 +136,7 @@ export default async function AdminArtistsPage({
     showDuplicates === true
       ? "queues"
       : showBackfill === true
-        ? "__backfill__"
+        ? "backfill"
         : NAV_PRESETS.has(preset)
           ? preset
           : "all";
@@ -158,6 +158,11 @@ export default async function AdminArtistsPage({
       label: "Queues",
       href: queuesHref,
       ...(pendingReviewCount > 0 ? { badge: pendingReviewCount } : {}),
+    },
+    {
+      id: "backfill",
+      label: "Backfill",
+      href: buildListHref("/admin/artists", sp, { backfill: "1", duplicates: "", offset: 0 }),
     },
   ];
 
@@ -261,6 +266,7 @@ export default async function AdminArtistsPage({
         offset={query.offset}
         limit={query.limit}
         countOnPage={artists.length}
+        total={total}
         prevHref={
           query.offset > 0
             ? buildListHref("/admin/artists", sp, {

@@ -5,12 +5,18 @@ type Props = {
   title?: string;
   children: ReactNode;
   className?: string;
+  variant?: "destructive" | "default";
 };
 
-/** Destructive list-page alert with role="alert". */
-export function AdminListAlert({ title = "Something went wrong", children, className }: Props) {
+/** List/detail alert with role="alert". */
+export function AdminListAlert({
+  title = "Something went wrong",
+  children,
+  className,
+  variant = "destructive",
+}: Props) {
   return (
-    <Alert variant="destructive" className={className} role="alert">
+    <Alert variant={variant} className={className} role="alert">
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>{children}</AlertDescription>
     </Alert>

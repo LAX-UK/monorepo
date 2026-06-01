@@ -113,6 +113,7 @@ export default async function AdminCategoriesPage({
         offset={query.offset}
         limit={query.limit}
         countOnPage={categories.length}
+        total={total}
         prevHref={
           query.offset > 0
             ? buildListHref("/admin/categories", sp, {

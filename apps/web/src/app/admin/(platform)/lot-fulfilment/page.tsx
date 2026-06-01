@@ -140,6 +140,7 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
         offset={offset}
         limit={limit}
         countOnPage={rows.length}
+        total={total}
         prevHref={
           offset > 0
             ? buildListHref("/admin/lot-fulfilment", sp, {
