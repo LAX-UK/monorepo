@@ -154,7 +154,7 @@ export async function middleware(request: NextRequest) {
   return baseResponse;
 }
 
-/** CSP + security headers on all HTML routes; excludes static assets, Sentry tunnel, and `/api/*` route handlers. */
+/** CSP + security headers on all HTML routes; excludes static assets, Sentry tunnel, QR redirects, and `/api/*` route handlers. */
 export const config = {
-  matcher: ["/((?!api|sentry-tunnel|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!api|q/|sentry-tunnel|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
