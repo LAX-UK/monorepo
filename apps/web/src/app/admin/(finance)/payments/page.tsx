@@ -16,14 +16,17 @@ import { paymentStatusesForChip, paymentsListController } from "@/lib/admin/admi
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { detectAnomalies, detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-review";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminPaymentsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminManualReviewPayments, getAdminUsersByIds } from "@/lib/data/http/admin.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildPaymentsSummary } from "@/lib/data/view-models/admin-payments-summary.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatCompactMoney } from "@/lib/ui/format";
+import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
@@ -46,11 +49,13 @@ export default async function AdminPaymentsPage({
     offset?: string;
     period?: string;
     manualReview?: string;
+    manualReviewReason?: string;
     success?: string;
   }>;
 }) {
   const sp = await searchParams;
   const manualReviewQueue = sp.manualReview === "1";
+  const manualReviewReasonFilter = sp.manualReviewReason?.trim() || "";
   const success = safeDecodeAdminErrorParam(sp.success);
   const periodDays = parseAdminKpiPeriod(sp.period);
   const error = safeDecodeAdminErrorParam(sp.error);
@@ -66,7 +71,15 @@ export default async function AdminPaymentsPage({
   let manualReviewLoadError: string | null = null;
   if (manualReviewQueue) {
     try {
-      manualReviewRows = await getAdminManualReviewPayments();
+      const all = await getAdminManualReviewPayments();
+      manualReviewRows =
+        manualReviewReasonFilter === "finance"
+          ? all.filter((r) => !isComplianceManualReviewReason(r.manualReviewReason))
+          : manualReviewReasonFilter === "compliance"
+            ? all.filter((r) => isComplianceManualReviewReason(r.manualReviewReason))
+            : manualReviewReasonFilter.length > 0
+              ? all.filter((r) => r.manualReviewReason === manualReviewReasonFilter)
+              : all;
     } catch (e) {
       manualReviewLoadError =
         e instanceof Error ? e.message : "Could not load manual review payments.";
@@ -119,10 +132,33 @@ export default async function AdminPaymentsPage({
           label: "Manual review",
           href: buildListHref("/admin/payments", sp, {
             manualReview: "1",
+            manualReviewReason: "",
             status: "",
             offset: 0,
           }),
-          active: manualReviewQueue,
+          active: manualReviewQueue && !manualReviewReasonFilter,
+        },
+        {
+          id: "manual-review-finance",
+          label: "Finance",
+          href: buildListHref("/admin/payments", sp, {
+            manualReview: "1",
+            manualReviewReason: "finance",
+            status: "",
+            offset: 0,
+          }),
+          active: manualReviewQueue && manualReviewReasonFilter === "finance",
+        },
+        {
+          id: "manual-review-compliance",
+          label: "Compliance",
+          href: buildListHref("/admin/payments", sp, {
+            manualReview: "1",
+            manualReviewReason: "compliance",
+            status: "",
+            offset: 0,
+          }),
+          active: manualReviewQueue && manualReviewReasonFilter === "compliance",
         },
         ...paymentStatusesForChip.map((s) => ({
           id: s,
@@ -141,6 +177,10 @@ export default async function AdminPaymentsPage({
   );
 
   if (manualReviewQueue) {
+    const sessionUser = await getServerSessionUser();
+    const canOpenComplianceQueues = sessionUser
+      ? canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null)
+      : false;
     const manualAnomalies = detectAnomalies(
       { manualReviewCount: manualReviewRows.length },
       { manualReviewCount: 0 },
@@ -149,10 +189,69 @@ export default async function AdminPaymentsPage({
       <AdminListShell
         variant="queue"
         title="Manual payment review"
-        description="Winning payments paused because the seller entity was archived before capture."
+        description="Winning payments held before checkout: finance (archived seller, high value) or compliance (AML hold, source of funds). Compliance holds cannot be released until MLRO clears the case."
         hasFilters={manualReviewQueue}
-        resetHref="/admin/payments"
-        chips={statusChips}
+        resetHref="/admin/payments?manualReview=1"
+        chips={
+          <>
+            {statusChips}
+            <FilterChipRow
+              label="Filter by hold reason"
+              chips={[
+                {
+                  id: "mr-all",
+                  label: "All holds",
+                  href: buildListHref("/admin/payments", sp, {
+                    manualReview: "1",
+                    manualReviewReason: "",
+                    offset: 0,
+                  }),
+                  active: !manualReviewReasonFilter,
+                },
+                {
+                  id: "mr-finance",
+                  label: "Finance holds",
+                  href: buildListHref("/admin/payments", sp, {
+                    manualReview: "1",
+                    manualReviewReason: "finance",
+                    offset: 0,
+                  }),
+                  active: manualReviewReasonFilter === "finance",
+                },
+                {
+                  id: "mr-compliance-all",
+                  label: "Compliance holds",
+                  href: buildListHref("/admin/payments", sp, {
+                    manualReview: "1",
+                    manualReviewReason: "compliance",
+                    offset: 0,
+                  }),
+                  active: manualReviewReasonFilter === "compliance",
+                },
+                {
+                  id: "mr-aml",
+                  label: "AML hold",
+                  href: buildListHref("/admin/payments", sp, {
+                    manualReview: "1",
+                    manualReviewReason: "aml_hold",
+                    offset: 0,
+                  }),
+                  active: manualReviewReasonFilter === "aml_hold",
+                },
+                {
+                  id: "mr-sof",
+                  label: "Source of funds",
+                  href: buildListHref("/admin/payments", sp, {
+                    manualReview: "1",
+                    manualReviewReason: "source_of_funds_required",
+                    offset: 0,
+                  }),
+                  active: manualReviewReasonFilter === "source_of_funds_required",
+                },
+              ]}
+            />
+          </>
+        }
         errorAlert={
           error || manualReviewLoadError ? (
             <AdminListAlert title="Could not complete action">
@@ -176,7 +275,10 @@ export default async function AdminPaymentsPage({
                 </Alert>
               ) : null}
               {manualReviewRows.length > 0 ? (
-                <AdminManualReviewBoard rows={manualReviewRows} />
+                <AdminManualReviewBoard
+                  rows={manualReviewRows}
+                  canOpenComplianceQueues={canOpenComplianceQueues}
+                />
               ) : null}
             </div>
           ) : null
@@ -185,7 +287,7 @@ export default async function AdminPaymentsPage({
           !manualReviewLoadError && !success && manualReviewRows.length === 0 ? (
             <AdminEmptyState
               title="No manual review payments"
-              description="Archived-seller winning payments will appear here before capture."
+              description="Payments in requires_manual_review will appear here — finance or compliance holds."
             />
           ) : null
         }

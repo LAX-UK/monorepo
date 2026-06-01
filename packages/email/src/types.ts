@@ -34,6 +34,7 @@ export const templateNames = [
   "legal-entity-archived-notice",
   "lot-voided-anti-shilling-admin",
   "kyc-resubmission-required",
+  "aml-compliance-review-notice",
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -250,6 +251,21 @@ export type TemplateVarsByName = {
     issueDetail?: string | null;
     verifyUrl: string;
   };
+  /**
+   * MLRO / compliance escalation for a sanctions/PEP/adverse-media match or a
+   * Source-of-Funds case requiring review. Deliberately PII-light (references +
+   * a short detail line); full context lives behind the admin review queue.
+   */
+  "aml-compliance-review-notice": {
+    recipientFirstName?: string | null;
+    /** "screening" (watchlist match) or "source_of_funds". */
+    kind: "screening" | "source_of_funds";
+    /** Screening id or Source-of-Funds case id. */
+    caseReference: string;
+    detail: string;
+    adminReviewUrl: string;
+    supportContactEmail: string;
+  };
 };
 
 export type RecipientResolution = "live" | "snapshot";
@@ -288,6 +304,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "legal-entity-archived-notice": "live",
   "lot-voided-anti-shilling-admin": "live",
   "kyc-resubmission-required": "live",
+  "aml-compliance-review-notice": "live",
 };
 
 export type RenderedEmail = {

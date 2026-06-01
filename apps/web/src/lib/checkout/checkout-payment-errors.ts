@@ -21,7 +21,14 @@ export function checkoutPaymentErrorMessage(message: string, code?: string | nul
 }
 
 export function manualReviewReasonCopy(
-  reason: "seller_archived" | "high_value" | "seller_archived_and_high_value" | null | undefined,
+  reason:
+    | "seller_archived"
+    | "high_value"
+    | "seller_archived_and_high_value"
+    | "aml_hold"
+    | "source_of_funds_required"
+    | null
+    | undefined,
 ): string {
   switch (reason) {
     case "seller_archived":
@@ -30,6 +37,10 @@ export function manualReviewReasonCopy(
       return "This high-value purchase requires finance review before Stripe checkout is issued. Settlements will contact you shortly.";
     case "seller_archived_and_high_value":
       return "This lot requires finance review (high value and seller status). Settlements will contact you with next steps.";
+    case "aml_hold":
+      return "This purchase is on hold while we complete a routine compliance review. Settlement cannot proceed until this is resolved. If you have questions, contact support using the details below — please do not send unsolicited documents.";
+    case "source_of_funds_required":
+      return "Before settlement we need to verify the source of funds for this purchase. Our compliance team will contact you with secure instructions. Typical documents include recent bank statements, proof of sale proceeds, or inheritance/ gift documentation where applicable.";
     default:
       return "Your payment record was created. Finance will issue checkout or contact you with payment instructions.";
   }

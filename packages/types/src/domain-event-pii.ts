@@ -156,6 +156,33 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "currency",
     "stripeEventId",
   ]),
+  /** AML watchlist screening evaluated — operational reference fields only (no PII). */
+  "aml.screening_evaluated": new Set([
+    "outcome",
+    "matchStatus",
+    "monitorStatus",
+    "categories",
+    "reasons",
+  ]),
+  /** AML possible/confirmed match flagged for MLRO review (no PII; names live in the secured record). */
+  "aml.match_flagged": new Set([
+    "outcome",
+    "matchStatus",
+    "monitorStatus",
+    "categories",
+    "reasons",
+  ]),
+  /** Source-of-Funds case opened (CDD Section 6) — operational fields only (no PII). */
+  "source_of_funds.required": new Set([
+    "sourceOfFundsId",
+    "userId",
+    "trigger",
+    "thresholdAmount",
+    "exposureAmount",
+    "currency",
+  ]),
+  /** Source-of-Funds MLRO/finance disposition — operational fields only (no PII). */
+  "source_of_funds.reviewed": new Set(["sourceOfFundsId", "userId", "status", "trigger"]),
   /** restricted seller writes — audit only. */
   "item_submission.restricted_entity_write": new Set(["action", "reason"]),
   /** lot voided at close (anti-shilling). */

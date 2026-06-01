@@ -1,5 +1,6 @@
 import {
   ADMIN_DASHBOARD_ACCESS,
+  AML_REVIEW_ACCESS,
   ANALYTICS_ACCESS,
   ARTISTS_ACCESS,
   ARTIST_REVIEW_ACCESS,
@@ -11,6 +12,7 @@ import {
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
+  MLRO_DECISION_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
   PLATFORM_ADMIN_ACCESS,
   QR_CODES_ACCESS,
@@ -112,6 +114,10 @@ export const requireArtistReviewAccess = createRequireAccess(ARTIST_REVIEW_ACCES
 export const requireLotsAccess = createRequireAccess(LOTS_ACCESS);
 export const requireAuditDomainEvents = createRequireAccess(AUDIT_DOMAIN_EVENTS_ACCESS);
 export const requireEmailAdmin = createRequireAccess(EMAIL_ADMIN_ACCESS);
+/** AML / sanctions watchlist queue + first-line analyst triage; SoF list/triage. */
+export const requireAmlReview = createRequireAccess(AML_REVIEW_ACCESS);
+/** Binding MLRO decision (checker) on a flagged screening / SoF case. */
+export const requireMlroDecision = createRequireAccess(MLRO_DECISION_ACCESS);
 
 /** Condition report queue: specialists, catalogue editors, or full auction managers. */
 export const requireSpecialistCatalogueOrAuctionManage = createMiddleware<{

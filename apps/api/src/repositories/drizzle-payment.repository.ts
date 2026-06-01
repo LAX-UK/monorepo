@@ -145,6 +145,15 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return rows.length > 0;
   }
 
+  async applyReleasedFromManualReviewInTransaction(tx: Database, id: string): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({ status: "pending" })
+      .where(and(eq(payment.id, id), eq(payment.status, "requires_manual_review")))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
   async applyRefundedInTransaction(
     tx: Database,
     id: string,

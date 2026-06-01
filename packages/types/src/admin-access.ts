@@ -13,7 +13,22 @@ export const STAFF_OVERVIEW_ACCESS: CapabilityRequirement = {
     "platform.admin.full",
     "legal_entity.read",
     "artist.read",
+    "aml.review",
   ],
+};
+
+/** AML / sanctions watchlist queue + first-line analyst triage; SoF list/triage. */
+export const AML_REVIEW_ACCESS: CapabilityRequirement = {
+  anyOf: ["aml.review", "compliance.mlro", "platform.admin.full"],
+};
+
+/**
+ * Binding MLRO decision (checker) on a flagged screening or SoF case. Distinct
+ * from `AML_REVIEW_ACCESS` so maker-checker can separate first-line triage from
+ * the final clear/block decision.
+ */
+export const MLRO_DECISION_ACCESS: CapabilityRequirement = {
+  anyOf: ["compliance.mlro", "platform.admin.full"],
 };
 
 /** Admin dashboard widgets (attention feed, live metrics). */

@@ -3,6 +3,7 @@ import type { IEmailService } from "@auction/email";
 import { eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
+import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
 import { processClearArtistBlocks } from "./clear-artist-blocks.js";
 import { processLegalEntityProvisioning } from "./legal-entity-provisioning.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
@@ -10,6 +11,10 @@ import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shill
 import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
+import {
+  SOURCE_OF_FUNDS_REVIEW_PROJECTOR,
+  processSourceOfFundsReview,
+} from "./source-of-funds-review.js";
 
 type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 type ProjectorEventRow = {
@@ -214,6 +219,24 @@ export function createProjectorRunner(options: {
     await ensureCursor("clear_artist_blocks");
     await processClearArtistBlocks({ db: options.db, log: options.log });
     await processLegalEntityProvisioning({ db: options.db, log: options.log });
+    await ensureCursor(AML_MATCH_REVIEW_PROJECTOR);
+    await processAmlMatchReview({
+      db: options.db,
+      log: options.log,
+      emailService: options.emailService,
+      supportContactEmail: options.supportContactEmail,
+      webOrigin: options.webOrigin,
+      adminEmailAddress: options.adminEmailAddress,
+    });
+    await ensureCursor(SOURCE_OF_FUNDS_REVIEW_PROJECTOR);
+    await processSourceOfFundsReview({
+      db: options.db,
+      log: options.log,
+      emailService: options.emailService,
+      supportContactEmail: options.supportContactEmail,
+      webOrigin: options.webOrigin,
+      adminEmailAddress: options.adminEmailAddress,
+    });
     await options.heartbeat();
   }
 
