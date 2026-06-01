@@ -972,7 +972,7 @@ export async function getAdminPayoutList(
   const qs = new URLSearchParams();
   if (params.legalEntityId) qs.set("legalEntityId", params.legalEntityId);
   if (params.status) qs.set("status", params.status);
-  qs.set("limit", String(params.limit ?? 50));
+  qs.set("limit", String(Math.min(100, Math.max(1, params.limit ?? 50))));
   qs.set("offset", String(params.offset ?? 0));
   const res = await authedServerFetch(`/admin/payouts?${qs.toString()}`);
   if (!res.ok) {
