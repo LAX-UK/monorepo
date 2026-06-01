@@ -856,7 +856,6 @@ export function createContainer(env: Env): Container {
   const qrCodeService = new QrCodeService(
     db,
     redis,
-    env.API_PUBLIC_URL,
     env.WEB_ORIGIN,
     createBaseLogger(env).child({ component: "qr_code" }),
     qrCodeScanQueue,

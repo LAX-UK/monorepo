@@ -26,7 +26,7 @@ const uuid = "11111111-1111-4111-8111-111111111111";
 const qrItem = {
   id: "22222222-2222-4222-8222-222222222222",
   shortCode: "Abc12345",
-  shortUrl: "https://api.example.test/q/Abc12345",
+  shortUrl: "https://web.example.test/q/Abc12345",
   destinationUrl: "https://web.example.test/lot/test",
   status: "active" as const,
   campaign: null,
