@@ -4,6 +4,7 @@ import {
   CatalogDetailShell,
 } from "@/components/admin/catalog";
 import { Button } from "@auction/ui/components/button";
+import Link from "next/link";
 
 type Props = {
   title: string;
@@ -44,12 +45,9 @@ export function CatalogDetailErrorShell({
               Try again
             </Button>
           ) : null}
-          <a
-            href={listHref}
-            className="inline-flex min-h-10 items-center rounded-md border border-outline-variant px-4 font-label text-xs uppercase tracking-[0.12em] text-on-surface-variant"
-          >
-            Back to {listLabel.toLowerCase()}
-          </a>
+          <Button variant="secondary" asChild>
+            <Link href={listHref}>Back to {listLabel.toLowerCase()}</Link>
+          </Button>
         </div>
       </div>
     </CatalogDetailShell>

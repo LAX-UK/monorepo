@@ -1,12 +1,15 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminFinanceKpiRows } from "@/components/admin/admin-finance-kpi-rows";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminFinanceIssues } from "@/lib/data/http/admin.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Surface } from "@auction/ui/components/surface";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 const FINANCE_QUICK_LINKS = [
@@ -18,8 +21,14 @@ const FINANCE_QUICK_LINKS = [
   },
   { href: "/admin/disputes", label: "Disputes", countKey: "disputesOpen" as const },
   { href: "/admin/payouts", label: "Payouts", countKey: "payoutsFailed" as const },
+  { href: "/admin/payouts/settlement", label: "Run settlement" },
   { href: "/admin/integrations/xero", label: "Xero integration" },
 ] as const;
+
+export const metadata: Metadata = metadataForPrivate(
+  "Finance",
+  "Payments, payouts, disputes, and accounting integrations.",
+);
 
 export default async function FinanceAdminHomePage() {
   let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
@@ -43,9 +52,29 @@ export default async function FinanceAdminHomePage() {
   });
 
   return (
-    <AdminListPage
+    <AdminListShell
+      layout="hub"
       title="Finance"
       description="Payments, payouts, disputes, and accounting integrations."
+      showCommandPaletteHint
+      mobileSummary={
+        <CatalogListMobileSummary
+          metrics={[
+            {
+              id: "manual-review",
+              label: "Manual review",
+              value: String(navCounts.manualReviewCount),
+            },
+            { id: "disputes", label: "Open disputes", value: String(navCounts.disputesOpen) },
+            {
+              id: "payouts",
+              label: "Failed payouts",
+              value: String(financeIssues?.failedPayoutCount ?? navCounts.payoutsFailed),
+            },
+          ]}
+        />
+      }
+      kpiStrip={financeIssues ? <AdminFinanceKpiRows financeIssues={financeIssues} /> : null}
       view={
         <div className="space-y-8">
           {anomalies.length > 0 ? (
@@ -56,7 +85,6 @@ export default async function FinanceAdminHomePage() {
               {financeIssuesLoadError}
             </AdminListAlert>
           ) : null}
-          {financeIssues ? <AdminFinanceKpiRows financeIssues={financeIssues} /> : null}
           <section
             aria-label="Finance quick links"
             className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"

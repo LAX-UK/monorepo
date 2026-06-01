@@ -2,6 +2,7 @@
 
 import { UserStaffRoleAction, UserSuspendAction } from "@/components/admin/admin-user-actions";
 import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
+import { PeopleStaffMobileCard } from "@/components/admin/people/people-mobile-card";
 import {
   userJoinedColumn,
   userLastActivityColumn,
@@ -16,7 +17,7 @@ import type { UserStaffRole } from "@auction/types";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { type ReactNode, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 function staffColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow>[] {
   return [
@@ -102,10 +103,15 @@ type Props = {
   rows: AdminUserRow[];
   totalMatches: number;
   hasActiveFilters: boolean;
-  roleBreakdown?: ReactNode;
+  externalMobileCards?: boolean;
 };
 
-export function AdminStaffBoard({ rows, totalMatches, hasActiveFilters, roleBreakdown }: Props) {
+export function AdminStaffBoard({
+  rows,
+  totalMatches,
+  hasActiveFilters,
+  externalMobileCards = false,
+}: Props) {
   const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
   const renderDrawerOverview = useCallback((u: AdminUserRow) => <StaffDrawerOverview u={u} />, []);
@@ -113,50 +119,37 @@ export function AdminStaffBoard({ rows, totalMatches, hasActiveFilters, roleBrea
 
   const renderMobileCard = useCallback(
     (u: AdminUserRow, onOpen: () => void) => (
-      <div className="rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4">
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-auto w-full flex-col items-start justify-start rounded-none px-0 py-0 text-left hover:bg-transparent"
-          onClick={onOpen}
-        >
-          <p className="font-headline text-base text-on-surface">{u.name}</p>
-          <p className="mt-1 truncate text-xs text-on-surface-variant">{u.email}</p>
-          <p className="mt-2 font-label text-[10px] uppercase text-secondary">
-            {staffRoleLabel(u.staffRole as UserStaffRole | null)} ·{" "}
-            {u.suspendedAt ? "Suspended" : "Active"}
-          </p>
-        </Button>
-      </div>
+      <PeopleStaffMobileCard
+        user={u}
+        onOpen={onOpen}
+        roleLabel={staffRoleLabel(u.staffRole as UserStaffRole | null)}
+      />
     ),
     [],
   );
 
   return (
-    <>
-      {roleBreakdown}
-      <AdminUserListShell
-        rows={rows}
-        totalMatches={totalMatches}
-        bulkOperations={bulkOperations}
-        drawerTitle="Staff member"
-        tableAriaLabel="Staff directory"
-        emptyComponent={
-          <FilterEmptyState
-            entity="staff"
-            segment="admin"
-            hasActiveFilters={hasActiveFilters}
-            clearFiltersHref="/admin/staff"
-          />
-        }
-        renderDrawerOverview={renderDrawerOverview}
-        renderDrawerActions={renderDrawerActions}
-        renderMobileCard={renderMobileCard}
-        buildColumns={staffColumns}
-        detailHref={(u) => `/admin/staff/${u.id}`}
-        showColumnPicker
-        columnVisibilityStorageKey="admin.staff.columns"
-      />
-    </>
+    <AdminUserListShell
+      rows={rows}
+      totalMatches={totalMatches}
+      bulkOperations={bulkOperations}
+      drawerTitle="Staff member"
+      tableAriaLabel="Staff directory"
+      emptyComponent={
+        <FilterEmptyState
+          entity="staff"
+          segment="admin"
+          hasActiveFilters={hasActiveFilters}
+          clearFiltersHref="/admin/staff"
+        />
+      }
+      renderDrawerOverview={renderDrawerOverview}
+      renderDrawerActions={renderDrawerActions}
+      {...(externalMobileCards ? { externalMobileCards: true } : { renderMobileCard })}
+      buildColumns={staffColumns}
+      detailHref={(u) => `/admin/staff/${u.id}`}
+      showColumnPicker
+      columnVisibilityStorageKey="admin.staff.columns"
+    />
   );
 }

@@ -3,8 +3,10 @@ import {
   type AdminAnalyticsChartsData,
 } from "@/components/admin/admin-analytics-charts";
 import { AdminAnalyticsControls } from "@/components/admin/admin-analytics-controls";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminPanelPage } from "@/components/admin/admin-panel-page";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { ExportButton } from "@/components/exports/export-button";
 import {
   Table,
@@ -26,8 +28,14 @@ import {
   winRatePercent,
 } from "@/lib/data/view-models/admin-analytics.vm";
 import { formatMoney } from "@/lib/format-currency";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { CompareDelta } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Analytics",
+  "Period KPIs, revenue trends, and conversion metrics.",
+);
 
 function toChartsData(
   d: NonNullable<Awaited<ReturnType<typeof getAdminAnalytics>>>,
@@ -72,46 +80,57 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
     : 0;
   const totalEndedLots = data ? data.lotCompletedSeries.reduce((a, r) => a + (r.count || 0), 0) : 0;
   const totalRegs = data ? data.registrationSeries.reduce((a, r) => a + (r.count || 0), 0) : 0;
+  const hammerRate = data ? winRatePercent(data.conversion.ended, data.conversion.withWinner) : "—";
+
+  const primaryAction = (
+    <div className="flex flex-wrap items-center gap-2">
+      <AdminAnalyticsControls days={days} />
+      {data ? (
+        <>
+          <ExportButton
+            entityType="analytics"
+            label="Export revenue CSV"
+            variant="secondary"
+            filters={{ days, series: "revenue" }}
+          />
+          <ExportButton
+            entityType="analytics"
+            label="Export lots CSV"
+            variant="secondary"
+            filters={{ days, series: "ended_lots" }}
+          />
+          <ExportButton
+            entityType="analytics"
+            label="Export registrations CSV"
+            variant="secondary"
+            filters={{ days, series: "registrations" }}
+          />
+        </>
+      ) : null}
+    </div>
+  );
 
   return (
-    <AdminPanelPage
+    <AdminListShell
+      variant="report"
       title="Analytics"
       description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <AdminAnalyticsControls days={days} />
-          {data ? (
-            <>
-              <ExportButton
-                entityType="analytics"
-                label="Export revenue CSV"
-                variant="secondary"
-                filters={{ days, series: "revenue" }}
-              />
-              <ExportButton
-                entityType="analytics"
-                label="Export lots CSV"
-                variant="secondary"
-                filters={{ days, series: "ended_lots" }}
-              />
-              <ExportButton
-                entityType="analytics"
-                label="Export registrations CSV"
-                variant="secondary"
-                filters={{ days, series: "registrations" }}
-              />
-            </>
-          ) : null}
-        </div>
+      primaryAction={primaryAction}
+      showCommandPaletteHint
+      mobileSummary={
+        data ? (
+          <CatalogListMobileSummary
+            metrics={[
+              { id: "gmv", label: `GMV (${days}d)`, value: formatMoney(totalRev) },
+              { id: "lots", label: "Ended lots", value: String(totalEndedLots) },
+              { id: "regs", label: "New regs", value: String(totalRegs) },
+              { id: "hammer", label: "Hammer rate", value: hammerRate },
+            ]}
+          />
+        ) : null
       }
-    >
-      {loadError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load analytics</AlertTitle>
-          <AlertDescription>{loadError}</AlertDescription>
-        </Alert>
-      ) : data ? (
-        <>
+      kpiStrip={
+        data ? (
           <AdminListKpiStrip
             ariaLabel="Analytics summary"
             tiles={[
@@ -153,7 +172,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
               },
               {
                 label: "Hammer rate",
-                value: winRatePercent(data.conversion.ended, data.conversion.withWinner),
+                value: hammerRate,
                 delta: (
                   <CompareDelta
                     label={`${data.conversion.withWinner} / ${data.conversion.ended} ended`}
@@ -172,32 +191,42 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
               { label: "Window", value: `${days}d`, delta: "Loaded period" },
             ]}
           />
-
-          <AdminAnalyticsCharts data={toChartsData(data)} />
-
-          <section>
-            <h2 className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Conversion (ended with winner / ended)
-            </h2>
-            <TableScroll>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeaderCell>Ended</TableHeaderCell>
-                    <TableHeaderCell>With winner</TableHeaderCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="tabular-nums">{data.conversion.ended}</TableCell>
-                    <TableCell className="tabular-nums">{data.conversion.withWinner}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableScroll>
-          </section>
-        </>
-      ) : null}
-    </AdminPanelPage>
+        ) : null
+      }
+      errorAlert={
+        loadError ? (
+          <AdminListAlert title="Could not load analytics">{loadError}</AdminListAlert>
+        ) : null
+      }
+      wrapView={false}
+      view={
+        data ? (
+          <div className="space-y-8">
+            <AdminAnalyticsCharts data={toChartsData(data)} />
+            <section>
+              <h2 className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                Conversion (ended with winner / ended)
+              </h2>
+              <TableScroll>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Ended</TableHeaderCell>
+                      <TableHeaderCell>With winner</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="tabular-nums">{data.conversion.ended}</TableCell>
+                      <TableCell className="tabular-nums">{data.conversion.withWinner}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableScroll>
+            </section>
+          </div>
+        ) : null
+      }
+    />
   );
 }

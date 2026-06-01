@@ -79,6 +79,7 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
+        total={total}
         prevHref={
           query.offset > 0
             ? buildListHref("/admin/condition-reports", sp, {

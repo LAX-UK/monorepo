@@ -9,11 +9,7 @@ import {
   getAdminUserList,
 } from "@/lib/data/http/admin.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
-import type { CapabilityRequirement } from "@auction/types";
-
-const USER_PICKER_ACCESS: CapabilityRequirement = {
-  anyOf: ["catalogue.write", "artist.review", "platform.admin.full"],
-};
+import { USER_PICKER_ACCESS } from "@/lib/navigation/staff-nav-access";
 
 export type SearchAdminUsersBrowseInput = {
   q?: string;

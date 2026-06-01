@@ -239,22 +239,25 @@ export default async function AdminLotsPage({
         />
       }
       mobileSummary={
-        <CatalogListMobileSummary
-          metrics={[
-            {
-              id: "new",
-              label: `New (${periodDays}d)`,
-              value: String(lotsTrend.currentTotal),
-            },
-            { id: "page", label: "On page", value: String(lotTableRows.length) },
-            ...(activeOnPage > 0
-              ? [{ id: "live", label: "Live", value: String(activeOnPage) }]
-              : []),
-            ...(draftOnPage > 0
-              ? [{ id: "draft", label: "Draft", value: String(draftOnPage) }]
-              : []),
-          ]}
-        />
+        <div className="space-y-3">
+          <CatalogListMobileSummary
+            metrics={[
+              {
+                id: "new",
+                label: `New (${periodDays}d)`,
+                value: String(lotsTrend.currentTotal),
+              },
+              { id: "page", label: "On page", value: String(lotTableRows.length) },
+              ...(activeOnPage > 0
+                ? [{ id: "live", label: "Live", value: String(activeOnPage) }]
+                : []),
+              ...(draftOnPage > 0
+                ? [{ id: "draft", label: "Draft", value: String(draftOnPage) }]
+                : []),
+            ]}
+          />
+          <CatalogKpiPeriodToggle current={periodDays} className="lg:hidden" />
+        </div>
       }
       kpiStrip={
         !viewPipeline && lotTableRows.length > 0 ? (
@@ -276,7 +279,7 @@ export default async function AdminLotsPage({
       }
       toolbarEnd={
         <>
-          <CatalogKpiPeriodToggle current={periodDays} className="hidden md:flex" />
+          <CatalogKpiPeriodToggle current={periodDays} className="hidden lg:flex" />
           <Link
             href="/sales"
             className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"

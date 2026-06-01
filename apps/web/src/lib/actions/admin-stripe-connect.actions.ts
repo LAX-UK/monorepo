@@ -2,7 +2,9 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { LEGAL_ENTITY_BROWSE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { getSiteUrl } from "@/lib/site-url";
 import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -11,6 +13,10 @@ export async function adminSyncStripeConnectAction(
   legalEntityId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   return instrumentServerAction("adminSyncStripeConnectAction", async () => {
+    const denied = await denyUnlessAdminCapability(LEGAL_ENTITY_BROWSE_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false, error: denied.error };
+    }
     const res = await authedServerFetch(
       `/admin/legal-entities/${encodeURIComponent(legalEntityId)}/stripe-connect/sync`,
       { method: "POST" },
@@ -29,6 +35,10 @@ export async function adminCreateStripeConnectOnboardingLinkAction(
   kind: "individual" | "organisation",
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   return instrumentServerAction("adminCreateStripeConnectOnboardingLinkAction", async () => {
+    const denied = await denyUnlessAdminCapability(LEGAL_ENTITY_BROWSE_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false, error: denied.error };
+    }
     const site = getSiteUrl();
     const returnPath =
       kind === "organisation"

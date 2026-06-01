@@ -1,9 +1,17 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
 import { getAdminSalesList } from "@/lib/data/http/admin.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Saleroom console",
+  "Pick a live or upcoming sale to open the clerk console.",
+);
 
 export default async function AdminSaleroomHubPage() {
   let sales: Awaited<ReturnType<typeof getAdminSalesList>> = [];
@@ -17,6 +25,8 @@ export default async function AdminSaleroomHubPage() {
   const liveOrUpcoming = sales.filter(
     (row) => row.sale.status === "active" || row.sale.status === "scheduled",
   );
+  const liveCount = liveOrUpcoming.filter((row) => row.sale.status === "active").length;
+  const scheduledCount = liveOrUpcoming.filter((row) => row.sale.status === "scheduled").length;
 
   const empty =
     !loadError && liveOrUpcoming.length === 0 ? (
@@ -35,9 +45,22 @@ export default async function AdminSaleroomHubPage() {
     ) : null;
 
   return (
-    <AdminListPage
+    <AdminListShell
+      layout="hub"
       title="Saleroom console"
       description="Pick a live or upcoming sale to open the clerk console."
+      showCommandPaletteHint
+      mobileSummary={
+        !loadError ? (
+          <CatalogListMobileSummary
+            metrics={[
+              { id: "live", label: "Live", value: String(liveCount) },
+              { id: "scheduled", label: "Scheduled", value: String(scheduledCount) },
+              { id: "total", label: "Available", value: String(liveOrUpcoming.length) },
+            ]}
+          />
+        ) : null
+      }
       errorAlert={
         loadError ? <AdminListAlert title="Could not load sales">{loadError}</AdminListAlert> : null
       }
