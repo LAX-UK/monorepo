@@ -13,16 +13,28 @@ import type {
 export class AdminUserApplicationService implements IAdminUserApplicationService {
   constructor(private readonly adminUsers: AdminUserService) {}
 
-  list(filter: AdminUserListFilter): Promise<AdminUserListResult> {
-    return this.adminUsers.list(filter);
+  list(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    filter: AdminUserListFilter,
+  ): Promise<AdminUserListResult> {
+    return this.adminUsers.list(actorRole, actorStaffRole, filter);
   }
 
-  getById(id: string): Promise<AdminUserDetail | null> {
-    return this.adminUsers.getById(id);
+  getById(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    id: string,
+  ): Promise<AdminUserDetail | null> {
+    return this.adminUsers.getById(actorRole, actorStaffRole, id);
   }
 
-  getByIds(ids: string[]): Promise<AdminUserListRow[]> {
-    return this.adminUsers.getByIds(ids);
+  getByIds(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    ids: string[],
+  ): Promise<AdminUserListRow[]> {
+    return this.adminUsers.getByIds(actorRole, actorStaffRole, ids);
   }
 
   async setRole(
@@ -71,34 +83,54 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
     }
   }
 
-  suspend(actorRole: string, userId: string, reason: string | null): Promise<void> {
-    return this.adminUsers.suspend(actorRole, userId, reason);
+  suspend(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    reason: string | null,
+  ): Promise<void> {
+    return this.adminUsers.suspend(actorRole, actorStaffRole, userId, reason);
   }
 
-  unsuspend(actorRole: string, userId: string): Promise<void> {
-    return this.adminUsers.unsuspend(actorRole, userId);
+  unsuspend(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+  ): Promise<void> {
+    return this.adminUsers.unsuspend(actorRole, actorStaffRole, userId);
   }
 
-  activityFor(userId: string, limit: number): Promise<AdminActivityEntry[]> {
-    return this.adminUsers.activityFor(userId, limit);
+  activityFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    limit: number,
+  ): Promise<AdminActivityEntry[]> {
+    return this.adminUsers.activityFor(actorRole, actorStaffRole, userId, limit);
   }
 
-  kycSessionsFor(userId: string, limit?: number): Promise<AdminKycSession[]> {
-    return this.adminUsers.kycSessionsFor(userId, limit);
+  kycSessionsFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    limit?: number,
+  ): Promise<AdminKycSession[]> {
+    return this.adminUsers.kycSessionsFor(actorRole, actorStaffRole, userId, limit);
   }
 
   async bulkSuspendOrUnsuspend(input: {
     actorRole: string;
+    actorStaffRole: string | null | undefined;
     ids: string[];
     op: "suspend" | "unsuspend";
     reason: string | null | undefined;
   }): Promise<{ count: number }> {
-    const { actorRole, ids, op, reason } = input;
+    const { actorRole, actorStaffRole, ids, op, reason } = input;
     for (const userId of ids) {
       if (op === "suspend") {
-        await this.adminUsers.suspend(actorRole, userId, reason ?? null);
+        await this.adminUsers.suspend(actorRole, actorStaffRole, userId, reason ?? null);
       } else {
-        await this.adminUsers.unsuspend(actorRole, userId);
+        await this.adminUsers.unsuspend(actorRole, actorStaffRole, userId);
       }
     }
     return { count: ids.length };

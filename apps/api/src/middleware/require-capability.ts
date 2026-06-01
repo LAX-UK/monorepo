@@ -1,15 +1,50 @@
 import {
+  ADMIN_DASHBOARD_ACCESS,
+  ANALYTICS_ACCESS,
+  ARTISTS_ACCESS,
+  ARTIST_REVIEW_ACCESS,
+  ARTIST_WRITE_ACCESS,
+  AUDIT_DOMAIN_EVENTS_ACCESS,
+  CATEGORIES_ACCESS,
+  type CapabilityRequirement,
+  EMAIL_ADMIN_ACCESS,
+  INVITATIONS_ACCESS,
+  LEGAL_ENTITY_BROWSE_ACCESS,
+  LOTS_ACCESS,
+  ONBOARDING_QUEUES_ACCESS,
+  PLATFORM_ADMIN_ACCESS,
+  QR_CODES_ACCESS,
   type RoleCapability,
+  SUBMISSIONS_ACCESS,
+  USERS_DIRECTORY_ACCESS,
+  USER_MODERATION_ACCESS,
   type UserRole,
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
   roleHasCapability,
+  userHasAccessTo,
 } from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import type { LegalEntityContext } from "./require-legal-entity-context.js";
 import type { RoleSource } from "./role-source.js";
 import { honoContextRoleSource } from "./role-source.js";
+
+export function createRequireAccess(
+  requirement: CapabilityRequirement,
+  src: RoleSource = honoContextRoleSource,
+) {
+  return createMiddleware<{
+    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  }>(async (c, next) => {
+    const role = src.getRole(c) as UserRole;
+    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    if (!userHasAccessTo(role, staff, requirement)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    await next();
+  });
+}
 
 export function createRequireCapability(
   capability: RoleCapability,
@@ -27,8 +62,11 @@ export function createRequireCapability(
   });
 }
 
-/** Staff who are not finance-shell-only may enter the platform admin route group. */
-export const requirePlatformAdmin = createMiddleware<{
+/**
+ * Platform admin **shell** gate: excludes finance_ops only.
+ * Not the same as `platform.admin.full` — use `requirePlatformAdminFull` for that.
+ */
+export const requirePlatformShell = createMiddleware<{
   Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
 }>(async (c, next) => {
   const role = normalizeUserRoleOrClient(c.get("userRole"));
@@ -38,6 +76,9 @@ export const requirePlatformAdmin = createMiddleware<{
   }
   await next();
 });
+
+/** @deprecated Prefer `requirePlatformShell` — name reflects shell access, not `platform.admin.full`. */
+export const requirePlatformAdmin = requirePlatformShell;
 
 export const requireFinanceAccess = createRequireCapability("finance.read");
 export const requireUserInvite = createRequireCapability("user.invite");
@@ -53,6 +94,24 @@ export const requireOperationsFulfilment = createRequireCapability("operations.f
 export const requireCatalogueWrite = createRequireCapability("catalogue.write");
 export const requireSpecialistAppraise = createRequireCapability("specialist.appraise");
 export const requireAuctionManage = createRequireCapability("auction.manage");
+
+export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
+export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);
+export const requireUserModeration = createRequireAccess(USER_MODERATION_ACCESS);
+export const requireAnalytics = createRequireAccess(ANALYTICS_ACCESS);
+export const requireOnboardingQueues = createRequireAccess(ONBOARDING_QUEUES_ACCESS);
+export const requireAdminDashboard = createRequireAccess(ADMIN_DASHBOARD_ACCESS);
+export const requireInvitationsAccess = createRequireAccess(INVITATIONS_ACCESS);
+export const requireLegalEntityBrowse = createRequireAccess(LEGAL_ENTITY_BROWSE_ACCESS);
+export const requireSubmissionsAccess = createRequireAccess(SUBMISSIONS_ACCESS);
+export const requireQrCodesAccess = createRequireAccess(QR_CODES_ACCESS);
+export const requireCategoriesAccess = createRequireAccess(CATEGORIES_ACCESS);
+export const requireArtistsAccess = createRequireAccess(ARTISTS_ACCESS);
+export const requireArtistWriteAccess = createRequireAccess(ARTIST_WRITE_ACCESS);
+export const requireArtistReviewAccess = createRequireAccess(ARTIST_REVIEW_ACCESS);
+export const requireLotsAccess = createRequireAccess(LOTS_ACCESS);
+export const requireAuditDomainEvents = createRequireAccess(AUDIT_DOMAIN_EVENTS_ACCESS);
+export const requireEmailAdmin = createRequireAccess(EMAIL_ADMIN_ACCESS);
 
 /** Condition report queue: specialists, catalogue editors, or full auction managers. */
 export const requireSpecialistCatalogueOrAuctionManage = createMiddleware<{

@@ -1,9 +1,14 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { FinanceListPageSkeleton } from "@/components/admin/finance/finance-list-states";
 
 export default function DisputesLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8">
-      <PageSkeleton variant="table" />
-    </div>
+    <FinanceListPageSkeleton
+      title="Payment disputes"
+      description="Loading disputes…"
+      kpiTiles={0}
+      showFilterBar={false}
+      tableRows={8}
+      tableColumns={5}
+    />
   );
 }

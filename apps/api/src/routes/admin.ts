@@ -3,6 +3,8 @@ import type { lotFulfilment } from "@auction/db/schema";
 type LotFulfilmentStatusCol = (typeof lotFulfilment.$inferSelect)["status"];
 import {
   type UserRole,
+  legalEntityKinds,
+  legalEntityStatuses,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
   roleHasCapability,
@@ -72,13 +74,29 @@ import { presentLotImages } from "../lib/media-presenters.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
-  createRequireCapability,
+  requireAdminDashboard,
+  requireAnalytics,
+  requireArtistReviewAccess,
+  requireArtistWriteAccess,
+  requireArtistsAccess,
   requireAuctionManage,
+  requireAuditDomainEvents,
   requireCatalogueWrite,
+  requireCategoriesAccess,
+  requireEmailAdmin,
   requireFinanceAccess,
+  requireLegalEntityBrowse,
+  requireLotsAccess,
+  requireOnboardingQueues,
   requireOperationsFulfilment,
-  requirePlatformAdmin,
+  requirePlatformAdminFull,
+  requirePlatformShell,
+  requireQrCodesAccess,
   requireSpecialistCatalogueOrAuctionManage,
+  requireSubmissionsAccess,
+  requireUserInvite,
+  requireUserModeration,
+  requireUsersDirectory,
 } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
@@ -103,6 +121,9 @@ const impersonationLookupQuerySchema = z.object({
 const adminLegalEntityBrowseQuerySchema = z.object({
   q: z.string().max(200).optional(),
   createdByUserId: z.string().uuid().optional(),
+  status: z.enum(legalEntityStatuses).optional(),
+  kind: z.enum(legalEntityKinds).optional(),
+  stripeDue: z.enum(["0", "1"]).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional().default(25),
   offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
 });
@@ -133,8 +154,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   const platform = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>();
-  platform.use("*", requirePlatformAdmin);
-  const requireLegalEntityRead = createRequireCapability("legal_entity.read");
+  platform.use("*", requirePlatformShell);
+  const requireLegalEntityRead = requireLegalEntityBrowse;
   platform.use(
     "*",
     createMiddleware<{
@@ -150,6 +171,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/submissions/pending-count",
+    requireSubmissionsAccess,
     zValidator("query", adminSubmissionCountQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -172,30 +194,40 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/analytics", zValidator("query", adminAnalyticsQuerySchema), async (c) => {
-    const { days } = c.req.valid("query");
-    const end = new Date();
-    const start = new Date(end);
-    start.setUTCDate(start.getUTCDate() - days);
-    const data = await container.admin.ops.getAnalyticsDashboard({ start, end });
-    return c.json({ data });
-  });
+  platform.get(
+    "/analytics",
+    requireAnalytics,
+    zValidator("query", adminAnalyticsQuerySchema),
+    async (c) => {
+      const { days } = c.req.valid("query");
+      const end = new Date();
+      const start = new Date(end);
+      start.setUTCDate(start.getUTCDate() - days);
+      const data = await container.admin.ops.getAnalyticsDashboard({ start, end });
+      return c.json({ data });
+    },
+  );
 
-  platform.get("/metrics/today", async (c) => {
+  platform.get("/metrics/today", requireAdminDashboard, async (c) => {
     const data = await container.admin.ops.getTodayMetrics();
     return c.json({ data });
   });
 
-  platform.get("/metrics/live", async (c) => {
+  platform.get("/metrics/live", requireAdminDashboard, async (c) => {
     const bidsPerMinute = await container.admin.ops.getBidsPerMinute();
     return c.json({ data: { bidsPerMinute } });
   });
 
-  platform.get("/qr-codes", zValidator("query", adminQrCodeEntityQuerySchema), async (c) => {
-    const q = c.req.valid("query");
-    const items = await container.qrCodeService.listForEntity(q.entityType, q.entityId);
-    return c.json({ data: { items } });
-  });
+  platform.get(
+    "/qr-codes",
+    requireQrCodesAccess,
+    zValidator("query", adminQrCodeEntityQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const items = await container.qrCodeService.listForEntity(q.entityType, q.entityId);
+      return c.json({ data: { items } });
+    },
+  );
 
   platform.post(
     "/qr-codes",
@@ -259,6 +291,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/qr-codes/:id/analytics",
+    requireQrCodesAccess,
     zValidator("param", adminQrCodeIdParamSchema),
     zValidator("query", adminQrCodeAnalyticsQuerySchema),
     async (c) => {
@@ -269,13 +302,13 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/metrics/finance-issues", async (c) => {
+  platform.get("/metrics/finance-issues", requireAdminDashboard, async (c) => {
     const data = await container.admin.dashboard.getFinanceIssueSnapshot();
     return c.json({ data });
   });
 
   /** Lists for onboarding / compliance queues (DSE20). */
-  platform.get("/onboarding-issues", async (c) => {
+  platform.get("/onboarding-issues", requireOnboardingQueues, async (c) => {
     const data = await container.admin.dashboard.getOnboardingIssues();
     return c.json({ data });
   });
@@ -750,6 +783,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const trimmed = query.q?.trim();
       if (trimmed) input.q = trimmed;
       if (query.createdByUserId) input.createdByUserId = query.createdByUserId;
+      if (query.status) input.status = query.status;
+      if (query.kind) input.kind = query.kind;
+      if (query.stripeDue === "1") input.stripeDue = true;
       const data = await container.admin.dashboard.searchLegalEntitiesBrowse(input);
       return c.json({ data });
     },
@@ -804,7 +840,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/attention", async (c) => {
+  platform.get("/attention", requireAdminDashboard, async (c) => {
     const data = await container.admin.ops.listAttentionFeed();
     return c.json({ data });
   });
@@ -895,13 +931,13 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   );
 
   /** GET /admin/lots/artist-backfill-review — pending `lot_artist_backfill` tasks (SE-P23). */
-  platform.get("/lots/artist-backfill-review", async (c) => {
+  platform.get("/lots/artist-backfill-review", requireLotsAccess, async (c) => {
     const rows = await container.admin.dashboard.listPendingAdminReviewTasks("lot_artist_backfill");
     return c.json({ data: rows });
   });
 
   /** GET /admin/lots/withdrawal-requests — pending seller withdrawal tasks (B3). */
-  platform.get("/lots/withdrawal-requests", async (c) => {
+  platform.get("/lots/withdrawal-requests", requireLotsAccess, async (c) => {
     const rows =
       await container.admin.dashboard.listPendingAdminReviewTasks("lot_withdrawal_request");
     return c.json({ data: rows });
@@ -910,6 +946,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   /** POST /admin/lots/:id/approve-withdrawal-request — cancel lot after seller request (B3). */
   platform.post(
     "/lots/:id/approve-withdrawal-request",
+    requireLotsAccess,
     zValidator("param", lotIdParamSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -930,6 +967,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   /** GET /admin/audit/domain-events — paginated feed (PII redacted by default). */
   platform.get(
     "/audit/domain-events",
+    requireAuditDomainEvents,
     zValidator("query", adminDomainEventsQuerySchema),
     async (c) => {
       const { limit, offset, eventTypePrefix, aggregateType, aggregateId } = c.req.valid("query");
@@ -950,13 +988,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/categories", zValidator("query", adminCategoryListQuerySchema), async (c) => {
-    const q = c.req.valid("query");
-    const data = await container.admin.catalog.listCategoriesForAdmin({
-      includeArchived: q.includeArchived,
-    });
-    return c.json({ data });
-  });
+  platform.get(
+    "/categories",
+    requireCategoriesAccess,
+    zValidator("query", adminCategoryListQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.catalog.listCategoriesForAdmin({
+        includeArchived: q.includeArchived,
+      });
+      return c.json({ data });
+    },
+  );
 
   platform.post(
     "/categories",
@@ -969,12 +1012,17 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/categories/:categoryId", zValidator("param", categoryIdParamSchema), async (c) => {
-    const { categoryId } = c.req.valid("param");
-    const data = await container.admin.catalog.getCategory(categoryId);
-    if (!data) return c.json({ error: "Not found" }, 404);
-    return c.json({ data });
-  });
+  platform.get(
+    "/categories/:categoryId",
+    requireCategoriesAccess,
+    zValidator("param", categoryIdParamSchema),
+    async (c) => {
+      const { categoryId } = c.req.valid("param");
+      const data = await container.admin.catalog.getCategory(categoryId);
+      if (!data) return c.json({ error: "Not found" }, 404);
+      return c.json({ data });
+    },
+  );
 
   platform.patch(
     "/categories/:categoryId",
@@ -1018,7 +1066,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/artists/stats", async (c) => {
+  platform.get("/artists/stats", requireArtistsAccess, async (c) => {
     const data = await container.admin.catalog.getArtistStats();
     return c.json({ data });
   });
@@ -1029,42 +1077,58 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   });
 
   /** Staff registry search for admin pickers — includes pending/rejected; no public approved-only filter. */
-  platform.get("/artists/search", zValidator("query", adminArtistSearchQuerySchema), async (c) => {
-    const { q, limit } = c.req.valid("query");
-    const data = await container.artistRegistryService.search(q, limit);
-    return c.json({ data });
-  });
+  platform.get(
+    "/artists/search",
+    requireArtistsAccess,
+    zValidator("query", adminArtistSearchQuerySchema),
+    async (c) => {
+      const { q, limit } = c.req.valid("query");
+      const data = await container.artistRegistryService.search(q, limit);
+      return c.json({ data });
+    },
+  );
 
-  platform.get("/artists", zValidator("query", adminArtistListQuerySchema), async (c) => {
-    const q = c.req.valid("query");
-    const data = await container.admin.catalog.listArtists({
-      includeArchived: q.includeArchived,
-      archivedOnly: q.archivedOnly,
-      ...(q.q ? { q: q.q } : {}),
-      ...(q.kind ? { kind: q.kind } : {}),
-      ...(q.kinds ? { kinds: q.kinds } : {}),
-      ...(q.status ? { status: q.status } : {}),
-      ...(q.ownerUserId ? { ownerUserId: q.ownerUserId } : {}),
-      ...(q.categoryId ? { categoryId: q.categoryId } : {}),
-      ...(q.country ? { country: q.country } : {}),
-      ...(q.featured === true ? { featured: true } : {}),
-      ...(q.verified === true ? { verified: true } : {}),
-      linked: q.linked,
-      sort: q.sort,
-      limit: q.limit,
-      offset: q.offset,
-    });
-    return c.json({ data });
-  });
+  platform.get(
+    "/artists",
+    requireArtistsAccess,
+    zValidator("query", adminArtistListQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.catalog.listArtists({
+        includeArchived: q.includeArchived,
+        archivedOnly: q.archivedOnly,
+        ...(q.q ? { q: q.q } : {}),
+        ...(q.kind ? { kind: q.kind } : {}),
+        ...(q.kinds ? { kinds: q.kinds } : {}),
+        ...(q.status ? { status: q.status } : {}),
+        ...(q.ownerUserId ? { ownerUserId: q.ownerUserId } : {}),
+        ...(q.categoryId ? { categoryId: q.categoryId } : {}),
+        ...(q.country ? { country: q.country } : {}),
+        ...(q.featured === true ? { featured: true } : {}),
+        ...(q.verified === true ? { verified: true } : {}),
+        linked: q.linked,
+        sort: q.sort,
+        limit: q.limit,
+        offset: q.offset,
+      });
+      return c.json({ data });
+    },
+  );
 
-  platform.post("/artists", zValidator("json", adminCreateArtistBodySchema), async (c) => {
-    const adminUserId = c.get("userId") as string;
-    const data = await container.admin.catalog.createArtist(adminUserId, c.req.valid("json"));
-    return c.json({ data }, 201);
-  });
+  platform.post(
+    "/artists",
+    requireArtistWriteAccess,
+    zValidator("json", adminCreateArtistBodySchema),
+    async (c) => {
+      const adminUserId = c.get("userId") as string;
+      const data = await container.admin.catalog.createArtist(adminUserId, c.req.valid("json"));
+      return c.json({ data }, 201);
+    },
+  );
 
   platform.get(
     `/artists/${adminArtistIdSegment}/duplicates`,
+    requireArtistReviewAccess,
     zValidator("param", artistIdParamSchema),
     async (c) => {
       const { artistId } = c.req.valid("param");
@@ -1075,6 +1139,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     `/artists/${adminArtistIdSegment}`,
+    requireArtistsAccess,
     zValidator("param", artistIdParamSchema),
     async (c) => {
       const { artistId } = c.req.valid("param");
@@ -1086,6 +1151,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.patch(
     `/artists/${adminArtistIdSegment}`,
+    requireArtistWriteAccess,
     zValidator("param", artistIdParamSchema),
     zValidator("json", adminUpdateArtistBodySchema),
     async (c) => {
@@ -1095,24 +1161,35 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/email/outbox", zValidator("query", adminListOutboxQuerySchema), async (c) => {
-    const q = c.req.valid("query");
-    const data = await container.admin.email.listOutbox({
-      ...(q.status ? { status: q.status } : {}),
-      limit: q.limit,
-      offset: q.offset,
-    });
-    return c.json({ data });
-  });
+  platform.get(
+    "/email/outbox",
+    requireEmailAdmin,
+    zValidator("query", adminListOutboxQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.email.listOutbox({
+        ...(q.status ? { status: q.status } : {}),
+        limit: q.limit,
+        offset: q.offset,
+      });
+      return c.json({ data });
+    },
+  );
 
-  platform.get("/email/events", zValidator("query", adminListEventsQuerySchema), async (c) => {
-    const q = c.req.valid("query");
-    const data = await container.admin.email.listEvents(q);
-    return c.json({ data });
-  });
+  platform.get(
+    "/email/events",
+    requireEmailAdmin,
+    zValidator("query", adminListEventsQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.email.listEvents(q);
+      return c.json({ data });
+    },
+  );
 
   platform.get(
     "/email/suppressions",
+    requireEmailAdmin,
     zValidator("query", adminListSuppressionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -1123,6 +1200,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.delete(
     "/email/suppressions/:emailHash",
+    requireEmailAdmin,
     zValidator("param", emailHashParamSchema),
     async (c) => {
       const { emailHash } = c.req.valid("param");
@@ -1133,6 +1211,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post(
     "/email/suppressions/bulk",
+    requireEmailAdmin,
     zValidator("json", adminBulkEmailSuppressionsBodySchema),
     async (c) => {
       const { emailHashes } = c.req.valid("json");
@@ -1141,45 +1220,85 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.get("/users", zValidator("query", adminUserListQuerySchema), async (c) => {
-    const q = c.req.valid("query");
-    const data = await container.admin.users.list(mapAdminUserListQuery(q));
-    return c.json({ data });
-  });
+  platform.get(
+    "/users",
+    requireUsersDirectory,
+    zValidator("query", adminUserListQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const data = await container.admin.users.list(
+        actorRole,
+        actorStaff,
+        mapAdminUserListQuery(q),
+      );
+      return c.json({ data });
+    },
+  );
 
-  platform.get("/users/lookup", zValidator("query", adminUserIdsLookupQuerySchema), async (c) => {
-    const { ids } = c.req.valid("query");
-    const data = await container.admin.users.getByIds(ids);
-    return c.json({ data });
-  });
+  platform.get(
+    "/users/lookup",
+    requireUsersDirectory,
+    zValidator("query", adminUserIdsLookupQuerySchema),
+    async (c) => {
+      const { ids } = c.req.valid("query");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const data = await container.admin.users.getByIds(actorRole, actorStaff, ids);
+      return c.json({ data });
+    },
+  );
 
-  platform.post("/users/bulk", zValidator("json", adminBulkUsersBodySchema), async (c) => {
-    const { ids, op, reason } = c.req.valid("json");
-    const role = c.get("userRole") ?? "client";
-    const data = await container.admin.users.bulkSuspendOrUnsuspend({
-      actorRole: role,
-      ids,
-      op,
-      reason,
-    });
-    return c.json({ ok: true, data });
-  });
+  platform.post(
+    "/users/bulk",
+    requireUserModeration,
+    zValidator("json", adminBulkUsersBodySchema),
+    async (c) => {
+      const { ids, op, reason } = c.req.valid("json");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const data = await container.admin.users.bulkSuspendOrUnsuspend({
+        actorRole,
+        actorStaffRole: actorStaff,
+        ids,
+        op,
+        reason,
+      });
+      return c.json({ ok: true, data });
+    },
+  );
 
-  platform.get("/users/:userId", zValidator("param", userIdParamSchema), async (c) => {
-    const { userId } = c.req.valid("param");
-    const row = await container.admin.users.getById(userId);
-    if (!row) return c.json({ error: "Not found" }, 404);
-    return c.json({ data: row });
-  });
+  platform.get(
+    "/users/:userId",
+    requireUsersDirectory,
+    zValidator("param", userIdParamSchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const row = await container.admin.users.getById(actorRole, actorStaff, userId);
+      if (!row) return c.json({ error: "Not found" }, 404);
+      return c.json({ data: row });
+    },
+  );
 
-  platform.get("/users/:userId/kyc-sessions", zValidator("param", userIdParamSchema), async (c) => {
-    const { userId } = c.req.valid("param");
-    const data = await container.admin.users.kycSessionsFor(userId);
-    return c.json({ data });
-  });
+  platform.get(
+    "/users/:userId/kyc-sessions",
+    requireUsersDirectory,
+    zValidator("param", userIdParamSchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const data = await container.admin.users.kycSessionsFor(actorRole, actorStaff, userId);
+      return c.json({ data });
+    },
+  );
 
   platform.patch(
     "/users/:userId/role",
+    requireUsersDirectory,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminSetRoleBodySchema),
     async (c) => {
@@ -1205,6 +1324,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.patch(
     "/users/:userId/staff-role",
+    requireUsersDirectory,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminPatchStaffRoleBodySchema),
     async (c) => {
@@ -1228,48 +1348,53 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post(
     "/users/:userId/suspend",
+    requireUserModeration,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminSuspendBodySchema),
     async (c) => {
       const { userId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      const role = c.get("userRole") ?? "client";
-      await container.admin.users.suspend(role, userId, reason ?? null);
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      await container.admin.users.suspend(actorRole, actorStaff, userId, reason ?? null);
       return c.json({ ok: true });
     },
   );
 
-  platform.post("/users/:userId/unsuspend", zValidator("param", userIdParamSchema), async (c) => {
-    const { userId } = c.req.valid("param");
-    const role = c.get("userRole") ?? "client";
-    await container.admin.users.unsuspend(role, userId);
-    return c.json({ ok: true });
-  });
+  platform.post(
+    "/users/:userId/unsuspend",
+    requireUserModeration,
+    zValidator("param", userIdParamSchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      await container.admin.users.unsuspend(actorRole, actorStaff, userId);
+      return c.json({ ok: true });
+    },
+  );
 
   platform.get(
     "/users/:userId/activity",
+    requireUsersDirectory,
     zValidator("param", userIdParamSchema),
     zValidator("query", activityQuerySchema),
     async (c) => {
       const { userId } = c.req.valid("param");
       const { limit } = c.req.valid("query");
-      const data = await container.admin.users.activityFor(userId, limit);
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const data = await container.admin.users.activityFor(actorRole, actorStaff, userId, limit);
       return c.json({ data });
     },
   );
 
   platform.patch(
     "/users/:userId/profile",
+    requireUserInvite,
     zValidator("param", userIdParamSchema),
     zValidator("json", updateProfileNameFormSchema),
     async (c) => {
-      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
-      const actorStaff = normalizeUserStaffRole(
-        c.get("userStaffRole") as string | null | undefined,
-      );
-      if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
       const { userId } = c.req.valid("param");
       const body = c.req.valid("json");
       if (body.name == null) {
@@ -1282,15 +1407,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/impersonation/lookup",
+    requirePlatformAdminFull,
     zValidator("query", impersonationLookupQuerySchema),
     async (c) => {
-      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
-      const actorStaff = normalizeUserStaffRole(
-        c.get("userStaffRole") as string | null | undefined,
-      );
-      if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
       const { legalEntityId } = c.req.valid("query");
       const out = await container.admin.impersonation.lookupForImpersonation(legalEntityId);
       if (!out.ok) return c.json({ error: "Not found" }, 404);
@@ -1300,16 +1419,10 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post(
     "/impersonation/record-failed-end",
+    requirePlatformAdminFull,
     zValidator("json", impersonationRecordFailedEndBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
-      const actorStaff = normalizeUserStaffRole(
-        c.get("userStaffRole") as string | null | undefined,
-      );
-      if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
       const { sessionId, legalEntityId } = c.req.valid("json");
       const out = await container.admin.impersonation.recordFailedEnd({
         actorUserId: userId,
@@ -1326,16 +1439,10 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.post(
     "/impersonation/start",
+    requirePlatformAdminFull,
     zValidator("json", impersonationStartBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
-      const actorStaff = normalizeUserStaffRole(
-        c.get("userStaffRole") as string | null | undefined,
-      );
-      if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
       const { legalEntityId } = c.req.valid("json");
       const out = await container.admin.impersonation.startImpersonation({
         actorUserId: userId,
@@ -1354,13 +1461,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  platform.post("/impersonation/end", async (c) => {
+  platform.post("/impersonation/end", requirePlatformAdminFull, async (c) => {
     const userId = c.get("userId") as string;
-    const actorRole = normalizeUserRoleOrClient(c.get("userRole"));
-    const actorStaff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    if (!roleHasCapability(actorRole, "platform.admin.full", actorStaff)) {
-      return c.json({ error: "Forbidden" }, 403);
-    }
     const out = await container.admin.impersonation.endImpersonation({
       actorUserId: userId,
       cookieHeader: c.req.header("Cookie"),

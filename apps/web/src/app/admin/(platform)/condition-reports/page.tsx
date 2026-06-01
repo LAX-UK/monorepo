@@ -18,7 +18,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForPrivate(
-  "Condition reports",
+  "Condition report requests",
   "Respond to buyer condition report requests.",
 );
 
@@ -79,6 +79,7 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
+        total={total}
         prevHref={
           query.offset > 0
             ? buildListHref("/admin/condition-reports", sp, {

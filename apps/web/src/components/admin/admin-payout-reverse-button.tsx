@@ -3,6 +3,7 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { reversePayoutAction } from "@/lib/admin/payout.actions";
 import { Can } from "@/lib/auth/capabilities";
+import { PAYOUT_REVERSE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { PayoutStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Textarea } from "@auction/ui/components/textarea";
@@ -25,7 +26,7 @@ export function AdminPayoutReverseButton({ payoutId, status }: Props) {
   if (!eligible) return null;
 
   return (
-    <Can requirement="payout.reverse">
+    <Can requirement={PAYOUT_REVERSE_ACCESS}>
       <div className="space-y-3 rounded-md border border-border-hairline p-3">
         <h3 className="font-label text-sm font-semibold uppercase tracking-wide text-destructive">
           Reverse payout (bookkeeping)
