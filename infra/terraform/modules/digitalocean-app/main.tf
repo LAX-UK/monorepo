@@ -177,6 +177,25 @@ resource "digitalocean_app" "this" {
     # Without host-scoped rules, every HTTP service defaults to path "/" on shared ingress → 400 duplicate prefix.
     ingress {
       dynamic "rule" {
+        for_each = var.path_routes
+
+        content {
+          component {
+            name                 = rule.value.component
+            preserve_path_prefix = true
+          }
+          match {
+            authority {
+              exact = rule.value.authority
+            }
+            path {
+              prefix = rule.value.path_prefix
+            }
+          }
+        }
+      }
+
+      dynamic "rule" {
         for_each = local.domains
 
         content {

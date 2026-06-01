@@ -9,7 +9,7 @@ describe("admin QR code routes", () => {
     const regenerateDefault = vi.fn().mockResolvedValue({
       id: "qr_2",
       shortCode: "NEW12345",
-      shortUrl: "https://api.example.test/q/NEW12345",
+      shortUrl: "https://web.example.test/q/NEW12345",
       entityType: "lot",
       entityId: "11111111-1111-4111-8111-111111111111",
       destinationUrl: "https://web.example.test/lot/test",

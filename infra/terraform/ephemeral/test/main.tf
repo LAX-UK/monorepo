@@ -335,7 +335,14 @@ module "app" {
   repository_clone_url = var.repository_clone_url
   branch               = local.branch
   components           = local.components
-  depends_on           = [module.postgres_rbac]
+  path_routes = [
+    {
+      authority   = local.domain.web
+      path_prefix = "/q"
+      component   = "api"
+    },
+  ]
+  depends_on = [module.postgres_rbac]
 }
 
 module "monitoring" {
