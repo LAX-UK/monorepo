@@ -142,11 +142,14 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
           .select({
             id: kycVerification.id,
             userId: kycVerification.userId,
+            userName: user.name,
+            userEmail: user.email,
             provider: kycVerification.provider,
             status: kycVerification.status,
             createdAt: kycVerification.createdAt,
           })
           .from(kycVerification)
+          .innerJoin(user, eq(kycVerification.userId, user.id))
           .where(
             and(
               inArray(kycVerification.status, ["created", "requires_input", "processing"]),

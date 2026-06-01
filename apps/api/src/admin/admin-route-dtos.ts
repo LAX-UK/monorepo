@@ -20,6 +20,8 @@ export type AdminOnboardingArtistRow = {
 export type AdminOnboardingKycSessionRow = {
   id: string;
   userId: string;
+  userName: string | null;
+  userEmail: string | null;
   provider: string;
   status: string;
   createdAt: Date;

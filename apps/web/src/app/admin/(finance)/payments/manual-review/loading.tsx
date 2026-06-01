@@ -1,14 +1,14 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { FinanceListPageSkeleton } from "@/components/admin/finance/finance-list-states";
 
 export default function ManualReviewLoading() {
   return (
-    <AdminListPageSkeleton
-      title="Manual review"
-      description="Loading payments…"
+    <FinanceListPageSkeleton
+      title="Manual payment review"
+      description="Loading manual review queue…"
       kpiTiles={0}
-      tableRows={8}
-      tableColumns={6}
-      showToolbar={false}
+      showFilterBar={false}
+      tableRows={6}
+      tableColumns={4}
     />
   );
 }

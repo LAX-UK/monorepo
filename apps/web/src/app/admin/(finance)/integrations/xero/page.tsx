@@ -1,8 +1,16 @@
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
 import { XeroIntegrationPanel } from "@/components/admin/xero-integration-panel";
 import { adminXeroDisconnectAction, adminXeroOAuthStartAction } from "@/lib/actions/admin";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Xero integration",
+  "Connect a Xero organisation for hosted invoices and payment collection.",
+);
 
 export default async function AdminXeroIntegrationPage({
   searchParams,
@@ -10,7 +18,7 @@ export default async function AdminXeroIntegrationPage({
   searchParams: Promise<{ error?: string; connected?: string }>;
 }) {
   const sp = await searchParams;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const connected = sp.connected === "1";
 
   let status: Awaited<ReturnType<typeof getAdminXeroIntegrationStatus>> | null = null;

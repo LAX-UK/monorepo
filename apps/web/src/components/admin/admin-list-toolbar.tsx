@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 type Props = {
   /** Filter chip row or other filter group(s) — rendered left-aligned. */
   filters?: ReactNode;
+  /** When true, filters bring their own mobile sheet (skip AdminListFilterSheet wrapper). */
+  filtersSelfContained?: boolean;
   /** Entity-specific pickers / dropdowns (e.g. ArtistPicker, sort select). */
   extra?: ReactNode;
   /** Export link, column picker, etc. */
@@ -21,6 +23,7 @@ type Props = {
  */
 export function AdminListToolbar({
   filters,
+  filtersSelfContained = false,
   extra,
   toolbarEnd,
   hasFilters,
@@ -31,8 +34,20 @@ export function AdminListToolbar({
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3">
         {filters ? (
           <>
-            <div className="hidden min-w-0 flex-wrap gap-2 lg:flex">{filters}</div>
-            <AdminListFilterSheet activeCount={hasFilters ? 1 : 0}>{filters}</AdminListFilterSheet>
+            <div
+              className={
+                filtersSelfContained
+                  ? "flex min-w-0 flex-wrap gap-2"
+                  : "hidden min-w-0 flex-wrap gap-2 lg:flex"
+              }
+            >
+              {filters}
+            </div>
+            {!filtersSelfContained ? (
+              <AdminListFilterSheet activeCount={hasFilters ? 1 : 0}>
+                {filters}
+              </AdminListFilterSheet>
+            ) : null}
           </>
         ) : null}
         {extra ? <div className="flex flex-wrap items-end gap-2">{extra}</div> : null}

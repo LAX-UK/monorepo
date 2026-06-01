@@ -34,7 +34,15 @@ describe("categorizeOnboardingIssues", () => {
         { id: "a2", displayName: "C", status: "pending" },
       ],
       staleKycSessions: [
-        { id: "s1", userId: "u1", provider: "veriff", status: "pending", createdAt: "" },
+        {
+          id: "s1",
+          userId: "u1",
+          userName: "Test User",
+          userEmail: "test@example.com",
+          provider: "veriff",
+          status: "pending",
+          createdAt: "",
+        },
       ],
       documentsAwaitingReview: [],
       staleLeadOrganisations: [

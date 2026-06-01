@@ -1,9 +1,15 @@
-import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
+import {
+  AdminListFilterBarSkeleton,
+  KpiStripSkeleton,
+} from "@/components/admin/admin-loading-skeletons";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { TableSkeleton } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Skeleton } from "@auction/ui/components/skeleton";
+import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { CatalogBreadcrumbs } from "./catalog-breadcrumbs";
 
 type SkeletonProps = {
   title: string;
@@ -13,32 +19,6 @@ type SkeletonProps = {
   tableColumns?: number;
   showFilterBar?: boolean;
 };
-
-const KPI_TILE_KEYS = ["kpi-0", "kpi-1", "kpi-2", "kpi-3", "kpi-4", "kpi-5"] as const;
-
-function KpiStripSkeleton({ tiles }: { tiles: number }) {
-  return (
-    <div
-      className="grid grid-cols-2 gap-3 sm:grid-cols-3"
-      aria-busy="true"
-      aria-label="Loading summary"
-    >
-      {KPI_TILE_KEYS.slice(0, tiles).map((id) => (
-        <Skeleton key={id} className="h-20 w-full rounded-lg" />
-      ))}
-    </div>
-  );
-}
-
-function FilterBarSkeleton() {
-  return (
-    <div className="flex flex-wrap items-center gap-3" aria-busy="true">
-      <Skeleton className="h-9 w-full max-w-md rounded-md" />
-      <Skeleton className="h-9 w-32 rounded-full" />
-      <Skeleton className="h-9 w-24 rounded-md" />
-    </div>
-  );
-}
 
 /** Loading state aligned with CatalogListShell layout. */
 export function CatalogListPageSkeleton({
@@ -53,7 +33,7 @@ export function CatalogListPageSkeleton({
     <CatalogListShell
       title={title}
       description={description}
-      filterBar={showFilterBar ? <FilterBarSkeleton /> : null}
+      filterBar={showFilterBar ? <AdminListFilterBarSkeleton /> : null}
       kpiStrip={kpiTiles > 0 ? <KpiStripSkeleton tiles={kpiTiles} /> : null}
       pagination={<Skeleton className="h-10 w-full max-w-md" />}
     >
@@ -105,12 +85,9 @@ export function CatalogListErrorShell({
               Try again
             </Button>
           ) : null}
-          <a
-            href={listHref}
-            className="inline-flex min-h-10 items-center rounded-md border border-outline-variant px-4 font-label text-xs uppercase tracking-[0.12em] text-on-surface-variant"
-          >
-            Back to {listLabel.toLowerCase()}
-          </a>
+          <Button variant="secondary" asChild>
+            <Link href={listHref}>Back to {listLabel.toLowerCase()}</Link>
+          </Button>
         </div>
         {children}
       </div>

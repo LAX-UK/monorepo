@@ -1,8 +1,8 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { PeopleListPageSkeleton } from "@/components/admin/people/people-list-states";
 
 export default function StaffLoading() {
   return (
-    <AdminListPageSkeleton
+    <PeopleListPageSkeleton
       title="Staff"
       description="Loading staff…"
       kpiTiles={4}

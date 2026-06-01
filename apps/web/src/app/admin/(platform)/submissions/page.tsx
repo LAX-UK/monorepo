@@ -160,6 +160,7 @@ export default async function AdminSubmissionsPage({
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
+        total={total}
         prevHref={
           query.offset > 0
             ? buildListHref("/admin/submissions", sp, {

@@ -1,10 +1,12 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
-import { PayoutSettlementPanel } from "@/components/admin/payout-settlement-panel";
+import { PayoutsFilterToolbar } from "@/components/admin/finance/payouts-filter-toolbar";
 import { AdminPayoutsBoard } from "@/components/admin/payouts-board";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { payoutsListController } from "@/lib/admin/admin-list-controllers";
@@ -12,19 +14,34 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { summarizeSettlementReadiness } from "@/lib/admin/payout-settlement-readiness.vm";
+import {
+  buildPayoutsActiveFilterChips,
+  countPayoutsListActiveFilters,
+  hasPayoutsListActiveFilters,
+  parsePayoutsListFilters,
+} from "@/lib/admin/payouts-list-query";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminPayoutsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatMoney } from "@/lib/ui/format";
 import { payoutStatuses } from "@auction/types";
 import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const filters = ["all", ...payoutStatuses] as const;
+const BASE_PATH = "/admin/payouts";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Payouts",
+  "Run seller settlements, review payout totals, and reconcile Stripe transfers.",
+);
 
 export default async function AdminPayoutsPage({
   searchParams,
@@ -41,12 +58,19 @@ export default async function AdminPayoutsPage({
   }>;
 }) {
   const sp = await searchParams;
+
+  if (sp.settlement === "1") {
+    redirect("/admin/payouts/settlement");
+  }
+
   const periodDays = parseAdminKpiPeriod(sp.period);
   const query = payoutsListController.parseQuery(sp);
-  const legalEntityId = query.legalEntityId;
-  const success = sp.success ? decodeURIComponent(sp.success) : null;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
-  const showSettlement = sp.settlement === "1";
+  const listFilters = parsePayoutsListFilters(sp);
+  const hasFilters = hasPayoutsListActiveFilters(listFilters);
+  const activeFilterCount = countPayoutsListActiveFilters(listFilters);
+  const activeFilterChips = buildPayoutsActiveFilterChips(BASE_PATH, sp, listFilters);
+  const success = safeDecodeAdminErrorParam(sp.success);
+  const error = safeDecodeAdminErrorParam(sp.error);
 
   const payoutsTrend = await getAdminPayoutsKpiTrend(periodDays).catch(() => ({
     currentTotal: 0,
@@ -56,11 +80,13 @@ export default async function AdminPayoutsPage({
 
   let payouts: AdminPayoutRow[] = [];
   let summaryPayouts: AdminPayoutRow[] = [];
+  let hasNextPage = false;
   let loadError: string | null = null;
   try {
     const result = await payoutsListController.fetch(query);
     payouts = result.rows;
     summaryPayouts = result.rowsForSummary ?? result.rows;
+    hasNextPage = result.hasNextPage ?? false;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load payouts.";
   }
@@ -93,7 +119,7 @@ export default async function AdminPayoutsPage({
       chips={filters.map((filter) => ({
         id: filter,
         label: filter.replaceAll("_", " "),
-        href: buildListHref("/admin/payouts", sp, {
+        href: buildListHref(BASE_PATH, sp, {
           status: filter === "all" ? "" : filter,
           offset: 0,
         }),
@@ -101,67 +127,6 @@ export default async function AdminPayoutsPage({
       }))}
     />
   );
-
-  const errorAlert =
-    error || loadError ? (
-      <AdminListAlert title="Could not complete action">{loadError ?? error}</AdminListAlert>
-    ) : null;
-
-  const filtersSlot = (
-    <Surface variant="card">
-      <div className="space-y-4 p-4">
-        <h2 className="font-heading text-lg">Filters</h2>
-        <form className="space-y-3" action="/admin/payouts" method="get">
-          {query.status ? <input type="hidden" name="status" value={query.status} /> : null}
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Legal entity ID</span>
-            <input
-              name="legalEntityId"
-              defaultValue={legalEntityId}
-              placeholder="Optional"
-              className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
-            />
-          </label>
-          <Button
-            type="submit"
-            variant="outline"
-            className="rounded-md border border-outline-variant px-4 py-2 font-label text-sm font-semibold"
-          >
-            Apply
-          </Button>
-        </form>
-      </div>
-    </Surface>
-  );
-
-  const pagination =
-    !loadError && (query.offset > 0 || payouts.length === query.limit) ? (
-      <PaginationFooter
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={payouts.length}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/payouts", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          payouts.length === query.limit
-            ? buildListHref("/admin/payouts", sp, { offset: query.offset + query.limit })
-            : null
-        }
-      />
-    ) : null;
-
-  const empty =
-    !loadError && payouts.length === 0 ? (
-      <AdminEmptyState
-        title="No payouts found"
-        description="Run settlement for a legal entity once captured payments are ready."
-      />
-    ) : null;
 
   const kpiStrip = !loadError ? (
     <>
@@ -229,51 +194,100 @@ export default async function AdminPayoutsPage({
     </Surface>
   ) : null;
 
-  const view = (
-    <>
-      <PayoutSettlementPanel
-        open={showSettlement}
-        error={showSettlement ? error : null}
-        success={showSettlement ? success : null}
+  const pagination =
+    !loadError && (query.offset > 0 || hasNextPage) ? (
+      <PaginationFooter
+        offset={query.offset}
+        limit={query.limit}
+        countOnPage={payouts.length}
+        prevHref={
+          query.offset > 0
+            ? buildListHref(BASE_PATH, sp, {
+                offset: Math.max(0, query.offset - query.limit),
+              })
+            : null
+        }
+        nextHref={
+          hasNextPage ? buildListHref(BASE_PATH, sp, { offset: query.offset + query.limit }) : null
+        }
       />
-      {!loadError && payouts.length > 0 ? (
-        <>
-          {success && !showSettlement ? (
-            <Alert>
-              <AlertTitle>Done</AlertTitle>
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          ) : null}
-          <AdminPayoutsBoard
-            rows={payouts}
-            statusChips={statusChips}
-            kpiStrip={kpiStrip}
-            settlementBand={settlementBand}
-          />
-        </>
-      ) : null}
-    </>
-  );
+    ) : null;
 
   return (
-    <AdminListPage
+    <AdminListShell
       title="Payouts"
       description="Run seller settlements, review payout totals, add finance adjustments, and mark Stripe transfers as paid."
       primaryAction={
         <Link
-          href="/admin/payouts?settlement=1"
+          href="/admin/payouts/settlement"
           className="inline-flex min-h-9 items-center rounded-md bg-primary px-4 py-2 font-label text-xs font-semibold text-on-primary"
         >
           Run settlement
         </Link>
       }
-      errorAlert={errorAlert}
+      hasFilters={hasFilters}
+      resetHref={BASE_PATH}
       chips={statusChips}
-      filters={filtersSlot}
-      hasFilters={Boolean(query.status || query.legalEntityId)}
-      resetHref="/admin/payouts"
-      view={view}
-      empty={empty}
+      filters={
+        !loadError ? (
+          <PayoutsFilterToolbar
+            {...(listFilters.legalEntityId ? { legalEntityId: listFilters.legalEntityId } : {})}
+            {...(query.status ? { status: query.status } : {})}
+            activeFilterCount={activeFilterCount}
+            activeFilterChips={activeFilterChips}
+            toolbarEnd={<CatalogKpiPeriodToggle current={periodDays} className="hidden lg:flex" />}
+          />
+        ) : null
+      }
+      filtersSelfContained
+      mobileSummary={
+        !loadError ? (
+          <div className="space-y-3">
+            <CatalogListMobileSummary
+              metrics={[
+                { id: "scheduled", label: "Scheduled", value: String(scheduled) },
+                { id: "transit", label: "In transit", value: String(inTransit) },
+                {
+                  id: "net",
+                  label: "Visible net",
+                  value: formatMoney(totalNet.toFixed(2), "GBP"),
+                },
+              ]}
+            />
+            <CatalogKpiPeriodToggle current={periodDays} className="lg:hidden" />
+          </div>
+        ) : null
+      }
+      kpiStrip={kpiStrip}
+      errorAlert={
+        error || loadError ? (
+          <AdminListAlert title="Could not complete action">{loadError ?? error}</AdminListAlert>
+        ) : null
+      }
+      wrapView={false}
+      view={
+        !loadError && payouts.length > 0 ? (
+          <div className="space-y-6">
+            {success ? (
+              <Alert>
+                <AlertTitle>Done</AlertTitle>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            ) : null}
+            {settlementBand}
+            <AdminPayoutsBoard rows={payouts} />
+          </div>
+        ) : null
+      }
+      empty={
+        !loadError && payouts.length === 0 ? (
+          <AdminEmptyState
+            title="No payouts found"
+            description="Run settlement for a legal entity once captured payments are ready."
+          />
+        ) : null
+      }
+      showCommandPaletteHint
       pagination={pagination}
     />
   );

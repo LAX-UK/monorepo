@@ -99,7 +99,7 @@ export function AdminDisputesDomainEventsBoard({ rows }: { rows: AdminDomainEven
         }
         cards={
           rows.length > 0 ? (
-            <ul className="space-y-3 md:hidden">
+            <ul className="space-y-3">
               {rows.map((r) => (
                 <li
                   key={r.id}

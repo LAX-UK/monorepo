@@ -14,7 +14,16 @@ import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-p
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { loadAdminLotFulfilmentQueue } from "@/lib/data/http/admin.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import { Button } from "@auction/ui/components/button";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Lot fulfilment",
+  "Release, shipping, and collection workflow for sold lots.",
+);
 
 const FILTER_STATUSES = [
   "awaiting_payment",
@@ -131,6 +140,7 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
         offset={offset}
         limit={limit}
         countOnPage={rows.length}
+        total={total}
         prevHref={
           offset > 0
             ? buildListHref("/admin/lot-fulfilment", sp, {
@@ -155,6 +165,29 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
             ? "No lots match this filter. Try another status, search term, or clear filters."
             : "No fulfilment rows yet."
         }
+        action={
+          statusFilter || q ? (
+            <Button variant="secondary" asChild>
+              <Link href="/admin/lot-fulfilment">Clear filters</Link>
+            </Button>
+          ) : undefined
+        }
+      />
+    ) : rows.length === 0 ? (
+      <CatalogListEmptyState
+        title="No rows on this page"
+        description="Try the previous page or clear filters — results may have shifted."
+        action={
+          <Button variant="secondary" asChild>
+            <Link
+              href={buildListHref("/admin/lot-fulfilment", sp, {
+                offset: Math.max(0, offset - limit),
+              })}
+            >
+              Previous page
+            </Link>
+          </Button>
+        }
       />
     ) : null;
 
@@ -166,7 +199,7 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
       title="Lot fulfilment"
       description="After payment is captured, approve release, then ship or mark ready for collection."
       meta={<CatalogRelatedWork variant="fulfilment" navCounts={navCounts} />}
-      breadcrumbs={<CatalogOpsBreadcrumb current="Fulfilment" />}
+      breadcrumbs={<CatalogOpsBreadcrumb current="Lot fulfilment" />}
       filterBar={filterBar}
       errorAlert={
         <>

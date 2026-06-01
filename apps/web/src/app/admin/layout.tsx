@@ -17,6 +17,7 @@ import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { PLATFORM_ADMIN_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
@@ -26,7 +27,7 @@ import {
   type UserRole,
   canAccessFinanceAdminRoutes,
   canAccessPlatformAdminRoutes,
-  roleHasCapability,
+  userHasAccessTo,
 } from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
@@ -38,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const base = metadataForPrivate("Admin");
   if (
     !impersonation ||
-    !roleHasCapability(user.role as UserRole, "platform.admin.full", user.staffRole ?? null)
+    !userHasAccessTo(user.role as UserRole, user.staffRole ?? null, PLATFORM_ADMIN_ACCESS)
   ) {
     return {
       ...base,
@@ -97,7 +98,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const showImpersonationBanner =
     Boolean(impersonation) &&
-    roleHasCapability(user.role as UserRole, "platform.admin.full", user.staffRole ?? null);
+    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, PLATFORM_ADMIN_ACCESS);
 
   const acting: ActingContext = impersonation
     ? {
