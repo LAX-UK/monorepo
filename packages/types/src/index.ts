@@ -10,6 +10,7 @@ export * from "./buyer-premium.js";
 export * from "./socket.js";
 export * from "./user.js";
 export * from "./role-policy.js";
+export * from "./admin-access.js";
 export * from "./item-submission.js";
 /** Legal Entity Model types */
 export * from "./legal-entity.js";

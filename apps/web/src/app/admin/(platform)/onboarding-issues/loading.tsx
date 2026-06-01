@@ -1,14 +1,13 @@
-import { AdminListPage } from "@/components/admin/admin-list-page";
-import { TabbedQueueSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { PeopleListPageSkeleton } from "@/components/admin/people/people-list-states";
 
-export default function OnboardingIssuesLoading() {
+export default function AdminOnboardingIssuesLoading() {
   return (
-    <AdminListPage
-      title="Onboarding issues"
+    <PeopleListPageSkeleton
+      title="Onboarding & verification queues"
       description="Loading queues…"
-      hasFilters={false}
-      resetHref="/admin/onboarding-issues"
-      view={<TabbedQueueSkeleton tabs={5} />}
+      kpiTiles={0}
+      showFilterBar={false}
+      showTabBar
     />
   );
 }

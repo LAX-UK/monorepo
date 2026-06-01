@@ -1,22 +1,11 @@
 import { AdminImpersonateForm } from "@/components/admin/admin-impersonate-form";
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
-import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export default async function AdminImpersonationPage() {
-  const user = await requireAuthenticatedUser({
-    shell: "staff",
-    loginNext: "/admin/impersonation",
-  });
-  if (!canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
-    redirect("/admin");
-  }
-
   return (
     <AdminPanelPage
       title="Impersonate organisation"

@@ -1,112 +1,18 @@
-import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
-import { CommandPaletteHint } from "@/components/admin/command-palette-hint";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { EntityList } from "@auction/ui";
-import type { ReactNode } from "react";
+import type { AdminListShellProps } from "@/components/admin/admin-list-shell";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
 
-export type AdminListPageVariant = "default" | "overview" | "report" | "queue";
+export type AdminListPageVariant = AdminListShellProps["variant"];
+export type AdminListPageProps = AdminListShellProps;
 
-export type AdminListPageProps = {
-  title: string;
-  description?: string | undefined;
-  variant?: AdminListPageVariant;
-  breadcrumbs?: ReactNode;
-  primaryAction?: ReactNode;
-  meta?: ReactNode;
-  /** KPI strip — use AdminListKpiStrip only */
-  kpiStrip?: ReactNode;
-  chips?: ReactNode;
-  /** Persisted saved-view chips (client); rendered in toolbar when set. */
-  savedViews?: ReactNode;
-  filters?: ReactNode;
-  toolbarEnd?: ReactNode;
-  listToolbarEnd?: ReactNode;
-  hasFilters?: boolean | undefined;
-  resetHref?: string | undefined;
-  errorAlert?: ReactNode;
-  bulkBar?: ReactNode;
-  view: ReactNode;
-  /** Mobile card fallback rendered below md when provided */
-  mobileCards?: ReactNode;
-  pagination?: ReactNode;
-  empty?: ReactNode;
-  showCommandPaletteHint?: boolean;
-  className?: string | undefined;
-};
-
-const variantSpacing: Record<AdminListPageVariant, string> = {
-  default: "space-y-6",
-  overview: "space-y-8",
-  report: "space-y-8",
-  queue: "space-y-4",
-};
-
-/** Shared staff list layout: header, KPI, toolbar, view, mobile cards, pagination. */
-export function AdminListPage({
-  title,
-  description,
-  variant = "default",
-  breadcrumbs,
-  primaryAction,
-  meta,
-  kpiStrip,
-  chips,
-  savedViews,
-  filters,
-  toolbarEnd,
-  listToolbarEnd,
-  hasFilters,
-  resetHref,
-  errorAlert,
-  bulkBar,
-  view,
-  mobileCards,
-  pagination,
-  empty,
-  showCommandPaletteHint = false,
-  className,
-}: AdminListPageProps) {
-  const showToolbar = Boolean(savedViews || filters || toolbarEnd || listToolbarEnd);
-
+/**
+ * @deprecated Use `AdminListShell` directly. This alias remains for legacy imports during migration.
+ */
+export function AdminListPage({ mobileCards, ...props }: AdminListPageProps) {
   return (
-    <AppScreen className={className ?? variantSpacing[variant]}>
-      <DashboardPageHeader
-        title={title}
-        {...(description ? { description } : {})}
-        {...(meta ? { meta } : {})}
-        {...(breadcrumbs ? { breadcrumbs } : {})}
-        {...(primaryAction ? { actions: primaryAction } : {})}
-      />
-      {kpiStrip}
-      {chips}
-      {bulkBar}
-      <EntityList
-        responsiveMode={mobileCards ? "auto" : "scroll"}
-        {...(mobileCards ? { cards: mobileCards, table: view } : { table: view })}
-        filters={
-          showToolbar ? (
-            <AdminListToolbar
-              filters={filters}
-              extra={toolbarEnd}
-              toolbarEnd={
-                savedViews || listToolbarEnd ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {savedViews}
-                    {listToolbarEnd}
-                  </div>
-                ) : undefined
-              }
-              hasFilters={Boolean(hasFilters)}
-              resetHref={resetHref ?? ""}
-            />
-          ) : undefined
-        }
-        {...(errorAlert ? { error: errorAlert } : {})}
-      />
-      {empty}
-      {showCommandPaletteHint ? <CommandPaletteHint className="mt-2" /> : null}
-      {pagination}
-    </AppScreen>
+    <AdminListShell
+      {...props}
+      {...(mobileCards ? { mobileCards } : {})}
+      wrapView={Boolean(mobileCards)}
+    />
   );
 }

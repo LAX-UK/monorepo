@@ -31,8 +31,24 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
-import { CATEGORIES_ACCESS, LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
-import type { CapabilityRequirement, Lot } from "@auction/types";
+import {
+  ARTIST_DELETE_ACCESS,
+  ARTIST_MERGE_ACCESS,
+  ARTIST_REVIEW_ACCESS,
+  ARTIST_WRITE_ACCESS,
+  CATEGORIES_ACCESS,
+  CONDITION_REPORTS_ACCESS,
+  FINANCE_ACCESS,
+  INVITATIONS_ACCESS,
+  LOTS_ACCESS,
+  LOT_FULFILMENT_ACCESS,
+  SALEROOM_ACCESS,
+  SALES_ACCESS,
+  SUBMISSIONS_ACCESS,
+  USER_MODERATION_ACCESS,
+  USER_ROLE_MANAGEMENT_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
+import type { Lot } from "@auction/types";
 import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
   adminBulkInvitationsBodySchema,
@@ -61,24 +77,6 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-
-const AUCTION_MANAGE_ACCESS: CapabilityRequirement = SALES_ACCESS;
-
-const ARTIST_WRITE_ACCESS: CapabilityRequirement = {
-  anyOf: ["catalogue.write", "artist.review", "artist.merge", "platform.admin.full"],
-};
-
-const ARTIST_REVIEW_ACCESS: CapabilityRequirement = {
-  anyOf: ["artist.review", "platform.admin.full"],
-};
-
-const ARTIST_MERGE_ACCESS: CapabilityRequirement = {
-  anyOf: ["artist.merge", "platform.admin.full"],
-};
-
-const ARTIST_DELETE_ACCESS: CapabilityRequirement = {
-  anyOf: ["artist.delete", "platform.admin.full"],
-};
 
 function revalidateAdminUserListPaths(): void {
   revalidatePath("/admin/clients");
@@ -215,6 +213,10 @@ export async function adminRefundPaymentAction(formData: FormData): Promise<void
   return instrumentServerAction(
     "adminRefundPaymentAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/payments?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("paymentId") ?? "").trim();
       if (!id) redirect(`/admin/payments?error=${encodeURIComponent("Missing payment")}`);
       const { adminPayments } = getWriteContainer();
@@ -233,6 +235,10 @@ export async function adminCapturePaymentAction(formData: FormData): Promise<voi
   return instrumentServerAction(
     "adminCapturePaymentAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/payments?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("paymentId") ?? "").trim();
       if (!id) redirect(`/admin/payments?error=${encodeURIComponent("Missing payment")}`);
       const { adminPayments } = getWriteContainer();
@@ -251,6 +257,10 @@ export async function adminSuspendUserAction(formData: FormData): Promise<void> 
   return instrumentServerAction(
     "adminSuspendUserAction",
     async () => {
+      const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
+      if (denied && !denied.ok) {
+        redirect(`/admin/clients?error=${encodeURIComponent(denied.error)}`);
+      }
       const id = String(formData.get("userId") ?? "").trim();
       if (!id) redirect(`/admin/clients?error=${encodeURIComponent("Missing user")}`);
       const { adminUsers } = getWriteContainer();
@@ -271,6 +281,10 @@ export async function adminUnsuspendUserAction(formData: FormData): Promise<void
   return instrumentServerAction(
     "adminUnsuspendUserAction",
     async () => {
+      const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
+      if (denied && !denied.ok) {
+        redirect(`/admin/clients?error=${encodeURIComponent(denied.error)}`);
+      }
       const id = String(formData.get("userId") ?? "").trim();
       if (!id) redirect(`/admin/clients?error=${encodeURIComponent("Missing user")}`);
       const { adminUsers } = getWriteContainer();
@@ -289,6 +303,10 @@ export async function adminSetUserRoleAction(formData: FormData): Promise<void> 
   return instrumentServerAction(
     "adminSetUserRoleAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(USER_ROLE_MANAGEMENT_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/clients?error=${encodeURIComponent(denied.message)}`);
+      }
       const id = String(formData.get("userId") ?? "").trim();
       const roleRaw = String(formData.get("role") ?? "").trim();
       const bodyParsed = adminSetRoleBodySchema.safeParse({ role: roleRaw });
@@ -811,7 +829,7 @@ export async function adminCancelLotResultAction(
   body: z.infer<typeof cancelLotBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminCancelLotResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied) return denied;
     const id = lotId.trim();
     if (!id) {
@@ -837,7 +855,7 @@ export async function adminSoftDeleteLotResultAction(
   confirmationPhrase: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminSoftDeleteLotResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied) return denied;
     const id = lotId.trim();
     const phrase = confirmationPhrase.trim();
@@ -863,7 +881,7 @@ export async function adminReturnLotToInventoryResultAction(
   body: z.infer<typeof returnLotToInventoryBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminReturnLotToInventoryResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(AUCTION_MANAGE_ACCESS);
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied) return denied;
     const id = lotId.trim();
     if (!id) {
@@ -893,6 +911,8 @@ export async function adminApproveWithdrawalRequestResultAction(
   lotId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminApproveWithdrawalRequestResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+    if (denied) return denied;
     const id = lotId.trim();
     if (!id) return actionFailure("Missing lot ID");
     const res = await authedServerFetch(
@@ -921,7 +941,7 @@ export async function adminBulkLotsResultAction(
     }
     const access =
       parsed.data.op === "soft_delete"
-        ? AUCTION_MANAGE_ACCESS
+        ? SALES_ACCESS
         : parsed.data.op === "cancel"
           ? SALES_ACCESS
           : LOTS_ACCESS;
@@ -952,6 +972,8 @@ export async function adminBulkUsersResultAction(
   body: z.infer<typeof adminBulkUsersBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminBulkUsersResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
+    if (denied) return denied;
     const parsed = adminBulkUsersBodySchema.safeParse(body);
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -971,6 +993,8 @@ export async function adminBulkInvitationsResultAction(
   body: z.infer<typeof adminBulkInvitationsBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminBulkInvitationsResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
+    if (denied) return denied;
     const parsed = adminBulkInvitationsBodySchema.safeParse(body);
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -990,6 +1014,8 @@ export async function adminBulkSubmissionsResultAction(
   body: z.infer<typeof adminBulkSubmissionsBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminBulkSubmissionsResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
     const parsed = adminBulkSubmissionsBodySchema.safeParse(body);
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -1010,6 +1036,8 @@ export async function adminCapturePaymentResultAction(
   paymentId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminCapturePaymentResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+    if (denied) return denied;
     const id = paymentId.trim();
     if (!id) {
       return actionFailure("Missing payment");
@@ -1028,6 +1056,8 @@ export async function adminRefundPaymentResultAction(
   paymentId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminRefundPaymentResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+    if (denied) return denied;
     const id = paymentId.trim();
     if (!id) {
       return actionFailure("Missing payment");
@@ -1046,6 +1076,8 @@ export async function adminPaymentXeroSyncResultAction(
   paymentId: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminPaymentXeroSyncResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+    if (denied) return denied;
     const id = paymentId.trim();
     if (!id) {
       return actionFailure("Missing payment");
@@ -1068,6 +1100,8 @@ export async function adminSetUserStaffRoleResultAction(
   body: z.infer<typeof adminPatchStaffRoleBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminSetUserStaffRoleResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(USER_ROLE_MANAGEMENT_ACCESS);
+    if (denied) return denied;
     const id = userId.trim();
     if (!id) {
       return actionFailure("Missing user");
@@ -1091,6 +1125,8 @@ export async function adminSetUserRoleResultAction(
   body: z.infer<typeof adminSetRoleBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminSetUserRoleResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(USER_ROLE_MANAGEMENT_ACCESS);
+    if (denied) return denied;
     const id = userId.trim();
     if (!id) {
       return actionFailure("Missing user");
@@ -1114,6 +1150,8 @@ export async function adminSuspendUserResultAction(
   body: z.infer<typeof adminSuspendBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminSuspendUserResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
+    if (denied) return denied;
     const id = userId.trim();
     if (!id) {
       return actionFailure("Missing user");
@@ -1134,6 +1172,8 @@ export async function adminSuspendUserResultAction(
 
 export async function adminUnsuspendUserResultAction(userId: string): Promise<ActionResult<void>> {
   return instrumentServerAction("adminUnsuspendUserResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
+    if (denied) return denied;
     const id = userId.trim();
     if (!id) {
       return actionFailure("Missing user");
@@ -1150,6 +1190,10 @@ export async function adminUnsuspendUserResultAction(userId: string): Promise<Ac
 
 export async function adminXeroOAuthStartAction(): Promise<void> {
   return instrumentServerAction("adminXeroOAuthStartAction", async () => {
+    const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+    if (!denied.ok) {
+      redirect(`/admin/integrations/xero?error=${encodeURIComponent(denied.message)}`);
+    }
     const res = await authedServerFetch("/admin/integrations/xero/oauth/consent-url");
     if (!res.ok) {
       redirect(
@@ -1163,6 +1207,10 @@ export async function adminXeroOAuthStartAction(): Promise<void> {
 
 export async function adminXeroDisconnectAction(): Promise<void> {
   return instrumentServerAction("adminXeroDisconnectAction", async () => {
+    const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
+    if (!denied.ok) {
+      redirect(`/admin/integrations/xero?error=${encodeURIComponent(denied.message)}`);
+    }
     const res = await authedServerFetch("/admin/integrations/xero/disconnect", { method: "POST" });
     if (!res.ok) {
       redirect(`/admin/integrations/xero?error=${encodeURIComponent("Disconnect failed")}`);
@@ -1176,6 +1224,8 @@ export async function adminCreateInvitationResultAction(
   values: unknown,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminCreateInvitationResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
+    if (denied) return denied;
     const parsed = adminCreateInvitationBodySchema.safeParse(values);
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
@@ -1215,6 +1265,10 @@ export async function adminRevokeInvitationAction(formData: FormData): Promise<v
   return instrumentServerAction(
     "adminRevokeInvitationAction",
     async () => {
+      const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
+      if (denied && !denied.ok) {
+        redirect(`/admin/invitations?error=${encodeURIComponent(denied.error)}`);
+      }
       const id = String(formData.get("invitationId") ?? "").trim();
       const p = invitationIdUuidParamSchema.safeParse({ invitationId: id });
       if (!p.success) {
@@ -1240,6 +1294,10 @@ export async function adminResendInvitationAction(formData: FormData): Promise<v
   return instrumentServerAction(
     "adminResendInvitationAction",
     async () => {
+      const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
+      if (denied && !denied.ok) {
+        redirect(`/admin/invitations?error=${encodeURIComponent(denied.error)}`);
+      }
       const id = String(formData.get("invitationId") ?? "").trim();
       const p = invitationIdUuidParamSchema.safeParse({ invitationId: id });
       if (!p.success) {
@@ -1270,6 +1328,10 @@ export async function adminApproveSaleRegistrationAction(formData: FormData): Pr
   return instrumentServerAction(
     "adminApproveSaleRegistrationAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales?error=${encodeURIComponent(denied.message)}`);
+      }
       const parsed = saleRegistrationActionParams.safeParse({
         saleId: String(formData.get("saleId") ?? "").trim(),
         registrationId: String(formData.get("registrationId") ?? "").trim(),
@@ -1299,6 +1361,10 @@ export async function adminRejectSaleRegistrationAction(formData: FormData): Pro
   return instrumentServerAction(
     "adminRejectSaleRegistrationAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/sales?error=${encodeURIComponent(denied.message)}`);
+      }
       const parsed = saleRegistrationActionParams.safeParse({
         saleId: String(formData.get("saleId") ?? "").trim(),
         registrationId: String(formData.get("registrationId") ?? "").trim(),
@@ -1337,6 +1403,10 @@ export async function adminMarkConditionReportInProgressAction(formData: FormDat
   return instrumentServerAction(
     "adminMarkConditionReportInProgressAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(CONDITION_REPORTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/condition-reports?error=${encodeURIComponent(denied.message)}`);
+      }
       const parsed = conditionReportRequestIdActionSchema.safeParse({
         requestId: String(formData.get("requestId") ?? "").trim(),
       });
@@ -1368,6 +1438,10 @@ export async function adminFulfillConditionReportAction(formData: FormData): Pro
   return instrumentServerAction(
     "adminFulfillConditionReportAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(CONDITION_REPORTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/condition-reports?error=${encodeURIComponent(denied.message)}`);
+      }
       const parsed = conditionReportRequestIdActionSchema.safeParse({
         requestId: String(formData.get("requestId") ?? "").trim(),
       });
@@ -1420,6 +1494,10 @@ export async function adminDeclineConditionReportAction(formData: FormData): Pro
   return instrumentServerAction(
     "adminDeclineConditionReportAction",
     async () => {
+      const denied = await assertAdminCapabilityForRedirect(CONDITION_REPORTS_ACCESS);
+      if (!denied.ok) {
+        redirect(`/admin/condition-reports?error=${encodeURIComponent(denied.message)}`);
+      }
       const parsed = conditionReportRequestIdActionSchema.safeParse({
         requestId: String(formData.get("requestId") ?? "").trim(),
       });
@@ -1469,11 +1547,28 @@ function readLotFulfilmentReturnStatus(formData: FormData): string | undefined {
   return v || undefined;
 }
 
+async function assertLotFulfilmentAccess(returnStatus: string | undefined): Promise<void> {
+  const denied = await assertAdminCapabilityForRedirect(LOT_FULFILMENT_ACCESS);
+  if (!denied.ok) {
+    redirect(lotFulfilmentQueueErrorUrl(returnStatus, denied.message));
+  }
+}
+
+async function assertSaleroomAccess(saleId: string): Promise<void> {
+  const denied = await assertAdminCapabilityForRedirect(SALEROOM_ACCESS);
+  if (!denied.ok) {
+    redirect(
+      `/admin/saleroom/${encodeURIComponent(saleId)}?error=${encodeURIComponent(denied.message)}`,
+    );
+  }
+}
+
 export async function adminLotFulfilmentReleaseAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminLotFulfilmentReleaseAction",
     async () => {
       const returnStatus = readLotFulfilmentReturnStatus(formData);
+      await assertLotFulfilmentAccess(returnStatus);
       const base = adminLotFulfilmentQueuePath(returnStatus);
       const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
         lotId: String(formData.get("lotId") ?? "").trim(),
@@ -1518,6 +1613,7 @@ export async function adminLotFulfilmentShipAction(formData: FormData): Promise<
     "adminLotFulfilmentShipAction",
     async () => {
       const returnStatus = readLotFulfilmentReturnStatus(formData);
+      await assertLotFulfilmentAccess(returnStatus);
       const base = adminLotFulfilmentQueuePath(returnStatus);
       const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
         lotId: String(formData.get("lotId") ?? "").trim(),
@@ -1564,6 +1660,7 @@ export async function adminLotFulfilmentReadyForCollectionAction(
     "adminLotFulfilmentReadyForCollectionAction",
     async () => {
       const returnStatus = readLotFulfilmentReturnStatus(formData);
+      await assertLotFulfilmentAccess(returnStatus);
       const base = adminLotFulfilmentQueuePath(returnStatus);
       const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
         lotId: String(formData.get("lotId") ?? "").trim(),
@@ -1592,6 +1689,7 @@ export async function adminLotFulfilmentDeliveredAction(formData: FormData): Pro
     "adminLotFulfilmentDeliveredAction",
     async () => {
       const returnStatus = readLotFulfilmentReturnStatus(formData);
+      await assertLotFulfilmentAccess(returnStatus);
       const base = adminLotFulfilmentQueuePath(returnStatus);
       const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
         lotId: String(formData.get("lotId") ?? "").trim(),
@@ -1620,6 +1718,7 @@ export async function adminLotFulfilmentCollectedAction(formData: FormData): Pro
     "adminLotFulfilmentCollectedAction",
     async () => {
       const returnStatus = readLotFulfilmentReturnStatus(formData);
+      await assertLotFulfilmentAccess(returnStatus);
       const base = adminLotFulfilmentQueuePath(returnStatus);
       const lotParsed = lotFulfilmentLotIdFormSchema.safeParse({
         lotId: String(formData.get("lotId") ?? "").trim(),
@@ -1682,6 +1781,7 @@ export async function adminSaleroomGoLiveAction(formData: FormData): Promise<voi
         redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       }
       const { saleId } = parsed.data;
+      await assertSaleroomAccess(saleId);
       const res = await authedServerFetch(
         `/admin/sales/${encodeURIComponent(saleId)}/saleroom/go-live`,
         { method: "POST" },
@@ -1706,6 +1806,7 @@ export async function adminSaleroomPauseAction(formData: FormData): Promise<void
       });
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
+      await assertSaleroomAccess(saleId);
       const res = await authedServerFetch(
         `/admin/sales/${encodeURIComponent(saleId)}/saleroom/pause`,
         {
@@ -1732,6 +1833,7 @@ export async function adminSaleroomResumeAction(formData: FormData): Promise<voi
       });
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
+      await assertSaleroomAccess(saleId);
       const res = await authedServerFetch(
         `/admin/sales/${encodeURIComponent(saleId)}/saleroom/resume`,
         { method: "POST" },
@@ -1758,6 +1860,7 @@ export async function adminSaleroomAdvanceAction(formData: FormData): Promise<vo
       if (!parsed.success)
         redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid advance")}`);
       const { saleId, lotId } = parsed.data;
+      await assertSaleroomAccess(saleId);
       const res = await authedServerFetch(
         `/admin/sales/${encodeURIComponent(saleId)}/saleroom/advance`,
         {
@@ -1786,6 +1889,7 @@ export async function adminSaleroomHammerAction(formData: FormData): Promise<voi
       });
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
+      await assertSaleroomAccess(saleId);
       const res = await authedServerFetch(
         `/admin/sales/${encodeURIComponent(saleId)}/saleroom/hammer`,
         { method: "POST" },
@@ -1810,6 +1914,7 @@ export async function adminSaleroomNoSaleAction(formData: FormData): Promise<voi
       });
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
+      await assertSaleroomAccess(saleId);
       const res = await authedServerFetch(
         `/admin/sales/${encodeURIComponent(saleId)}/saleroom/no-sale`,
         { method: "POST" },
@@ -1834,6 +1939,7 @@ export async function adminSaleroomCloseAction(formData: FormData): Promise<void
       });
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
+      await assertSaleroomAccess(saleId);
       const res = await authedServerFetch(
         `/admin/sales/${encodeURIComponent(saleId)}/saleroom/close`,
         {

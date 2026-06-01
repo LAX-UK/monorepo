@@ -31,6 +31,8 @@ export {
   type CatalogDetailTabSpec,
 } from "./catalog-detail-tab-nav";
 export { CatalogListPageSkeleton, CatalogListErrorShell } from "./catalog-list-states";
+export { createCatalogDetailRouteError } from "./create-catalog-detail-route-error";
+export { createCatalogListRouteError } from "./create-catalog-list-route-error";
 export { CatalogDetailErrorShell } from "./catalog-detail-error-shell";
 export { CatalogDetailTabContentSkeleton } from "./catalog-detail-tab-content-skeleton";
 export { CatalogDetailSection } from "./catalog-detail-section";

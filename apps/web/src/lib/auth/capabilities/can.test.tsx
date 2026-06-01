@@ -1,3 +1,4 @@
+import { PLATFORM_ADMIN_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Can } from "./can";
@@ -7,7 +8,7 @@ describe("Can", () => {
   it("renders children when capability passes", () => {
     render(
       <ViewerCapabilitiesProvider user={{ role: "staff", staffRole: "super_admin", name: "A" }}>
-        <Can requirement="platform.admin.full">
+        <Can requirement={PLATFORM_ADMIN_ACCESS}>
           <span>allowed</span>
         </Can>
       </ViewerCapabilitiesProvider>,

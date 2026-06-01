@@ -8,17 +8,13 @@ import { PayoutsMobileCards } from "@/components/admin/payouts-board/mobile-card
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
-import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 type Props = {
   rows: AdminPayoutRow[];
-  statusChips?: ReactNode;
-  settlementBand?: ReactNode;
-  kpiStrip?: ReactNode;
 };
 
-export function AdminPayoutsBoard({ rows, statusChips, settlementBand, kpiStrip }: Props) {
+export function AdminPayoutsBoard({ rows }: Props) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<AdminPayoutRow | null>(null);
   const onOpen = useCallback((row: AdminPayoutRow) => setSelected(row), []);
@@ -26,12 +22,9 @@ export function AdminPayoutsBoard({ rows, statusChips, settlementBand, kpiStrip 
 
   return (
     <>
-      {kpiStrip}
-      {settlementBand}
       <EntityList
         responsiveMode="auto"
         density={density}
-        {...(statusChips ? { filters: statusChips } : {})}
         table={
           <AdminDataTable
             ariaLabel="Payouts"

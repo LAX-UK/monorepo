@@ -12,8 +12,22 @@ function value(formData: FormData, key: string): string {
   return typeof raw === "string" ? raw.trim() : "";
 }
 
-function redirectWith(kind: "success" | "error", message: string): never {
+function redirectPayoutsListWith(kind: "success" | "error", message: string): never {
   redirect(`/admin/payouts?${kind}=${encodeURIComponent(message)}`);
+}
+
+function redirectSettlementWith(kind: "success" | "error", message: string): never {
+  redirect(`/admin/payouts/settlement?${kind}=${encodeURIComponent(message)}`);
+}
+
+const SETTLEMENT_ERROR_MESSAGES: Record<string, string> = {
+  legal_entity_id_required: "Select a legal entity before running settlement.",
+  run_settlement_failed: "Settlement could not be completed. Try again or contact support.",
+  settlement_created: "Settlement run started successfully.",
+};
+
+function settlementMessage(code: string): string {
+  return SETTLEMENT_ERROR_MESSAGES[code] ?? code;
 }
 
 async function jsonOrError(res: Response, fallback: string): Promise<string | null> {
@@ -33,7 +47,9 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<voi
     "runPayoutSettlementAction",
     async () => {
       const legalEntityId = value(formData, "legalEntityId");
-      if (!legalEntityId) redirectWith("error", "legal_entity_id_required");
+      if (!legalEntityId) {
+        redirectSettlementWith("error", settlementMessage("legal_entity_id_required"));
+      }
 
       const res = await authedServerFetch("/admin/payouts/run-settlement", {
         method: "POST",
@@ -41,10 +57,11 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<voi
         body: JSON.stringify({ legalEntityId, dryRun: false }),
       });
       const error = await jsonOrError(res, "run_settlement_failed");
-      if (error) redirectWith("error", error);
+      if (error) redirectSettlementWith("error", error);
 
       revalidatePath("/admin/payouts");
-      redirectWith("success", "settlement_created");
+      revalidatePath("/admin/payouts/settlement");
+      redirectSettlementWith("success", settlementMessage("settlement_created"));
     },
     { formData },
   );
@@ -57,8 +74,8 @@ export async function addPayoutAdjustmentAction(formData: FormData): Promise<voi
       const payoutId = value(formData, "payoutId");
       const amount = value(formData, "amount");
       const note = value(formData, "note");
-      if (!payoutId) redirectWith("error", "payout_id_required");
-      if (!amount || !note) redirectWith("error", "amount_and_note_required");
+      if (!payoutId) redirectPayoutsListWith("error", "payout_id_required");
+      if (!amount || !note) redirectPayoutsListWith("error", "amount_and_note_required");
 
       const res = await authedServerFetch(
         `/admin/payouts/${encodeURIComponent(payoutId)}/adjustments`,
@@ -69,10 +86,10 @@ export async function addPayoutAdjustmentAction(formData: FormData): Promise<voi
         },
       );
       const error = await jsonOrError(res, "adjustment_failed");
-      if (error) redirectWith("error", error);
+      if (error) redirectPayoutsListWith("error", error);
 
       revalidatePath("/admin/payouts");
-      redirectWith("success", "adjustment_added");
+      redirectPayoutsListWith("success", "adjustment_added");
     },
     { formData },
   );
@@ -84,8 +101,8 @@ export async function markPayoutPaidAction(formData: FormData): Promise<void> {
     async () => {
       const payoutId = value(formData, "payoutId");
       const stripeTransferId = value(formData, "stripeTransferId");
-      if (!payoutId) redirectWith("error", "payout_id_required");
-      if (!stripeTransferId) redirectWith("error", "stripe_transfer_id_required");
+      if (!payoutId) redirectPayoutsListWith("error", "payout_id_required");
+      if (!stripeTransferId) redirectPayoutsListWith("error", "stripe_transfer_id_required");
 
       const res = await authedServerFetch(
         `/admin/payouts/${encodeURIComponent(payoutId)}/mark-paid`,
@@ -96,10 +113,10 @@ export async function markPayoutPaidAction(formData: FormData): Promise<void> {
         },
       );
       const error = await jsonOrError(res, "mark_paid_failed");
-      if (error) redirectWith("error", error);
+      if (error) redirectPayoutsListWith("error", error);
 
       revalidatePath("/admin/payouts");
-      redirectWith("success", "payout_marked_paid");
+      redirectPayoutsListWith("success", "payout_marked_paid");
     },
     { formData },
   );
@@ -112,12 +129,12 @@ export async function reversePayoutAction(formData: FormData): Promise<void> {
       const payoutId = value(formData, "payoutId");
       const reason = value(formData, "reason");
       const confirmationPhrase = value(formData, "confirmationPhrase");
-      if (!payoutId) redirectWith("error", "payout_id_required");
-      if (reason.length < 10) redirectWith("error", "reason_min_length");
+      if (!payoutId) redirectPayoutsListWith("error", "payout_id_required");
+      if (reason.length < 10) redirectPayoutsListWith("error", "reason_min_length");
 
       const expected = `REVERSE PAYOUT ${payoutId}`;
       if (confirmationPhrase !== expected) {
-        redirectWith("error", "confirmation_mismatch");
+        redirectPayoutsListWith("error", "confirmation_mismatch");
       }
 
       const res = await authedServerFetch(
@@ -129,10 +146,10 @@ export async function reversePayoutAction(formData: FormData): Promise<void> {
         },
       );
       const error = await jsonOrError(res, "reverse_payout_failed");
-      if (error) redirectWith("error", error);
+      if (error) redirectPayoutsListWith("error", error);
 
       revalidatePath("/admin/payouts");
-      redirectWith("success", "payout_reversed");
+      redirectPayoutsListWith("success", "payout_reversed");
     },
     { formData },
   );

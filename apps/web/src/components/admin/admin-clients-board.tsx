@@ -4,6 +4,7 @@ import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { UserSuspendAction } from "@/components/admin/admin-user-actions";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
+import { PeopleClientMobileCard } from "@/components/admin/people/people-mobile-card";
 import {
   userJoinedColumn,
   userKycVerifiedAtColumn,
@@ -17,13 +18,14 @@ import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
+import { formatSignupPersona } from "@/lib/admin/format-signup-persona";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { Badge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { formatPhoneDisplay } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, ChevronRight } from "lucide-react";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -31,9 +33,7 @@ import { useCallback, useMemo, useState } from "react";
 type CopyStatus = "idle" | "copying" | "copied" | "unavailable";
 
 function formatPersona(persona: string | null): string {
-  if (!persona) return "Not set";
-  if (persona === "organisation") return "Organisation";
-  return persona.charAt(0).toUpperCase() + persona.slice(1);
+  return formatSignupPersona(persona);
 }
 
 function VerificationSummary({ u }: { u: AdminUserRow }) {
@@ -154,43 +154,6 @@ function ClientIdentityCell({ u, onOpen }: { u: AdminUserRow; onOpen: () => void
   );
 }
 
-export function AdminClientMobileCard({ u, onOpen }: { u: AdminUserRow; onOpen: () => void }) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      className="flex h-auto min-h-0 w-full items-center gap-3 rounded-sm border border-border-hairline bg-surface-container-lowest/80 p-4 text-left shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      onClick={onOpen}
-    >
-      <AdminUserAvatar user={u} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-headline text-base text-on-surface">{u.name}</p>
-        <p className="truncate text-xs text-on-surface-variant">{u.email}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          <AdminStatusBadge
-            domain="user"
-            status={u.suspendedAt ? "suspended" : "active"}
-            size="sm"
-          />
-          {u.emailVerified ? (
-            <span className="text-[10px] text-success">Email verified</span>
-          ) : (
-            <span className="text-[10px] text-on-surface-variant">Email unverified</span>
-          )}
-          <AdminStatusBadge domain="kyc" status={u.kycStatus ?? ""} size="sm" />
-          <span className="text-[10px] text-on-surface-variant">
-            {formatPersona(u.signupPersona)}
-          </span>
-          <span className="text-[10px] text-on-surface-variant">
-            Joined {formatAdminUserDate(u.createdAt)}
-          </span>
-        </div>
-      </div>
-      <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-    </Button>
-  );
-}
-
 function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
   const mobile = formatPhoneDisplay(u.mobile);
 
@@ -247,16 +210,29 @@ type Props = {
   rows: AdminUserRow[];
   totalMatches: number;
   hasActiveFilters: boolean;
+  externalMobileCards?: boolean;
 };
 
-export function AdminClientsBoard({ rows, totalMatches, hasActiveFilters }: Props) {
+export function AdminClientsBoard({
+  rows,
+  totalMatches,
+  hasActiveFilters,
+  externalMobileCards = false,
+}: Props) {
   const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
   const renderDrawerOverview = useCallback((u: AdminUserRow) => <ClientDrawerOverview u={u} />, []);
   const renderDrawerActions = useCallback((u: AdminUserRow) => <ClientDrawerActions u={u} />, []);
 
   const renderMobileCard = useCallback(
-    (u: AdminUserRow, onOpen: () => void) => <AdminClientMobileCard u={u} onOpen={onOpen} />,
+    (u: AdminUserRow, onOpen: () => void) => (
+      <PeopleClientMobileCard
+        user={u}
+        onOpen={onOpen}
+        formatPersona={formatPersona}
+        formatJoined={formatAdminUserDate}
+      />
+    ),
     [],
   );
 
@@ -268,11 +244,16 @@ export function AdminClientsBoard({ rows, totalMatches, hasActiveFilters }: Prop
       drawerTitle="Client"
       tableAriaLabel="Clients"
       emptyComponent={
-        <FilterEmptyState entity="clients" segment="admin" hasActiveFilters={hasActiveFilters} />
+        <FilterEmptyState
+          entity="clients"
+          segment="admin"
+          hasActiveFilters={hasActiveFilters}
+          clearFiltersHref="/admin/clients"
+        />
       }
       renderDrawerOverview={renderDrawerOverview}
       renderDrawerActions={renderDrawerActions}
-      renderMobileCard={renderMobileCard}
+      {...(externalMobileCards ? { externalMobileCards: true } : { renderMobileCard })}
       buildColumns={clientColumns}
       detailHref={(u) => `/admin/clients/${u.id}`}
       showColumnPicker

@@ -3,7 +3,10 @@ import { z } from "zod";
 import { asHttpStatus } from "../lib/http-status.js";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
 import { zValidator } from "../lib/z-validator.js";
-import { createRequireCapability } from "../middleware/require-capability.js";
+import {
+  createRequireCapability,
+  requireLegalEntityBrowse,
+} from "../middleware/require-capability.js";
 import type { IAdminLegalEntityLifecycleApplicationService } from "../services/interfaces/admin-routes.js";
 
 const legalEntityIdParamSchema = z.object({
@@ -22,7 +25,6 @@ const archiveBodySchema = reasonBodySchema.extend({
   confirmationPhrase: z.string().min(1).max(500),
 });
 
-const requireLegalEntityRead = createRequireCapability("legal_entity.read");
 const requireLegalEntityWrite = createRequireCapability("legal_entity.write");
 const requireLegalEntityApprove = createRequireCapability("legal_entity.approve");
 const requireLegalEntityArchive = createRequireCapability("legal_entity.archive");
@@ -54,7 +56,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
 ) {
   platform.get(
     "/legal-entities/:id",
-    requireLegalEntityRead,
+    requireLegalEntityBrowse,
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");

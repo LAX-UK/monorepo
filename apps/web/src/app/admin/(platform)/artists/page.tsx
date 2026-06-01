@@ -21,10 +21,17 @@ import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { CategoryNode } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Artists",
+  "Manage canonical artist profiles and attribution.",
+);
 
 const NAV_PRESETS = new Set<ArtistPresetId>(["all", "pending", "makers", "featured", "archived"]);
 
@@ -78,6 +85,8 @@ export default async function AdminArtistsPage({
           (query.kinds && query.kinds.trim() !== "") ||
           (query.status && query.status.trim() !== "") ||
           (query.ownerUserId && query.ownerUserId.trim() !== "") ||
+          (query.categoryId && query.categoryId.trim() !== "") ||
+          (query.country && query.country.trim() !== "") ||
           query.featured === true ||
           query.verified === true ||
           (query.linked && query.linked !== "any") ||
@@ -127,7 +136,7 @@ export default async function AdminArtistsPage({
     showDuplicates === true
       ? "queues"
       : showBackfill === true
-        ? "__backfill__"
+        ? "backfill"
         : NAV_PRESETS.has(preset)
           ? preset
           : "all";
@@ -150,7 +159,17 @@ export default async function AdminArtistsPage({
       href: queuesHref,
       ...(pendingReviewCount > 0 ? { badge: pendingReviewCount } : {}),
     },
+    {
+      id: "backfill",
+      label: "Backfill",
+      href: buildListHref("/admin/artists", sp, { backfill: "1", duplicates: "", offset: 0 }),
+    },
   ];
+
+  const categoryName =
+    query.categoryId && categoryOptions.length > 0
+      ? (categoryOptions.find((o) => o.value === query.categoryId)?.label ?? null)
+      : null;
 
   const activeFilterChips = skipIndexedList
     ? []
@@ -164,6 +183,8 @@ export default async function AdminArtistsPage({
         ...(query.includeArchived === true ? { includeArchived: true } : {}),
         ...(query.archivedOnly === true ? { archivedOnly: true } : {}),
         ...(query.linked && query.linked !== "any" ? { linked: query.linked } : {}),
+        ...(query.categoryId ? { categoryId: query.categoryId, categoryName } : {}),
+        ...(query.country ? { country: query.country } : {}),
       });
 
   const activeFilterCount = skipIndexedList
@@ -174,6 +195,8 @@ export default async function AdminArtistsPage({
         query.kind,
         query.kinds,
         query.ownerUserId,
+        query.categoryId,
+        query.country,
         query.linked && query.linked !== "any" ? query.linked : "",
         query.archivedOnly ? "archivedOnly" : "",
         query.sort && query.sort !== "name_asc" ? query.sort : "",
@@ -206,7 +229,7 @@ export default async function AdminArtistsPage({
         }
         action={
           hasFilters ? (
-            <Button variant="secondaryOutline" asChild>
+            <Button variant="secondary" asChild>
               <Link href="/admin/artists">Clear filters</Link>
             </Button>
           ) : (
@@ -221,7 +244,7 @@ export default async function AdminArtistsPage({
         title="No rows on this page"
         description="Try the previous page or clear filters — results may have shifted."
         action={
-          <Button variant="secondaryOutline" asChild>
+          <Button variant="secondary" asChild>
             <Link
               href={buildListHref("/admin/artists", sp, {
                 offset: Math.max(0, query.offset - query.limit),
@@ -243,6 +266,7 @@ export default async function AdminArtistsPage({
         offset={query.offset}
         limit={query.limit}
         countOnPage={artists.length}
+        total={total}
         prevHref={
           query.offset > 0
             ? buildListHref("/admin/artists", sp, {

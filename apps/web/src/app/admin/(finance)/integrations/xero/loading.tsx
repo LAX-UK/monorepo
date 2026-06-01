@@ -1,5 +1,11 @@
-import { IntegrationPanelSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { FinancePanelPageSkeleton } from "@/components/admin/finance/finance-list-states";
 
 export default function XeroLoading() {
-  return <IntegrationPanelSkeleton />;
+  return (
+    <FinancePanelPageSkeleton
+      title="Xero"
+      description="Loading integration…"
+      className="max-w-[640px]"
+    />
+  );
 }
