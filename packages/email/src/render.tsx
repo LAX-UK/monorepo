@@ -12,6 +12,9 @@ import AccountSuspendedEmail, {
 import AdminImpersonationNoticeEmail, {
   subject as adminImpersonationNoticeSubject,
 } from "./templates/admin-impersonation-notice.js";
+import AmlComplianceReviewNoticeEmail, {
+  subject as amlComplianceReviewNoticeSubject,
+} from "./templates/aml-compliance-review-notice.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import DisputeClosedNoticeEmail, {
@@ -209,6 +212,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "aml-compliance-review-notice": {
+    subject: amlComplianceReviewNoticeSubject,
+    component: (vars) => <AmlComplianceReviewNoticeEmail {...vars} />,
   },
 };
 

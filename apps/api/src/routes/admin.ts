@@ -75,6 +75,7 @@ import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requireAdminDashboard,
+  requireAmlReview,
   requireAnalytics,
   requireArtistReviewAccess,
   requireArtistWriteAccess,
@@ -87,6 +88,7 @@ import {
   requireFinanceAccess,
   requireLegalEntityBrowse,
   requireLotsAccess,
+  requireMlroDecision,
   requireOnboardingQueues,
   requireOperationsFulfilment,
   requirePlatformAdminFull,
@@ -135,6 +137,43 @@ const impersonationRecordFailedEndBodySchema = z.object({
 
 const adminPaymentIdParamSchema = z.object({
   id: z.string().uuid(),
+});
+
+const amlScreeningIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const amlReviewQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+});
+
+const sourceOfFundsListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  status: z.enum(["pending", "rejected"]).optional().default("pending"),
+});
+
+const amlReviewBodySchema = z.object({
+  decision: z.enum(["clear", "block"]),
+  notes: z.string().max(2000).optional(),
+});
+
+const amlTriageBodySchema = z.object({
+  recommendation: z.enum(["clear", "block"]),
+  notes: z.string().max(2000).optional(),
+});
+
+const sourceOfFundsIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const sourceOfFundsReviewBodySchema = z.object({
+  decision: z.enum(["approve", "reject"]),
+  notes: z.string().max(2000).optional(),
+});
+
+const sourceOfFundsTriageBodySchema = z.object({
+  recommendation: z.enum(["approve", "reject"]),
+  notes: z.string().max(2000).optional(),
 });
 
 /** Only match UUID segments so static routes (`search`, `stats`, …) are never captured. */
@@ -813,7 +852,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       );
       return result.match(
         () => c.json({ ok: true }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+        (error) =>
+          c.json(
+            { error: error.message, ...(error.code ? { code: error.code } : {}) },
+            asHttpStatus(error.status),
+          ),
       );
     },
   );
@@ -1293,6 +1336,209 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const actorStaff = c.get("userStaffRole") as string | null | undefined;
       const data = await container.admin.users.kycSessionsFor(actorRole, actorStaff, userId);
       return c.json({ data });
+    },
+  );
+
+  // ── AML / sanctions watchlist review (MLRO / compliance) ──────────────────
+  platform.get(
+    "/compliance/aml/screenings",
+    requireAmlReview,
+    zValidator("query", amlReviewQuerySchema),
+    async (c) => {
+      const { limit } = c.req.valid("query");
+      const data = await container.amlService.listPendingReviews(limit);
+      return c.json({ data });
+    },
+  );
+
+  // First-line analyst triage (maker): advisory recommendation only.
+  platform.post(
+    "/compliance/aml/screenings/:id/triage",
+    requireAmlReview,
+    zValidator("param", amlScreeningIdParamSchema),
+    zValidator("json", amlTriageBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { recommendation, notes } = c.req.valid("json");
+      const analystUserId = c.get("userId") as string;
+      try {
+        const record = await container.amlService.triage({
+          screeningId: id,
+          analystUserId,
+          recommendation,
+          notes: notes ?? null,
+        });
+        return c.json({ ok: true, screening: record });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "aml_triage_failed";
+        if (message === "aml_triage_self_forbidden") {
+          return c.json({ error: "aml_triage_self_forbidden" }, 403);
+        }
+        if (message === "aml_screening_not_pending") {
+          return c.json({ error: "aml_screening_not_pending" }, 409);
+        }
+        if (message === "aml_triage_already_set") {
+          return c.json({ error: "aml_triage_already_set" }, 409);
+        }
+        if (message === "aml_screening_not_found") {
+          return c.json({ error: "aml_screening_not_found" }, 404);
+        }
+        throw err;
+      }
+    },
+  );
+
+  // MLRO decision (checker): binding clear/block. Requires a prior triage by a
+  // different user (maker-checker / four-eyes).
+  platform.post(
+    "/compliance/aml/screenings/:id/decide",
+    requireMlroDecision,
+    zValidator("param", amlScreeningIdParamSchema),
+    zValidator("json", amlReviewBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { decision, notes } = c.req.valid("json");
+      const reviewerUserId = c.get("userId") as string;
+      try {
+        const record = await container.amlService.decide({
+          screeningId: id,
+          reviewerUserId,
+          decision,
+          notes: notes ?? null,
+        });
+        return c.json({ ok: true, screening: record });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "aml_review_failed";
+        if (message === "aml_review_self_forbidden" || message === "aml_review_same_as_triager") {
+          return c.json({ error: message }, 403);
+        }
+        if (message === "aml_triage_required") {
+          return c.json({ error: "aml_triage_required" }, 409);
+        }
+        if (message === "aml_screening_not_pending") {
+          return c.json({ error: "aml_screening_not_pending" }, 409);
+        }
+        if (message === "aml_screening_not_found") {
+          return c.json({ error: "aml_screening_not_found" }, 404);
+        }
+        throw err;
+      }
+    },
+  );
+
+  // ── Source of Funds review (MLRO / compliance / finance) ──────────────────
+  platform.get(
+    "/compliance/source-of-funds",
+    requireAmlReview,
+    zValidator("query", sourceOfFundsListQuerySchema),
+    async (c) => {
+      const { limit, status } = c.req.valid("query");
+      const data = await container.sourceOfFundsService.listByStatus(status, limit);
+      return c.json({ data });
+    },
+  );
+
+  // First-line analyst triage (maker) for a SoF case.
+  platform.post(
+    "/compliance/source-of-funds/:id/triage",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    zValidator("json", sourceOfFundsTriageBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { recommendation, notes } = c.req.valid("json");
+      const analystUserId = c.get("userId") as string;
+      try {
+        const record = await container.sourceOfFundsService.triage({
+          caseId: id,
+          analystUserId,
+          recommendation,
+          notes: notes ?? null,
+        });
+        return c.json({ ok: true, sourceOfFunds: record });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "source_of_funds_triage_failed";
+        if (message === "source_of_funds_triage_self_forbidden") {
+          return c.json({ error: "source_of_funds_triage_self_forbidden" }, 403);
+        }
+        if (message === "source_of_funds_not_pending") {
+          return c.json({ error: "source_of_funds_not_pending" }, 409);
+        }
+        if (message === "source_of_funds_triage_already_set") {
+          return c.json({ error: "source_of_funds_triage_already_set" }, 409);
+        }
+        if (message === "source_of_funds_not_found") {
+          return c.json({ error: "source_of_funds_not_found" }, 404);
+        }
+        throw err;
+      }
+    },
+  );
+
+  // MLRO/finance decision (checker): binding approve/reject. Requires a prior
+  // triage by a different user.
+  platform.post(
+    "/compliance/source-of-funds/:id/decide",
+    requireMlroDecision,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    zValidator("json", sourceOfFundsReviewBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { decision, notes } = c.req.valid("json");
+      const reviewerUserId = c.get("userId") as string;
+      try {
+        const record = await container.sourceOfFundsService.decide({
+          caseId: id,
+          reviewerUserId,
+          decision,
+          notes: notes ?? null,
+        });
+        return c.json({ ok: true, sourceOfFunds: record });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "source_of_funds_review_failed";
+        if (
+          message === "source_of_funds_review_self_forbidden" ||
+          message === "source_of_funds_review_same_as_triager"
+        ) {
+          return c.json({ error: message }, 403);
+        }
+        if (message === "source_of_funds_triage_required") {
+          return c.json({ error: "source_of_funds_triage_required" }, 409);
+        }
+        if (message === "source_of_funds_not_pending") {
+          return c.json({ error: "source_of_funds_not_pending" }, 409);
+        }
+        if (message === "source_of_funds_not_found") {
+          return c.json({ error: "source_of_funds_not_found" }, 404);
+        }
+        throw err;
+      }
+    },
+  );
+
+  platform.post(
+    "/compliance/source-of-funds/:id/reopen",
+    requireMlroDecision,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const actorUserId = c.get("userId") as string;
+      try {
+        const record = await container.sourceOfFundsService.reopenRejected({
+          caseId: id,
+          actorUserId,
+        });
+        return c.json({ ok: true, sourceOfFunds: record });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "source_of_funds_reopen_failed";
+        if (message === "source_of_funds_not_rejected") {
+          return c.json({ error: message }, 409);
+        }
+        if (message === "source_of_funds_not_found") {
+          return c.json({ error: message }, 404);
+        }
+        throw err;
+      }
     },
   );
 

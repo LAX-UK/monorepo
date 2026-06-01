@@ -8,6 +8,7 @@ import {
  * Grouped for accordion UI; flattened for command palette and legacy consumers.
  */
 import {
+  AML_REVIEW_ACCESS,
   ANALYTICS_ACCESS,
   ARTISTS_ACCESS,
   CATEGORIES_ACCESS,
@@ -240,6 +241,31 @@ function buildStaffNavGroupSpecs(
           match: (pathname) => pathname.startsWith("/admin/onboarding-issues"),
           requirement: ONBOARDING_QUEUES_ACCESS,
           ...navBadge(navCounts.onboardingIssuesTotal, "warning"),
+        },
+      ],
+    },
+    {
+      id: "compliance",
+      title: "Compliance",
+      icon: ShieldCheck,
+      items: [
+        {
+          id: "compliance-aml",
+          href: "/admin/compliance/aml",
+          label: "AML screening",
+          icon: ShieldCheck,
+          match: (pathname) => pathname.startsWith("/admin/compliance/aml"),
+          requirement: AML_REVIEW_ACCESS,
+          ...navBadge(navCounts.amlScreeningsPending, "danger"),
+        },
+        {
+          id: "compliance-sof",
+          href: "/admin/compliance/source-of-funds",
+          label: "Source of Funds",
+          icon: ShieldAlert,
+          match: (pathname) => pathname.startsWith("/admin/compliance/source-of-funds"),
+          requirement: AML_REVIEW_ACCESS,
+          ...navBadge(navCounts.sourceOfFundsPending, "warning"),
         },
       ],
     },

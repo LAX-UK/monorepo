@@ -30,7 +30,15 @@ export const userStaffRoleEnum = pgEnum("user_staff_role", [
   "content_marketing",
   "support_concierge",
   "staff_viewer",
+  "compliance_officer",
 ]);
+
+/**
+ * AML hold disposition for a user. `hold` pauses money-path progression pending
+ * compliance review; `blocked` is terminal (confirmed sanctions) and requires
+ * explicit MLRO action to lift.
+ */
+export const userAmlHoldStatusEnum = pgEnum("user_aml_hold_status", ["none", "hold", "blocked"]);
 
 /** Better Auth core tables — extended with `role` on `user`. */
 export const user = pgTable(
@@ -64,6 +72,11 @@ export const user = pgTable(
     /** Count of hard verification failures (not `requires_input` retries). */
     kycRetryCount: integer("kyc_retry_count").notNull().default(0),
     kycVerifiedAt: timestamp("kyc_verified_at", { mode: "date", withTimezone: true }),
+    /** AML/sanctions hold disposition (drives settlement gating). */
+    amlHoldStatus: userAmlHoldStatusEnum("aml_hold_status").notNull().default("none"),
+    /** Machine-readable reason for the current AML hold (e.g. `sanctions_match`). */
+    amlHoldReason: text("aml_hold_reason"),
+    amlHoldAt: timestamp("aml_hold_at", { mode: "date", withTimezone: true }),
     /** Persona captured at signup ('individual' | 'organisation'); drives post-verify routing. */
     signupPersona: text("signup_persona"),
     dateOfBirth: date("date_of_birth"),

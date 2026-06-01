@@ -16,4 +16,14 @@ describe("buildSyntheticAttentionRows", () => {
     expect(rows.some((r) => r.href === "/admin/lot-fulfilment")).toBe(true);
     expect(rows.some((r) => r.href === "/admin/condition-reports")).toBe(true);
   });
+
+  it("includes compliance queue deep links when counts are non-zero", () => {
+    const rows = buildSyntheticAttentionRows({
+      ...EMPTY_ADMIN_NAV_COUNTS,
+      amlScreeningsPending: 1,
+      sourceOfFundsPending: 2,
+    });
+    expect(rows.some((r) => r.href === "/admin/compliance/aml")).toBe(true);
+    expect(rows.some((r) => r.href === "/admin/compliance/source-of-funds")).toBe(true);
+  });
 });

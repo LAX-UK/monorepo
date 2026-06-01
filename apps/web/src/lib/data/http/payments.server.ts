@@ -22,7 +22,13 @@ export type MyPaymentRow = {
   invoiceUrl: string | null;
   invoiceNumber: string | null;
   checkoutRail: "card" | "gb_bank_transfer" | null;
-  manualReviewReason: "seller_archived" | "high_value" | "seller_archived_and_high_value" | null;
+  manualReviewReason:
+    | "seller_archived"
+    | "high_value"
+    | "seller_archived_and_high_value"
+    | "aml_hold"
+    | "source_of_funds_required"
+    | null;
 };
 
 export type MyPaymentsListParams = {

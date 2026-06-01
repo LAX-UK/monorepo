@@ -76,6 +76,8 @@ import type { IStripeClientFactory } from "./lib/stripe-client.js";
 import { StripeClientFactory } from "./lib/stripe-client.js";
 import { StripeWebhookVerifier } from "./lib/stripe-webhook-verifier.js";
 import { trustedWebOrigins } from "./lib/trusted-origins.js";
+import { VeriffScreeningProvider } from "./lib/veriff/veriff-screening-provider.js";
+import { VeriffWebhookVerifier } from "./lib/veriff/veriff-webhook-verifier.js";
 import {
   createRequireLegalEntityContext,
   createSubmissionsLegalEntityContext,
@@ -88,6 +90,10 @@ import {
   DrizzleAdminUserRoleManager,
   DrizzleAdminUserSuspender,
 } from "./repositories/drizzle-admin-user.reader.js";
+import {
+  DrizzleAmlHoldStore,
+  DrizzleAmlScreeningRepository,
+} from "./repositories/drizzle-aml-screening.repository.js";
 import { DrizzleAntiShillingRepository } from "./repositories/drizzle-anti-shilling.repository.js";
 import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-profile.repository.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
@@ -120,6 +126,7 @@ import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-soft-delete.side-effects.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
+import { DrizzleSourceOfFundsRepository } from "./repositories/drizzle-source-of-funds.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
 import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-preference.repository.js";
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
@@ -145,6 +152,9 @@ import { createAdminRouteServices } from "./services/admin/create-admin-route-se
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
 import { BullMQQueueInspector } from "./services/admin/queue-inspector.service.js";
 import { BullMQQueueMutator } from "./services/admin/queue-mutator.service.js";
+import { DefaultAmlDecisionPolicy } from "./services/aml/aml-decision.policy.js";
+import { AmlService } from "./services/aml/aml.service.js";
+import { AmlSettlementCompliancePolicy } from "./services/aml/settlement-compliance.policy.js";
 import { AnalyticsService } from "./services/analytics.service.js";
 import { ArtistDeleteService } from "./services/artist-delete.service.js";
 import { ArtistProfileService } from "./services/artist-profile.service.js";
@@ -255,6 +265,7 @@ import { SaleService } from "./services/sale.service.js";
 import { SaleroomService } from "./services/saleroom.service.js";
 import { SavedSearchService } from "./services/saved-search.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
+import { SourceOfFundsService } from "./services/source-of-funds/source-of-funds.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
 import { StripeCustomerGateway } from "./services/stripe/stripe-customer.gateway.js";
@@ -371,6 +382,10 @@ export type Container = {
   kycRepository: IKycRepository;
   kycService: IKycService;
   kycResubmissionNotifier: KycResubmissionNotifier;
+  /** AML / sanctions / PEP watchlist screening + ongoing monitoring. */
+  amlService: AmlService;
+  /** Source-of-Funds (CDD Section 6) collection + MLRO/finance review gate. */
+  sourceOfFundsService: SourceOfFundsService;
   /** organisation onboarding. */
   organizationOnboardingService: IOrganizationOnboardingService;
   /** Production-domain gate for org module mutations. */
@@ -742,6 +757,29 @@ export function createContainer(env: Env): Container {
     notificationWriteRepo,
     env.WEB_ORIGIN,
   );
+  const amlScreeningRepository = new DrizzleAmlScreeningRepository(db);
+  const amlHoldStore = new DrizzleAmlHoldStore(db);
+  const amlService = new AmlService(
+    db,
+    new VeriffWebhookVerifier(env.VERIFF_API_KEY, env.VERIFF_SHARED_SECRET),
+    new DefaultAmlDecisionPolicy(),
+    amlScreeningRepository,
+    amlScreeningRepository,
+    amlHoldStore,
+    domainEventPublisher,
+    VeriffScreeningProvider.fromEnv(env),
+  );
+  const sourceOfFundsRepository = new DrizzleSourceOfFundsRepository(db);
+  const sourceOfFundsService = new SourceOfFundsService(
+    sourceOfFundsRepository,
+    {
+      thresholdAmount: env.SOF_THRESHOLD_AMOUNT,
+      currency: env.SOF_THRESHOLD_CURRENCY,
+      approvalValidityDays: env.SOF_APPROVAL_VALIDITY_DAYS,
+    },
+    db,
+    domainEventPublisher,
+  );
   const payoutStatementQueue = new Queue<{ payoutId: string }>(
     PAYOUT_STATEMENTS_QUEUE_NAME,
     queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
@@ -1043,6 +1081,10 @@ export function createContainer(env: Env): Container {
       ])
     : null;
 
+  const settlementCompliancePolicy = new AmlSettlementCompliancePolicy(
+    amlHoldStore,
+    sourceOfFundsService,
+  );
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -1071,6 +1113,7 @@ export function createContainer(env: Env): Container {
     paymentRefundReconcileService,
     xeroPaymentRecorder,
     addressRepo,
+    settlementCompliancePolicy,
   );
 
   const stripePaymentWebhookServiceResolved: StripePaymentWebhookService | null =
@@ -1369,6 +1412,8 @@ export function createContainer(env: Env): Container {
     kycRepository,
     kycService,
     kycResubmissionNotifier,
+    amlService,
+    sourceOfFundsService,
     organizationOnboardingService,
     orgModuleGate,
     organizationOnboardingFlowService,

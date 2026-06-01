@@ -11,7 +11,21 @@ export type VeriffVerificationDecision = {
   person?: Record<string, unknown> | null;
   document?: Record<string, unknown> | null;
   decisionTime?: string | null;
+  riskScore?: unknown;
+  ipCountry?: string | null;
 };
+
+/** Pulls a risk-score signal from the (passthrough) Veriff verification payload. */
+function extractRiskScore(verification: VeriffVerificationDecision): string | null {
+  const raw = verification.riskScore;
+  if (raw == null) return null;
+  if (typeof raw === "number" || typeof raw === "string") return String(raw);
+  if (typeof raw === "object") {
+    const score = (raw as { score?: unknown }).score;
+    if (typeof score === "number" || typeof score === "string") return String(score);
+  }
+  return null;
+}
 
 const KNOWN_DECISION_STATUSES = new Set([
   "approved",
@@ -106,17 +120,10 @@ export function mapVeriffDecisionToApplyInput(
     verificationStatus,
     userKycUpdate,
     verifiedFields: extractVerifiedFieldsFromVeriffDecision({
-      person: verification.person as {
-        firstName?: string;
-        lastName?: string;
-        dateOfBirth?: string;
-      },
-      document: verification.document as {
-        number?: string;
-        type?: string;
-        country?: string;
-        validUntil?: string;
-      },
+      person: verification.person,
+      document: verification.document,
+      riskScore: extractRiskScore(verification),
+      ipCountry: verification.ipCountry ?? null,
     }),
     decisionPayload,
     decisionAt: isTerminal

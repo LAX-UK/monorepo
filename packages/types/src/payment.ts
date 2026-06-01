@@ -35,7 +35,9 @@ export type CheckoutRailKind = "card" | "gb_bank_transfer";
 export type ManualReviewReason =
   | "seller_archived"
   | "high_value"
-  | "seller_archived_and_high_value";
+  | "seller_archived_and_high_value"
+  | "aml_hold"
+  | "source_of_funds_required";
 
 export type CreatePaymentResponse = {
   paymentId: string;

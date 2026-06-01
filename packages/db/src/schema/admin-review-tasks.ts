@@ -9,6 +9,8 @@ export const adminReviewTaskKindEnum = pgEnum("admin_review_task_kind", [
   "legal_entity_kyb_review",
   "payout_adjustment_review",
   "lot_withdrawal_request",
+  "aml_screening_review",
+  "source_of_funds_review",
 ]);
 
 export const adminReviewTaskStatusEnum = pgEnum("admin_review_task_status", [

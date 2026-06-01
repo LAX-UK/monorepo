@@ -972,7 +972,7 @@ export async function getAdminPayoutList(
   const qs = new URLSearchParams();
   if (params.legalEntityId) qs.set("legalEntityId", params.legalEntityId);
   if (params.status) qs.set("status", params.status);
-  qs.set("limit", String(params.limit ?? 50));
+  qs.set("limit", String(Math.min(100, Math.max(1, params.limit ?? 50))));
   qs.set("offset", String(params.offset ?? 0));
   const res = await authedServerFetch(`/admin/payouts?${qs.toString()}`);
   if (!res.ok) {
@@ -1333,7 +1333,13 @@ export type AdminManualReviewPaymentRow = {
   currency: string;
   archiveReason: string | null;
   archiveTimestamp: string | null;
-  manualReviewReason: "seller_archived" | "high_value" | "seller_archived_and_high_value" | null;
+  manualReviewReason:
+    | "seller_archived"
+    | "high_value"
+    | "seller_archived_and_high_value"
+    | "aml_hold"
+    | "source_of_funds_required"
+    | null;
   createdAt: string;
 };
 
@@ -1492,6 +1498,16 @@ export type AdminKycSessionRow = {
   verifiedIdCountry: string | null;
   verifiedIdType: string | null;
   verifiedIdExpiry: string | null;
+  verifiedGender: string | null;
+  verifiedNationality: string | null;
+  verifiedCitizenship: string | null;
+  verifiedPlaceOfBirth: string | null;
+  verifiedYearOfBirth: string | null;
+  verifiedIdNumber: string | null;
+  verifiedDocState: string | null;
+  verifiedIdValidFrom: string | null;
+  decisionRiskScore: string | null;
+  decisionIpCountry: string | null;
   createdAt: string;
   decisionAt: string | null;
 };

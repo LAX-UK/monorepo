@@ -29,7 +29,11 @@ export type RoleCapability =
   | "specialist.appraise"
   | "operations.fulfilment"
   | "content.write"
-  | "support.respond";
+  | "support.respond"
+  /** Review and disposition AML/sanctions watchlist screenings. */
+  | "aml.review"
+  /** MLRO authority: lift/confirm AML holds and approve Source-of-Funds. */
+  | "compliance.mlro";
 
 const roleSet = new Set<string>(userRoles);
 
@@ -58,6 +62,8 @@ const ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT: RoleCapability[] = [
   "operations.fulfilment",
   "content.write",
   "support.respond",
+  "aml.review",
+  "compliance.mlro",
 ];
 
 const SUPER_ADMIN_CAPS = new Set<RoleCapability>(ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT);
@@ -88,6 +94,14 @@ const STAFF_MATRIX: Record<Exclude<UserStaffRole, "super_admin">, Set<RoleCapabi
   content_marketing: new Set(["content.write", "artist.read"]),
   support_concierge: new Set(["support.respond", "legal_entity.read", "artist.read"]),
   staff_viewer: new Set(["legal_entity.read", "artist.read"]),
+  // MLRO / compliance officer: AML review + Source-of-Funds disposition. Reads
+  // PII on screening records (audit.read_pii) and the user directory it relates to.
+  compliance_officer: new Set([
+    "aml.review",
+    "compliance.mlro",
+    "legal_entity.read",
+    "audit.read_pii",
+  ]),
 };
 
 function staffRoleHasCapability(staff: UserStaffRole, capability: RoleCapability): boolean {
@@ -230,6 +244,7 @@ export function staffRoleDefaultDestination(
     { path: "/admin/lots", requirement: "catalogue.write" },
     { path: "/admin/submissions", requirement: "specialist.appraise" },
     { path: "/admin/lot-fulfilment", requirement: "operations.fulfilment" },
+    { path: "/admin/compliance/aml", requirement: { anyOf: ["aml.review", "compliance.mlro"] } },
     { path: "/admin/legal-entities", requirement: "legal_entity.read" },
     { path: "/admin/artists", requirement: "artist.read" },
     {
