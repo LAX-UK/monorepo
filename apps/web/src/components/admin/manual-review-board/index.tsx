@@ -10,7 +10,13 @@ import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { useCallback, useMemo, useState } from "react";
 
-export function AdminManualReviewBoard({ rows }: { rows: AdminManualReviewPaymentRow[] }) {
+export function AdminManualReviewBoard({
+  rows,
+  canOpenComplianceQueues = false,
+}: {
+  rows: AdminManualReviewPaymentRow[];
+  canOpenComplianceQueues?: boolean;
+}) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<AdminManualReviewPaymentRow | null>(null);
   const onOpen = useCallback((row: AdminManualReviewPaymentRow) => setSelected(row), []);
@@ -42,7 +48,10 @@ export function AdminManualReviewBoard({ rows }: { rows: AdminManualReviewPaymen
                 fullPageHref={"/admin/payments?manualReview=1"}
                 subtitle={<p className="text-sm text-on-surface-variant">{selected.winnerEmail}</p>}
               />
-              <ManualReviewDrawerContent payment={selected} />
+              <ManualReviewDrawerContent
+                payment={selected}
+                canOpenComplianceQueues={canOpenComplianceQueues}
+              />
             </div>
           ) : null}
         </SheetContent>

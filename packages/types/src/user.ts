@@ -13,6 +13,7 @@ export const userStaffRoles = [
   "content_marketing",
   "support_concierge",
   "staff_viewer",
+  "compliance_officer",
 ] as const;
 export type UserStaffRole = (typeof userStaffRoles)[number];
 

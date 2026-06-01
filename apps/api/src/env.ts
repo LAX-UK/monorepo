@@ -200,6 +200,20 @@ const envSchema = z
     KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
     /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
     KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    /**
+     * Source-of-Funds threshold (GBP major units). At/above this settlement value
+     * (or when AML risk indicators are present) SoF evidence must be collected and
+     * reviewed before settlement. CDD Section 6 mandates the EUR 10,000 equivalent;
+     * the platform is GBP-only so this is a fixed GBP figure with no live FX.
+     */
+    SOF_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(9000),
+    /** ISO currency code for the SoF threshold (platform is GBP-only). */
+    SOF_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    /**
+     * Days an approved Source-of-Funds case clears future settlements before
+     * event-driven re-validation (material exposure increase always re-triggers).
+     */
+    SOF_APPROVAL_VALIDITY_DAYS: z.coerce.number().int().positive().default(365),
     /** Shared secret for worker → API internal cron routes (`X-Cron-Secret` header).
      * Optional until bulk jobs are enabled in deploy.
      */

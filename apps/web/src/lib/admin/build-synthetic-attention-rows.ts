@@ -50,6 +50,24 @@ export function buildSyntheticAttentionRows(nav: AdminNavCounts): AdminAttention
       ctaLabel: "Open queue",
     });
   }
+  if (nav.amlScreeningsPending > 0) {
+    rows.push({
+      id: "nav-aml-screenings",
+      title: `${nav.amlScreeningsPending} AML screening${nav.amlScreeningsPending === 1 ? "" : "s"} pending`,
+      hint: "Watchlist match — triage and MLRO decide",
+      href: "/admin/compliance/aml",
+      ctaLabel: "Open queue",
+    });
+  }
+  if (nav.sourceOfFundsPending > 0) {
+    rows.push({
+      id: "nav-sof-cases",
+      title: `${nav.sourceOfFundsPending} Source of Funds case${nav.sourceOfFundsPending === 1 ? "" : "s"} pending`,
+      hint: "Settlement gated until MLRO approval",
+      href: "/admin/compliance/source-of-funds",
+      ctaLabel: "Open queue",
+    });
+  }
 
   return rows;
 }
