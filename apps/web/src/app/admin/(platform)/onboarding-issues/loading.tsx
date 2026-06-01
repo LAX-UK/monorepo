@@ -1,11 +1,13 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { PeopleListPageSkeleton } from "@/components/admin/people/people-list-states";
 
 export default function AdminOnboardingIssuesLoading() {
   return (
-    <AdminListPageSkeleton
+    <PeopleListPageSkeleton
       title="Onboarding & verification queues"
+      description="Loading queues…"
       kpiTiles={0}
-      showToolbar={false}
+      showFilterBar={false}
+      showTabBar
     />
   );
 }

@@ -6,7 +6,7 @@ import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminOnboardingIssuesPayload } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
-import { EntityList, StatusBadge } from "@auction/ui";
+import { StatusBadge } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -45,11 +45,11 @@ function IssuesTable<T extends { id: string }>({
   }
 
   const cards = renderCard ? (
-    <ul className="space-y-3 lg:hidden">
+    <ul className="space-y-2 lg:hidden">
       {rows.map((row) => (
         <li
           key={row.id}
-          className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4"
+          className="rounded-lg border border-border-hairline bg-surface-container-lowest/80 p-4"
         >
           {renderCard(row)}
         </li>
@@ -58,10 +58,8 @@ function IssuesTable<T extends { id: string }>({
   ) : null;
 
   return (
-    <EntityList
-      responsiveMode="auto"
-      density={density}
-      table={
+    <>
+      <div className="hidden lg:block">
         <AdminDataTable
           ariaLabel={emptyTitle}
           columns={columns}
@@ -69,13 +67,30 @@ function IssuesTable<T extends { id: string }>({
           density={density}
           getRowId={(r) => r.id}
         />
-      }
-      cards={cards}
-    />
+      </div>
+      {cards}
+    </>
   );
 }
 
-export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPayload }) {
+function kycUserLabel(row: {
+  userId: string;
+  userName?: string | null;
+  userEmail?: string | null;
+}): string {
+  if (row.userName && row.userEmail) return `${row.userName} · ${row.userEmail}`;
+  if (row.userName) return row.userName;
+  if (row.userEmail) return row.userEmail;
+  return row.userId;
+}
+
+export function OnboardingIssuesBoard({
+  data,
+  defaultTab = "entities",
+}: {
+  data: AdminOnboardingIssuesPayload;
+  defaultTab?: string;
+}) {
   const totalIssues =
     data.entitiesPendingReview.length +
     data.artistsPendingApproval.length +
@@ -109,9 +124,20 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
   const kycColumns = useMemo(
     (): ColumnDef<AdminOnboardingIssuesPayload["staleKycSessions"][number]>[] => [
       {
-        accessorKey: "userId",
-        header: "User",
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.userId}</span>,
+        id: "user",
+        header: "Client",
+        cell: ({ row }) => {
+          const r = row.original;
+          const label = kycUserLabel(r);
+          return (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-on-surface">{label}</p>
+              {label !== r.userId ? (
+                <p className="truncate font-mono text-[10px] text-on-surface-variant">{r.userId}</p>
+              ) : null}
+            </div>
+          );
+        },
       },
       { accessorKey: "provider", header: "Provider" },
       { accessorKey: "status", header: "Status" },
@@ -243,7 +269,10 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
           emptyTitle="No stale verification sessions."
           renderCard={(r) => (
             <>
-              <p className="font-mono text-xs">{r.userId}</p>
+              <p className="font-medium">{kycUserLabel(r)}</p>
+              {kycUserLabel(r) !== r.userId ? (
+                <p className="mt-0.5 font-mono text-[10px] text-on-surface-variant">{r.userId}</p>
+              ) : null}
               <p className="mt-1 text-xs text-on-surface-variant">
                 {r.provider} · {r.status}
               </p>
@@ -336,5 +365,5 @@ export function OnboardingIssuesBoard({ data }: { data: AdminOnboardingIssuesPay
     );
   }
 
-  return <AdminDetailTabs defaultValue="entities" tabs={tabs} />;
+  return <AdminDetailTabs defaultValue={defaultTab} syncUrl tabs={tabs} />;
 }

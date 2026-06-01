@@ -1,8 +1,16 @@
 import { AdminPanelPage } from "@/components/admin/admin-panel-page";
 import { PayoutSettlementForm } from "@/components/admin/payout-settlement-form";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Run settlement",
+  "Create a payout from captured payments for one legal entity.",
+);
 
 export default async function PayoutSettlementPage({
   searchParams,
@@ -10,8 +18,8 @@ export default async function PayoutSettlementPage({
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const sp = await searchParams;
-  const success = sp.success ? decodeURIComponent(sp.success) : null;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const success = safeDecodeAdminErrorParam(sp.success);
+  const error = safeDecodeAdminErrorParam(sp.error);
 
   return (
     <AdminPanelPage

@@ -15,7 +15,9 @@ import type {
   ArtistStatus,
   ItemSubmissionStatus,
   LegalEntity,
+  LegalEntityKind,
   LegalEntityStatus,
+  LegalEntitySubkind,
   Lot,
   LotStatus,
   PayoutStatus,
@@ -1060,6 +1062,8 @@ export type AdminOnboardingIssuesPayload = {
   staleKycSessions: {
     id: string;
     userId: string;
+    userName: string | null;
+    userEmail: string | null;
     provider: string;
     status: string;
     createdAt: string;
@@ -1113,32 +1117,124 @@ export type AdminLegalEntityPickerRow = {
   status: LegalEntityStatus;
 };
 
+/** Directory list row from GET /admin/legal-entities/browse. */
+export type AdminLegalEntityListRow = {
+  id: string;
+  displayName: string;
+  status: LegalEntityStatus;
+  kind: LegalEntityKind;
+  subkind: LegalEntitySubkind;
+  updatedAt: string;
+  stripeDueCount: number;
+};
+
+export type AdminLegalEntityListResult = {
+  rows: AdminLegalEntityListRow[];
+  total: number;
+};
+
+function parseLegalEntityBrowseRow(row: {
+  id: string;
+  displayName: string;
+  status: string;
+  kind?: string;
+  subkind?: string;
+  updatedAt?: string | Date;
+  stripeDueCount?: number;
+}): AdminLegalEntityListRow {
+  const status =
+    typeof row.status === "string" && legalEntityStatuses.includes(row.status as LegalEntityStatus)
+      ? (row.status as LegalEntityStatus)
+      : "lead";
+  const kind =
+    typeof row.kind === "string" && legalEntityKinds.includes(row.kind as LegalEntityKind)
+      ? (row.kind as LegalEntityKind)
+      : "organisation";
+  const subkind =
+    typeof row.subkind === "string" &&
+    legalEntitySubkinds.includes(row.subkind as LegalEntitySubkind)
+      ? (row.subkind as LegalEntitySubkind)
+      : "other";
+  const updatedAt =
+    row.updatedAt instanceof Date
+      ? row.updatedAt.toISOString()
+      : typeof row.updatedAt === "string"
+        ? row.updatedAt
+        : new Date(0).toISOString();
+
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    status,
+    kind,
+    subkind,
+    updatedAt,
+    stripeDueCount: Number(row.stripeDueCount ?? 0),
+  };
+}
+
+/** Supports `{ rows, total }` and legacy bare-array browse responses. */
+function parseAdminLegalEntityBrowsePayload(data: unknown): AdminLegalEntityListResult {
+  if (Array.isArray(data)) {
+    const rows = data.map((row) => parseLegalEntityBrowseRow(row));
+    return { rows, total: rows.length };
+  }
+
+  if (data && typeof data === "object" && "rows" in data) {
+    const payload = data as { rows?: unknown; total?: unknown };
+    const rawRows = Array.isArray(payload.rows) ? payload.rows : [];
+    const rows = rawRows.map((row) => parseLegalEntityBrowseRow(row));
+    const total =
+      typeof payload.total === "number"
+        ? payload.total
+        : Number.parseInt(String(payload.total ?? ""), 10) || rows.length;
+    return { rows, total };
+  }
+
+  return { rows: [], total: 0 };
+}
+
+export async function getAdminLegalEntityList(params: {
+  q?: string;
+  status?: LegalEntityStatus;
+  kind?: LegalEntityKind;
+  stripeDue?: boolean;
+  createdByUserId?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<AdminLegalEntityListResult> {
+  const qs = new URLSearchParams();
+  if (params.q?.trim()) qs.set("q", params.q.trim());
+  if (params.status) qs.set("status", params.status);
+  if (params.kind) qs.set("kind", params.kind);
+  if (params.stripeDue) qs.set("stripeDue", "1");
+  if (params.createdByUserId) qs.set("createdByUserId", params.createdByUserId);
+  qs.set("limit", String(params.limit ?? 25));
+  qs.set("offset", String(params.offset ?? 0));
+  const res = await authedServerFetch(`/admin/legal-entities/browse?${qs.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Failed to load legal entities: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: unknown };
+  return parseAdminLegalEntityBrowsePayload(body.data);
+}
+
 export async function searchAdminLegalEntitiesForPicker(params: {
   q?: string;
   createdByUserId?: string;
   limit?: number;
   offset?: number;
 }): Promise<AdminLegalEntityPickerRow[]> {
-  const qs = new URLSearchParams();
-  if (params.q?.trim()) qs.set("q", params.q.trim());
-  if (params.createdByUserId) qs.set("createdByUserId", params.createdByUserId);
-  qs.set("limit", String(params.limit ?? 25));
-  qs.set("offset", String(params.offset ?? 0));
-  const res = await authedServerFetch(`/admin/legal-entities/browse?${qs.toString()}`);
-  if (!res.ok) {
-    throw new Error(`Failed to search legal entities: ${res.status}`);
-  }
-  const body = (await res.json()) as {
-    data: { id: string; displayName: string; status: string }[];
-  };
-  return body.data.map((row) => ({
+  const result = await getAdminLegalEntityList({
+    ...(params.q?.trim() ? { q: params.q.trim() } : {}),
+    ...(params.createdByUserId ? { createdByUserId: params.createdByUserId } : {}),
+    limit: params.limit ?? 25,
+    offset: params.offset ?? 0,
+  });
+  return result.rows.map((row) => ({
     id: row.id,
     displayName: row.displayName,
-    status:
-      typeof row.status === "string" &&
-      legalEntityStatuses.includes(row.status as LegalEntityStatus)
-        ? (row.status as LegalEntityStatus)
-        : "lead",
+    status: row.status,
   }));
 }
 

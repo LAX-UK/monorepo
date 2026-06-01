@@ -1,7 +1,5 @@
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { cn } from "@auction/ui";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
 import type { ReactNode } from "react";
-import { CatalogPageHeader } from "./catalog-page-header";
 
 type Props = {
   title: ReactNode;
@@ -19,9 +17,13 @@ type Props = {
   empty?: ReactNode;
   pagination?: ReactNode;
   className?: string;
+  showCommandPaletteHint?: boolean;
 };
 
-/** Catalog list layout — header, lenses, results; mobile-first. */
+/**
+ * Catalog list layout — adapter over `AdminListShell` preserving catalog prop names
+ * and filter/KPI ordering. Boards own responsive table/card split (`wrapView={false}`).
+ */
 export function CatalogListShell({
   title,
   description,
@@ -37,37 +39,40 @@ export function CatalogListShell({
   empty,
   pagination,
   className,
+  showCommandPaletteHint,
 }: Props) {
-  const showEmpty = Boolean(empty);
-  const showResults = !showEmpty;
-
   return (
-    <AppScreen className={cn("mx-auto w-full max-w-7xl space-y-6 pb-8 md:space-y-8", className)}>
-      {breadcrumbs ? <div className="mb-2">{breadcrumbs}</div> : null}
-      <CatalogPageHeader
-        title={title}
-        {...(description ? { description } : {})}
-        {...(meta ? { meta } : {})}
-        actions={primaryAction}
-      />
-      {filterBar ? (
-        <div className="sticky top-0 z-20 -mx-1 space-y-3 bg-surface/95 px-1 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-surface/80">
-          {filterBar}
-        </div>
-      ) : null}
-      {mobileSummary ? (
-        <div className="md:hidden" aria-live="polite">
-          {mobileSummary}
-        </div>
-      ) : null}
-      {kpiStrip ? <div className="hidden md:block">{kpiStrip}</div> : null}
-      {toolbarEnd ? (
-        <div className="flex flex-wrap items-center justify-end gap-2">{toolbarEnd}</div>
-      ) : null}
-      {errorAlert}
-      {showResults ? children : null}
-      {showEmpty ? empty : null}
-      {pagination}
-    </AppScreen>
+    <AdminListShell
+      {...(className ? { className } : {})}
+      title={title}
+      {...(description ? { description } : {})}
+      {...(breadcrumbs ? { breadcrumbs } : {})}
+      {...(primaryAction ? { primaryAction } : {})}
+      {...(meta ? { meta } : {})}
+      {...(showCommandPaletteHint ? { showCommandPaletteHint } : {})}
+      {...(filterBar
+        ? {
+            headerAfter: (
+              <div className="sticky top-0 z-20 -mx-1 space-y-3 bg-surface/95 px-1 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-surface/80">
+                {filterBar}
+              </div>
+            ),
+          }
+        : {})}
+      kpiStrip={kpiStrip}
+      mobileSummary={mobileSummary}
+      {...(toolbarEnd
+        ? {
+            postKpiToolbarEnd: (
+              <div className="flex flex-wrap items-center justify-end gap-2">{toolbarEnd}</div>
+            ),
+          }
+        : {})}
+      errorAlert={errorAlert}
+      view={children}
+      wrapView={false}
+      empty={empty}
+      pagination={pagination}
+    />
   );
 }

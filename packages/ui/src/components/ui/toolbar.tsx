@@ -24,6 +24,10 @@ export function Toolbar({
   searchLabel = "Filter list",
   ...props
 }: ToolbarProps) {
+  if (!search && !filters && !views && !actions) {
+    return null;
+  }
+
   return (
     <div
       className={cn(

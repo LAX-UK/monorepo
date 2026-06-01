@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminBulkSelectionActions } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
@@ -18,7 +19,8 @@ import type { UserRole } from "@auction/types";
 import { Button, EntityList } from "@auction/ui";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useMemo } from "react";
 
 function roleLabel(r: UserRole): string {
   if (r === "staff") return "Staff";
@@ -103,13 +105,16 @@ function columns(): ColumnDef<AdminInvitationSummary>[] {
   ];
 }
 
-export function AdminInvitationsBoard({ rows }: { rows: AdminInvitationSummary[] }) {
-  const { density } = useTableDensity();
-  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
-  const tableColumns = useMemo(() => columns(), []);
-  const bulkOperations = useMemo(() => getInvitationBulkOperations(), []);
-
-  const cards = (
+function LegacyMobileCards({
+  rows,
+  rowSelection,
+  setRowSelection,
+}: {
+  rows: AdminInvitationSummary[];
+  rowSelection: Record<string, boolean>;
+  setRowSelection: Dispatch<SetStateAction<Record<string, boolean>>>;
+}) {
+  return (
     <ul className="space-y-3 lg:hidden">
       {rows.map((r) => {
         const expiresAt = coerceDate(r.expiresAt);
@@ -174,26 +179,72 @@ export function AdminInvitationsBoard({ rows }: { rows: AdminInvitationSummary[]
       })}
     </ul>
   );
+}
+
+type Props = {
+  rows: AdminInvitationSummary[];
+  /** When true, mobile cards are rendered by the parent list shell. */
+  externalMobileCards?: boolean;
+};
+
+export function AdminInvitationsBoard({ rows, externalMobileCards = false }: Props) {
+  const { density } = useTableDensity();
+  const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
+  const tableColumns = useMemo(() => columns(), []);
+  const bulkOperations = useMemo(() => getInvitationBulkOperations(), []);
+  const bulkActions = useAdminBulkSelectionActions();
+  const registerBulk = bulkActions?.registerBulk;
+
+  useEffect(() => {
+    if (!registerBulk || !externalMobileCards) {
+      registerBulk?.(null);
+      return;
+    }
+
+    registerBulk({
+      selectedIds,
+      operations: bulkOperations,
+      clear,
+      isSelected: (id) => Boolean(rowSelection[id]),
+      toggleSelected: (id, checked) => {
+        setRowSelection((prev) => ({ ...prev, [id]: checked }));
+      },
+    });
+    return () => registerBulk(null);
+  }, [
+    registerBulk,
+    externalMobileCards,
+    selectedIds,
+    bulkOperations,
+    clear,
+    rowSelection,
+    setRowSelection,
+  ]);
+
+  const table = (
+    <AdminDataTable
+      ariaLabel="Invitations"
+      columns={tableColumns}
+      data={rows}
+      density={density}
+      enableRowSelection
+      getRowId={(row) => row.id}
+      rowSelection={rowSelection}
+      onRowSelectionChange={setRowSelection}
+    />
+  );
+
+  if (externalMobileCards) {
+    return table;
+  }
+
+  const cards = (
+    <LegacyMobileCards rows={rows} rowSelection={rowSelection} setRowSelection={setRowSelection} />
+  );
 
   return (
     <div className="space-y-4">
-      <EntityList
-        responsiveMode="auto"
-        density={density}
-        table={
-          <AdminDataTable
-            ariaLabel="Invitations"
-            columns={tableColumns}
-            data={rows}
-            density={density}
-            enableRowSelection
-            getRowId={(row) => row.id}
-            rowSelection={rowSelection}
-            onRowSelectionChange={setRowSelection}
-          />
-        }
-        cards={cards}
-      />
+      <EntityList responsiveMode="auto" density={density} table={table} cards={cards} />
       <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
     </div>
   );

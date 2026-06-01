@@ -183,18 +183,21 @@ export default async function AdminSalesPage({
         />
       }
       mobileSummary={
-        <CatalogListMobileSummary
-          segments={[
-            `${boardRows.length} on page`,
-            liveOnPage > 0 ? `${liveOnPage} live` : null,
-            draftOnPage > 0 ? `${draftOnPage} draft` : null,
-            activeLensId !== "all" ? PRESET_LABELS[activeLensId] : null,
-          ]}
-        />
+        <div className="space-y-3">
+          <CatalogListMobileSummary
+            segments={[
+              `${boardRows.length} on page`,
+              liveOnPage > 0 ? `${liveOnPage} live` : null,
+              draftOnPage > 0 ? `${draftOnPage} draft` : null,
+              activeLensId !== "all" ? PRESET_LABELS[activeLensId] : null,
+            ]}
+          />
+          <CatalogKpiPeriodToggle current={periodDays} className="lg:hidden" />
+        </div>
       }
       toolbarEnd={
         <>
-          <CatalogKpiPeriodToggle current={periodDays} className="hidden md:flex" />
+          <CatalogKpiPeriodToggle current={periodDays} className="hidden lg:flex" />
           <Link
             href="/sales"
             className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"

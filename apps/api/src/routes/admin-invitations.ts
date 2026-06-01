@@ -7,49 +7,61 @@ import {
 import { Hono } from "hono";
 import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
+import { requireInvitationsAccess } from "../middleware/require-capability.js";
 import type { IAdminInvitationApplicationService } from "../services/interfaces/admin-routes.js";
 
 export function attachAdminInvitationRoutes(
-  r: Hono<{ Variables: { userId?: string; userRole?: string } }>,
+  r: Hono<{ Variables: { userId?: string; userRole?: string; userStaffRole?: string | null } }>,
   invitations: IAdminInvitationApplicationService,
 ): void {
-  r.post("/invitations", zValidator("json", adminCreateInvitationBodySchema), async (c) => {
-    const actorId = c.get("userId") as string;
-    const body = c.req.valid("json");
-    const result = await invitations.create({
-      actorUserId: actorId,
-      email: body.email,
-      targetRole: body.targetRole,
-      ...(body.targetStaffRole != null ? { targetStaffRole: body.targetStaffRole } : {}),
-    });
-    return result.match(
-      (data) => c.json({ data }, 201),
-      (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-    );
-  });
+  r.post(
+    "/invitations",
+    requireInvitationsAccess,
+    zValidator("json", adminCreateInvitationBodySchema),
+    async (c) => {
+      const actorId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const result = await invitations.create({
+        actorUserId: actorId,
+        email: body.email,
+        targetRole: body.targetRole,
+        ...(body.targetStaffRole != null ? { targetStaffRole: body.targetStaffRole } : {}),
+      });
+      return result.match(
+        (data) => c.json({ data }, 201),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 
-  r.get("/invitations", async (c) => {
+  r.get("/invitations", requireInvitationsAccess, async (c) => {
     const data = await invitations.listInvitationsForActor(c.get("userId") as string);
     return c.json({ data });
   });
 
-  r.post("/invitations/bulk", zValidator("json", adminBulkInvitationsBodySchema), async (c) => {
-    const actorUserId = c.get("userId") as string;
-    const { ids, op } = c.req.valid("json");
-    for (const invitationId of ids) {
-      const result =
-        op === "revoke"
-          ? await invitations.revoke({ actorUserId, invitationId })
-          : await invitations.resend({ actorUserId, invitationId });
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+  r.post(
+    "/invitations/bulk",
+    requireInvitationsAccess,
+    zValidator("json", adminBulkInvitationsBodySchema),
+    async (c) => {
+      const actorUserId = c.get("userId") as string;
+      const { ids, op } = c.req.valid("json");
+      for (const invitationId of ids) {
+        const result =
+          op === "revoke"
+            ? await invitations.revoke({ actorUserId, invitationId })
+            : await invitations.resend({ actorUserId, invitationId });
+        if (result.isErr()) {
+          return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+        }
       }
-    }
-    return c.json({ ok: true, data: { count: ids.length } });
-  });
+      return c.json({ ok: true, data: { count: ids.length } });
+    },
+  );
 
   r.post(
     "/invitations/:invitationId/revoke",
+    requireInvitationsAccess,
     zValidator("param", invitationIdUuidParamSchema),
     async (c) => {
       const actorId = c.get("userId") as string;
@@ -67,6 +79,7 @@ export function attachAdminInvitationRoutes(
 
   r.post(
     "/invitations/:invitationId/resend",
+    requireInvitationsAccess,
     zValidator("param", invitationIdUuidParamSchema),
     async (c) => {
       const actorId = c.get("userId") as string;

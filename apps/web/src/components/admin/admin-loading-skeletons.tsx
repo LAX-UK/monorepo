@@ -1,5 +1,5 @@
 import { AdminDetailSkeleton } from "@/components/admin/admin-detail-skeleton";
-import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { TableSkeleton } from "@auction/ui";
 import { Skeleton } from "@auction/ui/components/skeleton";
 
@@ -14,11 +14,17 @@ type ListSkeletonProps = {
   kpiTiles?: number;
   tableRows?: number;
   tableColumns?: number;
+  showFilterBar?: boolean;
+  /** @deprecated Use showFilterBar */
   showToolbar?: boolean;
   showReadinessBand?: boolean;
+  showTabBar?: boolean;
+  showMobileCards?: boolean;
 };
 
-function KpiStripSkeleton({ tiles }: { tiles: number }) {
+export type AdminListPageSkeletonProps = ListSkeletonProps;
+
+export function KpiStripSkeleton({ tiles }: { tiles: number }) {
   return (
     <div
       className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
@@ -32,7 +38,7 @@ function KpiStripSkeleton({ tiles }: { tiles: number }) {
   );
 }
 
-function AdminListToolbarSkeleton() {
+export function AdminListFilterBarSkeleton() {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Skeleton className="h-9 w-48 rounded-full" />
@@ -42,29 +48,52 @@ function AdminListToolbarSkeleton() {
   );
 }
 
-/** Matches `AdminListPage` + KPI strip + toolbar + table. */
+function MobileCardsSkeleton() {
+  return (
+    <div className="space-y-3 lg:hidden">
+      {["card-0", "card-1", "card-2"].map((id) => (
+        <Skeleton key={id} className="h-28 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
+/** Matches admin list shell + KPI strip + toolbar + table. */
 export function AdminListPageSkeleton({
   title,
   description = "Loading…",
   kpiTiles = 4,
   tableRows = 10,
   tableColumns = 6,
+  showFilterBar,
   showToolbar = true,
   showReadinessBand = false,
+  showTabBar = false,
+  showMobileCards = false,
 }: ListSkeletonProps) {
+  const showFilters = showFilterBar ?? showToolbar;
+
   return (
-    <AdminListPage
+    <AdminListShell
       title={title}
       description={description}
       hasFilters={false}
       resetHref="#"
       kpiStrip={kpiTiles > 0 ? <KpiStripSkeleton tiles={kpiTiles} /> : null}
-      filters={showToolbar ? <AdminListToolbarSkeleton /> : null}
+      filters={showFilters && !showTabBar ? <AdminListFilterBarSkeleton /> : null}
+      wrapView={false}
       view={
-        <div className="space-y-4" aria-busy="true">
-          {showReadinessBand ? <Skeleton className="h-24 w-full rounded-lg" /> : null}
-          <TableSkeleton rows={tableRows} columns={tableColumns} />
-        </div>
+        showTabBar ? (
+          <TabbedQueueSkeleton tabs={5} />
+        ) : (
+          <div className="space-y-4" aria-busy="true">
+            {showReadinessBand ? <Skeleton className="h-24 w-full rounded-lg" /> : null}
+            {showMobileCards ? <MobileCardsSkeleton /> : null}
+            <div className={showMobileCards ? "hidden lg:block" : undefined}>
+              <TableSkeleton rows={tableRows} columns={tableColumns} />
+            </div>
+          </div>
+        )
       }
       pagination={<Skeleton className="h-10 w-full max-w-md" />}
     />

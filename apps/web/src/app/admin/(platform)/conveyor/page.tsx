@@ -1,5 +1,6 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { AdminConveyorTableBoard } from "@/components/admin/conveyor-board";
 import { ConveyorLayoutToggle } from "@/components/admin/conveyor-board/layout-toggle";
@@ -35,6 +36,7 @@ export default async function AdminConveyorPage({
   }
 
   const columns = buildConveyorColumns(rows);
+  const pipelineTotal = columns.reduce((sum, col) => sum + col.items.length, 0);
 
   const errorAlert =
     error || loadError ? (
@@ -114,6 +116,22 @@ export default async function AdminConveyorPage({
       className="max-w-[1600px]"
       title="Conveyor"
       description="Single view of seller submissions through specialist review, catalogue build, live sale, and settlement hand-off."
+      showCommandPaletteHint
+      mobileSummary={
+        !loadError && rows.length > 0 ? (
+          <CatalogListMobileSummary
+            metrics={[
+              { id: "submissions", label: "Submissions", value: String(rows.length) },
+              { id: "pipeline", label: "In pipeline", value: String(pipelineTotal) },
+              {
+                id: "view",
+                label: "View",
+                value: viewTable ? "Table" : "Kanban",
+              },
+            ]}
+          />
+        ) : null
+      }
       errorAlert={errorAlert}
       empty={empty}
     >
