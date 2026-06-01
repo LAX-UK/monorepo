@@ -28,6 +28,20 @@ export const kycVerification = pgTable(
     verifiedIdCountry: text("verified_id_country"),
     verifiedIdType: text("verified_id_type"),
     verifiedIdExpiry: date("verified_id_expiry"),
+    // Premium Data Extraction (10 fields) add-on. Nullable: only populated when the
+    // Veriff decision payload carries the corresponding extracted attribute.
+    verifiedGender: text("verified_gender"),
+    verifiedNationality: text("verified_nationality"),
+    verifiedCitizenship: text("verified_citizenship"),
+    verifiedPlaceOfBirth: text("verified_place_of_birth"),
+    verifiedYearOfBirth: text("verified_year_of_birth"),
+    // Full document number is PII; stored only when extraction is enabled and access-controlled.
+    verifiedIdNumber: text("verified_id_number"),
+    verifiedDocState: text("verified_doc_state"),
+    verifiedIdValidFrom: date("verified_id_valid_from"),
+    // Session risk signals surfaced by Veriff (used as an EDD/AML indicator).
+    decisionRiskScore: text("decision_risk_score"),
+    decisionIpCountry: text("decision_ip_country"),
     decisionPayload: jsonb("decision_payload").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     decisionAt: timestamp("decision_at", { mode: "date", withTimezone: true }),

@@ -14,6 +14,7 @@ import { gbpAmountToPence } from "../lib/decimal-money.js";
 import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
+import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
@@ -96,6 +97,8 @@ export class PaymentService {
     private readonly paymentRefundReconcile: PaymentRefundReconcileService | null = null,
     private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
     private readonly addresses: IAddressRepository | null = null,
+    /** Pre-settlement AML/SoF compliance gate (CDD Sections 5 & 6). */
+    private readonly settlementCompliance: ISettlementCompliancePolicy | null = null,
   ) {}
 
   /** Winning bidder initiates Stripe checkout (card or UK bank transfer by amount tier). */
@@ -152,14 +155,26 @@ export class PaymentService {
           this.legalEntityRepository && existing.sellerLegalEntityId
             ? await this.legalEntityRepository.findById(existing.sellerLegalEntityId)
             : null;
+        // Prefer the compliance reason (aml_hold / source_of_funds_required) so it
+        // is preserved for display/audit; fall back to the value-tier reason.
+        const complianceDecision = this.settlementCompliance
+          ? await this.settlementCompliance.evaluate({
+              buyerUserId: buyerId,
+              amountPence,
+              excludePaymentId: existing.id,
+            })
+          : { hold: false, reason: null };
+        const manualReviewReason: ManualReviewReason | null = complianceDecision.hold
+          ? complianceDecision.reason
+          : this.paymentTierPolicy.resolveManualReviewReason(
+              amountPence,
+              sellerEntity?.status === "archived",
+            );
         return ok({
           paymentId: existing.id,
           checkoutUrl: null,
           checkoutRail: null,
-          manualReviewReason: this.paymentTierPolicy.resolveManualReviewReason(
-            amountPence,
-            sellerEntity?.status === "archived",
-          ),
+          manualReviewReason,
         });
       }
       const checkout = await this.issueCheckoutForPendingPayment(
@@ -206,13 +221,27 @@ export class PaymentService {
       ? await this.legalEntityRepository.findById(lot.sellerLegalEntityId)
       : null;
     const sellerArchived = sellerEntity?.status === "archived";
-    const requiresManualReview = this.paymentTierPolicy.needsManualReviewGate(
+
+    // CDD Sections 5 & 6: halt settlement on an AML/sanctions hold or when SoF is
+    // owed. Reuses the existing manual-review gate rather than a parallel flow.
+    const complianceDecision = this.settlementCompliance
+      ? await this.settlementCompliance.evaluate({ buyerUserId: buyerId, amountPence })
+      : { hold: false, reason: null };
+
+    const tierNeedsReview = this.paymentTierPolicy.needsManualReviewGate(
       amountPence,
       sellerArchived,
     );
-    const manualReviewReason = requiresManualReview
-      ? this.paymentTierPolicy.resolveManualReviewReason(amountPence, sellerArchived)
-      : null;
+    const requiresManualReview = complianceDecision.hold || tierNeedsReview;
+    // Compliance reasons take precedence over value-tier reasons for display/audit.
+    const manualReviewReason: ManualReviewReason | null = complianceDecision.hold
+      ? complianceDecision.reason
+      : tierNeedsReview
+        ? this.paymentTierPolicy.resolveManualReviewReason(amountPence, sellerArchived)
+        : null;
+    if (complianceDecision.hold) {
+      recordMoneyPathEvent(`settlement_compliance_hold_${complianceDecision.reason}`);
+    }
 
     const created = await this.payments.create({
       lotId,
@@ -496,6 +525,24 @@ export class PaymentService {
     >
   > {
     const amountPence = gbpAmountToPence(amount);
+    if (this.settlementCompliance) {
+      const compliance = await this.settlementCompliance.evaluate({
+        buyerUserId: buyerId,
+        amountPence,
+        excludePaymentId: paymentId,
+      });
+      if (compliance.hold) {
+        const code =
+          compliance.reason === "aml_hold"
+            ? "payment_checkout_blocked_aml_hold"
+            : "payment_checkout_blocked_source_of_funds";
+        const message =
+          compliance.reason === "aml_hold"
+            ? "Checkout is blocked pending AML/sanctions compliance review."
+            : "Checkout is blocked until source-of-funds review is complete.";
+        return err(new PaymentProviderError(message, 403, code));
+      }
+    }
     const validation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
     if (validation === "blocked") {
       return err(
@@ -708,21 +755,61 @@ export class PaymentService {
     if (p.status !== "requires_manual_review") {
       return err(new AuthzError("Payment is not in manual review", 409));
     }
-    await this.payments.updateStatus(paymentId, "pending");
-    if (this.db && this.domainEventPublisher) {
-      await this.domainEventPublisher.publish(this.db, {
-        aggregateType: "payment",
-        aggregateId: paymentId,
-        eventType: "payment.manual_review_released",
-        payload: {
-          paymentId,
-          lotId: p.lotId,
-          sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-          action: "capture_and_process",
-        },
-        actorUserId: adminUserId,
-        actingLegalEntityId: p.sellerLegalEntityId ?? null,
+    // CDD: do not release to checkout while AML/SoF settlement compliance still blocks.
+    if (this.settlementCompliance) {
+      const amountPence = gbpAmountToPence(p.amount);
+      const compliance = await this.settlementCompliance.evaluate({
+        buyerUserId: p.paidByUserId ?? (p as PaymentRecord & { buyerId?: string }).buyerId ?? "",
+        amountPence,
+        excludePaymentId: paymentId,
       });
+      if (compliance.hold) {
+        const code =
+          compliance.reason === "aml_hold"
+            ? "payment_release_blocked_aml_hold"
+            : "payment_release_blocked_source_of_funds";
+        const message =
+          compliance.reason === "aml_hold"
+            ? "Cannot release: buyer is on an AML/sanctions compliance hold. MLRO must clear the screening first."
+            : "Cannot release: source-of-funds review is required or pending. Compliance must approve the SoF case first.";
+        return err(new AuthzError(message, 403, { code }));
+      }
+    }
+    const db = this.db;
+    const publisher = this.domainEventPublisher;
+    if (!db || !publisher) {
+      await this.payments.updateStatus(paymentId, "pending");
+      return ok(undefined);
+    }
+
+    try {
+      await db.transaction(async (tx) => {
+        const released = await this.payments.applyReleasedFromManualReviewInTransaction(
+          tx,
+          paymentId,
+        );
+        if (!released) {
+          throw new Error("payment_not_in_manual_review");
+        }
+        await publisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: paymentId,
+          eventType: "payment.manual_review_released",
+          payload: {
+            paymentId,
+            lotId: p.lotId,
+            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
+            action: "capture_and_process",
+          },
+          actorUserId: adminUserId,
+          actingLegalEntityId: p.sellerLegalEntityId ?? null,
+        });
+      });
+    } catch (e) {
+      if (e instanceof Error && e.message === "payment_not_in_manual_review") {
+        return err(new AuthzError("Payment is not in manual review", 409));
+      }
+      throw e;
     }
     return ok(undefined);
   }

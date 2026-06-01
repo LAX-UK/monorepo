@@ -12,13 +12,15 @@ import {
 } from "../../services/interfaces/kyc-service.js";
 import { progressIndividualsAfterKycApproval } from "../../services/kyc/kyc-post-verification-progression.js";
 
-function recordVeriffWebhookHttpError(surface: "decision" | "event", status: number): void {
+type VeriffWebhookSurface = "decision" | "event" | "watchlist";
+
+function recordVeriffWebhookHttpError(surface: VeriffWebhookSurface, status: number): void {
   if (status >= 500) recordMoneyPathEvent(`veriff_webhook_${surface}_5xx`);
   else if (status >= 400) recordMoneyPathEvent(`veriff_webhook_${surface}_4xx`);
 }
 
 function webhookErrorResponse(
-  surface: "decision" | "event",
+  surface: VeriffWebhookSurface,
   err: unknown,
 ): { status: 400 | 401 | 503; body: Record<string, string> } | null {
   if (err instanceof VeriffWebhookNotConfiguredError || err instanceof KycNotConfiguredError) {
@@ -131,6 +133,24 @@ export function createVeriffWebhookRoutes(container: Container) {
     } catch (err) {
       const mapped = webhookErrorResponse("event", err);
       if (mapped) return c.json(mapped.body, mapped.status);
+      throw err;
+    }
+  });
+
+  // Premium "PEP & Sanctions" watchlist screening + ongoing monitoring updates.
+  r.post("/watchlist-screening", async (c) => {
+    const raw = await c.req.text();
+    const { signature, authClient } = readVeriffWebhookHeaders(c);
+    try {
+      const result = await container.amlService.handleWatchlistWebhook(raw, signature, authClient);
+      if (result.processed && result.outcome) {
+        recordMoneyPathEvent(`veriff_watchlist_screening_${result.outcome}`);
+      }
+      return c.json({ ok: true, processed: result.processed });
+    } catch (err) {
+      const mapped = webhookErrorResponse("watchlist", err);
+      if (mapped) return c.json(mapped.body, mapped.status);
+      recordVeriffWebhookHttpError("watchlist", 500);
       throw err;
     }
   });

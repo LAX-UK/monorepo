@@ -10,6 +10,11 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] Veriff Test integration webhooks point to:
   - `POST https://api.test.lax.bid/webhooks/veriff/decision` (required)
   - `POST https://api.test.lax.bid/webhooks/veriff/event` (optional UX progress)
+  - `POST https://api.test.lax.bid/webhooks/veriff/watchlist-screening` (Premium PEP & Sanctions)
+- [ ] Migrations `0090_kyc_extraction_fields`, `0091_aml_watchlist_screening`, `0092_admin_review_task_aml_kinds`, `0093_source_of_funds` applied on test database
+- [ ] Veriff Premium add-ons enabled: **Data Extraction (10 fields)** + **PEP & Sanctions** with watchlist lists covering the CDD Section 5 set (UK Consolidated Sanctions, OFSI asset freeze, PEP, adverse media)
+- [ ] `SOF_THRESHOLD_AMOUNT` / `SOF_THRESHOLD_CURRENCY` confirmed with MLRO/counsel (fixed GBP, no FX)
+- [ ] `SOF_APPROVAL_VALIDITY_DAYS` (default 365) confirmed with MLRO for SoF approval re-validation window
 - [ ] Obsolete Stripe Identity webhook removed from Stripe Dashboard (Connect webhooks unchanged)
 
 ## 1. Session creation and InContext flow
@@ -70,6 +75,31 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] Dashboard attention list shows KYC items with threshold copy when `requiresKyc`
 - [ ] Admin KYC badges: **In review**, **Rejected**, **Not verified** (aligned with user labels)
 - [ ] Stale KYC sessions appear on onboarding issues board when >48h in non-terminal state
+- [ ] Admin KYC history panel surfaces new extraction fields (gender, nationality, place of birth, document validity, risk score / IP country)
+
+## 8. Watchlist screening (PEP & Sanctions)
+
+- [ ] Watchlist-screening webhook with **no match** returns 200; no AML hold set; subject enrolled into ongoing monitoring
+- [ ] Webhook with a **possible match / PEP / adverse media** sets `aml_hold_status = hold` and creates an `aml_screening_review` task
+- [ ] Webhook with a **confirmed sanctions / OFSI** match sets `aml_hold_status = blocked`
+- [ ] Re-delivering the **same** watchlist payload does not double-process (content-hash idempotency)
+- [ ] Invalid / unsigned watchlist payload returns 400 / 401 (not 500)
+- [ ] An MLRO escalation email (`aml-compliance-review-notice`) is enqueued to compliance recipients (idempotent per screening + recipient)
+- [ ] MLRO (`compliance_officer`) sees pending screenings at `GET /admin/compliance/aml/screenings`
+- [ ] **Two-stage maker-checker**: analyst triages via `POST /admin/compliance/aml/screenings/:id/triage` (no hold change); MLRO decides via `POST /admin/compliance/aml/screenings/:id/decide`
+- [ ] MLRO **clear** (decide) lifts the hold and re-enrolls monitoring; **block** is terminal
+- [ ] `decide` without a prior triage → 409 `aml_triage_required`; same user triaging then deciding → 403 `aml_review_same_as_triager`
+- [ ] A user cannot triage/decide their **own** screening (403 `aml_triage_self_forbidden` / `aml_review_self_forbidden`)
+
+## 9. Settlement gate + Source of Funds
+
+- [ ] Winning a lot while on an AML hold blocks checkout with reason `aml_hold` (payment `requires_manual_review`)
+- [ ] Reaching `SOF_THRESHOLD_AMOUNT` (single or aggregated linked transactions) blocks checkout with reason `source_of_funds_required`
+- [ ] A `source_of_funds` case is opened (`pending`), a `source_of_funds_review` admin task is raised, and an MLRO escalation email is enqueued (idempotent)
+- [ ] **Two-stage maker-checker**: analyst triages via `POST /admin/compliance/source-of-funds/:id/triage`; MLRO/finance decides via `POST /admin/compliance/source-of-funds/:id/decide`; buyer can then re-initiate checkout
+- [ ] A **rejected** SoF case keeps blocking and is **not** reopened on checkout retries (no case/task churn)
+- [ ] An **approved** case re-triggers SoF once exposure grows by another full threshold or after `SOF_APPROVAL_VALIDITY_DAYS`
+- [ ] A user cannot triage/decide their **own** SoF case (403 `source_of_funds_triage_self_forbidden` / `source_of_funds_review_self_forbidden`); `decide` without triage → 409 `source_of_funds_triage_required`
 
 ## Sign-off
 

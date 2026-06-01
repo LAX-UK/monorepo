@@ -50,7 +50,63 @@ export function AdminUserKycHistoryPanel({ sessions }: { sessions: AdminKycSessi
                     <dt className="font-label text-[10px] uppercase text-on-surface-variant">ID</dt>
                     <dd>
                       {s.verifiedIdType ?? "ID"} · {s.verifiedIdCountry}
-                      {s.verifiedIdNumberLast4 ? ` ····${s.verifiedIdNumberLast4}` : ""}
+                      {s.verifiedDocState ? ` (${s.verifiedDocState})` : ""}
+                      {s.verifiedIdNumber
+                        ? ` · ${s.verifiedIdNumber}`
+                        : s.verifiedIdNumberLast4
+                          ? ` ····${s.verifiedIdNumberLast4}`
+                          : ""}
+                    </dd>
+                  </div>
+                ) : null}
+                {s.verifiedNationality || s.verifiedCitizenship ? (
+                  <div>
+                    <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                      Nationality
+                    </dt>
+                    <dd>
+                      {[s.verifiedNationality, s.verifiedCitizenship]
+                        .filter(Boolean)
+                        .filter((v, i, arr) => arr.indexOf(v) === i)
+                        .join(" · ")}
+                    </dd>
+                  </div>
+                ) : null}
+                {s.verifiedGender ? (
+                  <div>
+                    <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                      Gender
+                    </dt>
+                    <dd>{s.verifiedGender}</dd>
+                  </div>
+                ) : null}
+                {s.verifiedPlaceOfBirth ? (
+                  <div>
+                    <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                      Place of birth
+                    </dt>
+                    <dd>{s.verifiedPlaceOfBirth}</dd>
+                  </div>
+                ) : null}
+                {s.verifiedIdValidFrom || s.verifiedIdExpiry ? (
+                  <div>
+                    <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                      Document validity
+                    </dt>
+                    <dd>
+                      {s.verifiedIdValidFrom ?? "—"} → {s.verifiedIdExpiry ?? "—"}
+                    </dd>
+                  </div>
+                ) : null}
+                {s.decisionRiskScore || s.decisionIpCountry ? (
+                  <div>
+                    <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                      Risk signals
+                    </dt>
+                    <dd>
+                      {s.decisionRiskScore ? `score ${s.decisionRiskScore}` : ""}
+                      {s.decisionRiskScore && s.decisionIpCountry ? " · " : ""}
+                      {s.decisionIpCountry ? `IP ${s.decisionIpCountry}` : ""}
                     </dd>
                   </div>
                 ) : null}

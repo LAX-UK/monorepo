@@ -87,6 +87,16 @@ export type AdminKycSession = {
   verifiedIdCountry: string | null;
   verifiedIdType: string | null;
   verifiedIdExpiry: string | null;
+  verifiedGender: string | null;
+  verifiedNationality: string | null;
+  verifiedCitizenship: string | null;
+  verifiedPlaceOfBirth: string | null;
+  verifiedYearOfBirth: string | null;
+  verifiedIdNumber: string | null;
+  verifiedDocState: string | null;
+  verifiedIdValidFrom: string | null;
+  decisionRiskScore: string | null;
+  decisionIpCountry: string | null;
   createdAt: Date;
   decisionAt: Date | null;
 };

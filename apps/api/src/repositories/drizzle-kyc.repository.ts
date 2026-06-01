@@ -31,6 +31,16 @@ function rowToKyc(row: typeof kycVerification.$inferSelect): KycVerification {
     verifiedIdCountry: row.verifiedIdCountry ?? null,
     verifiedIdType: row.verifiedIdType ?? null,
     verifiedIdExpiry: row.verifiedIdExpiry ? new Date(row.verifiedIdExpiry) : null,
+    verifiedGender: row.verifiedGender ?? null,
+    verifiedNationality: row.verifiedNationality ?? null,
+    verifiedCitizenship: row.verifiedCitizenship ?? null,
+    verifiedPlaceOfBirth: row.verifiedPlaceOfBirth ?? null,
+    verifiedYearOfBirth: row.verifiedYearOfBirth ?? null,
+    verifiedIdNumber: row.verifiedIdNumber ?? null,
+    verifiedDocState: row.verifiedDocState ?? null,
+    verifiedIdValidFrom: row.verifiedIdValidFrom ? new Date(row.verifiedIdValidFrom) : null,
+    decisionRiskScore: row.decisionRiskScore ?? null,
+    decisionIpCountry: row.decisionIpCountry ?? null,
     createdAt: row.createdAt,
     decisionAt: row.decisionAt ?? null,
   };
@@ -220,6 +230,24 @@ export class DrizzleKycRepository implements IKycRepository {
         ? patch.verifiedIdExpiry.toISOString().slice(0, 10)
         : null;
     }
+    if (patch.verifiedGender !== undefined) values.verifiedGender = patch.verifiedGender;
+    if (patch.verifiedNationality !== undefined)
+      values.verifiedNationality = patch.verifiedNationality;
+    if (patch.verifiedCitizenship !== undefined)
+      values.verifiedCitizenship = patch.verifiedCitizenship;
+    if (patch.verifiedPlaceOfBirth !== undefined)
+      values.verifiedPlaceOfBirth = patch.verifiedPlaceOfBirth;
+    if (patch.verifiedYearOfBirth !== undefined)
+      values.verifiedYearOfBirth = patch.verifiedYearOfBirth;
+    if (patch.verifiedIdNumber !== undefined) values.verifiedIdNumber = patch.verifiedIdNumber;
+    if (patch.verifiedDocState !== undefined) values.verifiedDocState = patch.verifiedDocState;
+    if (patch.verifiedIdValidFrom !== undefined) {
+      values.verifiedIdValidFrom = patch.verifiedIdValidFrom
+        ? patch.verifiedIdValidFrom.toISOString().slice(0, 10)
+        : null;
+    }
+    if (patch.decisionRiskScore !== undefined) values.decisionRiskScore = patch.decisionRiskScore;
+    if (patch.decisionIpCountry !== undefined) values.decisionIpCountry = patch.decisionIpCountry;
     if (patch.decisionPayload !== undefined) values.decisionPayload = patch.decisionPayload;
     if (patch.decisionAt !== undefined) values.decisionAt = patch.decisionAt;
 

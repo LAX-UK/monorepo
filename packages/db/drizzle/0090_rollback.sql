@@ -1,0 +1,10 @@
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "decision_ip_country";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "decision_risk_score";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_id_valid_from";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_doc_state";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_id_number";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_year_of_birth";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_place_of_birth";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_citizenship";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_nationality";
+ALTER TABLE "kyc_verification" DROP COLUMN IF EXISTS "verified_gender";

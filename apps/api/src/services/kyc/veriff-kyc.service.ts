@@ -313,6 +313,9 @@ export class VeriffKycService implements IKycService {
         person: verification.person ?? null,
         document: verification.document ?? null,
         decisionTime: verification.decisionTime ?? null,
+        riskScore: (verification as Record<string, unknown>).riskScore ?? null,
+        ipCountry:
+          ((verification as Record<string, unknown>).ipCountry as string | undefined) ?? null,
       },
       payload,
     );

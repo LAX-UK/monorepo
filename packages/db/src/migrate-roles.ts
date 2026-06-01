@@ -74,6 +74,9 @@ export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
     "current_kyc_session_id",
     "kyc_retry_count",
     "kyc_verified_at",
+    "aml_hold_status",
+    "aml_hold_reason",
+    "aml_hold_at",
     "signup_persona",
     "has_seen_acting_context_tooltip",
     "pending_new_email",
@@ -273,6 +276,8 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     /** worker jobs append domain_events (archive cascade, impersonation sweeper). */
     await grantIfExists(client, "worker_app", "domain_events", "INSERT");
+    /** AML match-review projector inserts MLRO review work items (admin_review_task). */
+    await grantIfExists(client, "worker_app", "admin_review_task", "INSERT, SELECT");
     /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
     await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
     /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email

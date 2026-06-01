@@ -7,6 +7,7 @@ import {
   type CheckoutPaymentActionData,
   createCheckoutPaymentAction,
 } from "@/lib/actions/checkout";
+import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics/events";
 import {
   checkoutPaymentErrorMessage,
@@ -111,15 +112,27 @@ function PaymentCompleteBlock() {
 }
 
 function ManualReviewBlock({ reason }: { reason: ManualReviewReason | null }) {
+  const compliance = reason === "aml_hold" || reason === "source_of_funds_required";
   return (
     <output className="block rounded-xl border border-border-hairline bg-surface-container-low/80 px-6 py-8 shadow-sm sm:px-8">
       <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Finance review
+        {manualReviewQueueEyebrow(reason)}
       </p>
       <p className="mt-3 font-body text-sm leading-relaxed text-on-surface-variant">
         {manualReviewReasonCopy(reason)}
       </p>
-      <p className="mt-4 break-all font-body text-sm text-on-surface">{settlementsEmail()}</p>
+      {reason === "source_of_funds_required" ? (
+        <ul className="mt-4 list-disc space-y-1 pl-5 font-body text-sm text-on-surface-variant">
+          <li>Bank statements covering the funds used for this purchase</li>
+          <li>Proof of sale or liquidation if proceeds funded the bid</li>
+          <li>Documentation for inheritance, gift, or corporate treasury sources if applicable</li>
+        </ul>
+      ) : null}
+      <p className="mt-4 break-all font-body text-sm text-on-surface">
+        {compliance ? "Support: " : "Settlements: "}
+        {settlementsEmail()}
+        {settlementsPhone() ? ` · ${settlementsPhone()}` : ""}
+      </p>
     </output>
   );
 }
