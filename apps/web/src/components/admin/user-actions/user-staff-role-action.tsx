@@ -2,6 +2,7 @@
 
 import { adminSetUserStaffRoleResultAction } from "@/lib/actions/admin";
 import { Can } from "@/lib/auth/capabilities";
+import { USER_ROLE_MANAGEMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { type UserStaffRole, userStaffRoles } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -49,7 +50,7 @@ export function UserStaffRoleAction({ userId, defaultStaffRole }: UserStaffRoleA
   };
 
   return (
-    <Can requirement="platform.admin.full">
+    <Can requirement={USER_ROLE_MANAGEMENT_ACCESS}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Select
           value={staff}

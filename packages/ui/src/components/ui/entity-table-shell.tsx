@@ -15,9 +15,9 @@ export type EntityTableShellProps = {
   /** Saved view dropdown, column picker, export, etc. */
   toolbarMeta?: React.ReactNode;
   responsiveMode?: EntityTableResponsiveMode;
-  /** Table region (DataTable) — shown md+ when mode is auto, always when scroll */
+  /** Table region (DataTable) — shown lg+ when mode is auto, always when scroll */
   table: React.ReactNode;
-  /** Card list — shown below md when auto; always when cards */
+  /** Card list — shown below lg when auto; always when cards */
   cards?: React.ReactNode;
   density?: "comfortable" | "compact";
   className?: string;
@@ -40,28 +40,34 @@ export function EntityTableShell({
   const showAuto = responsiveMode === "auto";
 
   const pad = density === "compact" ? "py-2" : "py-3";
+  const hasToolbarContent = Boolean(search || filters || toolbarMeta);
+
+  const filterSlot =
+    filters || toolbarMeta ? (
+      <div className="flex w-full min-w-0 flex-col gap-3">
+        {filters ? (
+          <div className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+            {filters}
+          </div>
+        ) : null}
+        {toolbarMeta ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-2">{toolbarMeta}</div>
+        ) : null}
+      </div>
+    ) : undefined;
 
   return (
     <div className={cn("space-y-4", className)}>
-      <Toolbar
-        className={cn(
-          "flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between",
-          pad,
-        )}
-        search={search}
-        filters={
-          <div className="flex w-full min-w-0 flex-col gap-3">
-            {filters ? (
-              <div className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-                {filters}
-              </div>
-            ) : null}
-            {toolbarMeta ? (
-              <div className="flex min-w-0 flex-wrap items-center gap-2">{toolbarMeta}</div>
-            ) : null}
-          </div>
-        }
-      />
+      {hasToolbarContent ? (
+        <Toolbar
+          className={cn(
+            "flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between",
+            pad,
+          )}
+          search={search}
+          filters={filterSlot}
+        />
+      ) : null}
       {toolbarEnd ? (
         <div className="flex flex-wrap items-center justify-end gap-2">{toolbarEnd}</div>
       ) : null}
@@ -73,7 +79,7 @@ export function EntityTableShell({
       {responsiveMode === "scroll" ? (
         <div className={density === "compact" ? "text-sm" : ""}>
           {table}
-          <p className="mt-2 font-body text-xs text-on-surface-variant md:hidden">
+          <p className="mt-2 font-body text-xs text-on-surface-variant lg:hidden">
             Swipe horizontally to see all columns.
           </p>
         </div>
@@ -81,8 +87,8 @@ export function EntityTableShell({
 
       {showAuto ? (
         <>
-          <div className={cn("hidden md:block", density === "compact" && "text-sm")}>{table}</div>
-          {cards ? <div className="md:hidden">{cards}</div> : null}
+          <div className={cn("hidden lg:block", density === "compact" && "text-sm")}>{table}</div>
+          {cards ? <div className="lg:hidden">{cards}</div> : null}
         </>
       ) : null}
     </div>

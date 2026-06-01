@@ -1,5 +1,5 @@
-import { LookupPanelSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { LegalEntitiesListSkeleton } from "@/components/admin/people/people-list-states";
 
 export default function LegalEntitiesLoading() {
-  return <LookupPanelSkeleton />;
+  return <LegalEntitiesListSkeleton />;
 }

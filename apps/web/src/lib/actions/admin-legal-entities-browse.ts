@@ -9,11 +9,7 @@ import {
   searchAdminLegalEntitiesForPicker,
 } from "@/lib/data/http/admin.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
-import type { CapabilityRequirement } from "@auction/types";
-
-const LEGAL_ENTITY_PICKER_ACCESS: CapabilityRequirement = {
-  anyOf: ["legal_entity.read", "catalogue.write", "auction.manage", "platform.admin.full"],
-};
+import { LEGAL_ENTITY_PICKER_ACCESS } from "@/lib/navigation/staff-nav-access";
 
 export type SearchAdminLegalEntitiesBrowseInput = {
   q?: string;

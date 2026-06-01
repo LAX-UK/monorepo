@@ -54,13 +54,6 @@ export default async function AdminClientDetailPage({ params }: Props) {
   );
   const submissionsCount = submissionTotals.reduce((a, b) => a + b, 0);
 
-  const notesPlaceholder = (
-    <p className="font-body text-sm text-on-surface-variant">
-      Internal notes & tags require user_note / user_tag migrations before collaborative workflows
-      unlock.
-    </p>
-  );
-
   return (
     <AdminUserDetailShell
       user={user}
@@ -102,11 +95,6 @@ export default async function AdminClientDetailPage({ params }: Props) {
           id: "payouts",
           label: "Payments",
           content: <AdminUserPaymentsPanel payments={payments} />,
-        },
-        {
-          id: "notes",
-          label: "Notes",
-          content: notesPlaceholder,
         },
       ]}
     />

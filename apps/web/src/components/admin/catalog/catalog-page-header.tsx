@@ -71,7 +71,10 @@ export function CatalogPageHeader({
             </p>
           ) : null}
         </div>
-        {actions ? (
+        {actions && !showHeaderMobile ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+        ) : null}
+        {actions && showHeaderMobile ? (
           <div className="hidden shrink-0 flex-wrap items-center gap-2 md:flex">{actions}</div>
         ) : null}
         {showHeaderMobile ? (

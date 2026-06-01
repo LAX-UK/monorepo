@@ -1,9 +1,13 @@
 import {
+  type CapabilityRequirement,
+  USERS_DIRECTORY_ACCESS,
+  USER_MODERATION_ACCESS,
   type UserRole,
   type UserStaffRole,
   normalizeUserRole,
   normalizeUserStaffRole,
   roleHasCapability,
+  userHasAccessTo,
 } from "@auction/types";
 import { AuthzError } from "../lib/errors.js";
 import type {
@@ -16,6 +20,18 @@ import type {
   IAdminUserSuspender,
 } from "./interfaces/admin-user.js";
 
+function assertAdminAccess(
+  actorRole: string,
+  actorStaffRole: string | null | undefined,
+  requirement: CapabilityRequirement,
+): void {
+  const role = actorRole as UserRole;
+  const staff = normalizeUserStaffRole(actorStaffRole);
+  if (!userHasAccessTo(role, staff, requirement)) {
+    throw new AuthzError("Forbidden", 403);
+  }
+}
+
 export class AdminUserService {
   constructor(
     private readonly reader: IAdminUserReader,
@@ -25,15 +41,18 @@ export class AdminUserService {
     private readonly kyc?: IAdminUserKycReader,
   ) {}
 
-  list(filter: AdminUserListFilter) {
+  list(actorRole: string, actorStaffRole: string | null | undefined, filter: AdminUserListFilter) {
+    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
     return this.reader.list(filter);
   }
 
-  getById(id: string) {
+  getById(actorRole: string, actorStaffRole: string | null | undefined, id: string) {
+    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
     return this.reader.getById(id);
   }
 
-  getByIds(ids: string[]) {
+  getByIds(actorRole: string, actorStaffRole: string | null | undefined, ids: string[]) {
+    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
     return this.reader.getByIds(ids);
   }
 
@@ -92,19 +111,38 @@ export class AdminUserService {
     await this.roles.setRoleAndStaff(targetUserId, "staff", staffRole);
   }
 
-  suspend(_actorRole: string, userId: string, reason: string | null) {
+  suspend(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    reason: string | null,
+  ) {
+    assertAdminAccess(actorRole, actorStaffRole, USER_MODERATION_ACCESS);
     return this.suspender.suspend(userId, reason);
   }
 
-  unsuspend(_actorRole: string, userId: string) {
+  unsuspend(actorRole: string, actorStaffRole: string | null | undefined, userId: string) {
+    assertAdminAccess(actorRole, actorStaffRole, USER_MODERATION_ACCESS);
     return this.suspender.unsuspend(userId);
   }
 
-  activityFor(userId: string, limit: number) {
+  activityFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    limit: number,
+  ) {
+    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
     return this.activity.getRecentSessions(userId, limit);
   }
 
-  kycSessionsFor(userId: string, limit?: number): Promise<AdminKycSession[]> {
+  kycSessionsFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    limit?: number,
+  ): Promise<AdminKycSession[]> {
+    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
     if (!this.kyc) return Promise.resolve([]);
     return this.kyc.listSessionsForUser(userId, limit);
   }

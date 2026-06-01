@@ -3,6 +3,7 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { adminSuspendUserResultAction, adminUnsuspendUserResultAction } from "@/lib/actions/admin";
 import { Can } from "@/lib/auth/capabilities";
+import { USER_MODERATION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -83,5 +84,5 @@ export function UserSuspendAction({
     </>
   );
 
-  return <Can requirement="platform.admin.full">{button}</Can>;
+  return <Can requirement={USER_MODERATION_ACCESS}>{button}</Can>;
 }

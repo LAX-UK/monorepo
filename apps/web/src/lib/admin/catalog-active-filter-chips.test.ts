@@ -34,16 +34,47 @@ describe("buildArtistsActiveFilterChips", () => {
     const chips = buildArtistsActiveFilterChips({ featured: "true" }, { featured: true });
     expect(chips.some((c) => c.id === "featured")).toBe(true);
   });
+
+  it("includes department and country chips when active", () => {
+    const chips = buildArtistsActiveFilterChips(
+      { categoryId: "cat-1", country: "GB" },
+      { categoryId: "cat-1", categoryName: "Ceramics", country: "GB" },
+    );
+    expect(chips.find((c) => c.id === "categoryId")?.label).toContain("Ceramics");
+    expect(chips.find((c) => c.id === "country")?.label).toContain("GB");
+  });
 });
 
 describe("buildSalesActiveFilterChips", () => {
-  it("omits sort when owned by setup lens", () => {
+  it("humanizes status and delivery filters", () => {
     const chips = buildSalesActiveFilterChips(
-      { lens: "setup", status: "draft" },
+      { status: "draft", delivery: "online" },
       { status: "draft", deliveryMode: "online" },
     );
-    expect(chips.some((c) => c.id === "status")).toBe(true);
-    expect(chips.some((c) => c.id === "deliveryMode")).toBe(true);
+    expect(chips.find((c) => c.id === "status")?.label).toBe("Status: Draft");
+    expect(chips.find((c) => c.id === "deliveryMode")?.label).toBe("Delivery: Online");
+  });
+
+  it("includes lifecycle and sort chips when not lens-owned", () => {
+    const chips = buildSalesActiveFilterChips(
+      { lifecycle: "upcoming", sort: "startAsc" },
+      {
+        lifecycle: "upcoming",
+        sort: "startAsc",
+        activeLensId: "all",
+        lensOwnedLifecycle: false,
+      },
+    );
+    expect(chips.find((c) => c.id === "lifecycle")?.label).toContain("Upcoming");
+    expect(chips.find((c) => c.id === "sort")?.label).toContain("Starting soonest");
+  });
+
+  it("includes setup lens chip", () => {
+    const chips = buildSalesActiveFilterChips(
+      { lens: "setup", status: "draft" },
+      { status: "draft", setupLens: true, activeLensId: "setup" },
+    );
+    expect(chips.some((c) => c.id === "lens")).toBe(true);
   });
 });
 
