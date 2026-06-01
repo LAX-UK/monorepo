@@ -24,7 +24,7 @@ import type {
 } from "../../admin/admin-route-dtos.js";
 import type {
   AdminLegalEntityBrowseParams,
-  AdminLegalEntityBrowseRow,
+  AdminLegalEntityBrowseResult,
 } from "../../lib/admin-legal-entity-browse.js";
 import type { AuthzError } from "../../lib/errors.js";
 import type { LifecycleAdminOp } from "../../lib/legal-entity-lifecycle-transitions.js";
@@ -117,12 +117,16 @@ export type FinanceIssueSnapshot = {
   staleLeadOrganisationsCount: number;
 };
 
-export type { AdminLegalEntityBrowseParams, AdminLegalEntityBrowseRow };
+export type {
+  AdminLegalEntityBrowseParams,
+  AdminLegalEntityBrowseResult,
+  AdminLegalEntityBrowseRow,
+} from "../../lib/admin-legal-entity-browse.js";
 
 export interface IAdminDashboardQueryService {
   searchLegalEntitiesBrowse(
     params: AdminLegalEntityBrowseParams,
-  ): Promise<AdminLegalEntityBrowseRow[]>;
+  ): Promise<AdminLegalEntityBrowseResult>;
   getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot>;
   getOnboardingIssues(): Promise<AdminOnboardingIssues>;
   listStripeConnectRequirementEntities(): Promise<
@@ -203,9 +207,21 @@ export interface IAdminRequestLifecycleService {
 }
 
 export interface IAdminUserApplicationService {
-  list(filter: AdminUserListFilter): Promise<AdminUserListResult>;
-  getById(id: string): Promise<AdminUserDetail | null>;
-  getByIds(ids: string[]): Promise<AdminUserListRow[]>;
+  list(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    filter: AdminUserListFilter,
+  ): Promise<AdminUserListResult>;
+  getById(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    id: string,
+  ): Promise<AdminUserDetail | null>;
+  getByIds(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    ids: string[],
+  ): Promise<AdminUserListRow[]>;
   setRole(
     actorRole: string,
     actorUserId: string,
@@ -221,15 +237,32 @@ export interface IAdminUserApplicationService {
     staffRole: import("@auction/types").UserStaffRole | null,
     actorStaffRole?: string | null,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }>;
-  suspend(actorRole: string, userId: string, reason: string | null): Promise<void>;
-  unsuspend(actorRole: string, userId: string): Promise<void>;
-  activityFor(userId: string, limit: number): Promise<AdminActivityEntry[]>;
+  suspend(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    reason: string | null,
+  ): Promise<void>;
+  unsuspend(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+  ): Promise<void>;
+  activityFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    limit: number,
+  ): Promise<AdminActivityEntry[]>;
   kycSessionsFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
     userId: string,
     limit?: number,
   ): Promise<import("./admin-user.js").AdminKycSession[]>;
   bulkSuspendOrUnsuspend(input: {
     actorRole: string;
+    actorStaffRole: string | null | undefined;
     ids: string[];
     op: "suspend" | "unsuspend";
     reason: string | null | undefined;

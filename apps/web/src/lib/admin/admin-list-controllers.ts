@@ -4,6 +4,10 @@ import {
   sliceAdminListWindow,
 } from "@/lib/admin/admin-list-params";
 import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
+import {
+  type LegalEntityListFilters,
+  parseLegalEntityListFilters,
+} from "@/lib/admin/legal-entity-list-query";
 import { type UsersListFilters, parseUsersListFilters } from "@/lib/admin/users-list-query";
 import type { ListLotsParams } from "@/lib/data/contracts";
 import {
@@ -18,6 +22,7 @@ import {
   getAdminConditionReportRequests,
   getAdminConveyorPipeline,
   getAdminFinanceDisputeDomainEvents,
+  getAdminLegalEntityList,
   getAdminLotFulfilmentList,
   getAdminLotList,
   getAdminLotsByIds,
@@ -473,11 +478,14 @@ export const disputesDomainEventsListController: IAdminListController<
     return { ...base, limit };
   },
   async fetch(q) {
-    const rows = await getAdminFinanceDisputeDomainEvents({
-      limit: q.limit,
+    const fetchLimit = q.limit + 1;
+    const fetched = await getAdminFinanceDisputeDomainEvents({
+      limit: fetchLimit,
       offset: q.offset,
     });
-    return { rows, offset: q.offset, limit: q.limit };
+    const hasNextPage = fetched.length > q.limit;
+    const rows = hasNextPage ? fetched.slice(0, q.limit) : fetched;
+    return { rows, offset: q.offset, limit: q.limit, hasNextPage };
   },
 };
 
@@ -585,13 +593,16 @@ export const payoutsListController: IAdminListController<AdminPayoutRow, Payouts
     return { ...base, status, legalEntityId, limit };
   },
   async fetch(q) {
+    const fetchLimit = q.limit + 1;
     const listParams = {
-      limit: q.limit,
+      limit: fetchLimit,
       offset: q.offset,
       ...(q.status ? { status: q.status } : {}),
       ...(q.legalEntityId ? { legalEntityId: q.legalEntityId } : {}),
     };
-    const rows = await getAdminPayoutList(listParams);
+    const fetched = await getAdminPayoutList(listParams);
+    const hasNextPage = fetched.length > q.limit;
+    const rows = hasNextPage ? fetched.slice(0, q.limit) : fetched;
 
     const needsDedicatedSummary = q.offset > 0 || q.limit !== 100;
     const rowsForSummary = needsDedicatedSummary
@@ -603,8 +614,40 @@ export const payoutsListController: IAdminListController<AdminPayoutRow, Payouts
         })
       : rows;
 
-    return { rows, offset: q.offset, limit: q.limit, rowsForSummary };
+    return { rows, offset: q.offset, limit: q.limit, rowsForSummary, hasNextPage };
   },
 };
 
 export { paymentStatusesForChip };
+
+export type LegalEntitiesListQuery = AdminListQueryBase & LegalEntityListFilters;
+
+export const legalEntitiesListController: IAdminListController<
+  Awaited<ReturnType<typeof getAdminLegalEntityList>>["rows"][number],
+  LegalEntitiesListQuery
+> = {
+  id: "legal-entities",
+  parseQuery(sp) {
+    const base = parseListSearchParams(sp);
+    const filters = parseLegalEntityListFilters(sp);
+    const query: LegalEntitiesListQuery = {
+      limit: Math.min(50, base.limit),
+      offset: base.offset,
+      ...filters,
+    };
+    if (filters.q) query.q = filters.q;
+    else if (base.q) query.q = base.q;
+    return query;
+  },
+  async fetch(q) {
+    const data = await getAdminLegalEntityList({
+      limit: q.limit,
+      offset: q.offset,
+      ...(q.q ? { q: q.q } : {}),
+      ...(q.status ? { status: q.status } : {}),
+      ...(q.kind ? { kind: q.kind } : {}),
+      ...(q.stripeLens ? { stripeDue: true } : {}),
+    });
+    return { rows: data.rows, total: data.total, offset: q.offset, limit: q.limit };
+  },
+};

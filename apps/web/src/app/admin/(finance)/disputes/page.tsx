@@ -1,11 +1,20 @@
 import { AdminDisputesDomainEventsBoard } from "@/components/admin/admin-disputes-domain-events-board";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListPage } from "@/components/admin/admin-list-page";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { disputesDomainEventsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { PaginationFooter } from "@auction/ui";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Payment disputes",
+  "Stripe dispute-related domain events.",
+);
 
 export default async function AdminDisputesPage({
   searchParams,
@@ -13,22 +22,19 @@ export default async function AdminDisputesPage({
   searchParams: Promise<{ limit?: string; offset?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const query = disputesDomainEventsListController.parseQuery(sp);
 
   let rows: Awaited<ReturnType<typeof disputesDomainEventsListController.fetch>>["rows"] = [];
+  let hasNextPage = false;
   let loadError: string | null = null;
   try {
     const result = await disputesDomainEventsListController.fetch(query);
     rows = result.rows;
+    hasNextPage = result.hasNextPage ?? false;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load dispute events.";
   }
-
-  const errorAlert =
-    error || loadError ? (
-      <AdminListAlert title="Could not load">{loadError ?? error}</AdminListAlert>
-    ) : null;
 
   const meta = (
     <p className="font-body text-sm text-on-surface-variant">
@@ -40,16 +46,8 @@ export default async function AdminDisputesPage({
     </p>
   );
 
-  const empty =
-    !loadError && rows.length === 0 ? (
-      <AdminEmptyState title="No disputes" description="No dispute events recorded yet." />
-    ) : null;
-
-  const view =
-    !loadError && rows.length > 0 ? <AdminDisputesDomainEventsBoard rows={rows} /> : null;
-
   const pagination =
-    !loadError && (query.offset > 0 || rows.length === query.limit) ? (
+    !loadError && (query.offset > 0 || hasNextPage) ? (
       <PaginationFooter
         offset={query.offset}
         limit={query.limit}
@@ -62,7 +60,7 @@ export default async function AdminDisputesPage({
             : null
         }
         nextHref={
-          rows.length === query.limit
+          hasNextPage
             ? buildListHref("/admin/disputes", sp, { offset: query.offset + query.limit })
             : null
         }
@@ -70,13 +68,37 @@ export default async function AdminDisputesPage({
     ) : null;
 
   return (
-    <AdminListPage
+    <AdminListShell
       title="Payment disputes"
       description="Stripe dispute-related domain events (opened, funds withdrawn, closed). Payloads are redacted per audit policy."
-      errorAlert={errorAlert}
       meta={meta}
-      view={view}
-      empty={empty}
+      showCommandPaletteHint
+      mobileSummary={
+        !loadError ? (
+          <CatalogListMobileSummary
+            metrics={[
+              { id: "page", label: "On this page", value: String(rows.length) },
+              {
+                id: "offset",
+                label: "Offset",
+                value: String(query.offset),
+              },
+            ]}
+          />
+        ) : null
+      }
+      errorAlert={
+        error || loadError ? (
+          <AdminListAlert title="Could not load">{loadError ?? error}</AdminListAlert>
+        ) : null
+      }
+      wrapView={false}
+      view={!loadError && rows.length > 0 ? <AdminDisputesDomainEventsBoard rows={rows} /> : null}
+      empty={
+        !loadError && rows.length === 0 ? (
+          <AdminEmptyState title="No disputes" description="No dispute events recorded yet." />
+        ) : null
+      }
       pagination={pagination}
     />
   );

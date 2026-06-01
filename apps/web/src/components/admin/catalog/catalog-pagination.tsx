@@ -37,7 +37,7 @@ export function CatalogPagination({
   return (
     <>
       {showMobileNav || total !== undefined ? (
-        <div className="mt-6 space-y-3 md:hidden">
+        <div className="mt-6 space-y-3 lg:hidden">
           <p className="font-body text-sm text-on-surface-variant" aria-live="polite">
             {range}
           </p>
@@ -59,7 +59,7 @@ export function CatalogPagination({
           </div>
         </div>
       ) : null}
-      <div className="mt-6 hidden md:block">
+      <div className="mt-6 hidden lg:block">
         <PaginationFooter
           offset={offset}
           limit={limit}

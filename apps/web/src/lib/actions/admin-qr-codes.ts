@@ -3,7 +3,7 @@
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
-import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { QR_CODES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import {
   adminQrCodeCreateSchema,
@@ -55,7 +55,7 @@ export async function adminLoadQrCodeDialogResultAction(
   entityId: string,
 ): Promise<ActionResult<AdminQrCodeDialogData>> {
   return instrumentServerAction("adminLoadQrCodeDialogResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+    const denied = await denyUnlessAdminCapability(QR_CODES_ACCESS);
     if (denied) return denied;
 
     const parsed = adminQrCodeEntityQuerySchema.safeParse({ entityType, entityId });
@@ -74,7 +74,7 @@ export async function adminEnsureLotQrCodesForPrintResultAction(
   lots: Array<{ id: string; title: string; lotNumber: number | null }>,
 ): Promise<ActionResult<AdminLotQrPrintRow[]>> {
   return instrumentServerAction("adminEnsureLotQrCodesForPrintResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+    const denied = await denyUnlessAdminCapability(QR_CODES_ACCESS);
     if (denied) return denied;
 
     const parsed = bulkPrintLotsSchema.safeParse(lots);
@@ -100,7 +100,7 @@ export async function adminRegenerateQrCodeResultAction(
   entityId: string,
 ): Promise<ActionResult<AdminQrCodeItem>> {
   return instrumentServerAction("adminRegenerateQrCodeResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+    const denied = await denyUnlessAdminCapability(QR_CODES_ACCESS);
     if (denied) return denied;
 
     const parsed = adminQrCodeRegenerateSchema.safeParse({ entityType, entityId });

@@ -1,5 +1,13 @@
-import { AdminListPageSkeleton } from "@/components/admin/admin-loading-skeletons";
+import { FinanceListPageSkeleton } from "@/components/admin/finance/finance-list-states";
 
-export default function AdminPaymentsLoading() {
-  return <AdminListPageSkeleton title="Payments" kpiTiles={4} />;
+export default function PaymentsLoading() {
+  return (
+    <FinanceListPageSkeleton
+      title="Payments"
+      description="Loading payments…"
+      kpiTiles={4}
+      tableRows={10}
+      tableColumns={6}
+    />
+  );
 }

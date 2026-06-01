@@ -1,9 +1,5 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { FinancePanelPageSkeleton } from "@/components/admin/finance/finance-list-states";
 
-export default function Loading() {
-  return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8">
-      <PageSkeleton variant="table" />
-    </div>
-  );
+export default function PayoutSettlementLoading() {
+  return <FinancePanelPageSkeleton title="Run settlement" description="Loading settlement…" />;
 }
