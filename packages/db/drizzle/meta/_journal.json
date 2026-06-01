@@ -610,6 +610,41 @@
       "when": 1784400000000,
       "tag": "0089_data_exports",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1784500000000,
+      "tag": "0090_kyc_extraction_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1784600000000,
+      "tag": "0091_aml_watchlist_screening",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1784700000000,
+      "tag": "0092_admin_review_task_aml_kinds",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1784800000000,
+      "tag": "0093_source_of_funds",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1784900000000,
+      "tag": "0094_aml_triage",
+      "breakpoints": true
     }
   ]
 }

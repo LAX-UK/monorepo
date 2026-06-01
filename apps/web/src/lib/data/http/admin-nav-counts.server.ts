@@ -19,6 +19,10 @@ import {
   getLotWithdrawalRequests,
   loadAdminLotFulfilmentQueue,
 } from "@/lib/data/http/admin.server";
+import {
+  getAdminAmlScreeningsPending,
+  getAdminSourceOfFundsPending,
+} from "@/lib/data/http/compliance.server";
 import { getAdminInvitations } from "@/lib/data/http/invitations.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
 import { cache } from "react";
@@ -37,6 +41,8 @@ export type AdminNavCountFetchers = {
   getInvitationsPending: () => Promise<number>;
   getDraftSalesNeedingSetup: () => Promise<number>;
   getDraftLotsMissingPhotos: () => Promise<number>;
+  getAmlScreeningsPending: () => Promise<number>;
+  getSourceOfFundsPending: () => Promise<number>;
 };
 
 const defaultFetchers: AdminNavCountFetchers = {
@@ -118,6 +124,14 @@ const defaultFetchers: AdminNavCountFetchers = {
     const rows = await getAdminLotList({ status: "draft", needsPhotos: true, limit: 200 });
     return rows.length;
   },
+  getAmlScreeningsPending: async () => {
+    const rows = await getAdminAmlScreeningsPending(200);
+    return rows.length;
+  },
+  getSourceOfFundsPending: async () => {
+    const rows = await getAdminSourceOfFundsPending(200);
+    return rows.length;
+  },
 };
 
 async function loadAdminNavCounts(
@@ -137,6 +151,8 @@ async function loadAdminNavCounts(
     invitationsPending,
     draftSalesNeedingSetup,
     draftLotsMissingPhotos,
+    amlScreeningsPending,
+    sourceOfFundsPending,
   ] = await Promise.all([
     fetchers.getSubmissionsPending().catch(() => 0),
     fetchers.getArtistsPending().catch(() => 0),
@@ -151,6 +167,8 @@ async function loadAdminNavCounts(
     fetchers.getInvitationsPending().catch(() => 0),
     fetchers.getDraftSalesNeedingSetup().catch(() => 0),
     fetchers.getDraftLotsMissingPhotos().catch(() => 0),
+    fetchers.getAmlScreeningsPending().catch(() => 0),
+    fetchers.getSourceOfFundsPending().catch(() => 0),
   ]);
 
   return {
@@ -167,6 +185,8 @@ async function loadAdminNavCounts(
     invitationsPending,
     draftSalesNeedingSetup,
     draftLotsMissingPhotos,
+    amlScreeningsPending,
+    sourceOfFundsPending,
   };
 }
 

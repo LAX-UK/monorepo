@@ -589,11 +589,12 @@ export const payoutsListController: IAdminListController<AdminPayoutRow, Payouts
     const base = parseListSearchParams(sp);
     const status = parsePayoutListStatus(firstString(sp.status));
     const legalEntityId = firstString(sp.legalEntityId)?.trim() || undefined;
-    const limit = base.limit === 50 ? 100 : Math.min(200, base.limit);
+    // GET /admin/payouts rejects limit > 100; fetch uses limit+1 for hasNextPage.
+    const limit = base.limit === 50 ? 99 : Math.min(99, base.limit);
     return { ...base, status, legalEntityId, limit };
   },
   async fetch(q) {
-    const fetchLimit = q.limit + 1;
+    const fetchLimit = Math.min(q.limit + 1, 100);
     const listParams = {
       limit: fetchLimit,
       offset: q.offset,
@@ -604,15 +605,15 @@ export const payoutsListController: IAdminListController<AdminPayoutRow, Payouts
     const hasNextPage = fetched.length > q.limit;
     const rows = hasNextPage ? fetched.slice(0, q.limit) : fetched;
 
-    const needsDedicatedSummary = q.offset > 0 || q.limit !== 100;
-    const rowsForSummary = needsDedicatedSummary
-      ? await getAdminPayoutList({
-          limit: 100,
-          offset: 0,
-          ...(q.status ? { status: q.status } : {}),
-          ...(q.legalEntityId ? { legalEntityId: q.legalEntityId } : {}),
-        })
-      : rows;
+    const rowsForSummary =
+      q.offset > 0
+        ? await getAdminPayoutList({
+            limit: 100,
+            offset: 0,
+            ...(q.status ? { status: q.status } : {}),
+            ...(q.legalEntityId ? { legalEntityId: q.legalEntityId } : {}),
+          })
+        : fetched.slice(0, 100);
 
     return { rows, offset: q.offset, limit: q.limit, rowsForSummary, hasNextPage };
   },

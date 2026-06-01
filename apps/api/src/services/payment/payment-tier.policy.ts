@@ -6,7 +6,9 @@ export type PaymentTierKind = "card" | "bank_transfer" | "blocked" | "invalid_am
 export type ManualReviewReason =
   | "seller_archived"
   | "high_value"
-  | "seller_archived_and_high_value";
+  | "seller_archived_and_high_value"
+  | "aml_hold"
+  | "source_of_funds_required";
 
 export type PaymentTierLimits = {
   cardMaxPence: number;

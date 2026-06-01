@@ -160,6 +160,16 @@ export type KycVerification = {
   verifiedIdCountry: string | null;
   verifiedIdType: string | null;
   verifiedIdExpiry: Date | null;
+  verifiedGender: string | null;
+  verifiedNationality: string | null;
+  verifiedCitizenship: string | null;
+  verifiedPlaceOfBirth: string | null;
+  verifiedYearOfBirth: string | null;
+  verifiedIdNumber: string | null;
+  verifiedDocState: string | null;
+  verifiedIdValidFrom: Date | null;
+  decisionRiskScore: string | null;
+  decisionIpCountry: string | null;
   createdAt: Date;
   decisionAt: Date | null;
 };

@@ -14,6 +14,16 @@ export type KycVerifiedFields = {
   verifiedIdCountry: string | null;
   verifiedIdType: string | null;
   verifiedIdExpiry: Date | null;
+  verifiedGender: string | null;
+  verifiedNationality: string | null;
+  verifiedCitizenship: string | null;
+  verifiedPlaceOfBirth: string | null;
+  verifiedYearOfBirth: string | null;
+  verifiedIdNumber: string | null;
+  verifiedDocState: string | null;
+  verifiedIdValidFrom: Date | null;
+  decisionRiskScore: string | null;
+  decisionIpCountry: string | null;
 };
 
 export type KycDecisionApplyInput = {
@@ -75,6 +85,16 @@ export class KycDecisionProcessor {
           verifiedIdCountry: input.verifiedFields.verifiedIdCountry,
           verifiedIdType: input.verifiedFields.verifiedIdType,
           verifiedIdExpiry: input.verifiedFields.verifiedIdExpiry,
+          verifiedGender: input.verifiedFields.verifiedGender,
+          verifiedNationality: input.verifiedFields.verifiedNationality,
+          verifiedCitizenship: input.verifiedFields.verifiedCitizenship,
+          verifiedPlaceOfBirth: input.verifiedFields.verifiedPlaceOfBirth,
+          verifiedYearOfBirth: input.verifiedFields.verifiedYearOfBirth,
+          verifiedIdNumber: input.verifiedFields.verifiedIdNumber,
+          verifiedDocState: input.verifiedFields.verifiedDocState,
+          verifiedIdValidFrom: input.verifiedFields.verifiedIdValidFrom,
+          decisionRiskScore: input.verifiedFields.decisionRiskScore,
+          decisionIpCountry: input.verifiedFields.decisionIpCountry,
         },
         conn ?? undefined,
       );

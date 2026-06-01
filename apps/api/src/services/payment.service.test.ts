@@ -3,6 +3,7 @@ import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
+import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
@@ -611,6 +612,165 @@ describe("PaymentService", () => {
         payload: expect.objectContaining({ reason: "seller_archived" }),
       }),
     );
+  });
+
+  it("preserves the compliance reason on an existing manual-review payment", async () => {
+    const existingReview = {
+      ...payment,
+      id: "pay-review",
+      status: "requires_manual_review",
+    } as PaymentRecord;
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(existingReview),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+    } as unknown as IPaymentWriteRepository;
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
+    };
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      { findById: vi.fn() } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+      settlementCompliance,
+    );
+
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.manualReviewReason).toBe("source_of_funds_required");
+    }
+    expect(settlementCompliance.evaluate).toHaveBeenCalled();
+  });
+
+  it("blocks release for capture when settlement compliance holds (AML)", async () => {
+    const manualReviewPayment = {
+      ...payment,
+      id: "pay-aml-hold",
+      status: "requires_manual_review",
+      buyerId: "buyer-1",
+    } as PaymentRecord;
+    const payments: IPaymentWriteRepository = {
+      findById: vi.fn().mockResolvedValue(manualReviewPayment),
+      updateStatus: vi.fn(),
+    } as unknown as IPaymentWriteRepository;
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+    };
+    const service = new PaymentService(
+      { findById: vi.fn() } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {} as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+      settlementCompliance,
+    );
+
+    const result = await service.releaseManualReviewForCapture(
+      "finance-1",
+      "staff",
+      manualReviewPayment.id,
+      "finance_ops",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status).toBe(403);
+      expect(result.error.code).toBe("payment_release_blocked_aml_hold");
+    }
+    expect(payments.updateStatus).not.toHaveBeenCalled();
+    expect(settlementCompliance.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ excludePaymentId: "pay-aml-hold" }),
+    );
+  });
+
+  it("blocks release for capture when source-of-funds is required", async () => {
+    const manualReviewPayment = {
+      ...payment,
+      status: "requires_manual_review",
+      buyerId: "buyer-1",
+    } as PaymentRecord;
+    const payments: IPaymentWriteRepository = {
+      findById: vi.fn().mockResolvedValue(manualReviewPayment),
+      updateStatus: vi.fn(),
+    } as unknown as IPaymentWriteRepository;
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
+    };
+    const service = new PaymentService(
+      { findById: vi.fn() } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {} as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+      settlementCompliance,
+    );
+
+    const result = await service.releaseManualReviewForCapture(
+      "finance-1",
+      "staff",
+      payment.id,
+      "finance_ops",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("payment_release_blocked_source_of_funds");
+    }
+    expect(payments.updateStatus).not.toHaveBeenCalled();
   });
 
   it("refunds a manual-review payment even when seller is archived", async () => {

@@ -113,6 +113,12 @@ This catalog is the contract between event producers and projectors. When you ad
 | `lot.voided` | apps/api | lot-voided-anti-shilling worker | Anti-shilling at close | `{reason}` |
 | `lot.withdrawal_requested` | apps/api | lot_lifecycle_snapshot projector | Seller withdrawal task opened | `{sellerLegalEntityId}` |
 | `lot.returned_to_inventory` | apps/api | lot_lifecycle_snapshot projector | Staff return-to-inventory transition | `{fromStatus, lastSaleId, reason}` |
+| `aml.screening_evaluated` | apps/api (AmlService) | — (audit/SAR trail) | Veriff watchlist-screening webhook evaluated, or MLRO review recorded | `{screeningId, userId, providerSessionId, outcome, matchStatus, monitorStatus, totalHits, categories, reasons}` |
+| `aml.match_flagged` | apps/api (AmlService) | `aml_match_review` projector (creates `aml_screening_review` task + enqueues MLRO escalation email) | Screening outcome is `review` or `block` | `{screeningId, userId, providerSessionId, outcome, matchStatus, monitorStatus, totalHits, categories, reasons}` |
+| `source_of_funds.required` | apps/api (SourceOfFundsService) | `source_of_funds_review` projector (creates `source_of_funds_review` task + enqueues MLRO escalation email) | SoF threshold/linked-tx crossed without a valid approved case | `{sourceOfFundsId, userId, trigger, thresholdAmount, exposureAmount, currency}` |
+| `source_of_funds.reviewed` | apps/api (SourceOfFundsService) | — (audit trail) | MLRO/finance approve or reject a SoF case | `{sourceOfFundsId, userId, status, trigger}` |
+
+The AML / Source-of-Funds events are **live** (the status note above predates them): they are published in the same transaction as the screening/SoF state change, and consumed by the `aml_match_review` and `source_of_funds_review` worker projectors. Payloads carry only operational reference fields — names/hits live in the access-restricted `kyc_watchlist_screening` / `source_of_funds` records — and the operational fields are allowlisted in `domain-event-pii.ts`.
 
 Admin bulk operations added in the dashboard UX pass are synchronous admin APIs,
 not domain-event producers today:

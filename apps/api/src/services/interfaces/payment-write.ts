@@ -80,4 +80,6 @@ export interface IPaymentWriteRepository {
     id: string,
     stripeRefundId: string | null,
   ): Promise<boolean>;
+  /** Atomically move a payment from manual review to pending (finance release). */
+  applyReleasedFromManualReviewInTransaction(tx: Database, id: string): Promise<boolean>;
 }
