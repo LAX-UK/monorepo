@@ -50,11 +50,7 @@ export function LaxLogo({
         : "max-h-9 max-w-[140px] sm:max-h-11 sm:max-w-[201px]";
   const shellClassName = cn("flex flex-col", variant === "auth" && "items-center", className);
   const isAboveFold = variant === "header" || variant === "auth";
-  const imageClassName = cn(
-    "h-auto w-auto motion-reduce:transition-none",
-    variant !== "header" && "dark:brightness-0 dark:invert",
-    imgMax,
-  );
+  const imageClassName = cn("lax-logo-img h-auto w-auto motion-reduce:transition-none", imgMax);
 
   if (src) {
     return (
