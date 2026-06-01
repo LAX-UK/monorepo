@@ -15,6 +15,10 @@ import {
   legalEntityToConnectFields,
   resolveSellerConnectPresentation,
 } from "@/lib/connect/resolve-seller-connect-presentation";
+import {
+  loadSellerComplianceChrome,
+  shouldShowConnectPageAlert,
+} from "@/lib/connect/seller-compliance-chrome.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   buildSellerPayoutFailure,
@@ -49,6 +53,8 @@ export default async function SellerPayoutsPage() {
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
   const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
+
+  const complianceChrome = await loadSellerComplianceChrome(user.id);
 
   const c = await getServerDataContainer();
   let payouts: Payout[] = [];
@@ -86,8 +92,9 @@ export default async function SellerPayoutsPage() {
 
   const workspaceMeta = await readClientWorkspacePageMeta();
 
+  const showConnectAlert = shouldShowConnectPageAlert(complianceChrome, connectPresentation);
   const connectBanner =
-    connectPresentation.showBanner && connectPresentation.bannerCopy ? (
+    showConnectAlert && connectPresentation.bannerCopy ? (
       <Alert>
         <AlertTitle>{connectPresentation.bannerCopy.title}</AlertTitle>
         <AlertDescription className="flex flex-wrap items-center gap-3">
