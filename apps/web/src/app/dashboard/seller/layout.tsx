@@ -1,10 +1,7 @@
-import {
-  DashboardComplianceStrip,
-  DashboardComplianceStripSkeleton,
-} from "@/components/dashboard/dashboard-compliance-strip";
+import { ComplianceStatusStrip } from "@/components/dashboard/overview/compliance-status-strip";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { loadSellerComplianceChrome } from "@/lib/connect/seller-compliance-chrome.server";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 
 export default async function SellerDashboardLayout({ children }: { children: ReactNode }) {
   const user = await requireAuthenticatedUser({
@@ -12,11 +9,19 @@ export default async function SellerDashboardLayout({ children }: { children: Re
     loginNext: "/dashboard/seller",
   });
 
+  const chrome = await loadSellerComplianceChrome(user.id);
+
   return (
     <div className="space-y-8">
-      <Suspense fallback={<DashboardComplianceStripSkeleton />}>
-        <DashboardComplianceStrip user={user} loginNext="/dashboard/seller" includePayoutSetup />
-      </Suspense>
+      {chrome.showStrip ? (
+        <ComplianceStatusStrip
+          user={user}
+          kyc={chrome.kyc}
+          addressesCount={chrome.addressesCount}
+          hideIdentityPill={chrome.kyc?.requiresKyc === true}
+          payoutSetup={chrome.payoutSetup}
+        />
+      ) : null}
       {children}
     </div>
   );

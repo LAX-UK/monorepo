@@ -96,9 +96,11 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
     ...filteredHint,
   }));
 
+  const showToolbar =
+    Boolean(sellerEntityId) && !loadFailure && (allDisplay.length > 0 || hasActiveFilters);
+
   return (
     <DashboardListPage
-      className="screen w-full"
       meta={workspaceMeta}
       title="Items in sale"
       description="Lots from your submissions across every catalogue. Status, reserve, and end time at a glance — bidder identities are never shown."
@@ -111,11 +113,11 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         </>
       }
       errorAlert={loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-      toolbar={!loadFailure ? <InSaleListToolbar filters={filters} /> : null}
     >
       {!loadFailure && allDisplay.length > 0 ? (
         <KpiRow track="selling" columns={4} tiles={kpiTiles} />
       ) : null}
+      {showToolbar ? <InSaleListToolbar filters={filters} /> : null}
       {!loadFailure ? (
         <InSaleBoard filters={filters} allDisplay={allDisplay} filtered={filtered} />
       ) : null}

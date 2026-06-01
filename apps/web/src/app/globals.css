@@ -1148,11 +1148,12 @@ html.dark {
   border-color: color-mix(in srgb, var(--color-hero-foreground) 45%, transparent);
 }
 
-[data-header-tone="on-dark"] .site-header-logo img {
+/* LAX wordmark (navy SVG): invert on dark surfaces and transparent hero headers */
+[data-header-tone="on-dark"] .lax-logo-img {
   filter: brightness(0) invert(1);
 }
 
-.dark [data-header-tone="on-light"] .site-header-logo img {
+.dark .lax-logo-img {
   filter: brightness(0) invert(1);
 }
 
