@@ -26,7 +26,6 @@ describe("QR code helpers", () => {
     const service = new QrCodeService(
       {} as never,
       {} as never,
-      "https://api.example.test",
       "https://www.example.test",
       undefined,
       { add } as never,
@@ -91,12 +90,7 @@ describe("QR code helpers", () => {
       transaction: vi.fn(async (fn) => fn(tx)),
     };
     const redis = { incr: vi.fn().mockResolvedValue(103n), del: vi.fn().mockResolvedValue(1) };
-    const service = new QrCodeService(
-      db as never,
-      redis as never,
-      "https://api.example.test",
-      "https://www.example.test",
-    );
+    const service = new QrCodeService(db as never, redis as never, "https://www.example.test");
 
     const result = await service.regenerateDefault({
       entityType: "lot",

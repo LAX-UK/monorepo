@@ -87,7 +87,6 @@ export class QrCodeService {
   constructor(
     private readonly db: Database,
     private readonly redis: Redis,
-    private readonly apiPublicUrl: string,
     private readonly webOrigin: string,
     private readonly logger?: AppLogger,
     private readonly scanQueue?: Queue<QrCodeScanJobPayload>,
@@ -374,7 +373,7 @@ export class QrCodeService {
     return {
       id: row.id,
       shortCode: row.shortCode,
-      shortUrl: `${this.apiPublicUrl.replace(/\/$/, "")}/q/${row.shortCode}`,
+      shortUrl: `${this.webOrigin.replace(/\/$/, "")}/q/${row.shortCode}`,
       entityType: row.entityType,
       entityId: row.entityId,
       destinationUrl: this.absoluteWebUrl(destinationPath),

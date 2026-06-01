@@ -41,3 +41,13 @@ variable "components" {
   }))
   sensitive = true
 }
+
+variable "path_routes" {
+  type = list(object({
+    authority   = string
+    path_prefix = string
+    component   = string
+  }))
+  default     = []
+  description = "Path-scoped ingress rules evaluated before per-domain catch-all rules (e.g. lax.bid/q -> api)."
+}
