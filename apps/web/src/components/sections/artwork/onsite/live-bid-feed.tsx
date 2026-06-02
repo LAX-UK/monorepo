@@ -90,14 +90,14 @@ export function LiveBidFeed({
   return (
     <div className={cn("flex w-full flex-col overflow-hidden lg:max-w-[440px]", className)}>
       <div className="h-4 shrink-0 rounded-t-lg bg-gradient-to-r from-surface-container-high to-surface-container-low dark:from-surface-container-high dark:to-surface-container-low" />
-      <div className="flex flex-col gap-4 rounded-b-lg border-b border-l border-r border-[#F1F1F3] bg-surface-container-lowest p-4 dark:border-outline-variant/30 dark:bg-surface-container-low/40">
+      <div className="flex flex-col gap-4 rounded-b-lg border-b border-l border-r border-outline-variant/30 bg-surface-container-lowest p-4 dark:bg-surface-container-low/40">
         {showHeader ? (
           <div className="flex min-h-6 flex-wrap items-center gap-2">
-            <h2 className="flex-1 font-body text-xl font-medium text-[#050505] dark:text-on-surface">
+            <h2 className="flex-1 font-body text-xl font-medium text-on-surface">
               {headerMode === "watching" ? watchingHeader.title : "Live Feed"}
             </h2>
             {headerMode === "watching" ? (
-              <div className="flex items-center gap-2 font-body text-xs font-medium text-[#191919] dark:text-on-surface-variant">
+              <div className="flex items-center gap-2 font-body text-xs font-medium text-on-surface-variant">
                 <span
                   className={cn(
                     "size-2 shrink-0 rounded-full",
@@ -110,8 +110,8 @@ export function LiveBidFeed({
               </div>
             ) : (
               <div className="flex items-center gap-2 rounded-full px-2 py-0.5">
-                <Gavel className="size-4 text-[#191919] dark:text-on-surface-variant" aria-hidden />
-                <span className="font-body text-xs font-medium text-[#191919] dark:text-on-surface-variant">
+                <Gavel className="size-4 text-on-surface-variant" aria-hidden />
+                <span className="font-body text-xs font-medium text-on-surface-variant">
                   {bidCountLabel}
                 </span>
               </div>

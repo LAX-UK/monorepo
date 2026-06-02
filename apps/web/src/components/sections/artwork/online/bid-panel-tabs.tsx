@@ -65,7 +65,7 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
     <div className={cn("flex w-full flex-col gap-4", className)}>
       <div
         className={cn(
-          "mx-auto flex w-full max-w-full gap-2 rounded-full border border-[rgba(209,209,209,0.80)] bg-[rgba(232,232,232,0.30)] p-2 dark:border-outline-variant/50 dark:bg-surface-container-high/30 sm:max-w-[340px]",
+          "mx-auto flex w-full max-w-full gap-2 rounded-full border border-outline-variant/50 bg-surface-container-high/30 p-2 sm:max-w-[340px]",
         )}
         role="tablist"
         aria-label="Lot bidding panel"
@@ -89,9 +89,7 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
               onClick={() => select(id)}
               className={cn(
                 "h-6 flex-1 rounded-full px-2 font-body text-xs font-bold uppercase leading-4 tracking-wide transition-colors motion-reduce:transition-none",
-                selected
-                  ? "bg-[#050505] text-[#F1F1F3] dark:bg-on-surface dark:text-background"
-                  : "bg-transparent text-[#050505] dark:text-on-surface",
+                selected ? "bg-on-surface text-background" : "bg-transparent text-on-surface",
               )}
             >
               {label}

@@ -57,23 +57,23 @@ export function BidStepper({
         aria-label="Decrease bid"
         disabled={disabled || atMin}
         onClick={dec}
-        className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-[#757575] transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#050505]/20 disabled:opacity-40 dark:outline-outline-variant dark:focus-visible:ring-white/20"
+        className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-outline-variant transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface/20 disabled:opacity-40 dark:focus-visible:ring-white/20"
       >
-        <Minus className="size-5 text-[#050505] dark:text-on-surface" aria-hidden />
+        <Minus className="size-5 text-on-surface" aria-hidden />
       </Button>
       <div
-        className="flex min-h-14 flex-1 flex-col items-center justify-center gap-2 rounded-[4px] px-8 py-3 outline outline-1 outline-offset-[-1px] outline-[#757575] dark:outline-outline-variant"
+        className="flex min-h-14 flex-1 flex-col items-center justify-center gap-2 rounded-[4px] px-8 py-3 outline outline-1 outline-offset-[-1px] outline-outline-variant"
         aria-live="polite"
         aria-atomic="true"
       >
         <span
           id={`${liveId}-label`}
-          className="text-center font-body text-[10px] font-semibold uppercase leading-[10px] text-[#757575] dark:text-on-surface-variant"
+          className="text-center font-body text-[10px] font-semibold uppercase leading-[10px] text-on-surface-variant"
         >
           Your amount
         </span>
         <span
-          className="text-center font-body text-base font-semibold tracking-wide text-[#050505] dark:text-on-surface"
+          className="text-center font-body text-base font-semibold tracking-wide text-on-surface"
           aria-labelledby={`${liveId}-label`}
         >
           {display}
@@ -85,9 +85,9 @@ export function BidStepper({
         aria-label="Increase bid"
         disabled={disabled}
         onClick={inc}
-        className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-[#757575] transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#050505]/20 disabled:opacity-40 dark:outline-outline-variant dark:focus-visible:ring-white/20"
+        className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-outline-variant transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface/20 disabled:opacity-40 dark:focus-visible:ring-white/20"
       >
-        <Plus className="size-5 text-[#050505] dark:text-on-surface" aria-hidden />
+        <Plus className="size-5 text-on-surface" aria-hidden />
       </Button>
     </div>
   );
