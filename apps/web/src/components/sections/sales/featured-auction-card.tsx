@@ -1,4 +1,5 @@
 import { SaleCardGrid } from "@/components/marketing/sale-card";
+import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
 import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
@@ -38,10 +39,8 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
           />
 
           <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-[10px]">
-              <span className="font-body text-sm font-normal leading-snug text-on-surface sm:text-base sm:leading-[21.6px]">
-                {vm.auctionTypeLabel}
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <SaleTypeBadge deliveryMode={vm.deliveryMode} size="sm" isLive={isLive} />
               <div className="flex min-h-[1em] items-center self-stretch border-l border-on-surface-variant pl-2">
                 <span className="font-body text-xs font-normal uppercase leading-snug text-on-surface-variant sm:text-sm">
                   {vm.dateLabel}

@@ -9,6 +9,7 @@ export type SaleCardCommon = {
   coverImageAlt: string;
   status: Sale["status"];
   countdownEndIso?: string;
+  deliveryMode?: Sale["deliveryMode"];
 };
 
 /** OCP: extend actions without changing `SaleCardActions` layout. */

@@ -34,8 +34,8 @@ export default function SellPage() {
       >
         <p>
           LAX.BID works with consignors to place fine art and exceptional objects into carefully
-          edited live and timed auctions. Our specialists guide each consignment from first review
-          through catalogue, sale, payment, and settlement.
+          edited online timed sales and in-person saleroom events. Our specialists guide each
+          consignment from first review through catalogue, sale, payment, and settlement.
         </p>
 
         <LegalH2>What we accept</LegalH2>

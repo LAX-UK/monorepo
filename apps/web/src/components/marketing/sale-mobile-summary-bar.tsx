@@ -3,6 +3,7 @@
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
+import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { Sale } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
 import Link from "next/link";
@@ -61,7 +62,7 @@ export function SaleMobileSummaryBar({
   const isUpcoming = status === "scheduled" || status === "draft";
   const target = isUpcoming ? start : end;
   const kicker = isUpcoming ? "Opens in" : "Live sale";
-  const isOnsite = deliveryMode === "onsite";
+  const isOnsite = !saleAllowsWebBidding(deliveryMode);
 
   const renderCta = () => {
     if (isOnsite) {

@@ -3,6 +3,7 @@ import {
   countdownTier,
   formatCountdownAriaLabel,
   formatCountdownForDisplay,
+  parseCountdownSegments,
 } from "./format-countdown";
 
 describe("countdownTier", () => {
@@ -28,5 +29,25 @@ describe("formatCountdownAriaLabel", () => {
 describe("formatCountdownForDisplay", () => {
   it("still formats under 24h as clock", () => {
     expect(formatCountdownForDisplay(90 * 60 * 1000 + 30_000)).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  });
+});
+
+describe("parseCountdownSegments", () => {
+  it("splits multi-day remaining time", () => {
+    const ms = 2 * 86_400_000 + 3 * 3_600_000 + 45 * 60_000 + 30_000;
+    expect(parseCountdownSegments(ms)).toEqual({ days: 2, hours: 3, minutes: 45, seconds: 30 });
+  });
+
+  it("splits sub-day remaining time with zero days", () => {
+    expect(parseCountdownSegments(90 * 60_000 + 30_000)).toEqual({
+      days: 0,
+      hours: 1,
+      minutes: 30,
+      seconds: 30,
+    });
+  });
+
+  it("clamps negative input to zero segments", () => {
+    expect(parseCountdownSegments(-1000)).toEqual({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   });
 });

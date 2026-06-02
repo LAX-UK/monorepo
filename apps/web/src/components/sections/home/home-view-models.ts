@@ -3,6 +3,8 @@ import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
+import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
+import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, LotStatus, Sale } from "@auction/types";
 import type { StreamEmbedProvider } from "@auction/validators";
@@ -49,7 +51,8 @@ export type HeroSaleSlideVM = {
   dateLabel: string;
   coverImageUrl: string | null;
   coverImageAlt: string;
-  modeBadge: "Online" | "Onsite";
+  modeBadge: string;
+  deliveryMode?: Sale["deliveryMode"];
 };
 
 export type HeroStateVM =
@@ -138,6 +141,7 @@ export type HomeUpcomingAuctionTileVM = {
   startsSoon?: boolean;
   /** Live sale end time for `SaleCardMedia` countdown (active sales only). */
   countdownEndIso?: string;
+  locationLabel: string | null;
 };
 
 /** Figma “Editor’s Picks” horizontal lot card (image + estimate + CTA). */
@@ -173,8 +177,7 @@ function heroImageAlt(title: string, artistName: string): string {
 }
 
 export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
-  const modeBadge: HeroSaleSlideVM["modeBadge"] =
-    sale.deliveryMode === "online" ? "Online" : "Onsite";
+  const pres = getSaleTypePresentation(sale.deliveryMode);
   return {
     id: sale.id,
     href: salePath(sale),
@@ -182,7 +185,8 @@ export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
     dateLabel: formatSaleDateRange(sale),
     coverImageUrl: sale.coverImages[0] ?? null,
     coverImageAlt: `${sale.title} — auction cover`,
-    modeBadge,
+    modeBadge: pres.label,
+    deliveryMode: sale.deliveryMode,
   };
 }
 
@@ -302,7 +306,7 @@ export function toEndingSoonLotCardVMs(lots: Lot[]): LotCardVM[] {
 
 export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAuctionTileVM {
   const { sale, lots } = row;
-  const auctionKindLabel = sale.deliveryMode === "online" ? "Online auction" : "Onsite auction";
+  const auctionKindLabel = getSaleTypePresentation(sale.deliveryMode).title;
   const now = Date.now();
   const startMs =
     sale.startTime instanceof Date ? sale.startTime.getTime() : Date.parse(String(sale.startTime));
@@ -312,6 +316,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
     !isLive && Number.isFinite(startMs) && startMs > now && startMs <= now + sevenDaysMs;
   const countdownEndIso =
     sale.status === "active" ? new Date(sale.endTime).toISOString() : undefined;
+  const locationLabel = saleMarketingLocationLabel(sale);
   return {
     id: sale.id,
     href: salePath(sale),
@@ -323,6 +328,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
     auctionKindLabel,
     deliveryMode: sale.deliveryMode,
     status: sale.status,
+    locationLabel,
     ...(isLive ? { isLive: true } : {}),
     ...(startsSoon ? { startsSoon: true } : {}),
     ...(countdownEndIso !== undefined ? { countdownEndIso } : {}),

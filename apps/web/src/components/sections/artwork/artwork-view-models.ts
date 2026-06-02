@@ -4,7 +4,7 @@ import { formatMoney } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { lotPath, salePath } from "@/lib/seo/url";
-import type { Bid, Lot, LotMarketingDetails } from "@auction/types";
+import type { Bid, Lot, LotMarketingDetails, Sale } from "@auction/types";
 import type { ReactNode } from "react";
 import { lotMarketingSection } from "./lot-marketing-sections";
 
@@ -45,6 +45,7 @@ export type LotRailCardVM = {
   endTime: Date;
   status: Lot["status"];
   sellerId: string;
+  deliveryMode?: Sale["deliveryMode"] | null;
 };
 
 export type LotRelatedRailVM = {
@@ -245,6 +246,7 @@ function lotToRailCard(
   lot: Lot,
   artistName: string,
   catalogLinkParams?: CatalogLinkParams,
+  deliveryMode?: Sale["deliveryMode"] | null,
 ): LotRailCardVM {
   const est = lot.marketingDetails.estimate;
   return {
@@ -259,6 +261,7 @@ function lotToRailCard(
     endTime: lot.endTime,
     status: lot.status,
     sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
+    deliveryMode: deliveryMode ?? null,
   };
 }
 
@@ -269,7 +272,7 @@ const MIN_SALE_SIBLINGS = 1;
  */
 export function mapSiblingsToRailVM(
   lot: Lot,
-  parentSale: { id: string; title: string } | null,
+  parentSale: { id: string; title: string; deliveryMode?: Sale["deliveryMode"] | null } | null,
   saleLots: Lot[] | null,
   sellerRelated: Lot[],
   resolveSellerName: (l: Lot) => string,
@@ -291,7 +294,14 @@ export function mapSiblingsToRailVM(
     mode: useSale ? "sale" : "seller",
     heading: useSale && parentSale ? `More from ${parentSale.title}` : "More from this seller",
     viewAuctionHref: useSale && parentSale ? salePath(parentSale) : null,
-    cards: source.map((l) => lotToRailCard(l, resolveSellerName(l), catalogLinkParams)),
+    cards: source.map((l) =>
+      lotToRailCard(
+        l,
+        resolveSellerName(l),
+        catalogLinkParams,
+        useSale && parentSale ? parentSale.deliveryMode : null,
+      ),
+    ),
   };
 }
 

@@ -37,6 +37,7 @@ import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import { parseStreamEmbedUrl } from "@auction/validators";
@@ -160,7 +161,7 @@ async function resolveHomeHeroState(heroVm: HeroLotVM): Promise<HeroStateVM> {
       if (!sale.streamUrl) continue;
       const embed = parseStreamEmbedUrl(sale.streamUrl);
       if (!embed) continue;
-      const modeLabel = "Onsite";
+      const modeLabel = getSaleDeliveryModeLabel("onsite");
       return {
         kind: "live",
         saleId: sale.id,

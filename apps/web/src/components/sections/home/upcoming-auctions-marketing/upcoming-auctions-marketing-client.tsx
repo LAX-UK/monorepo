@@ -8,6 +8,7 @@ import { MarketingSectionHeader } from "@/components/marketing/marketing-section
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { DisplayHeading } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -35,8 +36,8 @@ function matchesFilter(tile: HomeUpcomingAuctionTileVM, filter: UpcomingAuctions
 
 const FILTERS: { id: UpcomingAuctionsMarketingFilter; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "onsite", label: "Onsite" },
-  { id: "online", label: "Online" },
+  { id: "onsite", label: getSaleDeliveryModeLabel("onsite") },
+  { id: "online", label: getSaleDeliveryModeLabel("online") },
 ];
 
 /** Home rail only exposes grid + list; map card → grid for the switcher. */

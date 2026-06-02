@@ -79,7 +79,7 @@ describe("mapSaleToHeroVM", () => {
       now,
       categoryLabel: null,
     });
-    expect(vm.tags).toContain("Onsite");
+    expect(vm.tags).toContain("In-person");
     expect(vm.tags).toContain("Live stream");
     expect(vm.itemsLabel).toBe("12 lots");
     expect(vm.dateLine).toContain("THELAX SALEROOM");
@@ -158,7 +158,7 @@ describe("mapSaleToOverviewVM", () => {
     expect(vm.lotsLabel).toBe("5 lots");
     expect(vm.categoryLabel).toBe("Contemporary");
     expect(vm.buyerPremiumLabel).toBe("25%");
-    expect(vm.formatLabel).toBe("On-site");
+    expect(vm.formatLabel).toBe("In-person");
     expect(vm.showLiveStream).toBe(true);
     expect(vm.saleTitle).toBe("Evening Sale");
     expect(vm.streamPosterUrl).toBe("https://cdn/image.jpg");
@@ -245,10 +245,10 @@ describe("mapLotToCardVM", () => {
 describe("mapSaleToRelatedVM", () => {
   it("labels onsite and online auctions distinctly", () => {
     expect(mapSaleToRelatedVM({ ...baseSale, deliveryMode: "online" }, 10).kindLabel).toBe(
-      "Online auction",
+      "Online Auction",
     );
     expect(mapSaleToRelatedVM({ ...baseSale, deliveryMode: "onsite" }, 10).kindLabel).toBe(
-      "Live auction",
+      "In-person Auction",
     );
   });
 
