@@ -1,4 +1,7 @@
-import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
+import type {
+  LotRailCardVM,
+  LotRelatedRailVM,
+} from "@/components/sections/artwork/artwork-view-models";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LotMoreFromRail } from "./lot-more-from-rail";
@@ -89,5 +92,27 @@ describe("LotMoreFromRail", () => {
 
     expect(screen.queryByTestId("watchlist-lot-a")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^bid$/i })).toBeInTheDocument();
+  });
+
+  it("does not render Bid button on rich cards for onsite delivery mode", () => {
+    const railOnsite: LotRelatedRailVM = {
+      ...rail,
+      cards: [
+        {
+          ...rail.cards[0],
+          deliveryMode: "onsite",
+        } as LotRailCardVM,
+      ],
+    };
+    render(
+      <LotMoreFromRail
+        rail={railOnsite}
+        isAuthenticated
+        watchedLotIds={["lot-a"]}
+        density="rich"
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: /^bid$/i })).not.toBeInTheDocument();
   });
 });

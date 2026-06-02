@@ -1,4 +1,5 @@
 import { SaleScheduleBadges } from "@/components/marketing/sale-status-badge";
+import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
 import { SaleCardActions } from "@/components/sections/sales/card/sale-card-actions";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
@@ -72,10 +73,21 @@ export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }:
               isLive={Boolean(tile.isLive)}
               startsSoon={Boolean(tile.startsSoon)}
             />
-            <p className="font-body text-sm uppercase leading-snug text-on-surface-variant">
-              <span className="font-medium text-on-surface">{tile.auctionKindLabel}</span>
-              <span className="font-normal"> | {tile.dateLabel}</span>
-            </p>
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <SaleTypeBadge deliveryMode={tile.deliveryMode} size="sm" isLive={isLive} />
+              <div className="flex min-h-[1.25em] items-center border-l border-on-surface-variant/20 pl-2.5">
+                <span className="font-body text-xs font-normal uppercase text-on-surface-variant">
+                  {tile.dateLabel}
+                </span>
+              </div>
+              {tile.locationLabel && (
+                <div className="flex min-h-[1.25em] items-center border-l border-on-surface-variant/20 pl-2.5">
+                  <span className="font-body text-xs font-normal uppercase text-on-surface-variant">
+                    {tile.locationLabel}
+                  </span>
+                </div>
+              )}
+            </div>
             <SaleCardTitle mode="embedded" title={tile.title} className="line-clamp-2" />
             <SaleCardMeta itemsLabel={itemsLabel} />
           </div>
@@ -101,10 +113,21 @@ export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }:
               startsSoon={Boolean(tile.startsSoon)}
             />
             <div className="flex flex-col gap-3">
-              <p className="font-body text-xs font-medium uppercase leading-snug text-on-surface-variant sm:text-sm">
-                <span className="font-semibold text-on-surface">{tile.auctionKindLabel}</span>
-                <span className="font-normal"> | {tile.dateLabel}</span>
-              </p>
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <SaleTypeBadge deliveryMode={tile.deliveryMode} size="sm" isLive={isLive} />
+                <div className="flex min-h-[1.25em] items-center border-l border-on-surface-variant/20 pl-2.5">
+                  <span className="font-body text-xs font-normal uppercase text-on-surface-variant sm:text-sm">
+                    {tile.dateLabel}
+                  </span>
+                </div>
+                {tile.locationLabel && (
+                  <div className="flex min-h-[1.25em] items-center border-l border-on-surface-variant/20 pl-2.5">
+                    <span className="font-body text-xs font-normal uppercase text-on-surface-variant sm:text-sm">
+                      {tile.locationLabel}
+                    </span>
+                  </div>
+                )}
+              </div>
               <p className="font-body text-xs font-normal uppercase leading-snug text-on-surface-variant sm:text-sm">
                 {itemsLabel}
               </p>

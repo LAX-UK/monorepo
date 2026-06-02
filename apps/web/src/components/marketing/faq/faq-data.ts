@@ -6,6 +6,11 @@ import {
   SITE_SUPPORT_EMAIL,
   SITE_TELEPHONE_DISPLAY,
 } from "@/lib/brand";
+import {
+  getOnlineBiddingSummary,
+  getOnsiteNoWebBiddingNote,
+  getOnsiteParticipationSummary,
+} from "@/lib/sale-type-presentation";
 import type { ReactNode } from "react";
 
 export type FaqItem = {
@@ -34,17 +39,17 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "register-to-bid",
         title: "How do I register to bid?",
-        body: "Participation in auctions requires a verified LAX.BID account. Registration can be completed online, after which users may be asked to provide additional documentation depending on the nature and value of the lots they intend to bid on.",
+        body: "Create a LAX.BID account and complete your buyer profile. Buyer agents must register and be approved for each sale before placing bids on that sale. Identity verification may also be required depending on your activity and the lots you bid on.",
       },
       {
         id: "verification-before-bidding",
         title: "Do I need to be verified before bidding?",
-        body: "Yes. Only verified users are permitted to place bids. Verification requirements are determined at the platform’s discretion and may include identity and payment validation.",
+        body: "Identity verification is required before you can bid, but it is not always completed before your first registration step. Requirements are applied when thresholds are reached or when additional checks are needed for a sale or lot.",
       },
       {
         id: "how-bidding-works",
         title: "How does bidding work?",
-        body: "Bids may be placed in real time during live auctions or incrementally during timed sales. The highest accepted bid at the close of the auction constitutes the winning bid.",
+        body: `${getOnlineBiddingSummary()} ${getOnsiteParticipationSummary()} ${getOnsiteNoWebBiddingNote()}`,
       },
       {
         id: "bidding-increments",
@@ -54,7 +59,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "advance-bids",
         title: "Can I place bids in advance?",
-        body: "Where available, advance or maximum bids may be submitted ahead of a live sale. The platform will automatically increase bids on your behalf up to your specified limit.",
+        body: "Online timed sales support confidential maximum bids when auto-bid is enabled for a lot — the platform bids the minimum increment needed to keep you leading up to your limit. In-person saleroom sales do not accept web bids; submit an absentee bid request or telephone bidding request before your lot opens instead.",
       },
       {
         id: "binding-bids",

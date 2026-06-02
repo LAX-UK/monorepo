@@ -34,6 +34,7 @@ const minimalTile = (): HomeUpcomingAuctionTileVM => ({
   auctionKindLabel: "Online auction",
   deliveryMode: "online",
   status: "scheduled",
+  locationLabel: "London",
 });
 
 describe("UpcomingAuctionsMarketingClient", () => {

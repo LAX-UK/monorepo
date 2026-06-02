@@ -1,6 +1,7 @@
 import type { SaleCardCommon } from "@/components/sections/sales/card/types";
 import { formatMoney } from "@/lib/format-currency";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
+import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 
@@ -26,6 +27,7 @@ export type SaleCalendarCardVM = {
   countdownEndIso?: string;
   categoryLabel?: string;
   resultsSummary?: { hammer?: string; total?: string };
+  deliveryMode: Sale["deliveryMode"];
 };
 
 function formatTimeLine(start: Date, locale = "en-GB"): string {
@@ -59,12 +61,7 @@ function formatDateRangeLine(start: Date, end: Date, locale = "en-GB"): string {
 }
 
 function mapDeliveryToAuctionTypeLabel(mode: Sale["deliveryMode"]): string {
-  switch (mode) {
-    case "online":
-      return "Online Auction";
-    case "onsite":
-      return "Live Auction";
-  }
+  return getSaleTypePresentation(mode).title;
 }
 
 function endedHammerTotal(lots: Lot[]): string | undefined {
@@ -118,6 +115,7 @@ export function mapSaleToCalendarCardVM(
     status: sale.status,
     itemsLabel,
     locationLabel,
+    deliveryMode: sale.deliveryMode,
     ...(countdownEndIso ? { countdownEndIso } : {}),
     ...(categoryLabel ? { categoryLabel } : {}),
     ...(resultsSummary ? { resultsSummary } : {}),
@@ -212,6 +210,7 @@ export function mapSaleToFeaturedAuctionCardVM(
     dateLabel: base.dateLabel,
     locationLabel: base.locationLabel,
     status: base.status,
+    deliveryMode: base.deliveryMode,
     ...(base.countdownEndIso ? { countdownEndIso: base.countdownEndIso } : {}),
   };
 }
@@ -258,6 +257,7 @@ export function mapSaleToAuctionRowVM(
     itemsLabel,
     status: sale.status,
     showRegisterButton: opts.showRegisterButton,
+    deliveryMode: sale.deliveryMode,
     ...(countdownEndIso ? { countdownEndIso } : {}),
   };
 }

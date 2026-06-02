@@ -33,12 +33,12 @@ export default function BuyPage() {
         embedded
       >
         <p>
-          Before you bid, make sure your account is ready: register with LAX.BID, verify your
-          identity, and accept our{" "}
+          Before you bid, create a LAX.BID account, set up your buyer profile, and accept our{" "}
           <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
             Conditions of Business
           </Link>
-          . Bids are only enabled once those checks are complete.
+          . Identity verification is required before bidding; complete it when prompted so you are
+          ready when a sale opens.
         </p>
 
         <LegalH2>Browse &amp; preview</LegalH2>
@@ -78,7 +78,8 @@ export default function BuyPage() {
         <p>
           Identity verification is required before you can bid. We use a regulated
           identity-verification partner for a short check, typically using a government ID and a
-          selfie. If you have trouble completing verification, contact our{" "}
+          selfie. You may be prompted during registration or when activity thresholds are reached.
+          If you have trouble completing verification, contact our{" "}
           <Link href="/contact" className="text-primary underline-offset-4 hover:underline">
             client services team
           </Link>{" "}
@@ -87,10 +88,14 @@ export default function BuyPage() {
 
         <LegalH2>Place a bid</LegalH2>
         <p>
-          Once your account is registered and your identity is verified, eligible bids can be placed
-          in live and timed sales. Review the lot page carefully before bidding, including
+          Once your account is registered and verification checks are complete, you can bid in{" "}
+          <Link href="/sales" className="text-primary underline-offset-4 hover:underline">
+            online timed sales
+          </Link>{" "}
+          through the website. In-person saleroom sales use paddle, telephone, or absentee
+          participation — not web bidding. Review the lot page carefully before bidding, including
           estimates, condition notes, sale timing, and any location or collection details. For
-          common bidding questions, visit our{" "}
+          format differences and common bidding questions, visit our{" "}
           <Link href="/faq" className="text-primary underline-offset-4 hover:underline">
             FAQ
           </Link>

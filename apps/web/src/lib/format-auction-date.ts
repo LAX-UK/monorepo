@@ -34,7 +34,7 @@ export function formatSaleDateRange(sale: Sale): string {
       day: "numeric",
     });
     const d1 = sale.endTime.toLocaleString("en-GB", { timeZone: "Europe/London", day: "numeric" });
-    return `${d0}–${d1} ${month} ${year} | London`;
+    return `${d0}–${d1} ${month} ${year}`;
   }
   const a = sale.startTime.toLocaleString("en-GB", london);
   const b = sale.endTime.toLocaleString("en-GB", london);

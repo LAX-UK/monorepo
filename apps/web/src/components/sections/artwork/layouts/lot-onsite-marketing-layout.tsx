@@ -1,36 +1,43 @@
-import { SaleStreamPreview } from "@/components/marketing/sale-stream-preview";
+import { SaleParticipationTimeline } from "@/components/marketing/sale-participation-timeline";
 import { ShareButton } from "@/components/marketing/share-button";
-import { VenueMapCard } from "@/components/marketing/venue-map-card";
 import type {
   AccordionBlock,
+  AuctionSessionHeaderVM,
+  LotQueueCardVM,
   LotRelatedRailVM,
   LotSummarySeedVM,
 } from "@/components/sections/artwork/artwork-view-models";
-import { LotHeroViewTransitionShell } from "@/components/sections/artwork/lot-hero-view-transition-shell";
-import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
-import {
-  AddSaleToCalendarButton,
-  RequestViewingMailtoButton,
-} from "@/components/sections/artwork/onsite/onsite-calendar-actions";
-import { OnsiteSaleScheduleCountdown } from "@/components/sections/artwork/onsite/onsite-sale-schedule-countdown";
+import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
+import { shouldShowLotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar-utils";
+import { OnsiteLotHero } from "@/components/sections/artwork/onsite/onsite-lot-hero";
+import { OnsiteParticipationHub } from "@/components/sections/artwork/onsite/onsite-participation-hub";
+import { OnsitePlanVisitSection } from "@/components/sections/artwork/onsite/onsite-plan-visit-section";
+import { OnsiteSessionHeader } from "@/components/sections/artwork/onsite/onsite-session-header";
+import { OnsiteStreamSection } from "@/components/sections/artwork/onsite/onsite-stream-section";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
 import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
-import { MediaImage } from "@/components/ui/media-image";
-import { SITE_BUSINESS_HOURS_LABEL, SITE_SUPPORT_EMAIL } from "@/lib/brand";
-import { formatMoney } from "@/lib/format-currency";
-import { salePath } from "@/lib/seo/url";
+import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
+import type { OnsiteParticipationContext } from "@/lib/onsite/participation-request-input";
+import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
 import type { Lot, Sale } from "@auction/types";
-import { LiveDot } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import {
-  buildGoogleMapsEmbedUrl,
-  formatPostalAddressLines,
-  resolveOnsiteMapUrl,
-} from "@auction/validators";
-import { MapPin, Radio, Video } from "lucide-react";
-import Link from "next/link";
+import { cn } from "@auction/ui";
+import { formatPostalAddressLines } from "@auction/validators";
+import { Info } from "lucide-react";
 import type { ReactNode } from "react";
+
+type SaleLifecyclePick = Pick<Sale, "status" | "deliveryMode"> | null;
+
+type TimelineRegistration = {
+  buyerLegalEntityId: string;
+  status: string;
+};
+
+type TimelineEntity = {
+  id: string;
+  displayName: string;
+  memberRole: string;
+};
 
 type Props = {
   auction: Lot;
@@ -43,6 +50,18 @@ type Props = {
   currentUserId: string | null;
   shareUrl: string;
   followSlot: ReactNode;
+  showPreviewRibbon?: boolean;
+  serverClockMs?: number;
+  sessionHeader: AuctionSessionHeaderVM;
+  queueCurrent: LotQueueCardVM;
+  queueUpNext: LotQueueCardVM | null;
+  queueRest: LotQueueCardVM[];
+  isSaleQueueLoading?: boolean;
+  saleForLifecycle: SaleLifecyclePick;
+  overview: SaleOverviewVM;
+  kycApproved?: boolean;
+  myRegistrations?: TimelineRegistration[];
+  buyerEntities?: TimelineEntity[];
 };
 
 function locationOneLine(sale: Sale): string {
@@ -50,7 +69,7 @@ function locationOneLine(sale: Sale): string {
   return [sale.locationName, ...lines].filter(Boolean).join(", ");
 }
 
-/** Marketing-first onsite (in-gallery) lot page — no web bidding UI. */
+/** Luxury-focused onsite (in-gallery) lot page layout. */
 export function LotOnsiteMarketingLayout({
   auction,
   sale,
@@ -62,284 +81,134 @@ export function LotOnsiteMarketingLayout({
   currentUserId,
   shareUrl,
   followSlot,
+  showPreviewRibbon = false,
+  serverClockMs,
+  sessionHeader,
+  queueCurrent,
+  queueUpNext,
+  queueRest,
+  isSaleQueueLoading = false,
+  saleForLifecycle,
+  overview,
+  kycApproved = false,
+  myRegistrations = [],
+  buyerEntities = [],
 }: Props) {
-  const heroImage = auction.images[0] ?? sale.coverImages[0] ?? null;
   const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
-  const mapsUrl = resolveOnsiteMapUrl(sale);
-  const embedUrl = buildGoogleMapsEmbedUrl(sale);
-  const addressLines = formatPostalAddressLines(sale);
   const locationLine = locationOneLine(sale);
-  const isSaleLive = sale.status === "active";
+  const showQueue = shouldShowLotQueueSidebar(queueUpNext, queueRest, isSaleQueueLoading);
 
-  const previewStart = sale.previewStartTime ? new Date(sale.previewStartTime) : null;
-  const previewLabel =
-    previewStart && Number.isFinite(previewStart.getTime())
-      ? previewStart.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
-      : null;
-
-  const eventStartLabel = new Date(sale.startTime).toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-  const eventEndLabel = new Date(sale.endTime).toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-
-  const absenteeSubject = encodeURIComponent(
-    `Absentee / phone bid: ${sale.title} — ${auction.title}`,
-  );
-  const absenteeBody = encodeURIComponent(
-    `I would like to register an absentee or phone bid for:\n\nSale: ${sale.title}\nLot: ${auction.title}\nLot page: ${shareUrl}\n\n`,
-  );
-  const absenteeHref = `mailto:${SITE_SUPPORT_EMAIL}?subject=${absenteeSubject}&body=${absenteeBody}`;
+  const participationCtx: OnsiteParticipationContext = {
+    saleTitle: sale.title,
+    lotNumber: auction.lotNumber,
+    lotTitle: auction.title,
+    lotUrl: shareUrl,
+  };
 
   return (
     <section aria-labelledby="lot-heading-onsite" className="bg-page-bg dark:bg-background">
       <h1 id="lot-heading-onsite" className="sr-only">
         {auction.title}
       </h1>
-      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-[var(--page-bottom-padding)] pt-6 sm:px-6 md:px-8">
-        <div className="relative overflow-hidden rounded-2xl border border-border-hairline bg-[#0a0a0a] dark:bg-[#0a0a0a] shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-reduce:animate-none">
-          <LotHeroViewTransitionShell
-            lotId={auction.id}
-            className="relative aspect-[21/9] min-h-[220px] w-full sm:min-h-[280px]"
-          >
-            {heroImage ? (
-              <MediaImage
-                src={heroImage}
-                alt=""
-                label="Lot"
-                className="absolute inset-0 size-full object-cover opacity-90"
-                sizes="100vw"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] to-[#0a0a0a]" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-6 sm:p-10 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl space-y-2">
-                <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-[#D1D1D1] dark:text-[#D1D1D1]">
-                  In-gallery auction
-                </p>
-                <p className="font-body text-lg text-[#E8E8E8] dark:text-[#E8E8E8] sm:text-xl">
-                  {sale.title}
-                </p>
-                <h2 className="font-body text-2xl font-medium text-[#F1F1F3] dark:text-[#F1F1F3] sm:text-4xl lg:text-[40px] lg:leading-tight">
-                  {auction.title}
-                </h2>
-                <p className="font-body text-base text-[#C8C8C8] dark:text-[#C8C8C8]">
-                  {summarySeed.sellerName}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-xl bg-black/45 px-4 py-3 backdrop-blur-md sm:px-6">
-                <OnsiteSaleScheduleCountdown sale={sale} />
-              </div>
-            </div>
-          </LotHeroViewTransitionShell>
+      {showPreviewRibbon ? (
+        <div className="border-b border-lot-orange/30 bg-lot-orange/10 px-4 py-2 text-center font-body text-sm font-medium text-lot-orange">
+          Catalogue preview — bidding opens when the sale is published.
         </div>
+      ) : null}
+      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-[calc(1.5rem+var(--bottom-chrome-consent-offset,0px))] pt-6 sm:px-6 md:px-8">
+        <OnsiteSessionHeader vm={sessionHeader} sale={sale} />
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-          {sale.streamUrl ? (
-            <Button variant="default" className="gap-2" asChild>
-              <a href={sale.streamUrl} target="_blank" rel="noopener noreferrer">
-                {isSaleLive ? (
-                  <LiveDot className="live-dot-pulse h-2 w-2" />
-                ) : (
-                  <Radio className="size-4" aria-hidden />
-                )}
-                Watch live stream
-              </a>
-            </Button>
+        <div
+          className={cn(
+            "mt-6 grid grid-cols-1 gap-8 lg:mt-8 lg:items-start lg:gap-6 xl:gap-8",
+            showQueue ? "lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]" : undefined,
+          )}
+        >
+          {showQueue ? (
+            <LotQueueSidebar
+              current={queueCurrent}
+              upNext={queueUpNext}
+              queue={queueRest}
+              isSaleQueueLoading={isSaleQueueLoading}
+              className="order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-3"
+            />
           ) : null}
-          <Button variant="outline" asChild>
-            <Link href={salePath(sale)}>View full catalogue</Link>
-          </Button>
+
+          <div className={cn("order-1 min-w-0", showQueue && "lg:col-start-2")}>
+            <OnsiteLotHero
+              auction={auction}
+              sale={sale}
+              summarySeed={summarySeed}
+              saleForLifecycle={saleForLifecycle}
+              {...(serverClockMs !== undefined ? { serverClockMs } : {})}
+            />
+          </div>
         </div>
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-start">
+        <div className="mt-8 rounded-2xl border border-amber-500/10 bg-amber-500/[0.04] p-5 flex items-start gap-3.5">
+          <div className="rounded-full bg-amber-500/10 p-1.5 text-amber-600 dark:text-amber-400">
+            <Info className="size-5 shrink-0" />
+          </div>
+          <div>
+            <h3 className="font-body text-sm font-semibold text-amber-900 dark:text-amber-400">
+              In-Person Saleroom Event
+            </h3>
+            <p className="mt-1 font-body text-xs leading-relaxed text-amber-800/80 dark:text-amber-400/80">
+              {getOnsiteNoWebBiddingNote()}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:items-start">
           <div className="order-2 space-y-10 lg:order-1">
-            <section
-              aria-labelledby="lot-estimate-onsite"
-              className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 lg:p-8"
-            >
-              <h2
-                id="lot-estimate-onsite"
-                className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
-              >
-                Catalogue
-              </h2>
-              <div className="mt-4 grid gap-6 sm:grid-cols-2">
-                <div>
-                  <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                    Estimate
-                  </p>
-                  <p className="mt-1 font-body text-lg text-on-surface">
-                    {summarySeed.estimateLine ?? "—"}
-                  </p>
-                </div>
-                {auction.startingPrice ? (
-                  <div>
-                    <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                      Opening price
-                    </p>
-                    <p className="mt-1 font-body text-lg text-on-surface">
-                      {formatMoney(auction.startingPrice)}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-              <p className="mt-6 text-sm leading-relaxed text-on-surface-variant">
-                Bidding takes place in the saleroom or through a registered representative. Web
-                bidding is not offered for this catalogue — use the links below to plan your visit
-                or register absentee interest.
-              </p>
-            </section>
+            <SaleParticipationTimeline
+              deliveryMode="onsite"
+              isAuthenticated={isAuthenticated}
+              kycApproved={kycApproved}
+              myRegistrations={myRegistrations}
+              buyerEntities={buyerEntities}
+              previewStartTime={sale.previewStartTime}
+              startTime={sale.startTime}
+              endTime={sale.endTime}
+              streamUrl={sale.streamUrl}
+              absenteeAnchorId="bid-onsite-hub"
+              liveStreamAnchorId="live-stream"
+              className="rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8"
+            />
 
-            <section
-              id="plan-visit"
-              aria-labelledby="plan-visit"
-              className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 dark:bg-surface-container-low/40 lg:p-8"
-            >
-              <h2 id="plan-visit" className="font-body text-xl font-semibold text-on-surface">
-                Plan your visit
-              </h2>
-              <p className="mt-2 text-sm text-on-surface-variant">{SITE_BUSINESS_HOURS_LABEL}</p>
-              <dl className="mt-4 space-y-2 text-sm text-on-surface">
-                <div>
-                  <dt className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                    Auction session
-                  </dt>
-                  <dd className="mt-1">
-                    {eventStartLabel} — {eventEndLabel}
-                  </dd>
-                </div>
-                {previewLabel ? (
-                  <div>
-                    <dt className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                      Preview from
-                    </dt>
-                    <dd className="mt-1">{previewLabel}</dd>
-                  </div>
-                ) : null}
-              </dl>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <AddSaleToCalendarButton
-                  sale={sale}
-                  lotTitle={auction.title}
-                  locationLine={locationLine}
-                />
-                <RequestViewingMailtoButton sale={sale} lotTitle={auction.title} />
-              </div>
-            </section>
+            <OnsiteParticipationHub sale={sale} participationCtx={participationCtx} />
 
-            <section
-              aria-labelledby="venue"
-              className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 dark:bg-surface-container-low/40 lg:p-8"
-            >
-              <h2
-                id="venue"
-                className="flex items-center gap-2 font-body text-xl font-semibold text-on-surface"
-              >
-                <MapPin className="size-5 shrink-0 text-primary" aria-hidden />
-                Venue
-              </h2>
-              <VenueMapCard
-                className="mt-3"
-                locationName={sale.locationName}
-                addressLines={addressLines}
-                embedUrl={embedUrl}
-                directionsUrl={mapsUrl}
-                hasCustomMapUrl={Boolean(sale.locationMapUrl)}
-              />
-            </section>
+            <OnsitePlanVisitSection
+              sale={sale}
+              auction={auction}
+              overview={overview}
+              locationLine={locationLine}
+            />
 
-            <section
-              aria-labelledby="bid-onsite"
-              className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-6 dark:bg-surface-container-low/40 lg:p-8"
-            >
-              <h2 id="bid-onsite" className="font-body text-xl font-semibold text-on-surface">
-                How to bid
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
-                Register for a paddle in the room, arrange a phone line, or leave an absentee bid
-                with our team before the session begins.
-              </p>
-              <Button className="mt-6" variant="secondary" asChild>
-                <a href={absenteeHref}>Request absentee / phone bid</a>
-              </Button>
-              <p className="mt-3 text-xs text-on-surface-variant">
-                A dedicated absentee form is coming soon — contact{" "}
-                <a className="underline" href={`mailto:${SITE_SUPPORT_EMAIL}`}>
-                  {SITE_SUPPORT_EMAIL}
-                </a>
-                .
-              </p>
-            </section>
+            <div className="mx-auto w-full max-w-[900px]">
+              <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
+            </div>
 
-            {sale.streamUrl ? (
-              <section
-                aria-labelledby="stream-promo"
-                className="rounded-2xl border border-primary/25 bg-primary-container/10 p-6 dark:bg-primary/10 lg:p-8"
-              >
-                <h2
-                  id="stream-promo"
-                  className="flex items-center gap-2 font-body text-xl font-semibold text-on-surface"
-                >
-                  <Video className="size-5 text-primary" aria-hidden />
-                  Watch from anywhere
-                </h2>
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  Follow the live stream while the auction runs in the gallery — ideal if you cannot
-                  travel but still want to watch the room.
-                </p>
-                <SaleStreamPreview
-                  className="mt-4"
-                  streamUrl={sale.streamUrl}
-                  saleTitle={sale.title}
-                  posterUrl={streamPosterUrl}
-                />
-              </section>
-            ) : null}
+            <OnsiteStreamSection sale={sale} streamPosterUrl={streamPosterUrl} />
           </div>
 
-          <aside className="order-1 space-y-6 lg:order-2 lg:sticky lg:top-[calc(var(--header-height)+16px)]">
-            <div className="overflow-hidden rounded-2xl border border-border-hairline bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/40">
-              <LotImageArea lot={auction} className="max-w-none w-full [&>div]:max-w-none" />
+          <div className="order-1 self-start space-y-6 rounded-3xl border border-outline-variant/20 bg-surface-container-lowest/80 p-6 shadow-sm backdrop-blur-md lg:sticky lg:top-24 lg:order-2">
+            <div className="space-y-4">
+              <h3 className="border-b border-outline-variant/10 pb-2 font-headline text-base font-bold text-on-surface">
+                Follow & share
+              </h3>
+              <LotActionsRow
+                followSlot={followSlot}
+                shareSlot={
+                  <ShareButton
+                    url={shareUrl}
+                    title={auction.title}
+                    className="h-10 w-full min-h-10 border-brand-400 font-['DM_Sans',sans-serif] text-base font-semibold"
+                  />
+                }
+              />
             </div>
-            <div className="rounded-2xl border border-outline-variant/25 bg-surface-container-lowest p-4 dark:bg-surface-container-low/40">
-              <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                Stay connected
-              </p>
-              <div className="mt-3 space-y-3">
-                <LotActionsRow
-                  followSlot={followSlot}
-                  shareSlot={
-                    <ShareButton
-                      url={shareUrl}
-                      title={auction.title}
-                      className="h-10 w-full min-h-10 border-brand-400 font-['DM_Sans',sans-serif] text-base font-semibold"
-                    />
-                  }
-                />
-                <AddSaleToCalendarButton
-                  sale={sale}
-                  lotTitle={auction.title}
-                  locationLine={locationLine}
-                  className="w-full"
-                />
-                <RequestViewingMailtoButton
-                  sale={sale}
-                  lotTitle={auction.title}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </aside>
-        </div>
-
-        <div className="mt-12">
-          <LotMarketingAccordion blocks={marketingAccordionBlocks} />
+          </div>
         </div>
 
         <LotMoreFromRail
