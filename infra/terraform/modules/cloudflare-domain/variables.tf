@@ -34,8 +34,9 @@ variable "test_hosts" {
   default     = []
 }
 
-# Substrings matched against http.user_agent (contains). Used to skip auth WAF challenges
-# and edge auth rate limits for known crawlers and monitoring bots on Free plan.
+# Substrings matched against http.user_agent (contains). Used in the WAF Skip rule
+# (http_request_firewall_custom) to bypass authorize challenges and http_ratelimit phase.
+# Do not reference http.user_agent inside http_ratelimit rules — requires Advanced Rate Limiting.
 variable "whitelisted_bot_user_agents" {
   type        = set(string)
   description = "User-Agent substrings for legitimate bots to bypass auth challenge and auth rate limit. Matched with contains (Free-plan safe)."
