@@ -4,6 +4,8 @@ import {
   formatPostalAddress,
   formatPostalAddressLines,
   hasStructuredAddress,
+  isOnsiteLocationPopulated,
+  isOnsiteLocationReadyForPublish,
   isUkPostcode,
   normalizeUkPostcode,
   resolveOnsiteMapUrl,
@@ -138,5 +140,47 @@ describe("resolveOnsiteMapUrl", () => {
 
   it("returns null when nothing is available", () => {
     expect(resolveOnsiteMapUrl({})).toBeNull();
+  });
+});
+
+describe("isOnsiteLocationPopulated", () => {
+  it("requires a venue name plus structured or legacy address", () => {
+    expect(
+      isOnsiteLocationPopulated({
+        locationName: "Main Hall",
+        locationAddressLine1: "1 Bond Street",
+        locationCity: "London",
+      }),
+    ).toBe(true);
+    expect(
+      isOnsiteLocationPopulated({
+        locationName: "Main Hall",
+        locationAddress: "1 Bond Street, London",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects address-only or name-only input", () => {
+    expect(isOnsiteLocationPopulated({ locationAddressLine1: "1 Bond Street" })).toBe(false);
+    expect(isOnsiteLocationPopulated({ locationName: "Main Hall" })).toBe(false);
+  });
+});
+
+describe("isOnsiteLocationReadyForPublish", () => {
+  it("accepts a saved venue without manual location fields", () => {
+    expect(isOnsiteLocationReadyForPublish({ venueId: "venue-1" })).toBe(true);
+  });
+
+  it("accepts manual location when populated", () => {
+    expect(
+      isOnsiteLocationReadyForPublish({
+        locationName: "Main Hall",
+        locationCity: "London",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects empty onsite location", () => {
+    expect(isOnsiteLocationReadyForPublish({})).toBe(false);
   });
 });

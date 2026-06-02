@@ -12,6 +12,7 @@ import {
   requireQrCodesAccess,
   requireSubmissionsAccess,
   requireUsersDirectory,
+  requireVenuesAccess,
 } from "../middleware/require-capability.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 
@@ -74,6 +75,18 @@ describe("admin access middleware", () => {
 
   it("requireCategoriesAccess allows catalogue_manager", async () => {
     const app = createAccessTestApp(requireCategoriesAccess, "catalogue_manager");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(200);
+  });
+
+  it("requireVenuesAccess returns 403 for staff_viewer", async () => {
+    const app = createAccessTestApp(requireVenuesAccess, "staff_viewer");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(403);
+  });
+
+  it("requireVenuesAccess allows catalogue_manager", async () => {
+    const app = createAccessTestApp(requireVenuesAccess, "catalogue_manager");
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });

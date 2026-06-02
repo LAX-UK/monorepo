@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, Venue } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
@@ -7,6 +7,7 @@ import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { IVenueRepository } from "./interfaces/venue.js";
 import { SaleService, type SaleServiceOptions } from "./sale.service.js";
 
 const TEST_ADMIN_USER_ID = "admin-1";
@@ -581,7 +582,7 @@ describe("SaleService.publish authorization", () => {
 
 describe("SaleService.publish domain events", () => {
   it("emits sale.published when a draft sale is published", async () => {
-    const sale = baseSale({ id: "s-pub", status: "draft" });
+    const sale = baseSale({ id: "s-pub", status: "draft", deliveryMode: "online" });
     const lot: Lot = {
       id: "lot-1",
       saleId: "s-pub",
@@ -733,7 +734,7 @@ describe("SaleService.publish domain events", () => {
   });
 
   it("reverts sale and lots to draft when scheduleLot fails mid-loop", async () => {
-    const sale = baseSale({ id: "s-sched-fail", status: "draft" });
+    const sale = baseSale({ id: "s-sched-fail", status: "draft", deliveryMode: "online" });
     const lot1: Lot = {
       id: "lot-1",
       saleId: "s-sched-fail",
@@ -925,5 +926,322 @@ describe("SaleService.getSaleDetailForPublicApi", () => {
     if (!r) return;
     expect(r.data.viewer.isFollowing).toBe(true);
     expect(follow.isFollowing).toHaveBeenCalledWith("user-1", "s1");
+  });
+});
+
+function testVenue(overrides: Partial<Venue> = {}): Venue {
+  return {
+    id: "venue-1",
+    legalEntityId: TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID,
+    name: "LAX Mayfair Saleroom",
+    slug: "lax-mayfair-saleroom",
+    addressLine1: "12 King Street",
+    addressLine2: "St James's",
+    city: "London",
+    county: null,
+    postcode: "SW1Y 6QU",
+    country: "United Kingdom",
+    mapUrl: "https://maps.example.com",
+    latitude: null,
+    longitude: null,
+    openingHours: null,
+    contactPhone: null,
+    contactEmail: null,
+    website: null,
+    photos: [],
+    capacity: null,
+    accessNotes: null,
+    parkingNotes: null,
+    directionsNotes: null,
+    status: "active",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+describe("SaleService venue assignment", () => {
+  it("rejects a venue from another organisation on create", async () => {
+    const venueRepo: IVenueRepository = {
+      findById: vi
+        .fn()
+        .mockResolvedValue(testVenue({ id: "venue-other", legalEntityId: "other-org-id" })),
+    } as unknown as IVenueRepository;
+    const saleRepo: ISaleRepository = {
+      create: vi.fn(),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+        venueRepository: venueRepo,
+      }),
+    );
+
+    await expect(
+      svc.create(TEST_ADMIN_USER_ID, {
+        title: "Evening",
+        startTime: new Date(Date.now() + 86_400_000),
+        endTime: new Date(Date.now() + 172_800_000),
+        streamUrl: null,
+        locationName: "Custom Hall",
+        locationAddress: null,
+        locationMapUrl: null,
+        locationAddressLine1: null,
+        locationAddressLine2: null,
+        locationCity: null,
+        locationCounty: null,
+        locationPostcode: null,
+        locationCountry: null,
+        venueId: "venue-other",
+      }),
+    ).rejects.toMatchObject({ code: "venue_org_mismatch" });
+    expect(saleRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("preserves draft location fields on create when a venue is selected", async () => {
+    const venueRepo: IVenueRepository = {
+      findById: vi.fn().mockResolvedValue(testVenue()),
+    } as unknown as IVenueRepository;
+    const createdSale = baseSale({
+      id: "s-new",
+      status: "draft",
+      venueId: "venue-1",
+      locationName: "Custom Hall",
+      createdByLegalEntityId: TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID,
+    });
+    const saleRepo: ISaleRepository = {
+      create: vi.fn().mockResolvedValue(createdSale),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+        venueRepository: venueRepo,
+      }),
+    );
+
+    await svc.create(TEST_ADMIN_USER_ID, {
+      title: "Evening",
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+      streamUrl: null,
+      locationName: "Custom Hall",
+      locationAddress: null,
+      locationMapUrl: null,
+      locationAddressLine1: null,
+      locationAddressLine2: null,
+      locationCity: null,
+      locationCounty: null,
+      locationPostcode: null,
+      locationCountry: null,
+      venueId: "venue-1",
+    });
+
+    expect(saleRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        venueId: "venue-1",
+        locationName: "Custom Hall",
+      }),
+    );
+  });
+
+  it("does not overwrite draft location fields on updateDraft when venueId is set", async () => {
+    const venueRepo: IVenueRepository = {
+      findById: vi.fn().mockResolvedValue(testVenue()),
+    } as unknown as IVenueRepository;
+    const sale = baseSale({
+      status: "draft",
+      venueId: "venue-1",
+      locationName: "Custom Hall",
+      createdByLegalEntityId: TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID,
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue(sale),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([]),
+    } as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+        venueRepository: venueRepo,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { locationName: "Renamed Hall", venueId: "venue-1" },
+      "super_admin",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(
+      sale.id,
+      expect.objectContaining({
+        venueId: "venue-1",
+        locationName: "Renamed Hall",
+      }),
+    );
+  });
+
+  it("snapshots venue address onto the sale at publish", async () => {
+    const venueRepo: IVenueRepository = {
+      findById: vi.fn().mockResolvedValue(testVenue()),
+    } as unknown as IVenueRepository;
+    const sale = baseSale({
+      id: "s-pub",
+      status: "draft",
+      venueId: "venue-1",
+      locationName: "Custom Hall",
+      createdByLegalEntityId: TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID,
+    });
+    const lot: Lot = {
+      id: "lot-1",
+      saleId: "s-pub",
+      lotNumber: 1,
+      sellerLegalEntityId: "seller-1",
+      artistId: null,
+      title: "Work",
+      description: "Catalogue description",
+      medium: null,
+      dimensions: null,
+      images: ["img.jpg"],
+      categoryId: "c1",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+      status: "draft",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+
+    let findCalls = 0;
+    const update = vi.fn().mockResolvedValue({
+      ...sale,
+      locationName: "LAX Mayfair Saleroom",
+      locationAddressLine1: "12 King Street",
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockImplementation(async () => {
+        findCalls += 1;
+        return findCalls === 1 ? sale : { ...sale, status: "scheduled" };
+      }),
+      update,
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([lot]),
+      update: vi.fn(),
+      updateStatus: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: {
+          scheduleLot: vi.fn(),
+          cancelLotJobs: vi.fn(),
+          rescheduleEnd: vi.fn(),
+        } as ILotJobScheduler,
+        venueRepository: venueRepo,
+      }),
+    );
+
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-pub", "super_admin");
+    if (result.isErr()) {
+      throw new Error(`publish failed: ${result.error.message}`);
+    }
+
+    expect(update).toHaveBeenCalledWith(
+      "s-pub",
+      expect.objectContaining({
+        venueId: "venue-1",
+        locationName: "LAX Mayfair Saleroom",
+        locationAddressLine1: "12 King Street",
+        locationPostcode: "SW1Y 6QU",
+      }),
+    );
+  });
+
+  it("blocks publish for onsite sales without venue or location", async () => {
+    const sale = baseSale({
+      id: "s-empty",
+      status: "draft",
+      deliveryMode: "onsite",
+      locationName: null,
+      locationAddress: null,
+      locationAddressLine1: null,
+      createdByLegalEntityId: TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID,
+    });
+    const lot: Lot = {
+      id: "lot-1",
+      saleId: "s-empty",
+      lotNumber: 1,
+      sellerLegalEntityId: "seller-1",
+      artistId: null,
+      title: "Work",
+      description: "Catalogue description",
+      medium: null,
+      dimensions: null,
+      images: ["img.jpg"],
+      categoryId: "c1",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: new Date(Date.now() + 86_400_000),
+      endTime: new Date(Date.now() + 172_800_000),
+      status: "draft",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      updateStatus: vi.fn(),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([lot]),
+    } as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-empty", "super_admin");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("onsite_location_required");
+    }
+    expect(saleRepo.updateStatus).not.toHaveBeenCalled();
   });
 });

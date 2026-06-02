@@ -19,7 +19,7 @@ import {
   adminSaleFormValuesSchema,
 } from "@/lib/forms/schemas/admin-sale-form";
 import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
-import type { CategoryNode, EntityDocument, Lot } from "@auction/types";
+import type { CategoryNode, EntityDocument, Lot, Venue } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
@@ -65,6 +65,7 @@ type Props = {
   /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
   htmlFormId?: string;
   lots?: Lot[];
+  venues?: Venue[];
 };
 
 /** Edit-only sale form — new sales use {@link SaleSetupWizard} at `/admin/sales/new`. */
@@ -78,6 +79,7 @@ export function AdminSaleForm({
   previewUrlByKey = {},
   htmlFormId,
   lots = [],
+  venues = [],
 }: Props) {
   const isDraft = !saleStatus || saleStatus === "draft";
   const formSchema = useMemo(
@@ -299,6 +301,7 @@ export function AdminSaleForm({
                       customMapUrl={customMapUrl}
                       postcodeIsValid={postcodeIsValid}
                       lots={lots}
+                      venues={venues}
                       lotsSetupHref={saleSetupHref(saleId, "lots")}
                     />
                   ) : null}

@@ -79,6 +79,10 @@ export const CATEGORIES_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "platform.admin.full"],
 };
 
+export const VENUES_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "catalogue.write", "platform.admin.full"],
+};
+
 export const SALEROOM_ACCESS: CapabilityRequirement = {
   anyOf: ["auction.manage", "platform.admin.full"],
 };

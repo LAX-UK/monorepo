@@ -55,6 +55,7 @@ import { createSubmissionDocumentRoutes } from "./routes/submission-documents.js
 import { createSubmissionRoutes } from "./routes/submissions.js";
 import { createUploadRoutes } from "./routes/uploads.js";
 import { createUserRoutes } from "./routes/users.js";
+import { createVenueRoutes } from "./routes/venues.js";
 import { createWebhookRoutes } from "./routes/webhooks/index.js";
 import { createStripeWebhookRoutes } from "./routes/webhooks/stripe.js";
 import { createVeriffWebhookRoutes } from "./routes/webhooks/veriff.js";
@@ -121,6 +122,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/payments/*", createRateLimitMiddleware(container.redis));
   app.use("/q/*", createRateLimitMiddleware(container.redis));
   app.use("/categories/*", createRateLimitMiddleware(container.redis));
+  app.use("/venues/*", createRateLimitMiddleware(container.redis));
   app.use("/submissions/*", createRateLimitMiddleware(container.redis));
   app.use("/uploads/*", createRateLimitMiddleware(container.redis));
   app.use("/admin/*", createRateLimitMiddleware(container.redis));
@@ -211,6 +213,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/newsletter", createNewsletterRoutes(container))
     .route("/auth", createAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
+    .route("/venues", createVenueRoutes(container, authenticator))
     .route("/q", createQrRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator))
     .route("/marketing", createMarketingRoutes(container, authenticator))

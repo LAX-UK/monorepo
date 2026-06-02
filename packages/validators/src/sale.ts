@@ -85,6 +85,7 @@ const saleCreateBodySchema = z.object({
   locationCounty: locationTextField,
   locationPostcode: locationPostcodeField,
   locationCountry: locationTextField,
+  venueId: z.string().uuid().optional().nullable(),
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
   previewStartTime: z.coerce.date().optional(),
@@ -122,6 +123,7 @@ function refineByMode(
   data: {
     deliveryMode?: SaleDeliveryMode | undefined;
     streamUrl?: string | null | undefined;
+    venueId?: string | null | undefined;
   } & Partial<Record<LocationFieldKey, string | null | undefined>>,
   ctx: z.RefinementCtx,
   defaultMode: SaleDeliveryMode,
@@ -136,6 +138,13 @@ function refineByMode(
     });
   }
   if (!caps.allowsLocation) {
+    if (data.venueId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Venue is only allowed for onsite auctions",
+        path: ["venueId"],
+      });
+    }
     for (const key of LOCATION_FIELD_KEYS) {
       if (data[key]) {
         ctx.addIssue({

@@ -147,6 +147,7 @@ locals {
         { key = "NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_GTM_ID", value = var.next_public_gtm_id, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "INTERNAL_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "PLATFORM_CATALOG_LEGAL_ENTITY_ID", value = "30000000-0000-4000-9000-000000000001", type = "GENERAL", scope = "RUN_TIME" },
         { key = "NEXT_PUBLIC_WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_TURNSTILE_SITE_KEY", value = var.turnstile_site_key, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "CSP_ENFORCE", value = var.csp_enforce, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },

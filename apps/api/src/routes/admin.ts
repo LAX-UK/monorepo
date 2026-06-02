@@ -99,6 +99,7 @@ import {
   requireUserInvite,
   requireUserModeration,
   requireUsersDirectory,
+  requireVenuesAccess,
 } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
@@ -808,6 +809,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       );
     },
   );
+
+  platform.get("/platform-catalog/legal-entity-id", requireVenuesAccess, async (c) => {
+    const id = await container.resolvePlatformCatalogLegalEntityId();
+    return c.json({ data: { id } });
+  });
 
   platform.get(
     "/legal-entities/browse",

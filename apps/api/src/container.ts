@@ -69,7 +69,10 @@ import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
 import { type OrgModuleGate, createOrgModuleGate } from "./lib/org-module-gate.js";
-import { createPlatformCatalogLegalEntityIdProvider } from "./lib/platform-catalog-legal-entity.js";
+import {
+  type PlatformCatalogLegalEntityIdProvider,
+  createPlatformCatalogLegalEntityIdProvider,
+} from "./lib/platform-catalog-legal-entity.js";
 import { queueRuntimeEnvFromApiEnv } from "./lib/queue-runtime-env.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import type { IStripeClientFactory } from "./lib/stripe-client.js";
@@ -132,6 +135,7 @@ import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-prefere
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
 import { DrizzleUserRepository } from "./repositories/drizzle-user.repository.js";
+import { DrizzleVenueRepository } from "./repositories/drizzle-venue.repository.js";
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
@@ -273,6 +277,7 @@ import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.j
 import { UiPreferenceService } from "./services/ui-preference.service.js";
 import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
+import { VenueService } from "./services/venue.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
 import { XeroOAuthService } from "./services/xero-oauth.service.js";
 import { LotStrategyFactory } from "./strategies/strategy.factory.js";
@@ -301,6 +306,8 @@ export type Container = {
   lotService: LotService;
   conditionReportService: IConditionReportService;
   saleService: SaleService;
+  venueService: VenueService;
+  resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   saleSoftDeleteService: SaleSoftDeleteService;
   lotSoftDeleteService: LotSoftDeleteService;
   saleFollowService: SaleFollowService;
@@ -597,6 +604,7 @@ export function createContainer(env: Env): Container {
   );
 
   const categoryRepo = new DrizzleCategoryRepository(db);
+  const venueRepo = new DrizzleVenueRepository(db);
   const watchlistRepo = new DrizzleWatchlistRepository(db);
   const artistWatchlistRepo = new DrizzleArtistWatchlistRepository(db);
   const notificationReadRepo = new DrizzleNotificationReadRepository(db);
@@ -897,14 +905,15 @@ export function createContainer(env: Env): Container {
 
   const saleFollowRepo = new DrizzleSaleFollowRepository(db);
   const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);
+  const resolvePlatformCatalogLegalEntityId = createPlatformCatalogLegalEntityIdProvider({
+    db,
+    configuredId: env.PLATFORM_CATALOG_LEGAL_ENTITY_ID,
+  });
   const saleService = new SaleService({
     saleRepo,
     lotRepo,
     jobScheduler: lotJobScheduler,
-    resolvePlatformCatalogLegalEntityId: createPlatformCatalogLegalEntityIdProvider({
-      db,
-      configuredId: env.PLATFORM_CATALOG_LEGAL_ENTITY_ID,
-    }),
+    resolvePlatformCatalogLegalEntityId,
     imageCleanup: imageCleanupService,
     saleFollowReader: saleFollowService,
     mediaUrlResolver,
@@ -913,6 +922,7 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
     lotLifecycleRecording,
     legalEntityRepository,
+    venueRepository: venueRepo,
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     qrCodeService,
   });
@@ -961,6 +971,7 @@ export function createContainer(env: Env): Container {
   );
 
   const categoryService = new CategoryService(categoryRepo, db, domainEventPublisher);
+  const venueService = new VenueService(venueRepo, db, domainEventPublisher);
   const artistProfileRepo = new DrizzleArtistProfileRepository(db);
   const artistProfileService = new ArtistProfileService(artistProfileRepo, artistRegistryService);
   const artistDeleteService = new ArtistDeleteService(
@@ -1358,6 +1369,8 @@ export function createContainer(env: Env): Container {
     bidService,
     autoBidService,
     categoryService,
+    venueService,
+    resolvePlatformCatalogLegalEntityId,
     artistProfileService,
     artistDeleteService,
     dashboardQueryService,

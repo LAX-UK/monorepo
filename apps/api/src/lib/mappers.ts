@@ -151,6 +151,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     locationCounty: row.locationCounty ?? null,
     locationPostcode: row.locationPostcode ?? null,
     locationCountry: row.locationCountry ?? null,
+    venueId: row.venueId ?? null,
     status: row.status as SaleStatus,
     startTime: row.startTime,
     endTime: row.endTime,
