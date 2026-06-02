@@ -36,7 +36,6 @@ describe.skipIf(!HAS_DB)("DrizzleLotRepository.listCatalogLotsBySalePage (integr
           startTime: new Date("2026-07-01T12:00:00.000Z"),
           endTime: new Date("2026-07-02T12:00:00.000Z"),
           buyerPremiumRate: "0.25",
-          createdBy: "catalog-page-seller",
           createdByLegalEntityId: sellerLeId,
           createdAt: t,
           updatedAt: t,
