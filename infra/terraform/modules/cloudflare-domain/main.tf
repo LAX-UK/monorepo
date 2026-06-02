@@ -68,7 +68,24 @@ resource "cloudflare_zone_settings_override" "this" {
 locals {
   auth_host_expression = join(" ", [for host in var.auth_hosts : "\"${host}\""])
   api_host_expression  = join(" ", [for host in var.api_hosts : "\"${host}\""])
-  zone_name_regex      = replace(var.zone_name, ".", "\\.")
+
+  test_noindex_host_expression = length(var.test_hosts) > 0 ? join(" or ", [
+    for host in sort(tolist(var.test_hosts)) : "(http.host eq \"${host}\")"
+  ]) : "false"
+
+  bot_ua_allow_clauses = [
+    for ua in sort(tolist(var.whitelisted_bot_user_agents)) : "(http.user_agent contains \"${ua}\")"
+  ]
+  bot_allow_expression = var.whitelist_cf_client_bot ? (
+    length(local.bot_ua_allow_clauses) > 0 ?
+    join(" or ", concat(["(cf.client.bot)"], local.bot_ua_allow_clauses)) :
+    "(cf.client.bot)"
+    ) : (
+    length(local.bot_ua_allow_clauses) > 0 ?
+    join(" or ", local.bot_ua_allow_clauses) :
+    "false"
+  )
+  bot_allow_negated = "not (${local.bot_allow_expression})"
 
   # Free tier http_ratelimit: period must be 10 (not 60), mitigation_timeout must
   # be 10 (not 60). Map the intended per-minute cap (min of the two auth paths)
@@ -88,10 +105,20 @@ resource "cloudflare_ruleset" "zone_auth_waf" {
   kind        = "zone"
   phase       = "http_request_firewall_custom"
 
+  dynamic "rules" {
+    for_each = local.bot_allow_expression != "false" ? [1] : []
+    content {
+      action      = "skip"
+      expression  = local.bot_allow_expression
+      description = "Allow listed crawlers/monitoring bots (skip remaining custom WAF rules)."
+      enabled     = true
+    }
+  }
+
   rules {
-    action      = "managed_challenge"
-    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/authorize\" and not http.user_agent contains \"Mozilla\")"
-    description = "Challenge non-browser authorize requests."
+    action = "managed_challenge"
+    expression = "(${local.bot_allow_negated}) and (http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/authorize\" and not http.user_agent contains \"Mozilla\")"
+    description = "Challenge non-browser authorize requests (excluding bot allowlist)."
     enabled     = true
   }
 }
@@ -116,7 +143,7 @@ resource "cloudflare_ruleset" "zone_rate_limits" {
 
   rules {
     action      = "block"
-    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
+    expression  = "(${local.bot_allow_negated}) and (http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
     description = "Auth sign-up + verification-email: shared bucket (Free: 1 rule, 10s period + 10s mitigation; RPM via locals)."
     enabled     = true
 
@@ -170,8 +197,8 @@ resource "cloudflare_ruleset" "test_noindex" {
 
   rules {
     action      = "rewrite"
-    expression  = "(http.host matches \"^test(-.*)?\\\\.${local.zone_name_regex}$\")"
-    description = "Noindex all test subdomains"
+    expression  = local.test_noindex_host_expression
+    description = "Noindex listed test hostnames (explicit eq; Free-plan safe)"
     enabled     = true
 
     action_parameters {
