@@ -30,6 +30,15 @@ module "cloudflare_domain" {
   # Include test hosts so one zone ruleset covers both envs (test stack does not create rulesets).
   auth_hosts = ["auth.lax.bid", "test-auth.lax.bid"]
   api_hosts  = ["api.lax.bid", "test-api.lax.bid"]
+  test_hosts = [
+    "test.lax.bid",
+    "test-api.lax.bid",
+    "test-auth.lax.bid",
+    "test-ws.lax.bid",
+    "test-media.lax.bid",
+  ]
+  # Optional: override bot allowlist (must include full set; replaces module defaults).
+  # whitelisted_bot_user_agents = toset(["Googlebot", "GPTBot", "MyCustomMonitor/1.0"])
 }
 
 module "media" {
