@@ -118,7 +118,7 @@ resource "cloudflare_ruleset" "zone_auth_waf" {
         phases  = ["http_ratelimit"]
       }
 
-      # API always returns logging; omitting it causes provider inconsistent-result after apply.
+      # logging is only valid on skip (API 20018); required so provider state matches API response.
       logging {
         enabled = false
       }
@@ -130,10 +130,6 @@ resource "cloudflare_ruleset" "zone_auth_waf" {
     expression  = "(${local.bot_allow_negated}) and (http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/authorize\" and not http.user_agent contains \"Mozilla\")"
     description = "Challenge non-browser authorize requests (excluding bot allowlist)."
     enabled     = true
-
-    logging {
-      enabled = false
-    }
   }
 }
 
@@ -167,10 +163,6 @@ resource "cloudflare_ruleset" "zone_rate_limits" {
       requests_per_period = local.auth_ratelimit_requests_per_10s
       mitigation_timeout  = 10
     }
-
-    logging {
-      enabled = false
-    }
   }
 }
 
@@ -199,10 +191,6 @@ resource "cloudflare_ruleset" "www_redirect" {
         preserve_query_string = true
       }
     }
-
-    logging {
-      enabled = false
-    }
   }
 }
 
@@ -229,10 +217,6 @@ resource "cloudflare_ruleset" "test_noindex" {
         operation = "set"
         value     = "noindex, nofollow, noarchive"
       }
-    }
-
-    logging {
-      enabled = false
     }
   }
 }

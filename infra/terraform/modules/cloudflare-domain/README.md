@@ -28,4 +28,4 @@ Do not add `http.user_agent` to `http_ratelimit` expressions (Advanced Rate Limi
 
 **Plan limits:** Regex (`matches`) requires Business or WAF Advanced; UA in rate-limit rules requires Advanced Rate Limiting. DNS (TXT/MX) works on Free.
 
-**Provider quirk:** Every `rules` block sets `logging { enabled = false }` so the Cloudflare API response matches Terraform state (avoids inconsistent-result after apply on skip rules).
+**Provider quirk:** Only **skip** rules may set `logging` (API error 20018). The bot Skip rule uses `logging { enabled = false }` so provider state matches the API after apply.
