@@ -30,9 +30,29 @@ dig +short CNAME pm-bounces.mail.lax.bid
 
 **Acceptance:** score **≥ 8/10** with no critical SPF/DKIM/DMARC failures.
 
-## MX note
+## Zoho Mail (apex `lax.bid`)
 
-`mail.lax.bid` is a **sending** subdomain; **MX** is only required if you receive mail on that hostname (usually not for Postmark-only). Workspace mail (e.g. Google) uses separate MX on the apex or `google._domainkey` — document separately if added.
+Team inboxes (`support@`, `settlements@`, etc.) use **Zoho Mail** on the apex. App transactional mail stays on Postmark (`mail.lax.bid`); do not change Postmark records when adding Zoho.
+
+| Record | Type | Status |
+|--------|------|--------|
+| `@` | TXT | `zoho-verification=zb23174584.zmverify.zoho.eu` (domain verify; Terraform `zoho_mail_verify`) |
+| `@` | MX | _Pending_ — add from Zoho Mail admin after TXT verify |
+| `@` | TXT (SPF) | _Pending_ — Zoho SPF string from admin |
+| Zoho DKIM host | TXT/CNAME | _Pending_ — from Zoho Mail → Email Configuration → DKIM |
+| `_dmarc` | TXT | _Pending_ — apex DMARC after workspace send is live |
+
+Verify domain ownership:
+
+```bash
+dig +short TXT lax.bid | grep zoho-verification
+```
+
+After Zoho shows MX/SPF/DKIM values, add them to `infra/terraform/persistent/prod/main.tf` and apply `persistent` prod (same workflow as Postmark rows above).
+
+## MX note (Postmark subdomain)
+
+`mail.lax.bid` is a **sending** subdomain; **MX** is only required if you receive mail on that hostname (usually not for Postmark-only). Inbound team mail uses **MX on the apex** via Zoho Mail (see above).
 
 ## When to pause sending
 
