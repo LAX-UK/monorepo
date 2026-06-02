@@ -116,8 +116,8 @@ resource "cloudflare_ruleset" "zone_auth_waf" {
   }
 
   rules {
-    action = "managed_challenge"
-    expression = "(${local.bot_allow_negated}) and (http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/authorize\" and not http.user_agent contains \"Mozilla\")"
+    action      = "managed_challenge"
+    expression  = "(${local.bot_allow_negated}) and (http.host in {${local.auth_host_expression}} and http.request.uri.path eq \"/api/auth/authorize\" and not http.user_agent contains \"Mozilla\")"
     description = "Challenge non-browser authorize requests (excluding bot allowlist)."
     enabled     = true
   }
