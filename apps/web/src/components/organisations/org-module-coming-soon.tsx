@@ -1,4 +1,5 @@
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -28,7 +29,7 @@ export function OrgModuleComingSoon() {
               <Link href="/contact">Contact us</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <a href="mailto:support@thelax.co">support@thelax.co</a>
+              <a href={`mailto:${SITE_SUPPORT_EMAIL}`}>{SITE_SUPPORT_EMAIL}</a>
             </Button>
           </div>
         }
