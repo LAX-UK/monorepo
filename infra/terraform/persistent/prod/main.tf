@@ -16,6 +16,7 @@ locals {
     postmark_return_path = { name = "pm-bounces.mail", type = "CNAME", value = "pm.mtasv.net", proxied = false, comment = "Postmark prod Return-Path" }
     mail_spf             = { name = "mail", type = "TXT", value = "v=spf1 include:spf.mtasv.net ~all", proxied = false, comment = "Postmark SPF for mail.lax.bid sender domain" }
     mail_dmarc           = { name = "_dmarc.mail", type = "TXT", value = "v=DMARC1; p=quarantine; rua=mailto:support@lax.bid; fo=1", proxied = false, comment = "DMARC for mail.lax.bid (align with Postmark)" }
+    zoho_mail_verify     = { name = "@", type = "TXT", value = "zoho-verification=zb23174584.zmverify.zoho.eu", proxied = false, comment = "Zoho Mail domain verification (EU)" }
   }
 }
 
