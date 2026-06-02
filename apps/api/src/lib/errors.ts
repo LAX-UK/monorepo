@@ -95,6 +95,20 @@ export class CategoryError extends Error {
   }
 }
 
+export class VenueError extends Error {
+  readonly code?: string | undefined;
+
+  constructor(
+    message: string,
+    readonly status: number = 400,
+    code?: string,
+  ) {
+    super(message);
+    this.name = "VenueError";
+    if (code !== undefined) this.code = code;
+  }
+}
+
 export class SubmissionError extends Error {
   constructor(
     message: string,

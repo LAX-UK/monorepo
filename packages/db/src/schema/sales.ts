@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { legalEntity } from "./legal-entities.js";
+import { venue } from "./venues.js";
 
 /**
  * Band-based buyer-premium tier (stored in `sale.buyer_premium_tiers`).
@@ -73,6 +74,7 @@ export const sale = pgTable(
     createdByLegalEntityId: uuid("created_by_legal_entity_id")
       .notNull()
       .references(() => legalEntity.id, { onDelete: "restrict" }),
+    venueId: uuid("venue_id").references(() => venue.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
@@ -81,6 +83,7 @@ export const sale = pgTable(
   (table) => [
     index("sale_status_end_time_idx").on(table.status, table.endTime),
     index("sale_created_by_legal_entity_id_idx").on(table.createdByLegalEntityId),
+    index("sale_venue_id_idx").on(table.venueId),
     index("sale_start_time_idx").on(table.startTime),
     index("sale_not_deleted_idx").on(table.id).where(sql`${table.deletedAt} IS NULL`),
     check("sale_end_after_start", sql`${table.endTime} > ${table.startTime}`),
@@ -91,5 +94,9 @@ export const saleRelations = relations(sale, ({ one }) => ({
   createdByLegalEntity: one(legalEntity, {
     fields: [sale.createdByLegalEntityId],
     references: [legalEntity.id],
+  }),
+  venue: one(venue, {
+    fields: [sale.venueId],
+    references: [venue.id],
   }),
 }));

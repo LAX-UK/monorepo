@@ -5,6 +5,7 @@ export * from "./lot-lifecycle-snapshot.js";
 export * from "./lot-categories.js";
 export * from "./sales.js";
 export * from "./sale-categories.js";
+export * from "./venues.js";
 export * from "./telephone-bid-booking.js";
 export * from "./bids.js";
 export * from "./sale-registration.js";
@@ -69,4 +70,5 @@ export {
   saleCategoryRelations,
   saleRelations,
   submissionCategoryRelations,
+  venueRelations,
 } from "../relations.js";

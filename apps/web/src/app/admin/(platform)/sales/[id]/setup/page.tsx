@@ -12,6 +12,7 @@ import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sa
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import {
   buildCoverImagePreviewMap,
@@ -47,10 +48,15 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
 
   const stepParam = firstString(sp.step)?.trim() as SaleSetupStepId | undefined;
 
-  const [categories, artistResult, pendingRegistrationCount, connectRequiredByLotId] =
+  const [categories, artistResult, venuesResult, pendingRegistrationCount, connectRequiredByLotId] =
     await Promise.all([
       (await getServerCategoryReader()).tree(),
       getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
+      getWriteContainer()
+        .adminVenues.list({
+          ...(sale.createdByLegalEntityId ? { legalEntityId: sale.createdByLegalEntityId } : {}),
+        })
+        .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
       loadAdminSalePendingRegistrationCount(id, sale),
       buildConnectRequiredByLotId(lots),
     ]);
@@ -96,6 +102,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         sale={sale}
         lots={lots}
         categories={categories}
+        venues={venuesResult.ok ? venuesResult.data.venues : []}
         artists={artistResult.rows}
         englishOnlyAuctionsLocked={isEnglishOnlyAuctionsLocked()}
         previewUrlByKey={previewUrlByKey}

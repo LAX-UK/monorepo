@@ -10,7 +10,11 @@ import {
 import { saleDetailTabHref, saleEditHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { readinessLabel } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminCategory, ArtistProfile, Lot, Sale } from "@auction/types";
-import { lotTimingViolationAgainstSale, saleModeInheritsLotTiming } from "@auction/validators";
+import {
+  isOnsiteLocationReadyForPublish,
+  lotTimingViolationAgainstSale,
+  saleModeInheritsLotTiming,
+} from "@auction/validators";
 
 export type CatalogReadinessItem = {
   id: string;
@@ -157,13 +161,7 @@ export function buildSalePublishReadiness(
   const scheduleValid = sale.endTime.getTime() > sale.startTime.getTime();
   const liveish = sale.status === "scheduled" || sale.status === "active";
   const isOnsite = sale.deliveryMode === "onsite";
-  const venueOk =
-    !isOnsite ||
-    Boolean(
-      sale.locationName?.trim() ||
-        sale.locationAddress?.trim() ||
-        sale.locationAddressLine1?.trim(),
-    );
+  const venueOk = !isOnsite || isOnsiteLocationReadyForPublish(sale);
 
   const items: CatalogReadinessItem[] = [
     {

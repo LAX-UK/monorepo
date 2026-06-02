@@ -56,6 +56,9 @@ export function humanizeSetupError(input: HumanizeSetupErrorInput): string {
   if (input.errorCode === "connect_required") {
     return connectPublishBlockedTitle();
   }
+  if (input.errorCode === "onsite_location_required") {
+    return "Add a saved venue or enter the venue name and address before going live.";
+  }
 
   const raw = input.message.trim();
   if (!raw) return "Something went wrong. Please try again.";

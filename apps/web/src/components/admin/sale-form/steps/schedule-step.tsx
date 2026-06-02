@@ -12,7 +12,7 @@ import {
 import { scheduleLotConflictBanner } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { formatDateTime, formatNumber } from "@/lib/ui/format";
-import type { Lot } from "@auction/types";
+import type { Lot, Venue } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -57,7 +57,10 @@ type Props = {
   postcodeIsValid: boolean;
   lots?: readonly Lot[];
   lotsSetupHref?: string;
+  venues?: readonly Venue[];
 };
+
+const MANUAL_VENUE_VALUE = "__manual__";
 
 export function SaleScheduleStep({
   form,
@@ -74,6 +77,7 @@ export function SaleScheduleStep({
   postcodeIsValid,
   lots = [],
   lotsSetupHref,
+  venues = [],
 }: Props) {
   const deliveryMode = form.watch("deliveryMode");
   const startTime = form.watch("startTime");
@@ -84,6 +88,30 @@ export function SaleScheduleStep({
     return findLotsOutsideSaleWindow(lots, window);
   }, [deliveryMode, endTime, lots, startTime]);
   const pendingWindow = parseSaleWindowFromForm({ deliveryMode, startTime, endTime });
+
+  function applyVenue(venue: Venue) {
+    form.setValue("venueId", venue.id, { shouldDirty: true, shouldValidate: true });
+    form.setValue("locationName", venue.name, { shouldDirty: true, shouldValidate: true });
+    form.setValue("locationAddressLine1", venue.addressLine1, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    form.setValue("locationAddressLine2", venue.addressLine2 ?? "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    form.setValue("locationCity", venue.city, { shouldDirty: true, shouldValidate: true });
+    form.setValue("locationCounty", venue.county ?? "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    form.setValue("locationPostcode", venue.postcode, { shouldDirty: true, shouldValidate: true });
+    form.setValue("locationCountry", venue.country, { shouldDirty: true, shouldValidate: true });
+    form.setValue("locationMapUrl", venue.mapUrl ?? "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
 
   return (
     <>
@@ -182,11 +210,66 @@ export function SaleScheduleStep({
               <div>
                 <LabelCaps>Venue location</LabelCaps>
                 <p className="mt-2 font-body text-xs text-on-surface-variant">
-                  Used for the public onsite catalog page. Structured fields generate a clean
+                  Shown on the public sale page when published. Structured fields generate a clean
                   formatted address and a Google Maps link. UK postcodes are normalized
                   automatically (e.g. "sw1y6qu" → "SW1Y 6QU").
                 </p>
               </div>
+
+              <FormField
+                control={form.control}
+                name="venueId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="mb-2 block">
+                      <LabelCaps>Saved venue</LabelCaps>
+                    </FormLabel>
+                    <RhfSelect
+                      value={field.value || MANUAL_VENUE_VALUE}
+                      onValueChange={(value) => {
+                        if (!isDraft) return;
+                        if (value === MANUAL_VENUE_VALUE) {
+                          field.onChange("");
+                          return;
+                        }
+                        const selected = venues.find((venue) => venue.id === value);
+                        if (selected) applyVenue(selected);
+                      }}
+                      onBlur={field.onBlur}
+                      disabled={!isDraft || venues.length === 0}
+                      placeholder={venues.length === 0 ? "No saved venues yet" : "Select a venue"}
+                      options={[
+                        { value: MANUAL_VENUE_VALUE, label: "Manual / one-off venue" },
+                        ...venues.map((venue) => ({
+                          value: venue.id,
+                          label: `${venue.name} · ${venue.city}`,
+                        })),
+                      ]}
+                      triggerClassName="w-full font-body text-sm"
+                    />
+                    {venues.length === 0 ? (
+                      <p className="mt-2 font-body text-xs text-on-surface-variant">
+                        No saved venues.{" "}
+                        <a
+                          href="/admin/venues?new=1"
+                          className="text-primary underline-offset-2 hover:underline"
+                        >
+                          Create a venue
+                        </a>{" "}
+                        to reuse address details across onsite sales.
+                      </p>
+                    ) : (
+                      <p className="mt-2 font-body text-xs text-on-surface-variant">
+                        Venues listed here belong to the sale operator (LAX). Lot seller
+                        organisations are separate — consignor lots can be sold in a LAX-owned
+                        gallery without any conflict. Saved venues auto-fill the address fields
+                        below; the venue record is snapshotted when you publish.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

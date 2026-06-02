@@ -21,6 +21,7 @@ import {
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
   type UserRole,
+  VENUES_ACCESS,
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
@@ -108,6 +109,7 @@ export const requireLegalEntityBrowse = createRequireAccess(LEGAL_ENTITY_BROWSE_
 export const requireSubmissionsAccess = createRequireAccess(SUBMISSIONS_ACCESS);
 export const requireQrCodesAccess = createRequireAccess(QR_CODES_ACCESS);
 export const requireCategoriesAccess = createRequireAccess(CATEGORIES_ACCESS);
+export const requireVenuesAccess = createRequireAccess(VENUES_ACCESS);
 export const requireArtistsAccess = createRequireAccess(ARTISTS_ACCESS);
 export const requireArtistWriteAccess = createRequireAccess(ARTIST_WRITE_ACCESS);
 export const requireArtistReviewAccess = createRequireAccess(ARTIST_REVIEW_ACCESS);

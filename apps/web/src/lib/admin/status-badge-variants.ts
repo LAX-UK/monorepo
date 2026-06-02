@@ -564,7 +564,8 @@ export type AdminStatusDomain =
   | "kyc"
   | "legalEntity"
   | "dispute"
-  | "category";
+  | "category"
+  | "venue";
 
 export function adminStatusLabel(domain: AdminStatusDomain, status: string): string {
   switch (domain) {
@@ -609,6 +610,8 @@ export function adminStatusLabel(domain: AdminStatusDomain, status: string): str
       return disputeStatusLabel[status as DisputeStatus] ?? status.replaceAll("_", " ");
     case "category":
       return categoryLifecycleLabel[status as CategoryLifecycleStatus] ?? status;
+    case "venue":
+      return status === "archived" ? "Archived" : "Active";
     default:
       return status;
   }
@@ -657,6 +660,8 @@ export function adminStatusToBadgeVariant(
       return disputeStatusToBadgeVariant(status);
     case "category":
       return categoryLifecycleToBadgeVariant(status as CategoryLifecycleStatus);
+    case "venue":
+      return status === "archived" ? "neutral" : "success";
     default:
       return "neutral";
   }
