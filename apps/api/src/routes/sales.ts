@@ -53,22 +53,24 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/", optionalAuth, zValidator("query", listSalesQuerySchema), async (c) => {
     const query = c.req.valid("query");
-    const { data: rows } = await container.saleService.listSalesForPublicApi({
-      status: query.statuses ? undefined : query.status,
-      statuses: query.statuses,
-      categoryId: query.categoryId,
-      categoryIds: query.categoryIds,
-      q: query.q,
-      deliveryMode: query.deliveryMode,
-      settlementStatus: query.settlementStatus,
-      needsSetup: query.needsSetup === "1",
-      limit: query.limit,
-      offset: query.offset,
-      sort: query.sort,
-    });
-
     const role = c.get("userRole");
     const staff = normalizeUserStaffRole(c.get("userStaffRole") ?? undefined);
+    const { data: rows } = await container.saleService.listSalesForPublicApi(
+      {
+        status: query.statuses ? undefined : query.status,
+        statuses: query.statuses,
+        categoryId: query.categoryId,
+        categoryIds: query.categoryIds,
+        q: query.q,
+        deliveryMode: query.deliveryMode,
+        settlementStatus: query.settlementStatus,
+        needsSetup: query.needsSetup === "1",
+        limit: query.limit,
+        offset: query.offset,
+        sort: query.sort,
+      },
+      { role, staffRole: staff },
+    );
     const canEnrichDelete =
       role != null && roleHasCapability(role as UserRole, "auction.manage", staff);
 
@@ -148,7 +150,10 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
   r.get("/:id", optionalAuth, zValidator("param", saleIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
-    const detail = await container.saleService.getSaleDetailForPublicApi(id, userId);
+    const detail = await container.saleService.getSaleDetailForPublicApi(id, userId, {
+      role: c.get("userRole"),
+      staffRole: c.get("userStaffRole"),
+    });
     if (!detail) return c.json({ error: "Not found" }, 404);
     return c.json(detail);
   });
@@ -180,16 +185,21 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
 
   r.get(
     "/:id/lots",
+    optionalAuth,
     zValidator("param", saleIdParamSchema),
     zValidator("query", listSaleLotsQuerySchema),
     async (c) => {
       const { id } = c.req.valid("param");
       const q = c.req.valid("query");
-      const page = await container.saleService.listSaleLotsPageForPublicApi(id, {
-        limit: q.limit,
-        offset: q.offset,
-        sort: q.sort,
-      });
+      const page = await container.saleService.listSaleLotsPageForPublicApi(
+        id,
+        {
+          limit: q.limit,
+          offset: q.offset,
+          sort: q.sort,
+        },
+        { role: c.get("userRole"), staffRole: c.get("userStaffRole") },
+      );
       if (!page) return c.json({ error: "Not found" }, 404);
       return c.json(page);
     },

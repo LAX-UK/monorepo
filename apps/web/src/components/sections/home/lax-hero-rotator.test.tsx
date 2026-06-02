@@ -59,4 +59,10 @@ describe("LaxHeroSaleroomRotator", () => {
       expect(carousel?.className).toContain(token);
     }
   });
+
+  it("uses fadeUp reveal on slides instead of wipeZoom", () => {
+    const { container } = render(<LaxHeroSaleroomRotator slides={[slideA]} />);
+    expect(container.querySelector(".reveal--fadeUp")).toBeInTheDocument();
+    expect(container.querySelector(".reveal--wipeZoom")).not.toBeInTheDocument();
+  });
 });

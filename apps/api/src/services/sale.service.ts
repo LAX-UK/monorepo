@@ -14,11 +14,16 @@ import type {
   CreateSaleInput as ValidatorCreateSale,
 } from "@auction/validators";
 import {
+  PUBLIC_LOT_STATUSES,
   englishOnlyAdminLotAuctionTypeViolation,
   formatPostalAddress,
   getSaleModeCapabilities,
   isOnsiteLocationPopulated,
+  isPublicCatalogLot,
+  isPublicCatalogSale,
   isStartInFutureForPublish,
+  resolvePublicSaleListFilter,
+  viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
 import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -306,9 +311,14 @@ export class SaleService {
   async getSaleDetailForPublicApi(
     saleId: string,
     viewerUserId: string | undefined,
+    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
   ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
     const bundle = await this.getByIdWithLots(saleId);
     if (!bundle) return null;
+
+    const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
+    if (!canPreview && !isPublicCatalogSale(bundle.sale)) return null;
+
     const isFollowing =
       viewerUserId && this.saleFollowReader
         ? await this.saleFollowReader.isFollowing(viewerUserId, saleId)
@@ -317,20 +327,47 @@ export class SaleService {
       presentSaleImages(this.mediaUrlResolver, bundle.sale),
       presentLotsImages(this.mediaUrlResolver, bundle.lots),
     ]);
-    return { data: { sale, lots, viewer: { isFollowing } } };
+    const visibleLots = canPreview
+      ? lots
+      : lots.filter((lot) => isPublicCatalogLot(lot, bundle.sale));
+    return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
   }
 
   async listSalesForPublicApi(
     filter: Parameters<ISaleRepository["list"]>[0],
+    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
   ): Promise<{ data: { sale: Sale; lots: Lot[] }[] }> {
-    const rows = await this.list(filter);
+    const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
+    const resolved = resolvePublicSaleListFilter({
+      status: filter.status,
+      statuses: filter.statuses,
+      viewerCanSeeNonPublic: canPreview,
+    });
+    const queryFilter = {
+      ...filter,
+      ...(resolved.statuses !== undefined
+        ? { statuses: resolved.statuses, status: undefined }
+        : resolved.status !== undefined
+          ? { status: resolved.status, statuses: undefined }
+          : {}),
+    };
+    const rows = await this.list(queryFilter);
     const data = await presentSalesWithLotsImages(this.mediaUrlResolver, rows);
-    return { data };
+    if (canPreview) return { data };
+    return {
+      data: data
+        .filter(({ sale }) => isPublicCatalogSale(sale))
+        .map(({ sale, lots }) => ({
+          sale,
+          lots: lots.filter((lot) => isPublicCatalogLot(lot, sale)),
+        })),
+    };
   }
 
   async listSaleLotsPageForPublicApi(
     saleId: string,
     opts: { limit: number; offset: number; sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc" },
+    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
   ): Promise<{
     data: {
       items: Lot[];
@@ -340,8 +377,24 @@ export class SaleService {
       sort: typeof opts.sort;
     };
   } | null> {
-    const page = await this.listLotsPage(saleId, opts);
-    if (!page) return null;
+    const sale = await this.saleRepo.findById(saleId);
+    if (!sale) return null;
+
+    const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
+    if (!canPreview && !isPublicCatalogSale(sale)) return null;
+
+    const page = await this.lotRepo.listCatalogLotsBySalePage({
+      saleId,
+      sort: opts.sort ?? "lot",
+      limit: opts.limit,
+      offset: opts.offset,
+      ...(canPreview
+        ? {}
+        : {
+            lotStatuses: [...PUBLIC_LOT_STATUSES],
+            requirePublicSale: true,
+          }),
+    });
     const items = await presentLotsImages(this.mediaUrlResolver, page.items);
     return {
       data: {
@@ -361,24 +414,12 @@ export class SaleService {
   ): Promise<{ items: Lot[]; total: number } | null> {
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return null;
-    const all = await this.lotRepo.findBySaleId(saleId);
-    const sorted = [...all];
-    const parse = (p: string) => Number.parseFloat(p) || 0;
-    switch (opts.sort ?? "lot") {
-      case "priceAsc":
-        sorted.sort((a, b) => parse(a.currentPrice) - parse(b.currentPrice));
-        break;
-      case "priceDesc":
-        sorted.sort((a, b) => parse(b.currentPrice) - parse(a.currentPrice));
-        break;
-      case "endingAsc":
-        sorted.sort((a, b) => a.endTime.getTime() - b.endTime.getTime());
-        break;
-      default:
-        sorted.sort((a, b) => (a.lotNumber ?? 999_999) - (b.lotNumber ?? 999_999));
-    }
-    const items = sorted.slice(opts.offset, opts.offset + opts.limit);
-    return { items, total: sorted.length };
+    return this.lotRepo.listCatalogLotsBySalePage({
+      saleId,
+      sort: opts.sort ?? "lot",
+      limit: opts.limit,
+      offset: opts.offset,
+    });
   }
 
   async list(

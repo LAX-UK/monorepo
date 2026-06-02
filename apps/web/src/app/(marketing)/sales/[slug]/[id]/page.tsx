@@ -18,6 +18,10 @@ import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-her
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomRelatedAuctions } from "@/components/sections/saleroom/saleroom-related-auctions";
+import {
+  isPublicCatalogSale,
+  viewerCanSeeNonPublicCatalog,
+} from "@/lib/catalog/public-catalog-visibility";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http/saleroom.server";
@@ -140,6 +144,10 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       .catch((): Category[] => []),
   ]);
   if (!bundle) notFound();
+  const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRole);
+  if (!canPreviewCatalog && !isPublicCatalogSale(bundle.sale)) {
+    notFound();
+  }
   if (slug !== slugify(bundle.sale.title)) {
     permanentRedirect(canonicalSalePathWithQuery(bundle.sale, sp));
   }

@@ -7,7 +7,10 @@ import {
 import { HeroDots } from "@/components/sections/home/hero/hero-dots";
 import { HeroProgressBar } from "@/components/sections/home/hero/hero-progress-bar";
 import { HeroSlideCopy } from "@/components/sections/home/hero/hero-slide-copy";
-import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
+import {
+  type HeroSaleSlideVM,
+  heroSaleSlideCoverSources,
+} from "@/components/sections/home/home-view-models";
 import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { RevealOnMount } from "@/components/ui/reveal";
@@ -72,17 +75,16 @@ function HeroSlidePanel({ slide, priority }: { slide: HeroSaleSlideVM; priority:
     <div className={cn("relative", HERO_MIN_H)}>
       <RevealOnMount
         key={slide.id}
-        variant="wipeZoom"
+        variant="fadeUp"
         className="absolute inset-0 overflow-hidden"
         innerClassName="absolute inset-0"
       >
         <HeroAdaptiveShell
           className="absolute inset-0 h-full w-full"
           shellClassName={HERO_MIN_H}
-          src={slide.coverImageUrl}
+          cover={heroSaleSlideCoverSources(slide)}
           alt={slide.coverImageAlt}
           priority={priority}
-          imgClassName="object-center"
           backdropScrim={<HeroHorizontalScrim />}
         >
           <span className="sr-only">{slide.title}</span>
@@ -122,7 +124,7 @@ function HeroChrome({ slides }: { slides: HeroSaleSlideVM[] }) {
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-0 z-[2] flex flex-col justify-end px-6 pb-16 md:px-10 md:pb-20 lg:px-10",
+        "pointer-events-none absolute inset-0 z-[2] flex flex-col justify-end px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-10",
         HOME_HERO_MIN_H,
         HOME_HERO_CONTENT_PT,
       )}

@@ -13,15 +13,17 @@ export default async function MarketingLayout({ children }: { children: ReactNod
 
   return (
     <>
-      <MarketingLotQuickLookShell>
-        <MarketingHeaderTitleProvider>
-          <CommandPaletteLazy variant="marketing" />
-          <MarketingGlobalHotkeys />
-          <SiteHeader nav={nav} transparentPaths={["/"]} />
-          {children}
-          <AuthRequiredToast />
-        </MarketingHeaderTitleProvider>
-      </MarketingLotQuickLookShell>
+      <div className="overflow-x-clip">
+        <MarketingLotQuickLookShell>
+          <MarketingHeaderTitleProvider>
+            <CommandPaletteLazy variant="marketing" />
+            <MarketingGlobalHotkeys />
+            <SiteHeader nav={nav} transparentPaths={["/"]} />
+            {children}
+            <AuthRequiredToast />
+          </MarketingHeaderTitleProvider>
+        </MarketingLotQuickLookShell>
+      </div>
       <SiteFooter />
     </>
   );

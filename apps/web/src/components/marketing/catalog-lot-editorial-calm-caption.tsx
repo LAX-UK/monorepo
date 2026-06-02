@@ -1,6 +1,7 @@
 "use client";
 
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
+import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { formatMoney } from "@/lib/format-currency";
 import type { Lot } from "@auction/types";
 
@@ -25,7 +26,7 @@ export function CatalogLotEditorialCalmCaption({
           {title}
         </h2>
         {subtitle ? <p className="font-body text-sm text-on-surface-variant">{subtitle}</p> : null}
-        {lot.status !== "draft" ? (
+        {isPublicLotStatus(lot.status) ? (
           <LotStatusBadge
             status={lot.status}
             startTime={lot.startTime.toISOString()}

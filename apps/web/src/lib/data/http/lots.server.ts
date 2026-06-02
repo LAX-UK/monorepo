@@ -18,6 +18,7 @@ export function buildLotListQuery(params: ListLotsParams): Record<string, string
     offset: String(params.offset ?? 0),
   };
   if (params.status) q.status = params.status;
+  if (params.statuses?.length) q.statuses = params.statuses.join(",");
   if (params.categoryId) q.categoryId = params.categoryId;
   if (params.sellerId) q.sellerId = params.sellerId;
   if (params.winnerId) q.winnerId = params.winnerId;

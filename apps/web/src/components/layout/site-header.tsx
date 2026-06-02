@@ -4,6 +4,7 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { SITE_LOGO_TEXT_PATH } from "@/lib/brand";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { cn } from "@auction/ui";
@@ -127,9 +128,23 @@ function SiteHeaderShell({
             logo={
               <Link
                 href="/"
-                className="site-header-logo shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+                className="site-header-logo min-w-[76px] shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
               >
-                <LaxLogo variant="header" />
+                <LaxLogo
+                  variant="header"
+                  className="lg:hidden xl:block"
+                  imageWidth={1089}
+                  imageHeight={331}
+                  surfaceTone={headerTone}
+                />
+                <LaxLogo
+                  variant="header"
+                  className="hidden lg:block xl:hidden"
+                  imageSrc={SITE_LOGO_TEXT_PATH}
+                  imageWidth={430}
+                  imageHeight={202}
+                  surfaceTone={headerTone}
+                />
               </Link>
             }
             trailing={

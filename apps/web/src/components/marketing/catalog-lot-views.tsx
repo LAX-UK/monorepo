@@ -5,6 +5,7 @@ import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { MediaImage } from "@/components/ui/media-image";
+import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -60,7 +61,7 @@ function LotWatchlistHeart({
 }
 
 function LotStatusOverlay({ lot }: { lot: Lot }) {
-  if (lot.status === "draft") return null;
+  if (!isPublicLotStatus(lot.status)) return null;
   return (
     <LotStatusBadge
       status={lot.status}
@@ -275,7 +276,7 @@ export function CatalogLotListView({
                         </p>
                       ) : null}
                     </div>
-                    {a.status !== "draft" ? (
+                    {isPublicLotStatus(a.status) ? (
                       <div className="tabular-nums">
                         <LotStatusBadge
                           status={a.status}

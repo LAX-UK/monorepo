@@ -6,6 +6,7 @@ import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { RevealOnMount } from "@/components/ui/reveal";
 import { HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
+import { resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
 import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -139,10 +140,15 @@ export function LaxHeroLiveStream({ vm }: Props) {
         )}
       >
         <HeroAdaptiveShell
-          src={poster}
+          cover={resolveHeroCoverSources({
+            desktopUrl: poster,
+            mobileUrl: vm.posterImageMobileUrl,
+            desktopWideUrl: vm.posterImageDesktopWideUrl,
+            objectPosition: vm.objectPosition,
+          })}
           alt={`${vm.saleTitle} — saleroom cover`}
           priority
-          imgClassName="object-center opacity-0 motion-reduce:opacity-100"
+          imgClassName="opacity-0 motion-reduce:opacity-100"
           backdropScrim={
             <>
               <div className="pointer-events-none absolute inset-0 z-[1] block motion-reduce:hidden">
