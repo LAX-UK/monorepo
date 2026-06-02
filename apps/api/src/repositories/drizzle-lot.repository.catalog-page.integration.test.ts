@@ -1,5 +1,5 @@
 import { createDb } from "@auction/db";
-import { legalEntity, lot, sale } from "@auction/db/schema";
+import { legalEntity, lot, sale, user } from "@auction/db/schema";
 import { describe, expect, it } from "vitest";
 import { DrizzleLotRepository } from "./drizzle-lot.repository.js";
 
@@ -7,6 +7,7 @@ const HAS_DB = Boolean(process.env.DATABASE_URL);
 
 describe.skipIf(!HAS_DB)("DrizzleLotRepository.listCatalogLotsBySalePage (integration)", () => {
   const saleId = "44444444-4444-4444-8444-444444444444";
+  const sellerUserId = "catalog-page-seller";
   const sellerLeId = "55555555-5555-4555-8555-555555555555";
 
   it("returns only public lots with accurate total for anonymous catalog page", async () => {
@@ -18,12 +19,20 @@ describe.skipIf(!HAS_DB)("DrizzleLotRepository.listCatalogLotsBySalePage (integr
     try {
       await db.transaction(async (tx) => {
         const t = new Date();
+        await tx.insert(user).values({
+          id: sellerUserId,
+          name: "Seller",
+          email: "catalog-page-seller@integration.test",
+          emailVerified: true,
+          createdAt: t,
+          updatedAt: t,
+        });
         await tx.insert(legalEntity).values({
           id: sellerLeId,
           displayName: "Gallery",
           kind: "organisation",
           subkind: "gallery",
-          createdByUserId: "catalog-page-seller",
+          createdByUserId: sellerUserId,
           status: "approved",
           createdAt: t,
           updatedAt: t,
@@ -45,7 +54,7 @@ describe.skipIf(!HAS_DB)("DrizzleLotRepository.listCatalogLotsBySalePage (integr
           saleId,
           sellerLegalEntityId: sellerLeId,
           title: "Lot",
-          categoryId: "c1000001-0000-4000-8000-000000000001",
+          images: [] as string[],
           auctionType: "english" as const,
           startingPrice: "100",
           currentPrice: "100",
