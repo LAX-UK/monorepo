@@ -205,6 +205,7 @@ export default async function SalesListPage({
         limit: CALENDAR_PAGE_SIZE + 1,
         offset: (calendarPage - 1) * CALENDAR_PAGE_SIZE,
         sort: "createdDesc",
+        status: "scheduled",
       });
       const page = deriveHasMorePage(rows, CALENDAR_PAGE_SIZE);
       newLots = page.items;

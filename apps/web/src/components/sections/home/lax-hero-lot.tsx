@@ -2,7 +2,7 @@
 
 import { BuyersPremiumChip } from "@/components/marketing/buyers-premium-chip";
 import { MagneticButton } from "@/components/marketing/magnetic-button";
-import type { HeroLotVM } from "@/components/sections/home/home-view-models";
+import { type HeroLotVM, heroLotCoverSources } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
@@ -34,10 +34,9 @@ export function LaxHeroLot({ lot }: Props) {
       >
         <RevealOnMount className="absolute inset-0" innerClassName="absolute inset-0">
           <HeroAdaptiveShell
-            src={lot.heroImageUrl}
+            cover={heroLotCoverSources(lot)}
             alt={lot.imageAlt}
             priority
-            imgClassName="object-center"
             backdropScrim={
               <>
                 <HeroHorizontalScrim />
@@ -50,7 +49,7 @@ export function LaxHeroLot({ lot }: Props) {
           >
             <div
               className={cn(
-                "relative flex flex-col justify-end px-6 pb-16 md:px-10 md:pb-20 lg:px-16",
+                "relative flex flex-col justify-end px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-16",
                 HOME_HERO_MIN_H,
                 HOME_HERO_CONTENT_PT,
               )}

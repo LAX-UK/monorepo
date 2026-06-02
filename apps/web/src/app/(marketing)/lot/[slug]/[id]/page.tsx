@@ -21,6 +21,10 @@ import { mapSaleToOverviewVM } from "@/components/sections/saleroom/mappers";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
+import {
+  isPublicCatalogLot,
+  viewerCanSeeNonPublicCatalog,
+} from "@/lib/catalog/public-catalog-visibility";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
@@ -85,6 +89,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   if (!auction) {
     notFound();
   }
+  const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRole);
   ensureCanonicalLotSlug(slug, auction);
 
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
@@ -137,6 +142,10 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     getServerLotDocuments(id).catch(() => []),
     initialAutoBidPromise,
   ]);
+
+  if (!canPreviewCatalog && !isPublicCatalogLot(auction, saleBundle?.sale ?? null)) {
+    notFound();
+  }
 
   const actingCtx = session
     ? await resolveActingContext(session.role, session.staffRole ?? null).catch(() => ({

@@ -166,7 +166,9 @@ export type SitemapSale = { id: string; title: string };
 /** For sitemap / ISR without full Hono client shape. */
 export async function fetchSalesForSitemap(): Promise<SitemapSale[]> {
   const base = getServerApiBase();
-  const res = await fetch(`${base}/sales?limit=200&offset=0`, { next: { revalidate: 300 } });
+  const res = await fetch(`${base}/sales?limit=200&offset=0&statuses=scheduled,active,ended`, {
+    next: { revalidate: 300 },
+  });
   if (!res.ok) return [];
   const body = (await res.json()) as { data: { sale: { id: string; title: string } }[] };
   return body.data

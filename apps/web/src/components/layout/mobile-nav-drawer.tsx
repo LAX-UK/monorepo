@@ -71,7 +71,7 @@ export function MobileNavDrawer({
               className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
               onClick={close}
             >
-              <LaxLogo variant="header" />
+              <LaxLogo variant="header" imageWidth={1089} imageHeight={331} />
             </Link>
             <DialogClose
               className="inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"

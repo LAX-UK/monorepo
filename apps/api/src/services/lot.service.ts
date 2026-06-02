@@ -14,6 +14,8 @@ import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import {
   englishOnlyAdminLotAuctionTypeViolation,
   isStartInFutureForPublish,
+  resolvePublicLotListFilter,
+  viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
@@ -680,7 +682,30 @@ export class LotService {
     viewerRole: string | undefined,
     viewerStaffRole?: string | null,
   ): Promise<{ data: Lot[] }> {
-    const rows = await this.lotRepo.list(filter);
+    const viewerCanSeeNonPublic = viewerCanSeeNonPublicCatalog(viewerRole, viewerStaffRole);
+    const resolved = resolvePublicLotListFilter({
+      status: filter.status,
+      statuses: filter.statuses,
+      viewerCanSeeNonPublic,
+    });
+    const queryFilter: ListLotsFilter = {
+      ...filter,
+      ...(resolved.statuses !== undefined
+        ? { statuses: resolved.statuses, status: undefined }
+        : resolved.status !== undefined
+          ? { status: resolved.status, statuses: undefined }
+          : {}),
+      ...(!viewerCanSeeNonPublic ? { requirePublicParentSale: true } : {}),
+    };
+
+    if (!viewerCanSeeNonPublic && !this.saleRepo && process.env.NODE_ENV !== "test") {
+      console.warn(
+        "[listLotsForPublicApi] saleRepo unavailable; requirePublicParentSale relies on SQL only",
+      );
+    }
+
+    const rows = await this.lotRepo.list(queryFilter);
+
     const presented = await presentLotsImages(this.mediaUrlResolver, rows);
     return {
       data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole, viewerStaffRole)),

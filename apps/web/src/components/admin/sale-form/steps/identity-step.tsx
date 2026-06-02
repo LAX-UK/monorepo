@@ -72,7 +72,9 @@ export function SaleIdentityStep({ form, categories, pending, previewUrlByKey }:
               <LabelCaps>Cover images</LabelCaps>
             </FormLabel>
             <p className="mb-2 font-body text-xs text-on-surface-variant">
-              The first image is shown as the primary auction cover on listing pages.
+              Image 1: desktop hero master. Image 2 (optional): mobile portrait crop. Image 3
+              (optional): desktop xl crop for large screens. See
+              docs/runbooks/hero-cover-content-audit.md.
             </p>
             <FormControl>
               <ImageGalleryManager
