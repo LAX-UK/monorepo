@@ -37,6 +37,24 @@ export function HeaderMegaNav({
   headerTone = "on-light",
 }: HeaderMegaNavProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [liveStreamActive, setLiveStreamActive] = useState(false);
+
+  useEffect(() => {
+    const checkStreams = async () => {
+      try {
+        const res = await fetch("/api/sales/live-streams");
+        const data = await res.json();
+        setLiveStreamActive(Boolean(data.active));
+      } catch (_err) {
+        // Ignored
+      }
+    };
+    checkStreams();
+
+    const interval = setInterval(checkStreams, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const [finePointerHover, setFinePointerHover] = useState(false);
   /** Extra horizontal offset so mega menu links sit under the active nav trigger (px). */
   const [menuContentShiftPx, setMenuContentShiftPx] = useState(0);
@@ -293,7 +311,15 @@ export function HeaderMegaNav({
                     }}
                     onKeyDown={(e) => onTriggerKeyDown(e, index)}
                   >
-                    <span>{item.label}</span>
+                    <span className="relative flex items-center">
+                      <span>{item.label}</span>
+                      {item.id === "auctions" && liveStreamActive && (
+                        <span className="relative ml-1.5 flex h-1.5 w-1.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-live-red opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-live-red" />
+                        </span>
+                      )}
+                    </span>
                     <ChevronDown
                       className={headerMegaNavChevronClass(headerTone, open)}
                       aria-hidden

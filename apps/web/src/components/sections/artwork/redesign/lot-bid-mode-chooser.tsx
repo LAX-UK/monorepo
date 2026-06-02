@@ -17,14 +17,12 @@ const MODES: {
   title: string;
   subtitle: string;
   icon: typeof Zap;
-  recommended?: boolean;
 }[] = [
   {
     id: "auto",
     title: "Auto-bid",
     subtitle: "Set your max. We bid the minimum needed to keep you in front, up to your max.",
     icon: Zap,
-    recommended: true,
   },
   {
     id: "manual",
@@ -40,7 +38,7 @@ export function LotBidModeChooser({ mode, onModeChange, disabled = false, classN
       <legend className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
         How do you want to bid?
       </legend>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 [&>*]:min-w-0">
         {MODES.map((m) => {
           const selected = mode === m.id;
           const Icon = m.icon;
@@ -49,18 +47,19 @@ export function LotBidModeChooser({ mode, onModeChange, disabled = false, classN
               key={m.id}
               type="button"
               variant="ghost"
+              size="link"
               disabled={disabled}
               aria-pressed={selected}
               onClick={() => onModeChange(m.id)}
               className={cn(
-                "flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-colors",
+                "flex h-auto min-h-0 w-full min-w-0 flex-col items-start justify-start gap-2 whitespace-normal rounded-lg border p-4 text-left shadow-none transition-colors",
                 selected
                   ? "border-primary bg-primary/10 ring-2 ring-primary/30"
                   : "border-outline-variant/40 bg-surface-container-lowest hover:border-primary/40 dark:bg-surface-container-low/40",
                 disabled && "pointer-events-none opacity-60",
               )}
             >
-              <span className="flex w-full items-center gap-2">
+              <span className="flex w-full min-w-0 items-center gap-2">
                 <Icon
                   className={cn(
                     "size-4 shrink-0",
@@ -70,19 +69,14 @@ export function LotBidModeChooser({ mode, onModeChange, disabled = false, classN
                 />
                 <span
                   className={cn(
-                    "font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
+                    "min-w-0 flex-1 break-words font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
                     selected ? "text-primary" : "text-on-surface",
                   )}
                 >
                   {m.title}
-                  {m.recommended ? (
-                    <span className="ml-1.5 font-body text-[10px] font-normal normal-case text-on-surface-variant">
-                      (recommended)
-                    </span>
-                  ) : null}
                 </span>
               </span>
-              <span className="font-body text-xs leading-relaxed text-on-surface-variant">
+              <span className="block w-full min-w-0 break-words font-body text-xs leading-relaxed text-on-surface-variant">
                 {m.subtitle}
               </span>
             </Button>
