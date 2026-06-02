@@ -1,6 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { DASHBOARD_CTA, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -67,10 +68,10 @@ export default async function PaymentMethodsSettingsPage() {
           Cards are tokenised by Stripe with 3D Secure (SCA) on every transaction over the EU
           threshold. We never see the full PAN. To remove a saved card, contact{" "}
           <a
-            href="mailto:support@thelax.co"
+            href={`mailto:${SITE_SUPPORT_EMAIL}`}
             className="text-primary underline-offset-4 hover:underline"
           >
-            support@thelax.co
+            {SITE_SUPPORT_EMAIL}
           </a>{" "}
           until self-serve removal ships.
         </p>
