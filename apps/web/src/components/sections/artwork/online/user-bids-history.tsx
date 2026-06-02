@@ -27,14 +27,14 @@ export function UserBidsHistory({ vm, className, defaultOpen = true }: Props) {
   return (
     <div
       className={cn(
-        "mt-4 flex w-full flex-col rounded-[24px] outline outline-2 outline-offset-[-2px] outline-[#D1D1D1] dark:outline-outline-variant/50",
+        "mt-4 flex w-full flex-col rounded-[24px] outline outline-2 outline-offset-[-2px] outline-outline-variant/50",
         className,
       )}
     >
       <Button
         type="button"
         variant="ghost"
-        className="flex w-full items-center gap-2 rounded-t-[24px] px-4 py-3 text-left font-body text-[#050505] dark:text-on-surface"
+        className="flex w-full items-center gap-2 rounded-t-[24px] px-4 py-3 text-left font-body text-on-surface"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
@@ -52,10 +52,7 @@ export function UserBidsHistory({ vm, className, defaultOpen = true }: Props) {
         </span>
       </Button>
       {open ? (
-        <div
-          id={panelId}
-          className="space-y-3 border-t border-[#D1D1D1]/80 px-4 pb-4 pt-3 dark:border-outline-variant/30"
-        >
+        <div id={panelId} className="space-y-3 border-t border-outline-variant/30 px-4 pb-4 pt-3">
           {vm.contextLine ? (
             <p className="font-body text-xs text-on-surface-variant">{vm.contextLine}</p>
           ) : null}
@@ -63,12 +60,12 @@ export function UserBidsHistory({ vm, className, defaultOpen = true }: Props) {
             {vm.rows.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-wrap items-center gap-3 border-b border-[#D1D1D1]/80 pb-3 last:border-b-0 last:pb-0 dark:border-outline-variant/30"
+                className="flex flex-wrap items-center gap-3 border-b border-outline-variant/30 pb-3 last:border-b-0 last:pb-0"
               >
-                <span className="rounded bg-[#F1F1F3] px-2 py-1 font-body text-xs font-semibold uppercase leading-3 tracking-wide text-[#050505] backdrop-blur-sm dark:bg-surface-container-high dark:text-on-surface">
+                <span className="rounded bg-surface-container-high px-2 py-1 font-body text-xs font-semibold uppercase leading-3 tracking-wide text-on-surface backdrop-blur-sm">
                   {statusLabel(row)}
                 </span>
-                <span className="font-body text-xs font-semibold uppercase leading-6 text-[#050505] dark:text-on-surface">
+                <span className="font-body text-xs font-semibold uppercase leading-6 text-on-surface">
                   {row.amount}
                 </span>
               </li>

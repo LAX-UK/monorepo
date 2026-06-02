@@ -44,7 +44,7 @@ export function PrivateSaleHighlightsMarketing({
             <Link
               href={PRIVATE_SALE_COPY.ctaHref}
               className={cn(
-                "inline-flex min-h-[44px] w-fit items-center gap-2 rounded-sm border border-[#A3A3A3] bg-transparent px-5 py-3 font-body text-base font-semibold leading-none tracking-[0.8px] text-[#0A0A0A] outline-offset-4 transition-colors dark:border-on-surface-variant dark:text-on-surface",
+                "inline-flex min-h-[44px] w-fit items-center gap-2 rounded-sm border border-outline-variant bg-transparent px-5 py-3 font-body text-base font-semibold leading-none tracking-[0.8px] text-on-surface outline-offset-4 transition-colors",
                 "hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:hover:bg-white/[0.04]",
               )}
             >

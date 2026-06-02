@@ -38,7 +38,7 @@ export function OnsiteLotHero({
 
   return (
     <div className="grid grid-cols-1 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest shadow-xl lg:grid-cols-12">
-      <div className="relative col-span-1 flex min-h-[300px] items-center justify-center bg-[#121212] dark:bg-[#121212] sm:min-h-[400px] lg:col-span-7 lg:min-h-[500px]">
+      <div className="relative col-span-1 flex min-h-[300px] items-center justify-center bg-surface-container-high dark:bg-surface-container-highest sm:min-h-[400px] lg:col-span-7 lg:min-h-[500px]">
         <div className="w-full max-w-[900px] p-4 sm:p-6 lg:p-8">
           <LotMediaBlock lot={auction} wide={true} />
         </div>
