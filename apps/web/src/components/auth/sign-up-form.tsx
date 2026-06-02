@@ -11,6 +11,7 @@ import { apiBaseUrl } from "@/lib/auth/api-base";
 import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignUpController } from "@/lib/auth/hooks/use-sign-up-controller";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { rememberPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -84,8 +85,11 @@ export function SignUpForm({
         <p className="font-body text-sm text-on-surface-variant">
           Organisation invitations are not available yet on this site. Please try again after
           launch, or contact{" "}
-          <a href="mailto:support@thelax.co" className="font-medium text-primary underline">
-            support@thelax.co
+          <a
+            href={`mailto:${SITE_SUPPORT_EMAIL}`}
+            className="font-medium text-primary underline"
+          >
+            {SITE_SUPPORT_EMAIL}
           </a>
           .
         </p>

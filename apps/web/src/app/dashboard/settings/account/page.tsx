@@ -3,6 +3,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -98,7 +99,7 @@ export default async function AccountSettingsPage({
               <Link href="/contact">Contact us</Link>
             </Button>
             <Button asChild variant="outline" size="sm">
-              <a href="mailto:support@thelax.co">support@thelax.co</a>
+              <a href={`mailto:${SITE_SUPPORT_EMAIL}`}>{SITE_SUPPORT_EMAIL}</a>
             </Button>
           </div>
         )}
