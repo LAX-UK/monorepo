@@ -55,6 +55,32 @@ guarded at the app layer until the zone is upgraded.
 - Keep provider-aware limits for any future `/webhooks/*` (e.g. Shopify retries
   on non-2xx, so prefer 429 only on obvious abuse).
 
+### Bot allowlist (Free plan)
+
+Terraform skips auth WAF challenges and the single auth rate-limit rule for:
+
+- `cf.client.bot` when `whitelist_cf_client_bot = true` (default)
+- Any `http.user_agent` containing a substring in `whitelisted_bot_user_agents`
+
+Default substrings (module [`cloudflare-domain/variables.tf`](../../infra/terraform/modules/cloudflare-domain/variables.tf)):
+
+| Category | Examples |
+|----------|----------|
+| SEO | `Googlebot`, `bingbot`, `Applebot`, `YandexBot`, `SemrushBot`, `AhrefsBot`, … |
+| LLM / AI | `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `PerplexityBot`, `Google-Extended`, `Bytespider`, `CCBot`, … |
+| Social preview | `LinkedInBot`, `facebookexternalhit`, `Twitterbot`, `Slackbot`, … |
+| Monitoring | `Pingdom`, `UptimeRobot`, `StatusCake`, `DatadogSynthetics`, … |
+
+These rules only apply on **`auth_hosts`** (sign-up / verify-email rate limit and `/api/auth/authorize` challenge). They do not replace **`robots.txt`** on the marketing site if you want to disallow LLM training crawlers on public pages.
+
+To add or remove bots for `lax.bid`, set `whitelisted_bot_user_agents` on the `cloudflare_domain` module in [`persistent/prod/main.tf`](../../infra/terraform/persistent/prod/main.tf) (replaces the module default set entirely). Uses `contains` / `eq` only — **not** `matches` (regex requires Business or WAF Advanced).
+
+**Bot Fight Mode** (dashboard toggle on Free) cannot be bypassed with Skip rules; turn it off or upgrade to Pro+ for Super Bot Fight Mode exceptions.
+
+### Test hostnames (noindex)
+
+`test_hosts` sets `X-Robots-Tag: noindex` on listed hostnames via explicit `http.host eq` checks (Free-safe). Do not use `matches` in expressions on a Free zone.
+
 ### Restoring per-path edge rules (post Pro upgrade)
 
 When `lax.bid` is upgraded to Cloudflare Pro (10 rules in `http_ratelimit`),

@@ -20,3 +20,10 @@ lower-priority paths to app-layer middleware.
   variable is kept as a forward-compatible knob for when the zone moves to
   Cloudflare Pro (10 rules in this phase) and the per-path edge rules are
   restored from git history (commit `a8027e39`).
+
+**Bot allowlist:** `whitelisted_bot_user_agents` + optional `cf.client.bot` add a
+Skip rule and exclude bots from the auth rate limit. **Do not use `matches`**
+(regex) on Free — use `test_hosts` with explicit hostnames for test noindex.
+
+**Plan limits:** Regex (`matches`) in rules requires Business or WAF Advanced.
+DNS (TXT/MX) and most current rules work on Free.
