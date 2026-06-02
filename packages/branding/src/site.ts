@@ -46,6 +46,23 @@ export const SITE_LOGO_PATH = "/logo.svg";
 export const SITE_LOGO_SHORT_PATH = "/logo-short.svg";
 /** Mark + LAX wordmark without full tagline (e.g. mobile marketing header). */
 export const SITE_LOGO_TEXT_PATH = "/logo-text.svg";
+/** Light-fill wordmark for dark surfaces (hero header, dark theme). */
+export const SITE_LOGO_LIGHT_PATH = "/logo-light.svg";
+/** Light-fill compact mark for dark surfaces. */
+export const SITE_LOGO_TEXT_LIGHT_PATH = "/logo-text-light.svg";
+/** Light-fill icon-only mark for collapsed dashboard sidebar on dark surfaces. */
+export const SITE_LOGO_SHORT_LIGHT_PATH = "/logo-short-light.svg";
+
+const LOGO_LIGHT_PATH_BY_SRC: Record<string, string> = {
+  [SITE_LOGO_PATH]: SITE_LOGO_LIGHT_PATH,
+  [SITE_LOGO_TEXT_PATH]: SITE_LOGO_TEXT_LIGHT_PATH,
+  [SITE_LOGO_SHORT_PATH]: SITE_LOGO_SHORT_LIGHT_PATH,
+};
+
+/** Returns the light-on-dark variant for a logo src, if one exists. */
+export function siteLogoLightPath(src: string): string | null {
+  return LOGO_LIGHT_PATH_BY_SRC[src] ?? null;
+}
 
 export function siteCopyrightYear(): number {
   return new Date().getFullYear();

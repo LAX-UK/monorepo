@@ -64,6 +64,19 @@ const listSort = z
 
 export const listLotsQuerySchema = z.object({
   status: z.enum(lotStatuses).optional(),
+  statuses: z
+    .string()
+    .optional()
+    .transform((s) => {
+      if (!s?.trim()) return undefined;
+      return s
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean) as (typeof lotStatuses)[number][];
+    })
+    .refine((arr) => arr == null || arr.every((x) => lotStatuses.includes(x)), {
+      message: "Invalid lot status in statuses",
+    }),
   categoryId: z.string().uuid().optional(),
   categoryIds: z
     .string()

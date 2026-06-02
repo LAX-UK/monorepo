@@ -31,7 +31,7 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
       <div className="w-full">
         {lotDetailsBlock ? (
           <section className="mb-8 border-b border-outline-variant/40 pb-8">
-            <h2 className="mb-4 font-body text-lg font-medium uppercase leading-7 tracking-wide text-[#1C170D] dark:text-on-surface">
+            <h2 className="mb-4 font-body text-lg font-medium uppercase leading-7 tracking-wide text-on-surface">
               LOT DETAILS
             </h2>
             <div className="text-sm leading-7 text-on-surface-variant">

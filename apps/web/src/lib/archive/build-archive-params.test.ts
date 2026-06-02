@@ -15,6 +15,7 @@ describe("buildArchivePageQuery", () => {
     expect(q.page).toBe(1);
     expect(q.endYear).toBeUndefined();
     expect(q.categoryId).toBeUndefined();
+    expect(q.listParams.status).toBe("ended");
   });
 
   it("parses year, category, sort, and page", () => {

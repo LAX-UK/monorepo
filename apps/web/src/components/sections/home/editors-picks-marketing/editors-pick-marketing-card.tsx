@@ -54,26 +54,26 @@ export function EditorsPickMarketingCard({
             <LotViewTransitionLink
               lotId={lot.id}
               href={lot.href}
-              className="line-clamp-2 min-h-12 font-headline text-[20px] font-semibold leading-6 text-[#050505] underline-offset-2 hover:underline dark:text-on-surface"
+              className="line-clamp-2 min-h-12 font-headline text-[20px] font-semibold leading-6 text-on-surface underline-offset-2 hover:underline"
             >
               {lot.title}
             </LotViewTransitionLink>
-            <p className="line-clamp-1 min-h-4 font-body text-sm font-light leading-4 text-[#191919] dark:text-on-surface-variant">
+            <p className="line-clamp-1 min-h-4 font-body text-sm font-light leading-4 text-on-surface-variant">
               {lot.artistName}
             </p>
           </div>
           <div className="flex min-w-0 flex-col gap-1">
-            <span className="font-body text-xs font-normal leading-4 text-[#474747] dark:text-on-surface-variant">
+            <span className="font-body text-xs font-normal leading-4 text-on-surface-variant">
               {lot.estimateLabel}
             </span>
-            <span className="line-clamp-1 font-body text-sm font-medium leading-4 text-[#474747] dark:text-on-surface-variant">
+            <span className="line-clamp-1 font-body text-sm font-medium leading-4 text-on-surface-variant">
               {lot.estimateValue}
             </span>
           </div>
           <Button
             variant="outline"
             asChild
-            className="mt-auto h-10 w-full rounded border-[#A3A3A3] text-base font-semibold tracking-[0.05em] text-[#0A0A0A] dark:border-neutral-500 dark:text-on-surface"
+            className="mt-auto h-10 w-full rounded border-outline-variant text-base font-semibold tracking-[0.05em] text-on-surface"
           >
             <LotViewTransitionLink lotId={lot.id} href={lot.href}>
               View Lot

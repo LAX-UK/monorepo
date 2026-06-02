@@ -1,16 +1,17 @@
 "use client";
 
-import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
+import { HeroCoverImage } from "@/components/ui/hero-cover-image";
+import type { HeroCoverSources } from "@/lib/media/hero-cover-sources";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 type Props = {
-  src: string | null | undefined;
+  cover: HeroCoverSources;
   alt: string;
   sizes?: string;
   priority?: boolean;
@@ -25,9 +26,9 @@ type Props = {
 
 /** Full-bleed hero shell with image sampling + grouped copy block tone. */
 export function HeroAdaptiveShell({
-  src,
+  cover,
   alt,
-  sizes = "100vw",
+  sizes,
   priority = false,
   imgClassName,
   backdropScrim,
@@ -37,21 +38,19 @@ export function HeroAdaptiveShell({
 }: Props) {
   return (
     <AdaptiveMediaFrame
-      src={src}
+      src={cover.desktopUrl}
       objectFit="cover"
       slots={HERO_IMMERSIVE_SLOTS}
       {...(className ? { className } : {})}
     >
       <div className={cn("relative h-full min-h-[inherit] w-full", shellClassName)}>
         <AdaptiveMediaFrameContainer className="absolute inset-0 overflow-hidden">
-          <AdaptiveFrameImage
-            src={src}
+          <HeroCoverImage
+            cover={cover}
             alt={alt}
-            objectFit="cover"
-            sizes={sizes}
-            label="Hero artwork"
-            className="h-full w-full"
+            {...(sizes ? { sizes } : {})}
             priority={priority}
+            className="h-full w-full"
             {...(imgClassName ? { imgClassName } : {})}
           />
           {backdropScrim}

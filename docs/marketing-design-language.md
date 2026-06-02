@@ -339,6 +339,28 @@ v1 accepts a brief default-then-resolve flash (~120ms). Server-side luminance me
 
 ---
 
+## Home hero cover uploads
+
+Immersive home heroes use **`object-fit: cover`** inside a viewport-sized frame. Wide desktop masters crop heavily on portrait phones unless art direction is provided.
+
+| Asset | Minimum size | Aspect | Field |
+|-------|--------------|--------|-------|
+| Desktop hero master | 2560×900 | ≈ 21∶9 | `coverImages[0]` / `coverImageUrl` |
+| Mobile hero crop (optional) | 1080×1350 or 1080×1920 | 4∶5 or 9∶16 | `coverImages[1]` / `coverImageMobileUrl` |
+| Desktop xl crop (optional) | 2560×900 or 1920×1080 | Wide landscape | `coverImages[2]` / `coverImageDesktopWideUrl` |
+
+**Safe zone:** Keep the subject and branding props (polaroids, lot details, logos) inside the **center 70%** of the frame. Avoid placing critical content within **15%** of the left or right edge on the desktop master.
+
+When no mobile crop is uploaded, the site falls back to the desktop URL with **`object-position: center 35%`** on small viewports. Upload a dedicated portrait crop when edge decorations matter on phone.
+
+On **lg+ viewports** the hero height is capped (`clamp(520px, 60vh, 720px)`) so wide masters show more horizontal content and edge props survive more often.
+
+**Optional focal override:** Per-slide `objectPosition` on the VM (e.g. `center 30%`) can fine-tune crop without a second upload — wire from CMS when available.
+
+**Content audit:** [`docs/runbooks/hero-cover-content-audit.md`](runbooks/hero-cover-content-audit.md)
+
+---
+
 ## Implementation checklist
 
 1. Land tokens + lint guards.

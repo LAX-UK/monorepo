@@ -31,5 +31,29 @@ describe("sales public GET /:id contract", () => {
     const body = (await res.json()) as { data: Record<string, unknown> };
     expect(Object.keys(body.data).sort()).toEqual(["lots", "sale", "viewer"]);
     expect(Object.keys(body.data.viewer as object).sort()).toEqual(["isFollowing"]);
+    expect(getSaleDetailForPublicApi).toHaveBeenCalledWith(
+      saleId,
+      undefined,
+      expect.objectContaining({ role: undefined, staffRole: undefined }),
+    );
+  });
+
+  it("returns 404 for draft sale detail when anonymous", async () => {
+    const app = new Hono();
+    const saleId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const getSaleDetailForPublicApi = vi.fn().mockResolvedValue(null);
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      saleService: { getSaleDetailForPublicApi },
+      saleFollowService: {},
+      saleBiddersService: { list: vi.fn() },
+      mediaUrlResolver: {},
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue(null),
+    };
+    app.route("/sales", createSaleRoutes(container, authenticator));
+    const res = await app.request(`http://t/sales/${saleId}`);
+    expect(res.status).toBe(404);
   });
 });

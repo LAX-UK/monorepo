@@ -1,16 +1,19 @@
 import type { Database } from "@auction/db";
-import { lotNotDeleted } from "@auction/db";
-import { artistProfile, bid, legalEntity, lot, lotCategories } from "@auction/db/schema";
-import type { CreateLotInput, Lot } from "@auction/types";
+import { lotNotDeleted, saleNotDeleted } from "@auction/db";
+import { artistProfile, bid, legalEntity, lot, lotCategories, sale } from "@auction/db/schema";
+import type { CreateLotInput, Lot, SaleStatus } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
+import { PUBLIC_SALE_STATUSES } from "@auction/validators";
 import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
 import { mergeLotMarketingDetailsPatch } from "../lib/lot-marketing-details-merge.js";
 import { mapLotRow } from "../lib/mappers.js";
 import type {
   ArchiveEndedAggregateFilter,
   ILotRepository,
+  ListCatalogLotsBySalePageInput,
   ListLotsFilter,
   ListLotsSort,
+  SaleCatalogLotsSort,
 } from "../services/interfaces/repositories.js";
 
 type ListWhereInput = Omit<ListLotsFilter, "limit" | "offset" | "sort">;
@@ -24,7 +27,15 @@ function endYearBoundsUtc(year: number): { start: Date; end: Date } {
 
 function listWhere(input: ListWhereInput) {
   const conditions = [lotNotDeleted()];
-  if (input.status) conditions.push(eq(lot.status, input.status));
+  if (input.statuses !== undefined) {
+    if (input.statuses.length === 0) {
+      conditions.push(sql`false`);
+    } else {
+      conditions.push(inArray(lot.status, input.statuses));
+    }
+  } else if (input.status) {
+    conditions.push(eq(lot.status, input.status));
+  }
   const categoryIds = input.categoryIds?.length
     ? input.categoryIds
     : input.categoryId
@@ -62,7 +73,56 @@ function listWhere(input: ListWhereInput) {
   if (input.needsPhotos) {
     conditions.push(sql`cardinality(${lot.images}) = 0`);
   }
+  if (input.requirePublicParentSale) {
+    conditions.push(publicParentSaleExists());
+  }
   return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function publicParentSaleExists() {
+  return sql`(
+    ${lot.saleId} IS NULL
+    OR EXISTS (
+      SELECT 1 FROM ${sale} AS parent_sale
+      WHERE parent_sale.id = ${lot.saleId}
+        AND parent_sale.deleted_at IS NULL
+        AND parent_sale.status IN (${sql.join(
+          PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
+          sql`, `,
+        )})
+    )
+  )`;
+}
+
+function catalogSalePageOrderBy(sort: SaleCatalogLotsSort) {
+  switch (sort) {
+    case "priceAsc":
+      return asc(lot.currentPrice);
+    case "priceDesc":
+      return desc(lot.currentPrice);
+    case "endingAsc":
+      return asc(lot.endTime);
+    default:
+      return asc(sql`coalesce(${lot.lotNumber}, 999999)`);
+  }
+}
+
+function catalogLotsBySaleWhere(
+  input: Omit<ListCatalogLotsBySalePageInput, "sort" | "limit" | "offset">,
+) {
+  const conditions = [eq(lot.saleId, input.saleId), lotNotDeleted()];
+  if (input.lotStatuses !== undefined) {
+    if (input.lotStatuses.length === 0) {
+      conditions.push(sql`false`);
+    } else {
+      conditions.push(inArray(lot.status, input.lotStatuses));
+    }
+  }
+  if (input.requirePublicSale) {
+    conditions.push(eq(sale.id, lot.saleId), saleNotDeleted());
+    conditions.push(inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]));
+  }
+  return and(...conditions);
 }
 
 function listOrderBy(sort: ListLotsSort | undefined) {
@@ -518,5 +578,48 @@ export class DrizzleLotRepository implements ILotRepository {
       .from(lot)
       .where(and(inArray(lot.saleId, saleIds), lotNotDeleted()));
     return this.withCategoryIds(rows);
+  }
+
+  async listCatalogLotsBySalePage(
+    input: ListCatalogLotsBySalePageInput,
+  ): Promise<{ items: Lot[]; total: number }> {
+    const whereClause = catalogLotsBySaleWhere(input);
+    const orderBy = catalogSalePageOrderBy(input.sort);
+
+    if (input.requirePublicSale) {
+      const [countRow] = await this.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(lot)
+        .innerJoin(sale, eq(lot.saleId, sale.id))
+        .where(whereClause);
+      const rows = await this.db
+        .select({ lotRow: lot })
+        .from(lot)
+        .innerJoin(sale, eq(lot.saleId, sale.id))
+        .where(whereClause)
+        .orderBy(orderBy)
+        .limit(input.limit)
+        .offset(input.offset);
+      return {
+        items: await this.withCategoryIds(rows.map((r) => r.lotRow)),
+        total: countRow?.n ?? 0,
+      };
+    }
+
+    const [countRow] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(lot)
+      .where(whereClause);
+    const rows = await this.db
+      .select()
+      .from(lot)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(input.limit)
+      .offset(input.offset);
+    return {
+      items: await this.withCategoryIds(rows),
+      total: countRow?.n ?? 0,
+    };
   }
 }

@@ -47,13 +47,27 @@ vi.mock("@/components/marketing/chrome-icon-button", () => ({
 }));
 
 describe("SiteHeader", () => {
-  it("renders a single logo.svg mark for all breakpoints", () => {
+  it("renders full logo on mobile and xl, compact logo-text at lg–xl", () => {
     render(<SiteHeader />);
 
-    const logos = screen.getAllByRole("img", { name: /London Auction House/i });
-    expect(logos).toHaveLength(1);
-    expect(logos[0]).toHaveAttribute("src", "/logo.svg");
-    expect(logos[0]).toHaveAttribute("loading", "eager");
+    const logos = screen.getAllByRole("img", { hidden: true, name: /London Auction House/i });
+    expect(logos.some((img) => img.getAttribute("src") === "/logo.svg")).toBe(true);
+    expect(logos.some((img) => img.getAttribute("src") === "/logo-light.svg")).toBe(true);
+    expect(logos.some((img) => img.getAttribute("src") === "/logo-text.svg")).toBe(true);
+    expect(logos.some((img) => img.getAttribute("src") === "/logo-text-light.svg")).toBe(true);
+
+    const fullShell = logos
+      .find((img) => img.getAttribute("src") === "/logo.svg")
+      ?.closest(".lg\\:hidden");
+    expect(fullShell).not.toBeNull();
+
+    const compactShell = logos
+      .find((img) => img.getAttribute("src") === "/logo-text.svg")
+      ?.closest(".hidden.lg\\:block");
+    expect(compactShell).not.toBeNull();
+
+    const eagerLogos = logos.filter((img) => img.getAttribute("loading") === "eager");
+    expect(eagerLogos.length).toBeGreaterThanOrEqual(2);
   });
 
   it("keeps theme toggle out of the mobile header bar", () => {
