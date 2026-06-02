@@ -3,6 +3,7 @@
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
+import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import { cn } from "@auction/ui";
 import {
   DropdownMenu,
@@ -33,13 +34,17 @@ export function SalesFilterChips({ state, categories }: Props) {
 
   const deliveryLabel =
     state.deliveryMode === "online"
-      ? "Online"
+      ? getSaleDeliveryModeLabel("online")
       : state.deliveryMode === "onsite"
-        ? "Live"
+        ? getSaleDeliveryModeLabel("onsite")
         : "Auction Type";
 
   const locationLabel =
-    state.location === "all" ? "Location" : state.location === "online" ? "Online" : state.location;
+    state.location === "all"
+      ? "Location"
+      : state.location === "online"
+        ? getSaleDeliveryModeLabel("online")
+        : state.location;
 
   return (
     <MarketingChipStrip aria-label="Quick filters">
@@ -60,14 +65,14 @@ export function SalesFilterChips({ state, categories }: Props) {
             <Link
               href={calendarSalesHrefFromState(state, { deliveryMode: "online", page: undefined })}
             >
-              Online
+              {getSaleDeliveryModeLabel("online")}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link
               href={calendarSalesHrefFromState(state, { deliveryMode: "onsite", page: undefined })}
             >
-              Live
+              {getSaleDeliveryModeLabel("onsite")}
             </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -109,7 +114,7 @@ export function SalesFilterChips({ state, categories }: Props) {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href={calendarSalesHrefFromState(state, { location: "online", page: undefined })}>
-              Online
+              {getSaleDeliveryModeLabel("online")}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

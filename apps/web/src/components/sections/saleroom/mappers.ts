@@ -2,6 +2,8 @@ import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
+import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import {
@@ -53,10 +55,7 @@ export function formatRelativeShort(target: Date, now: Date): string {
 }
 
 function heroLocationSegment(sale: Sale): string | null {
-  if (sale.deliveryMode === "online") return "Online";
-  return (
-    sale.locationCity?.trim() || sale.locationName?.trim() || sale.locationCounty?.trim() || null
-  );
+  return saleMarketingLocationLabel(sale);
 }
 
 /** Uppercased line: date range | time | location or format (from `Sale`). */
@@ -77,14 +76,13 @@ function formatBuyerPremiumDisplay(rate: string): string {
 }
 
 function formatDeliveryModeLabel(sale: Sale): string {
-  if (sale.deliveryMode === "online") return "Online";
-  return "On-site";
+  return getSaleTypePresentation(sale.deliveryMode).label;
 }
 
 function saleTags(sale: Sale): string[] {
   const tags: string[] = [];
-  if (sale.deliveryMode === "online") tags.push("Online");
-  else tags.push("Onsite");
+  const pres = getSaleTypePresentation(sale.deliveryMode);
+  tags.push(pres.label);
   if (sale.streamUrl) tags.push("Live stream");
   return tags;
 }
@@ -218,7 +216,7 @@ export function mapSaleToRelatedVM(sale: Sale, lotCount: number): RelatedSaleVM 
     id: sale.id,
     href: salePath(sale),
     title: sale.title,
-    kindLabel: sale.deliveryMode === "online" ? "Online auction" : "Live auction",
+    kindLabel: getSaleTypePresentation(sale.deliveryMode).title,
     dateLabel,
     dateLine: dateLabel.toUpperCase(),
     itemsLabel: `${lotCount} ${lotCount === 1 ? "lot" : "lots"}`,

@@ -22,6 +22,23 @@ export function formatCountdownForDisplay(ms: number): string {
 
 export type CountdownTier = "normal" | "urgent" | "critical";
 
+export type CountdownSegments = {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+};
+
+/** Split remaining milliseconds into day/hour/minute/second segments for segmented timers. */
+export function parseCountdownSegments(msRemaining: number): CountdownSegments {
+  const totalSec = Math.max(0, Math.floor(msRemaining / 1000));
+  const days = Math.floor(totalSec / 86_400);
+  const hours = Math.floor((totalSec % 86_400) / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  return { days, hours, minutes, seconds };
+}
+
 /** Urgency for styling: under 1h = urgent (red + pulse), under 10m = critical (row highlight). */
 export function countdownTier(ms: number): CountdownTier {
   if (ms <= 0) return "critical";

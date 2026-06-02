@@ -42,7 +42,9 @@ describe("calendarClearFiltersHref", () => {
 describe("calendar facet labels", () => {
   it("maps delivery and location labels", () => {
     expect(calendarDeliveryLabel("online")).toBe("Online");
+    expect(calendarDeliveryLabel("onsite")).toBe("In-person");
     expect(calendarDeliveryLabel("all")).toBeNull();
+    expect(calendarLocationLabel("online")).toBe(calendarDeliveryLabel("online"));
     expect(calendarLocationLabel("london")).toBe("London");
     expect(calendarLocationLabel("all")).toBeNull();
   });

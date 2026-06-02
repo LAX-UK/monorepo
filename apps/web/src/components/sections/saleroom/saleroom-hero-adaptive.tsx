@@ -1,14 +1,18 @@
 "use client";
 
 import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
+import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
+import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import { overlayPillClasses } from "@/lib/ui/overlay-tone-classes";
 import { LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -38,7 +42,7 @@ function SaleroomHeroPrimaryCta({
   deliveryMode: "online" | "onsite";
   streamUrl: string | null;
 }) {
-  if (deliveryMode === "onsite") {
+  if (!saleAllowsWebBidding(deliveryMode)) {
     if (hero.isLive && streamUrl) {
       return (
         <Button variant="cta" size="lg" className="gap-2" asChild>
@@ -88,6 +92,12 @@ export function SaleroomHeroAdaptive({
   deliveryMode = "online",
   streamUrl = null,
 }: Props) {
+  const toneResult = useOverlayTone("contentBlock");
+  const badgeOverlayClasses = overlayPillClasses(
+    toneResult,
+    "hover:bg-[color:var(--overlay-border)]",
+  );
+
   const statusLabel = hero.isLive ? "Auction in progress" : (hero.statusBadge?.label ?? "Auction");
   const liveTrailing =
     hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0
@@ -142,9 +152,16 @@ export function SaleroomHeroAdaptive({
             <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.22em]">
               {hero.isLive ? <LiveDot className="live-dot-pulse h-2 w-2" /> : null}
               <OverlayToneText>{statusLabel}</OverlayToneText>
-              <OverlayToneText variant="muted" className="opacity-60">
+              <OverlayToneText variant="muted" className="opacity-60 mr-1">
                 {liveTrailing}
               </OverlayToneText>
+              <SaleTypeBadge
+                deliveryMode={deliveryMode}
+                size="sm"
+                isLive={hero.isLive}
+                withExplainer
+                className={badgeOverlayClasses}
+              />
             </div>
             <div className="mb-4">
               <OverlayToneText

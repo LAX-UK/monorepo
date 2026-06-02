@@ -52,6 +52,8 @@ export function SalesAuctionRow({ vm, index = 0 }: Props) {
                   scheduleLead={vm.scheduleLead}
                   scheduleRest={vm.scheduleRest}
                   auctionTypeLine={vm.auctionTypeLine}
+                  deliveryMode={vm.deliveryMode}
+                  isLive={isLive}
                 />
                 <SaleCardTitle href={vm.href} title={vm.title} />
                 <SaleCardMeta itemsLabel={vm.itemsLabel} />
