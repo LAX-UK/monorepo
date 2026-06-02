@@ -12,11 +12,12 @@ variable "security_level" {
 }
 variable "subdomains" {
   type = map(object({
-    name    = string
-    type    = string
-    value   = string
-    proxied = bool
-    comment = string
+    name     = string
+    type     = string
+    value    = string
+    proxied  = bool
+    comment  = string
+    priority = optional(number)
   }))
 }
 variable "auth_hosts" {

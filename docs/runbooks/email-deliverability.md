@@ -34,21 +34,24 @@ dig +short CNAME pm-bounces.mail.lax.bid
 
 Team inboxes (`support@`, `settlements@`, etc.) use **Zoho Mail** on the apex. App transactional mail stays on Postmark (`mail.lax.bid`); do not change Postmark records when adding Zoho.
 
-| Record | Type | Status |
-|--------|------|--------|
-| `@` | TXT | `zoho-verification=zb23174584.zmverify.zoho.eu` (domain verify; Terraform `zoho_mail_verify`) |
-| `@` | MX | _Pending_ — add from Zoho Mail admin after TXT verify |
-| `@` | TXT (SPF) | _Pending_ — Zoho SPF string from admin |
-| Zoho DKIM host | TXT/CNAME | _Pending_ — from Zoho Mail → Email Configuration → DKIM |
-| `_dmarc` | TXT | _Pending_ — apex DMARC after workspace send is live |
+| Record | Type | Purpose |
+|--------|------|---------|
+| `@` | TXT | Domain verify (`zoho_mail_verify`) |
+| `@` | MX | `mx.zoho.eu` (10), `mx2.zoho.eu` (20), `mx3.zoho.eu` (50) |
+| `@` | TXT | SPF `v=spf1 include:zohomail.eu ~all` (`zoho_spf`) |
+| `zmail._domainkey` | TXT | Zoho DKIM (`zoho_dkim`) |
+| `_dmarc` | TXT | _Optional later_ — apex DMARC after `support@` is live |
 
-Verify domain ownership:
+Verify in shell:
 
 ```bash
+dig +short MX lax.bid
+dig +short TXT lax.bid
+dig +short TXT zmail._domainkey.lax.bid
 dig +short TXT lax.bid | grep zoho-verification
 ```
 
-After Zoho shows MX/SPF/DKIM values, add them to `infra/terraform/persistent/prod/main.tf` and apply `persistent` prod (same workflow as Postmark rows above).
+After apply, confirm green status in Zoho Mail → domain setup, then create `support@` and `settlements@` mailboxes.
 
 ## MX note (Postmark subdomain)
 

@@ -49,6 +49,7 @@ resource "cloudflare_record" "subdomain" {
   type            = each.value.type
   content         = each.value.value
   proxied         = each.value.proxied
+  priority        = try(each.value.priority, null)
   ttl             = 1
   comment         = each.value.comment
   allow_overwrite = true
