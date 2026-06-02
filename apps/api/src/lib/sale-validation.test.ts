@@ -142,6 +142,19 @@ describe("createSaleSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("rejects venueId on online sales", () => {
+    const result = createSaleSchema.safeParse({
+      ...baseInput,
+      deliveryMode: "online",
+      venueId: "30000000-0000-4000-9000-000000000001",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join("."));
+      expect(paths).toContain("venueId");
+    }
+  });
 });
 
 describe("updateSaleSchema", () => {

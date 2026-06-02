@@ -63,6 +63,7 @@ services:
       VERIFY_ORIGIN: "false"
       POSTMARK_WEBHOOK_BASIC_AUTH: ${POSTMARK_WEBHOOK_BASIC_AUTH:-local-docker-dev}
       ENGLISH_ONLY_AUCTIONS: ${ENGLISH_ONLY_AUCTIONS:-true}
+      PLATFORM_CATALOG_LEGAL_ENTITY_ID: ${PLATFORM_CATALOG_LEGAL_ENTITY_ID:-30000000-0000-4000-9000-000000000001}
     depends_on:
       postgres:
         condition: service_healthy

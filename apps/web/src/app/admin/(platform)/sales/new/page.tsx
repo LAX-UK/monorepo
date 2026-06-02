@@ -8,6 +8,8 @@ import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { resolvePlatformCatalogLegalEntity } from "@/lib/data/http/platform-catalog.server";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import {
   emptyAdminSaleFormValues,
@@ -49,6 +51,13 @@ export default async function AdminNewSalePage({
   const artists = await getAdminArtistList({ includeArchived: false, limit: 200 })
     .then((r) => r.rows)
     .catch(() => []);
+  const platformCatalog = await resolvePlatformCatalogLegalEntity();
+  const venues = platformCatalog.ok
+    ? await getWriteContainer()
+        .adminVenues.list({ legalEntityId: platformCatalog.id, limit: 100 })
+        .then((r) => (r.ok ? r.data.venues : []))
+        .catch(() => [])
+    : [];
 
   return (
     <CatalogFormShell
@@ -72,6 +81,7 @@ export default async function AdminNewSalePage({
         sale={null}
         lots={[]}
         categories={categories}
+        venues={venues}
         artists={artists}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
         {...(wizardDraftEntityId !== undefined ? { wizardDraftEntityId } : {})}

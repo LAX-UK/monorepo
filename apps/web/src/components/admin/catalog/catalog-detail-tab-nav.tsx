@@ -5,6 +5,7 @@ import { parseCategoryDetailTabFromPath } from "@/components/admin/category-deta
 import { parseLotDetailTabFromPath } from "@/components/admin/lot-detail/lot-detail-types";
 import { parseSaleDetailTabFromPath } from "@/components/admin/sale-detail/sale-detail-types";
 import { parseSubmissionDetailTabFromPath } from "@/components/admin/submission-detail/submission-detail-types";
+import { parseVenueDetailTabFromPath } from "@/components/admin/venue-detail/venue-detail-types";
 import { cn } from "@auction/ui";
 import {
   Activity,
@@ -27,7 +28,13 @@ import type { ReactNode } from "react";
 
 export type CatalogDetailTabBadge = "pending" | "warning" | "default";
 
-export type CatalogDetailTabEntityKind = "lot" | "sale" | "category" | "artist" | "submission";
+export type CatalogDetailTabEntityKind =
+  | "lot"
+  | "sale"
+  | "category"
+  | "artist"
+  | "submission"
+  | "venue";
 
 export type CatalogDetailTabSpec = {
   id: string;
@@ -70,6 +77,11 @@ const TAB_ICONS: Partial<Record<CatalogDetailTabEntityKind, Record<string, Lucid
     documents: FileText,
     decision: Scale,
   },
+  venue: {
+    overview: LayoutGrid,
+    sales: Package,
+    activity: Activity,
+  },
 };
 
 function tabIcon(entityKind: CatalogDetailTabEntityKind, tabId: string): LucideIcon | undefined {
@@ -99,6 +111,8 @@ function resolveActiveTab(
       return parseArtistDetailTabFromPath(pathname, entityId);
     case "submission":
       return parseSubmissionDetailTabFromPath(pathname, entityId);
+    case "venue":
+      return parseVenueDetailTabFromPath(pathname, entityId);
   }
 }
 

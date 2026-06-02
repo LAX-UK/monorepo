@@ -143,6 +143,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
         locationCounty: input.locationCounty ?? null,
         locationPostcode: input.locationPostcode ?? null,
         locationCountry: input.locationCountry ?? null,
+        venueId: input.venueId ?? null,
         startTime: input.startTime,
         endTime: input.endTime,
         previewStartTime: input.previewStartTime ?? null,
@@ -237,6 +238,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
       rowPatch.locationPostcode = patch.locationPostcode ?? null;
     if (patch.locationCountry !== undefined)
       rowPatch.locationCountry = patch.locationCountry ?? null;
+    if (patch.venueId !== undefined) rowPatch.venueId = patch.venueId ?? null;
 
     const row = await this.db.transaction(async (tx) => {
       const [updated] = await tx

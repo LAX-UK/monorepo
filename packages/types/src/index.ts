@@ -1,5 +1,6 @@
 export * from "./lot.js";
 export * from "./sale.js";
+export * from "./venue.js";
 export * from "./category.js";
 export * from "./artist.js";
 export * from "./creator-kind.js";
