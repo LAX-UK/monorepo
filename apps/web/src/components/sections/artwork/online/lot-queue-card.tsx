@@ -27,7 +27,7 @@ export function LotQueueCard({ vm, variant, index = 0, className }: Props) {
       className={cn("flex w-full gap-4 motion-safe:animate-artwork-slide-up-fade", className)}
       style={delayStyle}
     >
-      <div className="relative h-[120px] w-24 shrink-0 overflow-hidden bg-[#0A0A0A] dark:bg-black">
+      <div className="relative h-[120px] w-24 shrink-0 overflow-hidden bg-surface-container-high dark:bg-surface-container-highest">
         <MediaImage
           src={vm.imageUrl}
           alt=""
@@ -38,16 +38,14 @@ export function LotQueueCard({ vm, variant, index = 0, className }: Props) {
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
         <div className="min-w-0 space-y-1">
-          <p className="line-clamp-2 font-body text-[13px] font-medium leading-4 text-[#050505] dark:text-on-surface">
+          <p className="line-clamp-2 font-body text-[13px] font-medium leading-4 text-on-surface">
             {lotNo} {vm.title}
           </p>
-          <p className="line-clamp-1 font-body text-xs font-light text-[#191919] dark:text-on-surface-variant">
+          <p className="line-clamp-1 font-body text-xs font-light text-on-surface-variant">
             {vm.artistName}
           </p>
         </div>
-        <p className="font-body text-sm font-medium tabular-nums text-[#050505] dark:text-on-surface">
-          {priceLine}
-        </p>
+        <p className="font-body text-sm font-medium tabular-nums text-on-surface">{priceLine}</p>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export function VideoPlaceholder({ children, className }: Props) {
   return (
     <div
       className={cn(
-        "relative aspect-video w-full overflow-hidden rounded-t-lg bg-[#1a1a1a] dark:bg-black",
+        "relative aspect-video w-full overflow-hidden rounded-t-lg bg-surface-container-high dark:bg-surface-container-highest",
         className,
       )}
     >
