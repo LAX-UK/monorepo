@@ -9,6 +9,7 @@ import { lot } from "./schema/lots.js";
 import { saleCategories } from "./schema/sale-categories.js";
 import { sale } from "./schema/sales.js";
 import { submissionCategories } from "./schema/submission-categories.js";
+import { venue } from "./schema/venues.js";
 
 export const saleRelations = relations(sale, ({ one, many }) => ({
   creatorLegalEntity: one(legalEntity, {
@@ -17,6 +18,18 @@ export const saleRelations = relations(sale, ({ one, many }) => ({
   }),
   categories: many(saleCategories),
   lots: many(lot),
+  venue: one(venue, {
+    fields: [sale.venueId],
+    references: [venue.id],
+  }),
+}));
+
+export const venueRelations = relations(venue, ({ one, many }) => ({
+  legalEntity: one(legalEntity, {
+    fields: [venue.legalEntityId],
+    references: [legalEntity.id],
+  }),
+  sales: many(sale),
 }));
 
 export const lotRelations = relations(lot, ({ one, many }) => ({

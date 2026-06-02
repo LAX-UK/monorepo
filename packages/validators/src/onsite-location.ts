@@ -50,6 +50,10 @@ export type OnsiteAddressParts = {
   readonly locationCountry?: string | null;
 };
 
+export type OnsiteLocationPublishParts = OnsiteAddressParts & {
+  readonly venueId?: string | null;
+};
+
 function nonEmpty(s: string | null | undefined): string | null {
   if (s == null) return null;
   const t = s.trim();
@@ -69,6 +73,19 @@ export function hasStructuredAddress(parts: OnsiteAddressParts): boolean {
       nonEmpty(parts.locationPostcode) ||
       nonEmpty(parts.locationCountry),
   );
+}
+
+/** True when manual onsite location fields are populated enough to publish. */
+export function isOnsiteLocationPopulated(parts: OnsiteAddressParts): boolean {
+  const name = nonEmpty(parts.locationName);
+  if (!name) return false;
+  return hasStructuredAddress(parts) || Boolean(nonEmpty(parts.locationAddress));
+}
+
+/** True when an onsite sale has a saved venue or enough manual location to publish. */
+export function isOnsiteLocationReadyForPublish(parts: OnsiteLocationPublishParts): boolean {
+  if (nonEmpty(parts.venueId)) return true;
+  return isOnsiteLocationPopulated(parts);
 }
 
 /** Assemble a single-line, human-readable address from structured fields.
