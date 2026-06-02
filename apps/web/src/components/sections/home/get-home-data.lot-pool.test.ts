@@ -47,6 +47,38 @@ describe("buildHomeCatalogLotPool", () => {
     ];
     expect(buildHomeCatalogLotPool(active, scheduled).map((l) => l.id)).toEqual(["a", "b", "c"]);
   });
+
+  it("excludes draft lots even when callers pass them", () => {
+    const active = [baseLot({ id: "draft-1", status: "draft" })];
+    const scheduled = [
+      baseLot({ id: "sched-1", status: "scheduled" }),
+      baseLot({ id: "draft-2", status: "draft" }),
+    ];
+    expect(buildHomeCatalogLotPool(active, scheduled).map((l) => l.id)).toEqual(["sched-1"]);
+  });
+});
+
+describe("Editor's Picks draft regression", () => {
+  it("shows scheduled only when active is empty and drafts were mistakenly included in fetch", () => {
+    const activeLots: Lot[] = [];
+    const scheduledLots = [
+      baseLot({ id: "sched-1", status: "scheduled" }),
+      baseLot({ id: "sched-2", status: "scheduled" }),
+    ];
+    const mistakenDrafts = [
+      baseLot({ id: "draft-1", status: "draft" }),
+      baseLot({ id: "draft-2", status: "draft" }),
+    ];
+    const pool = buildHomeCatalogLotPool([...activeLots, ...mistakenDrafts], scheduledLots);
+    const urgencySection: HomeUrgencySection = { variant: "none", lots: [] };
+    const picked = pickHomeLowerStripCandidates({
+      pool,
+      heroState: { kind: "rotator", slides: [] },
+      urgencySection,
+    });
+    expect(picked.every((l) => l.status !== "draft")).toBe(true);
+    expect(picked.map((l) => l.id)).toEqual(["sched-1", "sched-2"]);
+  });
 });
 
 describe("pickHomeLowerStripCandidates", () => {

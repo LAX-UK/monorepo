@@ -1,4 +1,5 @@
 import type { HeroStateVM } from "@/components/sections/home/home-view-models";
+import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import type { Lot } from "@auction/types";
 import { HOME_PRIVATE_HIGHLIGHTS_LIMIT } from "./get-home-data.constants";
 import type { HomeUrgencySection } from "./get-home-data.types";
@@ -8,12 +9,12 @@ export function buildHomeCatalogLotPool(activeLots: Lot[], scheduledLots: Lot[])
   const seen = new Set<string>();
   const merged: Lot[] = [];
   for (const lot of activeLots) {
-    if (seen.has(lot.id)) continue;
+    if (!isPublicLotStatus(lot.status) || seen.has(lot.id)) continue;
     seen.add(lot.id);
     merged.push(lot);
   }
   for (const lot of scheduledLots) {
-    if (seen.has(lot.id)) continue;
+    if (!isPublicLotStatus(lot.status) || seen.has(lot.id)) continue;
     seen.add(lot.id);
     merged.push(lot);
   }

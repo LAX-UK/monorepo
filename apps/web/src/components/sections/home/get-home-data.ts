@@ -177,6 +177,8 @@ async function resolveHomeHeroState(heroVm: HeroLotVM): Promise<HeroStateVM> {
             }
           : {}),
         posterImageUrl: sale.coverImages[0] ?? null,
+        posterImageMobileUrl: sale.coverImages[1] ?? null,
+        posterImageDesktopWideUrl: sale.coverImages[2] ?? null,
       };
     }
 
@@ -227,7 +229,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const isAuthenticated = Boolean(session);
   const watchedLotIds = Array.from(watchedSet);
 
-  let upcoming: Lot[] = [];
+  let activeLots: Lot[] = [];
   let scheduledLots: Lot[] = [];
   let salesRows: HomeSaleListRow[] = [];
   try {
@@ -236,15 +238,12 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
       status: "active",
       sort: "endingAsc",
     };
-    const [activeLots, scheduled] = await Promise.all([
+    const [activeFetched, scheduled] = await Promise.all([
       fetchHomeLots(filtered),
       fetchHomeLots({ limit: HOME_CATALOG_FETCH_LIMIT, status: "scheduled" }),
     ]);
     scheduledLots = scheduled;
-    upcoming = activeLots;
-    if (upcoming.length === 0) {
-      upcoming = await fetchHomeLots({ limit: HOME_CATALOG_FETCH_LIMIT, sort: "endingAsc" });
-    }
+    activeLots = activeFetched;
     salesRows = await fetchHomeSales({
       statuses: ["scheduled", "active"],
       sort: "startAsc",
@@ -254,7 +253,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     console.error("[getHomeData] data load failed", err);
   }
 
-  const featuredLot = upcoming[0] ?? null;
+  const featuredLot = activeLots[0] ?? scheduledLots[0] ?? null;
   const firstSale = salesRows[0] ?? null;
   const saleTitleForHero =
     featuredLot && firstSale && featuredLot.saleId === firstSale.sale.id
@@ -264,18 +263,18 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const heroVm: HeroLotVM = featuredLot
     ? toHeroLotVM(featuredLot, saleTitleForHero, { saleId: featuredLot.saleId ?? null })
     : createHeroFallbackVm();
-  const endingSoon = lotsEndingSoon(upcoming);
+  const endingSoon = lotsEndingSoon(activeLots);
   const endingSoonWithoutHero = featuredLot
     ? endingSoon.filter((l) => l.id !== featuredLot.id)
     : endingSoon;
   const endingSoonRowIds = new Set(
     endingSoonWithoutHero.slice(0, HOME_ENDING_SOON_LIMIT).map((l) => l.id),
   );
-  const upcomingAfterHero = upcoming.filter(
+  const upcomingAfterHero = activeLots.filter(
     (l) => l.id !== featuredLot?.id && !endingSoonRowIds.has(l.id),
   );
   const urgencySection = buildUrgencySection(
-    upcoming,
+    activeLots,
     featuredLot,
     endingSoonWithoutHero,
     scheduledLots,
@@ -293,7 +292,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
 
   const heroState = await resolveHomeHeroState(heroVm);
   const { editorsPickLots, privateSaleHighlights } = buildLowerStripLots(
-    upcoming,
+    activeLots,
     scheduledLots,
     heroState,
     urgencySection,

@@ -10,6 +10,8 @@ import type {
 
 export type ListLotsParams = {
   status?: LotStatus;
+  /** Comma-separated browse statuses (mirrors API `statuses` query). */
+  statuses?: LotStatus[];
   categoryId?: string;
   sellerId?: string;
   winnerId?: string;

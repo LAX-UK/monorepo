@@ -927,6 +927,124 @@ describe("SaleService.getSaleDetailForPublicApi", () => {
     expect(r.data.viewer.isFollowing).toBe(true);
     expect(follow.isFollowing).toHaveBeenCalledWith("user-1", "s1");
   });
+
+  it("returns null for draft sale when viewer cannot preview", async () => {
+    const sale = baseSale({ id: "s-draft", status: "draft" });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([]),
+    } as unknown as ILotRepository;
+    const svc = new SaleService(saleServiceOpts({ saleRepo, lotRepo, jobScheduler: null }));
+    const r = await svc.getSaleDetailForPublicApi("s-draft", undefined);
+    expect(r).toBeNull();
+  });
+});
+
+describe("SaleService.listSaleLotsPageForPublicApi", () => {
+  function mkLot(id: string, status: Lot["status"], lotNumber: number): Lot {
+    return {
+      id,
+      saleId: "s1",
+      lotNumber,
+      sellerId: "seller-1",
+      title: `Lot ${lotNumber}`,
+      description: null,
+      medium: null,
+      dimensions: null,
+      images: [],
+      categoryId: "c1000001-0000-4000-8000-000000000001",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "1",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 0,
+      dutchLastDecrementAt: null,
+      startTime: new Date("2026-06-01T12:00:00.000Z"),
+      endTime: new Date("2026-06-02T12:00:00.000Z"),
+      status,
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+  }
+
+  it("paginates visible lots with correct total for anonymous viewers", async () => {
+    const sale = baseSale({ id: "s1", status: "active" });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+    } as unknown as ISaleRepository;
+    const listCatalogLotsBySalePage = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: [mkLot("l1", "scheduled", 1), mkLot("l3", "active", 3)],
+        total: 3,
+      })
+      .mockResolvedValueOnce({
+        items: [mkLot("l5", "scheduled", 5)],
+        total: 3,
+      });
+    const lotRepo: ILotRepository = {
+      listCatalogLotsBySalePage,
+    } as unknown as ILotRepository;
+    const svc = new SaleService(saleServiceOpts({ saleRepo, lotRepo, jobScheduler: null }));
+
+    const page1 = await svc.listSaleLotsPageForPublicApi(
+      "s1",
+      { limit: 2, offset: 0, sort: "lot" },
+      undefined,
+    );
+    expect(page1?.data.total).toBe(3);
+    expect(page1?.data.items.map((l) => l.id)).toEqual(["l1", "l3"]);
+    expect(listCatalogLotsBySalePage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        saleId: "s1",
+        requirePublicSale: true,
+        lotStatuses: ["scheduled", "active", "ended"],
+      }),
+    );
+
+    const page2 = await svc.listSaleLotsPageForPublicApi(
+      "s1",
+      { limit: 2, offset: 2, sort: "lot" },
+      undefined,
+    );
+    expect(page2?.data.total).toBe(3);
+    expect(page2?.data.items.map((l) => l.id)).toEqual(["l5"]);
+  });
+
+  it("loads all lots for staff preview without public filters", async () => {
+    const sale = baseSale({ id: "s1", status: "draft" });
+    const listCatalogLotsBySalePage = vi.fn().mockResolvedValue({
+      items: [mkLot("l1", "draft", 1)],
+      total: 1,
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      listCatalogLotsBySalePage,
+    } as unknown as ILotRepository;
+    const svc = new SaleService(saleServiceOpts({ saleRepo, lotRepo, jobScheduler: null }));
+
+    await svc.listSaleLotsPageForPublicApi(
+      "s1",
+      { limit: 10, offset: 0, sort: "lot" },
+      { role: "staff", staffRole: "catalogue_manager" },
+    );
+    expect(listCatalogLotsBySalePage).toHaveBeenCalledWith({
+      saleId: "s1",
+      sort: "lot",
+      limit: 10,
+      offset: 0,
+    });
+  });
 });
 
 function testVenue(overrides: Partial<Venue> = {}): Venue {

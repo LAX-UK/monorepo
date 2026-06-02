@@ -3,6 +3,7 @@ import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
+import { type HeroCoverSources, resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { lotPath, salePath } from "@/lib/seo/url";
@@ -25,6 +26,12 @@ export type HeroLotVM = {
   currentBidFormatted: string;
   bidCountDisplay: string;
   heroImageUrl: string | null;
+  /** Optional portrait crop — typically `coverImages[1]` when uploaded. */
+  heroImageMobileUrl?: string | null;
+  /** Optional xl desktop crop — typically `coverImages[2]` when uploaded. */
+  heroImageDesktopWideUrl?: string | null;
+  /** Per-slide focal point override, e.g. `center 30%`. */
+  objectPosition?: string;
   /** Descriptive alt for the hero artwork image */
   imageAlt: string;
   auctionDateLabel: string;
@@ -50,6 +57,12 @@ export type HeroSaleSlideVM = {
   title: string;
   dateLabel: string;
   coverImageUrl: string | null;
+  /** Optional portrait crop — typically `coverImages[1]` when uploaded. */
+  coverImageMobileUrl?: string | null;
+  /** Optional xl desktop crop — typically `coverImages[2]` when uploaded. */
+  coverImageDesktopWideUrl?: string | null;
+  /** Per-slide focal point override, e.g. `center 30%`. */
+  objectPosition?: string;
   coverImageAlt: string;
   modeBadge: string;
   deliveryMode?: Sale["deliveryMode"];
@@ -69,6 +82,11 @@ export type HeroStateVM =
       startSeconds?: number | undefined;
       /** Sale cover for reduced-motion / visual fallback */
       posterImageUrl?: string | null | undefined;
+      /** Optional portrait crop for mobile hero poster. */
+      posterImageMobileUrl?: string | null | undefined;
+      /** Optional xl desktop crop for live hero poster. */
+      posterImageDesktopWideUrl?: string | null | undefined;
+      objectPosition?: string | undefined;
     }
   | { kind: "rotator"; slides: HeroSaleSlideVM[] }
   | { kind: "fallbackLot"; lot: HeroLotVM };
@@ -176,6 +194,34 @@ function heroImageAlt(title: string, artistName: string): string {
   return `${title} — artwork by ${artistName}`;
 }
 
+export function heroSaleSlideCoverSources(
+  slide: Pick<
+    HeroSaleSlideVM,
+    "coverImageUrl" | "coverImageMobileUrl" | "coverImageDesktopWideUrl" | "objectPosition"
+  >,
+): HeroCoverSources {
+  return resolveHeroCoverSources({
+    desktopUrl: slide.coverImageUrl,
+    mobileUrl: slide.coverImageMobileUrl,
+    desktopWideUrl: slide.coverImageDesktopWideUrl,
+    objectPosition: slide.objectPosition,
+  });
+}
+
+export function heroLotCoverSources(
+  lot: Pick<
+    HeroLotVM,
+    "heroImageUrl" | "heroImageMobileUrl" | "heroImageDesktopWideUrl" | "objectPosition"
+  >,
+): HeroCoverSources {
+  return resolveHeroCoverSources({
+    desktopUrl: lot.heroImageUrl,
+    mobileUrl: lot.heroImageMobileUrl,
+    desktopWideUrl: lot.heroImageDesktopWideUrl,
+    objectPosition: lot.objectPosition,
+  });
+}
+
 export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
   const pres = getSaleTypePresentation(sale.deliveryMode);
   return {
@@ -184,6 +230,8 @@ export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
     title: sale.title,
     dateLabel: formatSaleDateRange(sale),
     coverImageUrl: sale.coverImages[0] ?? null,
+    coverImageMobileUrl: sale.coverImages[1] ?? null,
+    coverImageDesktopWideUrl: sale.coverImages[2] ?? null,
     coverImageAlt: `${sale.title} — auction cover`,
     modeBadge: pres.label,
     deliveryMode: sale.deliveryMode,

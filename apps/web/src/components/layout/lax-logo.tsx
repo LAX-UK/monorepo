@@ -1,7 +1,9 @@
-import { SITE_LOGO_PATH, SITE_SHORT_NAME } from "@/lib/brand";
+import { SITE_LOGO_PATH, SITE_SHORT_NAME, siteLogoLightPath } from "@/lib/brand";
 import { cn } from "@auction/ui";
 import Image from "next/image";
 import type { ReactNode } from "react";
+
+type LaxLogoSurfaceTone = "on-light" | "on-dark";
 
 type LaxLogoProps = {
   /** "header" = compact nav bar; "footer" = larger mark; "auth" = centered sign-in/up */
@@ -16,8 +18,52 @@ type LaxLogoProps = {
   imageHeight?: number;
   /** Hide the tagline subline when using the typeset wordmark. */
   hideTagline?: boolean;
+  /** Surface behind the logo — `on-dark` selects the light-fill asset (hero header). */
+  surfaceTone?: LaxLogoSurfaceTone;
   children?: ReactNode;
 };
+
+function LogoImage({
+  src,
+  imageAlt,
+  imageWidth,
+  imageHeight,
+  imageClassName,
+  isAboveFold,
+}: {
+  src: string;
+  imageAlt: string;
+  imageWidth: number;
+  imageHeight: number;
+  imageClassName: string;
+  isAboveFold: boolean;
+}) {
+  if (src.endsWith(".svg")) {
+    return (
+      <img
+        src={src}
+        alt={imageAlt}
+        width={imageWidth}
+        height={imageHeight}
+        loading={isAboveFold ? "eager" : "lazy"}
+        fetchPriority={isAboveFold ? "high" : "auto"}
+        decoding="async"
+        className={imageClassName}
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={imageAlt}
+      width={imageWidth}
+      height={imageHeight}
+      className={imageClassName}
+      priority={isAboveFold}
+    />
+  );
+}
 
 export function LaxLogo({
   variant = "header",
@@ -27,6 +73,7 @@ export function LaxLogo({
   imageWidth = 660,
   imageHeight = 200,
   hideTagline = false,
+  surfaceTone = "on-light",
   children,
 }: LaxLogoProps) {
   const titleSize =
@@ -51,29 +98,42 @@ export function LaxLogo({
   const shellClassName = cn("flex flex-col", variant === "auth" && "items-center", className);
   const isAboveFold = variant === "header" || variant === "auth";
   const imageClassName = cn("lax-logo-img h-auto w-auto motion-reduce:transition-none", imgMax);
+  const onDarkSurface = surfaceTone === "on-dark";
+  const darkImgClassName = cn(imageClassName, onDarkSurface ? "hidden" : "block dark:hidden");
+  const lightImgClassName = cn(imageClassName, onDarkSurface ? "block" : "hidden dark:block");
 
   if (src) {
+    const lightSrc = siteLogoLightPath(src);
+
     return (
       <div className={shellClassName}>
-        {src.endsWith(".svg") ? (
-          <img
-            src={src}
-            alt={imageAlt}
-            width={imageWidth}
-            height={imageHeight}
-            loading={isAboveFold ? "eager" : "lazy"}
-            fetchPriority={isAboveFold ? "high" : "auto"}
-            decoding="async"
-            className={imageClassName}
-          />
+        {lightSrc ? (
+          <>
+            <LogoImage
+              src={src}
+              imageAlt={imageAlt}
+              imageWidth={imageWidth}
+              imageHeight={imageHeight}
+              imageClassName={darkImgClassName}
+              isAboveFold={isAboveFold}
+            />
+            <LogoImage
+              src={lightSrc}
+              imageAlt={imageAlt}
+              imageWidth={imageWidth}
+              imageHeight={imageHeight}
+              imageClassName={lightImgClassName}
+              isAboveFold={isAboveFold}
+            />
+          </>
         ) : (
-          <Image
+          <LogoImage
             src={src}
-            alt={imageAlt}
-            width={imageWidth}
-            height={imageHeight}
-            className={imageClassName}
-            priority={isAboveFold}
+            imageAlt={imageAlt}
+            imageWidth={imageWidth}
+            imageHeight={imageHeight}
+            imageClassName={imageClassName}
+            isAboveFold={isAboveFold}
           />
         )}
         {children}
