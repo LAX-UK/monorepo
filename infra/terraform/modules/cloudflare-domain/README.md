@@ -1,6 +1,6 @@
 # cloudflare-domain
 
-Manages host-scoped DNS records, Cloudflare zone settings, OIDC cache rules, auth/webhook rate limits, and auth WAF rules.
+Manages host-scoped DNS records (including MX with optional `priority`), Cloudflare zone settings, auth/webhook rate limits, and auth WAF rules.
 
 Rate-limit rules (zone phase `http_ratelimit`):
 
