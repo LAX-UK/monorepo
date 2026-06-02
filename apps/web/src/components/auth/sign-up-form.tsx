@@ -85,10 +85,7 @@ export function SignUpForm({
         <p className="font-body text-sm text-on-surface-variant">
           Organisation invitations are not available yet on this site. Please try again after
           launch, or contact{" "}
-          <a
-            href={`mailto:${SITE_SUPPORT_EMAIL}`}
-            className="font-medium text-primary underline"
-          >
+          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className="font-medium text-primary underline">
             {SITE_SUPPORT_EMAIL}
           </a>
           .
