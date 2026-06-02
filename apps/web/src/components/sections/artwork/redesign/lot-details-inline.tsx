@@ -36,17 +36,17 @@ export function LotDetailsInline({
       {embedded ? null : (
         <h2
           id="inline-lot-details"
-          className="text-center text-lg font-medium uppercase leading-[21px] text-[#1C170D] dark:text-on-surface"
+          className="text-center text-lg font-medium uppercase leading-[21px] text-on-surface"
         >
           Lot details
         </h2>
       )}
       {lot.description ? (
-        <p className="whitespace-pre-wrap text-sm leading-[150%] text-[#191919] dark:text-on-surface">
+        <p className="whitespace-pre-wrap text-sm leading-[150%] text-on-surface">
           {lot.description}
         </p>
       ) : null}
-      <ul className="space-y-2 text-sm text-[#191919] dark:text-on-surface-variant">
+      <ul className="space-y-2 text-sm text-on-surface-variant">
         {specParts.length > 0 ? (
           <li>
             {specParts.map((p, i) => (
@@ -74,19 +74,19 @@ export function LotDetailsInline({
       <div className="flex flex-wrap gap-4">
         <Link
           href="/terms"
-          className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-[#050505] underline dark:text-on-surface"
+          className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-on-surface underline"
         >
           Conditions of Business
         </Link>
         <Link
           href="/faq"
-          className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-[#050505] underline dark:text-on-surface"
+          className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-on-surface underline"
         >
           FAQ
         </Link>
         <Link
           href="/shipping"
-          className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-[#050505] underline dark:text-on-surface"
+          className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-on-surface underline"
         >
           Shipping &amp; Logistics
         </Link>

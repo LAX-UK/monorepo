@@ -26,6 +26,7 @@ export type ListLotsSort =
 
 export type ListLotsFilter = {
   status?: LotStatus | undefined;
+  statuses?: LotStatus[] | undefined;
   categoryId?: string | undefined;
   categoryIds?: string[] | undefined;
   sellerLegalEntityId?: string | undefined;
@@ -37,6 +38,8 @@ export type ListLotsFilter = {
   /** Restrict lots whose endTime falls in this calendar year (UTC). */
   endYear?: number | undefined;
   /** Case-insensitive substring match on title (public catalogue search). */
+  /** When true, only lots on public parent sales (standalone lots allowed). */
+  requirePublicParentSale?: boolean | undefined;
   search?: string | undefined;
   /** When true, only lots with no images (draft triage). */
   needsPhotos?: boolean | undefined;
@@ -113,7 +116,23 @@ export interface ILotRepository {
   findBySaleId(saleId: string): Promise<Lot[]>;
   /** Batch lots for many sales (avoids N+1). */
   findBySaleIds(saleIds: string[]): Promise<Lot[]>;
+  /** Paginated lots for a sale catalog (saleroom); filter + sort + count in SQL. */
+  listCatalogLotsBySalePage(input: ListCatalogLotsBySalePageInput): Promise<{
+    items: Lot[];
+    total: number;
+  }>;
 }
+
+export type SaleCatalogLotsSort = "lot" | "priceAsc" | "priceDesc" | "endingAsc";
+
+export type ListCatalogLotsBySalePageInput = {
+  saleId: string;
+  lotStatuses?: LotStatus[] | undefined;
+  requirePublicSale?: boolean | undefined;
+  sort: SaleCatalogLotsSort;
+  limit: number;
+  offset: number;
+};
 
 export interface ISaleRepository {
   findById(id: string): Promise<Sale | null>;

@@ -1057,7 +1057,12 @@ describe("LotService.listLotsForPublicApi", () => {
       lotNotifications: null,
     });
     const { data } = await svc.listLotsForPublicApi({ limit: 10, offset: 0 }, "client");
-    expect(list).toHaveBeenCalledWith({ limit: 10, offset: 0 });
+    expect(list).toHaveBeenCalledWith({
+      limit: 10,
+      offset: 0,
+      statuses: ["scheduled", "active"],
+      requirePublicParentSale: true,
+    });
     expect(data).toHaveLength(1);
     expect(data[0]?.id).toBe(lotId);
   });
@@ -1072,8 +1077,31 @@ describe("LotService.listLotsForPublicApi", () => {
       jobScheduler: null,
       lotNotifications: null,
     });
-    await svc.listLotsForPublicApi({ limit: 20, offset: 0, needsPhotos: true }, "staff");
+    await svc.listLotsForPublicApi(
+      { limit: 20, offset: 0, needsPhotos: true },
+      "staff",
+      "catalogue_manager",
+    );
     expect(list).toHaveBeenCalledWith({ limit: 20, offset: 0, needsPhotos: true });
+  });
+
+  it("applies requirePublicParentSale for anonymous list queries", async () => {
+    const list = vi.fn().mockResolvedValue([]);
+    const lotRepo: ILotRepository = { list } as unknown as ILotRepository;
+    const svc = new LotService({
+      lotRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+    await svc.listLotsForPublicApi({ limit: 10, offset: 0 }, "client");
+    expect(list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requirePublicParentSale: true,
+        statuses: ["scheduled", "active"],
+      }),
+    );
   });
 });
 

@@ -20,6 +20,7 @@ import {
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
+import { isPublicCatalogLot, viewerCanSeeNonPublicCatalog } from "@auction/validators";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -81,9 +82,17 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     const query = c.req.valid("query");
     const role = c.get("userRole");
     const staffRole = c.get("userStaffRole");
+    const viewerRole = normalizeUserRoleOrClient(role);
+    const staff = normalizeUserStaffRole(staffRole ?? undefined);
+
+    if (query.needsPhotos === "1" && !canManageCatalogue(viewerRole, staff)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
     const { data } = await container.lotService.listLotsForPublicApi(
       {
-        status: query.status,
+        status: query.statuses ? undefined : query.status,
+        statuses: query.statuses,
         categoryId: query.categoryId,
         categoryIds: query.categoryIds,
         sellerLegalEntityId: query.sellerId,
@@ -100,8 +109,6 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       role,
       staffRole,
     );
-    const viewerRole = normalizeUserRoleOrClient(role);
-    const staff = normalizeUserStaffRole(staffRole ?? undefined);
     const canSeeLifecycle =
       roleHasCapability(viewerRole, "catalogue.write", staff) ||
       roleHasCapability(viewerRole, "auction.manage", staff);
@@ -417,6 +424,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     }
     const presented = await presentLotImages(container.mediaUrlResolver, lot);
     const sale = lot.saleId ? await container.saleService.getById(lot.saleId) : null;
+    const canPreview = viewerCanSeeNonPublicCatalog(role, staffRole);
+    if (!canPreview && !isPublicCatalogLot(presented, sale)) {
+      return c.json({ error: "Not found" }, 404);
+    }
     const withPricing = {
       ...presented,
       checkoutPricing: computeLotCheckoutPricing(presented, sale),

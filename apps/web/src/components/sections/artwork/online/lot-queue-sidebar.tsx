@@ -44,7 +44,7 @@ export function LotQueueSidebar({
   return (
     <aside
       className={cn(
-        "w-full shrink-0 lg:max-w-[320px] lg:border-r lg:border-[#D1D1D1] lg:pr-6 dark:lg:border-outline-variant/30",
+        "w-full shrink-0 lg:max-w-[320px] lg:border-r lg:border-outline-variant/30 lg:pr-6",
         className,
       )}
     >
@@ -106,7 +106,7 @@ export function LotQueueSidebar({
       <div className="hidden flex-col gap-6 lg:flex">
         {upNext ? (
           <div className="flex w-full flex-col gap-3">
-            <p className="font-body text-xs font-semibold uppercase leading-4 text-[#474747] dark:text-on-surface-variant">
+            <p className="font-body text-xs font-semibold uppercase leading-4 text-on-surface-variant">
               Up next
             </p>
             <LotQueueCard vm={upNext} variant="upNext" index={0} />
@@ -120,7 +120,7 @@ export function LotQueueSidebar({
           </div>
         ) : queue.length > 0 ? (
           <div className="flex w-full flex-col gap-3">
-            <p className="font-body text-xs font-semibold uppercase leading-4 text-[#474747] dark:text-on-surface-variant">
+            <p className="font-body text-xs font-semibold uppercase leading-4 text-on-surface-variant">
               Queue ({queue.length})
             </p>
             <ul className="flex max-h-[min(40vh,420px)] flex-col gap-3 overflow-y-auto [scrollbar-width:thin]">
