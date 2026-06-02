@@ -16,6 +16,8 @@ import { buildArtworkPageAccordionBlocks } from "@/components/sections/artwork/b
 import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwork-online-layout";
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
+import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsite-lot-unavailable";
+import { mapSaleToOverviewVM } from "@/components/sections/saleroom/mappers";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
@@ -44,6 +46,7 @@ import {
   lotCatalogBackLabel,
 } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
@@ -135,6 +138,25 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     initialAutoBidPromise,
   ]);
 
+  const actingCtx = session
+    ? await resolveActingContext(session.role, session.staffRole ?? null).catch(() => ({
+        acting: null,
+        memberships: [],
+        impersonation: null,
+        bootstrapFailed: false,
+      }))
+    : {
+        acting: null,
+        memberships: [],
+        impersonation: null,
+        bootstrapFailed: false,
+      };
+
+  const mySaleRegs =
+    session && auction.saleId && saleBundle
+      ? await getServerSaleMyRegistrations(auction.saleId).catch(() => [])
+      : [];
+
   const initialHistory: BidHistoryEntry[] = initialBids.map((b) => ({
     id: b.id,
     bidderId: b.bidderId ?? b.placedByUserId ?? "",
@@ -157,7 +179,13 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
 
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
-  const parentSale = saleBundle ? { id: saleBundle.sale.id, title: saleBundle.sale.title } : null;
+  const parentSale = saleBundle
+    ? {
+        id: saleBundle.sale.id,
+        title: saleBundle.sale.title,
+        deliveryMode: saleBundle.sale.deliveryMode,
+      }
+    : null;
   const catalogLinkParams = catalogLotLinkParamsFromSearchParams(sp);
   const catalogBackHref = lotCatalogBackHref(sp, parentSale);
   const catalogBackLabel = lotCatalogBackLabel(sp, parentSale);
@@ -203,7 +231,8 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     crumbs,
   );
 
-  const isOnsiteSale = saleBundle?.sale?.deliveryMode === "onsite";
+  const isOnsiteSale =
+    saleBundle?.sale != null && !saleAllowsWebBidding(saleBundle.sale.deliveryMode);
 
   const conditionReportCtaShow =
     !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
@@ -255,24 +284,26 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const showPreviewRibbon = previewLife.kind === "preLaunch";
   const isSaleQueueLoading = Boolean(auction.saleId && saleBundle === null);
 
-  const [actingCtx, mySaleRegs] = await Promise.all([
-    session
-      ? resolveActingContext(session.role, session.staffRole ?? null).catch(() => ({
-          acting: null,
-          memberships: [],
-          impersonation: null,
-          bootstrapFailed: false,
-        }))
-      : Promise.resolve({
-          acting: null,
-          memberships: [],
-          impersonation: null,
-          bootstrapFailed: false,
-        }),
-    session && auction.saleId && saleBundle?.sale?.deliveryMode === "online"
-      ? getServerSaleMyRegistrations(auction.saleId).catch(() => [])
-      : Promise.resolve([]),
-  ]);
+  const buyerEntities =
+    actingCtx.memberships
+      .filter((m) => m.status === "approved" || m.status === "restricted")
+      .map((m) => ({
+        id: m.id,
+        displayName: m.displayName,
+        memberRole: m.role,
+      })) ?? [];
+
+  const myRegistrationsForTimeline = mySaleRegs.map((r) => ({
+    buyerLegalEntityId: r.buyerLegalEntityId,
+    status: r.status,
+  }));
+
+  const onsiteOverviewVM = saleBundle
+    ? mapSaleToOverviewVM(saleBundle.sale, {
+        lotsTotal: saleLots?.length ?? 0,
+        categoryLabel: null,
+      })
+    : null;
 
   const kycApprovedForBid = session?.kycStatus === "approved";
   const saleRegistrationBidGate = buildSaleRegistrationBidGate({
@@ -313,7 +344,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
         initialWatching={watching}
         loginNextPath={lotPath(auction)}
         omitPricingHeader
-        mobilePricingStrip
         kycSummary={kycSummary}
         saleRegistrationBidGate={saleRegistrationBidGate}
         saleRegistrationPath={parentSale ? salePath(parentSale) : null}
@@ -373,7 +403,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
         {jsonLdText}
       </script>
       <LotPortsProvider>
-        {isOnsiteSale && saleBundle ? (
+        {isOnsiteSale && saleBundle && onsiteOverviewVM ? (
           <LotOnsiteMarketingLayout
             auction={auction}
             sale={saleBundle.sale}
@@ -385,7 +415,21 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
             currentUserId={session?.id ?? null}
             shareUrl={shareUrl}
             followSlot={followSlot}
+            showPreviewRibbon={showPreviewRibbon}
+            serverClockMs={serverNow}
+            sessionHeader={sessionHeaderVM}
+            queueCurrent={queueVMs.current}
+            queueUpNext={queueVMs.upNext}
+            queueRest={queueVMs.queue}
+            isSaleQueueLoading={isSaleQueueLoading}
+            saleForLifecycle={saleLifecyclePick}
+            overview={onsiteOverviewVM}
+            kycApproved={kycApprovedForBid}
+            myRegistrations={myRegistrationsForTimeline}
+            buyerEntities={buyerEntities}
           />
+        ) : auction.saleId && !saleBundle ? (
+          <OnsiteLotUnavailable saleTitle={parentSale?.title ?? null} saleId={auction.saleId} />
         ) : (
           <LotRealtimeProvider lotId={auction.id}>
             <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
@@ -422,6 +466,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                   />
                 }
                 hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
+                streamUrl={saleBundle?.sale?.streamUrl ?? null}
+                streamSaleTitle={saleBundle?.sale?.title ?? parentSale?.title ?? auction.title}
+                streamPosterUrl={auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null}
               />
             </OnlineLotLifecycleProvider>
           </LotRealtimeProvider>

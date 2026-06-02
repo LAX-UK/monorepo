@@ -189,15 +189,17 @@ export function LotMoreFromRail({
                         {closing ?? "\u00A0"}
                       </span>
                     </p>
-                    <div className="flex flex-row gap-4 pt-1">
-                      <Button
-                        variant="outline"
-                        asChild
-                        className="h-10 min-h-10 flex-1 rounded border-outline-variant text-base font-semibold text-on-surface"
-                      >
-                        <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
-                      </Button>
-                      <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 pt-1 w-full">
+                      {c.deliveryMode !== "onsite" ? (
+                        <Button
+                          variant="outline"
+                          asChild
+                          className="h-10 min-h-10 w-full rounded border-outline-variant text-base font-semibold text-on-surface"
+                        >
+                          <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
+                        </Button>
+                      ) : null}
+                      <div className="min-w-0 w-full">
                         <ArtworkWatchToggle
                           lotId={c.id}
                           initialWatching={watchedLotIds.includes(c.id)}

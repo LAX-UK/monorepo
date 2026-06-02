@@ -3,12 +3,25 @@ import type {
   LotRelatedRailVM,
   LotSummarySeedVM,
 } from "@/components/sections/artwork/artwork-view-models";
+import {
+  mapAuctionSessionHeaderVM,
+  mapSaleLotsToQueueVMs,
+} from "@/components/sections/artwork/artwork-view-models";
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
+import { mapSaleToOverviewVM } from "@/components/sections/saleroom/mappers";
 import type { Lot, Sale } from "@auction/types";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-const now = new Date();
+vi.mock("@/lib/time/use-client-clock", () => ({
+  useClientClock: () => Date.parse("2026-06-01T12:00:00.000Z"),
+}));
+
+vi.mock("@/hooks/use-reduced-motion", () => ({
+  useReducedMotion: () => false,
+}));
+
+const now = new Date("2026-06-01T12:00:00.000Z");
 
 const baseLot: Lot = {
   id: "lot-x",
@@ -60,7 +73,7 @@ const baseSale: Sale = {
   status: "scheduled",
   startTime: new Date(now.getTime() + 86_400_000),
   endTime: new Date(now.getTime() + 172_800_000),
-  previewStartTime: null,
+  previewStartTime: new Date(now.getTime() + 43_200_000),
   buyerPremiumRate: "0.25",
   buyerPremiumTiers: null,
   terms: null,
@@ -78,47 +91,59 @@ const summarySeed: LotSummarySeedVM = {
 };
 
 const rail: LotRelatedRailVM = { mode: "sale", heading: "", viewAuctionHref: null, cards: [] };
-
 const blocks: AccordionBlock[] = [];
+const queueVMs = mapSaleLotsToQueueVMs(baseLot, [baseLot], () => "Seller");
+const overview = mapSaleToOverviewVM(baseSale, { lotsTotal: 1, categoryLabel: null });
+
+function renderLayout(sale: Sale = baseSale) {
+  return render(
+    <LotOnsiteMarketingLayout
+      auction={baseLot}
+      sale={sale}
+      summarySeed={summarySeed}
+      marketingAccordionBlocks={blocks}
+      rail={rail}
+      isAuthenticated={false}
+      watchedLotIds={[]}
+      currentUserId={null}
+      shareUrl="https://example.com/lot"
+      followSlot={<span>follow</span>}
+      sessionHeader={mapAuctionSessionHeaderVM({
+        saleTitle: sale.title,
+        lot: baseLot,
+      })}
+      queueCurrent={queueVMs.current}
+      queueUpNext={queueVMs.upNext}
+      queueRest={queueVMs.queue}
+      saleForLifecycle={{ status: sale.status, deliveryMode: sale.deliveryMode }}
+      overview={overview}
+    />,
+  );
+}
 
 describe("LotOnsiteMarketingLayout", () => {
   it("renders plan your visit and venue", () => {
-    render(
-      <LotOnsiteMarketingLayout
-        auction={baseLot}
-        sale={baseSale}
-        summarySeed={summarySeed}
-        marketingAccordionBlocks={blocks}
-        rail={rail}
-        isAuthenticated={false}
-        watchedLotIds={[]}
-        currentUserId={null}
-        shareUrl="https://example.com/lot"
-        followSlot={<span>follow</span>}
-      />,
-    );
+    renderLayout();
     expect(screen.getByRole("heading", { name: /Plan your visit/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Venue/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Saleroom Venue/i })).toBeInTheDocument();
   });
 
-  it("shows live stream promo when streamUrl is set", () => {
+  it("shows seller as a link when sellerHref is set", () => {
+    renderLayout();
+    expect(screen.getByRole("link", { name: "Seller" })).toHaveAttribute("href", "/artist/s/s");
+  });
+
+  it("shows sale-specific preview hours when previewStartTime is set", () => {
+    renderLayout();
+    expect(screen.getByText(/until session opens/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Weekdays, 09:00/i)).not.toBeInTheDocument();
+  });
+
+  it("shows live stream section when streamUrl is set", () => {
     const sale = { ...baseSale, streamUrl: "https://example.com/watch" };
-    render(
-      <LotOnsiteMarketingLayout
-        auction={baseLot}
-        sale={sale}
-        summarySeed={summarySeed}
-        marketingAccordionBlocks={blocks}
-        rail={rail}
-        isAuthenticated={false}
-        watchedLotIds={[]}
-        currentUserId={null}
-        shareUrl="https://example.com/lot"
-        followSlot={<span>follow</span>}
-      />,
-    );
-    expect(screen.getByRole("heading", { name: /Watch from anywhere/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /open live stream/i })).toBeInTheDocument();
+    renderLayout(sale);
+    expect(screen.getByRole("heading", { name: /Watch From Anywhere/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Go to live stream/i })).toBeInTheDocument();
   });
 
   it("shows embed preview for YouTube stream URLs", () => {
@@ -126,21 +151,15 @@ describe("LotOnsiteMarketingLayout", () => {
       ...baseSale,
       streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
     };
-    render(
-      <LotOnsiteMarketingLayout
-        auction={baseLot}
-        sale={sale}
-        summarySeed={summarySeed}
-        marketingAccordionBlocks={blocks}
-        rail={rail}
-        isAuthenticated={false}
-        watchedLotIds={[]}
-        currentUserId={null}
-        shareUrl="https://example.com/lot"
-        followSlot={<span>follow</span>}
-      />,
-    );
+    renderLayout(sale);
     expect(screen.getByRole("button", { name: /watch live/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /open in youtube/i })).toBeInTheDocument();
+  });
+
+  it("renders participation timeline and structured bid form triggers", () => {
+    renderLayout();
+    expect(screen.getByText(/Public Preview/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Submit Bid Form/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Request Line/i })).toBeInTheDocument();
   });
 });

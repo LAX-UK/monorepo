@@ -103,7 +103,7 @@ export function SalesFilterGroupContents({
             active={state.deliveryMode === "onsite"}
             {...(onLinkClick ? { onLinkClick } : {})}
           >
-            Live
+            In-person
           </FilterLink>
         </>
       );

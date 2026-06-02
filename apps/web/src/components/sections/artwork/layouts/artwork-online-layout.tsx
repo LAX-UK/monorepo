@@ -47,6 +47,9 @@ type Props = {
   bidPanelTop?: ReactNode;
   /** When true, show the Video Stream tab in the bid panel. */
   hasVideoStream?: boolean;
+  streamUrl?: string | null;
+  streamSaleTitle?: string;
+  streamPosterUrl?: string | null;
 };
 
 export function ArtworkOnlineLayout({
@@ -69,6 +72,9 @@ export function ArtworkOnlineLayout({
   bidPanel,
   bidPanelTop,
   hasVideoStream = false,
+  streamUrl,
+  streamSaleTitle,
+  streamPosterUrl,
 }: Props) {
   const lifecycleLot = {
     id: auction.id,
@@ -151,8 +157,16 @@ export function ArtworkOnlineLayout({
             {bidPanelTop ? <div className="mb-4">{bidPanelTop}</div> : null}
             <BidPanelTabs
               bidPanel={bidPanel}
-              videoPanel={<OnlineVideoStreamPanel />}
-              hasVideoStream={hasVideoStream}
+              videoPanel={
+                streamUrl && streamSaleTitle ? (
+                  <OnlineVideoStreamPanel
+                    streamUrl={streamUrl}
+                    saleTitle={streamSaleTitle}
+                    posterUrl={streamPosterUrl ?? null}
+                  />
+                ) : null
+              }
+              hasVideoStream={hasVideoStream && Boolean(streamUrl && streamSaleTitle)}
             />
             <div className="mt-6">
               <LotActionsRow

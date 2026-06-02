@@ -3,6 +3,7 @@ import { SaleroomLotQuickLookCorner } from "@/components/marketing/lot-quick-loo
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingLoadMore } from "@/components/marketing/marketing-load-more";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
+import { SaleParticipationTimeline } from "@/components/marketing/sale-participation-timeline";
 import {
   mapLotToCardVM,
   mapSaleToHeroVM,
@@ -33,6 +34,7 @@ import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
+import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import {
   breadcrumbJsonLd,
@@ -263,7 +265,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       })) ?? [];
 
   const registerToBidShow =
-    bundle.sale.deliveryMode === "online" &&
+    saleAllowsWebBidding(bundle.sale.deliveryMode) &&
     (bundle.sale.status === "scheduled" || bundle.sale.status === "active") &&
     buyerEntities.some((e) => e.memberRole === "buyer_agent");
 
@@ -405,6 +407,21 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           preservedQuery={preservedQuery}
           showLoadAll={!isCatalogLoadAll && lotsPage.total <= CATALOG_LOAD_ALL_CAP}
           loadAllCap={CATALOG_LOAD_ALL_CAP}
+        />
+      </section>
+
+      <section className={cn(MARKETING_PAGE_SHELL, "pb-0 pt-16")} aria-label="How to participate">
+        <SaleParticipationTimeline
+          deliveryMode={bundle.sale.deliveryMode}
+          isAuthenticated={isAuthenticated}
+          kycApproved={kycApproved}
+          myRegistrations={myRegistrations}
+          buyerEntities={buyerEntities}
+          previewStartTime={bundle.sale.previewStartTime}
+          startTime={bundle.sale.startTime}
+          endTime={bundle.sale.endTime}
+          streamUrl={bundle.sale.streamUrl}
+          className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
         />
       </section>
 

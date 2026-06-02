@@ -1,3 +1,8 @@
+import {
+  DEFAULT_ANTI_SNIPING_EXTENSION_MS,
+  DEFAULT_ANTI_SNIPING_WINDOW_MS,
+} from "@auction/validators";
+
 export type LotJobSchedulerPort = {
   rescheduleEnd(lotId: string, endTime: Date): Promise<void>;
   cancelLotJobs(lotId: string): Promise<void>;
@@ -13,7 +18,7 @@ export type BidPolicyConfig = {
 };
 
 export const DEFAULT_BID_POLICY: BidPolicyConfig = {
-  antiSnipingWindowMs: 2 * 60 * 1000,
-  antiSnipingExtensionMs: 30_000,
+  antiSnipingWindowMs: DEFAULT_ANTI_SNIPING_WINDOW_MS,
+  antiSnipingExtensionMs: DEFAULT_ANTI_SNIPING_EXTENSION_MS,
   maxProxyRounds: 100,
 };

@@ -1,3 +1,4 @@
+import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import type { SaleDeliveryMode } from "@auction/types";
 
 /** Primary navigation tabs from `calendar.html` (marketing calendar). */
@@ -261,14 +262,13 @@ const MONTH_LABELS = [
 ] as const;
 
 export function calendarDeliveryLabel(mode: SaleDeliveryMode | "all"): string | null {
-  if (mode === "online") return "Online";
-  if (mode === "onsite") return "Live";
+  if (mode === "online" || mode === "onsite") return getSaleDeliveryModeLabel(mode);
   return null;
 }
 
 export function calendarLocationLabel(location: "all" | "online" | string): string | null {
   if (location === "all") return null;
-  if (location === "online") return "Online";
+  if (location === "online") return getSaleDeliveryModeLabel("online");
   return location.charAt(0).toUpperCase() + location.slice(1);
 }
 

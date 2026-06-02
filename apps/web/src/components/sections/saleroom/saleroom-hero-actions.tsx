@@ -2,6 +2,7 @@ import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/on
 import { SaleroomFollowToggle } from "@/components/sections/saleroom/saleroom-follow-toggle";
 import { SaleroomRegisterToBid } from "@/components/sections/saleroom/saleroom-register-to-bid";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { LegalEntityMemberRole, Sale } from "@auction/types";
 import { formatPostalAddressLines } from "@auction/validators";
 
@@ -38,7 +39,9 @@ export function SaleroomHeroActions({
   registerToBid,
 }: Props) {
   const isOnsiteScheduled =
-    sale?.deliveryMode === "onsite" && (sale.status === "scheduled" || sale.status === "draft");
+    sale != null &&
+    !saleAllowsWebBidding(sale.deliveryMode) &&
+    (sale.status === "scheduled" || sale.status === "draft");
 
   return (
     <div className="flex w-full min-w-0 flex-col items-stretch justify-end gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start">

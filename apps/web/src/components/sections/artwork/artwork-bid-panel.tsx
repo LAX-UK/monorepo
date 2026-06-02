@@ -41,7 +41,6 @@ type Props = {
   initialWatching?: boolean;
   loginNextPath?: string;
   omitPricingHeader?: boolean;
-  mobilePricingStrip?: boolean;
   kycSummary?: KycStatusSummaryDto | null;
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
   saleRegistrationPath?: string | null;
@@ -64,7 +63,6 @@ export function ArtworkBidPanel({
   initialWatching = false,
   loginNextPath,
   omitPricingHeader = false,
-  mobilePricingStrip: _mobilePricingStrip = false,
   kycSummary = null,
   saleRegistrationBidGate = null,
   saleRegistrationPath = null,
