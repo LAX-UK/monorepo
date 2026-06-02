@@ -110,8 +110,13 @@ resource "cloudflare_ruleset" "zone_auth_waf" {
     content {
       action      = "skip"
       expression  = local.bot_allow_expression
-      description = "Allow listed crawlers/monitoring bots (skip remaining custom WAF rules)."
+      description = "Allow listed crawlers/monitoring bots (skip remaining custom WAF + auth rate limit)."
       enabled     = true
+
+      action_parameters {
+        ruleset = "current"
+        phases  = ["http_ratelimit"]
+      }
     }
   }
 
@@ -143,7 +148,7 @@ resource "cloudflare_ruleset" "zone_rate_limits" {
 
   rules {
     action      = "block"
-    expression  = "(${local.bot_allow_negated}) and (http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
+    expression  = "(http.host in {${local.auth_host_expression}} and http.request.uri.path in {\"/api/auth/sign-up\" \"/api/auth/send-verification-email\"})"
     description = "Auth sign-up + verification-email: shared bucket (Free: 1 rule, 10s period + 10s mitigation; RPM via locals)."
     enabled     = true
 
