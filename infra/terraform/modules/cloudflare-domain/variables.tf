@@ -26,6 +26,78 @@ variable "api_hosts" {
   type = set(string)
 }
 
+# Test hostnames for edge noindex headers. Use explicit eq (not matches/regex) — regex
+# requires Cloudflare Business or WAF Advanced on the zone.
+variable "test_hosts" {
+  type        = set(string)
+  description = "Hostnames that receive X-Robots-Tag noindex (e.g. test.lax.bid, test-api.lax.bid)."
+  default     = []
+}
+
+# Substrings matched against http.user_agent (contains). Used to skip auth WAF challenges
+# and edge auth rate limits for known crawlers and monitoring bots on Free plan.
+variable "whitelisted_bot_user_agents" {
+  type        = set(string)
+  description = "User-Agent substrings for legitimate bots to bypass auth challenge and auth rate limit. Matched with contains (Free-plan safe)."
+  default = [
+    # Search / SEO
+    "Googlebot",
+    "AdsBot-Google",
+    "Google-InspectionTool",
+    "Google-Extended",
+    "bingbot",
+    "Applebot",
+    "Applebot-Extended",
+    "DuckDuckBot",
+    "YandexBot",
+    "Baiduspider",
+    "Slurp",
+    "SemrushBot",
+    "AhrefsBot",
+    "MJ12bot",
+    "DotBot",
+    "Pinterestbot",
+    "PetalBot",
+    "Sogou",
+    "Amazonbot",
+    # LLM / AI crawlers (training & preview; use robots.txt on web if you want to block indexing)
+    "GPTBot",
+    "ChatGPT-User",
+    "OAI-SearchBot",
+    "ClaudeBot",
+    "anthropic-ai",
+    "PerplexityBot",
+    "Bytespider",
+    "CCBot",
+    "cohere-ai",
+    "meta-externalagent",
+    "Diffbot",
+    "YouBot",
+    "MistralAI-User",
+    # Social link preview
+    "LinkedInBot",
+    "Slackbot",
+    "Twitterbot",
+    "facebookexternalhit",
+    "facebot",
+    "WhatsApp",
+    "TelegramBot",
+    "Discordbot",
+    # Uptime / synthetic monitoring
+    "Pingdom",
+    "UptimeRobot",
+    "StatusCake",
+    "Better Stack",
+    "DatadogSynthetics",
+  ]
+}
+
+variable "whitelist_cf_client_bot" {
+  type        = bool
+  description = "When true, also allow cf.client.bot (Cloudflare-known good bots) in bot allow expressions."
+  default     = true
+}
+
 variable "signup_rpm" {
   type    = number
   default = 10
