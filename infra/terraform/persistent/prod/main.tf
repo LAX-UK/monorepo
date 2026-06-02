@@ -17,6 +17,11 @@ locals {
     mail_spf             = { name = "mail", type = "TXT", value = "v=spf1 include:spf.mtasv.net ~all", proxied = false, comment = "Postmark SPF for mail.lax.bid sender domain" }
     mail_dmarc           = { name = "_dmarc.mail", type = "TXT", value = "v=DMARC1; p=quarantine; rua=mailto:support@lax.bid; fo=1", proxied = false, comment = "DMARC for mail.lax.bid (align with Postmark)" }
     zoho_mail_verify     = { name = "@", type = "TXT", value = "zoho-verification=zb23174584.zmverify.zoho.eu", proxied = false, comment = "Zoho Mail domain verification (EU)" }
+    zoho_mx_primary      = { name = "@", type = "MX", value = "mx.zoho.eu", priority = 10, proxied = false, comment = "Zoho Mail EU inbound" }
+    zoho_mx_secondary    = { name = "@", type = "MX", value = "mx2.zoho.eu", priority = 20, proxied = false, comment = "Zoho Mail EU inbound" }
+    zoho_mx_tertiary     = { name = "@", type = "MX", value = "mx3.zoho.eu", priority = 50, proxied = false, comment = "Zoho Mail EU inbound" }
+    zoho_spf             = { name = "@", type = "TXT", value = "v=spf1 include:zohomail.eu ~all", proxied = false, comment = "Zoho Mail SPF for @lax.bid" }
+    zoho_dkim            = { name = "zmail._domainkey", type = "TXT", value = "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDA5/sNBc3Octb83NV7Dk2coky2nAWToQXeZZfKkbNMflcIMj5845FnqCDmGm4ArDzDT+sd/TEjO/uQ3+s0hWjkCsK6+frfzpHgbNMDpaxL6nLmslyc1bEN0DpIj2L2Ma0Pf8t7KRAlJDIuLeIR3GC6J8r58caQgx7yDNSBZP9HkwIDAQAB", proxied = false, comment = "Zoho Mail DKIM" }
   }
 }
 
