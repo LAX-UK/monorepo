@@ -137,6 +137,7 @@ describe("admin-access requirements", () => {
     { name: "ARTISTS_ACCESS", allowed: "specialist", denied: "finance_ops" },
     { name: "ARTIST_DELETE_ACCESS", allowed: "super_admin", denied: "staff_viewer" },
     { name: "CATEGORIES_ACCESS", allowed: "catalogue_manager", denied: "staff_viewer" },
+    { name: "VENUES_ACCESS", allowed: "catalogue_manager", denied: "staff_viewer" },
     { name: "SALEROOM_ACCESS", allowed: "auction_manager", denied: "staff_viewer" },
     { name: "CONVEYOR_ACCESS", allowed: "operations_fulfilment", denied: "staff_viewer" },
     { name: "LOT_FULFILMENT_ACCESS", allowed: "operations_fulfilment", denied: "staff_viewer" },

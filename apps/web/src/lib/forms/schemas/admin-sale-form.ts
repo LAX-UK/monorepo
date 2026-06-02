@@ -53,6 +53,7 @@ export const adminSaleFormValuesSchema = z
     locationCounty: z.string().max(500),
     locationPostcode: z.string().max(16),
     locationCountry: z.string().max(120),
+    venueId: z.string(),
     startTime: z.string().min(1, "Start is required"),
     endTime: z.string().min(1, "End is required"),
     previewStartTime: z.string(),
@@ -222,6 +223,7 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
     streamUrl: isOnsite ? values.streamUrl.trim() || undefined : undefined,
+    venueId: isOnsite ? values.venueId.trim() || undefined : undefined,
     ...pickLocationCreate(values, isOnsite),
     startTime: instantFromDatetimeFormString(values.startTime),
     endTime: instantFromDatetimeFormString(values.endTime),
@@ -257,6 +259,7 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
     streamUrl: isOnsite ? (streamRaw === "" ? null : streamRaw) : null,
+    venueId: isOnsite ? values.venueId.trim() || null : null,
     ...pickLocationUpdate(values, isOnsite),
     startTime: values.startTime.trim()
       ? instantFromDatetimeFormString(values.startTime)

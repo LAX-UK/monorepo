@@ -48,12 +48,48 @@ export function lotProductJsonLd(
   };
 }
 
-/** Sale events render as virtual auction-style events. `eventStatus` mirrors the
+function nonEmpty(value: string | null | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function saleLocationJsonLd(sale: Sale, url: string): Record<string, unknown> {
+  if (sale.deliveryMode !== "onsite") {
+    return {
+      attendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+      location: {
+        "@type": "VirtualLocation",
+        url,
+      },
+    };
+  }
+  return {
+    attendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: {
+      "@type": "Place",
+      name: nonEmpty(sale.locationName) ?? SITE_NAME,
+      ...(sale.locationMapUrl ? { url: sale.locationMapUrl } : {}),
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: [nonEmpty(sale.locationAddressLine1), nonEmpty(sale.locationAddressLine2)]
+          .filter(Boolean)
+          .join(", "),
+        addressLocality: nonEmpty(sale.locationCity),
+        addressRegion: nonEmpty(sale.locationCounty),
+        postalCode: nonEmpty(sale.locationPostcode),
+        addressCountry: nonEmpty(sale.locationCountry),
+      },
+    },
+  };
+}
+
+/** Sale events render with delivery-mode-specific location. `eventStatus` mirrors the
  * sale's lifecycle so Google's rich result understands current state.
  */
 export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
   const base = getSiteUrl();
   const url = `${base}${salePath(sale)}`;
+  const location = saleLocationJsonLd(sale, url);
   const status =
     sale.status === "active"
       ? "https://schema.org/EventScheduled"
@@ -68,12 +104,9 @@ export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
     startDate: sale.startTime.toISOString(),
     endDate: sale.endTime.toISOString(),
     eventStatus: status,
-    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    eventAttendanceMode: location.attendanceMode,
     organizer: { "@type": "Organization", name: SITE_NAME, url: base },
-    location: {
-      "@type": "VirtualLocation",
-      url,
-    },
+    location: location.location,
     url,
   };
 }

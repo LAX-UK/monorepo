@@ -37,6 +37,8 @@ export type Sale = {
   locationPostcode: string | null;
   /** ISO country name (defaults to "United Kingdom" in admin UX). */
   locationCountry: string | null;
+  /** Reusable venue reference for onsite sales; location fields remain the publish snapshot. */
+  venueId?: string | null;
   status: SaleStatus;
   startTime: Date;
   endTime: Date;
@@ -77,6 +79,7 @@ export type CreateSaleInput = {
   locationCounty?: string | null | undefined;
   locationPostcode?: string | null | undefined;
   locationCountry?: string | null | undefined;
+  venueId?: string | null | undefined;
   startTime: Date;
   endTime: Date;
   previewStartTime?: Date | undefined;

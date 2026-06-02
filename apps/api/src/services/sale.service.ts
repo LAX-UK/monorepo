@@ -4,6 +4,7 @@ import {
   type Lot,
   type Sale,
   type UserRole,
+  type Venue,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
   roleHasCapability,
@@ -14,7 +15,9 @@ import type {
 } from "@auction/validators";
 import {
   englishOnlyAdminLotAuctionTypeViolation,
+  formatPostalAddress,
   getSaleModeCapabilities,
+  isOnsiteLocationPopulated,
   isStartInFutureForPublish,
 } from "@auction/validators";
 import type { updateSaleSchema } from "@auction/validators";
@@ -44,6 +47,7 @@ import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { IVenueRepository } from "./interfaces/venue.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";
@@ -70,6 +74,7 @@ export type SaleServiceOptions = {
   domainEventPublisher?: DomainEventPublisher | null;
   lotLifecycleRecording?: LotLifecycleRecording | null;
   legalEntityRepository?: ILegalEntityRepository | null;
+  venueRepository?: IVenueRepository | null;
   enforceIndividualConnectOnPublish?: boolean;
   qrCodeService?: QrCodeService | null;
 };
@@ -87,6 +92,7 @@ export class SaleService {
   private readonly domainEventPublisher: DomainEventPublisher | null;
   private readonly lotLifecycleRecording: LotLifecycleRecording | null;
   private readonly legalEntityRepository: ILegalEntityRepository | null;
+  private readonly venueRepository: IVenueRepository | null;
   private readonly enforceIndividualConnectOnPublish: boolean;
   private readonly qrCodeService: QrCodeService | null;
 
@@ -103,6 +109,7 @@ export class SaleService {
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
     this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
     this.legalEntityRepository = opts.legalEntityRepository ?? null;
+    this.venueRepository = opts.venueRepository ?? null;
     this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
     this.qrCodeService = opts.qrCodeService ?? null;
   }
@@ -128,6 +135,66 @@ export class SaleService {
     });
   }
 
+  private venueLocationSnapshot(venue: Venue): Partial<CreateSaleInput> {
+    const locationAddressLine1 = venue.addressLine1;
+    const locationAddressLine2 = venue.addressLine2;
+    const locationCity = venue.city;
+    const locationCounty = venue.county;
+    const locationPostcode = venue.postcode;
+    const locationCountry = venue.country;
+    const locationAddress = formatPostalAddress({
+      locationAddressLine1,
+      locationAddressLine2,
+      locationCity,
+      locationCounty,
+      locationPostcode,
+      locationCountry,
+    });
+    return {
+      venueId: venue.id,
+      locationName: venue.name,
+      locationAddress: locationAddress || null,
+      locationMapUrl: venue.mapUrl,
+      locationAddressLine1,
+      locationAddressLine2,
+      locationCity,
+      locationCounty,
+      locationPostcode,
+      locationCountry,
+    };
+  }
+
+  private async applyVenueSnapshot(
+    input: Partial<CreateSaleInput>,
+    options: {
+      saleLegalEntityId: string;
+      existingVenueId?: string | null;
+      snapshotAddress: boolean;
+    },
+  ): Promise<Result<Partial<CreateSaleInput>, LotError>> {
+    const venueId = input.venueId !== undefined ? input.venueId : options.existingVenueId;
+    if (!venueId) return ok(input);
+    if (!this.venueRepository) {
+      return err(new LotError("Venue repository is not configured", 500));
+    }
+    const venue = await this.venueRepository.findById(venueId);
+    if (!venue) return err(new LotError("Venue not found", 404, "venue_not_found"));
+    if (venue.legalEntityId !== options.saleLegalEntityId) {
+      return err(
+        new LotError("Venue does not belong to this organisation", 403, "venue_org_mismatch"),
+      );
+    }
+    if (venue.status !== "active") {
+      return err(
+        new LotError("Archived venues cannot be assigned to sales", 409, "venue_archived"),
+      );
+    }
+    if (!options.snapshotAddress) {
+      return ok({ ...input, venueId });
+    }
+    return ok({ ...input, ...this.venueLocationSnapshot(venue) });
+  }
+
   async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {
     if (input.endTime <= input.startTime) {
       throw new LotError("endTime must be after startTime");
@@ -139,7 +206,13 @@ export class SaleService {
         400,
       );
     }
-    const sale = await this.saleRepo.create({ ...input, createdByLegalEntityId });
+    const snapshot = await this.applyVenueSnapshot(input, {
+      saleLegalEntityId: createdByLegalEntityId,
+      snapshotAddress: false,
+    });
+    if (snapshot.isErr()) throw snapshot.error;
+    const normalizedInput = { ...input, ...snapshot.value };
+    const sale = await this.saleRepo.create({ ...normalizedInput, createdByLegalEntityId });
     await this.qrCodeService?.getOrCreateDefault({
       entityType: "sale",
       entityId: sale.id,
@@ -341,7 +414,7 @@ export class SaleService {
     }
     const bundle = await this.getByIdWithLots(saleId);
     if (!bundle) return err(new LotError("Sale not found", 404));
-    const { sale, lots } = bundle;
+    let { sale, lots } = bundle;
     if (sale.status !== "draft") {
       return err(new LotError("Only draft sales can be published"));
     }
@@ -352,6 +425,33 @@ export class SaleService {
       return err(new LotError("Sale must have at least one lot to publish"));
     }
     const caps = getSaleModeCapabilities(sale.deliveryMode);
+    if (caps.allowsLocation && sale.venueId) {
+      const saleLegalEntityId =
+        sale.createdByLegalEntityId ?? (await this.resolvePlatformCatalogLegalEntityId());
+      if (!saleLegalEntityId) {
+        return err(new LotError("Sale legal entity is not configured", 400));
+      }
+      const snapshot = await this.applyVenueSnapshot(
+        { venueId: sale.venueId },
+        {
+          saleLegalEntityId,
+          existingVenueId: sale.venueId,
+          snapshotAddress: true,
+        },
+      );
+      if (snapshot.isErr()) return err(snapshot.error);
+      sale = await this.saleRepo.update(saleId, snapshot.value);
+      lots = await this.lotRepo.findBySaleId(saleId);
+    }
+    if (caps.allowsLocation && !isOnsiteLocationPopulated(sale)) {
+      return err(
+        new LotError(
+          "Onsite sales require a saved venue or venue name with address before publish",
+          400,
+          "onsite_location_required",
+        ),
+      );
+    }
     for (const l of lots) {
       if (l.status !== "draft") {
         return err(new LotError("All lots in the sale must be draft to publish"));
@@ -837,7 +937,7 @@ export class SaleService {
     if (nextEnd <= nextStart) {
       return err(new LotError("endTime must be after startTime"));
     }
-    const normalized: Partial<CreateSaleInput> = { ...(patch as Partial<CreateSaleInput>) };
+    let normalized: Partial<CreateSaleInput> = { ...(patch as Partial<CreateSaleInput>) };
     const nextDelivery = patch.deliveryMode ?? sale.deliveryMode;
     const caps = getSaleModeCapabilities(nextDelivery);
     if (!caps.allowsStreamUrl) {
@@ -853,6 +953,20 @@ export class SaleService {
       normalized.locationCounty = null;
       normalized.locationPostcode = null;
       normalized.locationCountry = null;
+      normalized.venueId = null;
+    } else {
+      const saleLegalEntityId =
+        sale.createdByLegalEntityId ?? (await this.resolvePlatformCatalogLegalEntityId());
+      if (!saleLegalEntityId) {
+        return err(new LotError("Sale legal entity is not configured", 400));
+      }
+      const snapshot = await this.applyVenueSnapshot(normalized, {
+        saleLegalEntityId,
+        existingVenueId: sale.venueId ?? null,
+        snapshotAddress: false,
+      });
+      if (snapshot.isErr()) return err(snapshot.error);
+      normalized = snapshot.value;
     }
     if (caps.inheritsLotTiming) {
       const lots = await this.lotRepo.findBySaleId(saleId);

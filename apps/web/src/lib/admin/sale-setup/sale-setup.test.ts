@@ -315,6 +315,35 @@ describe("buildSaleSetupReadiness", () => {
     expect(result.items.some((i) => i.id === "venue")).toBe(false);
   });
 
+  it("treats a saved venue as sufficient for onsite readiness", () => {
+    const result = buildSaleSetupReadiness({
+      saleId,
+      sale: draftSale({
+        deliveryMode: "onsite",
+        venueId: "venue-1",
+        locationName: null,
+        locationAddressLine1: null,
+      }),
+      lots: [draftLot({ images: ["img"], description: "desc" })],
+    });
+    const venueItem = result.items.find((i) => i.id === "venue");
+    expect(venueItem?.ok).toBe(true);
+  });
+
+  it("blocks onsite readiness when venue details are missing", () => {
+    const result = buildSaleSetupReadiness({
+      saleId,
+      sale: draftSale({
+        deliveryMode: "onsite",
+        locationName: null,
+        locationAddressLine1: null,
+      }),
+      lots: [draftLot({ images: ["img"], description: "desc" })],
+    });
+    const venueItem = result.items.find((i) => i.id === "venue");
+    expect(venueItem?.ok).toBe(false);
+  });
+
   it("includes connect blockers when connectRequiredByLotId is set", () => {
     const lot = draftLot({ images: ["img"], description: "desc" });
     const result = buildSaleSetupReadiness({

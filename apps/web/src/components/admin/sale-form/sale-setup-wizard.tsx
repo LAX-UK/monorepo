@@ -31,7 +31,7 @@ import {
 } from "@/lib/forms/schemas/admin-sale-form";
 import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
 import { notify } from "@/lib/ui/notify";
-import type { ArtistProfile, CategoryNode, EntityDocument, Lot, Sale } from "@auction/types";
+import type { ArtistProfile, CategoryNode, EntityDocument, Lot, Sale, Venue } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
@@ -78,6 +78,7 @@ type Props = {
   sale: Sale | null;
   lots: Lot[];
   categories: CategoryNode[];
+  venues?: Venue[];
   artists: ArtistProfile[];
   englishOnlyAuctionsLocked?: boolean;
   initialSaleDocuments?: EntityDocument[];
@@ -96,6 +97,7 @@ export function SaleSetupWizard({
   sale,
   lots,
   categories,
+  venues = [],
   artists,
   englishOnlyAuctionsLocked = false,
   initialSaleDocuments = [],
@@ -518,6 +520,7 @@ export function SaleSetupWizard({
                         customMapUrl={customMapUrl}
                         postcodeIsValid={postcodeIsValid}
                         lots={lots}
+                        venues={venues}
                         {...(saleId ? { lotsSetupHref: saleSetupHref(saleId, "lots") } : {})}
                       />
                     </fieldset>
