@@ -57,10 +57,12 @@ guarded at the app layer until the zone is upgraded.
 
 ### Bot allowlist (Free plan)
 
-Terraform skips auth WAF challenges and the single auth rate-limit rule for:
+A **Skip** rule in `http_request_firewall_custom` (first rule in `zone_auth_waf`) matches:
 
 - `cf.client.bot` when `whitelist_cf_client_bot = true` (default)
 - Any `http.user_agent` containing a substring in `whitelisted_bot_user_agents`
+
+It uses `action_parameters { ruleset = "current", phases = ["http_ratelimit"] }` so bots bypass the authorize **managed challenge** and the zone **auth rate-limit** phase without putting `http.user_agent` in the rate-limit expression (that field requires **Advanced Rate Limiting** on paid plans).
 
 Default substrings (module [`cloudflare-domain/variables.tf`](../../infra/terraform/modules/cloudflare-domain/variables.tf)):
 
