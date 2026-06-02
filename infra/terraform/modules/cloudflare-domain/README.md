@@ -21,9 +21,9 @@ lower-priority paths to app-layer middleware.
   Cloudflare Pro (10 rules in this phase) and the per-path edge rules are
   restored from git history (commit `a8027e39`).
 
-**Bot allowlist:** `whitelisted_bot_user_agents` + optional `cf.client.bot` add a
-Skip rule and exclude bots from the auth rate limit. **Do not use `matches`**
-(regex) on Free — use `test_hosts` with explicit hostnames for test noindex.
+**Bot allowlist:** `whitelisted_bot_user_agents` + optional `cf.client.bot` match a
+Skip rule with `action_parameters { ruleset = "current", phases = ["http_ratelimit"] }`.
+Do not add `http.user_agent` to `http_ratelimit` expressions (Advanced Rate Limiting).
+**Do not use `matches`** (regex) on Free — use `test_hosts` with explicit hostnames for test noindex.
 
-**Plan limits:** Regex (`matches`) in rules requires Business or WAF Advanced.
-DNS (TXT/MX) and most current rules work on Free.
+**Plan limits:** Regex (`matches`) requires Business or WAF Advanced; UA in rate-limit rules requires Advanced Rate Limiting. DNS (TXT/MX) works on Free.
