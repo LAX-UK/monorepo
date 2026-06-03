@@ -71,6 +71,10 @@ export type AuthEnv = {
   onUserCreated?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
+  /** Invoked from `emailVerification.afterEmailVerification` when the user confirms their email. */
+  onEmailVerified?:
+    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
+    | undefined;
   /**
    * When `true`, `databaseHooks.session.create.after` fires a `new-device-login` email
    * for every new session. Enabled in production; leave unset in tests.
@@ -168,7 +172,10 @@ export function createAuth(env: AuthEnv): Auth {
       revokeAllSessions: env.revokeAllSessions,
       webOrigin: env.webOrigin,
     }),
-    emailVerification: buildEmailVerificationBlock(env.email),
+    emailVerification: buildEmailVerificationBlock({
+      email: env.email,
+      onEmailVerified: env.onEmailVerified,
+    }),
     databaseHooks: {
       user: {
         create: {

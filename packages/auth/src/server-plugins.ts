@@ -205,7 +205,14 @@ export function buildEmailAndPasswordBlock(options: {
   };
 }
 
-export function buildEmailVerificationBlock(email?: IEmailService | undefined) {
+export function buildEmailVerificationBlock(options?: {
+  email?: IEmailService | undefined;
+  onEmailVerified?:
+    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
+    | undefined;
+}) {
+  const email = options?.email;
+  const onEmailVerified = options?.onEmailVerified;
   return {
     sendOnSignUp: true,
     sendOnSignIn: false,
@@ -234,6 +241,16 @@ export function buildEmailVerificationBlock(email?: IEmailService | undefined) {
         });
     },
     afterEmailVerification: async (authUser: { id: string; email: string; name: string }) => {
+      if (onEmailVerified) {
+        try {
+          await onEmailVerified(authUser);
+        } catch (err) {
+          console.error("[auth] onEmailVerified failed", {
+            userId: authUser.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
       email
         ?.enqueue({
           template: "welcome",
