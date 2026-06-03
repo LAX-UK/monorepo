@@ -14,7 +14,7 @@ export const marketingContactSyncLog = pgTable(
     /** upsert | archive | skipped — the operation that was attempted. */
     action: text("action").notNull(),
     status: text("status").$type<MarketingContactSyncStatus>().notNull(),
-    /** Why the sync ran: registered | email_verified | deletion | backfill. */
+    /** Why the sync ran: registered | email_verified | kyc_verified | deletion_requested. */
     reason: text("reason"),
     providerContactId: text("provider_contact_id"),
     responseCode: integer("response_code"),

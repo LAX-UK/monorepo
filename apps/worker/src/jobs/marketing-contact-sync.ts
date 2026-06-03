@@ -15,7 +15,7 @@ import type {
 
 export type MarketingContactSyncJobData = {
   userId: string;
-  /** Why this sync was enqueued (projector reason or backfill). */
+  /** Why this sync was enqueued (projector reason). */
   reason: string;
 };
 
