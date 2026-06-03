@@ -90,6 +90,14 @@ jobs:
       TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
       TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
       TF_VAR_sentry_release: ${{ github.sha }}
+      # --- Prebuilt-image deploys (DOCR). Inert until the repo variables below are set. ---
+      # ephemeral layer: flip the app from DO github builds to prebuilt DOCR images.
+      TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_PROD || 'github' }}
+      # persistent layer: create the account-level DOCR registry (prod state only).
+      TF_VAR_create_container_registry: ${{ vars.CREATE_CONTAINER_REGISTRY || 'false' }}
+      TF_VAR_container_registry_name: ${{ vars.DOCR_REGISTRY || 'lax-bid' }}
+      TF_VAR_container_registry_region: ${{ vars.DOCR_REGISTRY_REGION || 'fra1' }}
+      TF_VAR_container_registry_subscription_tier: ${{ vars.DOCR_REGISTRY_TIER || 'professional' }}
     steps:
       - uses: actions/checkout@v4
       - name: App Platform Git branch (ephemeral prod only)

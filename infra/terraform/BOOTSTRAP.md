@@ -358,3 +358,96 @@ gh secret list
 gh secret list --env test
 gh secret list --env prod
 ```
+
+## 9. Prebuilt images (DOCR) — faster App Platform deploys (optional)
+
+By default App Platform builds **every** component from source on each deploy
+(~30 min for this monorepo). You can instead build the backend components in
+GitHub Actions, push them to **DigitalOcean Container Registry (DOCR)**, and have
+App Platform only **pull** them. Scope: `api`, `auth`, `ws`, `worker`, `migrate`.
+`web` stays a DO build because it bakes `NEXT_PUBLIC_*` at build time from the app
+spec (pinned via `deploy_source = "github"` on the web component).
+
+This is **inert until you opt in**. The Terraform default is `deploy_source = "github"`,
+the registry is not created (`create_container_registry = false`), and the build
+job is gated off. Everything below is wired through the existing **`Terraform apply
+{test,prod}`** and **`App deploy {test,prod}`** workflows — you only set GitHub
+**repository variables**; no local `terraform` runs needed.
+
+### 9.1 GitHub repository variables
+
+Set these repo-level variables (not secrets, not `--env`). They are read by the
+Terraform apply/plan workflows and by the deploy workflows. The `build-images`
+job is gated in a reusable-workflow *caller* job, which cannot bind an
+environment, so its `if:` only sees **repository/org** variables — environment
+(`--env`) variables would be invisible there.
+
+```sh
+# Registry (account-level, created by the prod persistent apply)
+gh variable set CREATE_CONTAINER_REGISTRY --body "true"
+gh variable set DOCR_REGISTRY             --body "lax-bid"   # globally unique across DO
+# Optional overrides (defaults shown): DOCR is NOT available in lon1.
+# gh variable set DOCR_REGISTRY_REGION --body "fra1"          # nyc3|sfo3|ams3|sgp1|fra1
+# gh variable set DOCR_REGISTRY_TIER   --body "professional"  # 'basic' caps at 5 repos (1 env only)
+
+# Enable CI build+push per env
+gh variable set USE_PREBUILT_IMAGES_TEST --body "true"
+gh variable set USE_PREBUILT_IMAGES_PROD --body "true"
+
+# Flip Terraform to pull images instead of building on DO, per env
+gh variable set APP_DEPLOY_SOURCE_TEST --body "image"
+gh variable set APP_DEPLOY_SOURCE_PROD --body "image"
+```
+
+Also confirm `DIGITALOCEAN_TOKEN` (from §1) has **read/write** scope — it is used
+for `doctl registry login` and the image push.
+
+The account-level registry serves both envs; repos are created on first push and
+named `lax-<env>-<component>` (e.g. `lax-prod-api`, `lax-test-worker`). Old
+immutable `:<sha>` tags accumulate — run DOCR garbage collection periodically
+(`doctl registry garbage-collection start`) to reclaim storage.
+
+### 9.2 Bring-up order (must follow)
+
+The App Platform `image` source fails to apply if the image does not yet exist,
+so create the registry and build the images **before** flipping `APP_DEPLOY_SOURCE`.
+Do **test fully first**, then repeat for prod.
+
+1. Set `CREATE_CONTAINER_REGISTRY=true` + `DOCR_REGISTRY` (§9.1), then run
+   **Actions → Terraform apply prod → layer: persistent** (creates the DOCR
+   registry; account-level, prod state only).
+2. Set `USE_PREBUILT_IMAGES_TEST=true` (and `_PROD` later). Trigger one build so
+   every repo has the `<env>` tag:
+   **Actions → Build images → environment: test** (or
+   `gh workflow run build-images.yml -f environment=test -f git_sha="$(git rev-parse HEAD)"`).
+   Verify with `doctl registry repository list-v2`.
+3. Set `APP_DEPLOY_SOURCE_TEST=image`, then run **Actions → Terraform apply test
+   → layer: ephemeral** (rewrites the app spec to pull DOCR images).
+4. Push to `main` (or run **App deploy test**) and confirm DO only *pulls*
+   api/auth/ws/worker/migrate (no build), while `web` still builds.
+5. Repeat 2–4 for prod: `USE_PREBUILT_IMAGES_PROD=true`, build images for prod,
+   `APP_DEPLOY_SOURCE_PROD=image`, then **Terraform apply prod → ephemeral**
+   (typed `APPLY-PROD` confirmation), then **App deploy prod**.
+
+Note: the slim `migrate` image (`docker/migrate.Dockerfile`) takes effect on the
+**next ephemeral apply regardless of the flags** — it's a safe standalone speedup.
+
+6. Subsequent pushes: `build-images` pushes new `<env>` (and `<sha>`) tags in
+   parallel with `sentry-release`, then the `deploy` job runs
+   `doctl apps create-deployment`, which **always pulls and deploys a new image,
+   even when the tag is unchanged**
+   ([DO docs](https://docs.digitalocean.com/products/app-platform/how-to/deploy-from-container-images/)).
+   No per-deploy `terraform apply` is needed; the spec keeps a stable `<env>` tag,
+   so there is no Terraform drift. (Do **not** add `--force-rebuild` — for the
+   `web` github component it would force a full no-cache rebuild on DO.)
+
+   Residual-risk fallback: if image caching is ever observed (mutable-tag edge
+   case), switch the deploy step to immutable digests via
+   [`digitalocean/app_action/deploy@v2`](https://github.com/digitalocean/app_action)
+   passing `IMAGE_TAG_<COMPONENT>=<sha>` (the unique `:<sha>` tag is already pushed).
+
+### 9.3 Rollback
+
+- App Platform console → one-click rollback to the previous deployment, or
+- redeploy a known-good immutable tag: retag `lax-<env>-<comp>:<old-sha>` →
+  `:<env>` in DOCR and run `doctl apps create-deployment`.

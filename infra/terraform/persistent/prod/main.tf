@@ -65,3 +65,14 @@ module "project" {
   environment   = local.environment
   resource_urns = []
 }
+
+# Account-level container registry for prebuilt App Platform images (CI builds +
+# pushes; App Platform pulls). Repos are created on first push, named
+# lax-<env>-<component>. Opt-in via create_container_registry (see variables.tf).
+resource "digitalocean_container_registry" "this" {
+  count = var.create_container_registry ? 1 : 0
+  name  = var.container_registry_name
+  # NOTE: DOCR is unavailable in lon1 (the app region); fra1 is the nearest EU option.
+  subscription_tier_slug = var.container_registry_subscription_tier
+  region                 = var.container_registry_region
+}

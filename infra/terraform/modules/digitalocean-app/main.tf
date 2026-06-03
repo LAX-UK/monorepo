@@ -53,6 +53,10 @@ locals {
     local._repo_from_ssh,
     "LAX-UK/monorepo",
   )
+
+  # Rolling DOCR tag every component is pinned to when deploy_source = "image".
+  # CI overwrites this tag each build; `doctl apps create-deployment` then pulls it.
+  image_tag = var.image_tag != "" ? var.image_tag : var.environment
 }
 
 resource "digitalocean_app" "this" {
@@ -71,10 +75,22 @@ resource "digitalocean_app" "this" {
         instance_size_slug = service.value.instance_size
         instance_count     = service.value.instance_count
 
-        github {
-          repo           = local.github_repo
-          branch         = var.branch
-          deploy_on_push = false
+        dynamic "github" {
+          for_each = coalesce(service.value.deploy_source, var.deploy_source) == "github" ? [1] : []
+          content {
+            repo           = local.github_repo
+            branch         = var.branch
+            deploy_on_push = false
+          }
+        }
+
+        dynamic "image" {
+          for_each = coalesce(service.value.deploy_source, var.deploy_source) == "image" ? [1] : []
+          content {
+            registry_type = "DOCR"
+            repository    = coalesce(service.value.image_repository, "lax-${var.environment}-${service.value.name}")
+            tag           = local.image_tag
+          }
         }
 
         dynamic "env" {
@@ -108,10 +124,22 @@ resource "digitalocean_app" "this" {
         instance_size_slug = worker.value.instance_size
         instance_count     = worker.value.instance_count
 
-        github {
-          repo           = local.github_repo
-          branch         = var.branch
-          deploy_on_push = false
+        dynamic "github" {
+          for_each = coalesce(worker.value.deploy_source, var.deploy_source) == "github" ? [1] : []
+          content {
+            repo           = local.github_repo
+            branch         = var.branch
+            deploy_on_push = false
+          }
+        }
+
+        dynamic "image" {
+          for_each = coalesce(worker.value.deploy_source, var.deploy_source) == "image" ? [1] : []
+          content {
+            registry_type = "DOCR"
+            repository    = coalesce(worker.value.image_repository, "lax-${var.environment}-${worker.value.name}")
+            tag           = local.image_tag
+          }
         }
 
         dynamic "env" {
@@ -142,10 +170,22 @@ resource "digitalocean_app" "this" {
         # is produced by turbo `^build` and copied into the runner stage.
         run_command = coalesce(job.value.run_command, "node packages/db/dist/migrate-prod.js")
 
-        github {
-          repo           = local.github_repo
-          branch         = var.branch
-          deploy_on_push = false
+        dynamic "github" {
+          for_each = coalesce(job.value.deploy_source, var.deploy_source) == "github" ? [1] : []
+          content {
+            repo           = local.github_repo
+            branch         = var.branch
+            deploy_on_push = false
+          }
+        }
+
+        dynamic "image" {
+          for_each = coalesce(job.value.deploy_source, var.deploy_source) == "image" ? [1] : []
+          content {
+            registry_type = "DOCR"
+            repository    = coalesce(job.value.image_repository, "lax-${var.environment}-${job.value.name}")
+            tag           = local.image_tag
+          }
         }
 
         dynamic "env" {
