@@ -27,6 +27,7 @@ import { trustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
 import { createAuthIssuerRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
+import { publishUserEmailVerified } from "./services/publish-user-email-verified.js";
 import { publishUserRegistered } from "./services/publish-user-registered.js";
 
 const env = loadAuthEnv();
@@ -98,6 +99,12 @@ const auth = createAuth({
     await publishUserRegistered(db, {
       userId: authUser.id,
       name: authUser.name,
+      email: authUser.email,
+    });
+  },
+  onEmailVerified: async (authUser) => {
+    await publishUserEmailVerified(db, {
+      userId: authUser.id,
       email: authUser.email,
     });
   },

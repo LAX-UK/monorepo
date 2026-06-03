@@ -25,7 +25,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "check:admin-dip": "node scripts/check-admin-routes-dip.mjs",
-    "check:org-dip": "node scripts/check-org-routes-dip.mjs"
+    "check:org-dip": "node scripts/check-org-routes-dip.mjs",
+    "marketing:export-contacts": "tsx --env-file=../../.env src/scripts/export-marketing-contacts/index.ts"
   },
   "dependencies": {
     "@auction/auth": "workspace:*",
