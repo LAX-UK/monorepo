@@ -31,6 +31,22 @@ function rowsFromExecuteResult(result: unknown): ProjectorEventRow[] {
   return [];
 }
 
+/** Domain events that should (re)sync a user into the marketing-contacts ESP. */
+const MARKETING_CONTACT_EVENT_REASONS: Record<string, string | undefined> = {
+  "user.registered": "registered",
+  "user.email_verified": "email_verified",
+  "user.deletion_requested": "deletion_requested",
+  "kyc.verified": "kyc_verified",
+};
+
+function userIdFromEvent(payload: unknown, aggregateId: string): string | null {
+  if (payload && typeof payload === "object") {
+    const candidate = (payload as Record<string, unknown>).userId;
+    if (typeof candidate === "string" && candidate.length > 0) return candidate;
+  }
+  return aggregateId.length > 0 ? aggregateId : null;
+}
+
 export function createProjectorRunner(options: {
   db: Db;
   log: pino.Logger;
@@ -39,6 +55,12 @@ export function createProjectorRunner(options: {
   syncXeroPayoutBill?: (payoutId: string) => Promise<boolean>;
   /** transactional email outbox for impersonation notices. */
   emailService?: IEmailService;
+  /** when set, registration/verification events enqueue a marketing-contacts ESP sync. */
+  enqueueMarketingContactSync?: (data: {
+    userId: string;
+    reason: string;
+    eventId: number;
+  }) => Promise<void>;
   supportContactEmail?: string;
   /** URL to admin payouts dashboard for failed transfer notifications. */
   adminPayoutsUrl?: string;
@@ -84,6 +106,45 @@ export function createProjectorRunner(options: {
           .update(projectorState)
           .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
           .where(sql`${projectorState.projectorName} = 'zoho'`);
+      }
+    });
+  }
+
+  async function processMarketingContacts() {
+    const enqueue = options.enqueueMarketingContactSync;
+    if (!enqueue) return;
+    const projectorName = "marketing_contacts";
+    await ensureCursor(projectorName);
+    await options.db.transaction(async (tx) => {
+      const rows = await tx.execute(sql`
+        select id, event_type, aggregate_id, payload
+        from ${domainEvent}
+        where id > (select last_processed_event_id from ${projectorState} where projector_name = ${projectorName})
+        order by id
+        limit 100
+        for update skip locked
+      `);
+      const events = rowsFromExecuteResult(rows) as Array<
+        ProjectorEventRow & { aggregate_id: string }
+      >;
+      for (const event of events) {
+        const reason = MARKETING_CONTACT_EVENT_REASONS[event.event_type];
+        if (!reason) continue;
+        const userId = userIdFromEvent(event.payload, event.aggregate_id);
+        if (!userId) {
+          options.log.warn({ eventId: event.id }, "marketing_contact_sync_skipped_missing_user");
+          continue;
+        }
+        // Enqueue inside the cursor transaction; the worker uses a stable jobId so a
+        // retried tick (cursor not yet advanced) collapses to the same BullMQ job.
+        await enqueue({ userId, reason, eventId: Number(event.id) });
+      }
+      const maxId = Math.max(0, ...events.map((event) => Number(event.id)));
+      if (maxId > 0) {
+        await tx
+          .update(projectorState)
+          .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
+          .where(sql`${projectorState.projectorName} = ${projectorName}`);
       }
     });
   }
@@ -211,6 +272,7 @@ export function createProjectorRunner(options: {
     await ensureCursor("xero");
     await processZoho();
     await processXero();
+    await processMarketingContacts();
     await processImpersonationEmails();
     await processPayoutTransferFailedEmails();
     await processNotificationFanoutEmails();
