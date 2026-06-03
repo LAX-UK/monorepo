@@ -8,6 +8,7 @@ import {
   API_COLUMN_UPDATE_GRANTS,
   AUTH_FULL_TABLES,
   AUTH_INSERT_TABLES,
+  WORKER_DATA_EXPORT_TABLES,
   WORKER_FULL_TABLES,
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
@@ -340,6 +341,10 @@ describe("migrate-roles invariants", () => {
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {
     expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain("qr_code_scan");
     expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain("qr_code_scan_daily");
+  });
+
+  it("WORKER_DATA_EXPORT_TABLES includes data_exports (worker data-export jobs)", () => {
+    expect([...WORKER_DATA_EXPORT_TABLES]).toContain("data_exports");
   });
 });
 
