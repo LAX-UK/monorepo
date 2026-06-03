@@ -72,7 +72,7 @@ How each external system talks to TheAlx and what to configure on the external s
 - [Shopify](./integrations/shopify.md) — non-Plus webhook subscriptions including mandatory GDPR webhooks
 - [Zoho](./integrations/zoho.md) — api-console.zoho.eu setup, scopes, refresh-token persistence
 - [Email](./integrations/email.md) — Postmark transactional/notification + Zoho Campaigns one-way newsletter push, sender domain setup, suppression and unsubscribe semantics
-- [Marketing contacts (Brevo)](./integrations/marketing-contacts.md) — interim registered-user sync to Brevo for lifecycle campaigns (`news.lax.bid`), webhook opt-outs, backfill script
+- [Marketing contacts (Brevo)](./integrations/marketing-contacts.md) — interim registered-user sync to Brevo for lifecycle campaigns (`news.lax.bid`), webhook opt-outs
 - [Cloudflare](./integrations/cloudflare.md) — DNS records, page rules, WAF rules, full-strict TLS
 - [DigitalOcean](./integrations/digitalocean.md) — App Platform components, managed Postgres, migration job
 
