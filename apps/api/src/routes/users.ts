@@ -829,10 +829,19 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         }
       }
 
-      await container.db
-        .update(userTable)
-        .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
-        .where(eq(userTable.id, userId));
+      await container.db.transaction(async (tx) => {
+        await tx
+          .update(userTable)
+          .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
+          .where(eq(userTable.id, userId));
+        await container.domainEventPublisher.publish(tx, {
+          aggregateType: "user",
+          aggregateId: userId,
+          eventType: "user.deletion_requested",
+          payload: { userId },
+          actorUserId: userId,
+        });
+      });
 
       return c.json({ ok: true });
     },

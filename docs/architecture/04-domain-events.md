@@ -94,8 +94,10 @@ This catalog is the contract between event producers and projectors. When you ad
 
 | Event type | Producer | Consumers | Triggered by | Payload (v1) |
 |---|---|---|---|---|
-| `user.registered` | apps/api or apps/auth | zoho | New user row created | `{userId, email, name, source: 'credential'\|'google'\|'apple'}` |
-| `user.email_verified` | apps/auth | zoho | Email verification token redeemed | `{userId, email, verifiedAt}` |
+| `user.registered` | apps/api or apps/auth | zoho, marketing_contacts | New user row created | `{userId, email, name, source: 'credential'\|'google'\|'apple'}` |
+| `user.email_verified` | apps/auth | zoho, marketing_contacts | Email verification token redeemed | `{userId, email, verifiedAt}` |
+| `user.deletion_requested` | apps/api | marketing_contacts | Self-serve account deletion requested (`POST /users/me/delete`) | `{userId}` |
+| `kyc.verified` | apps/api | marketing_contacts | Individual KYC approved; sole-trader `lead` → `connect_pending` | `{legalEntityIdsAdvancedToConnectPending[]}` (aggregate type `user`, id = userId) |
 | `user.linked_external` | apps/api | zoho | external_accounts row written | `{userId, provider, externalId, linkedAt}` |
 | `bid.first_for_user` | apps/api | zoho | First bid by this user on this lot | `{bidId, lotId, userId, amountCents, placedAt}` |
 | `bid.outbid` | apps/api | zoho, notifications | This user's bid was exceeded | `{previousBidId, lotId, userId, newHighAmountCents}` |

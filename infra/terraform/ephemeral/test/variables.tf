@@ -194,6 +194,13 @@ variable "zoho_campaigns_list_key" {
   description = "Zoho Campaigns target list key used by apps/worker."
 }
 
+variable "brevo_webhook_secret" {
+  type        = string
+  default     = "test-stack-brevo-webhook-disabled"
+  sensitive   = true
+  description = "Placeholder for apps/api NODE_ENV=production check; Brevo sync is disabled on test (MARKETING_CONTACT_SYNC_PROVIDER=none)."
+}
+
 # --- Stripe + internal jobs + KYC + ops (apps/api, apps/worker) ---
 variable "stripe_secret_key" {
   type        = string

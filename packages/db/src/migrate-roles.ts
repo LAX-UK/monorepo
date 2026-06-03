@@ -292,6 +292,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       "marketing_event_outbox",
       "INSERT, SELECT, UPDATE, DELETE",
     );
+    /** worker writes one audit row per marketing-contact-sync attempt (Brevo). INSERT + SELECT
+     * only; rows are an immutable audit trail (no UPDATE/DELETE from app code). */
+    await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
     }
