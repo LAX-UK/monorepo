@@ -49,12 +49,12 @@ export function LaxHeroLot({ lot }: Props) {
           >
             <div
               className={cn(
-                "relative flex flex-col justify-end px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-16",
+                "relative flex flex-col px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-16",
                 HOME_HERO_MIN_H,
                 HOME_HERO_CONTENT_PT,
               )}
             >
-              <div className="flex max-w-[660px] flex-col gap-9">
+              <div className="mt-auto flex max-w-[660px] flex-col gap-9">
                 <div className="flex flex-col gap-8">
                   <div className="fade-up flex flex-col gap-6">
                     <LiveIndicatorRow
