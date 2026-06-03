@@ -137,8 +137,8 @@ export function SaleroomHeroAdaptive({
           <HeroHorizontalScrim />
         </AdaptiveMediaFrameContainer>
 
-        <div className="relative z-[1] mx-auto flex min-h-[min(60vh,520px)] max-w-[var(--container-max,1440px)] flex-col justify-end px-6 pb-12 pt-[calc(var(--header-height)+2rem)] md:px-10 md:pb-14 lg:px-12">
-          <div className="max-w-[760px]" data-overlay-content-block>
+        <div className="relative z-[1] mx-auto flex min-h-[min(60vh,520px)] max-w-[var(--container-max,1440px)] flex-col px-6 pb-12 pt-[calc(var(--header-height)+2rem)] md:px-10 md:pb-14 lg:px-12">
+          <div className="mt-auto max-w-[760px]" data-overlay-content-block>
             {backHref ? (
               <div className="fade-up mb-4 md:hidden">
                 <MarketingMobileBackLink
