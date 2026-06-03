@@ -11,7 +11,6 @@ export type MarketingContact = {
   lastName?: string | null;
   /** ISO 3166-1 alpha-2 region (from `user.mobile_country`). */
   country?: string | null;
-  role: string;
   kycStatus: string;
   emailVerified: boolean;
   signupSource?: string | null;
