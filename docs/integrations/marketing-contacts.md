@@ -22,8 +22,8 @@ and is untouched.
 
 Lifecycle reminders/invitations to registered users are sent under **legitimate interest /
 service-related** grounds (not newsletter marketing consent). Opt-outs are always honored:
-unsubscribe/bounce/blocklist events flow back into `email_suppression`, which the sync job and the
-backfill both respect. If the business later requires explicit opt-in, add a `marketing_opt_in`
+unsubscribe/bounce/blocklist events flow back into `email_suppression`, which the sync job
+respects. If the business later requires explicit opt-in, add a `marketing_opt_in`
 column + signup checkbox and extend the eligibility filter in
 `apps/worker/src/lib/marketing-contact-sync/eligibility.ts`.
 
@@ -32,7 +32,6 @@ column + signup checkbox and extend the eligibility filter in
 ```
 domain_events --> marketing_contacts projector (worker) --> marketing-sync queue
   --> marketing-contact-sync job --> IMarketingContactSync (Brevo adapter) --> Brevo (EU)
-backfill script --> Brevo bulk import API
 Brevo webhook --> POST /webhooks/brevo (apps/api) --> email_suppression (+ user.email_status)
 ```
 
@@ -55,10 +54,9 @@ Brevo webhook --> POST /webhooks/brevo (apps/api) --> email_suppression (+ user.
 - Retry semantics: only `429`/`5xx`/network errors are retried by BullMQ; other `4xx` are terminal.
 - Failed marketing-sync jobs are reported to Sentry like other worker queues.
 
-## Eligibility (live sync + backfill)
+## Eligibility (live sync)
 
-Aligned in `apps/worker/src/lib/marketing-contact-sync/eligibility.ts` and
-`apps/api/src/scripts/export-marketing-contacts/query.ts`:
+Defined in `apps/worker/src/lib/marketing-contact-sync/eligibility.ts`:
 
 | Rule | Effect |
 |------|--------|
@@ -87,7 +85,6 @@ Aligned in `apps/worker/src/lib/marketing-contact-sync/eligibility.ts` and
 | Job | `apps/worker/src/jobs/marketing-contact-sync.ts` | Load live user, audit log, retry policy |
 | Projector | `apps/worker/src/projectors/runner.ts` | `marketing_contacts` cursor → BullMQ |
 | Webhook | `apps/api/src/routes/webhooks/brevo.ts` | Opt-out / bounce → `email_suppression` |
-| Backfill | `apps/api/src/scripts/export-marketing-contacts/` | CSV + optional Brevo bulk import |
 | Schema | `packages/db/src/schema/marketing-contact-sync.ts` | `marketing_contact_sync_log` audit table |
 | Migration | `packages/db/drizzle/0096_marketing_contact_sync_log.sql` | Table + indexes |
 
@@ -217,29 +214,20 @@ After DNS is live:
 Return-Path / bounce handling for marketing is owned by Brevo on that subdomain; Postmark bounce
 processing on `mail.lax.bid` is unchanged.
 
-## Backfill existing users
+## Historical contacts
 
-From `apps/api` (reads root `.env`):
-
-```bash
-pnpm marketing:export-contacts --dry-run     # count only
-pnpm marketing:export-contacts                # write tmp/marketing-contacts.csv
-pnpm marketing:export-contacts --brevo        # bulk import via POST /v3/contacts/import
-pnpm marketing:export-contacts --brevo --chunk=500
-```
-
-The export applies the same eligibility filter as the live sync (deliverable, not staff, not
-suspended, not pending deletion, not suppressed). CSV includes `EMAIL_VERIFIED` for bulk import.
+The live projector only syncs users when a qualifying **domain event** occurs after deploy (register,
+verify, KYC, deletion). Users who already existed before enablement are **not** replayed automatically.
+Load them via a separate ops process (e.g. Brevo UI import or a one-off job you run outside this repo).
 
 ## Rollout
 
 1. Run migration `0096_marketing_contact_sync_log` and apply role grants.
 2. Create Brevo contact attributes (including boolean `EMAIL_VERIFIED`) + target list.
-3. `terraform apply` in `infra/terraform/persistent/prod`; authenticate `news.lax.bid` in Brevo; seed-send and verify DKIM/DMARC.
-4. `pnpm marketing:export-contacts --dry-run` then real backfill into the Brevo list.
-5. Set `MARKETING_CONTACT_SYNC_PROVIDER=brevo`; monitor `marketing_contact_sync_log` and projector lag.
-6. Set `BREVO_WEBHOOK_SECRET` in production API; configure the Brevo webhook; confirm opt-outs land in
-   `email_suppression`.
+3. `terraform apply` ephemeral prod; authenticate `news.lax.bid` in Brevo; seed-send and verify DKIM/DMARC.
+4. Confirm worker has `MARKETING_CONTACT_SYNC_PROVIDER=brevo` (Terraform prod); monitor `marketing_contact_sync_log` and projector lag.
+5. Configure Brevo webhook → prod API; confirm opt-outs land in `email_suppression`.
+6. Backfill pre-existing users separately if needed (not part of the deployed apps).
 
 ## Monitoring & troubleshooting
 
