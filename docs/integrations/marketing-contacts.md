@@ -268,7 +268,7 @@ Common fixes:
 | Still mailed after opt-out | Brevo webhook URL + `BREVO_WEBHOOK_SECRET`; row in `email_suppression` |
 | 4xx in audit log | Brevo attribute names, API key scopes, list id |
 
-BullMQ job id: `marketing-contact-sync:{domainEventId}` (dedupes projector retries).
+BullMQ job id: `marketing-contact-sync-{domainEventId}` (no `:` — BullMQ rejects colons in custom ids; dedupes projector retries).
 
 ## Switching back to Zoho
 

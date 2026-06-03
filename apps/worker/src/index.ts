@@ -835,7 +835,7 @@ const projectorRunner = createProjectorRunner({
             { userId: data.userId, reason: data.reason } satisfies MarketingContactSyncJobData,
             {
               // Stable per-event jobId so a retried projector tick dedupes to one job.
-              jobId: `marketing-contact-sync:${data.eventId}`,
+              jobId: `marketing-contact-sync-${data.eventId}`,
               attempts: 5,
               backoff: { type: "exponential", delay: 30_000 },
               removeOnComplete: 1000,
