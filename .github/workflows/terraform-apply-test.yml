@@ -64,6 +64,11 @@ jobs:
       TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
       TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
       TF_VAR_sentry_release: ${{ github.sha }}
+      # --- Prebuilt-image deploys (DOCR). Inert until APP_DEPLOY_SOURCE_TEST is set. ---
+      # ephemeral layer: flip the app from DO github builds to prebuilt DOCR images.
+      # (The DOCR registry itself is account-level and created only by the prod
+      # persistent apply; test reuses the same registry with lax-test-* repos.)
+      TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/sentry-auth-preflight

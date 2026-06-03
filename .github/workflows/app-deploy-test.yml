@@ -16,10 +16,25 @@ jobs:
       environment: test
       git_sha: ${{ github.sha }}
     secrets: inherit
+  # Prebuilt images (api/auth/ws/worker/migrate) pushed to DOCR so App Platform
+  # only pulls. Runs in parallel with sentry-release. Gated on a REPOSITORY-level
+  # variable (a reusable-workflow caller job cannot bind an environment, so the
+  # `vars` context here only sees repo/org variables — not environment-scoped ones).
+  # Stays inert until the registry + Terraform deploy_source = image are live.
+  build-images:
+    if: ${{ vars.USE_PREBUILT_IMAGES_TEST == 'true' }}
+    uses: ./.github/workflows/build-images.yml
+    with:
+      environment: test
+      git_sha: ${{ github.sha }}
+    secrets: inherit
   deploy:
     runs-on: ubuntu-latest
-    needs: [sentry-release]
-    if: always()
+    needs: [sentry-release, build-images]
+    # Deploy unless the image build failed/was cancelled. Sentry release/sourcemap
+    # failures must NOT block shipping, so we deliberately do not gate on its result.
+    # When build-images is skipped (USE_PREBUILT_IMAGES != true) its result is 'skipped' => allowed.
+    if: ${{ always() && !cancelled() && needs.build-images.result != 'failure' && needs.build-images.result != 'cancelled' }}
     environment: test
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}

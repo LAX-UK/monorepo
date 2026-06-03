@@ -129,10 +129,13 @@ locals {
 
   components = [
     {
-      name              = "web"
-      kind              = "service"
-      source_dir        = "/"
-      dockerfile_path   = "apps/web/Dockerfile"
+      name            = "web"
+      kind            = "service"
+      source_dir      = "/"
+      dockerfile_path = "apps/web/Dockerfile"
+      # web bakes NEXT_PUBLIC_* at build time from the App Platform spec, so keep it
+      # building on DO (github) even when other components switch to prebuilt images.
+      deploy_source     = "github"
       http_port         = 3000
       instance_size     = "professional-xs"
       instance_count    = 2
@@ -324,7 +327,7 @@ locals {
       name            = "migrate"
       kind            = "job"
       source_dir      = "/"
-      dockerfile_path = "apps/api/Dockerfile"
+      dockerfile_path = "docker/migrate.Dockerfile"
       run_command     = "node packages/db/dist/migrate-prod.js"
       instance_size   = "professional-xs"
       instance_count  = 1
@@ -346,6 +349,8 @@ module "app" {
   region               = local.region
   repository_clone_url = var.repository_clone_url
   branch               = var.app_git_branch
+  deploy_source        = var.app_deploy_source
+  image_tag            = var.app_image_tag
   components           = local.components
   path_routes = [
     {

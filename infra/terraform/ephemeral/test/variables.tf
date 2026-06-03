@@ -45,6 +45,20 @@ variable "repository_clone_url" {
   type    = string
   default = "https://github.com/LAX-UK/monorepo.git"
 }
+
+# Prebuilt-image deploys. Default "github" keeps build-on-DO so this change is inert.
+# Set to "image" only after DOCR exists and CI has pushed every image. See BOOTSTRAP.md.
+variable "app_deploy_source" {
+  type        = string
+  default     = "github"
+  description = "github = App Platform builds from the repo (default); image = pull prebuilt images from DOCR."
+}
+variable "app_image_tag" {
+  type        = string
+  default     = ""
+  description = "DOCR tag the app pins to when app_deploy_source = image. Empty falls back to the environment name."
+}
+
 variable "better_auth_secret" {
   type      = string
   default   = ""
