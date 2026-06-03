@@ -96,7 +96,7 @@ no changes to the job or projector.
 Before the first sync/import, create these **contact attributes** in Brevo (Settings → Contacts →
 Contact attributes). Names must match what the adapter sends:
 
-- `ROLE`, `KYC_STATUS`, `SIGNUP_SOURCE`, `COUNTRY` (text) — custom attributes you must create
+- `KYC_STATUS`, `SIGNUP_SOURCE`, `COUNTRY` (text) — custom attributes you must create
 - `EMAIL_VERIFIED` (boolean) — mirrors `user.email_verified`; create before deploy
 - `FIRSTNAME`, `LASTNAME` — Brevo defaults; the adapter sets them when present on the user row
 
@@ -109,7 +109,7 @@ campaigns, only keeps attributes current:
 
 | Campaign | Example segment |
 |----------|-----------------|
-| Verify email before auction | `EMAIL_VERIFIED` = No (and `ROLE` = client) |
+| Verify email before auction | `EMAIL_VERIFIED` = No |
 | KYC / required-task reminder | `KYC_STATUS` in `unverified`, `pending` and `EMAIL_VERIFIED` = Yes |
 | Post-verify lifecycle | `EMAIL_VERIFIED` = Yes |
 
@@ -268,7 +268,7 @@ Common fixes:
 | Still mailed after opt-out | Brevo webhook URL + `BREVO_WEBHOOK_SECRET`; row in `email_suppression` |
 | 4xx in audit log | Brevo attribute names, API key scopes, list id |
 
-BullMQ job id: `marketing-contact-sync:{domainEventId}` (dedupes projector retries).
+BullMQ job id: `marketing-contact-sync-{domainEventId}` (no `:` — BullMQ rejects colons in custom ids; dedupes projector retries).
 
 ## Switching back to Zoho
 

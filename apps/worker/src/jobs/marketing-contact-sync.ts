@@ -102,7 +102,6 @@ export async function marketingContactSyncJob({
     firstName: row.firstName,
     lastName: row.lastName,
     country: row.country,
-    role: row.role,
     kycStatus: row.kycStatus,
     emailVerified: row.emailVerified,
     signupSource: row.signupPersona,

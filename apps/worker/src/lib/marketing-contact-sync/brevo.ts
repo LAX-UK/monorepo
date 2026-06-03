@@ -37,7 +37,6 @@ export class BrevoContactSync implements IMarketingContactSync {
 
   async upsertContact(contact: MarketingContact): Promise<SyncResult> {
     const attributes: Record<string, string | boolean> = {
-      ROLE: contact.role,
       KYC_STATUS: contact.kycStatus,
       EMAIL_VERIFIED: contact.emailVerified,
     };
