@@ -45,6 +45,9 @@ jobs:
       TF_VAR_email_unsubscribe_secret: ${{ secrets.EMAIL_UNSUBSCRIBE_SECRET }}
       TF_VAR_zoho_campaigns_api_key: ${{ secrets.ZOHO_CAMPAIGNS_API_KEY }}
       TF_VAR_zoho_campaigns_list_key: ${{ secrets.ZOHO_CAMPAIGNS_LIST_KEY }}
+      TF_VAR_brevo_api_key: ${{ secrets.BREVO_API_KEY }}
+      TF_VAR_brevo_webhook_secret: ${{ secrets.BREVO_WEBHOOK_SECRET }}
+      TF_VAR_brevo_list_id: ${{ vars.BREVO_LIST_ID }}
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
       TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
       TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}

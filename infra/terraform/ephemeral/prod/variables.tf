@@ -204,6 +204,24 @@ variable "zoho_campaigns_list_key" {
   description = "Zoho Campaigns target list key used by apps/worker."
 }
 
+variable "brevo_api_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Brevo API v3 key for apps/worker marketing-contact sync (production only)."
+}
+variable "brevo_list_id" {
+  type        = string
+  default     = ""
+  description = "Brevo contacts list id (numeric string) for marketing-contact sync."
+}
+variable "brevo_webhook_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Shared secret for POST /webhooks/brevo on apps/api (opt-out / bounce ingest)."
+}
+
 # --- Stripe + internal jobs + KYC + ops (apps/api, apps/worker) ---
 variable "stripe_secret_key" {
   type        = string

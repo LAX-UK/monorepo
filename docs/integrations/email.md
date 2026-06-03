@@ -4,6 +4,8 @@
 
 `apps/*` owns transactional and notification email: auth verification/reset, password-changed, invites, bid/outbid, won/ended-lot, receipts, and invoices. Newsletter campaigns and subscriber state stay in Zoho Campaigns. `POST /newsletter/subscribe` only writes an audit log and pushes the address to Zoho.
 
+While Zoho is not ready, an interim **marketing-contacts** sync pushes registered users into Brevo (a separate EU marketing workspace on its own subdomain, e.g. `news.lax.bid`) so the marketing team can run lifecycle campaigns from the Brevo dashboard. This is a one-way contact sync and is fully isolated from the Postmark transactional setup below — the "do not add Brevo vars or Brevo DKIM selectors" rule continues to apply to the transactional Postmark configuration. See `docs/integrations/marketing-contacts.md`.
+
 ## Provider Setup
 
 - Transactional provider: Postmark.
