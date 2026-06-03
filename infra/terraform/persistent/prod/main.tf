@@ -16,6 +16,10 @@ locals {
     postmark_return_path = { name = "pm-bounces.mail", type = "CNAME", value = "pm.mtasv.net", proxied = false, comment = "Postmark prod Return-Path" }
     mail_spf             = { name = "mail", type = "TXT", value = "v=spf1 include:spf.mtasv.net ~all", proxied = false, comment = "Postmark SPF for mail.lax.bid sender domain" }
     mail_dmarc           = { name = "_dmarc.mail", type = "TXT", value = "v=DMARC1; p=quarantine; rua=mailto:support@lax.bid; fo=1", proxied = false, comment = "DMARC for mail.lax.bid (align with Postmark)" }
+    brevo_domain_verify  = { name = "news", type = "TXT", value = "brevo-code:318334ee61d5127a6ea5c06855f7f9f8", proxied = false, comment = "Brevo domain verification for news.lax.bid" }
+    brevo_dkim_1         = { name = "brevo1._domainkey.news", type = "CNAME", value = "b1.news-lax-bid.dkim.brevo.com", proxied = false, comment = "Brevo DKIM 1 for news.lax.bid" }
+    brevo_dkim_2         = { name = "brevo2._domainkey.news", type = "CNAME", value = "b2.news-lax-bid.dkim.brevo.com", proxied = false, comment = "Brevo DKIM 2 for news.lax.bid" }
+    brevo_dmarc          = { name = "_dmarc.news", type = "TXT", value = "v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com", proxied = false, comment = "DMARC for news.lax.bid (Brevo marketing)" }
     zoho_mail_verify     = { name = "@", type = "TXT", value = "zoho-verification=zb23174584.zmverify.zoho.eu", proxied = false, comment = "Zoho Mail domain verification (EU)" }
     zoho_mx_primary      = { name = "@", type = "MX", value = "mx.zoho.eu", priority = 10, proxied = false, comment = "Zoho Mail EU inbound" }
     zoho_mx_secondary    = { name = "@", type = "MX", value = "mx2.zoho.eu", priority = 20, proxied = false, comment = "Zoho Mail EU inbound" }
