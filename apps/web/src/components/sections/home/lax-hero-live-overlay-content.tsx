@@ -21,12 +21,12 @@ export function LaxHeroLiveOverlayContent({
   return (
     <div
       className={cn(
-        "relative z-[2] flex flex-col justify-end px-6 pb-16 md:px-10 md:pb-20 lg:px-10",
+        "relative z-[2] flex flex-col px-6 pb-16 md:px-10 md:pb-20 lg:px-10",
         HOME_HERO_MIN_H,
         HOME_HERO_CONTENT_PT,
       )}
     >
-      <div className="relative flex max-w-[684px] flex-col gap-8 md:gap-14">
+      <div className="relative mt-auto flex max-w-[684px] flex-col gap-8 md:gap-14">
         <div className="flex flex-col gap-6">
           <LiveIndicatorRow
             tone="white"
