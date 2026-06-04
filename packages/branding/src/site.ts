@@ -8,6 +8,7 @@ export const SITE_SEO_NAME = `${SITE_NAME} by ${SITE_COMPANY_NAME}`;
 export const SITE_ALTERNATE_NAMES = ["LAX", SITE_COMPANY_NAME, SITE_SEO_NAME] as const;
 export const SITE_TAGLINE =
   "The dedicated auction platform of London Art Exchange for fine art, rare collectibles, and culturally significant assets.";
+export const SITE_TWITTER_HANDLE = "@lax_bid";
 export const SITE_CONTACT_EMAIL = "info@lax.bid";
 export const SITE_SUPPORT_EMAIL = "support@lax.bid";
 export const SITE_PRESS_EMAIL = "pr@lax.bid";

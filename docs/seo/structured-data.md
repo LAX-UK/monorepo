@@ -36,17 +36,23 @@ the rich-result coverage stays consistent.
 
 ## OG / Twitter cards
 
-The marketing routes co-locate `opengraph-image.tsx` files generated with
-`next/og`:
+Branded social preview images are generated with `next/og` via co-located
+`opengraph-image.tsx` files. **Do not set `openGraph.images` or
+`twitter.images` in `generateMetadata` for routes that have these files** —
+explicit image arrays suppress the file-based cards (Next.js PR #52416).
 
-- `apps/web/src/app/(marketing)/opengraph-image.tsx` — homepage
-- `apps/web/src/app/(marketing)/sales/[id]/opengraph-image.tsx` — sale catalogue
-- `apps/web/src/app/(marketing)/lot/[slug]/[id]/opengraph-image.tsx` — lot detail
-- `apps/web/src/app/(marketing)/artist/[id]/opengraph-image.tsx` — artist profile
+| File | Scope |
+|------|--------|
+| `apps/web/src/app/opengraph-image.tsx` | Site-wide fallback (dashboard, auth, etc.) |
+| `apps/web/src/app/(marketing)/opengraph-image.tsx` | Marketing shell default |
+| `apps/web/src/app/(marketing)/sales/[slug]/[id]/opengraph-image.tsx` | Sale catalogue |
+| `apps/web/src/app/(marketing)/lot/[slug]/[id]/opengraph-image.tsx` | Lot detail |
+| `apps/web/src/app/(marketing)/artist/[slug]/[id]/opengraph-image.tsx` | Artist profile |
 
-Next.js automatically wires the same image into Twitter cards. The static
-`SITE_LOGO_PATH` continues to act as the fallback OG image for routes without
-their own `opengraph-image.tsx`.
+Title, description, canonical URL, and `twitter:site` / `twitter:creator` live in
+`apps/web/src/lib/seo/metadata-factory.ts`. Next.js maps the nearest
+`opengraph-image.tsx` into both Open Graph and Twitter `summary_large_image`
+cards automatically.
 
 ## Verification
 
