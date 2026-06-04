@@ -1,9 +1,4 @@
-import {
-  SITE_NAME,
-  SITE_SEO_NAME,
-  SITE_TAGLINE,
-  SITE_TWITTER_HANDLE,
-} from "@/lib/brand";
+import { SITE_NAME, SITE_SEO_NAME, SITE_TAGLINE, SITE_TWITTER_HANDLE } from "@/lib/brand";
 import {
   isIndexingAllowedAtBuildTime,
   noindexRobotsMetadata,
@@ -114,9 +109,8 @@ export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">
   const base = getSiteUrl();
   const url = `${base}${salePath(sale)}`;
   const desc =
-    (sale.description?.trim()
-      ? truncateMetaDescription(sale.description)
-      : null) ?? `Browse lots and bidding in ${sale.title} — ${SITE_NAME}.`;
+    (sale.description?.trim() ? truncateMetaDescription(sale.description) : null) ??
+    `Browse lots and bidding in ${sale.title} — ${SITE_NAME}.`;
   const fullTitle = `${sale.title} · ${SITE_NAME}`;
   return withIndexingPolicy({
     title: sale.title,
@@ -126,16 +120,13 @@ export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">
   });
 }
 
-export function metadataForLot(
-  auction: Pick<Lot, "id" | "title" | "description">,
-): Metadata {
+export function metadataForLot(auction: Pick<Lot, "id" | "title" | "description">): Metadata {
   const base = getSiteUrl();
   const url = `${base}${lotPath(auction)}`;
   const title = `${auction.title}`;
   const description =
-    (auction.description?.trim()
-      ? truncateMetaDescription(auction.description)
-      : null) ?? `Bid on ${auction.title} — curated fine art auction.`;
+    (auction.description?.trim() ? truncateMetaDescription(auction.description) : null) ??
+    `Bid on ${auction.title} — curated fine art auction.`;
   const ogTitle = `${title} · ${SITE_NAME}`;
   return withIndexingPolicy({
     title,
