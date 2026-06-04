@@ -28,10 +28,10 @@ function LotCardNavLink({ lotId, href, ...rest }: NavLinkProps & { lotId?: strin
 }
 
 const mediaHover =
-  "transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100";
+  "transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100";
 
 const cardShell =
-  "group relative block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 shadow-sm motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-0.5";
+  "group relative block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-px motion-safe:hover:ring-primary/20 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary";
 
 export type { AdaptiveMediaConfig };
 
@@ -101,7 +101,7 @@ export function LotCardGrid({
                 {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
                 {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
                 className="h-full w-full"
-                imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+                imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
               />
             ) : (
               image
@@ -180,7 +180,7 @@ export function LotCardList({
   return (
     <article
       className={cn(
-        "group relative flex gap-4 p-4 transition-colors hover:bg-surface-container-low/50 sm:gap-5 sm:p-5",
+        "group relative flex gap-4 rounded-lg p-4 transition-colors hover:bg-surface-container-low/50 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary sm:gap-5 sm:p-5",
         className,
       )}
       {...(lotId ? { [LOT_TRANSITION_ROOT_ATTR]: lotId } : {})}
@@ -247,7 +247,7 @@ export function LotCardEditorialBold({
   const article = (
     <article
       className={cn(
-        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm",
+        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest",
         className,
       )}
     >
@@ -329,7 +329,7 @@ export function LotCardEditorialCalm({
   const article = (
     <article
       className={cn(
-        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm",
+        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest",
         className,
       )}
     >

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { watchlist } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { IWatchlistRepository, WatchlistRow } from "../services/interfaces/watchlist.js";
 
 function mapRow(row: typeof watchlist.$inferSelect): WatchlistRow {
@@ -55,5 +55,13 @@ export class DrizzleWatchlistRepository implements IWatchlistRepository {
       .from(watchlist)
       .where(eq(watchlist.lotId, lotId));
     return rows.map((r) => r.userId);
+  }
+
+  async countForLot(lotId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ value: count() })
+      .from(watchlist)
+      .where(eq(watchlist.lotId, lotId));
+    return row?.value ?? 0;
   }
 }

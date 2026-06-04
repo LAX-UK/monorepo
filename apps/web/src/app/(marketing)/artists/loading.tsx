@@ -12,7 +12,7 @@ export default async function PublicArtistsDirectoryLoading() {
   const view = await readSkeletonView("artists", "grid");
   return (
     <main id="main-content" className={cn("overflow-x-clip", MARKETING_CATALOG_PT)}>
-      <section className="border-b border-border-hairline bg-surface-container-lowest/40 py-14">
+      <section className="border-b border-border-hairline bg-surface-container-lowest/40 py-8 sm:py-12 md:py-14">
         <div className={MARKETING_PAGE_SHELL}>
           <Skeleton className="h-3 w-40" />
           <Skeleton className="mt-3 h-10 w-72" />
@@ -34,8 +34,14 @@ export default async function PublicArtistsDirectoryLoading() {
             ))}
           </div>
           <div className="min-w-0">
-            <MarketingCatalogToolbarSkeleton showDesktopFilters={false} />
-            <MarketingListSkeleton view={view} count={9} />
+            <MarketingCatalogToolbarSkeleton showDesktopFilters={false} showDesktopSort />
+            <MarketingListSkeleton
+              view={view}
+              count={9}
+              gridClassName="grid-cols-1 gap-3 sm:grid-cols-2 md:gap-6 lg:grid-cols-2 xl:grid-cols-3"
+              listThumbClassName="size-12 rounded-full"
+              cardAspectClassName="aspect-video"
+            />
           </div>
         </div>
       </section>

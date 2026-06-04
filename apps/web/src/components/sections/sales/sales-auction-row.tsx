@@ -36,17 +36,17 @@ export function SalesAuctionRow({ vm, index = 0 }: Props) {
     <li>
       <RevealInView variant="fadeUp" delayMs={index * 60} className="block w-full">
         <SaleCardShell className="p-3 sm:p-5 lg:p-6">
-          <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-stretch lg:gap-6">
+          <div className="flex flex-col gap-4 sm:gap-5 md:flex-row md:items-stretch md:gap-5 lg:gap-6">
             <SaleCardMedia
               href={vm.href}
               coverImageUrl={vm.coverImageUrl}
               coverImageAlt={vm.coverImageAlt}
               isLive={isLive}
-              sizes="(max-width: 1024px) 100vw, 420px"
+              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 300px, 340px"
               className="max-h-[11rem] sm:max-h-none"
               {...(vm.countdownEndIso != null ? { countdownEndIso: vm.countdownEndIso } : {})}
             />
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-6 lg:gap-8">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-5 md:gap-6 lg:gap-8">
               <div className="flex flex-col gap-4">
                 <SaleCardHeader
                   scheduleLead={vm.scheduleLead}

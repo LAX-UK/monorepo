@@ -7,6 +7,8 @@ import {
   headerMegaNavChevronClass,
   headerMegaNavTriggerClass,
 } from "@/lib/layout/header-chrome-tone";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
@@ -383,7 +385,10 @@ function HeaderMegaMenuPanelContent({
               <Link
                 href={row.href}
                 data-megamenu-link
-                className="font-body text-sm font-medium text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:text-on-surface"
+                className={cn(
+                  "rounded-sm font-body text-sm font-medium text-brand-900 underline-offset-4 transition-colors hover:underline motion-reduce:transition-none dark:text-on-surface",
+                  FOCUS_RING,
+                )}
                 onClick={onNavigate}
               >
                 {row.label}
@@ -400,7 +405,10 @@ function HeaderMegaMenuPanelContent({
         <Link
           href={viewAllHref}
           data-megamenu-link
-          className="w-fit font-label text-xs font-semibold uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none dark:text-on-surface"
+          className={cn(
+            "w-fit rounded-sm font-label text-xs font-semibold uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:underline motion-reduce:transition-none dark:text-on-surface",
+            FOCUS_RING,
+          )}
           onClick={onNavigate}
         >
           {viewAllLabel}

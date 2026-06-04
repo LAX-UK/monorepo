@@ -91,10 +91,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
           stackControlsOnMobile
           filters={
             <MarketingChipStrip aria-label="Filter auctions" className="min-w-0">
-              <div
-                className="inline-flex h-8 shrink-0 snap-start items-center gap-1 rounded-lg bg-surface-container-high p-1 outline outline-1 outline-outline-variant/50 -outline-offset-1 dark:outline-outline/40"
-                role="tablist"
-              >
+              <div className="inline-flex shrink-0 snap-start items-center gap-1 rounded-lg bg-surface-container-high p-1 outline outline-1 outline-outline-variant/50 -outline-offset-1 dark:outline-outline/40">
                 {FILTERS.map((f) => {
                   const selected = filter === f.id;
                   return (
@@ -102,13 +99,12 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
                       key={f.id}
                       type="button"
                       variant="ghost"
-                      role="tab"
-                      aria-selected={selected}
+                      aria-pressed={selected}
                       onClick={() => setFilter(f.id)}
                       className={
                         selected
-                          ? "inline-flex h-6 items-center rounded bg-on-surface px-3 py-1 font-label text-xs font-semibold uppercase tracking-[0.05em] text-surface"
-                          : "inline-flex h-6 items-center rounded px-3 py-1 font-label text-xs font-semibold uppercase tracking-[0.05em] text-on-surface"
+                          ? "inline-flex min-h-11 items-center rounded bg-on-surface px-3 py-1 font-label text-xs font-semibold uppercase tracking-[0.05em] text-surface"
+                          : "inline-flex min-h-11 items-center rounded px-3 py-1 font-label text-xs font-semibold uppercase tracking-[0.05em] text-on-surface"
                       }
                     >
                       {f.label}

@@ -105,7 +105,7 @@ export function UrgencyLotCard({
               key="bid"
               lotId={item.id}
               href={item.href}
-              className="flex h-10 flex-1 items-center justify-center rounded border border-outline-variant bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface outline-offset-2 hover:bg-on-surface/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              className="flex h-11 flex-1 items-center justify-center rounded border border-outline-variant bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface outline-offset-2 hover:bg-on-surface/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             >
               Bid
             </LotViewTransitionLink>
@@ -113,7 +113,7 @@ export function UrgencyLotCard({
               key="quick-look"
               vm={lotQuickLookFromLotCardVM(item)}
               layout="inline"
-              className="h-10 w-10 rounded border-0 bg-transparent px-2.5 text-on-surface hover:bg-on-surface/5"
+              className="size-11 rounded border-0 bg-transparent px-2.5 text-on-surface hover:bg-on-surface/5"
               options={{
                 isAuthenticated,
                 watchedLotIds,

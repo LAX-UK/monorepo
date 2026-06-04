@@ -1,11 +1,13 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
+import { LotPager } from "@/components/marketing/lot-pager";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
 import {
   mapAuctionSessionHeaderVM,
+  mapLotToHeroVM,
   mapLotToSummarySeed,
   mapSaleLotsToQueueVMs,
   mapSiblingsToRailVM,
@@ -37,6 +39,7 @@ import {
   getServerLotById,
   getServerLotDocuments,
   getServerLotReader,
+  getServerLotWatchCount,
 } from "@/lib/data/http/lots.server";
 import { getServerSaleMyRegistrations, getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -119,6 +122,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     kycSummary,
     lotDocuments,
     initialAutoBidSettings,
+    watcherCount,
   ] = await Promise.all([
     getServerLotBids(id, 30).catch(() => []),
     sellerLookupId ? publicReader.getById(sellerLookupId).catch(() => null) : Promise.resolve(null),
@@ -141,6 +145,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     kycSummaryPromise,
     getServerLotDocuments(id).catch(() => []),
     initialAutoBidPromise,
+    getServerLotWatchCount(id).catch(() => 0),
   ]);
 
   if (!canPreviewCatalog && !isPublicCatalogLot(auction, saleBundle?.sale ?? null)) {
@@ -199,6 +204,12 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const catalogBackHref = lotCatalogBackHref(sp, parentSale);
   const catalogBackLabel = lotCatalogBackLabel(sp, parentSale);
   const saleLots = saleBundle?.lots ?? null;
+  const lotNavVM = mapLotToHeroVM(
+    auction,
+    parentSale ? { id: parentSale.id, title: parentSale.title } : null,
+    saleLots,
+    catalogLinkParams,
+  );
   const sellerName = seller?.name ?? "Private seller";
   const shareUrl = `${getSiteUrl()}${lotPath(auction)}`;
 
@@ -336,7 +347,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
       lot={auction}
       initialHistory={initialHistory}
       currentUserId={session?.id ?? null}
-      watcherCount={null}
+      watcherCount={watcherCount > 0 ? watcherCount : null}
       compactFeedHeader
       initialOutbid={initialOutbid}
       currentPrice={auction.currentPrice}
@@ -382,6 +393,15 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
         <MarketingDetailWayfinding
           backHref={catalogBackHref}
           backLabel={catalogBackLabel}
+          actions={
+            lotNavVM.prevHref || lotNavVM.nextHref ? (
+              <LotPager
+                prevHref={lotNavVM.prevHref}
+                nextHref={lotNavVM.nextHref}
+                positionLabel={lotNavVM.positionLabel}
+              />
+            ) : null
+          }
           breadcrumbItems={
             parentSale
               ? [

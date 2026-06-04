@@ -53,6 +53,22 @@ variable "app_git_branch" {
   default     = "release"
   description = "Git branch App Platform builds from (must exist on GitHub)."
 }
+
+# Prebuilt-image deploys (see docker/migrate.Dockerfile + .github/workflows/build-images.yml).
+# Default "github" keeps the current build-on-DO behavior so applying this change is inert.
+# Set to "image" (TF_VAR_app_deploy_source=image) ONLY after the DOCR registry exists and CI
+# has pushed every component image at least once, otherwise app create/update fails on a
+# missing image. See infra/terraform/BOOTSTRAP.md.
+variable "app_deploy_source" {
+  type        = string
+  default     = "github"
+  description = "github = App Platform builds from the repo (default); image = pull prebuilt images from DOCR."
+}
+variable "app_image_tag" {
+  type        = string
+  default     = ""
+  description = "DOCR tag the app pins to when app_deploy_source = image. Empty falls back to the environment name."
+}
 variable "better_auth_secret" {
   type      = string
   default   = ""

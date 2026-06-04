@@ -1,3 +1,4 @@
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -46,7 +47,10 @@ export function ArtistDirectoryFilters({
           <Link
             href={clearHref}
             {...linkClickProps}
-            className="inline-flex items-center font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+            className={cn(
+              "inline-flex items-center rounded-sm font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline",
+              FOCUS_RING,
+            )}
           >
             Clear all filters
           </Link>
@@ -69,6 +73,7 @@ export function ArtistDirectoryFilters({
                   aria-current={link.active ? "page" : undefined}
                   className={cn(
                     "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm transition-colors",
+                    FOCUS_RING,
                     link.active
                       ? "bg-primary/10 text-primary"
                       : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
@@ -103,6 +108,7 @@ export function ArtistDirectoryFilters({
                   aria-current={link.active ? "page" : undefined}
                   className={cn(
                     "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm transition-colors",
+                    FOCUS_RING,
                     link.active
                       ? "bg-primary/10 text-primary"
                       : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",

@@ -1,4 +1,5 @@
 import { ArtistRelatedBrowseRail } from "@/components/sections/artists/catalog-artist-views";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import Link from "next/link";
 
@@ -34,7 +35,7 @@ export function ArtistRelatedDirectorySection({
         </div>
         <Link
           href={browseHref}
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+          className={`rounded-sm font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline ${FOCUS_RING}`}
         >
           Browse all artists
         </Link>

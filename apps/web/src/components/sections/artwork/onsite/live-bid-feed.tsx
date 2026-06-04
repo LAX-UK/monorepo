@@ -74,9 +74,15 @@ export function LiveBidFeed({
           : lifecycleKind === "scheduled" || lifecycleKind === "preLaunch"
             ? "upcoming"
             : "ended";
+      const watchingLabel =
+        watcherCount != null && watcherCount > 0
+          ? watcherCount >= 1000
+            ? `${Math.floor(watcherCount / 1000)}k watching`
+            : `${watcherCount} watching`
+          : null;
       return {
         title: "Live Feed",
-        statusLabel: bidCountLabel,
+        statusLabel: watchingLabel ? `${bidCountLabel} · ${watchingLabel}` : bidCountLabel,
         pulse: tone === "live",
         tone,
       };

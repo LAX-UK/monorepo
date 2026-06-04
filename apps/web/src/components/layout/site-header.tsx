@@ -4,8 +4,8 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
-import { SITE_LOGO_TEXT_PATH } from "@/lib/brand";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { cn } from "@auction/ui";
 import { Menu, Search, X } from "lucide-react";
@@ -114,7 +114,7 @@ function SiteHeaderShell({
               ),
         )}
       >
-        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 px-4 py-2 md:px-6 lg:gap-4 lg:px-10 lg:pt-3 lg:pb-4">
+        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 px-8 py-2 md:px-10 lg:gap-4 lg:px-14 lg:pt-3 lg:pb-4">
           <div className="hidden lg:block">
             <HeaderUtilityBar headerTone={headerTone} />
           </div>
@@ -128,21 +128,12 @@ function SiteHeaderShell({
             logo={
               <Link
                 href="/"
-                className="site-header-logo min-w-[76px] shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+                className={cn("site-header-logo min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
               >
                 <LaxLogo
                   variant="header"
-                  className="lg:hidden xl:block"
                   imageWidth={1089}
                   imageHeight={331}
-                  surfaceTone={headerTone}
-                />
-                <LaxLogo
-                  variant="header"
-                  className="hidden lg:block xl:hidden"
-                  imageSrc={SITE_LOGO_TEXT_PATH}
-                  imageWidth={430}
-                  imageHeight={202}
                   surfaceTone={headerTone}
                 />
               </Link>

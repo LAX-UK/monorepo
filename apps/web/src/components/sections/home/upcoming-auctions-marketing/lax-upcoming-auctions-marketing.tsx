@@ -20,7 +20,7 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
     return (
       <section
         aria-labelledby="home-upcoming-auctions-heading"
-        className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
+        className={`${MARKETING_PAGE_SHELL} pb-0 pt-[var(--section-spacing-tight)]`}
       >
         <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
           <MarketingSectionHeader

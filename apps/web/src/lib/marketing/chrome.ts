@@ -2,6 +2,9 @@
 export const FOCUS_RING =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
+/** Inline text link inside prose / legal / content pages (primary, underline-on-hover). */
+export const MARKETING_PROSE_LINK = `rounded-sm text-primary underline-offset-4 hover:underline ${FOCUS_RING}`;
+
 /** Horizontal padding rhythm shared by all marketing shells. */
 const MARKETING_PAGE_GUTTER = "mx-auto w-full px-8 md:px-10 lg:px-14";
 

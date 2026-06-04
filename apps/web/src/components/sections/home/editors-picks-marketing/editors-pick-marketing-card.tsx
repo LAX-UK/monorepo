@@ -73,7 +73,7 @@ export function EditorsPickMarketingCard({
           <Button
             variant="outline"
             asChild
-            className="mt-auto h-10 w-full rounded border-outline-variant text-base font-semibold tracking-[0.05em] text-on-surface"
+            className="mt-auto h-11 w-full rounded border-outline-variant text-base font-semibold tracking-[0.05em] text-on-surface"
           >
             <LotViewTransitionLink lotId={lot.id} href={lot.href}>
               View Lot

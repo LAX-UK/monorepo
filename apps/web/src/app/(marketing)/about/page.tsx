@@ -1,4 +1,8 @@
 import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
+import {
+  MARKETING_HUB_BREADCRUMB_CLASS,
+  MarketingBreadcrumb,
+} from "@/components/marketing/marketing-breadcrumb";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import {
   SITE_BUSINESS_ADDRESS_INLINE,
@@ -6,6 +10,7 @@ import {
   SITE_COMPANY_NAME,
   SITE_NAME,
 } from "@/lib/brand";
+import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -31,6 +36,15 @@ export default function AboutPage() {
       </script>
       <LegalPage
         title="About LAX.BID"
+        breadcrumb={
+          <MarketingBreadcrumb
+            items={[
+              { label: "Home", href: "/" },
+              { label: "About", current: true },
+            ]}
+            className={MARKETING_HUB_BREADCRUMB_CLASS}
+          />
+        }
         lastUpdated="21 April 2026"
         kicker={null}
         dividerUnderDate
@@ -118,7 +132,7 @@ export default function AboutPage() {
           Verification requirements may vary depending on the nature and value of the transaction,
           and additional documentation may be requested where appropriate. By registering, users
           confirm their acceptance of the{" "}
-          <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/terms" className={MARKETING_PROSE_LINK}>
             Conditions of Business
           </Link>{" "}
           and agree to comply with all applicable conditions governing bidding and purchase.

@@ -1,6 +1,7 @@
 "use client";
 
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
@@ -30,11 +31,15 @@ export function CatalogActiveFilterChips({
 }: CatalogActiveFilterChipsProps) {
   if (chips.length === 0) return null;
 
-  const chipClassName =
-    "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface hover:border-primary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60";
+  const chipClassName = cn(
+    "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface hover:border-primary/50 disabled:opacity-60",
+    FOCUS_RING,
+  );
 
-  const clearClassName =
-    "min-h-11 px-2 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60";
+  const clearClassName = cn(
+    "min-h-11 px-2 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-primary underline-offset-4 hover:underline disabled:opacity-60",
+    FOCUS_RING,
+  );
 
   return (
     <MarketingChipStrip

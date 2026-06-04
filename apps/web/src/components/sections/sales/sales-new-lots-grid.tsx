@@ -3,8 +3,10 @@ import { MarketingEmptyState } from "@/components/marketing/marketing-empty-stat
 import { MediaImage } from "@/components/ui/media-image";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { lotStatusMarketingShortLabel } from "@/lib/marketing/lot-status-labels";
 import type { Lot } from "@auction/types";
+import { cn } from "@auction/ui";
 import Link from "next/link";
 
 type Props = {
@@ -33,17 +35,20 @@ export function SalesNewLotsGrid({ lots, catalogLinkParams }: Props) {
     <ul className="m-0 grid auto-rows-fr list-none grid-cols-1 items-stretch gap-6 p-0 md:grid-cols-2 lg:grid-cols-3">
       {lots.map((lot, index) => (
         <li key={lot.id} className="flex min-w-0 flex-col">
-          <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition-shadow duration-200 motion-safe:hover:shadow-md dark:border-outline-variant/30 dark:bg-surface-container-low/40">
+          <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition-transform duration-[var(--motion-duration-md)] ease-out motion-safe:hover:-translate-y-px motion-reduce:transition-none hover:ring-1 hover:ring-primary/20 dark:border-outline-variant/30 dark:bg-surface-container-low/40">
             <Link
               href={resolveLotHref(lot, catalogLinkParams)}
-              className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container dark:bg-surface-container-low"
+              className={cn(
+                "relative aspect-[4/5] w-full overflow-hidden bg-surface-container dark:bg-surface-container-low",
+                FOCUS_RING,
+              )}
             >
               <MediaImage
                 src={lot.images[0] ?? null}
                 alt={lot.title}
                 label="Lot image"
                 className="absolute inset-0 size-full"
-                imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 priority={index < 3}
               />
@@ -61,7 +66,10 @@ export function SalesNewLotsGrid({ lots, catalogLinkParams }: Props) {
               </div>
               <Link
                 href={resolveLotHref(lot, catalogLinkParams)}
-                className="line-clamp-2 min-h-[2.5rem] font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 hover:underline dark:text-on-surface"
+                className={cn(
+                  "line-clamp-2 min-h-[2.5rem] rounded-sm font-body text-base font-semibold leading-snug text-on-surface underline-offset-2 hover:underline dark:text-on-surface",
+                  FOCUS_RING,
+                )}
               >
                 {lot.title}
               </Link>

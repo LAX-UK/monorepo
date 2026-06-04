@@ -64,7 +64,7 @@ type JumpLinkProps = {
 
 function JumpLink({ href, label, active, count, disabled }: JumpLinkProps) {
   const className = cn(
-    "inline-flex min-w-[1.75rem] items-center justify-center rounded-md px-1.5 py-1 font-label text-[10px] uppercase tracking-widest transition-colors",
+    "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-1.5 py-1 font-label text-[10px] uppercase tracking-widest transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
     disabled
       ? "cursor-not-allowed text-on-surface-variant/30"
       : active

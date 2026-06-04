@@ -75,7 +75,7 @@ export function HeaderSearchPaletteTrigger({
       variant="ghost"
       onClick={open}
       className={cn(
-        "hidden min-h-10 min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b px-0 py-0 text-left transition-[border-color,color,opacity] duration-300 ease-out hover:bg-transparent motion-reduce:transition-none xl:flex xl:w-[231px] xl:flex-none",
+        "hidden min-h-11 min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b px-0 py-0 text-left transition-[border-color,color,opacity] duration-300 ease-out hover:bg-transparent motion-reduce:transition-none xl:flex xl:w-[231px] xl:flex-none",
         headerSearchTriggerClass(tone, className),
       )}
       aria-haspopup="dialog"

@@ -21,7 +21,7 @@ export function PrivateSaleHighlightsMarketing({
   return (
     <section
       aria-labelledby="private-sale-heading"
-      className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-[var(--section-spacing)] md:px-10 lg:px-14"
+      className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-[var(--section-spacing-tight)] md:px-10 lg:px-14"
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-14">
         <div className="flex max-w-[640px] flex-col gap-6">
@@ -54,7 +54,11 @@ export function PrivateSaleHighlightsMarketing({
           </RevealInView>
         </div>
 
-        <RevealInView variant="wipeZoom" delayMs={80} className="w-full shrink-0 lg:max-w-[676px]">
+        <RevealInView
+          variant="wipeZoom"
+          delayMs={80}
+          className="flex w-full shrink-0 flex-col gap-3 lg:max-w-[676px]"
+        >
           <Link
             href={featured.href}
             className="group block outline-offset-4 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
@@ -64,7 +68,7 @@ export function PrivateSaleHighlightsMarketing({
                 src={featured.imageUrl}
                 alt={featured.imageAlt}
                 label="Private sale highlight"
-                imgClassName="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                imgClassName="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
                 sizes="(max-width: 1024px) 100vw, 676px"
               />
             </div>

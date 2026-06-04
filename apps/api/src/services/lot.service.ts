@@ -810,6 +810,18 @@ export class LotService {
     return { kind: "ok", data };
   }
 
+  /** Public watcher count for a lot (social proof on the marketing PDP / live feed). */
+  async countWatchersForPublicApi(
+    lotId: string,
+  ): Promise<{ kind: "ok"; count: number } | { kind: "not_found" }> {
+    const lot = await this.lotRepo.findById(lotId);
+    if (!lot) {
+      return { kind: "not_found" };
+    }
+    const count = await this.watchlist.countForLot(lotId);
+    return { kind: "ok", count };
+  }
+
   countMatching(filter: Omit<ListLotsFilter, "limit" | "offset" | "sort">): Promise<number> {
     return this.lotRepo.countMatching(filter);
   }

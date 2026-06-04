@@ -36,8 +36,8 @@ export type CalendarSalesUrlParams = {
   year?: number;
   minPrice?: number;
   maxPrice?: number;
-  /** Catalogue layout for calendar browse (grid = default card rows, list = compact). */
-  view?: "grid" | "list";
+  /** Catalogue layout for calendar browse (grid = card rows, list = compact, calendar = agenda by month). */
+  view?: "grid" | "list" | "calendar";
   page?: number;
 };
 
@@ -47,13 +47,18 @@ function firstString(v: string | string[] | undefined): string | undefined {
   return undefined;
 }
 
+/** Case-insensitive match to the canonical camelCase tab id (e.g. `newlots` -> `newLots`). */
+function matchCanonicalTab(raw: string | undefined): CalendarPrimaryTab | undefined {
+  if (!raw) return undefined;
+  const lowered = raw.toLowerCase();
+  return CALENDAR_PRIMARY_TABS.find((t) => t.toLowerCase() === lowered);
+}
+
 export function parseCalendarPrimaryTab(
   sp: Record<string, string | string[] | undefined>,
 ): CalendarPrimaryTab {
-  const raw = firstString(sp.tab)?.toLowerCase();
-  if (raw && (CALENDAR_PRIMARY_TABS as readonly string[]).includes(raw)) {
-    return raw as CalendarPrimaryTab;
-  }
+  const match = matchCanonicalTab(firstString(sp.tab));
+  if (match) return match;
   const legacy = firstString(sp.filter)?.toLowerCase();
   if (legacy === "ended") return "results";
   if (legacy === "live" || legacy === "active") return "live";
@@ -63,8 +68,7 @@ export function parseCalendarPrimaryTab(
 
 /** True when the URL explicitly selects a calendar section (tab or legacy filter). */
 export function hasExplicitCalendarTab(sp: Record<string, string | string[] | undefined>): boolean {
-  const raw = firstString(sp.tab)?.toLowerCase();
-  if (raw && (CALENDAR_PRIMARY_TABS as readonly string[]).includes(raw)) {
+  if (matchCanonicalTab(firstString(sp.tab))) {
     return true;
   }
   const legacy = firstString(sp.filter)?.toLowerCase();
@@ -163,7 +167,7 @@ export type CalendarSalesUrlState = {
   year?: number;
   minPrice?: number;
   maxPrice?: number;
-  view: "grid" | "list";
+  view: "grid" | "list" | "calendar";
   page?: number;
 };
 
@@ -203,8 +207,11 @@ export function calendarSalesHrefFromState(
 /** Build `/sales` URL with calendar query params (shareable, SSR-friendly). */
 export function calendarSalesHref(params: CalendarSalesUrlParams): string {
   const q = new URLSearchParams();
+  // Always emit the tab explicitly. Tab links (including Upcoming) must carry an
+  // explicit tab so the bare `/sales` auto-landing redirect (to Live Now when a
+  // sale is live) does not swallow them. A hardcoded `/sales` remains the auto-land entry.
   const tab = params.tab ?? "upcoming";
-  if (tab !== "upcoming") q.set("tab", tab);
+  q.set("tab", tab);
   if (params.categoryId) q.set("categoryId", params.categoryId);
   if (params.deliveryMode && params.deliveryMode !== "all") {
     q.set("delivery", params.deliveryMode);
@@ -219,7 +226,7 @@ export function calendarSalesHref(params: CalendarSalesUrlParams): string {
   if (params.year != null) q.set("year", String(params.year));
   if (params.minPrice != null) q.set("minPrice", String(params.minPrice));
   if (params.maxPrice != null) q.set("maxPrice", String(params.maxPrice));
-  if (params.view === "list") q.set("view", "list");
+  if (params.view === "list" || params.view === "calendar") q.set("view", params.view);
   if (params.page != null && params.page > 1) q.set("page", String(params.page));
   const qs = q.toString();
   return qs ? `/sales?${qs}` : "/sales";
@@ -276,12 +283,18 @@ export function calendarMonthLabel(month: number): string {
   return MONTH_LABELS[month - 1] ?? String(month);
 }
 
+const CALENDAR_PRICE_LOCALE = "en-GB";
+
 export function calendarPriceRangeLabel(state: CalendarSalesUrlState): string | null {
   if (state.minPrice != null && state.maxPrice != null) {
-    return `£${state.minPrice.toLocaleString()}–£${state.maxPrice.toLocaleString()}`;
+    return `£${state.minPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}–£${state.maxPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}`;
   }
-  if (state.minPrice != null) return `From £${state.minPrice.toLocaleString()}`;
-  if (state.maxPrice != null) return `Up to £${state.maxPrice.toLocaleString()}`;
+  if (state.minPrice != null) {
+    return `From £${state.minPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}`;
+  }
+  if (state.maxPrice != null) {
+    return `Up to £${state.maxPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}`;
+  }
   return null;
 }
 

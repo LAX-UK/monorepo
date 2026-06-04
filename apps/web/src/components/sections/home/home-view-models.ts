@@ -66,6 +66,12 @@ export type HeroSaleSlideVM = {
   coverImageAlt: string;
   modeBadge: string;
   deliveryMode?: Sale["deliveryMode"];
+  /** Sale lifecycle — drives the hero "Opens in" / "Closes in" countdown. */
+  status?: Sale["status"];
+  /** ISO start of bidding (for upcoming-sale countdown). */
+  startIso?: string;
+  /** ISO end of bidding (for live-sale countdown). */
+  endIso?: string;
 };
 
 export type HeroStateVM =
@@ -235,6 +241,9 @@ export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
     coverImageAlt: `${sale.title} — auction cover`,
     modeBadge: pres.label,
     deliveryMode: sale.deliveryMode,
+    status: sale.status,
+    startIso: new Date(sale.startTime).toISOString(),
+    endIso: new Date(sale.endTime).toISOString(),
   };
 }
 

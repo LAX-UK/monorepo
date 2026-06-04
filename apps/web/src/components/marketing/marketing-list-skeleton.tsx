@@ -8,10 +8,23 @@ type Props = {
   view: CatalogLayoutView;
   count?: number;
   className?: string;
+  /** Override the grid container classes (e.g. artist `xl:grid-cols-3`). */
+  gridClassName?: string;
+  /** Override the list-row thumb (e.g. circular `size-12` for artists). */
+  listThumbClassName?: string;
+  /** Override the card-view media aspect (e.g. `aspect-video` for artists). */
+  cardAspectClassName?: string;
 };
 
 /** Placeholder list bodies for marketing routes — matches grid / card / list chrome. */
-export function MarketingListSkeleton({ view, count = 9, className }: Props) {
+export function MarketingListSkeleton({
+  view,
+  count = 9,
+  className,
+  gridClassName,
+  listThumbClassName = "size-20 rounded-lg sm:size-24",
+  cardAspectClassName = "aspect-[16/10]",
+}: Props) {
   const keys = Array.from({ length: count }, (_, i) => `sk-${i}`);
 
   if (view === "list") {
@@ -19,8 +32,8 @@ export function MarketingListSkeleton({ view, count = 9, className }: Props) {
       <div className={cn(MARKETING_CATALOG_LIST_SHELL, className)}>
         <ul className="m-0 list-none divide-y divide-outline-variant/15 p-0 sm:rounded-xl">
           {keys.map((k) => (
-            <li key={k} className="flex gap-4 p-4 sm:gap-5 sm:p-5">
-              <div className={cn(block, "size-20 shrink-0 rounded-lg sm:size-24")} aria-hidden />
+            <li key={k} className="flex items-center gap-4 p-4 sm:gap-5 sm:p-5">
+              <div className={cn(block, "shrink-0", listThumbClassName)} aria-hidden />
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <div className={cn(block, "h-5 w-3/4")} aria-hidden />
                 <div className={cn(block, "h-3 w-full max-w-md")} aria-hidden />
@@ -40,7 +53,7 @@ export function MarketingListSkeleton({ view, count = 9, className }: Props) {
       <ul className={cn("mx-auto flex max-w-2xl list-none flex-col gap-10 p-0", className)}>
         {cardKeys.map((k) => (
           <li key={k} className="space-y-3">
-            <div className={cn(block, "aspect-[16/10] w-full rounded-xl")} aria-hidden />
+            <div className={cn(block, "w-full rounded-xl", cardAspectClassName)} aria-hidden />
             <div className={cn(block, "h-6 w-full max-w-lg")} aria-hidden />
             <div className={cn(block, "h-4 w-1/2 max-w-xs")} aria-hidden />
           </li>
@@ -52,7 +65,8 @@ export function MarketingListSkeleton({ view, count = 9, className }: Props) {
   return (
     <ul
       className={cn(
-        "m-0 grid list-none grid-cols-2 gap-3 p-0 md:grid-cols-2 md:gap-8 lg:grid-cols-3",
+        "m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 md:gap-8 lg:grid-cols-3",
+        gridClassName,
         className,
       )}
     >
