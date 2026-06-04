@@ -1,16 +1,47 @@
-import { SITE_LOGO_PATH, SITE_NAME, SITE_SEO_NAME, SITE_TAGLINE } from "@/lib/brand";
+import {
+  SITE_NAME,
+  SITE_SEO_NAME,
+  SITE_TAGLINE,
+  SITE_TWITTER_HANDLE,
+} from "@/lib/brand";
 import {
   isIndexingAllowedAtBuildTime,
   noindexRobotsMetadata,
   withIndexingPolicy,
 } from "@/lib/seo/is-indexing-allowed";
+import { truncateMetaDescription } from "@/lib/seo/meta-description";
 import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot, Sale } from "@auction/types";
 import type { Metadata } from "next";
 
-function defaultOgImage(base: string) {
-  return [{ url: new URL(SITE_LOGO_PATH, base).toString() }];
+const twitterCardBase = {
+  card: "summary_large_image" as const,
+  site: SITE_TWITTER_HANDLE,
+  creator: SITE_TWITTER_HANDLE,
+};
+
+/** Open Graph / Twitter text fields only — images come from co-located `opengraph-image.tsx`. */
+function socialTextFields(opts: {
+  url: string;
+  title: string;
+  description: string;
+  type?: "website" | "profile";
+}) {
+  return {
+    openGraph: {
+      type: opts.type ?? "website",
+      locale: "en_GB",
+      url: opts.url,
+      title: opts.title,
+      description: opts.description,
+    },
+    twitter: {
+      ...twitterCardBase,
+      title: opts.title,
+      description: opts.description,
+    },
+  };
 }
 
 export function rootMetadataBase(): Metadata {
@@ -21,17 +52,16 @@ export function rootMetadataBase(): Metadata {
     description: SITE_TAGLINE,
     openGraph: {
       type: "website",
+      locale: "en_GB",
       siteName: SITE_NAME,
       url: base,
       title: SITE_SEO_NAME,
       description: SITE_TAGLINE,
-      images: defaultOgImage(base),
     },
     twitter: {
-      card: "summary_large_image",
+      ...twitterCardBase,
       title: SITE_SEO_NAME,
       description: SITE_TAGLINE,
-      images: defaultOgImage(base),
     },
     robots: isIndexingAllowedAtBuildTime()
       ? { index: true, follow: true }
@@ -53,19 +83,11 @@ export function metadataForStatic(opts: {
     title: opts.title,
     description: opts.description,
     alternates: { canonical: url },
-    openGraph: {
-      type: "website",
+    ...socialTextFields({
       url,
       title: fullTitle,
       description: opts.description,
-      images: defaultOgImage(base),
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: fullTitle,
-      description: opts.description,
-      images: defaultOgImage(base),
-    },
+    }),
   });
 }
 
@@ -92,52 +114,34 @@ export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">
   const base = getSiteUrl();
   const url = `${base}${salePath(sale)}`;
   const desc =
-    sale.description?.trim().slice(0, 160) ??
-    `Browse lots and bidding in ${sale.title} — ${SITE_NAME}.`;
+    (sale.description?.trim()
+      ? truncateMetaDescription(sale.description)
+      : null) ?? `Browse lots and bidding in ${sale.title} — ${SITE_NAME}.`;
   const fullTitle = `${sale.title} · ${SITE_NAME}`;
   return withIndexingPolicy({
     title: sale.title,
     description: desc,
     alternates: { canonical: url },
-    openGraph: {
-      type: "website",
-      url,
-      title: fullTitle,
-      description: desc,
-      images: defaultOgImage(base),
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: fullTitle,
-      description: desc,
-      images: defaultOgImage(base),
-    },
+    ...socialTextFields({ url, title: fullTitle, description: desc }),
   });
 }
 
-export function metadataForLot(auction: Lot): Metadata {
+export function metadataForLot(
+  auction: Pick<Lot, "id" | "title" | "description">,
+): Metadata {
   const base = getSiteUrl();
   const url = `${base}${lotPath(auction)}`;
   const title = `${auction.title}`;
   const description =
-    auction.description?.slice(0, 160) ?? `Bid on ${auction.title} — curated fine art auction.`;
+    (auction.description?.trim()
+      ? truncateMetaDescription(auction.description)
+      : null) ?? `Bid on ${auction.title} — curated fine art auction.`;
+  const ogTitle = `${title} · ${SITE_NAME}`;
   return withIndexingPolicy({
     title,
     description,
     alternates: { canonical: url },
-    openGraph: {
-      type: "website",
-      url,
-      title: `${title} · ${SITE_NAME}`,
-      description,
-      images: auction.images[0] ? [{ url: auction.images[0] }] : defaultOgImage(base),
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${title} · ${SITE_NAME}`,
-      description,
-      images: auction.images[0] ? [auction.images[0]] : defaultOgImage(base),
-    },
+    ...socialTextFields({ url, title: ogTitle, description }),
   });
 }
 
@@ -164,22 +168,17 @@ export function metadataForPrivate(title: string, description?: string): Metadat
 export function metadataForSeller(seller: { id: string; name: string }): Metadata {
   const base = getSiteUrl();
   const url = `${base}${artistPath(seller)}`;
+  const ogTitle = `${seller.name} · ${SITE_NAME}`;
+  const description = `Lots and auctions from ${seller.name}.`;
   return withIndexingPolicy({
     title: `${seller.name} · Seller`,
-    description: `Lots and auctions from ${seller.name}.`,
+    description,
     alternates: { canonical: url },
-    openGraph: {
-      type: "profile",
+    ...socialTextFields({
       url,
-      title: `${seller.name} · ${SITE_NAME}`,
+      title: ogTitle,
       description: `Seller profile — ${seller.name}`,
-      images: defaultOgImage(base),
-    },
-    twitter: {
-      card: "summary",
-      title: `${seller.name} · ${SITE_NAME}`,
-      description: `Seller profile — ${seller.name}`,
-      images: defaultOgImage(base),
-    },
+      type: "profile",
+    }),
   });
 }

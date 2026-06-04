@@ -1,15 +1,27 @@
 import { SITE_NAME } from "@/lib/brand";
 import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
+import { formatOgDateTime } from "@/lib/seo/og-date-format";
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "Sale catalogue";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 type Props = {
   params: Promise<{ slug: string; id: string }>;
 };
+
+export async function generateImageMetadata({ params }: Props) {
+  const { id } = await params;
+  let alt = "Sale catalogue";
+  try {
+    const bundle = await getServerSaleWithLots(id);
+    if (bundle?.sale.title) alt = bundle.sale.title;
+  } catch {
+    /* fall through */
+  }
+  return [{ id: "default", alt, size, contentType }];
+}
 
 export default async function Image({ params }: Props) {
   const { id } = await params;
@@ -20,10 +32,7 @@ export default async function Image({ params }: Props) {
     const bundle = await getServerSaleWithLots(id);
     if (bundle) {
       title = bundle.sale.title;
-      dateLabel = bundle.sale.endTime.toLocaleString(undefined, {
-        dateStyle: "long",
-        timeStyle: "short",
-      });
+      dateLabel = formatOgDateTime(bundle.sale.endTime);
       lots = `${bundle.lots.length} lot${bundle.lots.length === 1 ? "" : "s"}`;
     }
   } catch {
