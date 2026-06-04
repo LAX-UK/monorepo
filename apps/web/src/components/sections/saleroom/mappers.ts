@@ -143,6 +143,8 @@ export function mapSaleToHeroVM(
     coverImage: sale.coverImages[0] ?? null,
     startEndLabel: formatSaleDateLabel(sale.startTime, sale.endTime),
     status: sale.status,
+    startTime: sale.startTime.toISOString(),
+    endTime: sale.endTime.toISOString(),
     isLive,
     registrationClosesLabel:
       sale.status === "scheduled" ? formatLongDateTime(sale.startTime) : null,

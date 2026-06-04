@@ -5,6 +5,7 @@ import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 
 type Props = {
   items: readonly TocNavItem[];
@@ -23,7 +24,10 @@ export function PolicyMobileToc({ items, className }: Props) {
             <li key={item.id}>
               <Link
                 href={`#${item.id}`}
-                className="font-body text-sm text-on-surface-variant hover:text-primary"
+                className={cn(
+                  "inline-block rounded-sm font-body text-sm text-on-surface-variant hover:text-primary",
+                  FOCUS_RING,
+                )}
               >
                 {item.label}
               </Link>

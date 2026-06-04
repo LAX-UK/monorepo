@@ -1,6 +1,10 @@
 import { faqGroups, faqItems } from "@/components/marketing/faq/faq-data";
 import { FaqFlatList } from "@/components/marketing/faq/faq-flat-list";
 import { LegalPage } from "@/components/marketing/legal-page";
+import {
+  MARKETING_HUB_BREADCRUMB_CLASS,
+  MarketingBreadcrumb,
+} from "@/components/marketing/marketing-breadcrumb";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, faqPageJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -28,6 +32,15 @@ export default function FaqPage() {
       </script>
       <LegalPage
         title="Frequently Asked Questions"
+        breadcrumb={
+          <MarketingBreadcrumb
+            items={[
+              { label: "Home", href: "/" },
+              { label: "FAQ", current: true },
+            ]}
+            className={MARKETING_HUB_BREADCRUMB_CLASS}
+          />
+        }
         lastUpdated="21 April 2026"
         kicker={null}
         dividerUnderDate

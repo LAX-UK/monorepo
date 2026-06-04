@@ -18,7 +18,7 @@ const ROOT_SHELL = "group/image relative overflow-hidden bg-surface-container";
 function layoutClass(layout: SaleCardMediaProps["layout"]) {
   return layout === "featured"
     ? "aspect-[16/10] w-full lg:aspect-[16/9]"
-    : "aspect-[16/10] w-full shrink-0 lg:h-[280px] lg:w-[min(100%,420px)] lg:max-w-[420px] lg:aspect-auto";
+    : "aspect-[16/10] w-full shrink-0 md:aspect-auto md:h-[180px] md:w-[36%] md:max-w-[300px] lg:h-[220px] lg:w-[38%] lg:max-w-[340px]";
 }
 
 function MediaImageBlock({

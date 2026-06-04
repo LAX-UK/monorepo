@@ -5,6 +5,7 @@ import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
@@ -106,19 +107,20 @@ export function ArtistBrowseCard({
         return (
           <li
             key={artist.id}
-            className="group relative list-none overflow-hidden rounded-xl border border-border-hairline bg-surface shadow-sm transition hover:border-primary/40 hover:shadow-md"
+            className="group relative list-none overflow-hidden rounded-xl border border-border-hairline bg-surface transition-[transform,border-color] duration-[var(--motion-duration-md)] motion-reduce:transition-none hover:-translate-y-px hover:border-primary/40"
           >
             <Link
               href={href}
-              className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2"
+              className={cn("block rounded-xl", FOCUS_RING)}
               aria-label={`View ${artist.displayName}`}
             >
-              <div className={cn("relative bg-surface-container-low", heroAspect)}>
+              <div className={cn("relative overflow-hidden bg-surface-container-low", heroAspect)}>
                 <MediaImage
                   src={artist.portraitUrl}
                   alt={isBrand ? "" : altText}
                   label={isBrand ? artist.displayName : "Artist portrait"}
                   sizes="(max-width: 1024px) 100vw, 50vw"
+                  imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
                 />
                 <div className="absolute left-3 top-3 flex flex-wrap gap-1">
                   {artist.featured ? <Badge>Featured</Badge> : null}
@@ -156,14 +158,20 @@ export function ArtistBrowseCard({
             <div className="flex items-center justify-between gap-3 border-t border-border-hairline px-5 py-3">
               <Link
                 href={`${href}#works`}
-                className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                className={cn(
+                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline",
+                  FOCUS_RING,
+                )}
                 aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
               >
                 {lotsLabel}
               </Link>
               <Link
                 href={href}
-                className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline"
+                className={cn(
+                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline",
+                  FOCUS_RING,
+                )}
               >
                 View profile
               </Link>
@@ -203,15 +211,18 @@ export function ArtistBrowseList({
             </div>
             <Link
               href={href}
-              className="flex items-center gap-4 p-4 pr-12 transition-colors hover:bg-surface-container-low/50 sm:px-5 sm:pr-14"
+              className={cn(
+                "flex items-center gap-4 rounded-md p-4 pr-12 transition-colors hover:bg-surface-container-low/50 sm:px-5 sm:pr-14",
+                FOCUS_RING,
+              )}
             >
-              <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-surface-container-low sm:size-14">
+              <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-surface-container-low">
                 <MediaImage
                   src={a.portraitUrl}
                   alt={`Portrait of ${a.displayName}`}
                   label={a.displayName.slice(0, 1).toUpperCase()}
                   shape="circle"
-                  sizes="56px"
+                  sizes="48px"
                 />
               </span>
               <div className="min-w-0 flex-1">

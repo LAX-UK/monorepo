@@ -1,6 +1,8 @@
 "use client";
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { linkIsCurrent } from "@/lib/nav/is-current";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -66,15 +68,14 @@ export function MobileNavDrawer({
 
         <div className="flex flex-col gap-6 px-6 py-6">
           <div className="flex items-center justify-between border-b border-nav-border pb-4">
-            <Link
-              href="/"
-              className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-              onClick={close}
-            >
+            <Link href="/" className={cn("shrink-0 rounded-sm", FOCUS_RING)} onClick={close}>
               <LaxLogo variant="header" imageWidth={1089} imageHeight={331} />
             </Link>
             <DialogClose
-              className="inline-flex size-10 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface shadow-sm transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+              className={cn(
+                "inline-flex size-11 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high/90 text-on-surface transition-colors hover:bg-surface-container-highest",
+                FOCUS_RING,
+              )}
               aria-label="Close menu"
             >
               <X className="size-5" aria-hidden />
@@ -101,7 +102,7 @@ export function MobileNavDrawer({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto w-full justify-between gap-2 rounded-none px-0 py-2 text-left font-label text-sm font-medium uppercase tracking-wide hover:bg-transparent"
+                      className="h-auto min-h-11 w-full justify-between gap-2 rounded-none px-0 py-2 text-left font-label text-sm font-medium uppercase tracking-wide hover:bg-transparent"
                       aria-expanded={expanded}
                       aria-controls={panelId}
                       onClick={() => setExpandedIndex(expanded ? null : index)}
@@ -134,7 +135,13 @@ export function MobileNavDrawer({
                               <li key={`${section.id}-${row.label}-${row.href}`}>
                                 <Link
                                   href={row.href}
-                                  className="block py-1.5 font-body text-sm text-brand-900 dark:text-on-surface"
+                                  aria-current={
+                                    linkIsCurrent(pathname, row.href) ? "page" : undefined
+                                  }
+                                  className={cn(
+                                    "block rounded-sm py-1.5 font-body text-sm text-brand-900 aria-[current=page]:font-semibold dark:text-on-surface",
+                                    FOCUS_RING,
+                                  )}
                                   onClick={close}
                                 >
                                   {row.label}
@@ -150,7 +157,10 @@ export function MobileNavDrawer({
                         {section.viewAllHref ? (
                           <Link
                             href={section.viewAllHref}
-                            className="py-2 font-label text-xs font-semibold uppercase tracking-wide text-brand-900 dark:text-on-surface"
+                            className={cn(
+                              "rounded-sm py-2 font-label text-xs font-semibold uppercase tracking-wide text-brand-900 dark:text-on-surface",
+                              FOCUS_RING,
+                            )}
                             onClick={close}
                           >
                             {section.viewAllLabel ?? "View all"}
@@ -169,7 +179,11 @@ export function MobileNavDrawer({
               <li key={`drawer-${item.label}`}>
                 <Link
                   href={item.href}
-                  className="block py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 dark:text-on-surface"
+                  aria-current={linkIsCurrent(pathname, item.href) ? "page" : undefined}
+                  className={cn(
+                    "block rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 aria-[current=page]:underline dark:text-on-surface",
+                    FOCUS_RING,
+                  )}
                   onClick={close}
                 >
                   {item.label}

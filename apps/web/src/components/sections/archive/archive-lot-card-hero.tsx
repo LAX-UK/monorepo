@@ -10,6 +10,7 @@ import { HeroVerticalScrim } from "@/components/ui/hero-tone-scrim";
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { formatMoney } from "@/lib/format-currency";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { EDITORIAL_BOLD_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import type { Lot } from "@auction/types";
@@ -47,11 +48,8 @@ function ArchiveHeroCardInner({
 }) {
   const a = row.auction;
   return (
-    <article className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest shadow-sm ring-1 ring-outline-variant/10 transition-shadow hover:shadow-md">
-      <Link
-        href={href}
-        className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg"
-      >
+    <article className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest ring-1 ring-outline-variant/10 transition-transform duration-[var(--motion-duration-md)] motion-reduce:transition-none hover:-translate-y-px">
+      <Link href={href} className={cn("group block rounded-xl", FOCUS_RING)}>
         <AdaptiveMediaFrameContainer className="relative aspect-[16/10] overflow-hidden bg-surface-container-low">
           <AdaptiveFrameImage
             src={img}

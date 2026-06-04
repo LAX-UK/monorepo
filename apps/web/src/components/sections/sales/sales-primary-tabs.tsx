@@ -39,6 +39,7 @@ export function SalesPrimaryTabs({ state, hasLiveSales = false }: Props) {
               )}
               aria-current={isActive ? "page" : undefined}
               prefetch={false}
+              scroll={false}
             >
               {t.label}
             </Link>

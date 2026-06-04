@@ -19,6 +19,8 @@ type Props = {
   placeholder?: string;
   options: RhfSelectOption[];
   triggerClassName?: string;
+  /** Explicit trigger id so a `FormLabel htmlFor` can associate with it. */
+  id?: string;
 };
 
 /** Radix Select wired for react-hook-form `FormField` + `FormItem`. Includes `FormControl` around the trigger. */
@@ -30,6 +32,7 @@ export function RhfSelect({
   placeholder,
   options,
   triggerClassName,
+  id,
 }: Props) {
   return (
     <Select
@@ -38,7 +41,7 @@ export function RhfSelect({
       {...(value.length > 0 ? { value } : {})}
     >
       <FormControl>
-        <SelectTrigger className={triggerClassName} onBlur={onBlur}>
+        <SelectTrigger className={triggerClassName} onBlur={onBlur} {...(id ? { id } : {})}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
       </FormControl>

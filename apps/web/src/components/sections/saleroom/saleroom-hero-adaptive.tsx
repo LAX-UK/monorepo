@@ -13,7 +13,7 @@ import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { overlayPillClasses } from "@/lib/ui/overlay-tone-classes";
-import { LiveDot } from "@auction/ui";
+import { Countdown, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -137,7 +137,7 @@ export function SaleroomHeroAdaptive({
           <HeroHorizontalScrim />
         </AdaptiveMediaFrameContainer>
 
-        <div className="relative z-[1] mx-auto flex min-h-[min(60vh,520px)] max-w-[var(--container-max,1440px)] flex-col px-6 pb-12 pt-[calc(var(--header-height)+2rem)] md:px-10 md:pb-14 lg:px-12">
+        <div className="relative z-[1] mx-auto flex min-h-[min(60vh,520px)] max-w-[var(--container-max,1440px)] flex-col px-8 pb-12 pt-[calc(var(--header-height)+2rem)] md:px-10 md:pb-14 lg:px-14">
           <div className="mt-auto max-w-[760px]" data-overlay-content-block>
             {backHref ? (
               <div className="fade-up mb-4 md:hidden">
@@ -172,12 +172,30 @@ export function SaleroomHeroAdaptive({
                 {hero.title}
               </OverlayToneText>
             </div>
-            <div className="fade-up-d2 mb-7 flex flex-wrap gap-x-5 gap-y-2 font-body text-sm">
+            <div className="fade-up-d2 mb-5 flex flex-wrap gap-x-5 gap-y-2 font-body text-sm">
               <OverlayToneText variant="muted">{hero.dateLine}</OverlayToneText>
               {hero.registrationClosesLabel ? (
                 <OverlayToneText variant="muted">{hero.registrationClosesLabel}</OverlayToneText>
               ) : null}
             </div>
+            {hero.status === "active" || hero.status === "scheduled" ? (
+              <div className="fade-up-d2 mb-7 flex items-baseline gap-3">
+                <OverlayToneText
+                  as="span"
+                  variant="muted"
+                  className="font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.18em] opacity-70"
+                >
+                  {hero.status === "active" ? "Closes in" : "Opens in"}
+                </OverlayToneText>
+                <OverlayToneText as="span" variant="body">
+                  <Countdown
+                    end={new Date(hero.status === "active" ? hero.endTime : hero.startTime)}
+                    announce
+                    className="font-headline text-xl font-semibold tabular-nums md:text-2xl"
+                  />
+                </OverlayToneText>
+              </div>
+            ) : null}
             <div className="fade-up-d3 flex flex-wrap gap-3">
               <SaleroomHeroPrimaryCta
                 hero={hero}

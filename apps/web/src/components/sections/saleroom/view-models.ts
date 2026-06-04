@@ -15,6 +15,10 @@ export type SaleHeroVM = {
   coverImage: string | null;
   startEndLabel: string;
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
+  /** ISO 8601 start of bidding — drives the hero "Opens in" countdown. */
+  startTime: string;
+  /** ISO 8601 end of bidding — drives the hero "Closes in" countdown. */
+  endTime: string;
   isLive: boolean;
   registrationClosesLabel: string | null;
   biddingStartsLabel: string | null;

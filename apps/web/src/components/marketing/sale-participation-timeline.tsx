@@ -44,6 +44,10 @@ type Props = {
   absenteeAnchorId?: string;
   /** When set, step 4 stream CTA links in-page instead of opening streamUrl externally. */
   liveStreamAnchorId?: string;
+  /** Online step 1: in-page id of the register-to-bid form so "Register to Bid" jumps to it. */
+  registerAnchorId?: string;
+  /** Path to return to after sign-in / identity verification (appended as `?next=`). */
+  registerReturnPath?: string;
   className?: string;
 };
 
@@ -59,9 +63,17 @@ export function SaleParticipationTimeline({
   streamUrl,
   absenteeAnchorId,
   liveStreamAnchorId,
+  registerAnchorId,
+  registerReturnPath,
   className,
 }: Props) {
   const pres = getSaleTypePresentation(deliveryMode);
+  const withNext = React.useCallback(
+    (path: string) =>
+      registerReturnPath ? `${path}?next=${encodeURIComponent(registerReturnPath)}` : path,
+    [registerReturnPath],
+  );
+  const registerActionHref = registerAnchorId ? `#${registerAnchorId}` : "#catalog";
   const now = React.useMemo(() => new Date(), []);
   const start = React.useMemo(() => new Date(startTime), [startTime]);
   const end = React.useMemo(() => new Date(endTime), [endTime]);
@@ -99,8 +111,8 @@ export function SaleParticipationTimeline({
         step1.status = "pending";
         step1.action = (
           <Button size="sm" variant="outline" className="mt-2" asChild>
-            <Link href="/login">
-              Sign in <ArrowRight className="ml-1 size-3" />
+            <Link href={withNext("/login")}>
+              Sign in to register <ArrowRight className="ml-1 size-3" />
             </Link>
           </Button>
         );
@@ -108,7 +120,7 @@ export function SaleParticipationTimeline({
         step1.status = "active";
         step1.action = (
           <Button size="sm" variant="outline" className="mt-2" asChild>
-            <Link href="/dashboard/verify-identity">
+            <Link href={withNext("/dashboard/verify-identity")}>
               Verify Identity <ArrowRight className="ml-1 size-3" />
             </Link>
           </Button>
@@ -126,7 +138,7 @@ export function SaleParticipationTimeline({
         step1.status = "active";
         step1.action = (
           <Button size="sm" variant="outline" className="mt-2" asChild>
-            <Link href="#catalog">
+            <Link href={registerActionHref}>
               Register to Bid <ArrowRight className="ml-1 size-3" />
             </Link>
           </Button>
@@ -135,6 +147,13 @@ export function SaleParticipationTimeline({
         step1.status = "active";
       } else if (registrationStatus === "rejected") {
         step1.status = "error";
+        step1.action = (
+          <Button size="sm" variant="outline" className="mt-2" asChild>
+            <Link href="/contact">
+              Contact support <ArrowRight className="ml-1 size-3" />
+            </Link>
+          </Button>
+        );
       } else {
         step1.status = "completed";
       }
@@ -249,6 +268,8 @@ export function SaleParticipationTimeline({
     streamUrl,
     absenteeAnchorId,
     liveStreamAnchorId,
+    withNext,
+    registerActionHref,
   ]);
 
   return (
@@ -274,7 +295,7 @@ export function SaleParticipationTimeline({
                 isCompleted
                   ? "border-emerald-500/20 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.01]"
                   : isActive
-                    ? "border-primary bg-primary/[0.01] dark:bg-primary/[0.01] shadow-xs"
+                    ? "border-primary bg-primary/[0.01] dark:bg-primary/[0.01]"
                     : isError
                       ? "border-destructive/30 bg-destructive/[0.02]"
                       : "border-outline-variant/30 bg-surface-container-lowest/50 dark:bg-surface-container-low/30 opacity-70",

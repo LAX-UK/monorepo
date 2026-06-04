@@ -66,6 +66,14 @@ export type AccordionBlock = {
   hidden: boolean;
 };
 
+/** Split marketing blocks for online layout: always-open lot details vs collapsible items. */
+export function splitArtworkAccordionBlocks(blocks: readonly AccordionBlock[]) {
+  const visible = blocks.filter((b) => !b.hidden);
+  const lotDetails = visible.find((b) => b.id === ARTWORK_PAGE_ACCORDION_IDS.lotDetails) ?? null;
+  const accordionBlocks = visible.filter((b) => b.id !== ARTWORK_PAGE_ACCORDION_IDS.lotDetails);
+  return { lotDetails, accordionBlocks };
+}
+
 function sortSaleLotsForNav(lots: Lot[]): Lot[] {
   return [...lots].sort((a, b) => {
     const an = a.lotNumber;

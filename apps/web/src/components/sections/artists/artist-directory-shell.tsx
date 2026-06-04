@@ -21,7 +21,7 @@ import { artistDirectoryWithQuery, parseArtistDirectoryOffset } from "@/lib/arti
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { fetchPublicArtistBrowse } from "@/lib/data/http/artist.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -474,11 +474,10 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                         <Link
                           key={o.value}
                           href={href}
-                          role="tab"
-                          aria-selected={active}
                           aria-current={active ? "page" : undefined}
                           className={cn(
-                            "snap-start shrink-0 rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors",
+                            "inline-flex min-h-11 shrink-0 snap-start items-center rounded-full px-3 py-1.5 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors",
+                            FOCUS_RING,
                             active
                               ? "bg-primary text-on-primary ring-primary"
                               : "bg-surface-container-low text-on-surface-variant ring-outline-variant/20 hover:bg-surface-container-high/80 hover:text-on-surface",
@@ -511,8 +510,8 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
 
             {rows.length === 0 ? (
               <MarketingEmptyState
-                variant="panel"
-                className="rounded-2xl border-dashed border-outline-variant/40 bg-surface-container-low/40"
+                variant="marketing"
+                className="rounded-2xl"
                 title="No artists match these filters."
                 description={
                   <p className="font-body text-sm text-on-surface-variant">

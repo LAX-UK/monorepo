@@ -10,7 +10,8 @@ import { LaxLogo } from "@/components/layout/lax-logo";
 import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-preferences-link";
 import { FOOTER_NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
 import { siteCopyrightLine } from "@/lib/brand";
-import Link from "next/link";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 type SiteFooterProps = {
@@ -24,13 +25,15 @@ export function SiteFooter({
   tagline = "Fine art auctions since 2018.",
   regionsLine = "London",
 }: SiteFooterProps = {}) {
-  const linkClass =
-    "font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-primary";
+  const linkClass = cn(
+    "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-primary",
+    FOCUS_RING,
+  );
   const headingClass = FOOTER_NAV_LABEL_CLASSES;
 
   return (
     <footer className="w-full bg-footer-bg">
-      <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-12 px-10 py-12 md:px-20 md:py-12">
+      <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-12 px-8 py-12 md:px-10 lg:px-14">
         <div className="flex flex-wrap items-center justify-between gap-8">
           <LaxLogo variant="footer" />
           {tagline ? (
@@ -39,8 +42,8 @@ export function SiteFooter({
             </p>
           ) : null}
         </div>
-        <div className="h-px w-full max-w-[1280px] bg-divider" aria-hidden />
-        <div className="grid max-w-[1280px] grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(20rem,1.35fr)]">
+        <div className="h-px w-full max-w-[var(--container-inner,1376px)] bg-divider" aria-hidden />
+        <div className="grid max-w-[var(--container-inner,1376px)] grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(20rem,1.35fr)]">
           <FooterColumn
             title="Auctions"
             links={auctionsLinks}
@@ -63,20 +66,16 @@ export function SiteFooter({
             <CookiePreferencesLink className={linkClass} />
           </div>
           <div className="flex min-w-0 flex-col gap-6">
-            <h2 className={headingClass}>Our Services</h2>
-            <ul className="flex flex-col gap-4">
-              {serviceLinks.map((l) => (
-                <li key={l.label}>
-                  <Link href={l.href} className={linkClass}>
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <FooterColumn
+              title="Our Services"
+              links={serviceLinks}
+              linkClassName={linkClass}
+              headingClassName={headingClass}
+            />
             <FooterSocials />
           </div>
         </div>
-        <div className="flex max-w-[1280px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex max-w-[var(--container-inner,1376px)] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <LaxLogo variant="header" className="opacity-90" />
           <div className="flex flex-col gap-1 sm:items-end">
             <p className="font-label text-sm font-medium leading-5 text-on-surface-variant">

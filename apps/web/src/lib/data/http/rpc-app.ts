@@ -7,6 +7,9 @@ import { hc } from "hono/client";
 export type RpcApp = {
   lots: {
     $get: (args: { query: Record<string, string> }) => Promise<Response>;
+    count: {
+      $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
+    };
     archive: {
       summary: {
         $get: (args?: { query?: Record<string, string> }) => Promise<Response>;
@@ -22,6 +25,9 @@ export type RpcApp = {
           param: { id: string };
           query?: Record<string, string>;
         }) => Promise<Response>;
+      };
+      "watch-count": {
+        $get: (args: { param: { id: string } }) => Promise<Response>;
       };
       "auto-bid": {
         $get: (args: { param: { id: string } }) => Promise<Response>;

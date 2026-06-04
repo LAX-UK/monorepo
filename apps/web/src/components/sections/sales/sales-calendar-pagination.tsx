@@ -24,7 +24,7 @@ export function SalesCalendarPagination({ state, page, hasMore }: Props) {
       currentPage={page}
       hasMore={hasMore}
       getPageHref={(pageNum) => buildPageHref(state, pageNum)}
-      className={`${MARKETING_PAGE_INNER} mt-10 flex justify-center border-t border-border-hairline pt-10`}
+      className={`${MARKETING_PAGE_INNER} mt-12 flex justify-center border-t border-border-hairline pt-10`}
     />
   );
 }

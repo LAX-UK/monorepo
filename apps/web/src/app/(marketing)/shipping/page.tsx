@@ -7,6 +7,7 @@ import {
   SITE_TELEPHONE_DISPLAY,
   SITE_TELEPHONE_HREF,
 } from "@/lib/brand";
+import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -36,8 +37,22 @@ export default function ShippingPage() {
         kicker={null}
         dividerUnderDate
         embedded
+        toc={[
+          { id: "overview", label: "Overview" },
+          { id: "quotes", label: "Shipping Quotes" },
+          { id: "zones", label: "Typical Lead Times" },
+          { id: "packing", label: "Packing & Handling" },
+          { id: "insurance", label: "Insurance" },
+          { id: "export", label: "Export & Customs" },
+          { id: "collection", label: "Collection in Person" },
+          { id: "release", label: "Release of Lots" },
+          { id: "storage", label: "Storage" },
+          { id: "support", label: "Support" },
+        ]}
       >
-        <LegalH2>Overview</LegalH2>
+        <LegalH2 id="overview" className="scroll-mt-28">
+          Overview
+        </LegalH2>
         <p>
           LAX.BID coordinates domestic and international shipping for purchased lots through
           specialist logistics providers experienced in the handling of fine art, editions,
@@ -54,7 +69,9 @@ export default function ShippingPage() {
           suitable for the category of item being transported.
         </p>
 
-        <LegalH2>Shipping Quotes</LegalH2>
+        <LegalH2 id="quotes" className="scroll-mt-28">
+          Shipping Quotes
+        </LegalH2>
         <p>
           Shipping costs are not included in the hammer price or buyer&apos;s premium unless
           expressly stated.
@@ -114,7 +131,9 @@ export default function ShippingPage() {
           have been confirmed.
         </p>
 
-        <LegalH2>Packing &amp; Handling</LegalH2>
+        <LegalH2 id="packing" className="scroll-mt-28">
+          Packing &amp; Handling
+        </LegalH2>
         <p>
           Lots are packed according to their category, medium, size, fragility, and destination.
         </p>
@@ -175,7 +194,9 @@ export default function ShippingPage() {
           ))}
         </address>
 
-        <LegalH2>Release of Lots</LegalH2>
+        <LegalH2 id="release" className="scroll-mt-28">
+          Release of Lots
+        </LegalH2>
         <p>
           No lot will be released until full cleared payment has been received and any required
           verification, documentation, or collection arrangements have been completed.
@@ -185,7 +206,9 @@ export default function ShippingPage() {
           compliance, or shipping details remain incomplete.
         </p>
 
-        <LegalH2>Storage</LegalH2>
+        <LegalH2 id="storage" className="scroll-mt-28">
+          Storage
+        </LegalH2>
         <p>
           Purchased lots should be collected or shipped within the timeframe stated by LAX.BID
           following payment.
@@ -196,34 +219,27 @@ export default function ShippingPage() {
           where possible.
         </p>
 
-        <LegalH2>Support</LegalH2>
+        <LegalH2 id="support" className="scroll-mt-28">
+          Support
+        </LegalH2>
         <LegalUL>
           <li>
             For shipping, collection, or logistics enquiries, please contact{" "}
-            <a
-              href={`mailto:${SITE_SUPPORT_EMAIL}`}
-              className="text-primary underline-offset-4 hover:underline"
-            >
+            <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
               {SITE_SUPPORT_EMAIL}
             </a>
             .
           </li>
           <li>
             For general enquiries, contact{" "}
-            <a
-              href={`mailto:${SITE_CONTACT_EMAIL}`}
-              className="text-primary underline-offset-4 hover:underline"
-            >
+            <a href={`mailto:${SITE_CONTACT_EMAIL}`} className={MARKETING_PROSE_LINK}>
               {SITE_CONTACT_EMAIL}
             </a>
             .
           </li>
           <li>
             Telephone:{" "}
-            <a
-              href={`tel:${SITE_TELEPHONE_HREF}`}
-              className="text-primary underline-offset-4 hover:underline"
-            >
+            <a href={`tel:${SITE_TELEPHONE_HREF}`} className={MARKETING_PROSE_LINK}>
               {SITE_TELEPHONE_DISPLAY}
             </a>
             .

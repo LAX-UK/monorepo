@@ -1,6 +1,7 @@
 "use client";
 
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
@@ -22,8 +23,8 @@ type Props = {
 };
 
 const triggerClass = cn(
-  "inline-flex min-h-[40px] snap-start items-center gap-1.5 rounded-full border border-outline-variant/40 bg-transparent px-3 font-body text-sm font-medium text-nav-text outline-none transition-colors hover:bg-surface-container-high dark:border-outline-variant/50 dark:text-on-surface",
-  "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg",
+  "inline-flex min-h-11 snap-start items-center gap-1.5 rounded-full border border-outline-variant/40 bg-transparent px-3 font-body text-sm font-medium text-nav-text transition-colors hover:bg-surface-container-high dark:border-outline-variant/50 dark:text-on-surface",
+  FOCUS_RING,
 );
 
 /** Desktop quick filters for delivery, category, and location (toolbar strip). */
