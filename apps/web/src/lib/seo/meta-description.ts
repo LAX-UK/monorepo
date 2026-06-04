@@ -14,10 +14,7 @@ export function normalizeMetaText(text: string): string {
  * Truncate to a max length on a word boundary, appending an ellipsis when shortened.
  * Suitable for meta description and Open Graph description fields.
  */
-export function truncateMetaDescription(
-  text: string,
-  maxLength = DEFAULT_MAX_LENGTH,
-): string {
+export function truncateMetaDescription(text: string, maxLength = DEFAULT_MAX_LENGTH): string {
   const normalized = normalizeMetaText(text);
   if (normalized.length <= maxLength) return normalized;
 
