@@ -4,13 +4,34 @@ import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "Artist profile";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 type Props = {
   params: Promise<{ slug: string; id: string }>;
 };
+
+export async function generateImageMetadata({ params }: Props) {
+  const { id } = await params;
+  let alt = "Artist profile";
+  try {
+    const [artist, registry] = await Promise.all([
+      getServerArtistById(id).catch(() => null),
+      fetchRegistryArtistById(id).catch(() => null),
+    ]);
+    if (registry?.displayName) alt = registry.displayName;
+    else if (artist?.name) alt = artist.name;
+    else {
+      const user = await getServerPublicUserReader()
+        .then((reader) => reader.getById(id))
+        .catch(() => null);
+      if (user?.name) alt = user.name;
+    }
+  } catch {
+    /* fall through */
+  }
+  return [{ id: "default", alt, size, contentType }];
+}
 
 const KIND_LABEL: Record<string, string> = {
   artist: "Artist",
