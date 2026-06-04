@@ -26,7 +26,7 @@ export function ArchivePagination({ page, totalPages }: Props) {
       currentPage={page}
       totalPages={totalPages}
       getPageHref={(pageNum) => buildHref(searchParams, pageNum)}
-      className={`${MARKETING_PAGE_INNER} mt-32 flex justify-center border-t border-border-hairline pt-16`}
+      className={`${MARKETING_PAGE_INNER} mt-12 flex justify-center border-t border-border-hairline pt-10`}
     />
   );
 }

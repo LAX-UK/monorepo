@@ -14,7 +14,7 @@ export function LaxConsignCTA() {
     <section
       id="consign"
       aria-labelledby="consign-heading"
-      className="cv-auto bg-surface-container-low px-4 pt-[var(--section-spacing-tight)] pb-[var(--section-spacing-tight)] dark:bg-surface-container-lowest sm:px-6 md:px-10 md:pt-[var(--section-spacing)] md:pb-[var(--section-spacing)] lg:px-14"
+      className="cv-auto bg-surface-container-low px-8 pt-[var(--section-spacing-tight)] pb-[var(--section-spacing-tight)] dark:bg-surface-container-lowest md:px-10 md:pt-[var(--section-spacing)] md:pb-[var(--section-spacing)] lg:px-14"
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col items-start gap-6 md:gap-8 lg:flex-row lg:items-center lg:gap-16">
         <RevealInView variant="fadeUp" className="flex-1">

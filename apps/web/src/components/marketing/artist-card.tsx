@@ -39,7 +39,7 @@ export function ArtistCardGrid({
   return (
     <li
       className={cn(
-        "group relative flex flex-col overflow-hidden border border-border-hairline bg-surface shadow-sm transition hover:border-primary/40 hover:shadow-md",
+        "group relative flex flex-col overflow-hidden border border-border-hairline bg-surface transition-colors motion-reduce:transition-none hover:border-primary/40",
         isCompact ? "rounded-lg" : "rounded-xl",
         className,
       )}
@@ -52,12 +52,7 @@ export function ArtistCardGrid({
           isCompact ? "rounded-t-lg" : "rounded-t-xl",
         )}
       >
-        <div
-          className={cn(
-            "relative bg-surface-container-low",
-            isCompact ? "aspect-[5/6]" : "aspect-[4/5]",
-          )}
-        >
+        <div className="relative aspect-[4/5] overflow-hidden bg-surface-container-low">
           {portrait}
           <div
             className={cn(

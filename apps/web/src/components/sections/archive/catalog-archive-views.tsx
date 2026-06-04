@@ -5,7 +5,11 @@ import { RevealInView } from "@/components/ui/reveal";
 import { formatMoney } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
-import { MARKETING_CATALOG_LIST_SHELL, MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
+import {
+  FOCUS_RING,
+  MARKETING_CATALOG_LIST_SHELL,
+  MARKETING_PAGE_INNER,
+} from "@/lib/marketing/chrome";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -108,17 +112,20 @@ export function ArchiveLotListView({
               <RevealInView variant="fadeUp" delayMs={i * 50} className="block w-full">
                 <Link
                   href={resolveArchiveLotHref(a, catalogLinkParams)}
-                  className="flex flex-wrap items-center justify-between gap-4 p-4 transition-colors hover:bg-surface-container-low/40 sm:px-6 sm:py-5"
+                  className={cn(
+                    "flex flex-wrap items-center justify-between gap-4 p-4 transition-colors hover:bg-surface-container-low/40 sm:px-6 sm:py-5",
+                    FOCUS_RING,
+                  )}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-4">
-                    <span className="relative size-16 shrink-0 overflow-hidden rounded-md bg-surface-container-low">
+                    <span className="relative size-20 shrink-0 overflow-hidden rounded-md bg-surface-container-low sm:size-24">
                       <MediaImage
                         src={img}
                         alt=""
                         label="Lot artwork"
                         className="size-full"
                         imgClassName="object-cover"
-                        sizes="64px"
+                        sizes="96px"
                       />
                     </span>
                     <div className="min-w-0">

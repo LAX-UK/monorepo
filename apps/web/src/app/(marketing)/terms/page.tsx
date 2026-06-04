@@ -417,10 +417,19 @@ const legalSections: TermsSection[] = [
 
 const allSections = [...generalSections, ...buyerSections, ...sellerSections, ...legalSections];
 
+function termsSectionId(section: TermsSection): string {
+  if (section.id) return section.id;
+  return section.title
+    .replace(/^\d+\.\s*/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function TermsContent({ section }: { section: TermsSection }) {
   return (
     <section className="space-y-6">
-      <LegalH2 id={section.id} className={section.id ? "scroll-mt-28" : undefined}>
+      <LegalH2 id={termsSectionId(section)} className="scroll-mt-28">
         {section.title}
       </LegalH2>
       {section.paragraphs.map((paragraph) => (

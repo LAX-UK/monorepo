@@ -7,6 +7,7 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -70,7 +71,10 @@ function MobileGuestAuthSection({ onNavigate }: { onNavigate: () => void }) {
       </Button>
       <Link
         href={signInHref}
-        className="min-h-11 py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand dark:text-on-surface dark:hover:text-on-surface-variant"
+        className={cn(
+          "min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-on-surface dark:hover:text-on-surface-variant",
+          FOCUS_RING,
+        )}
         onClick={onNavigate}
       >
         Sign in
@@ -114,8 +118,9 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
             <Link
               href={item.href}
               className={cn(
-                "block min-h-11 py-2 font-label text-sm font-medium uppercase tracking-wide",
+                "block min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide",
                 "text-brand-900 transition-colors hover:text-brand-800 dark:text-on-surface",
+                FOCUS_RING,
               )}
               onClick={onNavigate}
             >

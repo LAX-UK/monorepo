@@ -53,6 +53,6 @@ describe("SalesCalendarFilterSheet", () => {
 
     clickFirstButton(/Filters/i);
     clickFirstButton("Reset");
-    expect(push).toHaveBeenCalledWith("/sales?view=list");
+    expect(push).toHaveBeenCalledWith("/sales?tab=upcoming&view=list");
   });
 });

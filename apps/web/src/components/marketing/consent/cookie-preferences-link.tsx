@@ -1,6 +1,7 @@
 "use client";
 
 import { useConsent } from "@/lib/analytics/consent/context";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 
@@ -16,7 +17,8 @@ export function CookiePreferencesLink({ className }: Props) {
       type="button"
       variant="ghost"
       className={cn(
-        "inline-flex h-auto min-h-0 w-fit justify-start px-0 text-left font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:bg-transparent hover:text-primary",
+        "inline-flex h-auto min-h-11 w-fit items-center justify-start rounded-sm px-0 text-left font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:bg-transparent hover:text-primary",
+        FOCUS_RING,
         className,
       )}
       onClick={openPreferences}

@@ -49,6 +49,12 @@ jobs:
       TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
       TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
+      # --- Prebuilt-image deploys (DOCR). Match the apply workflows so PR plans are accurate. ---
+      TF_VAR_app_deploy_source: ${{ (matrix.env == 'prod' && (vars.APP_DEPLOY_SOURCE_PROD || 'github')) || (vars.APP_DEPLOY_SOURCE_TEST || 'github') }}
+      TF_VAR_create_container_registry: ${{ vars.CREATE_CONTAINER_REGISTRY || 'false' }}
+      TF_VAR_container_registry_name: ${{ vars.DOCR_REGISTRY || 'lax-bid' }}
+      TF_VAR_container_registry_region: ${{ vars.DOCR_REGISTRY_REGION || 'fra1' }}
+      TF_VAR_container_registry_subscription_tier: ${{ vars.DOCR_REGISTRY_TIER || 'professional' }}
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
     steps:
       - uses: actions/checkout@v4

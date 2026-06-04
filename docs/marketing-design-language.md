@@ -18,7 +18,7 @@ This document is the single source of truth for the marketing surface (`apps/web
 - **Vertical rhythm:** `--section-spacing`, `--section-spacing-tight`, `--section-spacing-loose`, `--section-pt`, `--header-height`.
 - **Display type:** `--text-display-lg`, `--text-display-md`, `--text-display-sm`, `--text-title-section`.
 - **Micro type (labels / chips / eyebrows):** `--text-label-1`, `--text-label-2`, `--text-label-3` (maps to Tailwind utilities in `globals.css`).
-- **Focus:** `FOCUS_RING` = `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary` (shared across chrome and cards).
+- **Focus:** `FOCUS_RING` = `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary` (from `apps/web/src/lib/marketing/chrome.ts`; shared across chrome and cards).
 - **Motion:** `--motion-duration-md`, `--motion-duration-sm`; always pair with `motion-reduce:transition-none` where transitions exist.
 
 ## Aspect ratio matrix (locked)
@@ -50,7 +50,7 @@ This document is the single source of truth for the marketing surface (`apps/web
 
 | Primitive | Responsibility |
 |-----------|------------------|
-| `MarketingPageShell` | Max width, horizontal padding, optional `bg-page-bg`. |
+| `MarketingPageShell` | Max width, horizontal padding, optional `bg-page-bg` (see `pageBackground` note under Global chrome). |
 | `MarketingPageHero` | Slots: `breadcrumb`, `eyebrow`, `title`, `description`, `meta`, `actions`, `media`. |
 | `MarketingBreadcrumb` | Visible trail + optional JSON-LD via builders. |
 | `MarketingListToolbar` | Sticky glass bar: count, filters, sort, trailing (switcher + copy). |
@@ -68,6 +68,10 @@ This document is the single source of truth for the marketing surface (`apps/web
 | `ChromePopoverPanel` | Shared account / notification dropdown shell. |
 | `NavLabel` | Uppercase utility / nav label (`NAV_LABEL_CLASSES`, etc.). |
 | `KbdHint` | Keyboard shortcut chip (`⌘K` / `Ctrl+K`). |
+| `PolicyHubLayout` | Shared chrome for policy/content pages: top tab nav + `md:` sidebar, both driven by `policy-routes.ts`. |
+| `LegalPage` / `LegalH2` / `LegalUL` | Reading-column legal/content recipe: `breadcrumb`, `kicker`, `title`, `lastUpdated`, optional `toc` (float at `lg`, `PolicyMobileToc` below). |
+| `PolicyMobileToc` | Collapsible "On this page" jump nav for long policy pages (`md:hidden`; the float `TocNav` takes over at `lg`). |
+| `policy-routes.ts` | Canonical policy manifest: hub nav, footer "Legal" column, and `/legal` index are all derived from it (`legalPolicyRoutes`, `footerLegalRoutes`, `policyRouteLabel`). |
 
 ## Card families
 
@@ -88,12 +92,13 @@ This document is the single source of truth for the marketing surface (`apps/web
 ## FAQ policy
 
 - **`FaqFlatList`:** canonical `/faq`, policy pages where SEO and anchor links matter.
-- **`FaqAccordion`:** embedded help where vertical space matters.
+- **`FaqAccordion`:** embedded help where vertical space matters. (Not yet implemented — `/faq` and policy pages use `FaqFlatList`; add this primitive only when an embedded-help surface needs it.)
 
 ## Global chrome
 
-- **`blendWithHero`:** removed — header always uses solid/nav tokens (no transparent-over-hero branch).
-- **Footer services:** Next `Link` with `aria-current` where applicable.
+- **Header `transparentUntilScroll`:** the `SiteHeader` `chromeVariant` (with `transparentPaths`, e.g. the home `/` hero) renders transparent at scroll-top and sets `data-header-tone="on-dark"` for light chrome over imagery; on scroll (or when a mega/menu panel opens) it falls back to the solid `on-light` tone. All other routes use the `solid` variant.
+- **`pageBackground` (opt-in):** `bg-page-bg` on `MarketingPageShell` / page `<main>` is opt-in, not the default. Catalog hubs (`/sales`, `/search`, `/archive`, policy hub) standardize on it; editorial/home surfaces may keep their own background. Apply deliberately rather than assuming it is global.
+- **Footer:** four-column grid — Auctions, Company, Legal (with the Cookie-preferences link), and Our Services (with social icons). Columns and the footer "Legal" list derive their links from `footer-link-groups.ts` / `policy-routes.ts`; each is a Next `Link` with `FOCUS_RING` and `aria-current` where applicable.
 
 ---
 
@@ -132,10 +137,12 @@ Transparent home hero (`/`): header uses `data-header-tone="on-dark"` at scroll 
 ```
 ┌─────────────────────────────────────────────────────────────
 │ [Logo + tagline]
-│
-│ Col1 (links)    Col2        Col3        [Social icons]
+│ ─────────────────────────────────────────────────────────── (divider)
+│ Auctions   Company    Legal              Our Services
+│ (links)    (links)    (links +           (links +
+│                        Cookie prefs)      social icons)
 │ ───────────────────────────────────────────────────────────
-│ © …                    [Services as Link rows]
+│ [Logo]                                   © …  ·  London
 └─────────────────────────────────────────────────────────────
 ```
 

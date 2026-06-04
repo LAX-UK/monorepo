@@ -2,6 +2,7 @@
 
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
+import { Countdown } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -11,8 +12,21 @@ type Props = {
   slideCount: number;
 };
 
+/** Resolve the hero countdown target: live sales count down to close, upcoming to open. */
+function heroCountdown(slide: HeroSaleSlideVM): { label: string; target: Date } | null {
+  if (slide.status === "active" && slide.endIso) {
+    return { label: "Closes in", target: new Date(slide.endIso) };
+  }
+  if (slide.status === "scheduled" && slide.startIso) {
+    const target = new Date(slide.startIso);
+    if (target.getTime() > Date.now()) return { label: "Opens in", target };
+  }
+  return null;
+}
+
 /** Pure presentation for one hero saleroom slide (no carousel logic). */
 export function HeroSlideCopy({ slide, slideIndex, slideCount }: Props) {
+  const countdown = heroCountdown(slide);
   return (
     <div
       role="group"
@@ -37,6 +51,19 @@ export function HeroSlideCopy({ slide, slideIndex, slideCount }: Props) {
         >
           {slide.dateLabel}
         </OverlayToneText>
+        {countdown ? (
+          <div className="flex items-baseline gap-2">
+            <OverlayToneText
+              variant="muted"
+              className="font-label text-xs font-bold uppercase tracking-[0.18em]"
+            >
+              {countdown.label}
+            </OverlayToneText>
+            <OverlayToneText className="font-headline text-lg font-semibold tabular-nums md:text-xl">
+              <Countdown end={countdown.target} announce={false} />
+            </OverlayToneText>
+          </div>
+        ) : null}
       </div>
       <Button variant="cta" size="xl" className="pointer-events-auto min-h-[44px] w-fit" asChild>
         <Link href={slide.href}>Open saleroom</Link>

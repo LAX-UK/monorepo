@@ -6,6 +6,7 @@ import {
   SITE_NAME,
   SITE_SUPPORT_EMAIL,
 } from "@/lib/brand";
+import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -23,7 +24,16 @@ const toc = [
   { id: "how-we-use-personal-data", label: "How we use data" },
   { id: "lawful-bases", label: "Lawful bases" },
   { id: "sharing", label: "Sharing data" },
+  { id: "international-transfers", label: "International transfers" },
+  { id: "retention", label: "How long we keep data" },
+  { id: "cookies", label: "Cookies" },
+  { id: "marketing-preferences", label: "Marketing preferences" },
   { id: "rights", label: "Your rights" },
+  { id: "security", label: "Security" },
+  { id: "children", label: "Children" },
+  { id: "automated-decision-making", label: "Automated decision-making" },
+  { id: "third-party-links", label: "Third-party links" },
+  { id: "changes", label: "Changes to this notice" },
   { id: "contact", label: "Contact" },
 ] as const;
 
@@ -255,10 +265,7 @@ export default function PrivacyPage() {
         </address>
         <p>
           For privacy enquiries, please contact{" "}
-          <a
-            href={`mailto:${SITE_SUPPORT_EMAIL}`}
-            className="text-primary underline-offset-4 hover:underline"
-          >
+          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
             {SITE_SUPPORT_EMAIL}
           </a>
           .
@@ -350,7 +357,9 @@ export default function PrivacyPage() {
           appropriate contractual protections are in place.
         </p>
 
-        <LegalH2>5. International Transfers</LegalH2>
+        <LegalH2 id="international-transfers" className="scroll-mt-28">
+          5. International Transfers
+        </LegalH2>
         <p>
           Some service providers may process personal data outside the United Kingdom. Where
           personal data is transferred internationally, we take steps designed to ensure appropriate
@@ -358,7 +367,9 @@ export default function PrivacyPage() {
           safeguards, or other lawful transfer mechanisms recognised under UK data protection law.
         </p>
 
-        <LegalH2>6. How Long We Keep Personal Data</LegalH2>
+        <LegalH2 id="retention" className="scroll-mt-28">
+          6. How Long We Keep Personal Data
+        </LegalH2>
         <p>
           We keep personal data only for as long as necessary for the purposes for which it was
           collected, including legal, accounting, tax, compliance, fraud-prevention,
@@ -388,7 +399,9 @@ export default function PrivacyPage() {
           </li>
         </LegalUL>
 
-        <LegalH2>7. Cookies and Similar Technologies</LegalH2>
+        <LegalH2 id="cookies" className="scroll-mt-28">
+          7. Cookies and Similar Technologies
+        </LegalH2>
         <p>
           We use cookies and similar technologies to operate the website, keep users signed in,
           remember preferences, protect against fraud, analyse platform performance, and improve the
@@ -416,23 +429,22 @@ export default function PrivacyPage() {
         </p>
         <p>
           You can manage cookie preferences through the in-site banner and{" "}
-          <Link href="/cookies" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/cookies" className={MARKETING_PROSE_LINK}>
             Cookie policy
           </Link>
           , through the <strong>Cookie preferences</strong> link in the site footer, through your
           browser settings, and through dashboard preferences where applicable.
         </p>
 
-        <LegalH2>8. Marketing Preferences</LegalH2>
+        <LegalH2 id="marketing-preferences" className="scroll-mt-28">
+          8. Marketing Preferences
+        </LegalH2>
         <p>
           We may send marketing communications where you have opted in or where we are otherwise
           permitted to do so under applicable law. You can opt out of marketing at any time by
           clicking the unsubscribe link in our emails, updating your account or dashboard
           preferences, or contacting us at{" "}
-          <a
-            href={`mailto:${SITE_SUPPORT_EMAIL}`}
-            className="text-primary underline-offset-4 hover:underline"
-          >
+          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
             {SITE_SUPPORT_EMAIL}
           </a>
           .
@@ -455,16 +467,15 @@ export default function PrivacyPage() {
         </p>
         <p>
           To exercise your rights, please contact{" "}
-          <a
-            href={`mailto:${SITE_SUPPORT_EMAIL}`}
-            className="text-primary underline-offset-4 hover:underline"
-          >
+          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
             {SITE_SUPPORT_EMAIL}
           </a>
           . We may need to verify your identity before responding to a rights request.
         </p>
 
-        <LegalH2>10. Security</LegalH2>
+        <LegalH2 id="security" className="scroll-mt-28">
+          10. Security
+        </LegalH2>
         <p>
           We use technical and organisational measures designed to protect personal data against
           unauthorised access, loss, misuse, alteration, disclosure, or destruction. These measures
@@ -476,14 +487,18 @@ export default function PrivacyPage() {
           protect personal data and maintain platform integrity.
         </p>
 
-        <LegalH2>11. Children</LegalH2>
+        <LegalH2 id="children" className="scroll-mt-28">
+          11. Children
+        </LegalH2>
         <p>
           {SITE_NAME} is not intended for children. Users must be at least 18 years old to register,
           bid, buy, consign, or sell through the platform. We do not knowingly collect personal data
           from children.
         </p>
 
-        <LegalH2>12. Automated Decision-Making</LegalH2>
+        <LegalH2 id="automated-decision-making" className="scroll-mt-28">
+          12. Automated Decision-Making
+        </LegalH2>
         <p>
           We may use automated tools to support fraud prevention, sanctions screening, payment-risk
           assessment, account security, platform analytics, or compliance workflows. We do not use
@@ -491,7 +506,9 @@ export default function PrivacyPage() {
           individuals without appropriate human involvement, unless permitted by law.
         </p>
 
-        <LegalH2>13. Links to Third-Party Websites</LegalH2>
+        <LegalH2 id="third-party-links" className="scroll-mt-28">
+          13. Links to Third-Party Websites
+        </LegalH2>
         <p>
           The platform may contain links to third-party websites, including payment processors,
           shipping providers, authentication services, or partner platforms. We are not responsible
@@ -499,7 +516,9 @@ export default function PrivacyPage() {
           their privacy notices before providing personal data to them.
         </p>
 
-        <LegalH2>14. Changes to This Privacy Notice</LegalH2>
+        <LegalH2 id="changes" className="scroll-mt-28">
+          14. Changes to This Privacy Notice
+        </LegalH2>
         <p>
           We may update this Privacy Notice from time to time. The latest version will be published
           on this page with the Last updated date. Where changes are material, we may take
@@ -511,20 +530,14 @@ export default function PrivacyPage() {
         </LegalH2>
         <p>
           For privacy, data protection, or account-data enquiries, please contact{" "}
-          <a
-            href={`mailto:${SITE_SUPPORT_EMAIL}`}
-            className="text-primary underline-offset-4 hover:underline"
-          >
+          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
             {SITE_SUPPORT_EMAIL}
           </a>
           .
         </p>
         <p>
           For complaints, please contact{" "}
-          <a
-            href="mailto:complaints@lax.bid"
-            className="text-primary underline-offset-4 hover:underline"
-          >
+          <a href="mailto:complaints@lax.bid" className={MARKETING_PROSE_LINK}>
             complaints@lax.bid
           </a>
           .

@@ -117,6 +117,8 @@ export const WORKER_FULL_TABLES = [
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
+/** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
+export const WORKER_DATA_EXPORT_TABLES = ["data_exports"] as const;
 
 type RoleName = "auth_app" | "api_app" | "worker_app";
 
@@ -180,6 +182,7 @@ async function grantIfExists(
   privileges:
     | "SELECT"
     | "SELECT, UPDATE"
+    | "SELECT, UPDATE, DELETE"
     | "INSERT"
     | "INSERT, SELECT"
     | "INSERT, SELECT, UPDATE"
@@ -295,6 +298,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     /** worker writes one audit row per marketing-contact-sync attempt (Brevo). INSERT + SELECT
      * only; rows are an immutable audit trail (no UPDATE/DELETE from app code). */
     await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
+    for (const tableName of WORKER_DATA_EXPORT_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
+    }
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
     }

@@ -5,11 +5,14 @@ import {
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   backHref: string;
   backLabel: string;
   breadcrumbItems: readonly MarketingBreadcrumbItem[];
+  /** Optional trailing controls aligned to the right of the back-link row (e.g. lot pager). */
+  actions?: ReactNode;
   className?: string;
 };
 
@@ -21,13 +24,17 @@ export function MarketingDetailWayfinding({
   backHref,
   backLabel,
   breadcrumbItems,
+  actions,
   className,
 }: Props) {
   return (
     <div className={cn("pt-4 md:pt-6", className)}>
-      <Link href={backHref} className={cn(FOCUS_RING, backLinkClassName)}>
-        ← {backLabel}
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href={backHref} className={cn(FOCUS_RING, backLinkClassName)}>
+          ← {backLabel}
+        </Link>
+        {actions ? <div className="shrink-0">{actions}</div> : null}
+      </div>
       <MarketingBreadcrumb
         items={breadcrumbItems}
         className="mt-3 font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant md:text-xs"

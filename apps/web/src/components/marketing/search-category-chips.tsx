@@ -1,4 +1,5 @@
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
+import { marketingFilterChipList, marketingFilterChipStrip } from "@/lib/marketing/chips";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
@@ -18,14 +19,6 @@ export type SearchCategoryChipsProps = {
   layout?: "strip" | "list";
   className?: string;
 };
-
-const chipClass = (active: boolean) =>
-  cn(
-    "snap-start shrink-0 rounded-full border px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider transition-colors",
-    active
-      ? "border-primary bg-primary/10 text-on-surface"
-      : "border-outline-variant/50 text-on-surface-variant hover:border-primary/40",
-  );
 
 export function SearchCategoryChips({
   categories,
@@ -48,6 +41,8 @@ export function SearchCategoryChips({
     ...(status ? { status } : {}),
     ...(ending ? { ending } : {}),
   };
+
+  const chipClass = layout === "list" ? marketingFilterChipList : marketingFilterChipStrip;
 
   const links = (
     <>

@@ -1,6 +1,7 @@
 "use client";
 
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
+import { marketingFilterChipList, marketingFilterChipStrip } from "@/lib/marketing/chips";
 import {
   SALEROOM_CATALOG_STATUS_OPTIONS,
   buildSaleroomStatusHref,
@@ -20,22 +21,6 @@ export type SaleroomCatalogStatusChipsProps = {
   onSelect?: () => void;
 };
 
-const stripChipClass = (active: boolean) =>
-  cn(
-    "snap-start shrink-0 rounded-full border px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider transition-colors",
-    active
-      ? "border-primary bg-primary/10 text-on-surface"
-      : "border-outline-variant/50 text-on-surface-variant hover:border-primary/40",
-  );
-
-const listChipClass = (active: boolean) =>
-  cn(
-    "flex min-h-11 w-full items-center rounded-lg border px-4 py-2 font-body text-sm transition-colors",
-    active
-      ? "border-primary bg-primary/10 text-on-surface"
-      : "border-outline-variant/40 text-on-surface-variant hover:border-primary/30",
-  );
-
 export function SaleroomCatalogStatusChips({
   basePath,
   layout = "strip",
@@ -49,7 +34,8 @@ export function SaleroomCatalogStatusChips({
   const links = SALEROOM_CATALOG_STATUS_OPTIONS.map((option) => {
     const isActive = active === option.value;
     const href = buildSaleroomStatusHref(basePath, option.value, searchParams);
-    const chipClass = layout === "list" ? listChipClass(isActive) : stripChipClass(isActive);
+    const chipClass =
+      layout === "list" ? marketingFilterChipList(isActive) : marketingFilterChipStrip(isActive);
 
     return (
       <Link

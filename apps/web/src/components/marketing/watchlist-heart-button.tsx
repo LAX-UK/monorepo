@@ -2,6 +2,7 @@
 
 import { WatchlistHeart } from "@/components/marketing/watchlist-heart";
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { cn } from "@auction/ui";
@@ -10,8 +11,10 @@ import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
-const inlineHeartShellClass =
-  "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface backdrop-blur-none transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none";
+const inlineHeartShellClass = cn(
+  "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface backdrop-blur-none transition-colors hover:bg-surface-container-highest motion-reduce:transition-none",
+  FOCUS_RING,
+);
 
 type LayoutMode = "overlay" | "inline";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { policyRoutes } from "@/components/marketing/policy-routes";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,7 +22,7 @@ export function PolicyHubLayout({ children }: Props) {
     <main id="main-content" className="bg-page-bg pt-[var(--header-height)] dark:bg-background">
       <nav
         aria-label="Policy pages"
-        className="border-b border-outline-variant/40 px-4 pt-6 sm:px-6 md:px-12"
+        className="border-b border-outline-variant/40 px-8 pt-6 md:px-10 lg:px-14"
       >
         <div className="no-scrollbar flex max-w-[var(--container-max,1440px)] snap-x gap-0 overflow-x-auto">
           {policyRoutes.map((route) => {
@@ -32,7 +33,8 @@ export function PolicyHubLayout({ children }: Props) {
                 href={route.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "snap-start whitespace-nowrap border-b-2 border-transparent px-5 py-3 font-label text-xs font-semibold uppercase tracking-[0.1em] text-brand-300 transition-colors hover:text-on-surface",
+                  "snap-start whitespace-nowrap rounded-sm border-b-2 border-transparent px-5 py-3 font-label text-xs font-semibold uppercase tracking-[0.1em] text-brand-300 transition-colors hover:text-on-surface",
+                  FOCUS_RING,
                   active && "border-on-surface text-on-surface",
                 )}
               >
@@ -58,6 +60,7 @@ export function PolicyHubLayout({ children }: Props) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "rounded-md px-3 py-2 font-body text-sm font-medium text-brand-300 transition-colors hover:bg-surface-container-low hover:text-on-surface",
+                    FOCUS_RING,
                     active &&
                       "rounded-l-none border-l-2 border-primary bg-surface-container-low font-semibold text-on-surface",
                   )}

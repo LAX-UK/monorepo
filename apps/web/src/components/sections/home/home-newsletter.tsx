@@ -39,7 +39,7 @@ export function HomeNewsletter() {
     <section
       id="newsletter"
       aria-labelledby="newsletter-heading"
-      className="border-t border-outline-variant bg-surface-container-low px-6 py-[var(--section-spacing)] text-center dark:bg-surface-container-lowest md:px-10 lg:px-14"
+      className="border-t border-outline-variant bg-surface-container-low px-8 py-[var(--section-spacing)] text-center dark:bg-surface-container-lowest md:px-10 lg:px-14"
     >
       <div className="mx-auto flex max-w-[600px] flex-col items-center gap-7">
         <MarketingPromoCta

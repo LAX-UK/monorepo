@@ -1,7 +1,9 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { formatMoney } from "@/lib/format-currency";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { Lot } from "@auction/types";
+import { cn } from "@auction/ui";
 import Link from "next/link";
 
 function lotNo(id: string): string {
@@ -30,13 +32,13 @@ export function PastAuctionCard({
   const img = auction.images[0];
   return (
     <div className={`group ${gridOffsetClass}`}>
-      <Link href={href} className="block">
+      <Link href={href} className={cn("block rounded-sm", FOCUS_RING)}>
         <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-surface-container-low md:mb-8">
           <MediaImage
             src={img}
             alt={`${auction.title} — past auction lot`}
             label="Lot artwork"
-            imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+            imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
             sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw"
           />
         </div>

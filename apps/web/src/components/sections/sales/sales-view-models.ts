@@ -232,6 +232,54 @@ export function mapSaleToCalendarGridCardVM(
   };
 }
 
+/** Agenda row for the month/calendar view — date chip + compact schedule line. */
+export type SaleAgendaItemVM = {
+  id: string;
+  href: string;
+  title: string;
+  status: Sale["status"];
+  /** ISO start used to group rows by month and order within a day. */
+  startIso: string;
+  /** Day-of-month, e.g. "9". */
+  dayLabel: string;
+  /** Short weekday, e.g. "WED". */
+  weekdayLabel: string;
+  /** Uppercase start time with zone, e.g. "11:00 AM GMT". */
+  timeLabel: string;
+  auctionTypeLabel: string;
+  itemsLabel: string;
+  locationLabel: string | null;
+  /** ISO end for the live-sale countdown. */
+  countdownEndIso?: string;
+};
+
+export function mapSaleToAgendaItemVM(
+  sale: Sale,
+  lots: Lot[],
+  listLocale = "en-GB",
+): SaleAgendaItemVM {
+  const start = new Date(sale.startTime);
+  const n = lots.length;
+  const countdownEndIso =
+    sale.status === "active" ? new Date(sale.endTime).toISOString() : undefined;
+  return {
+    id: sale.id,
+    href: salePath(sale),
+    title: sale.title,
+    status: sale.status,
+    startIso: start.toISOString(),
+    dayLabel: String(start.getDate()),
+    weekdayLabel: new Intl.DateTimeFormat(listLocale, { weekday: "short" })
+      .format(start)
+      .toUpperCase(),
+    timeLabel: formatTimeLineShort(start, listLocale).toUpperCase(),
+    auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
+    itemsLabel: `${n} lot${n === 1 ? "" : "s"}`,
+    locationLabel: saleMarketingLocationLabel(sale),
+    ...(countdownEndIso ? { countdownEndIso } : {}),
+  };
+}
+
 export function mapSaleToAuctionRowVM(
   sale: Sale,
   lots: Lot[],

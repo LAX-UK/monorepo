@@ -1,10 +1,13 @@
 "use client";
 
-import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { SalesCalendarActiveFilters } from "@/components/sections/sales/sales-calendar-active-filters";
 import { SalesCalendarFilterSheet } from "@/components/sections/sales/sales-calendar-filter-sheet";
 import { SalesFilterChips } from "@/components/sections/sales/sales-filter-chips";
+import {
+  type SalesBrowseView,
+  SalesViewSwitcher,
+} from "@/components/sections/sales/sales-view-switcher";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 
 type Category = { id: string; name: string };
@@ -14,7 +17,7 @@ export type SalesCalendarToolbarProps = {
   resultCount: number;
   categories: Category[];
   years: number[];
-  calendarView: "grid" | "list";
+  calendarView: SalesBrowseView;
 };
 
 /** Sticky sales calendar toolbar: count + filter sheet + optional desktop quick chips + view. */
@@ -42,13 +45,7 @@ export function SalesCalendarToolbar({
           />
         }
         filters={<SalesFilterChips state={state} categories={categories} />}
-        trailing={
-          <CatalogViewSwitcher
-            routeKey="sales"
-            value={calendarView === "list" ? "list" : "grid"}
-            supportedModes={["grid", "list"]}
-          />
-        }
+        trailing={<SalesViewSwitcher value={calendarView} />}
       />
       <SalesCalendarActiveFilters state={state} categories={categories} />
     </>
