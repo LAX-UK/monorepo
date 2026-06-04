@@ -45,6 +45,44 @@ export const getServerLotBids = cache(async (lotId: string, limit = 50): Promise
   return body.data.map(parseBid);
 });
 
+export type LotCountParams = {
+  q?: string;
+  categoryId?: string;
+  status?: string;
+};
+
+/** Exact count of catalogue lots matching the given filters (for numbered pagination). */
+export const getServerLotCount = cache(async (params: LotCountParams): Promise<number | null> => {
+  try {
+    const query: Record<string, string> = {};
+    if (params.q?.trim()) query.q = params.q.trim();
+    if (params.categoryId) query.categoryId = params.categoryId;
+    if (params.status) query.status = params.status;
+    const client = await getServerHc();
+    const res = await client.lots.count.$get({ query });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { count?: number };
+    return typeof body.count === "number" ? body.count : null;
+  } catch {
+    return null;
+  }
+});
+
+/** Number of users watching a lot (social proof). Returns 0 on any failure. */
+export const getServerLotWatchCount = cache(async (lotId: string): Promise<number> => {
+  try {
+    const client = await getServerHc();
+    const res = await client.lots[":id"]["watch-count"].$get({
+      param: { id: lotId },
+    });
+    if (!res.ok) return 0;
+    const body = (await res.json()) as { data?: { count?: number } };
+    return typeof body.data?.count === "number" ? body.data.count : 0;
+  } catch {
+    return 0;
+  }
+});
+
 export async function getServerArchiveMetricsReader(): Promise<ArchiveMetricsReader> {
   const base = getServerApiBase();
   return {

@@ -10,6 +10,7 @@ import {
   type SiteHeaderTone,
   headerChromeIconClass,
 } from "@/lib/layout/header-chrome-tone";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { User } from "lucide-react";
 import Link from "next/link";
@@ -136,7 +137,10 @@ export function HeaderGuestMenu({ headerTone = "on-light" }: Props) {
               href={signInHref}
               role="menuitem"
               data-guest-menu-item=""
-              className="block rounded-md px-2 py-2.5 font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none dark:text-on-surface dark:hover:bg-surface-container-low"
+              className={cn(
+                "block min-h-11 rounded-md px-2 py-2.5 font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg dark:text-on-surface dark:hover:bg-surface-container-low",
+                FOCUS_RING,
+              )}
               onClick={closeMenu}
             >
               Sign in
@@ -145,7 +149,10 @@ export function HeaderGuestMenu({ headerTone = "on-light" }: Props) {
               href={registerHref}
               role="menuitem"
               data-guest-menu-item=""
-              className="inline-flex min-h-10 w-full items-center justify-center rounded bg-cta-bg px-3 py-2 text-center font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on transition-opacity hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+              className={cn(
+                "inline-flex min-h-11 w-full items-center justify-center rounded bg-cta-bg px-3 py-2 text-center font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on transition-opacity hover:opacity-95",
+                FOCUS_RING,
+              )}
               onClick={closeMenu}
             >
               Create account

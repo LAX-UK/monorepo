@@ -13,9 +13,8 @@ export function LaxPrivateSaleHighlightsMarketing({ highlights }: Props) {
   if (highlights.length === 0) {
     return (
       <section
-        id="private-sale-heading"
-        aria-labelledby="home-private-sale-heading"
-        className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-10 md:px-10 lg:px-14"
+        aria-label="Private sale highlights"
+        className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-[var(--section-spacing-tight)] md:px-10 lg:px-14"
       >
         <MarketingEmptyState
           variant="marketing"

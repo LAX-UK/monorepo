@@ -6,9 +6,11 @@ import {
   calendarLocationLabel,
   calendarMonthLabel,
   calendarPriceRangeLabel,
+  calendarSalesHref,
   countActiveCalendarFilters,
   getCalendarPrimaryTabDefinitions,
   hasExplicitCalendarTab,
+  parseCalendarPrimaryTab,
   resolveDefaultCalendarPrimaryTab,
 } from "./sales-calendar-params";
 import type { CalendarSalesUrlState } from "./sales-calendar-params";
@@ -36,6 +38,17 @@ describe("calendarClearFiltersHref", () => {
       page: 2,
     };
     expect(calendarClearFiltersHref(state)).toBe("/sales?tab=live&view=list");
+  });
+});
+
+describe("calendarSalesHref", () => {
+  it("always emits an explicit tab, including upcoming", () => {
+    expect(calendarSalesHref({ tab: "upcoming" })).toBe("/sales?tab=upcoming");
+    expect(calendarSalesHref({ tab: "newLots" })).toBe("/sales?tab=newLots");
+  });
+
+  it("defaults to the upcoming tab when none is provided", () => {
+    expect(calendarSalesHref({})).toBe("/sales?tab=upcoming");
   });
 });
 
@@ -93,6 +106,12 @@ describe("hasExplicitCalendarTab", () => {
     expect(hasExplicitCalendarTab({ tab: "live" })).toBe(true);
   });
 
+  it("returns true for camelCase tabs regardless of casing", () => {
+    expect(hasExplicitCalendarTab({ tab: "newLots" })).toBe(true);
+    expect(hasExplicitCalendarTab({ tab: "privateSales" })).toBe(true);
+    expect(hasExplicitCalendarTab({ tab: "newlots" })).toBe(true);
+  });
+
   it("returns true for legacy filter param", () => {
     expect(hasExplicitCalendarTab({ filter: "scheduled" })).toBe(true);
   });
@@ -100,6 +119,24 @@ describe("hasExplicitCalendarTab", () => {
   it("returns false when tab is omitted", () => {
     expect(hasExplicitCalendarTab({})).toBe(false);
     expect(hasExplicitCalendarTab({ categoryId: "cat-1" })).toBe(false);
+  });
+});
+
+describe("parseCalendarPrimaryTab", () => {
+  it("resolves camelCase tabs to their canonical id", () => {
+    expect(parseCalendarPrimaryTab({ tab: "newLots" })).toBe("newLots");
+    expect(parseCalendarPrimaryTab({ tab: "privateSales" })).toBe("privateSales");
+  });
+
+  it("matches case-insensitively", () => {
+    expect(parseCalendarPrimaryTab({ tab: "newlots" })).toBe("newLots");
+    expect(parseCalendarPrimaryTab({ tab: "PRIVATESALES" })).toBe("privateSales");
+  });
+
+  it("maps legacy filter values and defaults to upcoming", () => {
+    expect(parseCalendarPrimaryTab({ filter: "ended" })).toBe("results");
+    expect(parseCalendarPrimaryTab({ filter: "scheduled" })).toBe("upcoming");
+    expect(parseCalendarPrimaryTab({})).toBe("upcoming");
   });
 });
 

@@ -1,24 +1,30 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogLotView } from "@/components/marketing/catalog-lot-view";
+import {
+  MARKETING_HUB_BREADCRUMB_CLASS,
+  MarketingBreadcrumb,
+} from "@/components/marketing/marketing-breadcrumb";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { RecentlyViewedRail } from "@/components/marketing/recently-viewed-rail";
-import { SearchActiveFilters } from "@/components/marketing/search-active-filters";
 import {
   SearchCatalogPendingProvider,
   SearchResultsShell,
 } from "@/components/marketing/search-catalog-client";
-import { SearchFilterFormDesktop } from "@/components/marketing/search-filter-form";
+import {
+  SearchFilterFormDesktop,
+  SearchFilterFormMobile,
+} from "@/components/marketing/search-filter-form";
 import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
 import { lotsEndingSoon } from "@/components/sections/home/home-urgency-helpers";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerLotCount, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
-import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import {
   parseSearchEnding,
   parseSearchStatus,
@@ -130,6 +136,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
   let auctions: Lot[] = [];
   let loadError: string | null = null;
   let hasNext = false;
+  /** Exact total of matching lots; null when unknown (falls back to approximate "N+"). */
+  let exactTotal: number | null = null;
   try {
     const fetchLimit = PAGE_SIZE + 1;
     const listSort = endingWindow ? "endingAsc" : sort;
@@ -145,18 +153,28 @@ export default async function SearchPage({ searchParams }: PageProps) {
         ...(categoryId ? { categoryId } : {}),
       });
       const endingSoon = lotsEndingSoon(batch);
+      exactTotal = endingSoon.length;
       const slice = endingSoon.slice(offset, offset + PAGE_SIZE + 1);
       hasNext = slice.length > PAGE_SIZE;
       auctions = hasNext ? slice.slice(0, PAGE_SIZE) : slice;
     } else {
-      auctions = await reader.list({
-        limit: fetchLimit,
-        offset,
-        ...(trimmed ? { q: trimmed } : {}),
-        sort: listSort,
-        ...(listStatus ? { status: listStatus } : {}),
-        ...(categoryId ? { categoryId } : {}),
-      });
+      const [list, count] = await Promise.all([
+        reader.list({
+          limit: fetchLimit,
+          offset,
+          ...(trimmed ? { q: trimmed } : {}),
+          sort: listSort,
+          ...(listStatus ? { status: listStatus } : {}),
+          ...(categoryId ? { categoryId } : {}),
+        }),
+        getServerLotCount({
+          ...(trimmed ? { q: trimmed } : {}),
+          ...(categoryId ? { categoryId } : {}),
+          ...(listStatus ? { status: listStatus } : {}),
+        }),
+      ]);
+      auctions = list;
+      exactTotal = count;
       hasNext = auctions.length > PAGE_SIZE;
       if (hasNext) auctions = auctions.slice(0, PAGE_SIZE);
     }
@@ -209,7 +227,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
     });
 
   const popularCategories = categories.slice(0, 6);
-  const countLabel = loadError ? undefined : `${filtered.length}${hasNext ? "+" : ""} lots`;
+  const countLabel = loadError
+    ? undefined
+    : exactTotal != null
+      ? `${exactTotal} ${exactTotal === 1 ? "lot" : "lots"}`
+      : `${filtered.length}${hasNext ? "+" : ""} lots`;
   const activeFilterCount = countSearchActiveFilters({
     q: trimmed,
     ...(categoryId ? { categoryId } : {}),
@@ -224,18 +246,34 @@ export default async function SearchPage({ searchParams }: PageProps) {
         ? `Show ${filtered.length}+ results`
         : `Show ${filtered.length} results`;
   const lotCatalogLinkParams = catalogViewCarryParams(layoutView);
+  const hasActiveFilters = activeFilterCount > 0;
+  const clearFiltersHref = `/search?${buildSearchQs({
+    offset: 0,
+    q: "",
+    sort: "endingAsc",
+    view: layoutView,
+  })}`;
 
   return (
     <SearchCatalogPendingProvider>
       <main
         id="main-content"
-        className={cn("bg-surface pb-[var(--page-bottom-padding)]", MARKETING_CATALOG_PT)}
+        className={cn("bg-page-bg pb-[var(--page-bottom-padding)]", MARKETING_CATALOG_PT)}
       >
         <script type="application/ld+json" suppressHydrationWarning>
           {listLdText}
         </script>
 
         <MarketingPageHero
+          breadcrumb={
+            <MarketingBreadcrumb
+              items={[
+                { label: "Home", href: "/" },
+                { label: "Search", current: true },
+              ]}
+              className={MARKETING_HUB_BREADCRUMB_CLASS}
+            />
+          }
           title="Search lots"
           titleSize="section"
           className="pb-6 pt-0 md:pb-8"
@@ -247,7 +285,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   ? searchEndingLabel(endingWindow)
                   : statusFilter
                     ? searchStatusLabel(statusFilter)
-                    : resultSummaryLabel(trimmed, filtered.length, hasNext)}
+                    : exactTotal != null
+                      ? trimmed
+                        ? `${exactTotal} lots matching “${trimmed}”`
+                        : `${exactTotal} ${exactTotal === 1 ? "lot" : "lots"}`
+                      : resultSummaryLabel(trimmed, filtered.length, hasNext)}
               </p>
             ) : null
           }
@@ -255,6 +297,15 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
         <div className={MARKETING_PAGE_SHELL}>
           <SearchFilterFormDesktop
+            initialQ={String(q)}
+            sort={sort}
+            categoryId={categoryId}
+            view={layoutView}
+            {...(statusFilter ? { status: statusFilter } : {})}
+            {...(endingWindow ? { ending: endingWindow } : {})}
+          />
+
+          <SearchFilterFormMobile
             initialQ={String(q)}
             sort={sort}
             categoryId={categoryId}
@@ -277,25 +328,41 @@ export default async function SearchPage({ searchParams }: PageProps) {
             {...(endingWindow ? { ending: endingWindow } : {})}
           />
 
-          <RecentlyViewedRail className="-mx-8 md:-mx-10 lg:-mx-14" />
-
-          <SearchActiveFilters categories={categories} sort={sort} />
+          <RecentlyViewedRail className="px-0" />
 
           <SearchResultsShell>
             {loadError ? (
               <MarketingEmptyState
-                className="mt-8 rounded-xl border border-error/30 bg-error-container/10"
-                role="alert"
+                variant="marketing"
+                context="error"
+                className="mt-8 rounded-xl border-error/30 bg-error-container/10"
                 title="Could not load inventory"
                 description={loadError}
+                action={
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="cta" asChild>
+                      <Link href="/search">Try again</Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                      <Link href="/sales">Browse sales</Link>
+                    </Button>
+                  </div>
+                }
               />
             ) : filtered.length === 0 ? (
               <MarketingEmptyState
+                variant="marketing"
+                context={hasActiveFilters ? "filtered" : "noResults"}
                 className="mt-8"
                 title={trimmed ? "No lots match that search" : "No lots to show yet"}
                 description="Try another search, pick a category below, or browse upcoming and past sales."
                 action={
                   <div className="flex w-full max-w-lg flex-col items-center gap-6">
+                    {hasActiveFilters ? (
+                      <Button variant="cta" asChild>
+                        <Link href={clearFiltersHref}>Clear filters</Link>
+                      </Button>
+                    ) : null}
                     {popularCategories.length > 0 ? (
                       <div className="w-full">
                         <p className="mb-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant">
@@ -314,7 +381,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                                 ...qsExtras,
                               })}`}
                               scroll={false}
-                              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                              className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface ${FOCUS_RING}`}
                             >
                               {c.name}
                             </Link>
@@ -359,6 +426,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   hasPrev={hasPrev}
                   prevHref={`/search?${qsBaseOffset(prevOffset)}`}
                   nextHref={`/search?${qsBaseOffset(nextOffset)}`}
+                  totalCount={exactTotal}
+                  getPageHref={(page) => `/search?${qsBaseOffset((page - 1) * PAGE_SIZE)}`}
                 />
                 {!session ? (
                   <SectionCta

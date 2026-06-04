@@ -13,4 +13,6 @@ export interface IWatchlistRepository {
   findByUser(userId: string): Promise<WatchlistRow[]>;
   exists(userId: string, lotId: string): Promise<boolean>;
   listUserIdsForLot(lotId: string): Promise<string[]>;
+  /** Number of users watching a lot (social-proof counts without materialising ids). */
+  countForLot(lotId: string): Promise<number>;
 }

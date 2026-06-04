@@ -1,4 +1,5 @@
 import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
+import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 
 type Props = {
   currentPage: number;
@@ -13,8 +14,7 @@ export function ArtistsDirectoryPagination({ currentPage, totalPages, getPageHre
       currentPage={currentPage}
       totalPages={totalPages}
       getPageHref={getPageHref}
-      className="mt-10"
-      paginationClassName="justify-start"
+      className={`${MARKETING_PAGE_INNER} mt-12 flex justify-center border-t border-border-hairline pt-10`}
     />
   );
 }

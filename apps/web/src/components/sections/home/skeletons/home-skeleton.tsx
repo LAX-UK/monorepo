@@ -13,7 +13,7 @@ export function HomeSkeleton() {
       <div className={HOME_HERO_BLEED}>
         <Skeleton className={cn("w-full rounded-none shimmer-sweep", HOME_HERO_MIN_H)} />
       </div>
-      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-6 py-12 md:px-10 lg:px-14">
+      <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-8 py-12 md:px-10 lg:px-14">
         <Skeleton className="mb-8 h-10 w-64" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {["a", "b", "c", "d", "e", "f"].map((slot) => (

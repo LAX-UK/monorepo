@@ -5,6 +5,7 @@ import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { Badge } from "@auction/ui";
 import Link from "next/link";
@@ -61,6 +62,7 @@ export function ArtistDirectoryCard({
           alt={isBrand ? "" : altText}
           label={isBrand ? artist.displayName : "Artist portrait"}
           sizes={isCompact ? "200px" : "(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 25vw"}
+          imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
         />
       }
       badges={
@@ -110,7 +112,7 @@ export function ArtistDirectoryCard({
         <>
           <Link
             href={`${href}#works`}
-            className="font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+            className={`rounded-sm font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline ${FOCUS_RING}`}
             aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
           >
             {lotsLabel}
@@ -118,7 +120,7 @@ export function ArtistDirectoryCard({
           {!isCompact ? (
             <Link
               href={href}
-              className="hidden font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline sm:inline"
+              className={`hidden rounded-sm font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline sm:inline ${FOCUS_RING}`}
               aria-label={`View profile for ${artist.displayName}`}
             >
               View profile

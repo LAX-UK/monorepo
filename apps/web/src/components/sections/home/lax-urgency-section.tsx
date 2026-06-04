@@ -109,7 +109,10 @@ export function LaxUrgencySection({
 
   if (items.length === 0) {
     return (
-      <section aria-labelledby={headingId} className={cn("cv-auto", MARKETING_PAGE_SHELL, "pt-10")}>
+      <section
+        aria-labelledby={headingId}
+        className={cn("cv-auto", MARKETING_PAGE_SHELL, "pt-[var(--section-spacing-tight)]")}
+      >
         <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
           <UrgencySectionHeader variant={variant} />
           <MarketingEmptyState
@@ -128,7 +131,10 @@ export function LaxUrgencySection({
   }
 
   return (
-    <section aria-labelledby={headingId} className={cn("cv-auto", MARKETING_PAGE_SHELL, "pt-10")}>
+    <section
+      aria-labelledby={headingId}
+      className={cn("cv-auto", MARKETING_PAGE_SHELL, "pt-[var(--section-spacing-tight)]")}
+    >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
         <UrgencySectionHeader variant={variant} />
         <HomeSectionToolbar

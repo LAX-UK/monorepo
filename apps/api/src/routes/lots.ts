@@ -206,6 +206,23 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     return c.json({ count });
   });
 
+  r.get("/count", optionalAuth, zValidator("query", listLotsQuerySchema), async (c) => {
+    const q = c.req.valid("query");
+    const viewerRole = (c.get("userRole") ?? "client") as UserRole;
+    const viewerStaffRole = normalizeUserStaffRole(c.get("userStaffRole") as string | null);
+    const canSeeNonPublic = viewerCanSeeNonPublicCatalog(viewerRole, viewerStaffRole);
+    const count = await container.lotService.countMatching({
+      ...(q.status ? { status: q.status } : {}),
+      ...(q.statuses ? { statuses: q.statuses } : {}),
+      ...(q.categoryId ? { categoryId: q.categoryId } : {}),
+      ...(q.categoryIds ? { categoryIds: q.categoryIds } : {}),
+      ...(q.q ? { search: q.q } : {}),
+      ...(q.endYear !== undefined ? { endYear: q.endYear } : {}),
+      ...(canSeeNonPublic ? {} : { requirePublicParentSale: true }),
+    });
+    return c.json({ count });
+  });
+
   r.post("/:id/publish", requireAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
@@ -401,6 +418,15 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       return c.json({ error: "Not found" }, 404);
     }
     return c.json({ data: result.data });
+  });
+
+  r.get("/:id/watch-count", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const result = await container.lotService.countWatchersForPublicApi(id);
+    if (result.kind === "not_found") {
+      return c.json({ error: "Not found" }, 404);
+    }
+    return c.json({ data: { count: result.count } });
   });
 
   r.get("/:id/documents", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {

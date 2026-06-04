@@ -6,6 +6,8 @@ export const saleroomHeroFixture: SaleHeroVM = {
   coverImage: "https://example.com/cover.jpg",
   startEndLabel: "12–14 June 2026",
   status: "active",
+  startTime: "2026-06-12T12:00:00.000Z",
+  endTime: "2026-06-14T18:00:00.000Z",
   isLive: true,
   registrationClosesLabel: null,
   biddingStartsLabel: null,

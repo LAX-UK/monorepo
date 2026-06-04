@@ -1,5 +1,6 @@
 "use client";
 
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import {
   Collapsible,
   CollapsibleContent,
@@ -25,7 +26,12 @@ export function CollapsibleSection({ title, children, className, defaultOpen = f
         className,
       )}
     >
-      <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between px-4 py-3 font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface">
+      <CollapsibleTrigger
+        className={cn(
+          "flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg px-4 py-3 font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface",
+          FOCUS_RING,
+        )}
+      >
         {title}
         <ChevronDownIcon className="size-4 transition-transform [[data-state=open]_&]:rotate-180" />
       </CollapsibleTrigger>

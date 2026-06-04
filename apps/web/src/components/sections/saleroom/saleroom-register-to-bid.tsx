@@ -107,7 +107,19 @@ export function SaleroomRegisterToBid({
   }
 
   if (agentEntities.length === 0) {
-    return null;
+    if (!orgModuleEnabled) {
+      return (
+        <p className="max-w-sm font-body text-xs text-on-surface-variant">
+          Bidding on this sale needs a buyer-agent profile. Organisation buyer profiles are coming
+          soon.
+        </p>
+      );
+    }
+    return (
+      <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
+        <Link href="/onboarding/organisation">Set up bidding profile</Link>
+      </Button>
+    );
   }
 
   const selectedStatus = entityId ? statusByLe.get(entityId) : undefined;

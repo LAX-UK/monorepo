@@ -44,7 +44,7 @@ export function HeroAdaptiveShell({
       {...(className ? { className } : {})}
     >
       <div className={cn("relative h-full min-h-[inherit] w-full", shellClassName)}>
-        <AdaptiveMediaFrameContainer className="absolute inset-0 overflow-hidden">
+        <AdaptiveMediaFrameContainer className="absolute inset-0 overflow-hidden bg-surface-container-high">
           <HeroCoverImage
             cover={cover}
             alt={alt}

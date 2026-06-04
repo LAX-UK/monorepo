@@ -12,7 +12,9 @@ import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-
 import { MediaImage } from "@/components/ui/media-image";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { useClientClock } from "@/lib/time/use-client-clock";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -84,14 +86,17 @@ export function LotMoreFromRail({
               <div className="flex flex-col gap-4">
                 <Link
                   href={c.href}
-                  className="group relative block w-full overflow-hidden bg-brand-900"
+                  className={cn(
+                    "group relative block w-full overflow-hidden rounded-sm bg-brand-900",
+                    FOCUS_RING,
+                  )}
                 >
-                  <div className="relative aspect-[200/240] w-full">
+                  <div className="relative aspect-[4/5] w-full">
                     <MediaImage
                       src={c.imageUrl}
                       alt=""
                       label="Lot artwork"
-                      imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-105"
+                      imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
                       sizes="(max-width: 1023px) 100vw, 42vw"
                     />
                     {isCompact ? (
@@ -147,7 +152,10 @@ export function LotMoreFromRail({
                   <div className="flex flex-col gap-1">
                     <Link
                       href={c.href}
-                      className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 hover:underline"
+                      className={cn(
+                        "rounded-sm text-sm font-semibold leading-5 text-on-surface underline-offset-2 hover:underline",
+                        FOCUS_RING,
+                      )}
                     >
                       {c.title}
                     </Link>
