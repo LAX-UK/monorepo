@@ -74,7 +74,7 @@ export function SaleroomLotCard({
                 objectFit="cover"
                 sizes={ROW_IMAGE_SIZES}
                 className="size-full"
-                imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+                imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
               />
             </AdaptiveMediaFrameContainer>
           </Link>
@@ -149,7 +149,7 @@ export function SaleroomLotCard({
       <div className="relative w-full">
         <Link
           href={lot.href}
-          className="relative block aspect-[320/340] w-full min-h-0 overflow-hidden bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
+          className="relative block aspect-[4/5] w-full min-h-0 overflow-hidden rounded-lg bg-surface-container-high transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
           aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
         >
           <AdaptiveMediaFrameContainer className="absolute inset-0">
@@ -158,7 +158,7 @@ export function SaleroomLotCard({
               alt={lot.imageAlt}
               objectFit="cover"
               sizes={sizes}
-              imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+              imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
             />
           </AdaptiveMediaFrameContainer>
           <LotStatusTimer

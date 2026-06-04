@@ -127,30 +127,20 @@ export function ArtworkOnlineLayout({
               upNext={queueUpNext}
               queue={queueRest}
               isSaleQueueLoading={isSaleQueueLoading}
-              className="order-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2"
+              className="order-4 lg:order-none lg:col-start-1"
             />
           ) : null}
           <div
             className={cn(
-              "order-1 min-w-0",
-              showQueue ? "lg:col-start-2 lg:row-start-1" : "lg:col-start-1 lg:row-start-1",
+              "order-1 min-w-0 lg:self-start lg:sticky lg:top-[calc(var(--header-height)+1rem)]",
+              showQueue ? "lg:col-start-2" : "lg:col-start-1",
             )}
           >
             <LotImageArea lot={auction} wide={!showQueue} />
           </div>
           <div
             className={cn(
-              "order-3 mx-auto w-full max-w-[640px]",
-              showQueue
-                ? "lg:col-start-2 lg:row-start-2 lg:max-w-[786px]"
-                : "lg:col-start-1 lg:row-start-2 lg:max-w-[900px]",
-            )}
-          >
-            <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
-          </div>
-          <div
-            className={cn(
-              "order-2 w-full min-w-0 pb-6 lg:row-span-2 lg:row-start-1 lg:pb-24 xl:pl-2",
+              "order-2 w-full min-w-0 pb-6 lg:pb-24 xl:pl-2",
               showQueue ? "lg:col-start-3" : "lg:col-start-2",
             )}
           >
@@ -181,6 +171,15 @@ export function ArtworkOnlineLayout({
               />
             </div>
           </div>
+        </div>
+
+        <div
+          className={cn(
+            "mx-auto mt-10 w-full max-w-[640px] lg:mt-14",
+            showQueue ? "lg:max-w-[786px]" : "lg:max-w-[900px]",
+          )}
+        >
+          <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
         </div>
 
         <LotMoreFromRail

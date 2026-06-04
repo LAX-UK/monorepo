@@ -18,7 +18,7 @@ export function PastAuctionsEmpty({
 
   return (
     <MarketingEmptyState
-      variant="panel"
+      variant="marketing"
       context={hasActiveFilters ? "filtered" : "noResults"}
       title={
         hasActiveFilters ? "No past auctions match these filters." : "No past auction results yet."

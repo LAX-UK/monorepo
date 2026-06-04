@@ -7,6 +7,8 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 type Props = {
   title: string;
+  /** Visible breadcrumb trail rendered above the kicker/title. */
+  breadcrumb?: ReactNode;
   /** Eyebrow rendered above the title. Pass a string for the historical
    * styled <p>; pass any ReactNode to fully customise the slot; pass
    * `null` to omit it (mockup-minimal pages).
@@ -43,6 +45,7 @@ function renderKicker(kicker: Props["kicker"]): ReactNode {
 
 export function LegalPage({
   title,
+  breadcrumb,
   kicker,
   toc,
   lastUpdated,
@@ -52,6 +55,7 @@ export function LegalPage({
 }: Props) {
   const content = (
     <>
+      {breadcrumb ? <div className="mb-4">{breadcrumb}</div> : null}
       {renderKicker(kicker)}
       <h1 className="mb-6 font-headline text-4xl tracking-tight text-on-surface md:text-5xl">
         {title}

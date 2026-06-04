@@ -2,6 +2,7 @@ import { ViewItemListTracker } from "@/components/analytics/view-item-list-track
 import { ArtistScenarioBadges } from "@/components/artists/artist-scenario-badge";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
+import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { ShareButton } from "@/components/marketing/share-button";
 import { ArtistHero } from "@/components/sections/artists/artist-hero";
 import { ArtistRelatedDirectorySection } from "@/components/sections/artists/artist-related-directory-section";
@@ -37,7 +38,7 @@ import { artistPath, lotPath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { getCreatorKindConfig } from "@auction/types";
 import type { Lot, ArtistProfile as RegistryArtist } from "@auction/types";
-import { Badge } from "@auction/ui";
+import { Badge, Button } from "@auction/ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -484,6 +485,22 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
         watchSet={new Set(watchedArtistIds)}
         isAuthenticated={isAuthed}
         browseHref={browseHref}
+      />
+
+      <MarketingPromoCta
+        className="mt-12"
+        title="Submit your portfolio"
+        description="Request a valuation or submit work to be considered for an upcoming auction."
+        actions={
+          <>
+            <Button variant="cta" asChild>
+              <Link href="/dashboard/submissions/new">Submit work</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/sell">Selling guide</Link>
+            </Button>
+          </>
+        }
       />
 
       <ArtistStickyFollow

@@ -4,6 +4,7 @@ import {
   type ArtistWatchlistClient,
   defaultArtistWatchlistClient,
 } from "@/lib/data/http/artist-watchlist.client";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Heart } from "lucide-react";
@@ -87,7 +88,8 @@ export function ArtistWatchHeart({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex size-[var(--tap-target-min,44px)] min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 rounded-full backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-0 [&_svg]:size-4",
+        "inline-flex size-[var(--tap-target-min,44px)] min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 rounded-full backdrop-blur-sm transition-colors [&_svg]:size-4",
+        FOCUS_RING,
         watching
           ? "bg-surface/90 text-error ring-1 ring-error/35 hover:bg-surface hover:text-error"
           : "bg-surface/80 text-on-surface hover:bg-surface hover:text-on-surface",

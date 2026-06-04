@@ -46,17 +46,19 @@ export function SaleroomHeroActions({
   return (
     <div className="flex w-full min-w-0 flex-col items-stretch justify-end gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start">
       {registerToBid?.show ? (
-        <SaleroomRegisterToBid
-          saleId={saleId}
-          loginNextPath={saleHref}
-          isAuthenticated={isAuthenticated}
-          show={registerToBid.show}
-          buyerEntities={registerToBid.buyerEntities}
-          myRegistrations={registerToBid.myRegistrations}
-          kycApproved={registerToBid.kycApproved}
-          kycFeedback={registerToBid.kycFeedback ?? null}
-          orgModuleEnabled={registerToBid.orgModuleEnabled !== false}
-        />
+        <div id="register-to-bid" className="scroll-mt-[calc(var(--header-height)+1rem)]">
+          <SaleroomRegisterToBid
+            saleId={saleId}
+            loginNextPath={saleHref}
+            isAuthenticated={isAuthenticated}
+            show={registerToBid.show}
+            buyerEntities={registerToBid.buyerEntities}
+            myRegistrations={registerToBid.myRegistrations}
+            kycApproved={registerToBid.kycApproved}
+            kycFeedback={registerToBid.kycFeedback ?? null}
+            orgModuleEnabled={registerToBid.orgModuleEnabled !== false}
+          />
+        </div>
       ) : null}
       {isOnsiteScheduled && sale ? (
         <AddSaleToCalendarButton

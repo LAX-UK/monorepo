@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 export const SALE_CARD_SHELL_CLASSNAME = cn(
   "group/card rounded-lg bg-page-bg p-4 sm:p-5 lg:p-6",
   "outline outline-1 -outline-offset-1 outline-outline-variant/60 dark:bg-surface-container-low",
-  "motion-safe:transition-[transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out",
-  "motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md",
-  "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-page-bg",
+  "motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out",
+  "motion-safe:hover:-translate-y-px motion-safe:hover:outline-primary/20",
+  "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary",
 );
 
 type Props = {

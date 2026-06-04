@@ -1,6 +1,7 @@
 import { LegalH2, LegalPage, LegalUL } from "@/components/marketing/legal-page";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { SITE_NAME } from "@/lib/brand";
+import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -33,7 +34,7 @@ export default function CookiesPage() {
       <LegalPage
         title="Cookie policy"
         toc={[...toc]}
-        lastUpdated="14 May 2026"
+        lastUpdated="21 April 2026"
         kicker={null}
         dividerUnderDate
         embedded
@@ -45,7 +46,7 @@ export default function CookiesPage() {
           This policy explains how {SITE_NAME} uses cookies and similar technologies, what
           categories we use, and how you can control optional cookies. It should be read together
           with our{" "}
-          <Link href="/privacy" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/privacy" className={MARKETING_PROSE_LINK}>
             Privacy notice
           </Link>
           .

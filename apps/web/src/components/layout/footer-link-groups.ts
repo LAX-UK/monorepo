@@ -1,28 +1,11 @@
 import type { FooterLink } from "@/components/layout/footer-column";
+import { footerLegalRoutes, policyRouteLabel } from "@/components/marketing/policy-routes";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
-
-/** Existing legacy groupings — kept exported so any future page can recompose
- * the historical layout without reaching back into the footer component.
- */
-export const aboutLinks: FooterLink[] = [
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-  { href: "/terms", label: "Conditions of Business" },
-  { href: "/sitemap.xml", label: "Sitemap" },
-];
 
 export const serviceLinks: FooterLink[] = [
   { href: "/dashboard/submissions/new", label: "Sell with Us" },
   { href: "/contact", label: "Client services" },
   { href: "/archive", label: "Past auctions" },
-];
-
-export const policyLinks: FooterLink[] = [
-  { href: "/privacy", label: "Privacy Notice" },
-  { href: "/cookies", label: "Cookie Policy" },
-  { href: "/legal", label: "Legal" },
-  { href: "/terms", label: "Conditions of Business" },
-  { href: "/shipping", label: "Shipping & Logistics" },
 ];
 
 /** Mockup-aligned groupings — additive; rendered as the default footer grid
@@ -43,13 +26,10 @@ export const companyLinks: FooterLink[] = [
   { href: "/faq", label: "FAQ" },
 ];
 
-export const legalLinks: FooterLink[] = [
-  { href: "/terms", label: "Conditions of Business" },
-  { href: "/privacy", label: "Privacy Notice" },
-  { href: "/cookies", label: "Cookie Policy" },
-  { href: "/shipping", label: "Shipping & Logistics" },
-  { href: "/legal", label: "Legal" },
-];
+export const legalLinks: FooterLink[] = footerLegalRoutes.map((route) => ({
+  href: route.href,
+  label: policyRouteLabel(route),
+}));
 
 /** Mockup-aligned services column kept as a sibling for /shipping etc. */
 export const servicesMockupLinks: FooterLink[] = serviceLinks;

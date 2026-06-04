@@ -1,3 +1,7 @@
+import {
+  MARKETING_HUB_BREADCRUMB_CLASS,
+  MarketingBreadcrumb,
+} from "@/components/marketing/marketing-breadcrumb";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { DisplayHeading } from "@auction/ui";
 
@@ -8,6 +12,15 @@ const SUBTITLE =
 export function SalesHeroHeader() {
   return (
     <MarketingPageHero
+      breadcrumb={
+        <MarketingBreadcrumb
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Calendar", current: true },
+          ]}
+          className={MARKETING_HUB_BREADCRUMB_CLASS}
+        />
+      }
       title={
         <DisplayHeading as="h1" size="section" className="font-semibold">
           Calendar

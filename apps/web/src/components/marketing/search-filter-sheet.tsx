@@ -8,6 +8,7 @@ import { SearchCategoryChips } from "@/components/marketing/search-category-chip
 import { SearchFilterForm } from "@/components/marketing/search-filter-form";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
 import { SearchSortSheetGroup } from "@/components/marketing/search-sort-sheet-group";
+import { SearchStatusChips } from "@/components/marketing/search-status-chips";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { Category, LotStatus } from "@auction/types";
@@ -77,6 +78,20 @@ export function SearchFilterSheet({
           inputId={`${resolvedFormId}-q`}
           onSubmitted={close}
         />
+        <div>
+          <p className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            Status
+          </p>
+          <SearchStatusChips
+            layout="list"
+            trimmed={trimmed}
+            sort={sort}
+            view={view}
+            categoryId={categoryId}
+            {...(status ? { status } : {})}
+            {...(ending ? { ending } : {})}
+          />
+        </div>
         {categories.length > 0 ? (
           <div>
             <p className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">

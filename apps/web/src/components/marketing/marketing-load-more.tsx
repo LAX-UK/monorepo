@@ -68,58 +68,60 @@ export function MarketingLoadMore({
   const exceedsLoadAllCap = loadAllCap != null && total > loadAllCap;
 
   return (
-    <div className="mx-auto flex w-full max-w-[233px] flex-col items-stretch gap-4 py-10 text-center">
-      <p className="text-center text-xs leading-4 text-on-surface-variant">
-        Showing {shown}/{total}
-        {exceedsLoadAllCap && shown >= loadAllCap ? (
-          <span className="mt-1 block">Use Load More for the remaining {unitLabel}.</span>
-        ) : null}
-        <span className="sr-only">
-          {" "}
-          {percent}% of {unitLabel} loaded
-        </span>
-      </p>
-      <div
-        className="relative h-[5px] w-full overflow-hidden bg-surface-container-high"
-        aria-hidden
-      >
+    <div className="mt-12 border-t border-border-hairline pt-10">
+      <div className="mx-auto flex w-full max-w-[233px] flex-col items-stretch gap-4 pb-10 text-center">
+        <p aria-live="polite" className="text-center text-xs leading-4 text-on-surface-variant">
+          Showing {shown}/{total}
+          {exceedsLoadAllCap && shown >= loadAllCap ? (
+            <span className="mt-1 block">Use Load More for the remaining {unitLabel}.</span>
+          ) : null}
+          <span className="sr-only">
+            {" "}
+            {percent}% of {unitLabel} loaded
+          </span>
+        </p>
         <div
-          className="h-full bg-on-surface transition-[width] duration-300"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      {hasMore ? (
-        <div className="flex justify-center">
-          <Button
-            asChild
-            variant="ghost"
-            className="h-10 w-[148px] min-w-0 border border-outline-variant/50 bg-transparent font-body text-base font-semibold leading-6 tracking-wide text-on-surface hover:bg-transparent dark:hover:bg-transparent"
-          >
-            <Link
-              href={nextHref}
-              rel="next"
-              prefetch={false}
-              className="inline-flex items-center justify-center"
+          className="relative h-[5px] w-full overflow-hidden bg-surface-container-high"
+          aria-hidden
+        >
+          <div
+            className="h-full bg-on-surface transition-[width] duration-300"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        {hasMore ? (
+          <div className="flex justify-center">
+            <Button
+              asChild
+              variant="ghost"
+              className="h-10 w-[148px] min-w-0 border border-outline-variant/50 bg-transparent font-body text-base font-semibold leading-6 tracking-wide text-on-surface hover:bg-transparent dark:hover:bg-transparent"
             >
-              Load More
-              <ChevronDown className="ml-1 size-4" aria-hidden />
-              <span className="sr-only">
-                — next {remaining} {unitLabel}
-              </span>
+              <Link
+                href={nextHref}
+                rel="next"
+                prefetch={false}
+                className="inline-flex items-center justify-center"
+              >
+                Load More
+                <ChevronDown className="ml-1 size-4" aria-hidden />
+                <span className="sr-only">
+                  — next {remaining} {unitLabel}
+                </span>
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+        {canLoadAll && hasMore ? (
+          <div className="flex justify-center">
+            <Link
+              href={loadAllHref}
+              className="inline-block w-[148px] text-center font-body text-base font-normal leading-6 tracking-wide text-on-surface underline decoration-on-surface underline-offset-2"
+            >
+              Load all
             </Link>
-          </Button>
-        </div>
-      ) : null}
-      {canLoadAll && hasMore ? (
-        <div className="flex justify-center">
-          <Link
-            href={loadAllHref}
-            className="inline-block w-[148px] text-center font-body text-base font-normal leading-6 tracking-wide text-on-surface underline decoration-on-surface underline-offset-2"
-          >
-            Load all
-          </Link>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

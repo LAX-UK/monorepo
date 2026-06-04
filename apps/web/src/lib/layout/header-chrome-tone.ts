@@ -1,3 +1,4 @@
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 
 export type SiteHeaderTone = "on-dark" | "on-light";
@@ -23,7 +24,8 @@ export function headerUtilityLinkClass(
 ): string {
   return cn(
     SITE_HEADER_CHROME,
-    "font-label text-sm font-medium uppercase leading-[21px] transition-colors",
+    "rounded-sm font-label text-sm font-medium uppercase leading-[21px] transition-colors",
+    FOCUS_RING,
     tone === "on-dark"
       ? current
         ? "text-hero-foreground"

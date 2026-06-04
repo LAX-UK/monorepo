@@ -47,24 +47,17 @@ vi.mock("@/components/marketing/chrome-icon-button", () => ({
 }));
 
 describe("SiteHeader", () => {
-  it("renders full logo on mobile and xl, compact logo-text at lg–xl", () => {
+  it("renders primary wordmark with light/dark assets in the header logo link", () => {
     render(<SiteHeader />);
 
     const logos = screen.getAllByRole("img", { hidden: true, name: /London Auction House/i });
     expect(logos.some((img) => img.getAttribute("src") === "/logo.svg")).toBe(true);
     expect(logos.some((img) => img.getAttribute("src") === "/logo-light.svg")).toBe(true);
-    expect(logos.some((img) => img.getAttribute("src") === "/logo-text.svg")).toBe(true);
-    expect(logos.some((img) => img.getAttribute("src") === "/logo-text-light.svg")).toBe(true);
 
-    const fullShell = logos
+    const logoLink = logos
       .find((img) => img.getAttribute("src") === "/logo.svg")
-      ?.closest(".lg\\:hidden");
-    expect(fullShell).not.toBeNull();
-
-    const compactShell = logos
-      .find((img) => img.getAttribute("src") === "/logo-text.svg")
-      ?.closest(".hidden.lg\\:block");
-    expect(compactShell).not.toBeNull();
+      ?.closest(".site-header-logo");
+    expect(logoLink).not.toBeNull();
 
     const eagerLogos = logos.filter((img) => img.getAttribute("loading") === "eager");
     expect(eagerLogos.length).toBeGreaterThanOrEqual(2);

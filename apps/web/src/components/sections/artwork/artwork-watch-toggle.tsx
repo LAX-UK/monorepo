@@ -1,6 +1,8 @@
 "use client";
 
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bookmark, BookmarkCheck, Loader2, LogIn } from "lucide-react";
 import Link from "next/link";
@@ -10,7 +12,7 @@ type Props = {
   lotId: string;
   initialWatching: boolean;
   isAuthenticated: boolean;
-  /** `outlined-block` — saleroom lot card: 40px, light border #A3A3A3, 4px radius.
+  /** `outlined-block` — saleroom lot card: 44px tap target, light border #A3A3A3, 4px radius.
    * `default` — existing card / detail rail (unchanged for LSP).
    * `list-action` — compact outline button for dashboard mobile list cards.
    */
@@ -23,7 +25,7 @@ type Props = {
 };
 
 const lotBtnClass =
-  "box-border inline-flex h-10 min-w-0 w-full items-center justify-center gap-2 rounded-[4px] border border-brand-200 bg-transparent px-3 sm:px-6 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-outline-variant/50 dark:text-on-surface";
+  "box-border inline-flex h-11 min-w-0 w-full items-center justify-center gap-2 rounded-[4px] border border-brand-200 bg-transparent px-3 sm:px-6 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-outline-variant/50 dark:text-on-surface";
 
 export function ArtworkWatchToggle({
   lotId,
@@ -87,10 +89,7 @@ export function ArtworkWatchToggle({
     }
     if (appearance === "outlined-block") {
       return (
-        <Link
-          href={loginHref}
-          className={`${lotBtnClass} whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-800 dark:focus-visible:outline-on-surface`}
-        >
+        <Link href={loginHref} className={cn(lotBtnClass, "whitespace-nowrap", FOCUS_RING)}>
           <LogIn className="size-4 shrink-0" aria-hidden />
           <span className="truncate">{signInLabel}</span>
         </Link>

@@ -25,6 +25,7 @@ export function SaleroomLotsGrid({
   if (lots.length === 0) {
     return (
       <MarketingEmptyState
+        variant="marketing"
         className="py-4"
         context="noResults"
         illustration="lots"

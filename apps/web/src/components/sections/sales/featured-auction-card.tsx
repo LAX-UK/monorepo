@@ -5,7 +5,6 @@ import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { FeaturedAuctionCardVM } from "@/components/sections/sales/sales-view-models";
 import { RevealInView } from "@/components/ui/reveal";
-import { cn } from "@auction/ui";
 
 type Props = {
   vm: FeaturedAuctionCardVM;
@@ -18,13 +17,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
   return (
     <li className="h-full min-w-0 flex-1">
       <RevealInView variant="fadeUp" delayMs={index * 70} className="block h-full min-w-0">
-        <SaleCardGrid
-          href={vm.href}
-          className={cn(
-            "motion-safe:ease-out",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-page-bg",
-          )}
-        >
+        <SaleCardGrid href={vm.href} className="motion-safe:ease-out">
           <SaleCardMedia
             href={vm.href}
             coverImageUrl={vm.coverImageUrl}

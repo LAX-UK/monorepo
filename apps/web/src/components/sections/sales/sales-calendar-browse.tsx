@@ -2,6 +2,7 @@
 
 import { SalesCalendarToolbar } from "@/components/sections/sales/sales-calendar-toolbar";
 import { SalesFilterSidebar } from "@/components/sections/sales/sales-filter-sidebar";
+import type { SalesBrowseView } from "@/components/sections/sales/sales-view-switcher";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import type { ReactNode } from "react";
 
@@ -12,7 +13,7 @@ type Props = {
   resultCount: number;
   categories: Category[];
   years: number[];
-  calendarView: "grid" | "list";
+  calendarView: SalesBrowseView;
   children: ReactNode;
 };
 

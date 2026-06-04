@@ -1,9 +1,12 @@
-import { MarketingBreadcrumb } from "@/components/marketing/marketing-breadcrumb";
+import {
+  MARKETING_HUB_BREADCRUMB_CLASS,
+  MarketingBreadcrumb,
+} from "@/components/marketing/marketing-breadcrumb";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
 import { ArtistsDirectoryLetterCollapsible } from "@/components/sections/artists/artists-directory-letter-collapsible";
 import type { ArtistDirectoryPreset } from "@/lib/artists/directory-presets";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { Button, cn } from "@auction/ui";
 import Link from "next/link";
@@ -55,19 +58,19 @@ export function ArtistsDirectoryHero({
         MARKETING_PAGE_SHELL,
       )}
     >
-      <MarketingPageShell variant="inner" className="!max-w-7xl !px-0">
+      <MarketingPageShell variant="inner" className="!px-0">
         <MarketingPageHero
           breadcrumb={
             <MarketingBreadcrumb
               items={[...breadcrumbItems]}
-              className="font-label text-[10px] uppercase tracking-[0.2em] text-secondary"
+              className={MARKETING_HUB_BREADCRUMB_CLASS}
             />
           }
           eyebrow="Catalogue"
           title={preset.heroTitle}
           titleSize="lg"
           description={preset.heroDescription}
-          className="!py-0"
+          className="!px-0 !py-0"
         />
 
         <form
@@ -89,7 +92,10 @@ export function ArtistsDirectoryHero({
               name="q"
               defaultValue={q ?? ""}
               placeholder="Name or keyword…"
-              className="h-11 min-h-11 rounded-md border border-outline-variant bg-surface px-4 font-body text-on-surface shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 sm:h-12"
+              className={cn(
+                "h-11 min-h-11 rounded-md border border-outline-variant bg-surface px-4 font-body text-on-surface shadow-sm focus:outline-none sm:h-12",
+                FOCUS_RING,
+              )}
             />
           </label>
           <Button type="submit" className="h-11 shrink-0 px-5 sm:h-12 sm:px-8">
@@ -97,19 +103,15 @@ export function ArtistsDirectoryHero({
           </Button>
         </form>
 
-        <div
-          role="tablist"
-          aria-label="Artist scenario"
-          className="mt-5 flex flex-wrap gap-1.5 md:mt-6 md:gap-2"
-        >
+        <nav aria-label="Artist scenario" className="mt-5 flex flex-wrap gap-1.5 md:mt-6 md:gap-2">
           {segChips.map((c) => (
             <Link
               key={c.id}
               href={c.href}
-              role="tab"
-              aria-selected={c.active}
+              aria-current={c.active ? "page" : undefined}
               className={cn(
-                "rounded-full px-3 py-1.5 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors md:px-4 md:py-2",
+                "inline-flex min-h-11 items-center rounded-full px-3 py-1.5 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ring-1 transition-colors md:px-4 md:py-2",
+                FOCUS_RING,
                 c.active
                   ? "bg-primary text-on-primary ring-primary"
                   : "bg-surface-container-low text-on-surface ring-outline-variant/20 hover:bg-surface-container-high/80",
@@ -118,7 +120,7 @@ export function ArtistsDirectoryHero({
               {c.label}
             </Link>
           ))}
-        </div>
+        </nav>
 
         <ArtistsDirectoryLetterCollapsible letterBar={letterBar} />
         <div className="mt-6 hidden md:block">

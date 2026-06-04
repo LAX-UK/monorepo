@@ -6,6 +6,7 @@ import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { lotCatalogStatusPresentation } from "@/lib/marketing/lot-catalog-status";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
@@ -67,7 +68,8 @@ function WorkFilterControls({
             aria-pressed={selected}
             onClick={() => onChange(item.value)}
             className={cn(
-              "rounded-full border px-3 py-1 font-label text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors",
+              "inline-flex min-h-11 items-center rounded-full border px-3 py-1 font-label text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors",
+              FOCUS_RING,
               selected
                 ? "border-on-surface bg-on-surface text-surface"
                 : "border-outline-variant/40 text-on-surface-variant hover:border-on-surface/40 hover:text-on-surface",

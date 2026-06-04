@@ -198,6 +198,7 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
                 Topic
               </FormLabel>
               <RhfSelect
+                id="contact-topic"
                 value={field.value}
                 onValueChange={field.onChange}
                 onBlur={field.onBlur}
@@ -243,9 +244,10 @@ function ContactSubmitButton({
   return (
     <Button
       type="submit"
+      variant="cta"
       disabled={loading || rest.disabled}
       className={cn(
-        "rounded-sm bg-cta-bg px-7 py-3.5 font-label text-xs font-semibold uppercase tracking-[0.04em] text-cta-on shadow-none hover:bg-cta-bg/90",
+        "px-7 py-3.5 font-label text-xs font-semibold uppercase tracking-[0.04em]",
         className,
       )}
       {...rest}

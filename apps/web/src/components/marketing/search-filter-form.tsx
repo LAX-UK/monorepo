@@ -125,3 +125,14 @@ export function SearchFilterFormDesktop(
     </div>
   );
 }
+
+/** Compact inline keyword search shown on mobile only (desktop uses the hero form). */
+export function SearchFilterFormMobile(
+  props: Omit<ComponentProps<typeof SearchFilterForm>, "variant">,
+) {
+  return (
+    <div className={cn("mb-4 md:hidden")}>
+      <SearchFilterForm {...props} variant="hero" inputId="search-q-mobile" />
+    </div>
+  );
+}

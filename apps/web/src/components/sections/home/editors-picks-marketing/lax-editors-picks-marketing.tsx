@@ -22,8 +22,8 @@ export function LaxEditorsPicksMarketing({
   if (lots.length === 0) {
     return (
       <section
-        aria-labelledby="home-editors-picks-heading"
-        className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
+        aria-label="Editor's picks"
+        className={`${MARKETING_PAGE_SHELL} pb-0 pt-[var(--section-spacing-tight)]`}
       >
         <MarketingEmptyState
           variant="marketing"

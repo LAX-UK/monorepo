@@ -11,6 +11,6 @@ describe("SaleCardShell", () => {
     );
     expect(screen.getByText("Inside")).toBeInTheDocument();
     const shell = screen.getByText("Inside").parentElement;
-    expect(shell).toHaveClass("rounded-lg", "bg-page-bg", "outline", "focus-within:ring-2");
+    expect(shell).toHaveClass("rounded-lg", "bg-page-bg", "outline", "focus-within:outline-2");
   });
 });

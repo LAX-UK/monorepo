@@ -1,15 +1,52 @@
 "use client";
 
 import type { AccordionBlock } from "@/components/sections/artwork/artwork-view-models";
-import { ARTWORK_PAGE_ACCORDION_IDS } from "@/components/sections/artwork/artwork-view-models";
+import { splitArtworkAccordionBlocks } from "@/components/sections/artwork/artwork-view-models";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
   BodyText,
+  cn,
 } from "@auction/ui";
 import type { ReactNode } from "react";
+
+type LotDetailsSectionProps = {
+  block: AccordionBlock | null;
+  /** Tighter spacing for the online bid column (~440px). */
+  compact?: boolean;
+  className?: string;
+};
+
+/** Always-open LOT DETAILS block (extracted from `artworkCenter` accordion variant). */
+export function LotDetailsSection({ block, compact = false, className }: LotDetailsSectionProps) {
+  if (!block) return null;
+
+  return (
+    <section
+      id="lot-details"
+      className={cn(
+        compact
+          ? "mb-6 border-b border-outline-variant/40 pb-6"
+          : "mb-8 border-b border-outline-variant/40 pb-8",
+        className,
+      )}
+    >
+      <h2
+        className={cn(
+          "mb-4 font-body font-medium uppercase tracking-wide text-on-surface",
+          compact ? "text-base leading-6" : "text-lg leading-7",
+        )}
+      >
+        LOT DETAILS
+      </h2>
+      <div className="text-sm leading-7 text-on-surface-variant">
+        {block.contentNode != null ? block.contentNode : <BodyText>{block.content ?? ""}</BodyText>}
+      </div>
+    </section>
+  );
+}
 
 type Props = {
   blocks: AccordionBlock[];
@@ -24,25 +61,11 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
   if (visible.length === 0 && !extraItem) return null;
 
   if (variant === "artworkCenter") {
-    const lotDetailsBlock = visible.find((b) => b.id === ARTWORK_PAGE_ACCORDION_IDS.lotDetails);
-    const accordionBlocks = visible.filter((b) => b.id !== ARTWORK_PAGE_ACCORDION_IDS.lotDetails);
+    const { lotDetails: lotDetailsBlock, accordionBlocks } = splitArtworkAccordionBlocks(blocks);
 
     return (
       <div className="w-full">
-        {lotDetailsBlock ? (
-          <section className="mb-8 border-b border-outline-variant/40 pb-8">
-            <h2 className="mb-4 font-body text-lg font-medium uppercase leading-7 tracking-wide text-on-surface">
-              LOT DETAILS
-            </h2>
-            <div className="text-sm leading-7 text-on-surface-variant">
-              {lotDetailsBlock.contentNode != null ? (
-                lotDetailsBlock.contentNode
-              ) : (
-                <BodyText>{lotDetailsBlock.content ?? ""}</BodyText>
-              )}
-            </div>
-          </section>
-        ) : null}
+        <LotDetailsSection block={lotDetailsBlock} />
 
         {(accordionBlocks.length > 0 || extraItem) && (
           <div className="w-full border-t border-outline-variant/40 pt-0">

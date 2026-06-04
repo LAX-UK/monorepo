@@ -1,6 +1,6 @@
 "use client";
 
-import { MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
 import { getRecentlyViewedLots } from "@/lib/marketing/recently-viewed-lots";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -34,7 +34,10 @@ export function RecentlyViewedRail({ className }: { className?: string }) {
             <li key={item.id} className="shrink-0">
               <Link
                 href={item.href}
-                className="inline-flex max-w-[14rem] truncate rounded-full border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 font-body text-xs text-on-surface transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className={cn(
+                  "inline-flex max-w-[14rem] truncate rounded-full border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 font-body text-xs text-on-surface transition-colors hover:border-primary hover:text-primary",
+                  FOCUS_RING,
+                )}
               >
                 {item.title}
               </Link>

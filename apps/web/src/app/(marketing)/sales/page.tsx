@@ -4,16 +4,19 @@ import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-aucti
 import { SalesAuctionList } from "@/components/sections/sales/sales-auction-list";
 import { SalesCalendarBrowse } from "@/components/sections/sales/sales-calendar-browse";
 import { SalesCalendarGrid } from "@/components/sections/sales/sales-calendar-grid";
+import { SalesCalendarMonthGrid } from "@/components/sections/sales/sales-calendar-month-grid";
 import { SalesCalendarPagination } from "@/components/sections/sales/sales-calendar-pagination";
 import { SalesHeroHeader } from "@/components/sections/sales/sales-hero-header";
 import { SalesNewLotsGrid } from "@/components/sections/sales/sales-new-lots-grid";
 import { SalesNewLotsToolbar } from "@/components/sections/sales/sales-new-lots-toolbar";
 import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
 import {
+  mapSaleToAgendaItemVM,
   mapSaleToAuctionRowVM,
   mapSaleToCalendarGridCardVM,
   mapSaleToFeaturedAuctionCardVM,
 } from "@/components/sections/sales/sales-view-models";
+import type { SalesBrowseView } from "@/components/sections/sales/sales-view-switcher";
 import { firstString } from "@/lib/admin/admin-list-params";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
@@ -133,14 +136,20 @@ export default async function SalesListPage({
   }
   const session = await getServerSessionUser();
 
+  const rawView = firstString(sp.view);
+  const isCalendarLayout = rawView === "calendar";
   const salesLayoutResolved = await resolveMarketingLayoutView({
     routeKey: "sales",
     category: "sales",
-    urlView: firstString(sp.view),
+    urlView: isCalendarLayout ? undefined : rawView,
     user: session,
     fallback: "list",
   });
-  const calendarView: "grid" | "list" = salesLayoutResolved === "list" ? "list" : "grid";
+  const calendarView: SalesBrowseView = isCalendarLayout
+    ? "calendar"
+    : salesLayoutResolved === "list"
+      ? "list"
+      : "grid";
 
   const [categories, hasLiveSales] = await Promise.all([
     getServerCategoryReader()
@@ -169,7 +178,7 @@ export default async function SalesListPage({
         ...(year != null ? { year } : {}),
         ...(minPrice != null ? { minPrice } : {}),
         ...(maxPrice != null ? { maxPrice } : {}),
-        ...(calendarView === "list" ? { view: "list" } : {}),
+        ...(calendarView !== "grid" ? { view: calendarView } : {}),
         ...(calendarPage > 1 ? { page: calendarPage } : {}),
       }),
     );
@@ -275,6 +284,7 @@ export default async function SalesListPage({
       showRegisterButton: !session && (sale.status === "scheduled" || sale.status === "active"),
     }),
   );
+  const agendaVms = filteredSales.map(({ sale, lots }) => mapSaleToAgendaItemVM(sale, lots));
 
   const hasActiveCalendarFilters = countActiveCalendarFilters(calendarState) > 0;
 
@@ -427,6 +437,8 @@ export default async function SalesListPage({
                         ) : undefined
                       }
                     />
+                  ) : calendarView === "calendar" ? (
+                    <SalesCalendarMonthGrid items={agendaVms} />
                   ) : calendarView === "grid" ? (
                     <SalesCalendarGrid vms={gridVms} />
                   ) : (

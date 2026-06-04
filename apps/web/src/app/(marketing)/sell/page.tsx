@@ -1,7 +1,14 @@
 import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
+import {
+  MARKETING_HUB_BREADCRUMB_CLASS,
+  MarketingBreadcrumb,
+} from "@/components/marketing/marketing-breadcrumb";
+import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
+import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { Button } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -27,6 +34,15 @@ export default function SellPage() {
       </script>
       <LegalPage
         title="Selling with LAX.BID"
+        breadcrumb={
+          <MarketingBreadcrumb
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Selling", current: true },
+            ]}
+            className={MARKETING_HUB_BREADCRUMB_CLASS}
+          />
+        }
         lastUpdated="21 April 2026"
         kicker={null}
         dividerUnderDate
@@ -65,7 +81,7 @@ export default function SellPage() {
         <p>
           Fees, reserves, photography, storage, shipping, and settlement timing are agreed before a
           lot is entered into sale. The governing sale terms are available in our{" "}
-          <Link href="/terms" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/terms" className={MARKETING_PROSE_LINK}>
             Conditions of Business
           </Link>
           .
@@ -80,18 +96,31 @@ export default function SellPage() {
 
         <p>
           Ready to proceed?{" "}
-          <Link
-            href="/dashboard/submissions/new"
-            className="text-primary underline-offset-4 hover:underline"
-          >
+          <Link href="/dashboard/submissions/new" className={MARKETING_PROSE_LINK}>
             Start a submission
           </Link>{" "}
           or{" "}
-          <Link href="/contact" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/contact" className={MARKETING_PROSE_LINK}>
             speak to a specialist
           </Link>
           .
         </p>
+
+        <MarketingPromoCta
+          className="mt-10"
+          title="Submit your portfolio"
+          description="Request a valuation or submit work to be considered for an upcoming auction."
+          actions={
+            <>
+              <Button variant="cta" asChild>
+                <Link href="/dashboard/submissions/new">Submit work</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/contact">Speak to a specialist</Link>
+              </Button>
+            </>
+          }
+        />
       </LegalPage>
     </PolicyHubLayout>
   );
