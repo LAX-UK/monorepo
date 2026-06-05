@@ -14,6 +14,16 @@ function read(rel: string): string {
 /** Mobile base padding must use the token, not fixed Tailwind pb-24/pb-28. */
 const MOBILE_FIXED_BOTTOM_PADDING = /(?<![:\w-])pb-(24|28|32)\b/;
 
+const PAGE_BOTTOM_PADDING_SHELLS = [
+  "components/marketing/marketing-catalog-hub-shell.tsx",
+  "components/marketing/marketing-detail-shell.tsx",
+] as const;
+
+function usesPageBottomPadding(routeSrc: string): boolean {
+  if (routeSrc.includes("pb-[var(--page-bottom-padding)]")) return true;
+  return routeSrc.includes("MarketingCatalogHubShell") || routeSrc.includes("MarketingDetailShell");
+}
+
 const LONG_SCROLL_ROUTES = [
   {
     label: "sales browse",
@@ -60,10 +70,15 @@ describe("mobile viewport matrix (320/390px)", () => {
     "$label uses --page-bottom-padding on long-scroll surfaces",
     ({ path }) => {
       const src = read(path);
-      expect(src).toContain("pb-[var(--page-bottom-padding)]");
+      expect(usesPageBottomPadding(src)).toBe(true);
       expect(src).not.toMatch(MOBILE_FIXED_BOTTOM_PADDING);
     },
   );
+
+  it.each(PAGE_BOTTOM_PADDING_SHELLS)("%s applies pb-[var(--page-bottom-padding)]", (path) => {
+    const src = read(path);
+    expect(src).toContain("pb-[var(--page-bottom-padding)]");
+  });
 
   it.each(VIEWPORT_WIDTHS)(
     "pageBottomPadding stays chrome-aware at %ipx marketing routes",
