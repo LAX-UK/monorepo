@@ -5,10 +5,10 @@ name: Build images
 # Registry. App Platform then only PULLS these images instead of building from
 # source, which is the bulk of the ~30 min deploy time.
 #
-# Scope: api, auth, ws, worker, migrate. `web` is intentionally NOT built here —
-# it bakes NEXT_PUBLIC_* values at build time from the App Platform spec, so it
-# stays a DO github-source build (see the web component's deploy_source = "github"
-# in infra/terraform/ephemeral/<env>/main.tf).
+# Scope: api, auth, ws, worker, migrate, web. `web` bakes NEXT_PUBLIC_* at build
+# time, so its build args come from infra/web-build/<env>.env (public values) plus
+# GitHub env vars/secrets (GTM, Turnstile site key) — see the "Compose web build
+# args" step below.
 #
 # Each image is pushed with two tags:
 #   - <environment>  (rolling tag the Terraform app spec pins to; the deploy step
@@ -56,6 +56,8 @@ jobs:
             dockerfile: apps/worker/Dockerfile
           - component: migrate
             dockerfile: docker/migrate.Dockerfile
+          - component: web
+            dockerfile: apps/web/Dockerfile
     env:
       # Account-level DOCR registry name (registry.digitalocean.com/<name>).
       # Set as a repository or environment variable. Terraform output:
@@ -84,6 +86,54 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Guard: the baked NEXT_PUBLIC_WEB_ORIGIN must match the Terraform local for
+      # this env. A mismatch silently rebakes the wrong canonical/robots origin
+      # (the noindex bug) into the image, so fail the build instead.
+      - name: Verify web origin matches Terraform
+        if: matrix.component == 'web'
+        run: |
+          set -euo pipefail
+          ENV_FILE="infra/web-build/${ENVIRONMENT}.env"
+          TF_FILE="infra/terraform/ephemeral/${ENVIRONMENT}/main.tf"
+          env_origin="$(grep -E '^NEXT_PUBLIC_WEB_ORIGIN=' "$ENV_FILE" | head -n1 | cut -d= -f2-)"
+          tf_origin="$(grep -E '^[[:space:]]*web_origin[[:space:]]*=' "$TF_FILE" | head -n1 | sed -E 's/.*"([^"]*)".*/\1/')"
+          if [ -z "$env_origin" ] || [ -z "$tf_origin" ]; then
+            echo "::error::Could not read web origin from $ENV_FILE ('$env_origin') or $TF_FILE ('$tf_origin')"
+            exit 1
+          fi
+          if [ "$env_origin" != "$tf_origin" ]; then
+            echo "::error::NEXT_PUBLIC_WEB_ORIGIN mismatch: $ENV_FILE='$env_origin' vs $TF_FILE web_origin='$tf_origin'"
+            exit 1
+          fi
+          echo "web origin OK: $env_origin"
+
+      # web bakes NEXT_PUBLIC_* at build time. Public values come from the committed
+      # per-env file; GTM / consent / Turnstile site key come from GitHub env
+      # vars/secrets. (Turnstile SITE key is public; the SECRET key is never passed.
+      # SENTRY_AUTH_TOKEN is intentionally omitted to avoid leaking it into image
+      # layers — web client sourcemaps are out of scope here.)
+      - name: Compose web build args
+        id: webargs
+        if: matrix.component == 'web'
+        run: |
+          set -euo pipefail
+          ENV_FILE="infra/web-build/${ENVIRONMENT}.env"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "::error::Missing web build args file $ENV_FILE"
+            exit 1
+          fi
+          {
+            echo 'args<<__BUILD_ARGS_EOF__'
+            grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE"
+            echo "NEXT_PUBLIC_GTM_ID=${{ vars.NEXT_PUBLIC_GTM_ID }}"
+            echo "NEXT_PUBLIC_DISABLE_CONSENT_BANNER=${{ vars.NEXT_PUBLIC_DISABLE_CONSENT_BANNER }}"
+            echo "NEXT_PUBLIC_CSP_REPORT_URI=${{ vars.NEXT_PUBLIC_CSP_REPORT_URI }}"
+            echo "CSP_ENFORCE=${{ vars.CSP_ENFORCE }}"
+            echo "NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.TURNSTILE_SITE_KEY }}"
+            echo "SENTRY_PROJECT=lax-${ENVIRONMENT}-web"
+            echo '__BUILD_ARGS_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push ${{ matrix.component }}
         uses: docker/build-push-action@v6
         with:
@@ -92,6 +142,7 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: false
+          build-args: ${{ steps.webargs.outputs.args }}
           tags: |
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.ENVIRONMENT }}
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}
