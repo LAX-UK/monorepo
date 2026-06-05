@@ -37,13 +37,17 @@ function button(
   return node;
 }
 
-function linkButton(label: string, href: string, primary = false) {
+function linkButton(label: string, href: string, primary = false, newTab = false) {
   const node = el(
     "a",
     primary ? "rsvp-btn rsvp-btn-primary" : "rsvp-btn",
     label,
   ) as HTMLAnchorElement;
   node.href = href;
+  if (newTab) {
+    node.target = "_blank";
+    node.rel = "noopener noreferrer";
+  }
   return node;
 }
 
@@ -280,15 +284,14 @@ export class RsvpFormController {
       el(
         "p",
         "rsvp-hint",
-        "A confirmation email has been sent to your inbox. Our events team has been notified.",
+        "A confirmation email has been sent to your inbox. Show your entry pass QR at registration on 18 June.",
       ),
     );
 
     const row = el("div", "rsvp-actions");
     row.append(
-      button("Add to calendar", () => downloadOpeningEventCalendar(result.attendanceSegment), {
-        primary: true,
-      }),
+      linkButton("View entry pass", result.passUrl, true, true),
+      button("Add to calendar", () => downloadOpeningEventCalendar(result.attendanceSegment)),
       linkButton("Get directions", MAPS_URL),
       linkButton("Browse catalogue", CATALOGUE_URL),
     );

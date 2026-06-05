@@ -34,7 +34,11 @@ export function mapOnsiteEventRow(row: Row): OnsiteEvent {
     segmentOptions: parseSegmentOptions(row.segmentOptions),
     opsEmail: row.opsEmail,
     micrositeUrl: row.micrositeUrl,
+    venue: row.venue,
+    dressCode: row.dressCode,
+    arrivalNote: row.arrivalNote,
     status: parseStatus(row.status),
+    checkInDryRun: row.checkInDryRun,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

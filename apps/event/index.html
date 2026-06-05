@@ -61,6 +61,7 @@
     }
   </script>
   <link rel="stylesheet" href="/rsvp.css">
+  <link rel="stylesheet" href="/pass.css">
   <link rel="stylesheet" href="/event-page.css">
   <link rel="stylesheet" href="/responsive.css">
   <style type="text/css">
@@ -158,7 +159,7 @@
               <div class="event-meta-actions">
                 <button type="button" id="add-to-calendar" class="event-meta-actions__btn">Add to calendar</button>
                 <button type="button" id="share-invite" class="event-meta-actions__btn">Share invite</button>
-                <a href="#rsvp" class="event-meta-actions__btn event-meta-actions__btn--primary">RSVP</a>
+                <a href="#rsvp" class="event-meta-actions__btn event-meta-actions__btn--primary" data-rsvp-cta>RSVP</a>
               </div>
               <p id="share-invite-feedback" class="share-invite-feedback" hidden>Link copied</p>
             </td>
@@ -236,7 +237,7 @@
                       <span class="highlight-stat__value">£1</span>
                     </div>
                   </div>
-                  <a class="highlight-lot__cta" href="#rsvp">Reserve your seat</a>
+                  <a class="highlight-lot__cta" href="#rsvp" data-rsvp-cta>Reserve your seat</a>
                 </div>
               </section>
             </td>
@@ -418,6 +419,7 @@
   </div>
 
   <a href="#rsvp" id="sticky-rsvp" class="sticky-rsvp">RSVP now</a>
+  <div id="pass-root" aria-live="polite"></div>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

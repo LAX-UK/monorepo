@@ -25,7 +25,7 @@ export interface IOnsiteEventRsvpService {
     eventSlug: string,
     body: SubmitOnsiteEventRsvpBody,
   ): Promise<
-    | { ok: true; data: OnsiteEventRsvp; isUpdate: boolean }
+    | { ok: true; data: OnsiteEventRsvp; isUpdate: boolean; passUrl: string }
     | { ok: false; error: OnsiteEventRsvpServiceError }
   >;
   listAdminEvents(): Promise<OnsiteEventListItem[]>;
@@ -33,4 +33,17 @@ export interface IOnsiteEventRsvpService {
     eventSlug: string,
   ): Promise<OnsiteEventRsvpAdminRow[] | OnsiteEventRsvpServiceError>;
   exportAdminCsv(eventSlug: string): Promise<string | OnsiteEventRsvpServiceError>;
+  resendPass(
+    eventSlug: string,
+    rsvpId: string,
+  ): Promise<
+    | { ok: true; rotated: boolean; emailSent: boolean }
+    | { ok: false; error: OnsiteEventRsvpServiceError }
+  >;
+  setCheckInDryRun(
+    eventSlug: string,
+    enabled: boolean,
+  ): Promise<
+    { ok: true; checkInDryRun: boolean } | { ok: false; error: OnsiteEventRsvpServiceError }
+  >;
 }

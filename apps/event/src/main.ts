@@ -1,10 +1,13 @@
-import { applyPublicConfig } from "./apply-event-config.js";
+import { lookupErrorMessage, submitErrorMessage } from "./api-error-messages.js";
+import { applyPublicConfig, setRsvpCallToActionsVisible } from "./apply-event-config.js";
 import { applyEventSeo } from "./apply-event-seo.js";
 import { applyFooterLinks } from "./apply-footer-links.js";
 import { applyPageAssets } from "./apply-page-assets.js";
 import { clearEmailFromUrl, parseEmailFromUrl } from "./config.js";
 import { initLotCarousel } from "./lot-carousel.js";
 import { initPageEffects } from "./page-effects.js";
+import { parsePassTokenFromPath } from "./pass-api.js";
+import { initPassPage } from "./pass-page.js";
 import {
   type OnsiteEventPublicConfig,
   type SegmentOption,
@@ -36,6 +39,7 @@ async function initRsvpPanel(mount: HTMLElement): Promise<void> {
   let controller!: RsvpFormController;
 
   if (!config.rsvpOpen) {
+    setRsvpCallToActionsVisible(false);
     controller = new RsvpFormController(mount, {
       onEmailSubmit: async () => undefined,
       onSubmit: async () => undefined,
@@ -57,10 +61,11 @@ async function initRsvpPanel(mount: HTMLElement): Promise<void> {
         clearEmailFromUrl();
       }
       controller.setState(state);
-    } catch {
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "lookup_failed";
       controller.setState({
         kind: "error",
-        message: "We couldn't reach the server. Please check your connection and try again.",
+        message: lookupErrorMessage(code),
       });
     }
   }
@@ -80,15 +85,7 @@ async function initRsvpPanel(mount: HTMLElement): Promise<void> {
         controller.setState({ kind: "success", result, user: activeUser, segmentOptions });
       } catch (e) {
         const code = e instanceof Error ? e.message : "submit_failed";
-        const message =
-          code === "event_closed"
-            ? "RSVPs for this event are now closed."
-            : code === "not_registered"
-              ? "Create a lax.bid account to reserve your spot."
-              : code === "suspended"
-                ? "This invitation is for active lax.bid clients."
-                : "We couldn't save your RSVP. Please try again.";
-        controller.setState({ kind: "error", message });
+        controller.setState({ kind: "error", message: submitErrorMessage(code) });
       }
     },
     onRetry: () => controller.setState({ kind: "email_prompt" }),
@@ -115,6 +112,15 @@ async function initRsvpPanel(mount: HTMLElement): Promise<void> {
 }
 
 async function bootstrap() {
+  const passToken = parsePassTokenFromPath();
+  if (passToken) {
+    const passMount = document.getElementById("pass-root");
+    if (passMount) {
+      await initPassPage(passMount, passToken);
+    }
+    return;
+  }
+
   applyEventSeo();
   applyPageAssets();
   applyFooterLinks();
