@@ -33,21 +33,13 @@ describe("ConnectLinkService", () => {
     ).rejects.toThrow("connect_url_origin_not_allowed");
   });
 
-  it("throws stripe_account_missing when entity has no Connect account", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ id: "le1", stripeConnectAccountId: null }]),
-          }),
-        }),
-      }),
-    };
+  it("rejects dashboard login links for embedded-only accounts", async () => {
+    const db = {} as never;
     const stripeFactory = { get: () => ({ accounts: { createLoginLink: vi.fn() } }) };
-    const svc = new ConnectLinkService(baseEnv(), db as never, stripeFactory as never);
+    const svc = new ConnectLinkService(baseEnv(), db, stripeFactory as never);
 
     await expect(svc.createDashboardLink("le1")).rejects.toMatchObject({
-      code: "stripe_account_missing",
+      code: "dashboard_link_not_supported",
     });
   });
 });
