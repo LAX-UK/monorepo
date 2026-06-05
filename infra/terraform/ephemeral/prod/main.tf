@@ -3,18 +3,21 @@ locals {
   region               = "lon1"
   redis_region         = "lon1"
   cookie_domain        = ".lax.bid"
-  cors_allowed_origins = "https://lax.bid,https://api.lax.bid,https://auth.lax.bid,https://ws.lax.bid"
+  cors_allowed_origins = "https://lax.bid,https://api.lax.bid,https://auth.lax.bid,https://ws.lax.bid,https://event.lax.bid"
   oidc_issuer_url      = "https://auth.lax.bid"
   api_public_url       = "https://api.lax.bid"
   web_origin           = "https://lax.bid"
+  event_origin         = "https://event.lax.bid"
   ws_public_url        = "wss://ws.lax.bid"
   media_public_url     = "https://lax-media.lon1.cdn.digitaloceanspaces.com"
+  cdn_public_url       = "https://cdn.lax.bid"
 
   domain = {
     web   = "lax.bid"
     api   = "api.lax.bid"
     auth  = "auth.lax.bid"
     ws    = "ws.lax.bid"
+    event = "event.lax.bid"
     media = "media.lax.bid"
     gtm   = "gtm.lax.bid"
   }
@@ -284,6 +287,24 @@ locals {
       )
     },
     {
+      name              = "event"
+      kind              = "service"
+      source_dir        = "/"
+      dockerfile_path   = "apps/event/Dockerfile"
+      http_port         = 80
+      instance_size     = "professional-xs"
+      instance_count    = 2
+      health_check_path = "/"
+      domain            = local.domain.event
+      primary_domain    = false
+      env = [
+        { key = "VITE_API_BASE", value = local.api_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "VITE_WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "VITE_EVENT_ORIGIN", value = local.event_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "VITE_CDN_BASE", value = local.cdn_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+      ]
+    },
+    {
       name            = "worker"
       kind            = "worker"
       source_dir      = "/"
@@ -369,10 +390,11 @@ module "monitoring" {
   postgres_cluster_id = module.postgres.id
   redis_cluster_id    = module.redis.id
   uptime_targets = {
-    web  = "https://${local.domain.web}/"
-    api  = "https://${local.domain.api}/health/live"
-    auth = "https://${local.domain.auth}/health/live"
-    ws   = "https://${local.domain.ws}/health/live"
-    gtm  = "https://${local.domain.gtm}/healthy"
+    web   = "https://${local.domain.web}/"
+    api   = "https://${local.domain.api}/health/live"
+    auth  = "https://${local.domain.auth}/health/live"
+    ws    = "https://${local.domain.ws}/health/live"
+    event = "https://${local.domain.event}/"
+    gtm   = "https://${local.domain.gtm}/healthy"
   }
 }

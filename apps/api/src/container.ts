@@ -114,6 +114,9 @@ import { DrizzleLotSoftDeleteSideEffects } from "./repositories/drizzle-lot-soft
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
+import { DrizzleOnsiteEventClientReader } from "./repositories/drizzle-onsite-event-client.reader.js";
+import { DrizzleOnsiteEventRsvpRepository } from "./repositories/drizzle-onsite-event-rsvp.repository.js";
+import { DrizzleOnsiteEventRepository } from "./repositories/drizzle-onsite-event.repository.js";
 import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-payment-external-ref.repository.js";
 import { DrizzlePaymentMetricsReader } from "./repositories/drizzle-payment-metrics.reader.js";
 import { DrizzlePaymentRefundReconcileRepository } from "./repositories/drizzle-payment-refund-reconcile.repository.js";
@@ -202,6 +205,7 @@ import type { IMarketingEventService } from "./services/interfaces/marketing-eve
 import type { IMemberManagementService } from "./services/interfaces/member-management.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
+import type { IOnsiteEventRsvpService } from "./services/interfaces/onsite-event-rsvp-service.js";
 import type { IOrganizationOnboardingService } from "./services/interfaces/organization-onboarding.js";
 import type { IPayoutRepository } from "./services/interfaces/payout-repository.js";
 import type { IPayoutService } from "./services/interfaces/payout.js";
@@ -242,6 +246,8 @@ import { NotificationQueryService } from "./services/notification-query.service.
 import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
 import { NotificationService } from "./services/notification.service.js";
+import { OnsiteEventNotifier } from "./services/onsite-event-notifier.js";
+import { OnsiteEventRsvpService } from "./services/onsite-event-rsvp.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "./services/organization-onboarding/organization-onboarding-flow.service.js";
 import { PaymentService } from "./services/payment.service.js";
@@ -323,6 +329,7 @@ export type Container = {
   adminLotBrowseService: AdminLotBrowseService;
   absenteeBidService: AbsenteeBidService;
   telephoneBidBookingService: TelephoneBidBookingService;
+  onsiteEventRsvpService: IOnsiteEventRsvpService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomService: SaleroomService;
   lotFulfilmentService: LotFulfilmentService;
@@ -899,6 +906,20 @@ export function createContainer(env: Env): Container {
     telephoneBookingNotifier,
   );
 
+  const onsiteEventRepo = new DrizzleOnsiteEventRepository(db);
+  const onsiteEventRsvpRepo = new DrizzleOnsiteEventRsvpRepository(db);
+  const onsiteEventClientReader = new DrizzleOnsiteEventClientReader(db);
+  const onsiteEventNotifier = new OnsiteEventNotifier(
+    transactionalMailer,
+    env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
+  );
+  const onsiteEventRsvpService = new OnsiteEventRsvpService(
+    onsiteEventRepo,
+    onsiteEventRsvpRepo,
+    onsiteEventClientReader,
+    onsiteEventNotifier,
+  );
+
   const lotService = new LotService({
     lotRepo,
     saleRepo,
@@ -1394,6 +1415,7 @@ export function createContainer(env: Env): Container {
     adminLotBrowseService,
     absenteeBidService,
     telephoneBidBookingService,
+    onsiteEventRsvpService,
     adminSaleOperationsSnapshotService,
     saleroomService,
     lotFulfilmentService,

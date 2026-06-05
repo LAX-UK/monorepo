@@ -43,6 +43,7 @@ import { createLotDocumentRoutes } from "./routes/lot-documents.js";
 import { createLotRoutes } from "./routes/lots.js";
 import { createMarketingRoutes } from "./routes/marketing.js";
 import { createNewsletterRoutes } from "./routes/newsletter.js";
+import { createOnsiteEventRoutes } from "./routes/onsite-events.js";
 import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
 import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statements.js";
@@ -131,6 +132,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/kyc/*", createRateLimitMiddleware(container.redis));
   app.use("/organizations/*", createRateLimitMiddleware(container.redis));
   app.use("/artists/*", createRateLimitMiddleware(container.redis));
+  app.use("/events/*", createRateLimitMiddleware(container.redis));
   app.use("/stripe-connect/*", createRateLimitMiddleware(container.redis));
   app.use("/payouts/*", createRateLimitMiddleware(container.redis));
   app.use("/webhooks/postmark", createRateLimitMiddleware(container.redis));
@@ -194,6 +196,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator))
     .route("/lots", createLotDocumentRoutes(container, authenticator))
+    .route("/events", createOnsiteEventRoutes(container))
     .route("/", createTelephoneBookingRoutes(container, authenticator))
     .route("/sales", createSaleRoutes(container, authenticator))
     .route("/sales", createSaleDocumentRoutes(container, authenticator))

@@ -55,3 +55,4 @@ export * from "./exports.js";
 export * from "./qr.js";
 export * from "./catalog-public-visibility.js";
 export * from "./telephone-booking.js";
+export * from "./onsite-event.js";

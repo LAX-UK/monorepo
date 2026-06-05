@@ -46,6 +46,7 @@ import {
   MonitorSmartphone,
   MoreHorizontal,
   Package,
+  PartyPopper,
   Plug,
   ScrollText,
   ShieldAlert,
@@ -205,6 +206,14 @@ function buildStaffNavGroupSpecs(
           ...(navCounts.telephoneBookingsPending > 0
             ? navBadge(navCounts.telephoneBookingsPending, "warning")
             : navBadge(navCounts.saleroomLiveCount, "live")),
+        },
+        {
+          id: "onsite-events",
+          href: "/admin/onsite-events",
+          label: "Onsite events",
+          icon: PartyPopper,
+          match: (pathname) => pathname.startsWith("/admin/onsite-events"),
+          requirement: SALEROOM_ACCESS,
         },
         {
           id: "conveyor",
