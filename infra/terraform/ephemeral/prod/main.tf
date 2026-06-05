@@ -133,9 +133,9 @@ locals {
       kind            = "service"
       source_dir      = "/"
       dockerfile_path = "apps/web/Dockerfile"
-      # web bakes NEXT_PUBLIC_* at build time from the App Platform spec, so keep it
-      # building on DO (github) even when other components switch to prebuilt images.
-      deploy_source     = "github"
+      # web is prebuilt in CI (build args from infra/web-build/prod.env) and pushed
+      # to DOCR, so it inherits var.app_deploy_source like the other components.
+      # The NEXT_PUBLIC_* env entries below now act as RUN_TIME values.
       http_port         = 3000
       instance_size     = "professional-xs"
       instance_count    = 2
