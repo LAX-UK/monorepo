@@ -1,46 +1,48 @@
 import { applyPublicConfig } from "./apply-event-config.js";
+import { applyEventSeo } from "./apply-event-seo.js";
 import { applyFooterLinks } from "./apply-footer-links.js";
 import { applyPageAssets } from "./apply-page-assets.js";
 import { clearEmailFromUrl, parseEmailFromUrl } from "./config.js";
 import { initLotCarousel } from "./lot-carousel.js";
 import { initPageEffects } from "./page-effects.js";
-import { type SegmentOption, fetchEventConfig, lookupByEmail, submitRsvp } from "./rsvp-api.js";
+import {
+  type OnsiteEventPublicConfig,
+  type SegmentOption,
+  fetchEventConfigWithRetry,
+  lookupByEmail,
+  submitRsvp,
+} from "./rsvp-api.js";
 import { RsvpFormController } from "./rsvp-form.js";
+import { renderBootstrapError, renderBootstrapLoading } from "./rsvp-panel-messages.js";
 import { lookupToState } from "./rsvp-state.js";
 
-async function bootstrap() {
-  applyPageAssets();
-  applyFooterLinks();
-  initPageEffects();
-  void initLotCarousel();
+async function initRsvpPanel(mount: HTMLElement): Promise<void> {
+  renderBootstrapLoading(mount);
 
-  const mount = document.getElementById("rsvp-panel");
-  if (!mount) return;
-
-  mount.classList.add("rsvp-panel--loading");
-
-  let activeUser = { name: "", email: "" };
-  let segmentOptions: SegmentOption[] = [];
-  let controller!: RsvpFormController;
-
+  let config: OnsiteEventPublicConfig;
   try {
-    const config = await fetchEventConfig();
-    segmentOptions = config.segmentOptions;
-    applyPublicConfig(config);
-    if (!config.rsvpOpen) {
-      controller = new RsvpFormController(mount, {
-        onEmailSubmit: async () => undefined,
-        onSubmit: async () => undefined,
-        onRetry: () => undefined,
-        onChangeEmail: () => undefined,
-      });
-      mount.classList.remove("rsvp-panel--loading");
-      controller.setState({ kind: "event_closed" });
-      return;
-    }
+    config = await fetchEventConfigWithRetry();
   } catch {
     mount.classList.remove("rsvp-panel--loading");
-    mount.textContent = "We couldn't load RSVP details. Please refresh and try again.";
+    renderBootstrapError(mount, () => void initRsvpPanel(mount));
+    return;
+  }
+
+  mount.classList.remove("rsvp-panel--loading");
+  applyPublicConfig(config);
+
+  let activeUser = { name: "", email: "" };
+  let segmentOptions: SegmentOption[] = config.segmentOptions;
+  let controller!: RsvpFormController;
+
+  if (!config.rsvpOpen) {
+    controller = new RsvpFormController(mount, {
+      onEmailSubmit: async () => undefined,
+      onSubmit: async () => undefined,
+      onRetry: () => undefined,
+      onChangeEmail: () => undefined,
+    });
+    controller.setState({ kind: "event_closed" });
     return;
   }
 
@@ -98,8 +100,6 @@ async function bootstrap() {
     },
   });
 
-  mount.classList.remove("rsvp-panel--loading");
-
   const resumeEmail = parseEmailFromUrl();
   if (resumeEmail) {
     controller.setPendingEmail(resumeEmail);
@@ -112,6 +112,19 @@ async function bootstrap() {
     const target = document.getElementById("rsvp");
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+}
+
+async function bootstrap() {
+  applyEventSeo();
+  applyPageAssets();
+  applyFooterLinks();
+  initPageEffects();
+  void initLotCarousel();
+
+  const mount = document.getElementById("rsvp-panel");
+  if (!mount) return;
+
+  await initRsvpPanel(mount);
 }
 
 void bootstrap();

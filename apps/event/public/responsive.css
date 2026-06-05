@@ -14,7 +14,7 @@ html {
 body {
   margin: 0;
   overflow-x: hidden;
-  background-color: #efefef;
+  background-color: #121212;
 }
 
 img,
@@ -25,21 +25,73 @@ svg {
   height: auto;
 }
 
-/* Grey field + centered card */
+/* Dark slate field + centred invitation card (Option A — invitation on slate) */
 .event-page {
+  --lax-champagne: #c9a962;
+  --lax-paper: #efefef;
+  --lax-paper-alt: #e8e8e8;
+  --lax-slate-deep: #0a0a0a;
+  --lax-slate-mid: #121212;
+  --lax-slate-soft: #252525;
+  position: relative;
   display: flex;
   justify-content: center;
   width: 100%;
   min-height: 100vh;
-  background-color: #efefef;
+  padding: clamp(20px, 4vw, 40px) clamp(12px, 3vw, 20px) clamp(32px, 6vw, 56px);
+  background: radial-gradient(
+    ellipse 130% 90% at 50% -8%,
+    var(--lax-slate-soft) 0%,
+    var(--lax-slate-mid) 48%,
+    var(--lax-slate-deep) 100%
+  );
+  isolation: isolate;
+}
+
+/* Film grain — low opacity, fixed to viewport */
+.event-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.09;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: soft-light;
+}
+
+/* Warm spotlight behind the card */
+.event-page::after {
+  content: "";
+  position: fixed;
+  top: 12%;
+  left: 50%;
+  z-index: 0;
+  width: min(640px, 92vw);
+  height: 70vh;
+  pointer-events: none;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 40%,
+    rgba(201, 169, 98, 0.07) 0%,
+    transparent 72%
+  );
 }
 
 .event-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 600px;
   overflow: hidden;
-  background-color: #efefef;
+  background-color: var(--lax-paper);
+  color: #1a1a1a;
+  color-scheme: light;
   flex: 0 1 600px;
+  border-top: 1px solid rgba(201, 169, 98, 0.42);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58), 0 8px 24px rgba(0, 0, 0, 0.32), 0 0 0 1px
+    rgba(255, 255, 255, 0.05);
 }
 
 table.email-container {
@@ -201,6 +253,12 @@ table.email-container {
   .rsvp-panel {
     padding-left: 20px !important;
     padding-right: 20px !important;
+  }
+
+  .rsvp-support {
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 28px;
   }
 
   .lot-carousel__nav {
