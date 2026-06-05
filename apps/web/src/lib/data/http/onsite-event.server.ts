@@ -29,6 +29,8 @@ function parseAdminRow(value: unknown): OnsiteEventRsvpAdminRow | null {
     plusOne: row.plusOne,
     plusOneGuestName: typeof row.plusOneGuestName === "string" ? row.plusOneGuestName : null,
     notes: typeof row.notes === "string" ? row.notes : null,
+    checkedInAt: typeof row.checkedInAt === "string" ? row.checkedInAt : null,
+    checkInPartyCount: typeof row.checkInPartyCount === "number" ? row.checkInPartyCount : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

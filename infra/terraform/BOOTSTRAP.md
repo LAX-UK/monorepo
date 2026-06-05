@@ -341,6 +341,18 @@ Per-environment secrets that can be added after base infra is running:
 - `DATABASE_URL_OWNER` (after Terraform creates the cluster)
 - `JWKS_SNAPSHOT_KEY_TEST` or `JWKS_SNAPSHOT_KEY_PROD`
 
+Onsite event pass / check-in (wired to `apps/api` via ephemeral Terraform):
+
+- RSVP/pass HTML emails use **Postmark** on `apps/api` when `EMAIL_PROVIDER=postmark` (same `POSTMARK_SERVER_TOKEN` as worker/auth). No extra webhook secret.
+- `CHECK_IN_TOKEN_SECRET` — optional; Terraform auto-generates a stable 48-char secret in state when omitted. Set explicitly (separate from `BETTER_AUTH_SECRET`) before LAX 001 so auth rotation does not break admin pass resend.
+
+`INVITE_EMAIL_FROM` defaults in Terraform (`LAX Events <no-reply@mail.lax.bid>` prod, test variant on test). Override with `TF_VAR_invite_email_from` only if needed.
+
+```sh
+openssl rand -hex 24 | gh secret set CHECK_IN_TOKEN_SECRET --env prod
+openssl rand -hex 24 | gh secret set CHECK_IN_TOKEN_SECRET --env test
+```
+
 Generate JWKS snapshot encryption keys:
 
 ```sh

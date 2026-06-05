@@ -14,6 +14,7 @@ jobs:
       TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       TF_VAR_sentry_auth_token: ${{ secrets.SENTRY_AUTH_TOKEN }}
       TF_VAR_better_auth_secret: ${{ secrets.BETTER_AUTH_SECRET }}
+      TF_VAR_check_in_token_secret: ${{ secrets.CHECK_IN_TOKEN_SECRET }}
       TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
       TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       TF_VAR_spaces_access_key_id: ${{ secrets.MEDIA_SPACES_ACCESS_KEY_ID }}
