@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { checkConnectMutationRateLimit } from "../lib/connect-mutation-rate-limit.js";
 import { respondStripeConnectRouteError } from "../lib/stripe-connect-route-errors.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -62,6 +63,14 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
     if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "finance") {
       return c.json({ error: "insufficient_role" }, 403);
     }
+    const syncAllowed = await checkConnectMutationRateLimit(
+      container.redis,
+      "sync",
+      ctx.legalEntityId,
+    );
+    if (!syncAllowed) {
+      return c.json({ error: "stripe_rate_limited" }, 429);
+    }
     try {
       const status = await container.stripeConnectService.syncAccountFromStripe(ctx.legalEntityId);
       return c.json({ data: status });
@@ -104,6 +113,14 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       if (ctx.role !== "owner" && ctx.role !== "admin") {
         return c.json({ error: "insufficient_role" }, 403);
+      }
+      const ensureAllowed = await checkConnectMutationRateLimit(
+        container.redis,
+        "account",
+        ctx.legalEntityId,
+      );
+      if (!ensureAllowed) {
+        return c.json({ error: "stripe_rate_limited" }, 429);
       }
       const body = c.req.valid("json");
       try {

@@ -13,6 +13,9 @@ import type { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 import { ConnectServiceError, throwConnectError } from "./connect-service-errors.js";
 import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
 
+/** Bump when account-create params change or Stripe cached a 4xx under the prior key (24h TTL). */
+const CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION = "v2";
+
 export class ConnectAccountService {
   private readonly logger: AppLogger;
 
@@ -23,10 +26,6 @@ export class ConnectAccountService {
     private readonly lifecyclePromoter: ConnectLifecyclePromoter,
   ) {
     this.logger = createBaseLogger(env);
-  }
-
-  private get stripe(): Stripe | null {
-    return this.stripeFactory.get();
   }
 
   private async loadLegalEntityWithOwner(legalEntityId: string) {
@@ -79,7 +78,7 @@ export class ConnectAccountService {
     const controller = {
       fees: { payer: "application" as const },
       losses: { payments: "application" as const },
-      stripe_dashboard: { type: "express" as const },
+      stripe_dashboard: { type: "none" as const },
     };
 
     const accountCreateParams: Stripe.AccountCreateParams =
@@ -122,7 +121,7 @@ export class ConnectAccountService {
           })();
 
     const account = await stripe.accounts.create(accountCreateParams, {
-      idempotencyKey: `connect:account:${legalEntityId}`,
+      idempotencyKey: `connect:account:${CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION}:${legalEntityId}`,
     });
 
     const persistUpdate = () =>
@@ -156,6 +155,7 @@ export class ConnectAccountService {
     return { stripeAccountId: account.id, legalEntity: legalEntityRowToDomain(updated) };
   }
 
+  /** Cached DB status — use {@link syncAccountFromStripe} for live Stripe refresh. */
   async getStatus(legalEntityId: string): Promise<ConnectAccountStatus> {
     const row = await loadConnectLegalEntity(this.db, legalEntityId);
     if (!row.stripeConnectAccountId) {
@@ -168,18 +168,7 @@ export class ConnectAccountService {
         ready: false,
       };
     }
-    if (this.stripe) {
-      try {
-        return await this.syncAccountFromStripe(legalEntityId);
-      } catch (err) {
-        this.logger.warn(
-          { legalEntityId, err: err instanceof Error ? err.message : String(err) },
-          "stripe_connect_sync_degraded",
-        );
-        recordMoneyPathEvent("stripe_connect_sync_degraded");
-      }
-    }
-    return this.statusFromRow(row, true);
+    return this.statusFromRow(row);
   }
 
   async syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus> {

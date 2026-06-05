@@ -2,10 +2,14 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
+import {
+  parseStripeConnectActionError,
+  parseStripeConnectActionErrorFromBody,
+  readStripeConnectApiJson,
+} from "@/lib/connect/parse-stripe-connect-action-error";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
 import { getSiteUrl } from "@/lib/site-url";
-import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 
 export type StripeConnectSessionSurface = "onboarding" | "management";
@@ -27,8 +31,10 @@ export async function ensureStripeConnectAccountAction(
       body: JSON.stringify({ country: "GB" }),
     });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
-      return { ok: false, error: normalizeApiErrorMessage(body.error, "stripe_connect_failed") };
+      return {
+        ok: false,
+        error: await parseStripeConnectActionError(res, "stripe_connect_failed"),
+      };
     }
     revalidateConnectPaths(entityId);
     return { ok: true };
@@ -50,17 +56,19 @@ export async function syncStripeConnectAction(entityId?: string): Promise<
       method: "POST",
       headers: entityHeaders(entityId),
     });
-    const body = (await res.json().catch(() => ({}))) as {
+    const body = await readStripeConnectApiJson<{
       data?: {
         ready?: boolean;
         payoutsEnabled?: boolean;
         requirementsCurrentlyDue?: string[];
         disabledReason?: string | null;
       };
-      error?: unknown;
-    };
+    }>(res);
     if (!res.ok) {
-      return { ok: false, error: normalizeApiErrorMessage(body.error, "stripe_sync_failed") };
+      return {
+        ok: false,
+        error: parseStripeConnectActionErrorFromBody(body, "stripe_sync_failed"),
+      };
     }
     revalidateConnectPaths(entityId);
     return {
@@ -86,12 +94,14 @@ export async function createStripeConnectAccountSessionAction(
       },
       body: JSON.stringify({ surface }),
     });
-    const body = (await res.json().catch(() => ({}))) as {
+    const body = await readStripeConnectApiJson<{
       data?: { clientSecret?: string };
-      error?: unknown;
-    };
+    }>(res);
     if (!res.ok) {
-      return { ok: false, error: normalizeApiErrorMessage(body.error, "account_session_failed") };
+      return {
+        ok: false,
+        error: parseStripeConnectActionErrorFromBody(body, "account_session_failed"),
+      };
     }
     const clientSecret = body.data?.clientSecret;
     if (!clientSecret) {
@@ -109,12 +119,14 @@ export async function openStripeDashboardLinkAction(
       method: "POST",
       headers: entityHeaders(entityId),
     });
-    const body = (await res.json().catch(() => ({}))) as {
+    const body = await readStripeConnectApiJson<{
       data?: { url?: string };
-      error?: unknown;
-    };
+    }>(res);
     if (!res.ok) {
-      return { ok: false, error: normalizeApiErrorMessage(body.error, "dashboard_link_failed") };
+      return {
+        ok: false,
+        error: parseStripeConnectActionErrorFromBody(body, "dashboard_link_failed"),
+      };
     }
     const url = body.data?.url;
     if (!url) return { ok: false, error: "missing_dashboard_url" };
@@ -138,12 +150,14 @@ export async function createStripeConnectOnboardingLinkAction(
       },
       body: JSON.stringify({ returnUrl, refreshUrl: returnUrl }),
     });
-    const body = (await res.json().catch(() => ({}))) as {
+    const body = await readStripeConnectApiJson<{
       data?: { url?: string };
-      error?: unknown;
-    };
+    }>(res);
     if (!res.ok) {
-      return { ok: false, error: normalizeApiErrorMessage(body.error, "stripe_onboarding_failed") };
+      return {
+        ok: false,
+        error: parseStripeConnectActionErrorFromBody(body, "stripe_onboarding_failed"),
+      };
     }
     const url = body.data?.url;
     if (!url) return { ok: false, error: "missing_onboarding_url" };

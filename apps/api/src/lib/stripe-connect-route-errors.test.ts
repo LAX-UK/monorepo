@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import Stripe from "stripe";
 import { describe, expect, it } from "vitest";
+import { ConnectServiceError } from "../services/stripe/connect/connect-service-errors.js";
 import { respondStripeConnectRouteError } from "./stripe-connect-route-errors.js";
 
 async function requestMappedError(err: unknown, path = "/") {
@@ -46,6 +47,15 @@ describe("respondStripeConnectRouteError", () => {
       expect(res.status).toBe(status);
       await expect(res.json()).resolves.toEqual({ error });
     }
+  });
+
+  it("does not expose ConnectServiceError meta to clients", async () => {
+    const err = new ConnectServiceError("legal_entity_update_failed", 500, {
+      stripeAccountId: "acct_secret",
+    });
+    const res = await requestMappedError(err, "/update-failed");
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: "legal_entity_update_failed" });
   });
 
   it("maps Stripe platform profile errors to 503", async () => {
