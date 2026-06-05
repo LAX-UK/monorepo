@@ -1,5 +1,6 @@
 import type { LegalEntitySummary } from "@auction/types";
 import { Hono } from "hono";
+import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
@@ -114,5 +115,27 @@ describe("stripe-connect routes — role gates", () => {
       "finance",
       "management",
     );
+  });
+
+  it("returns 503 when Stripe platform profile is incomplete on POST /account", async () => {
+    const { app, stripeConnectService } = mountApp("owner");
+    stripeConnectService.ensureAccount.mockRejectedValue(
+      new Stripe.errors.StripeInvalidRequestError({
+        message:
+          "Please review the responsibilities of managing losses for connected accounts at https://dashboard.stripe.com/settings/connect/platform-profile.",
+        type: "invalid_request_error",
+      } as never),
+    );
+
+    const res = await app.request("/stripe-connect/account", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ country: "GB" }),
+    });
+
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toEqual({
+      error: "stripe_platform_profile_incomplete",
+    });
   });
 });

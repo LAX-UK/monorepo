@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const DEFAULT_INTERVAL_MS = 8000;
-/** Stop polling after onboarding exit once this window elapses. */
+/** Stop polling after onboarding exit once this window elapses (visible time only). */
 const DEFAULT_TIMEOUT_MS = 2 * 60 * 1000;
 
 type Options = {
@@ -31,18 +31,45 @@ export function useConnectStatusPolling({
     }
 
     setTimedOut(false);
-    const startedAt = Date.now();
+    let visibleElapsedMs = 0;
+    let visibleSince: number | null = document.hidden ? null : Date.now();
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (visibleSince !== null) {
+          visibleElapsedMs += Date.now() - visibleSince;
+          visibleSince = null;
+        }
+        return;
+      }
+      visibleSince = Date.now();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     const id = window.setInterval(() => {
       if (document.hidden) return;
-      if (Date.now() - startedAt > timeoutMs) {
+
+      const now = Date.now();
+      if (visibleSince === null) {
+        visibleSince = now;
+      }
+
+      const elapsed = visibleElapsedMs + (now - visibleSince);
+      if (elapsed > timeoutMs) {
         window.clearInterval(id);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
         setTimedOut(true);
         return;
       }
+
       void onPollRef.current();
     }, intervalMs);
 
-    return () => window.clearInterval(id);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.clearInterval(id);
+    };
   }, [enabled, intervalMs, timeoutMs]);
 
   return { timedOut };
