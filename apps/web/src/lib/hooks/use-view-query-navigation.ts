@@ -1,7 +1,8 @@
 "use client";
 
 import { buildViewHref, writeViewPreferenceCookie } from "@/lib/preferences/view-query-navigation";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { replaceMarketingViewUrl } from "@/lib/preferences/view-url-store";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
 
 export type UseViewQueryNavigationOptions = {
@@ -15,7 +16,7 @@ export type UseViewQueryNavigationOptions = {
 /**
  * Shared marketing catalogue view navigation:
  * - URL remains source of truth (SEO + shareable links)
- * - `router.replace` with `scroll: false` (no jump to top)
+ * - `history.replaceState` (no App Router refetch — critical for authed dynamic pages)
  * - Per-route preference cookie
  * - `startTransition` for pending UI state
  */
@@ -24,7 +25,6 @@ export function useViewQueryNavigation({
   defaultView,
   toCookieValue,
 }: UseViewQueryNavigationOptions) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -34,10 +34,10 @@ export function useViewQueryNavigation({
       startTransition(() => {
         const href = buildViewHref(pathname, searchParams, nextView, { defaultView });
         writeViewPreferenceCookie(routeKey, toCookieValue?.(nextView) ?? nextView);
-        router.replace(href, { scroll: false });
+        replaceMarketingViewUrl(href, nextView);
       });
     },
-    [defaultView, pathname, routeKey, router, searchParams, toCookieValue],
+    [defaultView, pathname, routeKey, searchParams, toCookieValue],
   );
 
   return { navigate, pending };

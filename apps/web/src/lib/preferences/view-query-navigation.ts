@@ -8,7 +8,7 @@ import {
  * Marketing layout view navigation contract (performance + SEO + SOLID):
  *
  * - **URL is source of truth** — server components read `?view=` via `resolveMarketingLayoutView`
- * - **Client switchers** call `useViewQueryNavigation` → `router.replace(href, { scroll: false })`
+ * - **Client switchers** call `useViewQueryNavigation` → `history.replaceState` (no RSC refetch)
  * - **Canonical URLs** — omit `view` when it matches `defaultView` (usually `grid`)
  * - **Cookies** — per-route persistence via `routeKey` (see usages below)
  * - **Home page** — resolve `searchParams` outside the data-fetch `Suspense` boundary

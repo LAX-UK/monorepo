@@ -2,10 +2,8 @@ import { ViewItemListTracker } from "@/components/analytics/view-item-list-track
 import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
-import { SalesAuctionList } from "@/components/sections/sales/sales-auction-list";
+import { SalesBrowseResults } from "@/components/sections/sales/sales-browse-results";
 import { SalesCalendarBrowse } from "@/components/sections/sales/sales-calendar-browse";
-import { SalesCalendarGrid } from "@/components/sections/sales/sales-calendar-grid";
-import { SalesCalendarMonthGrid } from "@/components/sections/sales/sales-calendar-month-grid";
 import { SalesCalendarPagination } from "@/components/sections/sales/sales-calendar-pagination";
 import { SalesHeroHeader } from "@/components/sections/sales/sales-hero-header";
 import { SalesNewLotsGrid } from "@/components/sections/sales/sales-new-lots-grid";
@@ -437,12 +435,14 @@ export default async function SalesListPage({
                   ) : undefined
                 }
               />
-            ) : calendarView === "calendar" ? (
-              <SalesCalendarMonthGrid items={agendaVms} />
-            ) : calendarView === "grid" ? (
-              <SalesCalendarGrid vms={gridVms} />
             ) : (
-              <SalesAuctionList rows={rowVms} className="gap-2 sm:gap-2 lg:gap-3" />
+              <SalesBrowseResults
+                initialView={calendarView}
+                defaultView="grid"
+                agendaVms={agendaVms}
+                gridVms={gridVms}
+                rowVms={rowVms}
+              />
             )}
             <SalesCalendarPagination
               state={calendarState}

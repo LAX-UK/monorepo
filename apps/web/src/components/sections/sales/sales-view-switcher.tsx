@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
 import { salesBrowseViewCookieValue } from "@/lib/preferences/view-query-navigation";
 import { cn } from "@auction/ui";
@@ -15,17 +16,28 @@ const MODES: ReadonlyArray<{ value: SalesBrowseView; label: string; Icon: typeof
 
 /** Sales calendar view toggle (grid / list / agenda-by-month). Uses the same URL + scroll
  * navigation as `CatalogViewSwitcher`; adds `calendar` mode and sales-specific cookie mapping. */
-export function SalesViewSwitcher({ value }: { value: SalesBrowseView }) {
+export function SalesViewSwitcher({
+  value,
+  defaultView = "grid",
+}: {
+  value: SalesBrowseView;
+  defaultView?: SalesBrowseView;
+}) {
+  const liveView = useUrlLayoutView(defaultView, value) as SalesBrowseView;
   const { navigate, pending } = useViewQueryNavigation({
     routeKey: "sales",
-    defaultView: "grid",
+    defaultView,
     toCookieValue: salesBrowseViewCookieValue,
   });
 
   return (
     <div className="inline-flex items-center gap-1">
       <span className="sr-only" aria-live="polite">
-        {value === "calendar" ? "Calendar view" : value === "list" ? "List view" : "Grid view"}
+        {liveView === "calendar"
+          ? "Calendar view"
+          : liveView === "list"
+            ? "List view"
+            : "Grid view"}
       </span>
       <div
         role="radiogroup"
@@ -33,7 +45,7 @@ export function SalesViewSwitcher({ value }: { value: SalesBrowseView }) {
         className="inline-flex min-w-0 items-center gap-1 rounded-full border border-outline-variant/40 bg-surface-container-low p-1"
       >
         {MODES.map(({ value: m, label, Icon }) => {
-          const selected = value === m;
+          const selected = liveView === m;
           return (
             <button
               key={m}
