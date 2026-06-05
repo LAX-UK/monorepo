@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
@@ -38,10 +39,11 @@ export class StripeConnectFacade implements IStripeConnectService {
     payoutRepository?: IPayoutRepository,
     domainEventPublisher?: DomainEventPublisher,
     stripeFactory?: StripeClientFactory,
+    redis?: Redis,
   ) {
     const factory = stripeFactory ?? new StripeClientFactory(env);
     const lifecyclePromoter = new ConnectLifecyclePromoter(domainEventPublisher);
-    this.accountService = new ConnectAccountService(env, db, factory, lifecyclePromoter);
+    this.accountService = new ConnectAccountService(env, db, factory, lifecyclePromoter, redis);
     this.sessionService = new ConnectSessionService(env, db, factory);
     this.linkService = new ConnectLinkService(env, db, factory);
     this.webhookHandler = new ConnectWebhookHandler(db, factory, this.accountService);
