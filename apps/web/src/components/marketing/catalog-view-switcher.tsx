@@ -1,48 +1,27 @@
 "use client";
 
-import {
-  type CatalogLayoutView,
-  VIEW_COOKIE_MAX_AGE_SEC,
-  viewCookieName,
-} from "@/lib/preferences/view-cookie";
+import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
+import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { ViewSwitcher } from "@auction/ui";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
 
 export function CatalogViewSwitcher({
   routeKey,
   value,
   supportedModes,
+  defaultView = "grid",
 }: {
   routeKey: string;
   value: CatalogLayoutView;
   supportedModes?: readonly CatalogLayoutView[];
+  /** URL-canonical default; param omitted from query string when active. */
+  defaultView?: CatalogLayoutView;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [pending, startTransition] = useTransition();
-
-  const apply = useCallback(
-    (next: CatalogLayoutView) => {
-      startTransition(() => {
-        const nextParams = new URLSearchParams(searchParams.toString());
-        nextParams.set("view", next);
-        nextParams.delete("page");
-        nextParams.delete("offset");
-        const qs = nextParams.toString();
-        const secure = typeof window !== "undefined" && window.location.protocol === "https:";
-        document.cookie = `${viewCookieName(routeKey)}=${next}; path=/; max-age=${VIEW_COOKIE_MAX_AGE_SEC}; SameSite=Lax${secure ? "; Secure" : ""}`;
-        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-      });
-    },
-    [pathname, router, routeKey, searchParams],
-  );
+  const { navigate, pending } = useViewQueryNavigation({ routeKey, defaultView });
 
   return (
     <ViewSwitcher
       value={value}
-      onValueChange={apply}
+      onValueChange={navigate}
       {...(supportedModes !== undefined ? { modes: supportedModes } : {})}
       disabled={pending}
     />
