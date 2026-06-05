@@ -25,7 +25,8 @@
 | **Webhooks** | Rotate secret in Stripe for the failing destination + update the matching `STRIPE_*_WEBHOOK_SECRET` in secrets/Terraform + apply; replay failed events from Stripe UI once handler fixed. |
 | **Connect** | Seller completes outstanding KYC in Connect Express link; refresh account in admin. |
 | **Connect account create 503** | Log mentions `platform-profile` or `managing losses` → complete **Settings → Connect → Platform setup** in the matching Stripe mode (Live/Test); no deploy required. API returns `stripe_platform_profile_incomplete`. |
-| **Same platform-profile 400 after setup fixed** | Stripe **caches 4xx** under the account-create idempotency key for 24h. Deploy bumps `connect:account:v2:{legalEntityId}` or wait 24h, then seller retries **Try again**. |
+| **Same platform-profile 400 after setup fixed** | Stripe **caches 4xx** under the account-create idempotency key for 24h. Deploy bumps `connect:account:v3:{legalEntityId}` or wait 24h, then seller retries **Try again**. |
+| **400: dashboard `none` + `requirement_collection=stripe` + application losses** | Account create must set `controller.requirement_collection=application` when using `losses.payments=application` and `stripe_dashboard.type=none`. Deploy latest API; idempotency key bumps to `v3`. |
 | **Connect account orphan** | Metric `stripe_connect_account_orphan_created` — Stripe account exists but DB update failed; seller retry on `/dashboard/seller/connect` (idempotent ensure) or admin reconcile `stripeConnectAccountId`. |
 | **Connect deauthorized** | Metric `stripe_connect_account_deauthorized` — seller revoked access; re-onboard via embedded Connect or admin onboarding link. |
 | **Transfer CAS miss** | Metric `payout_transfer_status_cas_miss` — Stripe transfer created but payout status not updated; finance reconcile transfer id vs payout row before re-running settlement. |
