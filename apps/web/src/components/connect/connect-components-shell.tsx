@@ -2,6 +2,7 @@
 
 import { ConnectInlineAlert } from "@/components/connect/connect-inline-alert";
 import { useStripeConnectInstance } from "@/components/connect/use-stripe-connect-instance";
+import { connectApiErrorMessage } from "@/lib/connect/connect-error-copy";
 import { ConnectComponentsProvider } from "@stripe/react-connect-js";
 import type { ReactNode } from "react";
 
@@ -18,7 +19,8 @@ export function ConnectComponentsShell({ publishableKey, fetchClientSecret, chil
   });
 
   if (error) {
-    return <ConnectInlineAlert kind="init_failed" detail={error} />;
+    const detail = connectApiErrorMessage(error) ?? error;
+    return <ConnectInlineAlert kind="init_failed" detail={detail} />;
   }
 
   if (!connectInstance) {

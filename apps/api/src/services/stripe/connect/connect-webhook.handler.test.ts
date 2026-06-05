@@ -122,6 +122,31 @@ describe("ConnectWebhookHandler.handleConnectedAccountEvent", () => {
     expect(db.transaction).toHaveBeenCalled();
   });
 
+  it("handles account.application.deauthorized without retrieving account", async () => {
+    const accountsRetrieve = vi.fn();
+    const stripeFactory: IStripeClientFactory = {
+      get: () => ({ accounts: { retrieve: accountsRetrieve } }) as unknown as Stripe,
+      require: () => ({ accounts: { retrieve: accountsRetrieve } }) as unknown as Stripe,
+    };
+    const applyAccountDeauthorized = vi.fn().mockResolvedValue(undefined);
+    const accountService = {
+      applyAccountDeauthorized,
+      applyAccountUpdate: vi.fn(),
+    } as unknown as ConnectAccountService;
+    const handler = new ConnectWebhookHandler(makeTransactionDb(), stripeFactory, accountService);
+
+    const result = await handler.handleConnectedAccountEvent({
+      id: "evt_deauth_1",
+      type: "account.application.deauthorized",
+      account: "acct_deauth",
+      data: { object: {} },
+    } as Stripe.Event);
+
+    expect(result).toEqual({ processed: true });
+    expect(accountsRetrieve).not.toHaveBeenCalled();
+    expect(applyAccountDeauthorized).toHaveBeenCalledWith("acct_deauth", expect.anything());
+  });
+
   it("does not claim idempotency when accounts.retrieve fails", async () => {
     const accountsRetrieve = vi.fn().mockRejectedValue(new Error("stripe down"));
     const stripeFactory: IStripeClientFactory = {

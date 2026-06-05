@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { StripeConnectNotConfiguredError } from "../../interfaces/stripe-connect.js";
+import { throwConnectError } from "./connect-service-errors.js";
+import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
 
 export type ConnectSessionSurface = "onboarding" | "management";
 
@@ -39,18 +39,6 @@ export class ConnectSessionService {
     };
   }
 
-  private requireStripe(): Stripe {
-    if (!this.stripe) throw new StripeConnectNotConfiguredError();
-    return this.stripe;
-  }
-
-  private async loadEntity(id: string) {
-    const rows = await this.db.select().from(legalEntity).where(eq(legalEntity.id, id)).limit(1);
-    const row = rows[0];
-    if (!row) throw new Error("legal_entity_not_found");
-    return row;
-  }
-
   private buildComponents(
     role: string,
     surface: ConnectSessionSurface,
@@ -59,7 +47,7 @@ export class ConnectSessionService {
     const isFinance = role === "finance";
 
     if (surface === "onboarding") {
-      if (!isOwnerAdmin) throw new Error("insufficient_role");
+      if (!isOwnerAdmin) throwConnectError("insufficient_role", 403);
       return {
         account_onboarding: { enabled: true },
         notification_banner: { enabled: true },
@@ -77,7 +65,7 @@ export class ConnectSessionService {
       };
     }
 
-    throw new Error("insufficient_role");
+    throwConnectError("insufficient_role", 403);
   }
 
   async createAccountSession(
@@ -85,10 +73,10 @@ export class ConnectSessionService {
     role: string,
     surface: ConnectSessionSurface,
   ): Promise<AccountSessionResult> {
-    const stripe = this.requireStripe();
-    const row = await this.loadEntity(legalEntityId);
+    const stripe = requireConnectStripe(this.stripeFactory);
+    const row = await loadConnectLegalEntity(this.db, legalEntityId);
     if (!row.stripeConnectAccountId) {
-      throw new Error("stripe_account_missing");
+      throwConnectError("stripe_account_missing", 400);
     }
 
     const components = this.buildComponents(role, surface);
@@ -98,9 +86,12 @@ export class ConnectSessionService {
     });
 
     if (!session.client_secret) {
-      throw new Error("account_session_missing_client_secret");
+      throwConnectError("account_session_missing_client_secret", 502);
     }
 
     return { clientSecret: session.client_secret };
   }
 }
+
+// StripeConnectNotConfiguredError is thrown by requireConnectStripe via factory — re-export for callers.
+export { StripeConnectNotConfiguredError };

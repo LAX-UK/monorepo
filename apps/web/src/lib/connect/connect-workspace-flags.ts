@@ -14,6 +14,8 @@ export function deriveConnectWorkspaceFlags(input: {
   showOnboarding: boolean;
   showOnboardingForm: boolean;
   showManagement: boolean;
+  showEmbeddedPanels: boolean;
+  showRestrictedPanel: boolean;
   showFinanceReadOnly: boolean;
   showFinanceAwaitingOwner: boolean;
   showRefreshAction: boolean;
@@ -23,7 +25,12 @@ export function deriveConnectWorkspaceFlags(input: {
   const { memberRole, gap, stripeActionRequired, hasStripeAccount = false } = input;
   const canCompleteOnboarding = canOnboard(memberRole);
   const showOnboarding = canCompleteOnboarding && isConnectOnboardingStage(gap.stage);
-  const showManagement = gap.stage === "ready";
+  const showFinanceManagement =
+    memberRole === "finance" &&
+    hasStripeAccount &&
+    gap.stage !== "ready" &&
+    gap.stage !== "restricted";
+  const showManagement = gap.stage === "ready" || showFinanceManagement;
   const showFinanceReadOnly = !canCompleteOnboarding && gap.stage !== "ready";
   const stripeBannerActive = stripeActionRequired > 0;
   const useCompactHeader =
@@ -35,12 +42,16 @@ export function deriveConnectWorkspaceFlags(input: {
     gap.stage !== "managed_by_lax";
   const showRefreshAction = canCompleteOnboarding || (memberRole === "finance" && hasStripeAccount);
   const showPreparingPanel = canCompleteOnboarding && !hasStripeAccount;
+  const showEmbeddedPanels = showOnboarding || showManagement;
+  const showRestrictedPanel = hasStripeAccount && gap.stage === "restricted";
 
   return {
     canCompleteOnboarding,
     showOnboarding,
     showOnboardingForm: showOnboarding,
     showManagement,
+    showEmbeddedPanels,
+    showRestrictedPanel,
     showFinanceReadOnly,
     showFinanceAwaitingOwner,
     showRefreshAction,

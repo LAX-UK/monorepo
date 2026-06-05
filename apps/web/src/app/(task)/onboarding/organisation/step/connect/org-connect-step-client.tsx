@@ -7,7 +7,7 @@ import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server"
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 type Props = {
   entityId: string;
@@ -36,6 +36,12 @@ export function OrgConnectStepClient({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [connectReady, setConnectReady] = useState(Boolean(status?.ready));
+
+  useEffect(() => {
+    if (status?.ready) {
+      setConnectReady(true);
+    }
+  }, [status?.ready]);
 
   const identityStepQuery = fresh ? `entityId=${entityId}&fresh=1` : `entityId=${entityId}`;
 
@@ -83,6 +89,13 @@ export function OrgConnectStepClient({
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
+        </p>
+      ) : null}
+
+      {!connectReady ? (
+        <p className="text-sm text-on-surface-variant">
+          Complete payout verification in the form above, then use Refresh status. Continue unlocks
+          when Stripe confirms your account is ready.
         </p>
       ) : null}
 

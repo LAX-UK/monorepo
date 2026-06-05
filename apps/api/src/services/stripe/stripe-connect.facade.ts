@@ -84,6 +84,14 @@ export class StripeConnectFacade implements IStripeConnectService {
     return this.accountService.syncAccountFromStripe(legalEntityId);
   }
 
+  applyAccountUpdate(account: Stripe.Account, db?: Database): Promise<void> {
+    return this.accountService.applyAccountUpdate(account, db);
+  }
+
+  applyAccountDeauthorized(stripeAccountId: string, db?: Database): Promise<void> {
+    return this.accountService.applyAccountDeauthorized(stripeAccountId, db);
+  }
+
   createOnboardingLink(
     legalEntityId: string,
     returnUrl: string,

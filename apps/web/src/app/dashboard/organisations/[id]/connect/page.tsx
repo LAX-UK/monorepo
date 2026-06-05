@@ -47,19 +47,22 @@ export default async function OrganisationConnectPage({
       <p className="font-body text-sm text-on-surface-variant">
         Manage bank details and verification without leaving LAX.
       </p>
-      {connectFailure ? <DashboardSliceErrorAlert failure={connectFailure} /> : null}
-      <ConnectWorkspace
-        publishableKey={clientConfig.publishableKey}
-        connectEnforced={clientConfig.connectEnforced}
-        status={connectRes.ok ? connectRes.data : null}
-        syncDegraded={connectRes.ok ? Boolean(connectRes.data.syncDegraded) : false}
-        legalEntityId={id}
-        memberRole={member.role}
-        entityStatus={entity?.status ?? member.status}
-        kycApproved
-        isLaxManaged={entity?.isLaxManaged ?? false}
-        returnPath={`/dashboard/organisations/${id}/connect`}
-      />
+      {connectFailure ? (
+        <DashboardSliceErrorAlert failure={connectFailure} />
+      ) : (
+        <ConnectWorkspace
+          publishableKey={clientConfig.publishableKey}
+          connectEnforced={clientConfig.connectEnforced}
+          status={connectRes.ok ? connectRes.data : null}
+          syncDegraded={connectRes.ok ? Boolean(connectRes.data.syncDegraded) : false}
+          legalEntityId={id}
+          memberRole={member.role}
+          entityStatus={entity?.status ?? member.status}
+          kycApproved
+          isLaxManaged={entity?.isLaxManaged ?? false}
+          returnPath={`/dashboard/organisations/${id}/connect`}
+        />
+      )}
     </div>
   );
 }

@@ -21,7 +21,7 @@ describe("deriveConnectWorkspaceFlags", () => {
     expect(flags.showPreparingPanel).toBe(true);
   });
 
-  it("hides onboarding form for owner on restricted stage", () => {
+  it("hides embedded panels for owner on restricted stage with account", () => {
     const flags = deriveConnectWorkspaceFlags({
       memberRole: "owner",
       gap: {
@@ -30,10 +30,13 @@ describe("deriveConnectWorkspaceFlags", () => {
         disabledReason: "rejected.fraud",
       },
       stripeActionRequired: 0,
+      hasStripeAccount: true,
     });
     expect(flags.showOnboardingForm).toBe(false);
     expect(flags.showManagement).toBe(false);
-    expect(flags.showPreparingPanel).toBe(true);
+    expect(flags.showEmbeddedPanels).toBe(false);
+    expect(flags.showRestrictedPanel).toBe(true);
+    expect(flags.showPreparingPanel).toBe(false);
   });
 
   it("shows finance read-only and awaiting owner without stripe account", () => {
@@ -59,6 +62,8 @@ describe("deriveConnectWorkspaceFlags", () => {
     });
     expect(flags.showRefreshAction).toBe(true);
     expect(flags.showFinanceAwaitingOwner).toBe(false);
+    expect(flags.showManagement).toBe(true);
+    expect(flags.showEmbeddedPanels).toBe(true);
   });
 
   it("shows management panel for owner when ready", () => {

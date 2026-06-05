@@ -9,6 +9,7 @@ import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server"
 import {
   getConnectGapState,
   isActionableStripeDisabledReason,
+  isConnectOnboardingStage,
   shouldSkipConnect,
 } from "@auction/connect";
 import type { ConnectGapState } from "@auction/connect";
@@ -70,6 +71,9 @@ export function useStripeConnectAccount({
   const [boundaryResetKey, setBoundaryResetKey] = useState(0);
   const [stripeActionRequired, setStripeActionRequired] = useState(0);
   const [pollAfterOnboardingExit, setPollAfterOnboardingExit] = useState(false);
+  const [preparingTimedOut, setPreparingTimedOut] = useState(false);
+
+  const PREPARING_TIMEOUT_MS = 30_000;
 
   useEffect(() => {
     setLocalStatus(status);
@@ -94,17 +98,40 @@ export function useStripeConnectAccount({
   const runEnsureAccount = useCallback(() => {
     setEnsureError(null);
     setError(null);
+    setPreparingTimedOut(false);
     setEnsureAttempted(true);
     startTransition(async () => {
       const ensured = await ensureStripeConnectAccountAction(legalEntityId);
       if (!ensured.ok) {
         setEnsureError(ensured.error ?? "Could not create Connect account.");
-        setEnsureAttempted(false);
         return;
       }
       router.refresh();
     });
   }, [legalEntityId, router]);
+
+  useEffect(() => {
+    const awaitingAccount =
+      connectEnforced &&
+      kycApproved &&
+      canOnboard(memberRole) &&
+      !localStatus?.stripeAccountId &&
+      ensureAttempted &&
+      !ensureError;
+    if (!awaitingAccount) {
+      setPreparingTimedOut(false);
+      return;
+    }
+    const id = window.setTimeout(() => setPreparingTimedOut(true), PREPARING_TIMEOUT_MS);
+    return () => window.clearTimeout(id);
+  }, [
+    connectEnforced,
+    ensureAttempted,
+    ensureError,
+    kycApproved,
+    localStatus?.stripeAccountId,
+    memberRole,
+  ]);
 
   useEffect(() => {
     if (shouldSkipConnect({ isLaxManaged }) || !connectEnforced || !kycApproved) return;
@@ -153,7 +180,8 @@ export function useStripeConnectAccount({
     enabled:
       pollAfterOnboardingExit &&
       !localStatus?.ready &&
-      isActionableStripeDisabledReason(localStatus?.disabledReason),
+      (isActionableStripeDisabledReason(localStatus?.disabledReason) ||
+        isConnectOnboardingStage(gap.stage)),
     onPoll: handleSync,
   });
 
@@ -178,5 +206,6 @@ export function useStripeConnectAccount({
     runEnsureAccount,
     reloadEmbeddedSetup,
     pollingTimedOut,
+    preparingTimedOut,
   };
 }
