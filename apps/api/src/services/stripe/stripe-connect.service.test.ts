@@ -721,6 +721,7 @@ describe("StripeConnectService.ensureAccount", () => {
         controller: {
           fees: { payer: "application" },
           losses: { payments: "application" },
+          requirement_collection: "application",
           stripe_dashboard: { type: "none" },
         },
         individual: {
@@ -730,7 +731,7 @@ describe("StripeConnectService.ensureAccount", () => {
         },
         capabilities: { transfers: { requested: true } },
       }),
-      { idempotencyKey: "connect:account:v2:le1" },
+      { idempotencyKey: "connect:account:v3:le1" },
     );
     expect(result.stripeAccountId).toBe("acct_test_1");
     expect(result.legalEntity.status).toBe("connect_pending");
@@ -804,7 +805,7 @@ describe("StripeConnectService.ensureAccount", () => {
         business_type: "company",
         metadata: expect.objectContaining({ legalEntityId: "le-org" }),
       }),
-      { idempotencyKey: "connect:account:v2:le-org" },
+      { idempotencyKey: "connect:account:v3:le-org" },
     );
     expect(result.legalEntity.status).toBe("connect_pending");
   });
