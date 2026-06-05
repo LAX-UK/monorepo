@@ -1,7 +1,7 @@
 "use client";
 
 import { policyRoutes } from "@/components/marketing/policy-routes";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,9 +22,9 @@ export function PolicyHubLayout({ children }: Props) {
     <main id="main-content" className="bg-page-bg pt-[var(--header-height)] dark:bg-background">
       <nav
         aria-label="Policy pages"
-        className="border-b border-outline-variant/40 px-8 pt-6 md:px-10 lg:px-14"
+        className={cn(MARKETING_CATALOG_GUTTER, "border-b border-outline-variant/40 pt-6")}
       >
-        <div className="no-scrollbar flex max-w-[var(--container-max,1440px)] snap-x gap-0 overflow-x-auto">
+        <div className="no-scrollbar mx-auto flex max-w-[var(--container-max,1440px)] snap-x gap-0 overflow-x-auto">
           {policyRoutes.map((route) => {
             const active = isActive(pathname, route.href);
             return (

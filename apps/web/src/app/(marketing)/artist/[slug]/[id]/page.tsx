@@ -1,6 +1,7 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { ArtistScenarioBadges } from "@/components/artists/artist-scenario-badge";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
+import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { ShareButton } from "@/components/marketing/share-button";
@@ -25,7 +26,6 @@ import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { artistDirectoryBackHref } from "@/lib/marketing/catalog-links";
-import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { metadataForNotFound, metadataForSeller } from "@/lib/seo/metadata-factory";
 import {
   breadcrumbJsonLd,
@@ -39,7 +39,6 @@ import { getSiteUrl } from "@/lib/site-url";
 import { getCreatorKindConfig } from "@auction/types";
 import type { Lot, ArtistProfile as RegistryArtist } from "@auction/types";
 import { Badge, Button } from "@auction/ui";
-import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -158,26 +157,33 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
     );
 
     return (
-      <main
-        id="main-content"
-        className={cn(
-          "pb-[var(--page-bottom-padding)]",
-          MARKETING_CATALOG_PT,
-          MARKETING_PAGE_SHELL,
-        )}
+      <MarketingDetailShell
+        jsonLd={
+          <script type="application/ld+json" suppressHydrationWarning>
+            {jsonLdText}
+          </script>
+        }
+        wayfinding={
+          <MarketingDetailWayfinding
+            backHref={directoryBackHref}
+            backLabel="Back to artists"
+            breadcrumbItems={[
+              { label: "Home", href: "/" },
+              { label: user.name, current: true },
+            ]}
+            className="mb-8"
+          />
+        }
+        stickyChrome={
+          <ArtistStickyFollow
+            artistId={id}
+            artistName={user.name}
+            initialWatching={watching}
+            isAuthenticated={isAuthed}
+            loginNextPath={profilePath}
+          />
+        }
       >
-        <script type="application/ld+json" suppressHydrationWarning>
-          {jsonLdText}
-        </script>
-        <MarketingDetailWayfinding
-          backHref={directoryBackHref}
-          backLabel="Back to artists"
-          breadcrumbItems={[
-            { label: "Home", href: "/" },
-            { label: user.name, current: true },
-          ]}
-          className="mb-8"
-        />
         <ArtistHero
           vm={{
             id,
@@ -214,14 +220,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
             </>
           )}
         </section>
-        <ArtistStickyFollow
-          artistId={id}
-          artistName={user.name}
-          initialWatching={watching}
-          isAuthenticated={isAuthed}
-          loginNextPath={profilePath}
-        />
-      </main>
+      </MarketingDetailShell>
     );
   }
 
@@ -381,25 +380,37 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
   );
 
   return (
-    <main
-      id="main-content"
-      className={cn("pb-[var(--page-bottom-padding)]", MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL)}
+    <MarketingDetailShell
+      jsonLd={
+        <>
+          <script type="application/ld+json" suppressHydrationWarning>
+            {jsonLdText}
+          </script>
+          {shouldNoIndex(registry) ? <meta name="robots" content="noindex,follow" /> : null}
+        </>
+      }
+      wayfinding={
+        <MarketingDetailWayfinding
+          backHref={directoryBackHref}
+          backLabel="Back to artists"
+          breadcrumbItems={[
+            { label: "Home", href: "/" },
+            { label: "Artists", href: "/artists" },
+            { label: artist.name, current: true },
+          ]}
+          className="mb-8"
+        />
+      }
+      stickyChrome={
+        <ArtistStickyFollow
+          artistId={id}
+          artistName={artist.name}
+          initialWatching={watching}
+          isAuthenticated={isAuthed}
+          loginNextPath={profilePath}
+        />
+      }
     >
-      <script type="application/ld+json" suppressHydrationWarning>
-        {jsonLdText}
-      </script>
-      {shouldNoIndex(registry) ? <meta name="robots" content="noindex,follow" /> : null}
-
-      <MarketingDetailWayfinding
-        backHref={directoryBackHref}
-        backLabel="Back to artists"
-        breadcrumbItems={[
-          { label: "Home", href: "/" },
-          { label: "Artists", href: "/artists" },
-          { label: artist.name, current: true },
-        ]}
-        className="mb-8"
-      />
       <ArtistHero
         vm={{
           id,
@@ -502,14 +513,6 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
           </>
         }
       />
-
-      <ArtistStickyFollow
-        artistId={id}
-        artistName={artist.name}
-        initialWatching={watching}
-        isAuthenticated={isAuthed}
-        loginNextPath={profilePath}
-      />
-    </main>
+    </MarketingDetailShell>
   );
 }

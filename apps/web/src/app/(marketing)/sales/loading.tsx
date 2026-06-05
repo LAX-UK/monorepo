@@ -1,6 +1,6 @@
+import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketing-catalog-toolbar-skeleton";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { cn } from "@auction/ui";
 
@@ -10,21 +10,18 @@ export default async function SalesIndexLoading() {
   const view = await readSkeletonView("sales", "list");
   const browseIsDenseList = view === "list";
   return (
-    <main
-      id="main-content"
-      className="bg-page-bg pb-[var(--page-bottom-padding)] pt-[var(--header-height)] dark:bg-background"
+    <MarketingCatalogHubShell
       aria-busy="true"
       aria-label="Loading sales"
-    >
-      <div className={MARKETING_PAGE_SHELL}>
-        <section className="pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-10">
+      hero={
+        <section className="pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-0">
           <div className="flex flex-col gap-8 sm:gap-10 lg:gap-12">
             <div className="space-y-3">
               <div className={cn(pulse, "h-10 w-48 sm:h-12 sm:w-64")} />
               <div className={cn(pulse, "h-4 w-full max-w-xl")} />
             </div>
 
-            <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0 md:grid-cols-2 md:gap-4 xl:grid-cols-3 xl:gap-4">
+            <ul className="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-4">
               {(["a", "b", "c"] as const).map((k) => (
                 <li
                   key={k}
@@ -49,76 +46,78 @@ export default async function SalesIndexLoading() {
                 ))}
               </div>
             </div>
-
-            <div className="flex flex-col gap-6">
-              <div className="w-full overflow-x-auto pb-1 md:overflow-visible">
-                <div className="inline-flex min-w-full gap-2 border-b border-outline-variant pb-2 md:flex-wrap">
-                  {(["x", "y", "z"] as const).map((k) => (
-                    <span
-                      key={k}
-                      className={cn(pulse, "h-10 w-28 shrink-0 rounded-full")}
-                      aria-hidden
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <MarketingCatalogToolbarSkeleton />
-
-              <div className="pt-2 sm:pt-4">
-                <div className="flex flex-col gap-8 lg:flex-row lg:gap-0">
-                  <div className="hidden lg:block lg:w-[min(100%,441px)] lg:max-w-[441px] lg:pr-8">
-                    <div className="space-y-4">
-                      <div className={cn(pulse, "h-4 w-40")} />
-                      {(["s1", "s2"] as const).map((k) => (
-                        <div key={k} className={cn(pulse, "h-12 w-full")} />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1 pb-[var(--page-bottom-padding)] lg:max-w-[989px] lg:pb-0 lg:pl-8">
-                    {browseIsDenseList ? (
-                      <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:gap-4 lg:gap-5">
-                        {(["a", "b", "c", "d", "e"] as const).map((k) => (
-                          <li
-                            key={k}
-                            className="rounded-lg bg-page-bg p-4 outline outline-1 -outline-offset-1 outline-outline-variant/60 sm:p-5 lg:p-6 dark:bg-surface-container-low"
-                          >
-                            <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:gap-6">
-                              <div
-                                className={cn(
-                                  pulse,
-                                  "aspect-[16/10] w-full rounded-md lg:h-[280px] lg:w-[min(100%,420px)] lg:max-w-[420px]",
-                                )}
-                              />
-                              <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
-                                <div className="space-y-3">
-                                  <div className={cn(pulse, "h-4 w-3/4")} />
-                                  <div className={cn(pulse, "h-5 w-full")} />
-                                  <div className={cn(pulse, "h-3 w-1/2")} />
-                                </div>
-                                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                                  <div className={cn(pulse, "h-11 w-full rounded-md sm:w-32")} />
-                                  <div className={cn(pulse, "h-11 w-full rounded-md sm:w-28")} />
-                                </div>
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <MarketingListSkeleton
-                        view="grid"
-                        count={6}
-                        className="gap-x-3 gap-y-4 md:gap-x-7 md:gap-y-10 xl:gap-x-6 xl:gap-y-6"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
+      }
+      toolbar={
+        <>
+          <div className="w-full overflow-x-auto pb-1 md:overflow-visible">
+            <div className="inline-flex min-w-full gap-2 border-b border-outline-variant pb-2 md:flex-wrap">
+              {(["x", "y", "z"] as const).map((k) => (
+                <span
+                  key={k}
+                  className={cn(pulse, "h-10 w-28 shrink-0 rounded-full")}
+                  aria-hidden
+                />
+              ))}
+            </div>
+          </div>
+          <MarketingCatalogToolbarSkeleton />
+        </>
+      }
+    >
+      <div className="flex flex-col gap-6 pb-8 sm:pb-10 lg:pb-10">
+        <div className="pt-2 sm:pt-4">
+          <div className="flex flex-col gap-8 lg:flex-row lg:gap-0">
+            <div className="hidden lg:block lg:w-[min(100%,441px)] lg:max-w-[441px] lg:pr-8">
+              <div className="space-y-4">
+                <div className={cn(pulse, "h-4 w-40")} />
+                {(["s1", "s2"] as const).map((k) => (
+                  <div key={k} className={cn(pulse, "h-12 w-full")} />
+                ))}
+              </div>
+            </div>
+            <div className="min-w-0 flex-1 lg:max-w-[989px] lg:pl-8">
+              {browseIsDenseList ? (
+                <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:gap-4 lg:gap-5">
+                  {(["a", "b", "c", "d", "e"] as const).map((k) => (
+                    <li
+                      key={k}
+                      className="rounded-lg bg-page-bg p-4 outline outline-1 -outline-offset-1 outline-outline-variant/60 sm:p-5 lg:p-6 dark:bg-surface-container-low"
+                    >
+                      <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:gap-6">
+                        <div
+                          className={cn(
+                            pulse,
+                            "aspect-[16/10] w-full rounded-md lg:h-[280px] lg:w-[min(100%,420px)] lg:max-w-[420px]",
+                          )}
+                        />
+                        <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
+                          <div className="space-y-3">
+                            <div className={cn(pulse, "h-4 w-3/4")} />
+                            <div className={cn(pulse, "h-5 w-full")} />
+                            <div className={cn(pulse, "h-3 w-1/2")} />
+                          </div>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                            <div className={cn(pulse, "h-11 w-full rounded-md sm:w-32")} />
+                            <div className={cn(pulse, "h-11 w-full rounded-md sm:w-28")} />
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <MarketingListSkeleton
+                  view="grid"
+                  count={6}
+                  className="gap-x-3 gap-y-4 md:gap-x-7 md:gap-y-10 lg:gap-x-6 lg:gap-y-6"
+                />
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    </main>
+    </MarketingCatalogHubShell>
   );
 }

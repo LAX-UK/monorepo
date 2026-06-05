@@ -1,5 +1,6 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { SaleroomLotQuickLookCorner } from "@/components/marketing/lot-quick-look/saleroom-lot-quick-look-corner";
+import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
 import { SaleAnchorTabs } from "@/components/marketing/sale-anchor-tabs";
@@ -38,7 +39,7 @@ import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
-import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import {
   type SaleroomCatalogSort,
   parseSaleroomCatalogSort,
@@ -358,30 +359,29 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const featuredLotTitles = lotVMs.slice(0, 3).map((lot) => lot.title);
 
   return (
-    <main
-      id="main-content"
-      className={cn(
-        "bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background lg:pb-24",
-        MARKETING_CATALOG_PT,
-      )}
-    >
-      <script type="application/ld+json" suppressHydrationWarning>
-        {jsonLdText}
-      </script>
-      <SaleMobileSummaryBar
-        start={bundle.sale.startTime}
-        end={bundle.sale.endTime}
-        status={bundle.sale.status}
-        saleTitle={bundle.sale.title}
-        deliveryMode={bundle.sale.deliveryMode}
-        directionsUrl={directionsUrl}
-        streamUrl={bundle.sale.streamUrl}
-        sale={bundle.sale}
-        locationLine={locationLine}
-        {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
-      />
-
-      <div className={cn(MARKETING_PAGE_SHELL, "hidden md:block")}>
+    <MarketingDetailShell
+      className="lg:pb-24"
+      wrapChildren={false}
+      jsonLd={
+        <script type="application/ld+json" suppressHydrationWarning>
+          {jsonLdText}
+        </script>
+      }
+      leadingChrome={
+        <SaleMobileSummaryBar
+          start={bundle.sale.startTime}
+          end={bundle.sale.endTime}
+          status={bundle.sale.status}
+          saleTitle={bundle.sale.title}
+          deliveryMode={bundle.sale.deliveryMode}
+          directionsUrl={directionsUrl}
+          streamUrl={bundle.sale.streamUrl}
+          sale={bundle.sale}
+          locationLine={locationLine}
+          {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
+        />
+      }
+      wayfinding={
         <MarketingDetailWayfinding
           backHref={calendarBackHref}
           backLabel="Back to calendar"
@@ -392,34 +392,36 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           ]}
           className="pb-2"
         />
-      </div>
-
-      <SaleroomHero
-        hero={heroVM}
-        isAuthenticated={isAuthenticated}
-        backHref={calendarBackHref}
-        deliveryMode={bundle.sale.deliveryMode}
-        streamUrl={bundle.sale.streamUrl}
-        toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
-        actions={
-          <SaleroomHeroActions
-            saleId={bundle.sale.id}
-            saleHref={basePath}
-            isAuthenticated={isAuthenticated}
-            initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
-            sale={bundle.sale}
-            registerToBid={{
-              show: registerToBidShow,
-              buyerEntities,
-              myRegistrations,
-              kycApproved,
-              kycFeedback,
-              orgModuleEnabled,
-            }}
-          />
-        }
-      />
-
+      }
+      wayfindingClassName="hidden md:block"
+      hero={
+        <SaleroomHero
+          hero={heroVM}
+          isAuthenticated={isAuthenticated}
+          backHref={calendarBackHref}
+          deliveryMode={bundle.sale.deliveryMode}
+          streamUrl={bundle.sale.streamUrl}
+          toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
+          actions={
+            <SaleroomHeroActions
+              saleId={bundle.sale.id}
+              saleHref={basePath}
+              isAuthenticated={isAuthenticated}
+              initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
+              sale={bundle.sale}
+              registerToBid={{
+                show: registerToBidShow,
+                buyerEntities,
+                myRegistrations,
+                kycApproved,
+                kycFeedback,
+                orgModuleEnabled,
+              }}
+            />
+          }
+        />
+      }
+    >
       <SaleDesktopStickyBar
         start={bundle.sale.startTime}
         end={bundle.sale.endTime}
@@ -529,7 +531,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           <SaleroomRelatedAuctions related={relatedVMs} />
         </section>
       ) : null}
-    </main>
+    </MarketingDetailShell>
   );
 }
 

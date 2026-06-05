@@ -1,6 +1,7 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
 import { LotPager } from "@/components/marketing/lot-pager";
+import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
@@ -52,13 +53,11 @@ import {
   lotCatalogBackHref,
   lotCatalogBackLabel,
 } from "@/lib/marketing/catalog-links";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -387,122 +386,131 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const viewItemPriceMinor = lotViewItemPriceMinor(auction);
 
   return (
-    <main id="main-content" className="pt-[calc(var(--header-height)+8px)]">
+    <>
       <SetMarketingHeaderTitle title={auction.title} />
-      <div className={cn(MARKETING_PAGE_SHELL, "pb-2 md:pb-4")}>
-        <MarketingDetailWayfinding
-          backHref={catalogBackHref}
-          backLabel={catalogBackLabel}
-          actions={
-            lotNavVM.prevHref || lotNavVM.nextHref ? (
-              <LotPager
-                prevHref={lotNavVM.prevHref}
-                nextHref={lotNavVM.nextHref}
-                positionLabel={lotNavVM.positionLabel}
-              />
-            ) : null
-          }
-          breadcrumbItems={
-            parentSale
-              ? [
-                  { label: "Home", href: "/" },
-                  { label: parentSale.title, href: salePath(parentSale) },
-                  { label: auction.title, current: true },
-                ]
-              : [
-                  { label: "Home", href: "/" },
-                  { label: "Search", href: "/search" },
-                  { label: auction.title, current: true },
-                ]
-          }
-        />
-      </div>
-      <ViewItemTracker
-        lotId={auction.id}
-        title={auction.title}
-        currency={viewItemCurrency}
-        {...(viewItemPriceMinor != null ? { priceMinor: viewItemPriceMinor } : {})}
-      />
-      <RecentlyViewedTracker lotId={auction.id} href={lotPath(auction)} title={auction.title} />
-      <script
-        id={`auction-jsonld-${auction.id}`}
-        type="application/ld+json"
-        suppressHydrationWarning
-      >
-        {jsonLdText}
-      </script>
-      <LotPortsProvider>
-        {isOnsiteSale && saleBundle && onsiteOverviewVM ? (
-          <LotOnsiteMarketingLayout
-            auction={auction}
-            sale={saleBundle.sale}
-            summarySeed={summarySeed}
-            marketingAccordionBlocks={marketingBlocks}
-            rail={rail}
-            isAuthenticated={Boolean(session)}
-            watchedLotIds={watchedLotIds}
-            currentUserId={session?.id ?? null}
-            shareUrl={shareUrl}
-            followSlot={followSlot}
-            showPreviewRibbon={showPreviewRibbon}
-            serverClockMs={serverNow}
-            sessionHeader={sessionHeaderVM}
-            queueCurrent={queueVMs.current}
-            queueUpNext={queueVMs.upNext}
-            queueRest={queueVMs.queue}
-            isSaleQueueLoading={isSaleQueueLoading}
-            saleForLifecycle={saleLifecyclePick}
-            overview={onsiteOverviewVM}
-            kycApproved={kycApprovedForBid}
-            myRegistrations={myRegistrationsForTimeline}
-            buyerEntities={buyerEntities}
+      <MarketingDetailShell
+        useCatalogPt={false}
+        className="pt-[calc(var(--header-height)+8px)]"
+        wrapChildren={false}
+        wayfinding={
+          <MarketingDetailWayfinding
+            backHref={catalogBackHref}
+            backLabel={catalogBackLabel}
+            actions={
+              lotNavVM.prevHref || lotNavVM.nextHref ? (
+                <LotPager
+                  prevHref={lotNavVM.prevHref}
+                  nextHref={lotNavVM.nextHref}
+                  positionLabel={lotNavVM.positionLabel}
+                />
+              ) : null
+            }
+            breadcrumbItems={
+              parentSale
+                ? [
+                    { label: "Home", href: "/" },
+                    { label: parentSale.title, href: salePath(parentSale) },
+                    { label: auction.title, current: true },
+                  ]
+                : [
+                    { label: "Home", href: "/" },
+                    { label: "Search", href: "/search" },
+                    { label: auction.title, current: true },
+                  ]
+            }
           />
-        ) : auction.saleId && !saleBundle ? (
-          <OnsiteLotUnavailable saleTitle={parentSale?.title ?? null} saleId={auction.saleId} />
-        ) : (
-          <LotRealtimeProvider lotId={auction.id}>
-            <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
-              <ArtworkOnlineLayout
-                auction={auction}
-                saleForLifecycle={saleLifecyclePick}
-                showPreviewRibbon={showPreviewRibbon}
-                isSaleQueueLoading={isSaleQueueLoading}
-                serverClockMs={serverNow}
-                sessionHeader={sessionHeaderVM}
-                queueCurrent={queueVMs.current}
-                queueUpNext={queueVMs.upNext}
-                queueRest={queueVMs.queue}
-                marketingAccordionBlocks={marketingBlocks}
-                rail={rail}
-                isAuthenticated={Boolean(session)}
-                watchedLotIds={watchedLotIds}
-                currentUserId={session?.id ?? null}
-                shareUrl={shareUrl}
-                followSlot={followSlot}
-                bidPanel={onlineBidPanel}
-                bidPanelTop={
-                  <ArtworkConditionReportCta
-                    lotId={auction.id}
-                    loginNextPath={lotPath(auction)}
-                    isAuthenticated={Boolean(session)}
-                    show={conditionReportCtaShow}
-                    lotEligible={conditionReportCtaShow}
-                    kycApproved={kycApprovedForCr}
-                    kycFeedback={kycFeedbackForCr}
-                    publishedConditionReport={publishedConditionReport}
-                    buyerRequest={buyerConditionReportRequest}
-                    userId={session?.id ?? null}
-                  />
-                }
-                hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
-                streamUrl={saleBundle?.sale?.streamUrl ?? null}
-                streamSaleTitle={saleBundle?.sale?.title ?? parentSale?.title ?? auction.title}
-                streamPosterUrl={auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null}
-              />
-            </OnlineLotLifecycleProvider>
-          </LotRealtimeProvider>
-        )}
-      </LotPortsProvider>
-    </main>
+        }
+        wayfindingClassName="pb-2 md:pb-4"
+        jsonLd={
+          <script
+            id={`auction-jsonld-${auction.id}`}
+            type="application/ld+json"
+            suppressHydrationWarning
+          >
+            {jsonLdText}
+          </script>
+        }
+      >
+        <ViewItemTracker
+          lotId={auction.id}
+          title={auction.title}
+          currency={viewItemCurrency}
+          {...(viewItemPriceMinor != null ? { priceMinor: viewItemPriceMinor } : {})}
+        />
+        <RecentlyViewedTracker lotId={auction.id} href={lotPath(auction)} title={auction.title} />
+        <LotPortsProvider>
+          {isOnsiteSale && saleBundle && onsiteOverviewVM ? (
+            <LotOnsiteMarketingLayout
+              auction={auction}
+              sale={saleBundle.sale}
+              summarySeed={summarySeed}
+              marketingAccordionBlocks={marketingBlocks}
+              rail={rail}
+              isAuthenticated={Boolean(session)}
+              watchedLotIds={watchedLotIds}
+              currentUserId={session?.id ?? null}
+              shareUrl={shareUrl}
+              followSlot={followSlot}
+              showPreviewRibbon={showPreviewRibbon}
+              serverClockMs={serverNow}
+              sessionHeader={sessionHeaderVM}
+              queueCurrent={queueVMs.current}
+              queueUpNext={queueVMs.upNext}
+              queueRest={queueVMs.queue}
+              isSaleQueueLoading={isSaleQueueLoading}
+              saleForLifecycle={saleLifecyclePick}
+              overview={onsiteOverviewVM}
+              kycApproved={kycApprovedForBid}
+              myRegistrations={myRegistrationsForTimeline}
+              buyerEntities={buyerEntities}
+            />
+          ) : auction.saleId && !saleBundle ? (
+            <OnsiteLotUnavailable saleTitle={parentSale?.title ?? null} saleId={auction.saleId} />
+          ) : (
+            <LotRealtimeProvider lotId={auction.id}>
+              <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
+                <ArtworkOnlineLayout
+                  auction={auction}
+                  saleForLifecycle={saleLifecyclePick}
+                  showPreviewRibbon={showPreviewRibbon}
+                  isSaleQueueLoading={isSaleQueueLoading}
+                  serverClockMs={serverNow}
+                  sessionHeader={sessionHeaderVM}
+                  queueCurrent={queueVMs.current}
+                  queueUpNext={queueVMs.upNext}
+                  queueRest={queueVMs.queue}
+                  marketingAccordionBlocks={marketingBlocks}
+                  rail={rail}
+                  isAuthenticated={Boolean(session)}
+                  watchedLotIds={watchedLotIds}
+                  currentUserId={session?.id ?? null}
+                  shareUrl={shareUrl}
+                  followSlot={followSlot}
+                  bidPanel={onlineBidPanel}
+                  bidPanelTop={
+                    <ArtworkConditionReportCta
+                      lotId={auction.id}
+                      loginNextPath={lotPath(auction)}
+                      isAuthenticated={Boolean(session)}
+                      show={conditionReportCtaShow}
+                      lotEligible={conditionReportCtaShow}
+                      kycApproved={kycApprovedForCr}
+                      kycFeedback={kycFeedbackForCr}
+                      publishedConditionReport={publishedConditionReport}
+                      buyerRequest={buyerConditionReportRequest}
+                      userId={session?.id ?? null}
+                    />
+                  }
+                  hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
+                  streamUrl={saleBundle?.sale?.streamUrl ?? null}
+                  streamSaleTitle={saleBundle?.sale?.title ?? parentSale?.title ?? auction.title}
+                  streamPosterUrl={auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null}
+                />
+              </OnlineLotLifecycleProvider>
+            </LotRealtimeProvider>
+          )}
+        </LotPortsProvider>
+      </MarketingDetailShell>
+    </>
   );
 }

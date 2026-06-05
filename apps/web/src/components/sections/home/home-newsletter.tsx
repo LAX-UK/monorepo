@@ -1,9 +1,10 @@
 "use client";
 
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.service";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
-import { LabelCaps } from "@auction/ui";
+import { LabelCaps, cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
@@ -39,7 +40,10 @@ export function HomeNewsletter() {
     <section
       id="newsletter"
       aria-labelledby="newsletter-heading"
-      className="border-t border-outline-variant bg-surface-container-low px-8 py-[var(--section-spacing)] text-center dark:bg-surface-container-lowest md:px-10 lg:px-14"
+      className={cn(
+        MARKETING_PAGE_SHELL,
+        "border-t border-outline-variant bg-surface-container-low py-[var(--section-spacing)] text-center dark:bg-surface-container-lowest",
+      )}
     >
       <div className="mx-auto flex max-w-[600px] flex-col items-center gap-7">
         <MarketingPromoCta
@@ -52,7 +56,7 @@ export function HomeNewsletter() {
             </div>
           }
           title="Stay in the room."
-          titleClassName="text-[34px] font-semibold leading-tight"
+          titleClassName="font-semibold leading-tight"
           description={
             <p className="font-body text-sm leading-7 text-on-surface-variant">
               Auction previews, artist features and early access — delivered before the gavel falls.

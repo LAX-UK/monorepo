@@ -1,6 +1,7 @@
 import { PolicyMobileToc } from "@/components/marketing/policy-mobile-toc";
 import { SITE_NAME } from "@/lib/brand";
-import { cn } from "@auction/ui";
+import { MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
+import { DisplayHeading, cn } from "@auction/ui";
 import type { TocNavItem } from "@auction/ui";
 import { TocNav } from "@auction/ui";
 import type { HTMLAttributes, ReactNode } from "react";
@@ -57,9 +58,9 @@ export function LegalPage({
     <>
       {breadcrumb ? <div className="mb-4">{breadcrumb}</div> : null}
       {renderKicker(kicker)}
-      <h1 className="mb-6 font-headline text-4xl tracking-tight text-on-surface md:text-5xl">
+      <DisplayHeading as="h1" size="lg" className="mb-6 tracking-tight">
         {title}
-      </h1>
+      </DisplayHeading>
       {lastUpdated ? (
         <p
           className={cn(
@@ -85,13 +86,20 @@ export function LegalPage({
   );
 
   if (embedded) {
-    return <section className="legal-print max-w-3xl px-6 py-12 md:px-16">{content}</section>;
+    return (
+      <section className={cn("legal-print max-w-3xl py-12", MARKETING_CATALOG_GUTTER)}>
+        {content}
+      </section>
+    );
   }
 
   return (
     <main
       id="main-content"
-      className="legal-print mx-auto max-w-3xl px-6 pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] md:px-10 lg:pt-32"
+      className={cn(
+        "legal-print mx-auto max-w-3xl pb-[var(--page-bottom-padding)] pt-[var(--section-pt)] lg:pt-32",
+        MARKETING_CATALOG_GUTTER,
+      )}
     >
       {content}
     </main>

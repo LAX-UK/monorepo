@@ -8,7 +8,7 @@ type Props = {
   view: CatalogLayoutView;
   count?: number;
   className?: string;
-  /** Override the grid container classes (e.g. artist `xl:grid-cols-3`). */
+  /** Override the grid container classes (e.g. artist `lg:grid-cols-3`). */
   gridClassName?: string;
   /** Override the list-row thumb (e.g. circular `size-12` for artists). */
   listThumbClassName?: string;

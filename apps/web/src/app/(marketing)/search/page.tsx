@@ -4,6 +4,7 @@ import {
   MARKETING_HUB_BREADCRUMB_CLASS,
   MarketingBreadcrumb,
 } from "@/components/marketing/marketing-breadcrumb";
+import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { RecentlyViewedRail } from "@/components/marketing/recently-viewed-rail";
@@ -11,10 +12,7 @@ import {
   SearchCatalogPendingProvider,
   SearchResultsShell,
 } from "@/components/marketing/search-catalog-client";
-import {
-  SearchFilterFormDesktop,
-  SearchFilterFormMobile,
-} from "@/components/marketing/search-filter-form";
+import { SearchFilterFormDesktop } from "@/components/marketing/search-filter-form";
 import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
@@ -24,7 +22,7 @@ import { getServerLotCount, getServerLotReader } from "@/lib/data/http/lots.serv
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
-import { FOCUS_RING, MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import {
   parseSearchEnding,
   parseSearchStatus,
@@ -40,7 +38,6 @@ import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
 import { SectionCta } from "@auction/ui";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -256,201 +253,192 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   return (
     <SearchCatalogPendingProvider>
-      <main
-        id="main-content"
-        className={cn("bg-page-bg pb-[var(--page-bottom-padding)]", MARKETING_CATALOG_PT)}
-      >
-        <script type="application/ld+json" suppressHydrationWarning>
-          {listLdText}
-        </script>
-
-        <MarketingPageHero
-          breadcrumb={
-            <MarketingBreadcrumb
-              items={[
-                { label: "Home", href: "/" },
-                { label: "Search", current: true },
-              ]}
-              className={MARKETING_HUB_BREADCRUMB_CLASS}
+      <MarketingCatalogHubShell
+        jsonLd={
+          <script type="application/ld+json" suppressHydrationWarning>
+            {listLdText}
+          </script>
+        }
+        hero={
+          <MarketingPageHero
+            breadcrumb={
+              <MarketingBreadcrumb
+                items={[
+                  { label: "Home", href: "/" },
+                  { label: "Search", current: true },
+                ]}
+                className={MARKETING_HUB_BREADCRUMB_CLASS}
+              />
+            }
+            title="Search lots"
+            titleSize="section"
+            className="pb-6 pt-0 md:pb-8"
+            description="Browse live inventory by title, medium, and category. Save lots to your watchlist to track them from your dashboard."
+            meta={
+              !loadError ? (
+                <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+                  {endingWindow
+                    ? searchEndingLabel(endingWindow)
+                    : statusFilter
+                      ? searchStatusLabel(statusFilter)
+                      : exactTotal != null
+                        ? trimmed
+                          ? `${exactTotal} lots matching “${trimmed}”`
+                          : `${exactTotal} ${exactTotal === 1 ? "lot" : "lots"}`
+                        : resultSummaryLabel(trimmed, filtered.length, hasNext)}
+                </p>
+              ) : null
+            }
+          />
+        }
+        toolbar={
+          <>
+            <SearchFilterFormDesktop
+              initialQ={String(q)}
+              sort={sort}
+              categoryId={categoryId}
+              view={layoutView}
+              {...(statusFilter ? { status: statusFilter } : {})}
+              {...(endingWindow ? { ending: endingWindow } : {})}
             />
-          }
-          title="Search lots"
-          titleSize="section"
-          className="pb-6 pt-0 md:pb-8"
-          description="Browse live inventory by title, medium, and category. Save lots to your watchlist to track them from your dashboard."
-          meta={
-            !loadError ? (
-              <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
-                {endingWindow
-                  ? searchEndingLabel(endingWindow)
-                  : statusFilter
-                    ? searchStatusLabel(statusFilter)
-                    : exactTotal != null
-                      ? trimmed
-                        ? `${exactTotal} lots matching “${trimmed}”`
-                        : `${exactTotal} ${exactTotal === 1 ? "lot" : "lots"}`
-                      : resultSummaryLabel(trimmed, filtered.length, hasNext)}
-              </p>
-            ) : null
-          }
-        />
+            <SearchPageToolbar
+              {...(countLabel ? { countLabel } : {})}
+              activeCount={activeFilterCount}
+              initialQ={String(q)}
+              sort={sort}
+              categoryId={categoryId}
+              layoutView={layoutView}
+              categories={categories}
+              trimmed={trimmed}
+              resultCountLabel={resultCountLabel}
+              {...(statusFilter ? { status: statusFilter } : {})}
+              {...(endingWindow ? { ending: endingWindow } : {})}
+            />
+          </>
+        }
+      >
+        <RecentlyViewedRail className="px-0" />
 
-        <div className={MARKETING_PAGE_SHELL}>
-          <SearchFilterFormDesktop
-            initialQ={String(q)}
-            sort={sort}
-            categoryId={categoryId}
-            view={layoutView}
-            {...(statusFilter ? { status: statusFilter } : {})}
-            {...(endingWindow ? { ending: endingWindow } : {})}
-          />
-
-          <SearchFilterFormMobile
-            initialQ={String(q)}
-            sort={sort}
-            categoryId={categoryId}
-            view={layoutView}
-            {...(statusFilter ? { status: statusFilter } : {})}
-            {...(endingWindow ? { ending: endingWindow } : {})}
-          />
-
-          <SearchPageToolbar
-            {...(countLabel ? { countLabel } : {})}
-            activeCount={activeFilterCount}
-            initialQ={String(q)}
-            sort={sort}
-            categoryId={categoryId}
-            layoutView={layoutView}
-            categories={categories}
-            trimmed={trimmed}
-            resultCountLabel={resultCountLabel}
-            {...(statusFilter ? { status: statusFilter } : {})}
-            {...(endingWindow ? { ending: endingWindow } : {})}
-          />
-
-          <RecentlyViewedRail className="px-0" />
-
-          <SearchResultsShell>
-            {loadError ? (
-              <MarketingEmptyState
-                variant="marketing"
-                context="error"
-                className="mt-8 rounded-xl border-error/30 bg-error-container/10"
-                title="Could not load inventory"
-                description={loadError}
-                action={
-                  <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="cta" asChild>
-                      <Link href="/search">Try again</Link>
-                    </Button>
-                    <Button variant="outline" asChild>
-                      <Link href="/sales">Browse sales</Link>
-                    </Button>
-                  </div>
-                }
-              />
-            ) : filtered.length === 0 ? (
-              <MarketingEmptyState
-                variant="marketing"
-                context={hasActiveFilters ? "filtered" : "noResults"}
-                className="mt-8"
-                title={trimmed ? "No lots match that search" : "No lots to show yet"}
-                description="Try another search, pick a category below, or browse upcoming and past sales."
-                action={
-                  <div className="flex w-full max-w-lg flex-col items-center gap-6">
-                    {hasActiveFilters ? (
-                      <Button variant="cta" asChild>
-                        <Link href={clearFiltersHref}>Clear filters</Link>
-                      </Button>
-                    ) : null}
-                    {popularCategories.length > 0 ? (
-                      <div className="w-full">
-                        <p className="mb-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant">
-                          Popular categories
-                        </p>
-                        <div className="flex flex-wrap justify-center gap-2">
-                          {popularCategories.map((c: Category) => (
-                            <Link
-                              key={c.id}
-                              href={`/search?${buildSearchQs({
-                                offset: 0,
-                                q: trimmed,
-                                sort,
-                                categoryId: c.id,
-                                view: layoutView,
-                                ...qsExtras,
-                              })}`}
-                              scroll={false}
-                              className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface ${FOCUS_RING}`}
-                            >
-                              {c.name}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    <div className="flex flex-wrap justify-center gap-4">
-                      <Button variant="outline" asChild>
-                        <Link href="/archive">Past auctions</Link>
-                      </Button>
-                      <Button variant="cta" asChild>
-                        <Link href="/">Upcoming auctions</Link>
-                      </Button>
-                    </div>
-                  </div>
-                }
-              />
-            ) : (
-              <>
-                <ViewItemListTracker
-                  listId="search"
-                  listName="Search results"
-                  itemIds={filtered.map((a) => a.id)}
-                />
-                <div className="mt-8">
-                  <CatalogLotView
-                    view={layoutView}
-                    lots={filtered}
-                    currentUserId={currentUserId}
-                    isAuthenticated={isAuthenticated}
-                    watchedLotIds={watchedLotIds}
-                    loginNextPath={loginNextPath}
-                    {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
-                  />
+        <SearchResultsShell>
+          {loadError ? (
+            <MarketingEmptyState
+              variant="marketing"
+              context="error"
+              className="mt-8 rounded-xl border-error/30 bg-error-container/10"
+              title="Could not load inventory"
+              description={loadError}
+              action={
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Button variant="cta" asChild>
+                    <Link href="/search">Try again</Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/sales">Browse sales</Link>
+                  </Button>
                 </div>
-                <SearchPaginationBar
-                  offset={offset}
-                  pageSize={PAGE_SIZE}
-                  resultCount={filtered.length}
-                  hasNext={hasNext}
-                  hasPrev={hasPrev}
-                  prevHref={`/search?${qsBaseOffset(prevOffset)}`}
-                  nextHref={`/search?${qsBaseOffset(nextOffset)}`}
-                  totalCount={exactTotal}
-                  getPageHref={(page) => `/search?${qsBaseOffset((page - 1) * PAGE_SIZE)}`}
+              }
+            />
+          ) : filtered.length === 0 ? (
+            <MarketingEmptyState
+              variant="marketing"
+              context={hasActiveFilters ? "filtered" : "noResults"}
+              className="mt-8"
+              title={trimmed ? "No lots match that search" : "No lots to show yet"}
+              description="Try another search, pick a category below, or browse upcoming and past sales."
+              action={
+                <div className="flex w-full max-w-lg flex-col items-center gap-6">
+                  {hasActiveFilters ? (
+                    <Button variant="cta" asChild>
+                      <Link href={clearFiltersHref}>Clear filters</Link>
+                    </Button>
+                  ) : null}
+                  {popularCategories.length > 0 ? (
+                    <div className="w-full">
+                      <p className="mb-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant">
+                        Popular categories
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {popularCategories.map((c: Category) => (
+                          <Link
+                            key={c.id}
+                            href={`/search?${buildSearchQs({
+                              offset: 0,
+                              q: trimmed,
+                              sort,
+                              categoryId: c.id,
+                              view: layoutView,
+                              ...qsExtras,
+                            })}`}
+                            scroll={false}
+                            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface ${FOCUS_RING}`}
+                          >
+                            {c.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap justify-center gap-4">
+                    <Button variant="outline" asChild>
+                      <Link href="/archive">Past auctions</Link>
+                    </Button>
+                    <Button variant="cta" asChild>
+                      <Link href="/">Upcoming auctions</Link>
+                    </Button>
+                  </div>
+                </div>
+              }
+            />
+          ) : (
+            <>
+              <ViewItemListTracker
+                listId="search"
+                listName="Search results"
+                itemIds={filtered.map((a) => a.id)}
+              />
+              <div className="mt-8">
+                <CatalogLotView
+                  view={layoutView}
+                  lots={filtered}
+                  currentUserId={currentUserId}
+                  isAuthenticated={isAuthenticated}
+                  watchedLotIds={watchedLotIds}
+                  loginNextPath={loginNextPath}
+                  {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
                 />
-                {!session ? (
-                  <SectionCta
-                    className="mt-16"
-                    title="Ready to bid?"
-                    description="Create a free account to place bids and track lots you care about."
-                    primary={
-                      <Button variant="cta" asChild>
-                        <Link href="/register">Register to bid</Link>
-                      </Button>
-                    }
-                    secondary={
-                      <Button variant="outline" asChild>
-                        <Link href="/login">Sign in</Link>
-                      </Button>
-                    }
-                  />
-                ) : null}
-              </>
-            )}
-          </SearchResultsShell>
-        </div>
-      </main>
+              </div>
+              <SearchPaginationBar
+                offset={offset}
+                pageSize={PAGE_SIZE}
+                resultCount={filtered.length}
+                hasNext={hasNext}
+                hasPrev={hasPrev}
+                prevHref={`/search?${qsBaseOffset(prevOffset)}`}
+                nextHref={`/search?${qsBaseOffset(nextOffset)}`}
+                totalCount={exactTotal}
+                getPageHref={(page) => `/search?${qsBaseOffset((page - 1) * PAGE_SIZE)}`}
+              />
+              {!session ? (
+                <SectionCta
+                  className="mt-16"
+                  title="Ready to bid?"
+                  description="Create a free account to place bids and track lots you care about."
+                  primary={
+                    <Button variant="cta" asChild>
+                      <Link href="/register">Register to bid</Link>
+                    </Button>
+                  }
+                  secondary={
+                    <Button variant="outline" asChild>
+                      <Link href="/login">Sign in</Link>
+                    </Button>
+                  }
+                />
+              ) : null}
+            </>
+          )}
+        </SearchResultsShell>
+      </MarketingCatalogHubShell>
     </SearchCatalogPendingProvider>
   );
 }
