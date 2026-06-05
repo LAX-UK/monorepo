@@ -68,6 +68,15 @@ export function buildSyntheticAttentionRows(nav: AdminNavCounts): AdminAttention
       ctaLabel: "Open queue",
     });
   }
+  if (nav.telephoneBookingsPending > 0) {
+    rows.push({
+      id: "nav-telephone-bookings",
+      title: `${nav.telephoneBookingsPending} telephone line${nav.telephoneBookingsPending === 1 ? "" : "s"} awaiting confirmation`,
+      hint: "Onsite sale telephone bidding queue",
+      href: "/admin/saleroom",
+      ctaLabel: "Open saleroom",
+    });
+  }
 
   return rows;
 }

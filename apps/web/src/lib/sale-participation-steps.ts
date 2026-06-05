@@ -76,13 +76,24 @@ export function getOnsitePaddleStepDescription(): string {
   );
 }
 
-export function getOnsiteAbsenteePhoneStepDescription(): string {
+export function getOnsiteAbsenteeStepDescription(): string {
   const absentee = getParticipationStepCopy("onsite", "absenteeBid");
+  return (
+    absentee?.description ??
+    "Submit a confidential absentee bid request before your lot opens. Our team handles approved instructions during the live session."
+  );
+}
+
+export function getOnsiteTelephoneStepDescription(): string {
   const phone = getParticipationStepCopy("onsite", "phoneLine");
-  if (absentee && phone) {
-    return `Can't make it? ${absentee.description} ${phone.description}`;
-  }
-  return "Can't make it? Submit a confidential absentee bid request or a telephone bidding request before your lot opens. Our team handles approved instructions during the live session.";
+  return (
+    phone?.description ??
+    "Request a live telephone bidding line from your dashboard profile. A clerk will call you before your lot opens."
+  );
+}
+
+export function getOnsiteAbsenteePhoneStepDescription(): string {
+  return `${getOnsiteAbsenteeStepDescription()} ${getOnsiteTelephoneStepDescription()}`;
 }
 
 export function getOnsiteStreamStepDescription(hasLiveStream: boolean): string {

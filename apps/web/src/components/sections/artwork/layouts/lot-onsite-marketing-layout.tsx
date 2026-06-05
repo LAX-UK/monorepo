@@ -21,6 +21,7 @@ import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models"
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { OnsiteParticipationContext } from "@/lib/onsite/participation-request-input";
 import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
+import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { formatPostalAddressLines } from "@auction/validators";
@@ -63,6 +64,11 @@ type Props = {
   kycApproved?: boolean;
   myRegistrations?: TimelineRegistration[];
   buyerEntities?: TimelineEntity[];
+  mobile?: string | null;
+  mobileDisplay?: string | null;
+  telephoneBooking?: TelephoneBookingSnapshot | null;
+  orgModuleEnabled?: boolean;
+  loginNextPath?: string;
 };
 
 function locationOneLine(sale: Sale): string {
@@ -94,6 +100,11 @@ export function LotOnsiteMarketingLayout({
   kycApproved = false,
   myRegistrations = [],
   buyerEntities = [],
+  mobile = null,
+  mobileDisplay,
+  telephoneBooking = null,
+  orgModuleEnabled = true,
+  loginNextPath = "",
 }: Props) {
   const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
   const locationLine = locationOneLine(sale);
@@ -178,11 +189,25 @@ export function LotOnsiteMarketingLayout({
               endTime={sale.endTime}
               streamUrl={sale.streamUrl}
               absenteeAnchorId="bid-onsite-hub"
+              telephoneAnchorId="bid-onsite-hub"
               liveStreamAnchorId="live-stream"
+              {...(loginNextPath ? { registerReturnPath: loginNextPath } : {})}
               className="rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8"
             />
 
-            <OnsiteParticipationHub sale={sale} participationCtx={participationCtx} />
+            <OnsiteParticipationHub
+              sale={sale}
+              participationCtx={participationCtx}
+              lotId={auction.id}
+              loginNextPath={loginNextPath || shareUrl}
+              isAuthenticated={isAuthenticated}
+              kycApproved={kycApproved}
+              mobile={mobile}
+              {...(mobileDisplay ? { mobileDisplay } : {})}
+              buyerEntities={buyerEntities}
+              telephoneBooking={telephoneBooking}
+              orgModuleEnabled={orgModuleEnabled}
+            />
 
             <OnsitePlanVisitSection
               sale={sale}

@@ -44,6 +44,7 @@ import type {
   ISaleRepository,
   ListLotsFilter,
 } from "./interfaces/repositories.js";
+import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
@@ -118,6 +119,7 @@ export type LotServiceOptions = {
   lotLifecycleRecording?: LotLifecycleRecording | null;
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
   qrCodeService?: QrCodeService | null;
+  telephoneBidBookingService?: ITelephoneBidBookingService | null;
 };
 
 export class LotService {
@@ -138,6 +140,7 @@ export class LotService {
   private readonly lotLifecycleRecording: LotLifecycleRecording | null;
   private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
   private readonly qrCodeService: QrCodeService | null;
+  private readonly telephoneBidBookingService: ITelephoneBidBookingService | null;
 
   constructor(opts: LotServiceOptions) {
     this.lotRepo = opts.lotRepo;
@@ -157,6 +160,7 @@ export class LotService {
     this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
     this.qrCodeService = opts.qrCodeService ?? null;
+    this.telephoneBidBookingService = opts.telephoneBidBookingService ?? null;
   }
 
   returnToInventory(
@@ -355,6 +359,10 @@ export class LotService {
       });
     }
     await this.jobScheduler?.cancelLotJobs(lotId);
+
+    if (updated.saleId && this.telephoneBidBookingService) {
+      await this.telephoneBidBookingService.removeLotFromActiveBookings(updated.saleId, lotId);
+    }
 
     if (this.lotNotifications) {
       const bidders = await this.bids.listDistinctBidderIds(lotId);

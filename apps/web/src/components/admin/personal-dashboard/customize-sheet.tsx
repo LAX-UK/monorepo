@@ -26,6 +26,10 @@ const WIDGET_LABELS: Record<DashboardWidgetId, { label: string; description: str
   "my-queue": { label: "My queue", description: "Attention items needing action" },
   anomalies: { label: "Anomalies", description: "Operational callouts above threshold" },
   "saleroom-live": { label: "Saleroom live", description: "Live bidding pulse and saleroom link" },
+  "onsite-radar": {
+    label: "Onsite radar",
+    description: "Pending registrations and telephone lines on onsite sales",
+  },
   activity: { label: "Recent activity", description: "Latest catalog movement" },
 };
 

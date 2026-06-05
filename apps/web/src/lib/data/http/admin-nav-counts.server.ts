@@ -16,6 +16,7 @@ import {
   getAdminOnboardingIssues,
   getAdminSaleroomSession,
   getAdminSalesList,
+  getAdminTelephoneBookingsPendingCount,
   getLotWithdrawalRequests,
   loadAdminLotFulfilmentQueue,
 } from "@/lib/data/http/admin.server";
@@ -43,6 +44,7 @@ export type AdminNavCountFetchers = {
   getDraftLotsMissingPhotos: () => Promise<number>;
   getAmlScreeningsPending: () => Promise<number>;
   getSourceOfFundsPending: () => Promise<number>;
+  getTelephoneBookingsPending: () => Promise<number>;
 };
 
 const defaultFetchers: AdminNavCountFetchers = {
@@ -132,6 +134,7 @@ const defaultFetchers: AdminNavCountFetchers = {
     const rows = await getAdminSourceOfFundsPending(200);
     return rows.length;
   },
+  getTelephoneBookingsPending: getAdminTelephoneBookingsPendingCount,
 };
 
 async function loadAdminNavCounts(
@@ -153,6 +156,7 @@ async function loadAdminNavCounts(
     draftLotsMissingPhotos,
     amlScreeningsPending,
     sourceOfFundsPending,
+    telephoneBookingsPending,
   ] = await Promise.all([
     fetchers.getSubmissionsPending().catch(() => 0),
     fetchers.getArtistsPending().catch(() => 0),
@@ -169,6 +173,7 @@ async function loadAdminNavCounts(
     fetchers.getDraftLotsMissingPhotos().catch(() => 0),
     fetchers.getAmlScreeningsPending().catch(() => 0),
     fetchers.getSourceOfFundsPending().catch(() => 0),
+    fetchers.getTelephoneBookingsPending().catch(() => 0),
   ]);
 
   return {
@@ -187,6 +192,7 @@ async function loadAdminNavCounts(
     draftLotsMissingPhotos,
     amlScreeningsPending,
     sourceOfFundsPending,
+    telephoneBookingsPending,
   };
 }
 

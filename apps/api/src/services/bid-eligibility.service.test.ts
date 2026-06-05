@@ -406,4 +406,45 @@ describe("BidEligibilityService auto-bid", () => {
       expect(r.error.code).toBe("auto_bid_step_invalid");
     }
   });
+
+  it("bypasses sale registration for telephone operator with active booking", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "limit", rows: [{ status: "confirmed", saleId }] },
+      { kind: "limit", rows: [{ reserveAltMax: "5000.00" }] },
+    ]);
+    const svc = new BidEligibilityService(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 1000,
+      placedVia: "telephone",
+      telephoneBookingId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    });
+    expect(r.isOk()).toBe(true);
+  });
+
+  it("enforces authorized max for telephone operator bids", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "limit", rows: [{ status: "in_progress", saleId }] },
+      { kind: "limit", rows: [{ reserveAltMax: "1000.00" }] },
+    ]);
+    const svc = new BidEligibilityService(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 1500,
+      placedVia: "telephone",
+      telephoneBookingId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("authorized_max_exceeded");
+    }
+  });
 });

@@ -4,6 +4,7 @@ import {
 } from "@/components/sections/artwork/onsite/onsite-participation-forms";
 import { OnsiteVenueDrawer } from "@/components/sections/artwork/onsite/onsite-venue-drawer";
 import type { OnsiteParticipationContext } from "@/lib/onsite/participation-request-input";
+import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import type { Sale } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { ExternalLink, Globe, Mail, MapPin, Phone, Video } from "lucide-react";
@@ -11,9 +12,30 @@ import { ExternalLink, Globe, Mail, MapPin, Phone, Video } from "lucide-react";
 type Props = {
   sale: Sale;
   participationCtx: OnsiteParticipationContext;
+  lotId: string;
+  loginNextPath: string;
+  isAuthenticated: boolean;
+  kycApproved: boolean;
+  mobile: string | null;
+  mobileDisplay?: string | null;
+  buyerEntities: Array<{ id: string; displayName: string; memberRole: string }>;
+  telephoneBooking?: TelephoneBookingSnapshot | null;
+  orgModuleEnabled?: boolean;
 };
 
-export function OnsiteParticipationHub({ sale, participationCtx }: Props) {
+export function OnsiteParticipationHub({
+  sale,
+  participationCtx,
+  lotId,
+  loginNextPath,
+  isAuthenticated,
+  kycApproved,
+  mobile,
+  mobileDisplay,
+  buyerEntities,
+  telephoneBooking = null,
+  orgModuleEnabled = true,
+}: Props) {
   return (
     <section
       id="bid-onsite-hub"
@@ -93,7 +115,19 @@ export function OnsiteParticipationHub({ sale, participationCtx }: Props) {
             </p>
           </div>
           <div className="mt-6 border-t border-outline-variant/10 pt-3">
-            <OnsiteTelephoneBidForm ctx={participationCtx} />
+            <OnsiteTelephoneBidForm
+              ctx={participationCtx}
+              saleId={sale.id}
+              lotId={lotId}
+              loginNextPath={loginNextPath}
+              isAuthenticated={isAuthenticated}
+              kycApproved={kycApproved}
+              mobile={mobile}
+              {...(mobileDisplay ? { mobileDisplay } : {})}
+              buyerEntities={buyerEntities}
+              existingBooking={telephoneBooking}
+              orgModuleEnabled={orgModuleEnabled}
+            />
           </div>
         </div>
 

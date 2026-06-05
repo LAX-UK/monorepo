@@ -11,6 +11,7 @@ const SELLING_PATH_PREFIXES = ["/dashboard/seller", "/dashboard/submissions"] as
 
 const BUYING_PATH_PREFIXES = [
   "/dashboard/bids",
+  "/dashboard/telephone-bids",
   "/dashboard/portfolio",
   "/dashboard/payments",
   "/dashboard/watchlist",

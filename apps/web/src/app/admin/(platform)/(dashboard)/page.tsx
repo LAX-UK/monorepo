@@ -1,3 +1,7 @@
+import {
+  type OnsiteSalesRadarRow,
+  mapOperationsSnapshotToRadarRow,
+} from "@/components/admin/personal-dashboard/onsite-sales-radar-widget";
 import { PersonalDashboard } from "@/components/admin/personal-dashboard/personal-dashboard";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
 import type { AdminActivityRow, AdminAttentionRow } from "@/lib/admin/admin-home-types";
@@ -18,6 +22,8 @@ import {
   getAdminLotList,
   getAdminMetricsLive,
   getAdminMetricsToday,
+  getAdminSaleOperationsSnapshot,
+  getAdminSalesList,
 } from "@/lib/data/http/admin.server";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { cookies } from "next/headers";
@@ -46,6 +52,7 @@ export default async function AdminHomePage({
   let attention: AdminAttentionRow[] = [];
   let recentLots: Awaited<ReturnType<typeof getAdminLotList>> = [];
   let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
+  let onsiteRadarRows: OnsiteSalesRadarRow[] = [];
   let dashboardLoadWarning: string | null = null;
   let trends: Awaited<ReturnType<typeof getAdminHomeKpiTrends>> = {
     lots: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
@@ -123,6 +130,21 @@ export default async function AdminHomePage({
   const syntheticAttention = buildSyntheticAttentionRows(navCounts);
   const attentionForDashboard = [...syntheticAttention, ...attention];
 
+  try {
+    const onsiteSales = await getAdminSalesList({ limit: 12, status: "active" });
+    const onsiteCandidates = onsiteSales.filter((row) => row.sale.deliveryMode === "onsite");
+    const snapshots = await Promise.all(
+      onsiteCandidates
+        .slice(0, 6)
+        .map((row) => getAdminSaleOperationsSnapshot(row.sale.id).catch(() => null)),
+    );
+    onsiteRadarRows = snapshots
+      .map((snapshot) => (snapshot ? mapOperationsSnapshotToRadarRow(snapshot) : null))
+      .filter((row): row is OnsiteSalesRadarRow => row != null);
+  } catch {
+    /* optional widget */
+  }
+
   return (
     <AppScreen>
       <PersonalDashboard
@@ -136,6 +158,7 @@ export default async function AdminHomePage({
         attention={attentionForDashboard}
         activity={activity}
         anomalies={anomalies}
+        onsiteRadarRows={onsiteRadarRows}
         loadWarning={dashboardLoadWarning}
       />
     </AppScreen>

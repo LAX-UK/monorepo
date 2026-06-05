@@ -44,6 +44,7 @@ import {
 } from "@/lib/data/http/lots.server";
 import { getServerSaleMyRegistrations, getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -252,6 +253,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
 
   const isOnsiteSale =
     saleBundle?.sale != null && !saleAllowsWebBidding(saleBundle.sale.deliveryMode);
+
+  const telephoneBookingForSale =
+    session && auction.saleId && isOnsiteSale
+      ? await getServerTelephoneBookingForSale(auction.saleId).catch(() => null)
+      : null;
 
   const conditionReportCtaShow =
     !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
@@ -463,6 +469,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
               kycApproved={kycApprovedForBid}
               myRegistrations={myRegistrationsForTimeline}
               buyerEntities={buyerEntities}
+              mobile={session?.mobile ?? null}
+              {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
+              telephoneBooking={telephoneBookingForSale}
+              orgModuleEnabled={orgModuleEnabled}
+              loginNextPath={lotPath(auction)}
             />
           ) : auction.saleId && !saleBundle ? (
             <OnsiteLotUnavailable saleTitle={parentSale?.title ?? null} saleId={auction.saleId} />
