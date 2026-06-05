@@ -3,7 +3,6 @@ import { HomeSectionToolbar } from "@/components/marketing/home-section-toolbar"
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
-import { catalogViewCarryParams, lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
@@ -11,8 +10,7 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { UrgencyLotCard } from "./urgency-lot-card";
-import { UrgencyLotRow } from "./urgency-lot-row";
+import { LaxUrgencySectionBody } from "./lax-urgency-section-body";
 
 export type UrgencySectionVariant = "endingSoon" | "liveNow" | "upcoming";
 
@@ -48,13 +46,6 @@ const COPY = {
 
 function urgencySwitcherValue(v: CatalogLayoutView): CatalogLayoutView {
   return v === "list" ? "list" : "grid";
-}
-
-function urgencyLotHref(item: LotCardVM, layoutView: CatalogLayoutView): string {
-  return lotCatalogHref(
-    { id: item.id, title: item.title },
-    catalogViewCarryParams(urgencySwitcherValue(layoutView)),
-  );
 }
 
 function urgencyCountLabel(count: number): string {
@@ -105,7 +96,6 @@ export function LaxUrgencySection({
 }: Props) {
   const headingId = COPY[variant].headingId;
   const switcherValue = urgencySwitcherValue(layoutView);
-  const isList = switcherValue === "list";
 
   if (items.length === 0) {
     return (
@@ -147,34 +137,14 @@ export function LaxUrgencySection({
             />
           }
         />
-        {isList ? (
-          <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:gap-4">
-            {items.map((item) => (
-              <li key={item.id}>
-                <UrgencyLotRow
-                  variant={variant}
-                  item={{ ...item, href: urgencyLotHref(item, layoutView) }}
-                  isAuthenticated={isAuthenticated}
-                  watchedLotIds={watchedLotIds}
-                  loginNextPath={loginNextPath}
-                />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-4 lg:gap-8">
-            {items.map((item, index) => (
-              <UrgencyLotCard
-                key={item.id}
-                item={{ ...item, href: urgencyLotHref(item, layoutView) }}
-                index={index}
-                isAuthenticated={isAuthenticated}
-                watchedLotIds={watchedLotIds}
-                loginNextPath={loginNextPath}
-              />
-            ))}
-          </div>
-        )}
+        <LaxUrgencySectionBody
+          variant={variant}
+          items={items}
+          initialLayoutView={layoutView}
+          isAuthenticated={isAuthenticated}
+          watchedLotIds={watchedLotIds}
+          loginNextPath={loginNextPath}
+        />
       </div>
     </section>
   );
