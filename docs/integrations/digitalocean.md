@@ -47,6 +47,20 @@ Optional role-password secrets used by `packages/db/src/migrate-roles.ts`:
 app startup should fail during readiness checks instead of mutating schema with
 a runtime credential.
 
+## Prebuilt images (DOCR)
+
+All six App Platform components (`api`, `auth`, `ws`, `worker`, `migrate`, `web`)
+are built in GitHub Actions (`.github/workflows/build-images.yml`) and pushed to
+DigitalOcean Container Registry. App Platform pulls `lax-<env>-<component>:<env>`
+on each deploy instead of building from source.
+
+- Enablement: repository variables `USE_PREBUILT_IMAGES_*` and `APP_DEPLOY_SOURCE_*`
+  (see [BOOTSTRAP.md §9](../../infra/terraform/BOOTSTRAP.md#9-prebuilt-images-docr--faster-app-platform-deploys)).
+- Web build args: [`infra/web-build/README.md`](../../infra/web-build/README.md).
+- Verify tags: `doctl registry repository list-tags lax-prod-web`.
+
+Deploy logs should show **pulling** an image, not **building** from GitHub.
+
 ## Spaces uploads
 
 A Space for user-uploaded media (`lax-media` in production, `lax-test-media` in

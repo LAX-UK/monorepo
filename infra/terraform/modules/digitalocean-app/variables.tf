@@ -52,9 +52,8 @@ variable "components" {
     # DOCR repository name (within the account registry) used when
     # deploy_source = "image". Defaults to "lax-<environment>-<name>".
     image_repository = optional(string)
-    # Per-component override of the module-level deploy_source. Lets components
-    # with build-time coupling (e.g. web bakes NEXT_PUBLIC_* at build) stay on
-    # "github" while the rest use prebuilt "image" sources. Null = inherit.
+    # Per-component override of the module-level deploy_source. Null = inherit
+    # (all components including web use DOCR when app_deploy_source = "image").
     deploy_source = optional(string)
     env = list(object({
       key   = string
