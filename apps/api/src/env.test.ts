@@ -28,6 +28,22 @@ function productionEnvBase(overrides: Record<string, unknown> = {}) {
   };
 }
 
+describe("envSchema WEB_ORIGINS", () => {
+  it("falls back to CORS_ALLOWED_ORIGINS when WEB_ORIGINS is unset", () => {
+    const prev = process.env.CORS_ALLOWED_ORIGINS;
+    process.env.CORS_ALLOWED_ORIGINS = "https://lax.bid,https://event.lax.bid";
+    try {
+      const parsed = envSchema.safeParse(productionEnvBase());
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      expect(parsed.data.WEB_ORIGINS).toEqual(["https://lax.bid", "https://event.lax.bid"]);
+    } finally {
+      if (prev === undefined) delete process.env.CORS_ALLOWED_ORIGINS;
+      else process.env.CORS_ALLOWED_ORIGINS = prev;
+    }
+  });
+});
+
 describe("envSchema production Veriff validation", () => {
   it("accepts production env when Veriff credentials are present", () => {
     const parsed = envSchema.safeParse(productionEnvBase());
