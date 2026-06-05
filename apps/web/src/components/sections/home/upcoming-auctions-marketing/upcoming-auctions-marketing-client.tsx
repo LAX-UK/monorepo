@@ -6,6 +6,7 @@ import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip"
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
+import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
@@ -48,7 +49,8 @@ function homeSwitcherValue(v: CatalogLayoutView): CatalogLayoutView {
 export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthenticated }: Props) {
   const [filter, setFilter] = useState<UpcomingAuctionsMarketingFilter>("all");
   const visible = useMemo(() => tiles.filter((t) => matchesFilter(t, filter)), [tiles, filter]);
-  const switcherValue = homeSwitcherValue(layoutView);
+  const liveLayoutView = useUrlLayoutView("grid", layoutView) as CatalogLayoutView;
+  const switcherValue = homeSwitcherValue(liveLayoutView);
   const isList = switcherValue === "list";
   const countLabel =
     visible.length === 0
