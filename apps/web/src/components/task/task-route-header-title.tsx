@@ -40,7 +40,7 @@ export function TaskRouteHeaderTitle() {
   if (!label) return null;
 
   return (
-    <p className="pointer-events-none absolute left-1/2 top-1/2 max-w-[min(100%,12rem)] -translate-x-1/2 -translate-y-1/2 truncate text-center font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface sm:max-w-none sm:text-xs">
+    <p className="min-w-0 truncate text-center font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface sm:text-xs">
       {label}
     </p>
   );

@@ -1,4 +1,5 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { ArchivePageToolbar } from "@/components/sections/archive/archive-page-toolbar";
 import { ArchivePagination } from "@/components/sections/archive/archive-pagination";
@@ -16,7 +17,6 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";
 import { archiveLotLinkParams } from "@/lib/marketing/catalog-links";
-import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -25,7 +25,6 @@ import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
 import { Button } from "@auction/ui";
-import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -136,28 +135,29 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, itemsLd] : [crumbs]));
 
     return (
-      <main
-        id="main-content"
-        className={cn(
-          MARKETING_PAGE_SHELL,
-          MARKETING_CATALOG_PT,
-          "bg-surface pb-[var(--page-bottom-padding)] text-on-surface",
-        )}
+      <MarketingCatalogHubShell
+        jsonLd={
+          <script type="application/ld+json" suppressHydrationWarning>
+            {jsonLdText}
+          </script>
+        }
+        hero={<PastAuctionsHeader totalVolumeLabel={formatArchiveVolume(totalHammer)} />}
+        toolbar={
+          <Suspense fallback={filtersFallback()}>
+            <ArchivePageToolbar
+              query={q}
+              resultCount={totalCount}
+              categories={categories}
+              layoutView={layoutView}
+            />
+          </Suspense>
+        }
+        footer={
+          <Suspense fallback={null}>
+            <ArchivePagination page={q.page} totalPages={totalPages} />
+          </Suspense>
+        }
       >
-        <script type="application/ld+json" suppressHydrationWarning>
-          {jsonLdText}
-        </script>
-        <PastAuctionsHeader totalVolumeLabel={formatArchiveVolume(totalHammer)} />
-
-        <Suspense fallback={filtersFallback()}>
-          <ArchivePageToolbar
-            query={q}
-            resultCount={totalCount}
-            categories={categories}
-            layoutView={layoutView}
-          />
-        </Suspense>
-
         <ViewItemListTracker
           listId="archive"
           listName="Past auctions"
@@ -173,27 +173,19 @@ export default async function ArchivePage({ searchParams }: PageProps) {
             catalogLinkParams={archiveLotLinkParams(layoutView)}
           />
         )}
-
-        <Suspense fallback={null}>
-          <ArchivePagination page={q.page} totalPages={totalPages} />
-        </Suspense>
-      </main>
+      </MarketingCatalogHubShell>
     );
   } catch (err) {
     console.error("[ArchivePage]", err);
     return (
-      <main
-        id="main-content"
-        className={cn(
-          MARKETING_PAGE_SHELL,
-          MARKETING_CATALOG_PT,
-          "bg-surface pb-[var(--page-bottom-padding)]",
-        )}
+      <MarketingCatalogHubShell
+        hero={<PastAuctionsHeader totalVolumeLabel="—" />}
+        toolbar={
+          <Suspense fallback={filtersFallback()}>
+            <ArchivePageToolbar query={q} resultCount={0} categories={[]} layoutView="grid" />
+          </Suspense>
+        }
       >
-        <PastAuctionsHeader totalVolumeLabel="—" />
-        <Suspense fallback={filtersFallback()}>
-          <ArchivePageToolbar query={q} resultCount={0} categories={[]} layoutView="grid" />
-        </Suspense>
         <MarketingEmptyState
           variant="marketing"
           context="error"
@@ -210,7 +202,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
             </>
           }
         />
-      </main>
+      </MarketingCatalogHubShell>
     );
   }
 }

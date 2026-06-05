@@ -165,6 +165,7 @@ export function ArtistWorksGrid({ lots, currentUserId }: Props) {
       </h2>
       <MarketingListToolbar
         countLabel={countLabel}
+        stackTrailingOnMobile
         trailing={<WorkFilterControls value={filter} onChange={setFilter} />}
       />
       {visibleLots.length === 0 ? (

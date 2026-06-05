@@ -16,6 +16,7 @@ import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/onl
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
 import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
@@ -98,7 +99,7 @@ export function ArtworkOnlineLayout({
           Catalogue preview — bidding opens when the sale is published.
         </div>
       ) : null}
-      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-[var(--page-bottom-padding)] pt-6 sm:px-6 md:px-8">
+      <div className={cn(MARKETING_PAGE_SHELL, "pb-[var(--page-bottom-padding)] pt-6")}>
         <div className="mt-0 lg:mt-2">
           <AuctionSessionHeader
             vm={sessionHeader}

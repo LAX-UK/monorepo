@@ -16,7 +16,7 @@ export function SalesCalendarGrid({ vms }: Props) {
       className={cn(
         "m-0 list-none gap-3 p-0 md:gap-5 xl:gap-6",
         sparseGridClasses(vms.length, {
-          multi: "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-3",
+          multi: "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3",
         }),
       )}
     >

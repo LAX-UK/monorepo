@@ -2,6 +2,7 @@ import { PRIVATE_SALE_COPY } from "@/components/sections/home/home-copy";
 import type { PrivateSaleHighlightVM } from "@/components/sections/home/home-view-models";
 import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { DisplayHeading, cn } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +22,7 @@ export function PrivateSaleHighlightsMarketing({
   return (
     <section
       aria-labelledby="private-sale-heading"
-      className="cv-auto mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pt-[var(--section-spacing-tight)] md:px-10 lg:px-14"
+      className={cn(MARKETING_PAGE_SHELL, "cv-auto pt-[var(--section-spacing-tight)]")}
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-14">
         <div className="flex max-w-[640px] flex-col gap-6">

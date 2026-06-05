@@ -1,6 +1,7 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { PrivateSaleHighlightVM } from "@/components/sections/home/home-view-models";
-import { Button } from "@auction/ui";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { Button, cn } from "@auction/ui";
 import Link from "next/link";
 import { PrivateSaleHighlightsMarketing } from "./private-sale-highlights-marketing";
 
@@ -14,7 +15,7 @@ export function LaxPrivateSaleHighlightsMarketing({ highlights }: Props) {
     return (
       <section
         aria-label="Private sale highlights"
-        className="mx-auto w-full max-w-[var(--container-max,1440px)] px-8 pb-0 pt-[var(--section-spacing-tight)] md:px-10 lg:px-14"
+        className={cn(MARKETING_PAGE_SHELL, "pb-0 pt-[var(--section-spacing-tight)]")}
       >
         <MarketingEmptyState
           variant="marketing"

@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { DisplayHeading, cn } from "@auction/ui";
 import { type ReactNode, useId } from "react";
 
 export type MarketingPromoCtaProps = {
@@ -45,9 +45,14 @@ export function MarketingPromoCta({
       )}
     >
       {eyebrow ? <div className="mb-2 text-on-surface-variant">{eyebrow}</div> : null}
-      <h2 id={titleId} className={cn("font-headline text-2xl text-on-surface", titleClassName)}>
+      <DisplayHeading
+        as="h2"
+        id={titleId}
+        size="section"
+        className={cn("text-on-surface", titleClassName)}
+      >
         {title}
-      </h2>
+      </DisplayHeading>
       {description ? (
         <div className="mt-3 font-body text-on-surface-variant">{description}</div>
       ) : null}

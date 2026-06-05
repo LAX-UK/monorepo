@@ -100,6 +100,37 @@ This document is the single source of truth for the marketing surface (`apps/web
 - **`pageBackground` (opt-in):** `bg-page-bg` on `MarketingPageShell` / page `<main>` is opt-in, not the default. Catalog hubs (`/sales`, `/search`, `/archive`, policy hub) standardize on it; editorial/home surfaces may keep their own background. Apply deliberately rather than assuming it is global.
 - **Footer:** four-column grid — Auctions, Company, Legal (with the Cookie-preferences link), and Our Services (with social icons). Columns and the footer "Legal" list derive their links from `footer-link-groups.ts` / `policy-routes.ts`; each is a Next `Link` with `FOCUS_RING` and `aria-current` where applicable.
 
+## Responsive breakpoints (locked)
+
+| Band | Width | Marketing behaviour |
+|------|-------|---------------------|
+| **Mobile** | `< lg` (1024px) | Hamburger nav; filter **sheets** (not sidebars); `MarketingStickyBidBar` / mobile bid chrome; home urgency grid starts at **1 column** (`sm:` → 2-up). |
+| **Tablet / small laptop** | `lg`–`2xl` | Full mega nav; filter **sidebar** at `lg+`; catalogue toolbar inline filters at `lg+`; header search is **icon-only** below `2xl`. |
+| **Wide desktop** | `2xl+` (1536px) | Full header search bar (`231px`); catalogue toolbars may show inline keyword forms on `/search`. |
+
+**Rules:**
+
+- **Catalogue toolbars** (`MarketingListToolbar`, `HomeSectionToolbar`): inline filters and desktop-only controls use `hidden lg:flex` / `lg:hidden` — aligned with `SplitFilterSheet` (bottom sheet below `lg`, right drawer at `lg+`). Do not split at `md`.
+- **Catalogue grids:** third column at `lg:grid-cols-3` unless a page brief documents an exception. Saleroom lot grid (`SaleroomLotsGrid`) uses `lg:grid-cols-3 xl:grid-cols-4` for denser inventory on ultra-wide viewports.
+- **Gutters:** always `MARKETING_PAGE_SHELL` / `MARKETING_PAGE_INNER` from `chrome.ts` — no hand-rolled `px-8 md:px-10 lg:px-14`.
+- **Page titles:** catalogue hubs use `DisplayHeading size="section"`; policy pages use `DisplayHeading size="lg"`; promo bands use `DisplayHeading size="section"` via `MarketingPromoCta`.
+- **Hydration:** prefer CSS visibility (`lg:hidden` / `hidden lg:block`) over JS breakpoint hooks for layout forks; reserve `useIsLg()`-style hooks for controlled overlay routing only.
+- **Catalogue hubs:** use `MarketingCatalogHubShell` for `/search`, `/archive`, `/artists`, `/sales` — do not hand-compose `<main>` + `MARKETING_CATALOG_PT` + `MARKETING_PAGE_SHELL`.
+- **Detail pages:** use `MarketingDetailShell` for artist profile, sale detail, and lot detail — wayfinding/hero slots plus optional `wrapChildren={false}` for multi-band saleroom layouts.
+- **Toolbar rows:** shared count/filter/sort layout lives in `MarketingToolbarRow`; sticky chrome in `MarketingListToolbar`, inset home chrome in `HomeSectionToolbar`.
+- **Bottom chrome:** fixed mobile bars use `bottom-[var(--sticky-bid-bar-bottom,0px)]` and safe-area padding — not bare `bottom-0`.
+
+### PR checklist (marketing UI)
+
+Before merging marketing UI changes, confirm:
+
+1. Gutters from `chrome.ts` / `MarketingPageShell` / `MarketingCatalogHubShell` — no raw `px-8 md:px-10 lg:px-14`.
+2. Catalogue toolbars and `MarketingCatalogToolbarSkeleton` split at **`lg`**, not `md`.
+3. Loading routes use the same shell primitive as the loaded page (`MarketingCatalogHubShell` for hubs, `MarketingDetailShell` for detail pages) and `bg-page-bg` matches the loaded background.
+4. Layout forks use CSS visibility; no `useIsLg()` for structural render branches.
+5. New catalogue hub pages use `MarketingCatalogHubShell`; new detail pages use `MarketingDetailShell`.
+6. Page titles use `DisplayHeading` sizes (`section` / `lg`) — no one-off `text-4xl` unless documented.
+
 ---
 
 ## Per-page layout briefs (ASCII)

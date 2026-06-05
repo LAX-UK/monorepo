@@ -39,6 +39,7 @@ export function SaleroomCatalogToolbarRow({
       </div>
       <MarketingListToolbar
         countLabel={countLabel}
+        stackTrailingOnMobile
         mobileFilterTrigger={
           <SaleroomCatalogFilterSheet basePath={basePath} resultCountLabel={resultCountLabel} />
         }
