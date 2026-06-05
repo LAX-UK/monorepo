@@ -7,7 +7,10 @@ import {
   type CheckoutPaymentActionData,
   createCheckoutPaymentAction,
 } from "@/lib/actions/checkout";
-import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
+import {
+  isComplianceManualReviewReason,
+  manualReviewQueueEyebrow,
+} from "@/lib/admin/compliance-manual-review";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics/events";
 import {
   checkoutPaymentErrorMessage,
@@ -193,7 +196,11 @@ export function CheckoutPurchasePanel({
     );
   }
 
-  if (openPaymentStatus === "requires_manual_review" && !submitted) {
+  if (
+    !submitted &&
+    (openPaymentStatus === "requires_manual_review" ||
+      isComplianceManualReviewReason(openPaymentManualReviewReason))
+  ) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28">
         <ManualReviewBlock reason={openPaymentManualReviewReason} />
@@ -246,14 +253,6 @@ export function CheckoutPurchasePanel({
   }
 
   const handlePaymentResult = (data: CheckoutPaymentActionData) => {
-    if (totalMinor != null && totalMinor > 0 && !data.checkoutUrl) {
-      trackPurchase({
-        lotId,
-        valueMinor: totalMinor,
-        currency,
-        transactionId: data.paymentId,
-      });
-    }
     if (data.checkoutUrl) {
       if (totalMinor != null && totalMinor > 0) {
         trackPurchase({

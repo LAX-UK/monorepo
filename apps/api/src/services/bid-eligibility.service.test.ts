@@ -35,6 +35,58 @@ const lotId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const saleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 describe("BidEligibilityService.assertCanPlaceBid", () => {
+  it("returns aml_blocked when buyer has hard AML block", async () => {
+    const db = createSequentialDb([]);
+    const amlHoldStore = {
+      getHold: vi.fn().mockResolvedValue({ status: "blocked", reason: "sanctions" }),
+      setHold: vi.fn(),
+      clearHold: vi.fn(),
+    };
+    const svc = new BidEligibilityService(db, null, amlHoldStore);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("aml_blocked");
+    }
+  });
+
+  it("allows bidding when buyer has soft AML hold", async () => {
+    const db = createSequentialDb([
+      {
+        kind: "limit",
+        rows: [
+          {
+            saleId: null,
+            autoBidEnabled: true,
+            minBidIncrement: "10",
+            autoBidStepMin: null,
+            autoBidStepMax: null,
+            autoBidStepPresets: null,
+          },
+        ],
+      },
+      { kind: "limit", rows: [{ role: "owner" }] },
+    ]);
+    const amlHoldStore = {
+      getHold: vi.fn().mockResolvedValue({ status: "hold", reason: "pep" }),
+      setHold: vi.fn(),
+      clearHold: vi.fn(),
+    };
+    const svc = new BidEligibilityService(db, null, amlHoldStore);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+    });
+    expect(r.isOk()).toBe(true);
+  });
+
   it("returns kyc_required when threshold exceeded", async () => {
     const db = createSequentialDb([]);
     const kycService: IKycService = {

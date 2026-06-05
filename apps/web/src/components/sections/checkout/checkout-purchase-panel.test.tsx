@@ -52,6 +52,44 @@ describe("CheckoutPurchasePanel", () => {
     expect(desktopSubmit?.className).toMatch(/\blg:flex\b/);
   });
 
+  it("shows compliance block for pending payment with AML reason", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[]}
+        openPaymentStatus="pending"
+        openPaymentManualReviewReason="aml_hold"
+      />,
+    );
+    expect(screen.getByText("Compliance review")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
+  });
+
+  it("shows AML manual review block without purchase form", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[]}
+        openPaymentStatus="requires_manual_review"
+        openPaymentManualReviewReason="aml_hold"
+      />,
+    );
+    expect(screen.getByText("Compliance review")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
+  });
+
   it("shows payment complete state without purchase form", () => {
     render(
       <CheckoutPurchasePanel

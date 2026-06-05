@@ -12,6 +12,15 @@ describe("checkoutPaymentErrorMessage", () => {
   it("falls back to server message", () => {
     expect(checkoutPaymentErrorMessage("Custom")).toBe("Custom");
   });
+
+  it("maps compliance checkout block codes", () => {
+    expect(checkoutPaymentErrorMessage("x", "payment_checkout_blocked_aml_hold")).toContain(
+      "compliance",
+    );
+    expect(checkoutPaymentErrorMessage("x", "payment_checkout_blocked_source_of_funds")).toContain(
+      "source-of-funds",
+    );
+  });
 });
 
 describe("manualReviewReasonCopy", () => {

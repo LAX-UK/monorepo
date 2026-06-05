@@ -21,6 +21,7 @@ export function useLotRealtime(lotId: string | null, callbacks: LotRealtimeCallb
       onLotExtended: (p: unknown) => cbRef.current.onLotExtended?.(p),
       onLotEnded: (p: LotEndedEvent) => cbRef.current.onLotEnded?.(p),
       onLotEvent: (p: unknown) => cbRef.current.onLotEvent?.(p),
+      onReconnect: () => cbRef.current.onReconnect?.(),
     };
 
     if (broadcast) {
