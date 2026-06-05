@@ -26,7 +26,7 @@ describe("HomeSectionToolbar", () => {
       />,
     );
 
-    const mobileRow = screen.getByTestId("home-toolbar-mobile-trailing-row");
+    const mobileRow = screen.getByTestId("mobile-trailing-row");
     expect(mobileRow).toBeInTheDocument();
     expect(within(mobileRow).getByTestId("view-switcher")).toBeInTheDocument();
     expect(screen.getByTestId("filters")).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe("HomeSectionToolbar", () => {
       />,
     );
 
-    expect(screen.queryByTestId("home-toolbar-mobile-trailing-row")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mobile-trailing-row")).not.toBeInTheDocument();
     expect(screen.getByTestId("view-switcher")).toBeInTheDocument();
   });
 });

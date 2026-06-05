@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingToolbarRow } from "@/components/marketing/marketing-toolbar-row";
 import { MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -7,12 +8,12 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 export type MarketingListToolbarProps = {
   /** Result count or context line (e.g. "24 lots"). */
   countLabel?: string;
-  /** Desktop-only inline filters (`hidden` below `md`). */
+  /** Desktop-only inline filters (`hidden` below `lg`). */
   filters?: ReactNode;
   sort?: ReactNode;
   /** View switcher, copy link, etc. */
   trailing?: ReactNode;
-  /** Mobile-only filter sheet trigger (`md:hidden`). */
+  /** Mobile/tablet filter sheet trigger (`lg:hidden`). */
   mobileFilterTrigger?: ReactNode;
   /** When true, trailing controls move to a second row on mobile (use sparingly). */
   stackTrailingOnMobile?: boolean;
@@ -35,11 +36,6 @@ export function MarketingListToolbar({
   activeFiltersRow,
   className,
 }: MarketingListToolbarProps) {
-  const stackTrailing = stackTrailingOnMobile && Boolean(mobileFilterTrigger && trailing);
-  const hideFiltersOnMobile = Boolean(mobileFilterTrigger);
-  const countClassName = hideFiltersOnMobile
-    ? "min-w-0 flex-1 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-none md:max-w-[10rem] md:flex-none"
-    : "max-w-[6rem] shrink-0 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-[10rem]";
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
 
@@ -80,56 +76,16 @@ export function MarketingListToolbar({
             MARKETING_CATALOG_GUTTER,
           )}
         >
-          <div className="flex flex-col gap-2 md:gap-0">
-            <div className="flex min-w-0 min-h-12 items-center gap-2 md:min-h-14 md:gap-3">
-              {countLabel ? <p className={countClassName}>{countLabel}</p> : null}
-              {filters ? (
-                <div
-                  className={cn(
-                    "min-w-0 flex-1 md:items-center",
-                    hideFiltersOnMobile ? "hidden md:flex" : "flex",
-                  )}
-                >
-                  {filters}
-                </div>
-              ) : null}
-              <div
-                className={cn(
-                  "flex shrink-0 items-center gap-2 md:gap-3",
-                  countLabel || filters ? "ml-auto" : "",
-                )}
-              >
-                {mobileFilterTrigger ? (
-                  <div className="shrink-0 md:hidden">{mobileFilterTrigger}</div>
-                ) : null}
-                {sort ? <div className="shrink-0">{sort}</div> : null}
-                {trailing ? (
-                  <div
-                    className={cn(
-                      "flex shrink-0 items-center gap-2 md:gap-3",
-                      stackTrailing && "hidden md:flex",
-                    )}
-                  >
-                    {trailing}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            {stackTrailing ? (
-              <div
-                data-testid="mobile-trailing-row"
-                className="flex items-center justify-end gap-2 border-t border-border-hairline pt-2 md:hidden"
-              >
-                {trailing}
-              </div>
-            ) : null}
-            {secondaryRow ? (
-              <div className="hidden border-t border-border-hairline/60 pt-2 md:block">
-                {secondaryRow}
-              </div>
-            ) : null}
-            {activeFiltersRow ? <div className="pt-2">{activeFiltersRow}</div> : null}
-          </div>
+          <MarketingToolbarRow
+            {...(countLabel ? { countLabel } : {})}
+            {...(filters ? { filters } : {})}
+            {...(sort ? { sort } : {})}
+            {...(trailing ? { trailing } : {})}
+            {...(mobileFilterTrigger ? { mobileFilterTrigger } : {})}
+            stackTrailingOnMobile={stackTrailingOnMobile}
+            {...(secondaryRow ? { secondaryRow } : {})}
+            {...(activeFiltersRow ? { activeFiltersRow } : {})}
+          />
         </div>
       </div>
     </>

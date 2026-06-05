@@ -18,6 +18,7 @@ import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-action
 import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { OnsiteParticipationContext } from "@/lib/onsite/participation-request-input";
 import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
 import type { Lot, Sale } from "@auction/types";
@@ -115,7 +116,12 @@ export function LotOnsiteMarketingLayout({
           Catalogue preview — bidding opens when the sale is published.
         </div>
       ) : null}
-      <div className="mx-auto max-w-[var(--container-max,1440px)] px-4 pb-[calc(1.5rem+var(--bottom-chrome-consent-offset,0px))] pt-6 sm:px-6 md:px-8">
+      <div
+        className={cn(
+          MARKETING_PAGE_SHELL,
+          "pb-[calc(1.5rem+var(--bottom-chrome-consent-offset,0px))] pt-6",
+        )}
+      >
         <OnsiteSessionHeader vm={sessionHeader} sale={sale} />
 
         <div

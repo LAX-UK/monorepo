@@ -1,6 +1,5 @@
 "use client";
 
-import { openCommandPalette } from "@/components/layout/command-palette-events";
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
@@ -8,7 +7,7 @@ import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { cn } from "@auction/ui";
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type RefObject, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -140,14 +139,7 @@ function SiteHeaderShell({
             }
             trailing={
               <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
-                <ChromeIconButton
-                  label="Open search"
-                  className={cn("lg:flex xl:hidden", headerChromeIconClass(headerTone))}
-                  onClick={openCommandPalette}
-                >
-                  <Search aria-hidden />
-                </ChromeIconButton>
-                <HeaderSearchTrigger tone={headerTone} />
+                <HeaderSearchTrigger tone={headerTone} showIcon fullBarFrom="2xl" />
                 <div className="hidden lg:flex">
                   <ThemeToggle headerTone={headerTone} />
                 </div>

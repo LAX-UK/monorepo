@@ -16,7 +16,7 @@ export function FeaturedAuctionsGrid({ vms }: Props) {
       className={cn(
         "m-0 w-full list-none gap-2 p-0 md:gap-4 xl:gap-4",
         sparseGridClasses(vms.length, {
-          multi: "grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-3",
+          multi: "grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3",
         }),
       )}
     >

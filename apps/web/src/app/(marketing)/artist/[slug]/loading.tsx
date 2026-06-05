@@ -1,23 +1,18 @@
-import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 
 export default function ArtistLoading() {
   return (
-    <main
-      id="main-content"
-      className={cn(
-        "bg-surface pb-[var(--page-bottom-padding)]",
-        MARKETING_CATALOG_PT,
-        MARKETING_PAGE_SHELL,
-      )}
+    <MarketingDetailShell
       aria-busy="true"
       aria-label="Loading artist"
-    >
-      <div className="animate-pulse space-y-10">
-        <div className="space-y-3 pt-4 md:pt-6">
+      wayfinding={
+        <div className="animate-pulse space-y-3 pt-4 md:pt-6">
           <div className="h-4 w-40 rounded bg-surface-container-high" />
           <div className="h-3 w-56 rounded bg-surface-container-high" />
         </div>
+      }
+    >
+      <div className="animate-pulse space-y-10">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-[5fr_7fr]">
           <div className="aspect-[4/5] w-full rounded bg-surface-container-high" />
           <div className="space-y-4">
@@ -37,6 +32,6 @@ export default function ArtistLoading() {
           ))}
         </ul>
       </div>
-    </main>
+    </MarketingDetailShell>
   );
 }

@@ -96,7 +96,8 @@ function LaxHeroLiveSplitEmbed({ vm }: Props) {
               </LabelCaps>
               <DisplayHeading
                 as="h1"
-                className="text-3xl font-medium uppercase leading-tight tracking-tight text-hero-foreground md:text-5xl"
+                size="lg"
+                className="font-medium uppercase text-hero-foreground"
               >
                 {vm.saleTitle}
               </DisplayHeading>

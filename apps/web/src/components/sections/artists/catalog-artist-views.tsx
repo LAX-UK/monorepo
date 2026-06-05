@@ -28,7 +28,7 @@ export function ArtistBrowseGrid({
       className={cn(
         "gap-3 md:gap-6",
         sparseGridClasses(rows.length, {
-          multi: "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 md:gap-6 xl:grid-cols-3",
+          multi: "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 md:gap-6 lg:grid-cols-3",
         }),
       )}
     >

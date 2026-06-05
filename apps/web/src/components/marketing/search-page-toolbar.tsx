@@ -41,75 +41,25 @@ export function SearchPageToolbar({
   ending,
 }: SearchPageToolbarProps) {
   return (
-    <>
-      <MarketingListToolbar
-        className="-mx-8 md:-mx-10 lg:-mx-14"
-        {...(countLabel ? { countLabel } : {})}
-        mobileFilterTrigger={
-          <SearchFilterSheet
-            activeCount={activeCount}
-            initialQ={initialQ}
-            sort={sort}
-            categoryId={categoryId}
-            view={layoutView}
-            categories={categories}
-            trimmed={trimmed}
-            resultCountLabel={resultCountLabel}
-            {...(status ? { status } : {})}
-            {...(ending ? { ending } : {})}
-          />
-        }
-        filters={
-          <SearchCategoryChips
-            categories={categories}
-            categoryId={categoryId}
-            trimmed={trimmed}
-            sort={sort}
-            view={layoutView}
-            {...(status ? { status } : {})}
-            {...(ending ? { ending } : {})}
-          />
-        }
-        sort={
-          <div className="flex shrink-0 items-center gap-2">
-            <SaveSearchButton
-              compact
-              className="hidden md:inline-flex"
-              label={trimmed ? `Search: ${trimmed}` : "Catalogue search"}
-              query={{
-                ...(trimmed ? { q: trimmed } : {}),
-                sort,
-                view: layoutView,
-                ...(categoryId ? { categoryId } : {}),
-                ...(status ? { status } : {}),
-                ...(ending ? { ending } : {}),
-              }}
-            />
-            <SearchSortSelect value={sort} />
-          </div>
-        }
-        trailing={<CatalogViewSwitcher routeKey="search" value={layoutView} />}
-        secondaryRow={
-          <SearchStatusChips
-            trimmed={trimmed}
-            sort={sort}
-            view={layoutView}
-            categoryId={categoryId}
-            {...(status ? { status } : {})}
-            {...(ending ? { ending } : {})}
-          />
-        }
-        activeFiltersRow={<SearchActiveFilters categories={categories} sort={sort} />}
-      />
-      <div className="mt-3 flex flex-col gap-2 md:hidden">
-        <SearchStatusChips
-          trimmed={trimmed}
+    <MarketingListToolbar
+      className="-mx-8 md:-mx-10 lg:-mx-14"
+      stackTrailingOnMobile
+      {...(countLabel ? { countLabel } : {})}
+      mobileFilterTrigger={
+        <SearchFilterSheet
+          activeCount={activeCount}
+          initialQ={initialQ}
           sort={sort}
-          view={layoutView}
           categoryId={categoryId}
+          view={layoutView}
+          categories={categories}
+          trimmed={trimmed}
+          resultCountLabel={resultCountLabel}
           {...(status ? { status } : {})}
           {...(ending ? { ending } : {})}
         />
+      }
+      filters={
         <SearchCategoryChips
           categories={categories}
           categoryId={categoryId}
@@ -119,7 +69,37 @@ export function SearchPageToolbar({
           {...(status ? { status } : {})}
           {...(ending ? { ending } : {})}
         />
-      </div>
-    </>
+      }
+      sort={
+        <div className="flex shrink-0 items-center gap-2">
+          <SaveSearchButton
+            compact
+            className="hidden lg:inline-flex"
+            label={trimmed ? `Search: ${trimmed}` : "Catalogue search"}
+            query={{
+              ...(trimmed ? { q: trimmed } : {}),
+              sort,
+              view: layoutView,
+              ...(categoryId ? { categoryId } : {}),
+              ...(status ? { status } : {}),
+              ...(ending ? { ending } : {}),
+            }}
+          />
+          <SearchSortSelect value={sort} />
+        </div>
+      }
+      trailing={<CatalogViewSwitcher routeKey="search" value={layoutView} />}
+      secondaryRow={
+        <SearchStatusChips
+          trimmed={trimmed}
+          sort={sort}
+          view={layoutView}
+          categoryId={categoryId}
+          {...(status ? { status } : {})}
+          {...(ending ? { ending } : {})}
+        />
+      }
+      activeFiltersRow={<SearchActiveFilters categories={categories} sort={sort} />}
+    />
   );
 }
