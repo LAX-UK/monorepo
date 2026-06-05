@@ -32,16 +32,8 @@ function mountApp(role: LegalEntitySummary["role"]) {
     isPrimaryAdmin: role === "owner",
   };
 
-  const redisCounts: Record<string, number> = {};
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    redis: {
-      incr: vi.fn(async (key: string) => {
-        redisCounts[key] = (redisCounts[key] ?? 0) + 1;
-        return redisCounts[key];
-      }),
-      expire: vi.fn(async () => 1),
-    },
     stripeConnectService,
     requireLegalEntityContext: async (
       c: { set: (key: string, value: LegalEntityContext) => void },

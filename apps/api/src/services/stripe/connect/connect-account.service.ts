@@ -2,8 +2,10 @@ import { statusFromLegalEntityRow } from "@auction/connect";
 import type { Database } from "@auction/db";
 import { legalEntity, user } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
+import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
+import { checkConnectMutationRateLimit } from "../../../lib/connect-mutation-rate-limit.js";
 import { legalEntityRowToDomain } from "../../../lib/legal-entity-row-mapper.js";
 import { type AppLogger, createBaseLogger } from "../../../lib/logger.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
@@ -24,8 +26,18 @@ export class ConnectAccountService {
     private readonly db: Database,
     private readonly stripeFactory: IStripeClientFactory,
     private readonly lifecyclePromoter: ConnectLifecyclePromoter,
+    private readonly redis?: Redis,
   ) {
     this.logger = createBaseLogger(env);
+  }
+
+  private async assertMutationRateLimit(
+    kind: "account" | "sync",
+    legalEntityId: string,
+  ): Promise<void> {
+    if (!this.redis) return;
+    const allowed = await checkConnectMutationRateLimit(this.redis, kind, legalEntityId);
+    if (!allowed) throwConnectError("stripe_rate_limited", 429);
   }
 
   private async loadLegalEntityWithOwner(legalEntityId: string) {
@@ -56,6 +68,7 @@ export class ConnectAccountService {
   }
 
   async ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult> {
+    await this.assertMutationRateLimit("account", legalEntityId);
     const stripe = requireConnectStripe(this.stripeFactory);
     const {
       entity: row,
@@ -172,6 +185,7 @@ export class ConnectAccountService {
   }
 
   async syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus> {
+    await this.assertMutationRateLimit("sync", legalEntityId);
     const stripe = requireConnectStripe(this.stripeFactory);
     const row = await loadConnectLegalEntity(this.db, legalEntityId);
     if (!row.stripeConnectAccountId) {

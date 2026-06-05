@@ -575,6 +575,7 @@ export function createContainer(env: Env): Container {
     payoutRepository,
     domainEventPublisher,
     stripeClientFactory,
+    redis,
   );
 
   const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
