@@ -1,4 +1,5 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
 import { SalesAuctionList } from "@/components/sections/sales/sales-auction-list";
@@ -23,7 +24,7 @@ import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
-import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { deriveHasMorePage } from "@/lib/marketing/pagination";
 import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
 import { fetchHasLiveSales } from "@/lib/marketing/sales-calendar-live.server";
@@ -51,7 +52,7 @@ import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/struct
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
-import { Button, SectionCta } from "@auction/ui";
+import { Button, SectionCta, cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -289,172 +290,168 @@ export default async function SalesListPage({
   const hasActiveCalendarFilters = countActiveCalendarFilters(calendarState) > 0;
 
   return (
-    <main
-      id="main-content"
-      className={`bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background ${MARKETING_CATALOG_PT}`}
-    >
-      <script type="application/ld+json" suppressHydrationWarning>
-        {crumbText}
-      </script>
-      {listLdText ? (
-        <script type="application/ld+json" suppressHydrationWarning>
-          {listLdText}
-        </script>
-      ) : null}
-
-      <div className={MARKETING_PAGE_SHELL}>
-        <section className="pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-10">
+    <MarketingCatalogHubShell
+      jsonLd={
+        <>
+          <script type="application/ld+json" suppressHydrationWarning>
+            {crumbText}
+          </script>
+          {listLdText ? (
+            <script type="application/ld+json" suppressHydrationWarning>
+              {listLdText}
+            </script>
+          ) : null}
+        </>
+      }
+      hero={
+        <section
+          className={cn(MARKETING_PAGE_SHELL, "pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-0")}
+        >
           <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
-            <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
-              <SalesHeroHeader />
-              <div className="hidden md:block">
-                <FeaturedAuctionsGrid vms={featuredVms} />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10">
-              <SalesPrimaryTabs state={calendarState} hasLiveSales={hasLiveSales} />
-
-              {err ? (
-                <MarketingEmptyState
-                  variant="marketing"
-                  context="error"
-                  title="Calendar temporarily unavailable"
-                  description={err}
-                  action={
-                    <>
-                      <Button variant="cta" asChild>
-                        <Link href="/sales">Try again</Link>
-                      </Button>
-                      <Button variant="outline" asChild>
-                        <Link href="/">Back to home</Link>
-                      </Button>
-                    </>
-                  }
-                />
-              ) : null}
-
-              {tab === "privateSales" ? (
-                <MarketingEmptyState
-                  variant="marketing"
-                  title="Private sales"
-                  description="Acquire exceptional works outside the auction calendar. Contact us or browse highlights on the homepage."
-                  action={
-                    <Button variant="cta" asChild>
-                      <Link href="/#private-sale-heading">View highlights</Link>
-                    </Button>
-                  }
-                />
-              ) : null}
-
-              {tab === "newLots" ? (
-                <div className="flex flex-col gap-6">
-                  {!session ? (
-                    <SectionCta
-                      className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
-                      title="Ready to bid?"
-                      description="Create a free account to place bids, track lots, and receive saleroom updates."
-                      primary={
-                        <Button variant="cta" asChild>
-                          <Link href="/register">Register to bid</Link>
-                        </Button>
-                      }
-                      secondary={
-                        <Button variant="outline" asChild>
-                          <Link href="/login">Sign in</Link>
-                        </Button>
-                      }
-                    />
-                  ) : null}
-                  <SalesNewLotsToolbar resultCount={newLots.length} />
-                  <ViewItemListTracker
-                    listId="sales_hub"
-                    listName="New lots"
-                    itemIds={newLots.map((l) => l.id)}
-                  />
-                  <SalesNewLotsGrid
-                    lots={newLots}
-                    {...(newLotsCatalogLinkParams
-                      ? { catalogLinkParams: newLotsCatalogLinkParams }
-                      : {})}
-                  />
-                  <SalesCalendarPagination
-                    state={calendarState}
-                    page={calendarPage}
-                    hasMore={newLotsHasMore}
-                  />
-                </div>
-              ) : null}
-
-              {showSalesBrowse ? (
-                <SalesCalendarBrowse
-                  state={calendarState}
-                  resultCount={filteredSales.length}
-                  categories={categories}
-                  years={yearOptions}
-                  calendarView={calendarView}
-                >
-                  {!session ? (
-                    <SectionCta
-                      className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
-                      title="Ready to bid?"
-                      description="Create a free account to place bids, track lots, and receive saleroom updates."
-                      primary={
-                        <Button variant="cta" asChild>
-                          <Link href="/register">Register to bid</Link>
-                        </Button>
-                      }
-                      secondary={
-                        <Button variant="outline" asChild>
-                          <Link href="/login">Sign in</Link>
-                        </Button>
-                      }
-                    />
-                  ) : null}
-
-                  {filteredSales.length === 0 && !err ? (
-                    <MarketingEmptyState
-                      variant="marketing"
-                      context={hasActiveCalendarFilters ? "filtered" : "noResults"}
-                      title="No sales match this filter"
-                      description={
-                        hasActiveCalendarFilters
-                          ? "Try clearing filters or choose another calendar tab."
-                          : "Try another tab or check back when new sales are scheduled."
-                      }
-                      action={
-                        hasActiveCalendarFilters ? (
-                          <>
-                            <Button variant="cta" asChild>
-                              <Link href={calendarClearFiltersHref(calendarState)}>
-                                Clear filters
-                              </Link>
-                            </Button>
-                            <Button variant="outline" asChild>
-                              <Link href="/sales">Browse all sales</Link>
-                            </Button>
-                          </>
-                        ) : undefined
-                      }
-                    />
-                  ) : calendarView === "calendar" ? (
-                    <SalesCalendarMonthGrid items={agendaVms} />
-                  ) : calendarView === "grid" ? (
-                    <SalesCalendarGrid vms={gridVms} />
-                  ) : (
-                    <SalesAuctionList rows={rowVms} className="gap-2 sm:gap-2 lg:gap-3" />
-                  )}
-                  <SalesCalendarPagination
-                    state={calendarState}
-                    page={calendarPage}
-                    hasMore={calendarHasMore}
-                  />
-                </SalesCalendarBrowse>
-              ) : null}
+            <SalesHeroHeader />
+            <div className="hidden md:block">
+              <FeaturedAuctionsGrid vms={featuredVms} />
             </div>
           </div>
         </section>
+      }
+    >
+      <div className="flex flex-col gap-6 pb-8 sm:gap-8 sm:pb-10 lg:gap-10 lg:pb-10">
+        <SalesPrimaryTabs state={calendarState} hasLiveSales={hasLiveSales} />
+
+        {err ? (
+          <MarketingEmptyState
+            variant="marketing"
+            context="error"
+            title="Calendar temporarily unavailable"
+            description={err}
+            action={
+              <>
+                <Button variant="cta" asChild>
+                  <Link href="/sales">Try again</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/">Back to home</Link>
+                </Button>
+              </>
+            }
+          />
+        ) : null}
+
+        {tab === "privateSales" ? (
+          <MarketingEmptyState
+            variant="marketing"
+            title="Private sales"
+            description="Acquire exceptional works outside the auction calendar. Contact us or browse highlights on the homepage."
+            action={
+              <Button variant="cta" asChild>
+                <Link href="/#private-sale-heading">View highlights</Link>
+              </Button>
+            }
+          />
+        ) : null}
+
+        {tab === "newLots" ? (
+          <div className="flex flex-col gap-6">
+            {!session ? (
+              <SectionCta
+                className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                title="Ready to bid?"
+                description="Create a free account to place bids, track lots, and receive saleroom updates."
+                primary={
+                  <Button variant="cta" asChild>
+                    <Link href="/register">Register to bid</Link>
+                  </Button>
+                }
+                secondary={
+                  <Button variant="outline" asChild>
+                    <Link href="/login">Sign in</Link>
+                  </Button>
+                }
+              />
+            ) : null}
+            <SalesNewLotsToolbar resultCount={newLots.length} />
+            <ViewItemListTracker
+              listId="sales_hub"
+              listName="New lots"
+              itemIds={newLots.map((l) => l.id)}
+            />
+            <SalesNewLotsGrid
+              lots={newLots}
+              {...(newLotsCatalogLinkParams ? { catalogLinkParams: newLotsCatalogLinkParams } : {})}
+            />
+            <SalesCalendarPagination
+              state={calendarState}
+              page={calendarPage}
+              hasMore={newLotsHasMore}
+            />
+          </div>
+        ) : null}
+
+        {showSalesBrowse ? (
+          <SalesCalendarBrowse
+            state={calendarState}
+            resultCount={filteredSales.length}
+            categories={categories}
+            years={yearOptions}
+            calendarView={calendarView}
+          >
+            {!session ? (
+              <SectionCta
+                className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
+                title="Ready to bid?"
+                description="Create a free account to place bids, track lots, and receive saleroom updates."
+                primary={
+                  <Button variant="cta" asChild>
+                    <Link href="/register">Register to bid</Link>
+                  </Button>
+                }
+                secondary={
+                  <Button variant="outline" asChild>
+                    <Link href="/login">Sign in</Link>
+                  </Button>
+                }
+              />
+            ) : null}
+
+            {filteredSales.length === 0 && !err ? (
+              <MarketingEmptyState
+                variant="marketing"
+                context={hasActiveCalendarFilters ? "filtered" : "noResults"}
+                title="No sales match this filter"
+                description={
+                  hasActiveCalendarFilters
+                    ? "Try clearing filters or choose another calendar tab."
+                    : "Try another tab or check back when new sales are scheduled."
+                }
+                action={
+                  hasActiveCalendarFilters ? (
+                    <>
+                      <Button variant="cta" asChild>
+                        <Link href={calendarClearFiltersHref(calendarState)}>Clear filters</Link>
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <Link href="/sales">Browse all sales</Link>
+                      </Button>
+                    </>
+                  ) : undefined
+                }
+              />
+            ) : calendarView === "calendar" ? (
+              <SalesCalendarMonthGrid items={agendaVms} />
+            ) : calendarView === "grid" ? (
+              <SalesCalendarGrid vms={gridVms} />
+            ) : (
+              <SalesAuctionList rows={rowVms} className="gap-2 sm:gap-2 lg:gap-3" />
+            )}
+            <SalesCalendarPagination
+              state={calendarState}
+              page={calendarPage}
+              hasMore={calendarHasMore}
+            />
+          </SalesCalendarBrowse>
+        ) : null}
       </div>
-    </main>
+    </MarketingCatalogHubShell>
   );
 }

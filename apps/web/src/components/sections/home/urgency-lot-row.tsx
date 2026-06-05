@@ -5,7 +5,6 @@ import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { SALE_CARD_SHELL_CLASSNAME } from "@/components/sections/sales/card/sale-card-shell";
 import { MediaImage } from "@/components/ui/media-image";
-import { useIsLg } from "@/hooks/use-is-lg";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -32,7 +31,6 @@ export function UrgencyLotRow({
   watchedLotIds,
   loginNextPath,
 }: Props) {
-  const isLg = useIsLg();
   const rows = item.endingSoonPriceRows;
   const initialWatching = watchedLotIds.includes(item.id);
   const priceLabel = rows?.estimate.label ?? item.priceLabel;
@@ -72,26 +70,24 @@ export function UrgencyLotRow({
             />
           </Link>
 
-          {!isLg ? <LotStatusTimer variant="endingSoon" {...timerProps} /> : null}
+          <div className="lg:hidden">
+            <LotStatusTimer variant="endingSoon" {...timerProps} />
+          </div>
 
-          {!isLg ? (
-            <div className="pointer-events-auto absolute right-3 top-3 z-10">
-              <MarketingWatchlistHeart {...watchlistProps} layout="overlay" />
-            </div>
-          ) : null}
+          <div className="pointer-events-auto absolute right-3 top-3 z-10 lg:hidden">
+            <MarketingWatchlistHeart {...watchlistProps} layout="overlay" />
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4 pt-4 lg:flex-row lg:gap-6 lg:pt-0">
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            {isLg ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <LotStatusTimer
-                  variant="default"
-                  pillSurfaceClassName={INLINE_TIMER_SURFACE}
-                  {...timerProps}
-                />
-              </div>
-            ) : null}
+            <div className="hidden flex-wrap items-center gap-2 lg:flex">
+              <LotStatusTimer
+                variant="default"
+                pillSurfaceClassName={INLINE_TIMER_SURFACE}
+                {...timerProps}
+              />
+            </div>
             <Link
               href={item.href}
               className="line-clamp-2 font-headline text-sm font-semibold leading-snug text-on-surface underline-offset-2 hover:underline sm:text-base"
@@ -134,7 +130,9 @@ export function UrgencyLotRow({
           </div>
 
           <div className="flex flex-row items-center justify-end gap-3 border-t border-border-hairline pt-3 lg:mt-0 lg:flex-col lg:items-end lg:justify-center lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-            {isLg ? <MarketingWatchlistHeart {...watchlistProps} layout="inline" /> : null}
+            <div className="hidden lg:block">
+              <MarketingWatchlistHeart {...watchlistProps} layout="inline" />
+            </div>
             <Link
               href={item.href}
               className="inline-flex h-10 min-h-[44px] min-w-[7.5rem] flex-1 items-center justify-center rounded-md border border-outline-variant/40 bg-transparent px-4 text-center text-sm font-semibold leading-5 tracking-wide text-on-surface outline-offset-2 transition-colors hover:bg-surface-container-high/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex-initial lg:min-w-[9rem]"

@@ -1,4 +1,5 @@
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
+import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-sidebar";
@@ -21,7 +22,7 @@ import { artistDirectoryWithQuery, parseArtistDirectoryOffset } from "@/lib/arti
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { fetchPublicArtistBrowse } from "@/lib/data/http/artist.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { FOCUS_RING, MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -402,28 +403,34 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
     total > 0 ? `Show ${total} artist${total === 1 ? "" : "s"}` : "Show results";
 
   return (
-    <main id="main-content" className={cn("overflow-x-clip", MARKETING_CATALOG_PT)}>
-      <script type="application/ld+json" suppressHydrationWarning>
-        {jsonLdScript(crumbsLd)}
-      </script>
-      {rows.length > 0 ? (
-        <script type="application/ld+json" suppressHydrationWarning>
-          {jsonLdScript(itemsLd)}
-        </script>
-      ) : null}
-
-      <ArtistsDirectoryHero
-        preset={preset}
-        layoutView={layoutView}
-        sort={sort}
-        {...(q ? { q } : {})}
-        {...(nationalityFromQuery && !nationalityIsLocked ? { nationalityFromQuery } : {})}
-        nationalityIsLocked={nationalityIsLocked}
-        segChips={segChips}
-        letterBar={letterBar}
-      />
-
-      <section className={`${MARKETING_PAGE_SHELL} py-8 sm:py-12 md:py-12`}>
+    <MarketingCatalogHubShell
+      className="overflow-x-clip"
+      jsonLd={
+        <>
+          <script type="application/ld+json" suppressHydrationWarning>
+            {jsonLdScript(crumbsLd)}
+          </script>
+          {rows.length > 0 ? (
+            <script type="application/ld+json" suppressHydrationWarning>
+              {jsonLdScript(itemsLd)}
+            </script>
+          ) : null}
+        </>
+      }
+      hero={
+        <ArtistsDirectoryHero
+          preset={preset}
+          layoutView={layoutView}
+          sort={sort}
+          {...(q ? { q } : {})}
+          {...(nationalityFromQuery && !nationalityIsLocked ? { nationalityFromQuery } : {})}
+          nationalityIsLocked={nationalityIsLocked}
+          segChips={segChips}
+          letterBar={letterBar}
+        />
+      }
+    >
+      <section className="py-8 sm:py-12 md:py-12">
         <link rel="canonical" href={canonicalUrl} />
 
         <div className="grid gap-10 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
@@ -570,6 +577,6 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
           </div>
         </div>
       </section>
-    </main>
+    </MarketingCatalogHubShell>
   );
 }
