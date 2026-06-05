@@ -270,11 +270,14 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
         .limit(1);
       const archivePayload = archiveEvent?.payload as { reason?: unknown } | undefined;
       const reviewPayload = reviewEvent?.payload as { reason?: unknown } | undefined;
+      const reason = reviewPayload?.reason;
       const manualReviewReason =
-        reviewPayload?.reason === "seller_archived" ||
-        reviewPayload?.reason === "high_value" ||
-        reviewPayload?.reason === "seller_archived_and_high_value"
-          ? reviewPayload.reason
+        reason === "seller_archived" ||
+        reason === "high_value" ||
+        reason === "seller_archived_and_high_value" ||
+        reason === "aml_hold" ||
+        reason === "source_of_funds_required"
+          ? reason
           : null;
       data.push({
         paymentId: row.paymentId,

@@ -1,7 +1,19 @@
 "use client";
 
 import type { Lot, Sale } from "@auction/types";
-import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import type { OwnBidEchoGuard } from "@/lib/bid/own-bid-echo-guard";
+
+export type { OwnBidEchoGuard };
 
 type SalePick = Pick<Sale, "status" | "deliveryMode"> | null;
 
@@ -16,6 +28,7 @@ type Ctx = {
   /** Mobile sticky coordination: bid card intersects viewport. */
   bidCardInView: boolean;
   setBidCardInView: (inView: boolean) => void;
+  ownBidEchoGuardRef: import("react").MutableRefObject<OwnBidEchoGuard | null>;
 };
 
 const OnlineLotLifecycleContext = createContext<Ctx | null>(null);
@@ -29,6 +42,7 @@ type ProviderProps = {
 export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProps) {
   const [extendedByMs, setExtendedByMs] = useState<number | null>(null);
   const [bidCardInView, setBidCardInView] = useState(true);
+  const ownBidEchoGuardRef = useRef<OwnBidEchoGuard | null>(null);
 
   const setExtendedDeltaMs = useCallback((deltaMs: number | null) => {
     setExtendedByMs(deltaMs);
@@ -42,6 +56,7 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       setExtendedDeltaMs,
       bidCardInView,
       setBidCardInView,
+      ownBidEchoGuardRef,
     }),
     [lot, sale, extendedByMs, setExtendedDeltaMs, bidCardInView],
   );

@@ -22,6 +22,8 @@ function productionEnvBase(overrides: Record<string, unknown> = {}) {
     STRIPE_PAYMENTS_WEBHOOK_SECRET: "whsec_payments",
     VERIFF_API_KEY: "veriff-api-key",
     VERIFF_SHARED_SECRET: "veriff-shared-secret",
+    TURNSTILE_SECRET_KEY: "turnstile-secret",
+    VERIFY_ORIGIN: "true",
     ...overrides,
   };
 }
@@ -39,6 +41,16 @@ describe("envSchema production Veriff validation", () => {
     expect(parsed.error.flatten().fieldErrors.VERIFF_API_KEY).toContain(
       "VERIFF_API_KEY is required in production",
     );
+  });
+
+  it("rejects production env when TURNSTILE_SECRET_KEY is missing", () => {
+    const parsed = envSchema.safeParse(productionEnvBase({ TURNSTILE_SECRET_KEY: undefined }));
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects production env when VERIFY_ORIGIN is false", () => {
+    const parsed = envSchema.safeParse(productionEnvBase({ VERIFY_ORIGIN: "false" }));
+    expect(parsed.success).toBe(false);
   });
 
   it("rejects production env when VERIFF_SHARED_SECRET is missing", () => {
