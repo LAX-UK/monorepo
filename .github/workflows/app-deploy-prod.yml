@@ -7,6 +7,7 @@ on:
       - packages/**
       - package.json
       - pnpm-lock.yaml
+      - infra/web-build/**
 permissions:
   contents: read
 jobs:
@@ -16,11 +17,10 @@ jobs:
       environment: prod
       git_sha: ${{ github.sha }}
     secrets: inherit
-  # Prebuilt images (api/auth/ws/worker/migrate) pushed to DOCR so App Platform
-  # only pulls. Runs in parallel with sentry-release. Gated on a REPOSITORY-level
-  # variable (a reusable-workflow caller job cannot bind an environment, so the
-  # `vars` context here only sees repo/org variables — not environment-scoped ones).
-  # Stays inert until the registry + Terraform deploy_source = image are live.
+  # Prebuilt images (api, auth, ws, worker, migrate, web) pushed to DOCR so App
+  # Platform only pulls. Runs in parallel with sentry-release. Gated on the
+  # repository variable USE_PREBUILT_IMAGES_PROD (caller jobs cannot bind an
+  # environment, so only repo/org vars are visible in the `if:`).
   build-images:
     if: ${{ vars.USE_PREBUILT_IMAGES_PROD == 'true' }}
     uses: ./.github/workflows/build-images.yml

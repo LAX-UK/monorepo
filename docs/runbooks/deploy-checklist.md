@@ -10,6 +10,7 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 - [ ] If you added a new database column or table, you also added it to [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) under the appropriate constant.
 - [ ] If you added a new domain event type, you also added it to the catalog in [../architecture/04-domain-events.md](../architecture/04-domain-events.md).
 - [ ] If you added a new external integration, you also added a doc in [../integrations/](../integrations/) and an entry in [../README.md](../README.md).
+- [ ] If you changed `NEXT_PUBLIC_*` build values, update `infra/web-build/<env>.env` (and GitHub vars/secrets if needed) — see [infra/web-build/README.md](../../infra/web-build/README.md).
 - [ ] You've referenced any relevant D-numbers in the PR description.
 
 ## In the PR
@@ -37,9 +38,10 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 
 ## Promoting to production
 
-The `main` → test → `release` → prod gated cadence is **(planned)**. Today, production deploys are manually triggered:
+Production deploys are triggered by merging `main` → `release` (opens **App deploy prod**, which builds all six DOCR images and runs `doctl apps create-deployment`). For hotfixes, you can also dispatch **App deploy prod** manually or trigger from the DigitalOcean console.
 
-- [ ] In the DigitalOcean App Platform console, trigger a deploy from the same git ref that's running in test.
+- [ ] Merge `main` into `release` (or dispatch the prod deploy workflow).
+- [ ] Confirm **build-images** succeeded for all six components (including `web`).
 - [ ] **Confirm the migration job runs first.** If it doesn't, abort.
 - [ ] Watch `/health/ready` for every component during the rolling restart.
 - [ ] Smoke test the changed path against `lax.bid`.
