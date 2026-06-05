@@ -1,5 +1,6 @@
 import { adminBidErrorMatcher } from "./matchers/admin.matcher";
 import { alreadyLeadingBidErrorMatcher } from "./matchers/already-leading.matcher";
+import { amlBlockedBidErrorMatcher } from "./matchers/aml-blocked.matcher";
 import { dutchPriceBidErrorMatcher } from "./matchers/dutch-price.matcher";
 import {
   bidInFlightBidErrorMatcher,
@@ -24,6 +25,7 @@ export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   sellerOwnLotBidErrorMatcher,
   adminBidErrorMatcher,
   kycRequiredBidErrorMatcher,
+  amlBlockedBidErrorMatcher,
   suspendedBidErrorMatcher,
   saleRegistrationRequiredBidErrorMatcher,
   bidLimitExceededBidErrorMatcher,

@@ -1151,7 +1151,7 @@ export function createContainer(env: Env): Container {
   const saleModeLookup = new DrizzleSaleModeLookup(db);
 
   const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
-  const bidEligibilityService = new BidEligibilityService(db, kycService);
+  const bidEligibilityService = new BidEligibilityService(db, kycService, amlHoldStore);
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
   const bidService = new BidService({

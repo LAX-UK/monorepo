@@ -11,6 +11,7 @@ import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import { memberRequiresSaleRegistration } from "../lib/sale-registration-policy.js";
+import type { IAmlHoldStore } from "./aml/ports.js";
 import type { BidEligibilityCheckInput, IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { IKycService } from "./interfaces/kyc-service.js";
 import { KycRequiredError } from "./interfaces/kyc-service.js";
@@ -31,6 +32,7 @@ export class BidEligibilityService implements IBidEligibility {
   constructor(
     private readonly db: Database,
     private readonly kycService: IKycService | null = null,
+    private readonly amlHoldStore: IAmlHoldStore | null = null,
   ) {}
 
   async assertCanPlaceBid(input: BidEligibilityCheckInput): Promise<Result<void, BidError>> {
@@ -57,6 +59,15 @@ export class BidEligibilityService implements IBidEligibility {
           );
         }
         throw caught;
+      }
+    }
+
+    if (this.amlHoldStore) {
+      const hold = await this.amlHoldStore.getHold(placedByUserId);
+      if (hold?.status === "blocked") {
+        return err(
+          new BidError("Bidding is suspended pending compliance review", 403, "aml_blocked"),
+        );
       }
     }
 

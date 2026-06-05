@@ -53,6 +53,7 @@ export class StripePaymentWebhookService {
 
     const paymentRow = await this.payments.findById(paymentId);
     if (!paymentRow) {
+      recordMoneyPathEvent("stripe_payment_webhook_payment_not_found");
       return { processed: false, action: "skipped", reason: "payment_not_found" };
     }
 
@@ -98,6 +99,7 @@ export class StripePaymentWebhookService {
 
     const paymentRow = await this.payments.findById(paymentId);
     if (!paymentRow) {
+      recordMoneyPathEvent("stripe_payment_webhook_payment_not_found");
       return { processed: false, action: "skipped", reason: "payment_not_found" };
     }
 
@@ -136,6 +138,7 @@ export class StripePaymentWebhookService {
 
     const paymentRow = await this.payments.findById(paymentId);
     if (!paymentRow) {
+      recordMoneyPathEvent("stripe_payment_webhook_payment_not_found");
       return { processed: false, action: "skipped", reason: "payment_not_found" };
     }
 
@@ -195,6 +198,7 @@ export class StripePaymentWebhookService {
 
     const paymentRow = await this.payments.findById(paymentId);
     if (!paymentRow) {
+      recordMoneyPathEvent("stripe_payment_webhook_payment_not_found");
       return { processed: false, action: "skipped", reason: "payment_not_found" };
     }
 
@@ -224,6 +228,7 @@ export class StripePaymentWebhookService {
 
     const paymentRow = await this.payments.findById(paymentId);
     if (!paymentRow) {
+      recordMoneyPathEvent("stripe_payment_webhook_payment_not_found");
       return { processed: false, action: "skipped", reason: "payment_not_found" };
     }
 

@@ -15,6 +15,10 @@ export function checkoutPaymentErrorMessage(message: string, code?: string | nul
       return "Choose a shipping or billing & shipping address for checkout.";
     case "address_service_unavailable":
       return "We could not verify your address. Try again in a moment.";
+    case "payment_checkout_blocked_aml_hold":
+      return "Checkout is blocked while we complete a routine compliance review. Our team will contact you with next steps.";
+    case "payment_checkout_blocked_source_of_funds":
+      return "Checkout is blocked until source-of-funds verification is complete. Our compliance team will contact you with secure instructions.";
     default:
       return message;
   }

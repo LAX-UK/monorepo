@@ -5,6 +5,8 @@ import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history"
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useNow } from "@/hooks/use-now";
 import { type LotBidPosition, deriveLotBidPosition } from "@/lib/bid/derive-lot-bid-position";
+import { fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
+import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
@@ -91,13 +93,10 @@ export function useLotBidState({
   const [outbidSignal, setOutbidSignal] = useState(initialOutbid);
   const [userHasBid, setUserHasBid] = useState(initialUserHasBid);
 
-  const lastOwnBidRef = useRef<{
-    bidId: string;
-    amount: string;
-    currentPrice: string;
-    leadingBidderId: string | null;
-    at: number;
-  } | null>(null);
+  const localOwnBidRef = useRef<import("@/lib/bid/own-bid-echo-guard").OwnBidEchoGuard | null>(
+    null,
+  );
+  const lastOwnBidRef = onlineLifecycle?.ownBidEchoGuardRef ?? localOwnBidRef;
   const endTimeRef = useRef(endTime);
   endTimeRef.current = endTime;
 
@@ -120,20 +119,7 @@ export function useLotBidState({
 
   useLotRealtime(auction.id, {
     onBidUpdate: (e) => {
-      const own = lastOwnBidRef.current;
-      if (own && e.bidId === own.bidId) {
-        return;
-      }
-      if (
-        own &&
-        sessionUser?.id &&
-        own.leadingBidderId === sessionUser.id &&
-        Number.parseFloat(e.amount) < Number.parseFloat(own.amount) &&
-        Date.now() - own.at < 5000
-      ) {
-        return;
-      }
-      if (own && e.emittedAt != null && e.emittedAt < own.at) {
+      if (shouldSkipOwnBidEcho(e, lastOwnBidRef.current, sessionUser?.id)) {
         return;
       }
       setCurrentPrice(e.currentPrice);
@@ -201,6 +187,17 @@ export function useLotBidState({
         id: `proxy-cancelled-${auction.id}`,
         description: "Your auto-bid on this lot was cleared by the saleroom.",
         duration: 8000,
+      });
+    },
+    onReconnect: () => {
+      void fetchLotBidSnapshot(auction.id).then((snap) => {
+        if (!snap) return;
+        setCurrentPrice(snap.currentPrice);
+        setEndTime(new Date(snap.endTime).getTime());
+        setLotStatus(snap.status);
+        if (snap.status === "ended") {
+          setLeadingBidderId(snap.winnerId);
+        }
       });
     },
   });
@@ -330,7 +327,6 @@ export function useLotBidState({
       lastOwnBidRef.current = {
         bidId: bid.id,
         amount: bid.amount,
-        currentPrice: bid.amount,
         leadingBidderId: bidderId || null,
         at: Date.now(),
       };
@@ -349,7 +345,7 @@ export function useLotBidState({
         ...(bid.maxAutoBidAmount ? { isAutoBid: true } : {}),
       });
     },
-    [pushHistory, triggerPriceFlash],
+    [lastOwnBidRef, pushHistory, triggerPriceFlash],
   );
 
   const scrollToBid = useCallback(() => {

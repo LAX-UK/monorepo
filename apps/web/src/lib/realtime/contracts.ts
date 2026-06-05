@@ -7,6 +7,8 @@ export type LotRealtimeCallbacks = {
   onLotExtended?: (payload: unknown) => void;
   onLotEnded?: (payload: LotEndedEvent) => void;
   onLotEvent?: (payload: unknown) => void;
+  /** Fired when the socket reconnects after a prior connection (stale price guard). */
+  onReconnect?: () => void;
 };
 
 /** Narrow port for lot rooms — no raw Socket exposure (ISP). */

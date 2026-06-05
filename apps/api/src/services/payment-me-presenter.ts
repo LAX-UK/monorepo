@@ -1,8 +1,10 @@
 import type { Lot, PaymentStatus } from "@auction/types";
 import { gbpAmountToPence } from "../lib/decimal-money.js";
+import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { PaymentRecord } from "./interfaces/payment-write.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { ManualReviewReason, PaymentTierPolicy } from "./payment/payment-tier.policy.js";
+import { resolveManualReviewReason } from "./payment/resolve-manual-review-reason.js";
 
 /** Buyer-facing payment row returned by `GET /payments/me`.
  *
@@ -35,37 +37,57 @@ export type PresentMyPaymentsOptions = {
   paymentTierPolicy?: PaymentTierPolicy;
   /** Seller legal entity id → archived flag for manual-review reason derivation. */
   sellerArchivedByEntityId?: Map<string, boolean>;
+  settlementCompliance?: ISettlementCompliancePolicy | null;
 };
 
-function derivePresentationFields(
+async function derivePresentationFields(
   row: PaymentRecord,
   policy: PaymentTierPolicy | undefined,
   sellerArchivedByEntityId: Map<string, boolean> | undefined,
-): {
+  settlementCompliance: ISettlementCompliancePolicy | null | undefined,
+): Promise<{
   checkoutRail: MyPaymentRowDTO["checkoutRail"];
   manualReviewReason: ManualReviewReason | null;
-} {
+}> {
   if (!policy) {
     return { checkoutRail: null, manualReviewReason: null };
   }
+
+  const buyerUserId = row.paidByUserId ?? row.buyerId;
   const amountPence = gbpAmountToPence(row.amount);
   const sellerArchived =
     row.sellerLegalEntityId != null
       ? (sellerArchivedByEntityId?.get(row.sellerLegalEntityId) ?? false)
       : false;
 
-  if (row.status === "requires_manual_review") {
+  if (buyerUserId) {
+    const { manualReviewReason } = await resolveManualReviewReason({
+      buyerUserId,
+      amountPence,
+      sellerArchived,
+      paymentTierPolicy: policy,
+      settlementCompliance,
+      excludePaymentId: row.id,
+      paymentStatus: row.status,
+    });
+
+    if (manualReviewReason) {
+      return { checkoutRail: null, manualReviewReason };
+    }
+  } else if (row.status === "requires_manual_review") {
     return {
       checkoutRail: null,
       manualReviewReason: policy.resolveManualReviewReason(amountPence, sellerArchived),
     };
   }
+
   if (row.status === "pending" || row.status === "authorized") {
     return {
       checkoutRail: policy.resolveCheckoutRail(amountPence),
       manualReviewReason: null,
     };
   }
+
   return { checkoutRail: null, manualReviewReason: null };
 }
 
@@ -78,7 +100,7 @@ export async function presentMyPayments(
   mediaUrlResolver: MediaUrlResolver | undefined,
   options: PresentMyPaymentsOptions = {},
 ): Promise<MyPaymentRowDTO[]> {
-  const { paymentTierPolicy, sellerArchivedByEntityId } = options;
+  const { paymentTierPolicy, sellerArchivedByEntityId, settlementCompliance } = options;
   return Promise.all(
     rows.map(async (row) => {
       const lot = lotById.get(row.lotId);
@@ -88,10 +110,11 @@ export async function presentMyPayments(
           ? ((await mediaUrlResolver.resolveMany([firstImage]))[0] ?? null)
           : firstImage
         : null;
-      const { checkoutRail, manualReviewReason } = derivePresentationFields(
+      const { checkoutRail, manualReviewReason } = await derivePresentationFields(
         row,
         paymentTierPolicy,
         sellerArchivedByEntityId,
+        settlementCompliance,
       );
       return {
         id: row.id,

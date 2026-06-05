@@ -73,6 +73,36 @@ describe("RegistrationService", () => {
     );
   });
 
+  it("fails registration when profile persistence fails", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.userProfile.setRegistrationProfile).mockResolvedValue({
+      ok: false,
+      message: "db error",
+    });
+    const svc = new RegistrationService(
+      deps.validator,
+      deps.emailSignup,
+      deps.userProfile,
+      deps.welcome,
+      deps.invitations,
+    );
+
+    const result = await svc.register({
+      firstName: "Fail",
+      lastName: "Profile",
+      email: "fail@example.com",
+      password: "supersecret",
+      persona: "individual",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Registration could not be completed. Please try again.",
+      status: 500,
+    });
+    expect(deps.welcome.notifyWelcome).not.toHaveBeenCalled();
+  });
+
   it("does not consume entity invites at signup", async () => {
     const deps = makeDeps();
     vi.mocked(deps.invitations.validateForRegistration).mockResolvedValue(
