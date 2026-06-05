@@ -7,6 +7,8 @@ export function humanizeOrgConnectStepError(code: string | undefined | null): st
       return "Finish Stripe payout verification, then use Refresh status before continuing.";
     case "connect_requirements_pending":
       return "Stripe still needs a few details. Resolve the items in the form above.";
+    case "connect_restricted":
+      return "This payout account is restricted. Contact support@lax.bid before continuing.";
     case "connect_sync_failed":
       return "We could not reach Stripe to verify payout setup. Try Refresh status, then continue.";
     case "stripe_not_configured":

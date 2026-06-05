@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { LegalEntity } from "@auction/types";
 import type Stripe from "stripe";
 
@@ -59,8 +60,21 @@ export class StripeConnectNotConfiguredError extends Error {
   }
 }
 
+/** Webhook apply hooks for Connect account state (DIP for ConnectWebhookHandler). */
+export interface IConnectAccountWebhookPort {
+  applyAccountUpdate(account: Stripe.Account, db?: Database): Promise<void>;
+  applyAccountDeauthorized(stripeAccountId: string, db?: Database): Promise<void>;
+}
+
+/** Live readiness sync before payout transfer (avoids coupling initiation to full account service). */
+export interface IConnectAccountReadinessSync {
+  syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus>;
+}
+
 /** Account lifecycle: create, status, sync. */
-export interface IConnectAccountSync {
+export interface IConnectAccountSync
+  extends IConnectAccountWebhookPort,
+    IConnectAccountReadinessSync {
   ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult>;
   getStatus(legalEntityId: string): Promise<ConnectAccountStatus>;
   syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus>;

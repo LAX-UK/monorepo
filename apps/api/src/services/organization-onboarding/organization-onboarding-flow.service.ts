@@ -1,3 +1,4 @@
+import { isStripeAccountConfigured } from "@auction/connect";
 import type { Database } from "@auction/db";
 import {
   legalEntity,
@@ -300,6 +301,7 @@ export class OrganizationOnboardingFlowService {
           | "connect_not_complete"
           | "connect_sync_failed"
           | "connect_requirements_pending"
+          | "connect_restricted"
           | "type_incomplete"
           | "address_required";
       }
@@ -353,11 +355,22 @@ export class OrganizationOnboardingFlowService {
       if (!connectRow.stripeConnectAccountId) {
         return { ok: false, code: "connect_not_started" };
       }
-      if (!connectRow.stripeConnectPayoutsEnabled) {
+      const connectReady = isStripeAccountConfigured({
+        stripeConnectAccountId: connectRow.stripeConnectAccountId,
+        stripeConnectPayoutsEnabled: connectRow.stripeConnectPayoutsEnabled,
+        stripeConnectRequirementsCurrentlyDue: connectRow.stripeConnectRequirementsCurrentlyDue,
+        stripeConnectDisabledReason: connectRow.stripeConnectDisabledReason,
+        isLaxManaged: connectRow.isLaxManaged,
+        status: connectRow.status,
+      });
+      if (!connectReady) {
+        if ((connectRow.stripeConnectRequirementsCurrentlyDue ?? []).length > 0) {
+          return { ok: false, code: "connect_requirements_pending" };
+        }
+        if (connectRow.stripeConnectDisabledReason?.trim()) {
+          return { ok: false, code: "connect_restricted" };
+        }
         return { ok: false, code: "connect_not_complete" };
-      }
-      if ((connectRow.stripeConnectRequirementsCurrentlyDue ?? []).length > 0) {
-        return { ok: false, code: "connect_requirements_pending" };
       }
     }
 
@@ -396,6 +409,7 @@ export class OrganizationOnboardingFlowService {
           | "connect_not_complete"
           | "connect_sync_failed"
           | "connect_requirements_pending"
+          | "connect_restricted"
           | "address_required";
       }
   > {

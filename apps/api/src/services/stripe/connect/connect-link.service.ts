@@ -1,15 +1,17 @@
 import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
-import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { assertConnectUrlAllowed } from "../../../lib/stripe-connect-return-url.js";
 import type { AccountLink } from "../../interfaces/stripe-connect.js";
-import { StripeConnectNotConfiguredError } from "../../interfaces/stripe-connect.js";
+import { throwConnectError } from "./connect-service-errors.js";
+import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
+
+/** Stripe login links do not expose expiry; use a conservative client-side hint. */
+const DASHBOARD_LINK_CLIENT_TTL_MS = 5 * 60 * 1000;
 
 export class ConnectLinkService {
   private readonly webOrigin: string;
+  private readonly failClosedOriginCheck: boolean;
 
   constructor(
     env: Env,
@@ -17,22 +19,7 @@ export class ConnectLinkService {
     private readonly stripeFactory: IStripeClientFactory,
   ) {
     this.webOrigin = env.WEB_ORIGIN.replace(/\/$/, "");
-  }
-
-  private get stripe(): Stripe | null {
-    return this.stripeFactory.get();
-  }
-
-  private requireStripe(): Stripe {
-    if (!this.stripe) throw new StripeConnectNotConfiguredError();
-    return this.stripe;
-  }
-
-  private async loadEntity(id: string) {
-    const rows = await this.db.select().from(legalEntity).where(eq(legalEntity.id, id)).limit(1);
-    const row = rows[0];
-    if (!row) throw new Error("legal_entity_not_found");
-    return row;
+    this.failClosedOriginCheck = env.NODE_ENV === "production";
   }
 
   async createOnboardingLink(
@@ -40,12 +27,16 @@ export class ConnectLinkService {
     returnUrl: string,
     refreshUrl: string,
   ): Promise<AccountLink> {
-    assertConnectUrlAllowed(returnUrl, this.webOrigin);
-    assertConnectUrlAllowed(refreshUrl, this.webOrigin);
-    const stripe = this.requireStripe();
-    const row = await this.loadEntity(legalEntityId);
+    assertConnectUrlAllowed(returnUrl, this.webOrigin, {
+      failClosed: this.failClosedOriginCheck,
+    });
+    assertConnectUrlAllowed(refreshUrl, this.webOrigin, {
+      failClosed: this.failClosedOriginCheck,
+    });
+    const stripe = requireConnectStripe(this.stripeFactory);
+    const row = await loadConnectLegalEntity(this.db, legalEntityId);
     if (!row.stripeConnectAccountId) {
-      throw new Error("stripe_account_missing");
+      throwConnectError("stripe_account_missing", 400);
     }
     const link = await stripe.accountLinks.create({
       account: row.stripeConnectAccountId,
@@ -57,10 +48,10 @@ export class ConnectLinkService {
   }
 
   async createDashboardLink(legalEntityId: string): Promise<AccountLink> {
-    const stripe = this.requireStripe();
-    const row = await this.loadEntity(legalEntityId);
-    if (!row.stripeConnectAccountId) throw new Error("stripe_account_missing");
+    const stripe = requireConnectStripe(this.stripeFactory);
+    const row = await loadConnectLegalEntity(this.db, legalEntityId);
+    if (!row.stripeConnectAccountId) throwConnectError("stripe_account_missing", 400);
     const link = await stripe.accounts.createLoginLink(row.stripeConnectAccountId);
-    return { url: link.url, expiresAt: new Date(Date.now() + 5 * 60 * 1000) };
+    return { url: link.url, expiresAt: new Date(Date.now() + DASHBOARD_LINK_CLIENT_TTL_MS) };
   }
 }

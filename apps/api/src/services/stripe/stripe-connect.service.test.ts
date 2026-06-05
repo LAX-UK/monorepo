@@ -89,14 +89,22 @@ function injectStripeOnService(service: StripeConnectService, stripe: Stripe): v
     sessionService?: { stripeFactory: IStripeClientFactory };
     linkService?: { stripeFactory: IStripeClientFactory };
     webhookHandler?: { stripeFactory: IStripeClientFactory };
-    transferService?: { stripeFactory: IStripeClientFactory };
+    transferService?: {
+      initiationService?: { stripeFactory: IStripeClientFactory };
+      stripeFactory?: IStripeClientFactory;
+    };
     stripeFactory?: IStripeClientFactory;
   };
   if (inner.accountService) inner.accountService.stripeFactory = factory;
   if (inner.sessionService) inner.sessionService.stripeFactory = factory;
   if (inner.linkService) inner.linkService.stripeFactory = factory;
   if (inner.webhookHandler) inner.webhookHandler.stripeFactory = factory;
-  if (inner.transferService) inner.transferService.stripeFactory = factory;
+  if (inner.transferService?.initiationService) {
+    inner.transferService.initiationService.stripeFactory = factory;
+  }
+  if (inner.transferService && "stripeFactory" in inner.transferService) {
+    inner.transferService.stripeFactory = factory;
+  }
   if (inner.stripeFactory) inner.stripeFactory = factory;
 }
 
@@ -756,7 +764,7 @@ describe("StripeConnectService.ensureAccount", () => {
     const updatedRow = {
       ...entityRow,
       stripeConnectAccountId: "acct_org",
-      status: "lead" as const,
+      status: "connect_pending" as const,
     };
     const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_org" });
     const db = {
@@ -789,7 +797,7 @@ describe("StripeConnectService.ensureAccount", () => {
     const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
-    await svc.ensureAccount("le-org", "GB");
+    const result = await svc.ensureAccount("le-org", "GB");
 
     expect(accountsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -798,6 +806,7 @@ describe("StripeConnectService.ensureAccount", () => {
       }),
       { idempotencyKey: "connect:account:le-org" },
     );
+    expect(result.legalEntity.status).toBe("connect_pending");
   });
 });
 

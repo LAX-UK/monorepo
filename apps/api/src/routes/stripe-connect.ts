@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { respondStripeConnectRouteError } from "../lib/stripe-connect-route-errors.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
@@ -46,8 +47,14 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
 
   r.get("/status", requireAuth, requireContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
-    const status = await container.stripeConnectService.getStatus(ctx.legalEntityId);
-    return c.json({ data: status });
+    try {
+      const status = await container.stripeConnectService.getStatus(ctx.legalEntityId);
+      return c.json({ data: status });
+    } catch (err) {
+      const mapped = respondStripeConnectRouteError(c, err);
+      if (mapped) return mapped;
+      throw err;
+    }
   });
 
   r.post("/sync", requireAuth, requireContext, async (c) => {
@@ -59,9 +66,8 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       const status = await container.stripeConnectService.syncAccountFromStripe(ctx.legalEntityId);
       return c.json({ data: status });
     } catch (err) {
-      if (err instanceof StripeConnectNotConfiguredError) {
-        return c.json({ error: "stripe_not_configured" }, 503);
-      }
+      const mapped = respondStripeConnectRouteError(c, err);
+      if (mapped) return mapped;
       throw err;
     }
   });
@@ -82,15 +88,8 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
         );
         return c.json({ data: session });
       } catch (err) {
-        if (err instanceof StripeConnectNotConfiguredError) {
-          return c.json({ error: "stripe_not_configured" }, 503);
-        }
-        if (err instanceof Error && err.message === "insufficient_role") {
-          return c.json({ error: "insufficient_role" }, 403);
-        }
-        if (err instanceof Error && err.message === "stripe_account_missing") {
-          return c.json({ error: "stripe_account_missing" }, 400);
-        }
+        const mapped = respondStripeConnectRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -114,12 +113,10 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
         );
         return c.json({ data: result }, 201);
       } catch (err) {
-        if (err instanceof StripeConnectNotConfiguredError) {
-          return c.json({ error: "stripe_not_configured" }, 503);
-        }
-        if (err instanceof Error && err.message === "kyc_not_approved") {
-          return c.json({ error: "kyc_not_approved" }, 403);
-        }
+        const mapped = respondStripeConnectRouteError(c, err, {
+          recordAccountCreateFailure: true,
+        });
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -144,12 +141,8 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
         );
         return c.json({ data: link });
       } catch (err) {
-        if (err instanceof StripeConnectNotConfiguredError) {
-          return c.json({ error: "stripe_not_configured" }, 503);
-        }
-        if (err instanceof Error && err.message.startsWith("connect_url_")) {
-          return c.json({ error: err.message }, 400);
-        }
+        const mapped = respondStripeConnectRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -164,9 +157,8 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       const link = await container.stripeConnectService.createDashboardLink(ctx.legalEntityId);
       return c.json({ data: link });
     } catch (err) {
-      if (err instanceof StripeConnectNotConfiguredError) {
-        return c.json({ error: "stripe_not_configured" }, 503);
-      }
+      const mapped = respondStripeConnectRouteError(c, err);
+      if (mapped) return mapped;
       throw err;
     }
   });
