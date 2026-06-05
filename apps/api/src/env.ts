@@ -52,11 +52,15 @@ const envSchema = z
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     OIDC_ISSUER_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
-    /** Comma-separated extra browser origins allowed for CORS (e.g. `https://lax.art,https://lax.shop`). */
+    /** Comma-separated browser origins allowed for CORS (e.g. main web + event microsite). */
     WEB_ORIGINS: z.preprocess((val) => {
-      if (val === undefined || val === "" || val == null) return undefined;
-      if (typeof val !== "string") return undefined;
-      const parts = val
+      let source = val;
+      if (source === undefined || source === "" || source == null) {
+        source = process.env.CORS_ALLOWED_ORIGINS;
+      }
+      if (source === undefined || source === "" || source == null) return undefined;
+      if (typeof source !== "string") return undefined;
+      const parts = source
         .split(",")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
