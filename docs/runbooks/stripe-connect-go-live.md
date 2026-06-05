@@ -62,7 +62,7 @@ Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Conne
 
 - [ ] `GET /stripe-connect/client-config` returns `{ publishableKey, connectEnforced }`.
 - [ ] `POST /stripe-connect/account` (individual) → same account id on second call (idempotency).
-- [ ] New Connect accounts are created with `controller.fees.payer=application`, `controller.losses.payments=application`, `controller.stripe_dashboard.type=none` (embedded-only), and `transfers` capability only — **existing `acct_*` IDs in DB are not retrofitted** (controller settings are immutable after creation).
+- [ ] New Connect accounts are created with `controller.fees.payer=application`, `controller.losses.payments=application`, `controller.requirement_collection=application`, `controller.stripe_dashboard.type=none` (embedded-only Custom), and `transfers` capability only — **existing `acct_*` IDs in DB are not retrofitted** (controller settings are immutable after creation).
 - [ ] `POST /stripe-connect/account-session` returns `clientSecret` for owner/admin (onboarding + management + notification_banner).
 - [ ] Embedded onboarding on `/dashboard/seller/connect` completes without leaving LAX; `onExit` → `POST /stripe-connect/sync` → requirements clear.
 - [ ] `GET /stripe-connect/status` returns cached DB flags; `POST /stripe-connect/sync` live-syncs from Stripe (`accounts.retrieve`).

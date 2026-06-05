@@ -16,7 +16,7 @@ import { ConnectServiceError, throwConnectError } from "./connect-service-errors
 import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
 
 /** Bump when account-create params change or Stripe cached a 4xx under the prior key (24h TTL). */
-const CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION = "v2";
+const CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION = "v3";
 
 export class ConnectAccountService {
   private readonly logger: AppLogger;
@@ -88,9 +88,11 @@ export class ConnectAccountService {
       throwConnectError("kyc_not_approved", 403);
     }
 
+    // Custom embedded: platform fees + losses + KYC collection; no Stripe Dashboard access.
     const controller = {
       fees: { payer: "application" as const },
       losses: { payments: "application" as const },
+      requirement_collection: "application" as const,
       stripe_dashboard: { type: "none" as const },
     };
 
