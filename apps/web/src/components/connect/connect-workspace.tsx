@@ -81,7 +81,7 @@ export function ConnectWorkspace({
   entityStatus = "approved",
   onConnectReady,
   returnPath = DASHBOARD_ROUTES.sellerConnect,
-  showDashboardLink = true,
+  showDashboardLink = false,
   syncDegraded = false,
 }: Props) {
   const {

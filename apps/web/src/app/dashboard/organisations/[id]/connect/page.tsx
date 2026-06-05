@@ -61,6 +61,7 @@ export default async function OrganisationConnectPage({
           kycApproved
           isLaxManaged={entity?.isLaxManaged ?? false}
           returnPath={`/dashboard/organisations/${id}/connect`}
+          showDashboardLink={false}
         />
       )}
     </div>

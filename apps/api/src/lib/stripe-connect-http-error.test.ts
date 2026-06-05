@@ -47,4 +47,18 @@ describe("stripeConnectErrorToHttp", () => {
   it("returns null for non-Stripe errors", () => {
     expect(stripeConnectErrorToHttp(new Error("kyc_not_approved"))).toBeNull();
   });
+
+  it("maps duck-typed Stripe invalid request objects", () => {
+    expect(
+      stripeConnectErrorToHttp({
+        type: "invalid_request_error",
+        message:
+          "Please review the responsibilities of managing losses for connected accounts at https://dashboard.stripe.com/settings/connect/platform-profile.",
+      }),
+    ).toEqual({
+      status: 503,
+      body: { error: "stripe_platform_profile_incomplete" },
+      recordAccountCreateFailure: true,
+    });
+  });
 });
