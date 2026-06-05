@@ -62,15 +62,15 @@ Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Conne
 
 - [ ] `GET /stripe-connect/client-config` returns `{ publishableKey, connectEnforced }`.
 - [ ] `POST /stripe-connect/account` (individual) → same account id on second call (idempotency).
-- [ ] New Express accounts are created with `controller.fees.payer=application`, `controller.losses.payments=application`, and `transfers` capability only — **existing `acct_*` IDs in DB are not retrofitted** (Stripe Express controller settings are immutable after creation).
+- [ ] New Connect accounts are created with `controller.fees.payer=application`, `controller.losses.payments=application`, `controller.stripe_dashboard.type=none` (embedded-only), and `transfers` capability only — **existing `acct_*` IDs in DB are not retrofitted** (controller settings are immutable after creation).
 - [ ] `POST /stripe-connect/account-session` returns `clientSecret` for owner/admin (onboarding + management + notification_banner).
 - [ ] Embedded onboarding on `/dashboard/seller/connect` completes without leaving LAX; `onExit` → `POST /stripe-connect/sync` → requirements clear.
-- [ ] `GET /stripe-connect/status` live-syncs from Stripe (`accounts.retrieve`) when configured — not cache-only.
+- [ ] `GET /stripe-connect/status` returns cached DB flags; `POST /stripe-connect/sync` live-syncs from Stripe (`accounts.retrieve`).
 - [ ] Org wizard connect step embeds onboarding; auto-advances only after sync confirms payout-ready.
 - [ ] Org admin **approve** when Connect already complete during onboarding → entity promotes to `approved` without waiting for a new webhook.
 - [ ] Org **submit for review** re-syncs Connect when the connect onboarding step is marked complete.
-- [ ] `POST /stripe-connect/dashboard-link` returns Express login URL (secondary fallback).
-- [ ] `POST /stripe-connect/onboarding-link` still works for ops email recovery.
+- [ ] Seller UI uses embedded Connect only (`showDashboardLink=false`); `POST /stripe-connect/dashboard-link` returns `dashboard_link_not_supported` (accounts use `dashboard:none`).
+- [ ] `POST /stripe-connect/onboarding-link` still works for **admin ops** hosted recovery (`POST /admin/legal-entities/:id/stripe-connect/onboarding-link`).
 - [ ] CSP report-only shows no violations for `js.stripe.com`, `api.stripe.com`, `m.stripe.network` on Connect pages.
 
 ### Buyer payment + refund

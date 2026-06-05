@@ -6,9 +6,6 @@ import type { AccountLink } from "../../interfaces/stripe-connect.js";
 import { throwConnectError } from "./connect-service-errors.js";
 import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
 
-/** Stripe login links do not expose expiry; use a conservative client-side hint. */
-const DASHBOARD_LINK_CLIENT_TTL_MS = 5 * 60 * 1000;
-
 export class ConnectLinkService {
   private readonly webOrigin: string;
   private readonly failClosedOriginCheck: boolean;
@@ -47,11 +44,8 @@ export class ConnectLinkService {
     return { url: link.url, expiresAt: new Date(link.expires_at * 1000) };
   }
 
-  async createDashboardLink(legalEntityId: string): Promise<AccountLink> {
-    const stripe = requireConnectStripe(this.stripeFactory);
-    const row = await loadConnectLegalEntity(this.db, legalEntityId);
-    if (!row.stripeConnectAccountId) throwConnectError("stripe_account_missing", 400);
-    const link = await stripe.accounts.createLoginLink(row.stripeConnectAccountId);
-    return { url: link.url, expiresAt: new Date(Date.now() + DASHBOARD_LINK_CLIENT_TTL_MS) };
+  async createDashboardLink(_legalEntityId: string): Promise<AccountLink> {
+    // Accounts use controller.stripe_dashboard.type=none — login links require Express dashboard.
+    throwConnectError("dashboard_link_not_supported", 400);
   }
 }

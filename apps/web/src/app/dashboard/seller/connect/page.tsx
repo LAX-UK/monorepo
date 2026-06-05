@@ -93,6 +93,7 @@ export default async function SellerStripeConnectPage() {
           isLaxManaged={isLaxManaged}
           entityStatus={entityStatus}
           returnPath={DASHBOARD_ROUTES.sellerConnect}
+          showDashboardLink={false}
           syncDegraded={syncDegraded}
         />
       ) : null}
