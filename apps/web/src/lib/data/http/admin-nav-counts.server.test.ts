@@ -22,6 +22,7 @@ function mockFetchers(overrides: Partial<Record<keyof typeof EMPTY_ADMIN_NAV_COU
     getDraftLotsMissingPhotos: vi.fn().mockResolvedValue(overrides.draftLotsMissingPhotos ?? 0),
     getAmlScreeningsPending: vi.fn().mockResolvedValue(overrides.amlScreeningsPending ?? 0),
     getSourceOfFundsPending: vi.fn().mockResolvedValue(overrides.sourceOfFundsPending ?? 0),
+    getTelephoneBookingsPending: vi.fn().mockResolvedValue(overrides.telephoneBookingsPending ?? 0),
   };
 }
 

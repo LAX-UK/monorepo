@@ -6,6 +6,7 @@ export type DashboardWidgetId =
   | "my-queue"
   | "anomalies"
   | "saleroom-live"
+  | "onsite-radar"
   | "activity";
 
 export type DashboardWidgetState = {
@@ -20,7 +21,8 @@ export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetState[] = [
   { id: "my-queue", order: 2, hidden: false },
   { id: "anomalies", order: 3, hidden: false },
   { id: "saleroom-live", order: 4, hidden: false },
-  { id: "activity", order: 5, hidden: false },
+  { id: "onsite-radar", order: 5, hidden: false },
+  { id: "activity", order: 6, hidden: false },
 ] as const;
 
 export function mergeDashboardWidgets(

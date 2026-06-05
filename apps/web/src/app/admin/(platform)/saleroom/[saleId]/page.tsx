@@ -5,6 +5,7 @@ import {
   type AdminSaleroomSessionSnapshot,
   getAdminSaleById,
   getAdminSaleroomSession,
+  getAdminTelephoneBookings,
 } from "@/lib/data/http/admin.server";
 import { LiveBadge } from "@auction/ui/components/live-badge";
 import { notFound } from "next/navigation";
@@ -19,12 +20,13 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
   const { error } = await searchParams;
   let saleroomLoadError: string | null = null;
 
-  const [saleRow, saleroomResult] = await Promise.all([
+  const [saleRow, saleroomResult, telephoneBookings] = await Promise.all([
     getAdminSaleById(saleId),
     getAdminSaleroomSession(saleId).catch((e): AdminSaleroomSessionSnapshot => {
       saleroomLoadError = e instanceof Error ? e.message : "Could not load the saleroom session.";
       return { session: null, events: [] };
     }),
+    getAdminTelephoneBookings(saleId).catch(() => []),
   ]);
   if (!saleRow) notFound();
   const saleroom = saleroomResult;
@@ -52,6 +54,7 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         saleTitle={saleRow.sale.title ?? "Sale"}
         initial={saleroom}
         lots={saleRow.lots}
+        telephoneBookings={telephoneBookings}
         error={error ?? saleroomLoadError}
       />
     </AdminEntityDetailShell>

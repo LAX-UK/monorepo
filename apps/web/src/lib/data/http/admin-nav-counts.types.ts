@@ -14,6 +14,7 @@ export type AdminNavCounts = {
   draftLotsMissingPhotos: number;
   amlScreeningsPending: number;
   sourceOfFundsPending: number;
+  telephoneBookingsPending: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -32,4 +33,5 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   draftLotsMissingPhotos: 0,
   amlScreeningsPending: 0,
   sourceOfFundsPending: 0,
+  telephoneBookingsPending: 0,
 };

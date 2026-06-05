@@ -10,6 +10,7 @@ import {
   getOnsitePaddleStepDescription,
   getOnsitePreviewStepDescription,
   getOnsiteStreamStepDescription,
+  getOnsiteTelephoneStepDescription,
   getOnsiteTimelineStepTitle,
 } from "@/lib/sale-participation-steps";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
@@ -42,6 +43,8 @@ type Props = {
   streamUrl?: string | null;
   /** When set, step 3 absentee CTA links to `#${absenteeAnchorId}` instead of `#plan-visit`. */
   absenteeAnchorId?: string;
+  /** When set, step 3 telephone CTA links to `#${telephoneAnchorId}`. */
+  telephoneAnchorId?: string;
   /** When set, step 4 stream CTA links in-page instead of opening streamUrl externally. */
   liveStreamAnchorId?: string;
   /** Online step 1: in-page id of the register-to-bid form so "Register to Bid" jumps to it. */
@@ -62,6 +65,7 @@ export function SaleParticipationTimeline({
   endTime,
   streamUrl,
   absenteeAnchorId,
+  telephoneAnchorId,
   liveStreamAnchorId,
   registerAnchorId,
   registerReturnPath,
@@ -220,11 +224,21 @@ export function SaleParticipationTimeline({
           : ("active" as const),
       action:
         !isSaleActive && !isSaleEnded ? (
-          <Button size="sm" variant="outline" className="mt-2" asChild>
-            <Link href={absenteeAnchorId ? `#${absenteeAnchorId}` : "#plan-visit"}>
-              Submit Absentee Bids
-            </Link>
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button size="sm" variant="outline" className="mt-2" asChild>
+              <Link href={absenteeAnchorId ? `#${absenteeAnchorId}` : "#plan-visit"}>
+                Submit absentee bids
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <Link href={telephoneAnchorId ? `#${telephoneAnchorId}` : "#bid-onsite-hub"}>
+                Request telephone line
+              </Link>
+            </Button>
+            <p className="font-body text-[11px] text-on-surface-variant">
+              {getOnsiteTelephoneStepDescription()}
+            </p>
+          </div>
         ) : null,
     };
 
@@ -267,6 +281,7 @@ export function SaleParticipationTimeline({
     hasLiveStream,
     streamUrl,
     absenteeAnchorId,
+    telephoneAnchorId,
     liveStreamAnchorId,
     withNext,
     registerActionHref,

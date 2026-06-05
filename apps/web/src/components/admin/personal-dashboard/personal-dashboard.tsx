@@ -2,6 +2,8 @@ import { AnomalyCalloutsWidget } from "@/components/admin/personal-dashboard/ano
 import { PersonalDashboardCustomizeSheet } from "@/components/admin/personal-dashboard/customize-sheet";
 import { GreetingWidget } from "@/components/admin/personal-dashboard/greeting-widget";
 import { MyQueueWidget } from "@/components/admin/personal-dashboard/my-queue-widget";
+import { OnsiteSalesRadarWidget } from "@/components/admin/personal-dashboard/onsite-sales-radar-widget";
+import type { OnsiteSalesRadarRow } from "@/components/admin/personal-dashboard/onsite-sales-radar-widget";
 import { RecentActivityWidget } from "@/components/admin/personal-dashboard/recent-activity-widget";
 import { SaleroomLiveWidget } from "@/components/admin/personal-dashboard/saleroom-live-widget";
 import { TrendKpiBandWidget } from "@/components/admin/personal-dashboard/trend-kpi-band-widget";
@@ -30,6 +32,7 @@ type Props = {
   attention: readonly AdminAttentionRow[];
   activity: readonly AdminActivityRow[];
   anomalies: readonly AdminAnomaly[];
+  onsiteRadarRows?: readonly OnsiteSalesRadarRow[];
   loadWarning?: string | null;
 };
 
@@ -44,6 +47,7 @@ export function PersonalDashboard({
   attention,
   activity,
   anomalies,
+  onsiteRadarRows = [],
   loadWarning = null,
 }: Props) {
   const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(widgets, id);
@@ -91,6 +95,14 @@ export function PersonalDashboard({
               </aside>
             ) : null}
           </div>
+        ) : null,
+    },
+    {
+      id: "onsite-radar",
+      order: orderOf("onsite-radar"),
+      node:
+        show("onsite-radar") && onsiteRadarRows.length > 0 ? (
+          <OnsiteSalesRadarWidget rows={[...onsiteRadarRows]} />
         ) : null,
     },
     {
