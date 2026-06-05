@@ -8,6 +8,8 @@ import type {
   OnsiteEventRsvpAdminRow,
 } from "@auction/types";
 import type { SubmitOnsiteEventRsvpBody } from "@auction/validators";
+import { decryptCheckInToken, encryptCheckInToken } from "../lib/check-in-token-ciphertext.js";
+import { buildPassUrl, issueCheckInToken } from "../lib/onsite-event-check-in-token.js";
 import { onsiteEventRsvpsToCsv } from "../lib/onsite-event-rsvp-csv.js";
 import type { IOnsiteEventClientReader } from "../repositories/interfaces/onsite-event-client.reader.js";
 import type { IOnsiteEventRsvpRepository } from "../repositories/interfaces/onsite-event-rsvp.repository.js";
@@ -24,6 +26,7 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
     private readonly rsvpRepo: IOnsiteEventRsvpRepository,
     private readonly clientReader: IOnsiteEventClientReader,
     private readonly notifier: IOnsiteEventNotifier | null = null,
+    private readonly tokenCipherSecret: string | null = null,
   ) {}
 
   private notFound(): OnsiteEventRsvpServiceError {
@@ -120,7 +123,7 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
     eventSlug: string,
     body: SubmitOnsiteEventRsvpBody,
   ): Promise<
-    | { ok: true; data: OnsiteEventRsvp; isUpdate: boolean }
+    | { ok: true; data: OnsiteEventRsvp; isUpdate: boolean; passUrl: string }
     | { ok: false; error: OnsiteEventRsvpServiceError }
   > {
     const event = await this.requirePublishedEvent(eventSlug);
@@ -165,6 +168,7 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
     const existing = await this.rsvpRepo.findByEventAndUser(eventSlug, client.id);
     const plusOneGuestName = body.plusOne > 0 ? (body.plusOneGuestName?.trim() ?? null) : null;
     const notes = body.notes?.trim() ? body.notes.trim() : null;
+    const token = this.resolveCheckInToken(existing);
 
     const saved = await this.rsvpRepo.upsert({
       eventSlug,
@@ -173,18 +177,34 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
       plusOne: body.plusOne,
       plusOneGuestName,
       notes,
+      checkInTokenHash: token.tokenHash,
+      checkInTokenIssuedAt: token.issuedAt,
+      checkInTokenCiphertext: token.ciphertext,
     });
 
+    const passUrl = buildPassUrl(event.micrositeUrl, token.plainToken);
+
     if (this.notifier) {
-      const payload = { userEmail: lookup.user.email, userName: lookup.user.name };
+      const payload = {
+        userEmail: lookup.user.email,
+        userName: lookup.user.name,
+        passUrl,
+      };
       void (
         existing
           ? this.notifier.notifyUpdated(event, saved, payload)
           : this.notifier.notifySubmitted(event, saved, payload)
-      ).catch(() => undefined);
+      ).catch((error) => {
+        console.error("[onsite-event-mail] RSVP notification failed", {
+          eventSlug,
+          rsvpId: saved.id,
+          isUpdate: existing != null,
+          error,
+        });
+      });
     }
 
-    return { ok: true, data: saved, isUpdate: existing != null };
+    return { ok: true, data: saved, isUpdate: existing != null, passUrl };
   }
 
   async listAdminEvents(): Promise<OnsiteEventListItem[]> {
@@ -204,6 +224,162 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
     if ("status" in event && typeof event.status === "number") return event;
     const rows = await this.rsvpRepo.listAdminRows(eventSlug);
     return onsiteEventRsvpsToCsv(event, rows);
+  }
+
+  async resendPass(
+    eventSlug: string,
+    rsvpId: string,
+  ): Promise<
+    | { ok: true; rotated: boolean; emailSent: true }
+    | { ok: false; error: OnsiteEventRsvpServiceError }
+  > {
+    const event = await this.requireAdminEvent(eventSlug);
+    if ("status" in event && typeof event.status === "number") {
+      return { ok: false, error: event };
+    }
+
+    const rsvp = await this.rsvpRepo.findByIdWithGuest(rsvpId);
+    if (!rsvp || rsvp.eventSlug !== eventSlug) {
+      return {
+        ok: false,
+        error: { message: "RSVP not found", status: 404, code: "rsvp_not_found" },
+      };
+    }
+
+    if (!this.notifier) {
+      return {
+        ok: false,
+        error: {
+          message: "Pass email is not configured",
+          status: 503,
+          code: "pass_email_not_configured",
+        },
+      };
+    }
+
+    let plainToken: string | null = null;
+    let pendingRotation: {
+      tokenHash: string;
+      issuedAt: Date;
+      ciphertext: string;
+    } | null = null;
+
+    if (rsvp.checkInTokenCiphertext) {
+      plainToken = this.decryptStoredToken(rsvp.checkInTokenCiphertext);
+      if (!plainToken) {
+        return {
+          ok: false,
+          error: {
+            message: "Could not decrypt stored pass token — contact engineering",
+            status: 500,
+            code: "token_decrypt_failed",
+          },
+        };
+      }
+    } else {
+      const issued = issueCheckInToken();
+      plainToken = issued.plainToken;
+      pendingRotation = {
+        tokenHash: issued.tokenHash,
+        issuedAt: new Date(),
+        ciphertext: this.encryptToken(issued.plainToken),
+      };
+    }
+
+    const passUrl = buildPassUrl(event.micrositeUrl, plainToken);
+    try {
+      await this.notifier.notifyResent(event, rsvp, {
+        userEmail: rsvp.guestEmail,
+        userName: rsvp.guestName,
+        passUrl,
+      });
+    } catch {
+      return {
+        ok: false,
+        error: {
+          message: "Pass email could not be sent",
+          status: 502,
+          code: "pass_email_failed",
+        },
+      };
+    }
+
+    let rotated = false;
+    if (pendingRotation) {
+      const updated = await this.rsvpRepo.updateCheckInToken(rsvpId, {
+        checkInTokenHash: pendingRotation.tokenHash,
+        checkInTokenIssuedAt: pendingRotation.issuedAt,
+        checkInTokenCiphertext: pendingRotation.ciphertext,
+      });
+      if (!updated) {
+        return {
+          ok: false,
+          error: {
+            message: "Could not refresh pass token",
+            status: 500,
+            code: "token_update_failed",
+          },
+        };
+      }
+      rotated = true;
+    }
+
+    return { ok: true, rotated, emailSent: true };
+  }
+
+  async setCheckInDryRun(
+    eventSlug: string,
+    enabled: boolean,
+  ): Promise<
+    { ok: true; checkInDryRun: boolean } | { ok: false; error: OnsiteEventRsvpServiceError }
+  > {
+    const updated = await this.eventRepo.updateCheckInDryRun(eventSlug, enabled);
+    if (!updated) {
+      return {
+        ok: false,
+        error: { message: "Event not found", status: 404, code: "event_not_found" },
+      };
+    }
+    return { ok: true, checkInDryRun: updated.checkInDryRun };
+  }
+
+  private resolveCheckInToken(existing: OnsiteEventRsvp | null): {
+    plainToken: string;
+    tokenHash: string;
+    issuedAt: Date;
+    ciphertext: string;
+  } {
+    if (existing?.checkInTokenCiphertext && existing.checkInTokenHash) {
+      const plainToken = this.decryptStoredToken(existing.checkInTokenCiphertext);
+      if (plainToken) {
+        return {
+          plainToken,
+          tokenHash: existing.checkInTokenHash,
+          issuedAt: existing.checkInTokenIssuedAt ?? new Date(),
+          ciphertext: existing.checkInTokenCiphertext,
+        };
+      }
+    }
+
+    const issued = issueCheckInToken();
+    return {
+      plainToken: issued.plainToken,
+      tokenHash: issued.tokenHash,
+      issuedAt: new Date(),
+      ciphertext: this.encryptToken(issued.plainToken),
+    };
+  }
+
+  private encryptToken(plainToken: string): string {
+    if (!this.tokenCipherSecret) {
+      throw new Error("Check-in token encryption secret is not configured");
+    }
+    return encryptCheckInToken(plainToken, this.tokenCipherSecret);
+  }
+
+  private decryptStoredToken(ciphertext: string | null): string | null {
+    if (!ciphertext || !this.tokenCipherSecret) return null;
+    return decryptCheckInToken(ciphertext, this.tokenCipherSecret);
   }
 
   private lookupToSubmitError(

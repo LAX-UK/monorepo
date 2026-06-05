@@ -9,6 +9,7 @@ export * from "./venues.js";
 export * from "./telephone-bid-booking.js";
 export * from "./onsite-event.js";
 export * from "./onsite-event-rsvp.js";
+export * from "./onsite-event-check-in-log.js";
 export * from "./bids.js";
 export * from "./sale-registration.js";
 export * from "./buyer-agent-authorisation.js";

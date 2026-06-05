@@ -302,6 +302,19 @@ variable "kyc_threshold_currency" {
   default     = "GBP"
   description = "ISO 4217 currency code for KYC threshold."
 }
+# --- Onsite event pass / check-in (apps/api) ---
+variable "check_in_token_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "AES key for encrypted onsite-event pass tokens (admin resend). Empty -> Terraform generates and persists a stable random secret in state."
+}
+variable "invite_email_from" {
+  type        = string
+  default     = "LAX Events <no-reply@mail.lax.bid>"
+  description = "From header for synchronous API mail via Postmark (onsite passes, membership invites). INVITE_EMAIL_FROM; falls back to EMAIL_FROM in app code when unset."
+}
+
 variable "ops_support_email" {
   type        = string
   default     = ""

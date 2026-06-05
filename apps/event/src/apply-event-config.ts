@@ -2,6 +2,16 @@ import type { OnsiteEventPublicConfig } from "./rsvp-api.js";
 
 export function applyPublicConfig(config: OnsiteEventPublicConfig): void {
   applyRsvpUrgency(config.rsvpCloseAt, config.rsvpOpen);
+  setRsvpCallToActionsVisible(config.rsvpOpen);
+}
+
+export function setRsvpCallToActionsVisible(open: boolean): void {
+  document.documentElement.dataset.rsvpOpen = open ? "true" : "false";
+  const sticky = document.getElementById("sticky-rsvp");
+  if (sticky) sticky.hidden = !open;
+  for (const node of document.querySelectorAll<HTMLElement>("[data-rsvp-cta]")) {
+    node.hidden = !open;
+  }
 }
 
 function applyRsvpUrgency(rsvpCloseAt: string | null, rsvpOpen: boolean): void {

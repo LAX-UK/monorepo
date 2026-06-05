@@ -23,6 +23,7 @@ jobs:
       TF_VAR_github_integration_id: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
       SENTRY_GITHUB_INTEGRATION_ID: ${{ secrets.SENTRY_GITHUB_INTEGRATION_ID }}
       TF_VAR_better_auth_secret: ${{ secrets.BETTER_AUTH_SECRET }}
+      TF_VAR_check_in_token_secret: ${{ secrets.CHECK_IN_TOKEN_SECRET }}
       TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
       TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       TF_VAR_spaces_access_key_id: ${{ secrets.MEDIA_SPACES_ACCESS_KEY_ID }}

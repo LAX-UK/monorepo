@@ -47,6 +47,8 @@ const envSchema = z
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),
+    /** AES key for encrypted onsite-event pass tokens (resend). Falls back to BETTER_AUTH_SECRET. */
+    CHECK_IN_TOKEN_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     OIDC_ISSUER_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
@@ -166,10 +168,9 @@ const envSchema = z
     XERO_PAYOUT_BILL_ACCOUNT_CODE: z.string().min(1).default("400"),
     /** After OAuth, redirect browser here (web app), e.g. https://app.example.com/admin/integrations/xero */
     XERO_POST_CONNECT_WEB_REDIRECT: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    /** Optional outbound email hook for invitations (JSON POST). If unset, invite emails are logged only.
-     * Expected to accept payloads like: { to, subject, text }.
-     */
+    /** Optional dev override: JSON POST webhook when EMAIL_PROVIDER is not postmark. */
     INVITE_EMAIL_WEBHOOK_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** From header for synchronous API mail (onsite passes, membership invites). Defaults to EMAIL_FROM. */
     INVITE_EMAIL_FROM: z.preprocess(emptyToUndefined, z.string().min(3).optional()),
     /** Stripe secret key (sk_test_… / sk_live_…). Optional until KYC enabled. */
     STRIPE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().optional()),

@@ -42,12 +42,11 @@ export default async function AdminOnsiteEventsPage() {
       ) : (
         <Surface className="divide-y divide-border-hairline">
           {events.map((event) => (
-            <Link
-              key={event.slug}
-              href={`/admin/onsite-events/${encodeURIComponent(event.slug)}`}
-              className="flex flex-wrap items-center justify-between gap-4 p-4 transition-colors hover:bg-surface-container-low/40"
-            >
-              <div className="min-w-0 space-y-1">
+            <div key={event.slug} className="flex flex-wrap items-center justify-between gap-4 p-4">
+              <Link
+                href={`/admin/onsite-events/${encodeURIComponent(event.slug)}`}
+                className="min-w-0 flex-1 space-y-1 transition-colors hover:text-on-surface"
+              >
                 <p className="font-medium">{event.title}</p>
                 <p className="font-body text-xs text-on-surface-variant">{event.slug}</p>
                 {event.startsAt ? (
@@ -55,12 +54,18 @@ export default async function AdminOnsiteEventsPage() {
                     Starts {formatDateTime(event.startsAt)}
                   </p>
                 ) : null}
-              </div>
+              </Link>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{event.status}</Badge>
                 <Badge variant="outline">{event.rsvpCount} RSVPs</Badge>
+                <Link
+                  href={`/admin/onsite-events/${encodeURIComponent(event.slug)}/check-in`}
+                  className="font-body text-xs text-on-surface-variant underline-offset-4 hover:underline"
+                >
+                  Check-in
+                </Link>
               </div>
-            </Link>
+            </div>
           ))}
         </Surface>
       )}

@@ -47,13 +47,22 @@ export type SubmitRsvpResult = {
   plusOneGuestName: string | null;
   notes: string | null;
   isUpdate: boolean;
+  passUrl: string;
 };
 
 type ApiError = { error: string; code?: string };
 
 async function parseJson<T>(res: Response): Promise<T> {
-  const body = (await res.json()) as T;
-  return body;
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error(`invalid_json_${res.status}`);
+  }
+}
+
+function apiErrorCode(res: Response, body: ApiError | undefined, prefix: string): string {
+  if (res.status === 429) return "rate_limited";
+  return body?.code ?? body?.error ?? `${prefix}_${res.status}`;
 }
 
 export async function fetchEventConfig(): Promise<OnsiteEventPublicConfig> {
@@ -91,7 +100,8 @@ export async function lookupByEmail(email: string): Promise<OnsiteEventEmailLook
     body: JSON.stringify({ email }),
   });
   if (!res.ok) {
-    throw new Error(`lookup_failed_${res.status}`);
+    const body = await parseJson<ApiError>(res).catch(() => undefined);
+    throw new Error(apiErrorCode(res, body, "lookup_failed"));
   }
   const body = await parseJson<{ data: OnsiteEventEmailLookup }>(res);
   return body.data;
@@ -106,14 +116,14 @@ export async function submitRsvp(input: SubmitRsvpInput): Promise<SubmitRsvpResu
     body: JSON.stringify(input),
   });
   const body = await parseJson<{
-    data?: SubmitRsvpResult & { attendanceSegment: string };
+    data?: SubmitRsvpResult & { attendanceSegment: string; passUrl: string };
     isUpdate?: boolean;
     error?: string;
     code?: string;
   }>(res);
   if (!res.ok) {
     const err = body as ApiError;
-    throw new Error(err.code ?? err.error ?? `submit_failed_${res.status}`);
+    throw new Error(apiErrorCode(res, err, "submit_failed"));
   }
   const data = body.data;
   if (!data) {
@@ -126,5 +136,6 @@ export async function submitRsvp(input: SubmitRsvpInput): Promise<SubmitRsvpResu
     plusOneGuestName: data.plusOneGuestName ?? null,
     notes: data.notes,
     isUpdate: body.isUpdate === true,
+    passUrl: data.passUrl,
   };
 }

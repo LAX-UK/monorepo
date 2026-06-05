@@ -16,6 +16,8 @@ export function onsiteEventRsvpsToCsv(event: OnsiteEvent, rows: OnsiteEventRsvpA
     "plus_one",
     "guest_name",
     "notes",
+    "checked_in_at",
+    "check_in_party_count",
     "updated_at",
   ];
   const lines = [header.join(",")];
@@ -28,6 +30,8 @@ export function onsiteEventRsvpsToCsv(event: OnsiteEvent, rows: OnsiteEventRsvpA
         String(row.plusOne),
         escapeCsv(row.plusOneGuestName ?? ""),
         escapeCsv(row.notes ?? ""),
+        escapeCsv(row.checkedInAt ?? ""),
+        row.checkInPartyCount != null ? String(row.checkInPartyCount) : "",
         escapeCsv(row.updatedAt),
       ].join(","),
     );
