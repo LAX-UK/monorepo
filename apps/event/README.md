@@ -37,8 +37,10 @@ Web UI: `/admin/onsite-events` → select event.
 pnpm install
 docker compose up -d postgres redis
 pnpm db:migrate
-pnpm --filter @auction/api dev
-pnpm --filter @auction/event dev
+pnpm --filter @auction/api dev   # port 3001
+pnpm --filter @auction/event dev # port 3003
 ```
 
-API `.env`: include `http://localhost:3003` in `WEB_ORIGINS` for CORS from the event microsite.
+Open `http://localhost:3003`. In dev, Vite proxies onsite-event **API** paths (`/events/:slug/config|lookup|rsvp`) and `/sales` to `http://localhost:3001`. Static invitation images stay at `/events/lax001/*` from `public/`.
+
+Optional overrides: `apps/event/.env.development` (`VITE_API_BASE`, `VITE_WEB_ORIGIN`, `VITE_EVENT_ORIGIN`).
