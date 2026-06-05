@@ -90,8 +90,7 @@ jobs:
       TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
       TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
       TF_VAR_sentry_release: ${{ github.sha }}
-      # --- Prebuilt-image deploys (DOCR). Inert until the repo variables below are set. ---
-      # ephemeral layer: flip the app from DO github builds to prebuilt DOCR images.
+      # --- Prebuilt-image deploys (DOCR). Set APP_DEPLOY_SOURCE_* repo variable to "image". ---
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_PROD || 'github' }}
       # persistent layer: create the account-level DOCR registry (prod state only).
       TF_VAR_create_container_registry: ${{ vars.CREATE_CONTAINER_REGISTRY || 'false' }}
