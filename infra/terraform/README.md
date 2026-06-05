@@ -20,4 +20,6 @@ Apply order:
 
 State lives in DigitalOcean Spaces. DigitalOcean Spaces does not provide native Terraform state locking, so applies must run through GitHub Actions. Do not run `terraform apply` locally except during documented state recovery.
 
+Prebuilt App Platform images (including `web`) are built in CI and pushed to DOCR — see [BOOTSTRAP.md §9](BOOTSTRAP.md#9-prebuilt-images-docr--faster-app-platform-deploys) and [web-build/README.md](../web-build/README.md).
+
 Resource names use `lax-<env>-<purpose>`. Every taggable resource carries `environment` and `managed_by=terraform`. Modules never hard-code environment names.
