@@ -3,7 +3,7 @@ import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catal
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { ArchivePageToolbar } from "@/components/sections/archive/archive-page-toolbar";
 import { ArchivePagination } from "@/components/sections/archive/archive-pagination";
-import { CatalogArchiveView } from "@/components/sections/archive/catalog-archive-view";
+import { CatalogArchiveViewClient } from "@/components/sections/archive/catalog-archive-view-client";
 import type { ArchiveLotVM } from "@/components/sections/archive/catalog-archive-views";
 import { PastAuctionsEmpty } from "@/components/sections/archive/past-auctions-grid";
 import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-header";
@@ -166,8 +166,8 @@ export default async function ArchivePage({ searchParams }: PageProps) {
         {items.length === 0 ? (
           <PastAuctionsEmpty hasActiveFilters={hasActiveFilters} layoutView={layoutView} />
         ) : (
-          <CatalogArchiveView
-            view={layoutView}
+          <CatalogArchiveViewClient
+            initialView={layoutView}
             items={items}
             currentUserId={currentUserId}
             catalogLinkParams={archiveLotLinkParams(layoutView)}
