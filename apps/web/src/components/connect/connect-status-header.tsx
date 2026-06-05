@@ -54,6 +54,12 @@ export function ConnectStatusHeader({
       <p className="font-body text-sm text-on-surface-variant">
         {connectGapStageSummary(gap.stage, gap, copyOptions)}
       </p>
+      {gap.stage === "ready" && !gap.canPublish ? (
+        <p className="font-body text-sm text-on-surface-variant">
+          Stripe payout setup is complete. Your profile still needs LAX approval before you can
+          publish lots or receive settlement transfers.
+        </p>
+      ) : null}
       {actionHint ? (
         <p className="font-body text-sm text-on-surface-variant">{actionHint}</p>
       ) : null}

@@ -26,6 +26,7 @@ export class ConnectLifecyclePromoter {
       stripeConnectAccountId: row.stripeConnectAccountId,
       stripeConnectPayoutsEnabled: payoutsEnabled,
       stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
+      stripeConnectDisabledReason: disabledReason,
       isLaxManaged: row.isLaxManaged,
     });
 

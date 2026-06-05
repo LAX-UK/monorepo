@@ -24,6 +24,10 @@
 | **API down** | Scale App Platform instances; rollback deploy if regression; enable maintenance banner. |
 | **Webhooks** | Rotate secret in Stripe for the failing destination + update the matching `STRIPE_*_WEBHOOK_SECRET` in secrets/Terraform + apply; replay failed events from Stripe UI once handler fixed. |
 | **Connect** | Seller completes outstanding KYC in Connect Express link; refresh account in admin. |
+| **Connect account create 503** | Log mentions `platform-profile` or `managing losses` → complete **Settings → Connect → Platform profile** in the matching Stripe mode (Live/Test); no deploy required. API returns `stripe_platform_profile_incomplete`. |
+| **Connect account orphan** | Metric `stripe_connect_account_orphan_created` — Stripe account exists but DB update failed; seller retry on `/dashboard/seller/connect` (idempotent ensure) or admin reconcile `stripeConnectAccountId`. |
+| **Connect deauthorized** | Metric `stripe_connect_account_deauthorized` — seller revoked access; re-onboard via embedded Connect or admin onboarding link. |
+| **Transfer CAS miss** | Metric `payout_transfer_status_cas_miss` — Stripe transfer created but payout status not updated; finance reconcile transfer id vs payout row before re-running settlement. |
 | **Veriff KYC** | Verify `VERIFF_API_KEY` and `VERIFF_SHARED_SECRET` in env; check Veriff Customer Portal webhook delivery and session status; confirm `x-auth-client` + HMAC headers reach `/webhooks/veriff/decision`. |
 | **Transfers** | Verify `STRIPE_TRANSFERS_WEBHOOK_SECRET` and that the destination uses **Your account** scope with `transfer.*` events. |
 

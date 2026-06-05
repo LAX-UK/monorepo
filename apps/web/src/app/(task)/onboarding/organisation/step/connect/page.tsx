@@ -1,4 +1,6 @@
 import { OrgConnectStepClient } from "@/app/(task)/onboarding/organisation/step/connect/org-connect-step-client";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { redirectIfOrgOnboardingStepBlocked } from "@/lib/data/http/org-onboarding-step-guard.server";
 import {
   getServerStripeConnectClientConfig,
@@ -30,6 +32,15 @@ export default async function OrgOnboardingConnectStepPage({
 
   const memberships = await hub.listMemberships().catch(() => []);
   const member = memberships.find((m) => m.id === entityId);
+
+  const connectFailure =
+    connectRes.ok || connectRes.error === "not_connected"
+      ? null
+      : buildSellerConnectFailure(connectRes.error);
+
+  if (connectFailure) {
+    return <DashboardSliceErrorAlert failure={connectFailure} />;
+  }
 
   return (
     <OrgConnectStepClient
