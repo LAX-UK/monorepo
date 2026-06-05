@@ -63,6 +63,7 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
         email: "tel_int_staff@integration.test",
         emailVerified: true,
         role: "staff",
+        staffRole: "super_admin",
         createdAt: t,
         updatedAt: t,
       },

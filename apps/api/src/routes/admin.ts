@@ -105,6 +105,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
+import { createAdminOnsiteEventRoutes } from "./admin-onsite-events.js";
 import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
 import { createAdminTelephoneBookingRoutes } from "./telephone-bookings.js";
@@ -567,6 +568,10 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   const adminTelephoneRoutes = createAdminTelephoneBookingRoutes(container);
   adminTelephoneRoutes.use("*", requireAuctionManage);
   platform.route("/", adminTelephoneRoutes);
+
+  const adminOnsiteEventRoutes = createAdminOnsiteEventRoutes(container);
+  adminOnsiteEventRoutes.use("*", requireAuctionManage);
+  platform.route("/onsite-events", adminOnsiteEventRoutes);
 
   platform.get(
     "/sales/:saleId/saleroom/session",
