@@ -6,6 +6,8 @@ type Props = {
   /** Desktop-only sort chip-strip placeholder (e.g. artists directory). */
   showDesktopSort?: boolean;
   showActiveChips?: boolean;
+  /** Second-row trailing controls placeholder (search toolbar mobile layout). */
+  showMobileTrailing?: boolean;
   className?: string;
 };
 
@@ -16,6 +18,7 @@ export function MarketingCatalogToolbarSkeleton({
   showDesktopFilters = true,
   showDesktopSort = false,
   showActiveChips = false,
+  showMobileTrailing = false,
   className,
 }: Props) {
   return (
@@ -32,27 +35,40 @@ export function MarketingCatalogToolbarSkeleton({
             MARKETING_CATALOG_GUTTER,
           )}
         >
-          <div className="flex h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
-            <div className={cn(pulse, "h-4 w-20 shrink-0")} />
-            {showDesktopFilters ? (
-              <div className="hidden min-w-0 flex-1 gap-2 md:flex">
-                <div className={cn(pulse, "h-8 w-16 rounded-full")} />
-                <div className={cn(pulse, "h-8 w-20 rounded-full")} />
-                <div className={cn(pulse, "h-8 w-24 rounded-full")} />
+          <div className="flex flex-col gap-2 lg:gap-0">
+            <div className="flex h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
+              <div className={cn(pulse, "h-4 w-20 shrink-0")} />
+              {showDesktopFilters ? (
+                <div className="hidden min-w-0 flex-1 gap-2 lg:flex">
+                  <div className={cn(pulse, "h-8 w-16 rounded-full")} />
+                  <div className={cn(pulse, "h-8 w-20 rounded-full")} />
+                  <div className={cn(pulse, "h-8 w-24 rounded-full")} />
+                </div>
+              ) : null}
+              {showDesktopSort ? (
+                <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
+                  <div className={cn(pulse, "h-4 w-10 shrink-0")} />
+                  <div className={cn(pulse, "h-8 w-20 rounded-full")} />
+                  <div className={cn(pulse, "h-8 w-24 rounded-full")} />
+                  <div className={cn(pulse, "h-8 w-20 rounded-full")} />
+                </div>
+              ) : null}
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <div className={cn(pulse, "h-10 w-24 shrink-0 lg:hidden")} />
+                <div
+                  className={cn(
+                    pulse,
+                    "h-10 w-28 shrink-0",
+                    showMobileTrailing && "hidden lg:block",
+                  )}
+                />
               </div>
-            ) : null}
-            {showDesktopSort ? (
-              <div className="hidden min-w-0 flex-1 items-center gap-2 md:flex">
-                <div className={cn(pulse, "h-4 w-10 shrink-0")} />
-                <div className={cn(pulse, "h-8 w-20 rounded-full")} />
-                <div className={cn(pulse, "h-8 w-24 rounded-full")} />
-                <div className={cn(pulse, "h-8 w-20 rounded-full")} />
-              </div>
-            ) : null}
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <div className={cn(pulse, "h-10 w-24 shrink-0 md:hidden")} />
-              <div className={cn(pulse, "h-10 w-28 shrink-0")} />
             </div>
+            {showMobileTrailing ? (
+              <div className="flex items-center justify-end gap-2 border-t border-border-hairline pt-2 lg:hidden">
+                <div className={cn(pulse, "h-10 w-28 shrink-0")} />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

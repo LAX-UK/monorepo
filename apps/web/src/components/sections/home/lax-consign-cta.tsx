@@ -1,7 +1,9 @@
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { CONSIGN_COPY } from "@/components/sections/home/home-copy";
 import { RevealInView } from "@/components/ui/reveal";
+import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { LabelCaps } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -14,7 +16,10 @@ export function LaxConsignCTA() {
     <section
       id="consign"
       aria-labelledby="consign-heading"
-      className="cv-auto bg-surface-container-low px-8 pt-[var(--section-spacing-tight)] pb-[var(--section-spacing-tight)] dark:bg-surface-container-lowest md:px-10 md:pt-[var(--section-spacing)] md:pb-[var(--section-spacing)] lg:px-14"
+      className={cn(
+        MARKETING_PAGE_SHELL,
+        "cv-auto bg-surface-container-low pt-[var(--section-spacing-tight)] pb-[var(--section-spacing-tight)] dark:bg-surface-container-lowest md:pt-[var(--section-spacing)] md:pb-[var(--section-spacing)]",
+      )}
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col items-start gap-6 md:gap-8 lg:flex-row lg:items-center lg:gap-16">
         <RevealInView variant="fadeUp" className="flex-1">
@@ -24,7 +29,7 @@ export function LaxConsignCTA() {
             className="border-0 bg-transparent p-0 shadow-none md:p-0"
             eyebrow={<LabelCaps className="text-primary">{CONSIGN_COPY.kicker}</LabelCaps>}
             title={CONSIGN_COPY.title}
-            titleClassName="text-4xl font-semibold leading-[1.1] md:text-[44px]"
+            titleClassName="font-semibold leading-[1.1]"
             description={
               <p className="max-w-[640px] font-body text-lg leading-7 text-on-surface-variant">
                 {CONSIGN_COPY.body}

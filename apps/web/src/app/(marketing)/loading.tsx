@@ -7,7 +7,7 @@ export default function MarketingLoading() {
     <main
       id="main-content"
       className={cn(
-        "bg-surface pb-[var(--page-bottom-padding)]",
+        "bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background",
         MARKETING_CATALOG_PT,
         MARKETING_PAGE_SHELL,
       )}

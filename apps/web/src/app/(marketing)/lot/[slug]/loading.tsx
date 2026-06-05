@@ -8,7 +8,7 @@ export default function LotLoading() {
       className={cn(
         MARKETING_PAGE_SHELL,
         MARKETING_CATALOG_PT,
-        "bg-surface pb-[calc(var(--page-bottom-padding)+4rem)] md:pb-[var(--page-bottom-padding)]",
+        "bg-page-bg pb-[calc(var(--page-bottom-padding)+4rem)] dark:bg-background md:pb-[var(--page-bottom-padding)]",
       )}
       aria-busy="true"
       aria-label="Loading lot"
@@ -40,7 +40,7 @@ export default function LotLoading() {
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-hairline bg-surface/95 p-4 backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-[var(--sticky-bid-bar-bottom,0px)] z-40 border-t border-border-hairline bg-surface/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden"
         aria-hidden
       >
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">

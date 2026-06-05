@@ -115,24 +115,13 @@ export function SearchFilterForm({
   );
 }
 
-/** Desktop-only inline keyword search on `/search` (mobile uses the filter sheet). */
+/** Desktop-only inline keyword search on `/search` (mobile/tablet use the filter sheet). */
 export function SearchFilterFormDesktop(
   props: Omit<ComponentProps<typeof SearchFilterForm>, "variant">,
 ) {
   return (
-    <div className={cn("mb-6 hidden md:block")}>
+    <div className={cn("mb-6 hidden lg:block")}>
       <SearchFilterForm {...props} variant="hero" inputId="search-q" />
-    </div>
-  );
-}
-
-/** Compact inline keyword search shown on mobile only (desktop uses the hero form). */
-export function SearchFilterFormMobile(
-  props: Omit<ComponentProps<typeof SearchFilterForm>, "variant">,
-) {
-  return (
-    <div className={cn("mb-4 md:hidden")}>
-      <SearchFilterForm {...props} variant="hero" inputId="search-q-mobile" />
     </div>
   );
 }

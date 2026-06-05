@@ -19,7 +19,7 @@ describe("MarketingListToolbar", () => {
 
     const filterSlot = screen.getByTestId("desktop-filters").parentElement;
     expect(filterSlot?.className).toMatch(/hidden/);
-    expect(filterSlot?.className).toMatch(/md:flex/);
+    expect(filterSlot?.className).toMatch(/lg:flex/);
 
     const sticky = container.querySelector(".sticky");
     expect(sticky).not.toBeNull();
@@ -58,7 +58,7 @@ describe("MarketingListToolbar", () => {
     render(<MarketingListToolbar filters={<span data-testid="inline-filters">Inline</span>} />);
     const filterSlot = screen.getByTestId("inline-filters").parentElement;
     expect(filterSlot?.className).toMatch(/\bflex\b/);
-    expect(filterSlot?.className).not.toContain("hidden md:flex");
+    expect(filterSlot?.className).not.toContain("hidden lg:flex");
   });
 
   it("renders secondaryRow and activeFiltersRow inside the sticky shell", () => {
