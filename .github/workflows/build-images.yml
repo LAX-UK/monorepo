@@ -5,10 +5,10 @@ name: Build images
 # Registry. App Platform then only PULLS these images instead of building from
 # source, which is the bulk of the ~30 min deploy time.
 #
-# Scope: api, auth, ws, worker, migrate, web, event. `web` bakes NEXT_PUBLIC_* at build
-# time, so its build args come from infra/web-build/<env>.env (public values) plus
-# GitHub env vars/secrets (GTM, Turnstile site key, Sentry client DSN) — see
-# scripts/ci/web-build-args.sh and infra/web-build/README.md.
+# Scope: api, auth, ws, worker, migrate, web, event (prod only). `web` bakes
+# NEXT_PUBLIC_* at build time, so its build args come from infra/web-build/<env>.env
+# (public values) plus GitHub env vars/secrets (GTM, Turnstile site key, Sentry
+# client DSN) — see scripts/ci/web-build-args.sh and infra/web-build/README.md.
 #
 # Each image is pushed with two tags:
 #   - <environment>  (rolling tag the Terraform app spec pins to; the deploy step
@@ -40,7 +40,6 @@ permissions:
 
 jobs:
   build-push:
-    if: ${{ matrix.prod_only != true || inputs.environment == 'prod' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     strategy:
@@ -59,9 +58,6 @@ jobs:
             dockerfile: docker/migrate.Dockerfile
           - component: web
             dockerfile: apps/web/Dockerfile
-          - component: event
-            dockerfile: apps/event/Dockerfile
-            prod_only: true
     env:
       # Account-level DOCR registry name (registry.digitalocean.com/<name>).
       # Set as a repository or environment variable. Terraform output:
@@ -100,32 +96,6 @@ jobs:
           chmod +x scripts/ci/web-build-args.sh
           ./scripts/ci/web-build-args.sh verify-origin
 
-      - name: Compose event build args
-        id: eventargs
-        if: matrix.component == 'event'
-        env:
-          ENVIRONMENT: ${{ env.ENVIRONMENT }}
-        run: |
-          if [ "$ENVIRONMENT" = "prod" ]; then
-            api_base="https://api.lax.bid"
-            web_origin="https://lax.bid"
-            event_origin="https://event.lax.bid"
-            cdn_base="https://cdn.lax.bid"
-          else
-            api_base="https://test-api.lax.bid"
-            web_origin="https://test.lax.bid"
-            event_origin="https://test.lax.bid"
-            cdn_base="https://cdn.lax.bid"
-          fi
-          {
-            echo 'args<<__BUILD_ARGS_EOF__'
-            echo "VITE_API_BASE=${api_base}"
-            echo "VITE_WEB_ORIGIN=${web_origin}"
-            echo "VITE_EVENT_ORIGIN=${event_origin}"
-            echo "VITE_CDN_BASE=${cdn_base}"
-            echo '__BUILD_ARGS_EOF__'
-          } >> "$GITHUB_OUTPUT"
-
       - name: Compose web build args
         id: webargs
         if: matrix.component == 'web'
@@ -154,9 +124,57 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: false
-          build-args: ${{ steps.webargs.outputs.args || steps.eventargs.outputs.args }}
+          build-args: ${{ steps.webargs.outputs.args }}
           tags: |
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.ENVIRONMENT }}
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}
           cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
+
+  build-push-event:
+    if: inputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      REGISTRY: ${{ vars.DOCR_REGISTRY }}
+      ENVIRONMENT: prod
+      SHA: ${{ inputs.git_sha || github.sha }}
+    steps:
+      - name: Validate registry configured
+        run: |
+          if [ -z "${REGISTRY}" ]; then
+            echo "::error::vars.DOCR_REGISTRY is not set. Create the DOCR registry (infra/terraform/persistent/prod) and set the DOCR_REGISTRY variable before enabling prebuilt images."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Log in to DOCR
+        run: doctl registry login --expiry-seconds 1200
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push event
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/event/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          build-args: |
+            VITE_API_BASE=https://api.lax.bid
+            VITE_WEB_ORIGIN=https://lax.bid
+            VITE_EVENT_ORIGIN=https://event.lax.bid
+            VITE_CDN_BASE=https://cdn.lax.bid
+          tags: |
+            registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-event:${{ env.ENVIRONMENT }}
+            registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-event:${{ env.SHA }}
+          cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-event
+          cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-event
