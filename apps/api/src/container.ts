@@ -114,6 +114,7 @@ import { DrizzleLotSoftDeleteSideEffects } from "./repositories/drizzle-lot-soft
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
+import { DrizzleOnsiteEventCheckInLogRepository } from "./repositories/drizzle-onsite-event-check-in-log.repository.js";
 import { DrizzleOnsiteEventClientReader } from "./repositories/drizzle-onsite-event-client.reader.js";
 import { DrizzleOnsiteEventRsvpRepository } from "./repositories/drizzle-onsite-event-rsvp.repository.js";
 import { DrizzleOnsiteEventRepository } from "./repositories/drizzle-onsite-event.repository.js";
@@ -205,6 +206,7 @@ import type { IMarketingEventService } from "./services/interfaces/marketing-eve
 import type { IMemberManagementService } from "./services/interfaces/member-management.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
+import type { IOnsiteEventCheckInService } from "./services/interfaces/onsite-event-check-in-service.js";
 import type { IOnsiteEventRsvpService } from "./services/interfaces/onsite-event-rsvp-service.js";
 import type { IOrganizationOnboardingService } from "./services/interfaces/organization-onboarding.js";
 import type { IPayoutRepository } from "./services/interfaces/payout-repository.js";
@@ -246,10 +248,12 @@ import { NotificationQueryService } from "./services/notification-query.service.
 import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
 import { NotificationService } from "./services/notification.service.js";
+import { OnsiteEventCheckInService } from "./services/onsite-event-check-in.service.js";
 import { OnsiteEventNotifier } from "./services/onsite-event-notifier.js";
 import { OnsiteEventRsvpService } from "./services/onsite-event-rsvp.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "./services/organization-onboarding/organization-onboarding-flow.service.js";
+import { PassQrRenderService } from "./services/pass-qr-render.service.js";
 import { PaymentService } from "./services/payment.service.js";
 import { BankTransferCheckoutRail } from "./services/payment/bank-transfer-checkout.rail.js";
 import { CardCheckoutRail } from "./services/payment/card-checkout.rail.js";
@@ -330,6 +334,7 @@ export type Container = {
   absenteeBidService: AbsenteeBidService;
   telephoneBidBookingService: TelephoneBidBookingService;
   onsiteEventRsvpService: IOnsiteEventRsvpService;
+  onsiteEventCheckInService: IOnsiteEventCheckInService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomService: SaleroomService;
   lotFulfilmentService: LotFulfilmentService;
@@ -908,9 +913,12 @@ export function createContainer(env: Env): Container {
 
   const onsiteEventRepo = new DrizzleOnsiteEventRepository(db);
   const onsiteEventRsvpRepo = new DrizzleOnsiteEventRsvpRepository(db);
+  const onsiteEventCheckInLogRepo = new DrizzleOnsiteEventCheckInLogRepository(db);
   const onsiteEventClientReader = new DrizzleOnsiteEventClientReader(db);
+  const passQrRenderService = new PassQrRenderService();
   const onsiteEventNotifier = new OnsiteEventNotifier(
     transactionalMailer,
+    passQrRenderService,
     env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
   );
   const onsiteEventRsvpService = new OnsiteEventRsvpService(
@@ -918,6 +926,13 @@ export function createContainer(env: Env): Container {
     onsiteEventRsvpRepo,
     onsiteEventClientReader,
     onsiteEventNotifier,
+    env.CHECK_IN_TOKEN_SECRET ?? env.BETTER_AUTH_SECRET,
+  );
+  const onsiteEventCheckInService = new OnsiteEventCheckInService(
+    onsiteEventRepo,
+    onsiteEventRsvpRepo,
+    onsiteEventCheckInLogRepo,
+    passQrRenderService,
   );
 
   const lotService = new LotService({
@@ -1416,6 +1431,7 @@ export function createContainer(env: Env): Container {
     absenteeBidService,
     telephoneBidBookingService,
     onsiteEventRsvpService,
+    onsiteEventCheckInService,
     adminSaleOperationsSnapshotService,
     saleroomService,
     lotFulfilmentService,

@@ -1,3 +1,4 @@
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { OnsiteEventAdminPanel } from "@/components/admin/onsite-events/onsite-event-admin-panel";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import {
@@ -32,12 +33,23 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
   try {
     detail = await getAdminOnsiteEventDetail(slug);
     if (!detail) notFound();
-    rsvps = await getAdminOnsiteEventRsvps(slug);
+    try {
+      rsvps = await getAdminOnsiteEventRsvps(slug);
+    } catch (e) {
+      loadError = e instanceof Error ? e.message : "Could not load RSVPs.";
+    }
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load onsite event data.";
   }
 
-  if (!detail) notFound();
+  if (!detail) {
+    return (
+      <div className="space-y-4">
+        <h1 className="font-display text-2xl tracking-tight">{slug}</h1>
+        <AdminListAlert>{loadError ?? "Could not load onsite event data."}</AdminListAlert>
+      </div>
+    );
+  }
 
   return (
     <OnsiteEventAdminPanel

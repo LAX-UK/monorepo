@@ -1,4 +1,4 @@
-import { jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const onsiteEvent = pgTable("onsite_event", {
   slug: text("slug").primaryKey(),
@@ -11,7 +11,11 @@ export const onsiteEvent = pgTable("onsite_event", {
     .default([]),
   opsEmail: text("ops_email"),
   micrositeUrl: text("microsite_url"),
+  venue: text("venue"),
+  dressCode: text("dress_code"),
+  arrivalNote: text("arrival_note"),
   status: text("status").notNull().default("published"),
+  checkInDryRun: boolean("check_in_dry_run").notNull().default(false),
   createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
 });

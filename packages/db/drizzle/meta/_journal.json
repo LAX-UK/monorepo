@@ -673,6 +673,27 @@
       "when": 1785300000000,
       "tag": "0098_onsite_event_platform",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1785400000000,
+      "tag": "0099_onsite_event_check_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1785500000000,
+      "tag": "0100_onsite_event_pass_resend_dry_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1785600000000,
+      "tag": "0101_onsite_event_pass_metadata",
+      "breakpoints": true
     }
   ]
 }

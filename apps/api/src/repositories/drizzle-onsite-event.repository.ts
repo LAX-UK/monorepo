@@ -23,6 +23,15 @@ export class DrizzleOnsiteEventRepository implements IOnsiteEventRepository {
     return row ? mapOnsiteEventRow(row) : null;
   }
 
+  async updateCheckInDryRun(slug: string, enabled: boolean): Promise<OnsiteEvent | null> {
+    const [row] = await this.db
+      .update(onsiteEvent)
+      .set({ checkInDryRun: enabled, updatedAt: new Date() })
+      .where(eq(onsiteEvent.slug, slug))
+      .returning();
+    return row ? mapOnsiteEventRow(row) : null;
+  }
+
   async listAdminItems(): Promise<OnsiteEventListItem[]> {
     const rows = await this.db
       .select()

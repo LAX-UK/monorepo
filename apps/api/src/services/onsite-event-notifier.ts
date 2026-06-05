@@ -1,18 +1,25 @@
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
+import {
+  buildOnsiteEventPassEmailHtml,
+  buildOnsiteEventPassEmailSubject,
+  buildOnsiteEventPassEmailText,
+} from "../lib/onsite-event-pass-email.js";
 import { segmentLabelFor } from "../lib/onsite-event.mapper.js";
 import type { IOnsiteEventNotifier } from "./interfaces/onsite-event-notifier.js";
 import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
+import type { PassQrRenderService } from "./pass-qr-render.service.js";
 
 export class OnsiteEventNotifier implements IOnsiteEventNotifier {
   constructor(
     private readonly mailer: ITransactionalMailer,
+    private readonly qrRender: PassQrRenderService,
     private readonly fallbackOpsEmail: string,
   ) {}
 
   async notifySubmitted(
     event: OnsiteEvent,
     rsvp: OnsiteEventRsvp,
-    input: { userEmail: string; userName: string },
+    input: { userEmail: string; userName: string; passUrl: string },
   ): Promise<void> {
     await this.send(event, rsvp, input, "confirmed");
   }
@@ -20,9 +27,17 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
   async notifyUpdated(
     event: OnsiteEvent,
     rsvp: OnsiteEventRsvp,
-    input: { userEmail: string; userName: string },
+    input: { userEmail: string; userName: string; passUrl: string },
   ): Promise<void> {
     await this.send(event, rsvp, input, "updated");
+  }
+
+  async notifyResent(
+    event: OnsiteEvent,
+    rsvp: OnsiteEventRsvp,
+    input: { userEmail: string; userName: string; passUrl: string },
+  ): Promise<void> {
+    await this.send(event, rsvp, input, "resent", true);
   }
 
   private opsEmail(event: OnsiteEvent): string {
@@ -48,35 +63,36 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
   private async send(
     event: OnsiteEvent,
     rsvp: OnsiteEventRsvp,
-    input: { userEmail: string; userName: string },
-    kind: "confirmed" | "updated",
+    input: { userEmail: string; userName: string; passUrl: string },
+    kind: "confirmed" | "updated" | "resent",
+    requireGuestDelivery = false,
   ): Promise<void> {
     const segment = segmentLabelFor(event, rsvp.attendanceSegment);
-    const guestLine = rsvp.plusOne > 0 ? `\nGuest: ${rsvp.plusOneGuestName?.trim() || "+1"}` : "";
-    const notesLine = rsvp.notes?.trim() ? `\nNotes: ${rsvp.notes.trim()}` : "";
+    const plusOneLine = rsvp.plusOne > 0 ? `Guest: ${rsvp.plusOneGuestName?.trim() || "+1"}` : null;
+    const notesLine = rsvp.notes?.trim() ? `Notes: ${rsvp.notes.trim()}` : null;
     const details = this.formatDetails(event, rsvp, input);
     const opsEmail = this.opsEmail(event);
+    const qrPngBase64 = await this.qrRender.renderPngBase64(input.passUrl);
+    const emailInput = {
+      userName: input.userName,
+      eventTitle: event.title,
+      segmentLabel: segment,
+      plusOneLine,
+      notesLine,
+      passUrl: input.passUrl,
+      qrPngBase64,
+      opsEmail,
+      arrivalNote: event.arrivalNote,
+      dressCode: event.dressCode,
+      kind,
+    };
 
-    await Promise.allSettled([
+    const [guestResult, opsResult] = await Promise.allSettled([
       this.mailer.send({
         to: input.userEmail,
-        subject:
-          kind === "confirmed"
-            ? `RSVP confirmed — ${event.title}`
-            : `RSVP updated — ${event.title}`,
-        text: [
-          `Dear ${input.userName},`,
-          "",
-          kind === "confirmed"
-            ? `Thank you for confirming your attendance at ${event.title}.`
-            : `Your RSVP for ${event.title} has been updated.`,
-          "",
-          `Attendance: ${segment}${guestLine}${notesLine}`,
-          "",
-          "We look forward to welcoming you.",
-          "",
-          `Questions: ${opsEmail}`,
-        ].join("\n"),
+        subject: buildOnsiteEventPassEmailSubject(emailInput),
+        text: buildOnsiteEventPassEmailText(emailInput),
+        html: buildOnsiteEventPassEmailHtml(emailInput),
         meta: { kind: `onsite_event_rsvp_${kind}`, rsvpId: rsvp.id, eventSlug: rsvp.eventSlug },
       }),
       this.mailer.send({
@@ -84,9 +100,15 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
         subject:
           kind === "confirmed"
             ? `[${event.slug}] New RSVP — ${input.userName}`
-            : `[${event.slug}] RSVP updated — ${input.userName}`,
+            : kind === "updated"
+              ? `[${event.slug}] RSVP updated — ${input.userName}`
+              : `[${event.slug}] Pass resent — ${input.userName}`,
         text: [
-          kind === "confirmed" ? "New onsite-event RSVP:" : "Updated onsite-event RSVP:",
+          kind === "confirmed"
+            ? "New onsite-event RSVP:"
+            : kind === "updated"
+              ? "Updated onsite-event RSVP:"
+              : "Pass resent for onsite-event RSVP:",
           "",
           details,
           "",
@@ -100,5 +122,28 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
         },
       }),
     ]);
+
+    if (guestResult.status === "rejected") {
+      console.error("[onsite-event-mail] guest email failed", {
+        kind,
+        rsvpId: rsvp.id,
+        eventSlug: rsvp.eventSlug,
+        error: guestResult.reason,
+      });
+      if (requireGuestDelivery) {
+        throw guestResult.reason instanceof Error
+          ? guestResult.reason
+          : new Error("Guest pass email could not be sent");
+      }
+    }
+
+    if (opsResult.status === "rejected") {
+      console.error("[onsite-event-mail] ops email failed", {
+        kind,
+        rsvpId: rsvp.id,
+        eventSlug: rsvp.eventSlug,
+        error: opsResult.reason,
+      });
+    }
   }
 }
