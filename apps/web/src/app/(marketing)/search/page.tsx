@@ -1,5 +1,5 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
-import { CatalogLotView } from "@/components/marketing/catalog-lot-view";
+import { CatalogLotViewClient } from "@/components/marketing/catalog-lot-view-client";
 import {
   MARKETING_HUB_BREADCRUMB_CLASS,
   MarketingBreadcrumb,
@@ -397,8 +397,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 itemIds={filtered.map((a) => a.id)}
               />
               <div className="mt-8">
-                <CatalogLotView
-                  view={layoutView}
+                <CatalogLotViewClient
+                  initialView={layoutView}
                   lots={filtered}
                   currentUserId={currentUserId}
                   isAuthenticated={isAuthenticated}
