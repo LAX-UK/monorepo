@@ -34,8 +34,8 @@ Pipeline (event-driven, idempotent — see `apps/api/src/services/aml/`):
 1. **Ingest** — Veriff posts to `POST /webhooks/veriff/watchlist-screening`. The route verifies HMAC, claims idempotency (`tryClaimProcessedWebhookEvent`, content-hashed so genuine monitoring updates still apply), persists `kyc_watchlist_screening`, and publishes domain events in the same transaction.
 2. **Decide** — a pure policy (`DefaultAmlDecisionPolicy`) maps `(matchStatus, categories, hits) → clear | review | block`:
    - `clear` → no hold; subject enrolled into ongoing monitoring.
-   - `review` (possible match / PEP / adverse media) → **soft hold** (`user.aml_hold_status = hold`): blocks settlement, escalates to MLRO; account otherwise usable.
-   - `block` (confirmed sanctions / OFSI) → **hard block** (`aml_hold_status = blocked`): freeze + OFSI reporting path.
+   - `review` (possible match / PEP / adverse media) → **soft hold** (`user.aml_hold_status = hold`): blocks settlement, escalates to MLRO; account otherwise usable (**bidding allowed**).
+   - `block` (confirmed sanctions / OFSI) → **hard block** (`aml_hold_status = blocked`): freeze + OFSI reporting path; **bidding blocked** (`aml_blocked` on `POST /bids` and `PUT /lots/:id/auto-bid`).
 3. **Escalate** — the worker projector `processAmlMatchReview` consumes `aml.match_flagged`, creates an `admin_review_task` of kind `aml_screening_review` (idempotent per screening id), **and** enqueues an MLRO escalation email (`aml-compliance-review-notice`) to compliance recipients (`listComplianceRecipients` → `compliance_officer` + `super_admin`; falls back to `ADMIN_EMAIL_ADDRESS`). The email is idempotent (`idempotencyKey` per screening + recipient), so retries never double-send.
 4. **Triage then decide (two-stage)** — analyst triages via `POST /admin/compliance/aml/screenings/:id/triage`; the MLRO finalises via `POST /admin/compliance/aml/screenings/:id/decide`. Clearing lifts the hold and re-enrolls monitoring; blocking is terminal.
 

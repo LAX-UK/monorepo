@@ -44,6 +44,7 @@ import type {
   ManualReviewReason,
   PaymentTierPolicy,
 } from "./payment/payment-tier.policy.js";
+import { manualReviewReasonFromCheckoutBlockCode } from "./payment/resolve-manual-review-reason.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 export type CreatePendingPaymentResult = {
@@ -177,7 +178,7 @@ export class PaymentService {
           manualReviewReason,
         });
       }
-      const checkout = await this.issueCheckoutForPendingPayment(
+      const checkout = await this.resolveCheckoutForPendingOrPromoteCompliance(
         existing.id,
         lot,
         buyerId,
@@ -188,7 +189,7 @@ export class PaymentService {
         paymentId: existing.id,
         checkoutUrl: checkout.value.checkoutUrl,
         checkoutRail: checkout.value.checkoutRail,
-        manualReviewReason: null,
+        manualReviewReason: checkout.value.manualReviewReason,
       });
     }
 
@@ -277,13 +278,21 @@ export class PaymentService {
     let checkoutUrl: string | null = null;
     let checkoutRail: CheckoutRailKind | null = null;
     if (!requiresManualReview) {
-      const checkout = await this.issueCheckoutForPendingPayment(
+      const checkout = await this.resolveCheckoutForPendingOrPromoteCompliance(
         created.id,
         lot,
         buyerId,
         created.amount,
       );
       if (checkout.isErr()) return err(checkout.error);
+      if (checkout.value.manualReviewReason) {
+        return ok({
+          paymentId: created.id,
+          checkoutUrl: null,
+          checkoutRail: null,
+          manualReviewReason: checkout.value.manualReviewReason,
+        });
+      }
       checkoutUrl = checkout.value.checkoutUrl;
       checkoutRail = checkout.value.checkoutRail;
     }
@@ -365,6 +374,7 @@ export class PaymentService {
     const data = await presentMyPayments(filtered, lotById, this.mediaUrlResolver, {
       paymentTierPolicy: this.paymentTierPolicy,
       sellerArchivedByEntityId,
+      settlementCompliance: this.settlementCompliance,
     });
     return { data };
   }
@@ -511,6 +521,73 @@ export class PaymentService {
 
     await this.recordXeroRefundCreditNote(paymentId, p.amount, `admin_refund:${paymentId}`);
     return ok(undefined);
+  }
+
+  private async promotePendingToComplianceManualReview(
+    paymentId: string,
+    lot: Lot,
+    buyerId: string,
+    amount: string,
+    reason: ManualReviewReason,
+  ): Promise<{
+    checkoutUrl: null;
+    checkoutRail: null;
+    manualReviewReason: ManualReviewReason;
+  }> {
+    await this.payments.updateStatus(paymentId, "requires_manual_review");
+    if (this.db && this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.requires_manual_review",
+        payload: {
+          paymentId,
+          lotId: lot.id,
+          buyerUserId: buyerId,
+          buyerLegalEntityId: lot.buyerLegalEntityId,
+          sellerLegalEntityId: lot.sellerLegalEntityId,
+          amount,
+          currency: "GBP",
+          reason,
+        },
+        actorUserId: buyerId,
+        actingLegalEntityId: lot.buyerLegalEntityId ?? null,
+      });
+    }
+    recordMoneyPathEvent(`settlement_compliance_hold_${reason}`);
+    return { checkoutUrl: null, checkoutRail: null, manualReviewReason: reason };
+  }
+
+  private async resolveCheckoutForPendingOrPromoteCompliance(
+    paymentId: string,
+    lot: Lot,
+    buyerId: string,
+    amount: string,
+  ): Promise<
+    Result<
+      {
+        checkoutUrl: string | null;
+        checkoutRail: CheckoutRailKind | null;
+        manualReviewReason: ManualReviewReason | null;
+      },
+      PaymentProviderError
+    >
+  > {
+    const checkout = await this.issueCheckoutForPendingPayment(paymentId, lot, buyerId, amount);
+    if (checkout.isOk()) {
+      return ok({
+        checkoutUrl: checkout.value.checkoutUrl,
+        checkoutRail: checkout.value.checkoutRail,
+        manualReviewReason: null,
+      });
+    }
+    const reason = manualReviewReasonFromCheckoutBlockCode(checkout.error.stripeCode);
+    if (reason) {
+      return ok(
+        await this.promotePendingToComplianceManualReview(paymentId, lot, buyerId, amount, reason),
+      );
+    }
+    return err(checkout.error);
   }
 
   private async issueCheckoutForPendingPayment(

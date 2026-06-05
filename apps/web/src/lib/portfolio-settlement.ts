@@ -18,6 +18,8 @@ export function portfolioSettlementLabel(row: PortfolioRow): string {
       return "Paid";
     case "refunded":
       return "Refunded";
+    case "requires_manual_review":
+      return "Under review";
     default:
       return "Awaiting payment";
   }

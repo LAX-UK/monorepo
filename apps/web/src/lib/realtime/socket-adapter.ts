@@ -75,6 +75,7 @@ function asLotEnded(raw: unknown): LotEndedEvent | null {
 /** Maps Socket.IO rooms + events to the realtime port. */
 export function createSocketLotRealtime(): LotRealtimePort {
   const socket = getSocket();
+  let hadConnected = socket.connected;
 
   return {
     subscribeToLot(lotId: string, callbacks: LotRealtimeCallbacks) {
@@ -98,7 +99,16 @@ export function createSocketLotRealtime(): LotRealtimePort {
       socket.on("lotEvent", onEvent);
       socket.on("auctionEvent", onEvent);
 
+      const onConnect = () => {
+        if (hadConnected) {
+          callbacks.onReconnect?.();
+        }
+        hadConnected = true;
+      };
+      socket.on("connect", onConnect);
+
       return () => {
+        socket.off("connect", onConnect);
         socket.off("bidUpdate", onBidUpdate);
         socket.off("lotExtended", onExtended);
         socket.off("auctionExtended", onExtended);

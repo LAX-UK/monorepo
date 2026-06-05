@@ -477,6 +477,23 @@ const envSchema = z
       }
     }
 
+    if (appEnv === "production") {
+      if (!e.TURNSTILE_SECRET_KEY?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "TURNSTILE_SECRET_KEY is required in production",
+          path: ["TURNSTILE_SECRET_KEY"],
+        });
+      }
+      if (!e.VERIFY_ORIGIN) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "VERIFY_ORIGIN must be true in production",
+          path: ["VERIFY_ORIGIN"],
+        });
+      }
+    }
+
     // Ops contacts required only in production (test stack uses debug channels).
     if (appEnv === "production") {
       if (!e.OPS_SUPPORT_EMAIL) {

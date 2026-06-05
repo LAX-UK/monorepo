@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { gbpAmountToPence } from "../lib/decimal-money.js";
+import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { PaymentRecord } from "./interfaces/payment-write.js";
 import { presentMyPayments } from "./payment-me-presenter.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment/payment-tier.policy.js";
@@ -65,5 +66,23 @@ describe("presentMyPayments", () => {
     expect(out[0]?.checkoutRail).toBeNull();
     expect(out[0]?.manualReviewReason).toBe("high_value");
     expect(gbpAmountToPence(reviewRow.amount)).toBeGreaterThanOrEqual(50_000_000);
+  });
+
+  it("surfaces AML hold on pending payments via compliance evaluation", async () => {
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+    };
+    const out = await presentMyPayments(
+      [row],
+      new Map([["lot-1", { id: "lot-1", title: "Lot", images: [] } as never]]),
+      undefined,
+      {
+        paymentTierPolicy: policy,
+        sellerArchivedByEntityId: new Map([["le-seller", false]]),
+        settlementCompliance,
+      },
+    );
+    expect(out[0]?.manualReviewReason).toBe("aml_hold");
+    expect(out[0]?.checkoutRail).toBeNull();
   });
 });

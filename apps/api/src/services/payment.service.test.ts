@@ -662,6 +662,63 @@ describe("PaymentService", () => {
     expect(settlementCompliance.evaluate).toHaveBeenCalled();
   });
 
+  it("promotes an existing pending payment when compliance blocks checkout", async () => {
+    const existingPending = { ...payment, id: "pay-pending", status: "pending" } as PaymentRecord;
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(existingPending),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as IPaymentWriteRepository;
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+    };
+    const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
+    const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(true) });
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      accounting,
+      defaultTierPolicy,
+      undefined,
+      {} as never,
+      publisher as never,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockStripeCheckout(),
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+      settlementCompliance,
+    );
+
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.manualReviewReason).toBe("aml_hold");
+      expect(result.value.checkoutUrl).toBeNull();
+    }
+    expect(payments.updateStatus).toHaveBeenCalledWith("pay-pending", "requires_manual_review");
+    expect(publisher.publish).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        eventType: "payment.requires_manual_review",
+        payload: expect.objectContaining({ reason: "aml_hold" }),
+      }),
+    );
+  });
+
   it("blocks release for capture when settlement compliance holds (AML)", async () => {
     const manualReviewPayment = {
       ...payment,
