@@ -37,13 +37,11 @@ function firstString(v: string | string[] | undefined): string | undefined {
 }
 
 async function MarketingHomeContent({
-  searchParams,
+  urlView,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  urlView: string | undefined;
 }) {
-  const sp = await searchParams;
   const [data, session] = await Promise.all([getHomeData(), getServerSessionUser()]);
-  const urlView = firstString(sp.view);
   const [layoutView, urgencyLayoutView] = await Promise.all([
     resolveMarketingLayoutView({
       routeKey: "home-upcoming",
@@ -141,10 +139,13 @@ export default async function HomePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const sp = await searchParams;
+  const urlView = firstString(sp.view);
+
   return (
     <main id="main-content" className="bg-page-bg">
       <Suspense fallback={<HomeSkeleton />}>
-        <MarketingHomeContent searchParams={searchParams} />
+        <MarketingHomeContent urlView={urlView} />
       </Suspense>
     </main>
   );

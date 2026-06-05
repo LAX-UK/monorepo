@@ -1,10 +1,9 @@
 "use client";
 
-import { VIEW_COOKIE_MAX_AGE_SEC, viewCookieName } from "@/lib/preferences/view-cookie";
+import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
+import { salesBrowseViewCookieValue } from "@/lib/preferences/view-query-navigation";
 import { cn } from "@auction/ui";
 import { CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
 
 export type SalesBrowseView = "grid" | "list" | "calendar";
 
@@ -14,30 +13,14 @@ const MODES: ReadonlyArray<{ value: SalesBrowseView; label: string; Icon: typeof
   { value: "calendar", label: "Calendar", Icon: CalendarDays },
 ];
 
-/** Sales calendar view toggle (grid / list / agenda-by-month). Mirrors `CatalogViewSwitcher`
- * but adds a `calendar` mode that the shared `CatalogLayoutView` type does not carry. */
+/** Sales calendar view toggle (grid / list / agenda-by-month). Uses the same URL + scroll
+ * navigation as `CatalogViewSwitcher`; adds `calendar` mode and sales-specific cookie mapping. */
 export function SalesViewSwitcher({ value }: { value: SalesBrowseView }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [pending, startTransition] = useTransition();
-
-  const apply = useCallback(
-    (next: SalesBrowseView) => {
-      startTransition(() => {
-        const nextParams = new URLSearchParams(searchParams.toString());
-        if (next === "grid") nextParams.delete("view");
-        else nextParams.set("view", next);
-        nextParams.delete("page");
-        nextParams.delete("offset");
-        const secure = typeof window !== "undefined" && window.location.protocol === "https:";
-        document.cookie = `${viewCookieName("sales")}=${next === "calendar" ? "grid" : next}; path=/; max-age=${VIEW_COOKIE_MAX_AGE_SEC}; SameSite=Lax${secure ? "; Secure" : ""}`;
-        const qs = nextParams.toString();
-        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-      });
-    },
-    [pathname, router, searchParams],
-  );
+  const { navigate, pending } = useViewQueryNavigation({
+    routeKey: "sales",
+    defaultView: "grid",
+    toCookieValue: salesBrowseViewCookieValue,
+  });
 
   return (
     <div className="inline-flex items-center gap-1">
@@ -59,7 +42,7 @@ export function SalesViewSwitcher({ value }: { value: SalesBrowseView }) {
               role="radio"
               aria-checked={selected}
               disabled={pending}
-              onClick={() => apply(m)}
+              onClick={() => navigate(m)}
               title={label}
               className={cn(
                 "flex size-9 items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50 md:size-8",
