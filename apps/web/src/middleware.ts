@@ -8,6 +8,7 @@ import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
 import { seedDefaultThemeCookieIfNeeded } from "@/lib/preferences/seed-theme-cookie";
 import { X_ROBOTS_TAG_NOINDEX, isIndexingAllowedForHost } from "@/lib/seo/is-indexing-allowed";
+import { resolveRequestHostname } from "@/lib/seo/request-hostname";
 import { syncClientWorkspaceCookie } from "@/lib/workspace/sync-client-workspace-cookie";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -147,7 +148,10 @@ export async function middleware(request: NextRequest) {
 
   applyClientHintHeaders(baseResponse);
 
-  if (!isIndexingAllowedForHost(hostname)) {
+  // Behind Cloudflare / DigitalOcean, `nextUrl.hostname` is the internal origin
+  // host, so derive the public host from forwarded headers for the index gate.
+  const publicHostname = resolveRequestHostname(request.headers, hostname);
+  if (!isIndexingAllowedForHost(publicHostname)) {
     baseResponse.headers.set("X-Robots-Tag", X_ROBOTS_TAG_NOINDEX);
   }
 
