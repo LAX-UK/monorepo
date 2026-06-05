@@ -38,8 +38,7 @@ describe("envSchema WEB_ORIGINS", () => {
       if (!parsed.success) return;
       expect(parsed.data.WEB_ORIGINS).toEqual(["https://lax.bid", "https://event.lax.bid"]);
     } finally {
-      if (prev === undefined) delete process.env.CORS_ALLOWED_ORIGINS;
-      else process.env.CORS_ALLOWED_ORIGINS = prev;
+      process.env.CORS_ALLOWED_ORIGINS = prev ?? "";
     }
   });
 });
