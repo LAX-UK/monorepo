@@ -78,7 +78,9 @@ Each component is a separate process with its own resources, scaling, and deploy
 
 The Next.js frontend served at lax.bid. It's a TypeScript Next.js application using Tailwind for styling and the better-auth client for authentication. It talks to apps/api over HTTP and apps/auth over OIDC discovery. Static assets are served via Next.js's standalone output mode and cached at Cloudflare's edge.
 
-Container starts with `node apps/web/.next/standalone/server.js`. Build command runs the standard Next.js production build inside Turborepo's workspace context. The Next.js app **does not currently expose `/health/live`** — the App Platform health check today is the default TCP probe on the listening port. Adding a dedicated health route is **(planned)**.
+In production and test, `apps/web` is **prebuilt in GitHub Actions** and pushed to DOCR (`lax-<env>-web`). Build-time `NEXT_PUBLIC_*` values come from [`infra/web-build/<env>.env`](../../infra/web-build/README.md) plus GitHub vars/secrets; App Platform pulls the image instead of building Next.js on each deploy. The web component's Terraform env entries still supply runtime values (including Sentry server DSN and secrets).
+
+Container starts with `node apps/web/server.js` from the standalone output. Health check: `GET /api/health`.
 
 ### apps/auth
 
@@ -202,6 +204,8 @@ The "what we do" column is deliberately specific. Each trigger has a known respo
 
 Terraform applies and App Platform deploys both run through GitHub Actions. State lives in the versioned `lax-tf-state` DigitalOcean Space (no native locking, so applies are serialised by the workflow). Production Terraform applies require the typed `APPLY-PROD` confirmation; production app deploys use `doctl apps create-deployment` against the `DO_PROD_APP_ID` secret.
 
+On each push to `main` (test) or `release` (prod), the **`App deploy`** workflow builds all six component images in parallel (when `USE_PREBUILT_IMAGES_*` is enabled), pushes them to DOCR, then triggers App Platform to pull them. See [infra/web-build/README.md](../../infra/web-build/README.md) for how web build args are sourced.
+
 The migration Job runs as part of every deploy. If migrations fail, the deploy aborts and the previous version stays live.
 
 The branch-based gated cadence (`main` → test, `release` → prod with human approval between) is **(planned)** — see the deploy checklist for the manual gate today.
@@ -222,7 +226,7 @@ Traffic adds App Platform bandwidth charges ($0.01/GB outbound), Postgres comput
 
 Per the medium-grade tier, several things you'd see in a hyperscale deployment do not exist in our setup. They are documented out of scope so engineers do not waste time wondering if they were forgotten:
 
-A separate API gateway (Kong, Traefik) — Cloudflare plays this role. A service mesh (Istio, Linkerd) — five components is below the threshold where mesh value exceeds setup cost. Kubernetes — App Platform absorbs orchestration. A managed event bus (Kafka, NATS, SQS) — the Postgres outbox plays this role until 1M events/day. KMS for key storage — keys live in Postgres encrypted at rest, with role-based access. Multi-region deployment — single London region with Cloudflare edge cache. A separate observability stack (Prometheus + Grafana + Loki) — DO's built-in monitoring plus Sentry is sufficient at this scale. A dedicated build server — App Platform builds in-place from Git.
+A separate API gateway (Kong, Traefik) — Cloudflare plays this role. A service mesh (Istio, Linkerd) — five components is below the threshold where mesh value exceeds setup cost. Kubernetes — App Platform absorbs orchestration. A managed event bus (Kafka, NATS, SQS) — the Postgres outbox plays this role until 1M events/day. KMS for key storage — keys live in Postgres encrypted at rest, with role-based access. Multi-region deployment — single London region with Cloudflare edge cache. A separate observability stack (Prometheus + Grafana + Loki) — DO's built-in monitoring plus Sentry is sufficient at this scale. Per-deploy App Platform source builds — all six components (including web) are prebuilt in GitHub Actions and pulled from DOCR when `USE_PREBUILT_IMAGES_*` is enabled.
 
 The defer triggers above are the explicit conditions under which any of these become candidates for the next architectural iteration.
 
