@@ -60,6 +60,7 @@ resource "digitalocean_spaces_bucket_cors_configuration" "this" {
 # presigned URLs — see apps/api/src/services/upload.policy.ts.
 locals {
   public_image_prefixes = [
+    "events",
     "seed",
     "uploads/pending/avatar",
     "uploads/pending/submissions",

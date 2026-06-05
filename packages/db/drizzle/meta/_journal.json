@@ -666,6 +666,13 @@
       "when": 1785200000000,
       "tag": "0097_telephone_booking_ops",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1785300000000,
+      "tag": "0098_onsite_event_platform",
+      "breakpoints": true
     }
   ]
 }

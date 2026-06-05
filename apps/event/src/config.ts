@@ -1,0 +1,79 @@
+export const EVENT_SLUG = "lax001";
+
+const cdnBase =
+  (import.meta.env.VITE_CDN_BASE as string | undefined)?.replace(/\/$/, "") ??
+  "https://cdn.lax.bid";
+const apiBase =
+  (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ??
+  "https://api.lax.bid";
+const webOrigin =
+  (import.meta.env.VITE_WEB_ORIGIN as string | undefined)?.replace(/\/$/, "") ?? "https://lax.bid";
+const eventOrigin =
+  (import.meta.env.VITE_EVENT_ORIGIN as string | undefined)?.replace(/\/$/, "") ??
+  "https://event.lax.bid";
+
+export const CDN_BASE = cdnBase;
+export const API_BASE = apiBase;
+export const WEB_ORIGIN = webOrigin;
+export const EVENT_ORIGIN = eventOrigin;
+export const EVENTS_EMAIL = "events@lax.bid";
+export const MAPS_URL = "https://maps.app.goo.gl/dYYx2hUYBzgtEVZ18";
+
+/** Bundled under public/events/lax001; CDN used when VITE_EVENT_ASSETS_CDN=true at build time. */
+export function eventAssetPath(filename: string): string {
+  if (import.meta.env.VITE_EVENT_ASSETS_CDN === "true") {
+    return `${CDN_BASE}/events/lax001/${filename}`;
+  }
+  return `/events/lax001/${filename}`;
+}
+
+export const ASSETS = {
+  logoHeader: eventAssetPath("logo-header.png"),
+  hero: eventAssetPath("hero.jpg"),
+  highlightLot: eventAssetPath("highlight-lot.jpg"),
+  logoFooter: eventAssetPath("logo-footer.png"),
+} as const;
+
+export const EVENT_DETAILS = {
+  title: "LAX 001: The First Hammer",
+  date: "Thursday 18 June 2026",
+  time: "Doors 6:00 PM",
+  venue: "Brunswick Art Gallery & Centre, London",
+  dressCode: "Smart Formal",
+} as const;
+
+/** Doors open — Europe/London, used for countdown. */
+export const EVENT_START_AT = new Date("2026-06-18T17:00:00.000Z");
+
+export function registerUrlForEmail(email: string): string {
+  const returnTo = new URL(`${EVENT_ORIGIN}/`);
+  returnTo.searchParams.set("email", email);
+  returnTo.hash = "rsvp";
+  const params = new URLSearchParams({
+    next: returnTo.toString(),
+    email,
+  });
+  return `${WEB_ORIGIN}/register?${params.toString()}`;
+}
+
+export function parseEmailFromUrl(): string | null {
+  const raw = new URLSearchParams(window.location.search).get("email")?.trim().toLowerCase();
+  if (!raw || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return null;
+  return raw;
+}
+
+export function clearEmailFromUrl(): void {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("email")) return;
+  url.searchParams.delete("email");
+  window.history.replaceState({}, "", url.toString());
+}
+
+export const CATALOGUE_URL = `${WEB_ORIGIN}/sales?deliveryMode=onsite`;
+
+/** Canonical social profiles — keep in sync with apps/web footer-socials.tsx */
+export const SOCIAL_LINKS = {
+  youtube: "https://www.youtube.com/@londonauctionxchange",
+  instagram: "https://www.instagram.com/lax.bid",
+  linkedin: "https://www.linkedin.com/company/london-auction-xchange/",
+} as const;
