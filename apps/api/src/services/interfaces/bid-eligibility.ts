@@ -8,6 +8,8 @@ export type BidEligibilityCheckInput = {
   amount: number;
   maxAutoBidAmount?: number | undefined;
   autoBidStepAmount?: number | undefined;
+  placedVia?: string | null;
+  telephoneBookingId?: string | null;
 };
 
 /** Optional bidding gates (KYC, sale registration, buyer-agent caps) applied before bid tx. */

@@ -202,7 +202,9 @@ function buildStaffNavGroupSpecs(
           label: "Saleroom",
           icon: MonitorPlay,
           requirement: SALEROOM_ACCESS,
-          ...navBadge(navCounts.saleroomLiveCount, "live"),
+          ...(navCounts.telephoneBookingsPending > 0
+            ? navBadge(navCounts.telephoneBookingsPending, "warning")
+            : navBadge(navCounts.saleroomLiveCount, "live")),
         },
         {
           id: "conveyor",

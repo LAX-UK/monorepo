@@ -7,6 +7,7 @@ import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleroomService, SaleroomServiceError } from "./interfaces/saleroom-service.js";
+import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotLifecycleService } from "./lot-lifecycle.service.js";
 import type { NotificationService } from "./notification.service.js";
 
@@ -23,6 +24,7 @@ export type SaleroomServiceOptions = {
   repos: IRepositoryFactory;
   lotJobs: ILotJobScheduler | null;
   notifications: NotificationService;
+  telephoneBidBookingService?: ITelephoneBidBookingService | null;
 };
 
 export class SaleroomService implements ISaleroomService {
@@ -34,6 +36,7 @@ export class SaleroomService implements ISaleroomService {
   private readonly repos: IRepositoryFactory;
   private readonly lotJobs: ILotJobScheduler | null;
   private readonly notifications: NotificationService;
+  private readonly telephoneBidBookingService: ITelephoneBidBookingService | null;
 
   constructor(opts: SaleroomServiceOptions) {
     this.db = opts.db;
@@ -44,6 +47,11 @@ export class SaleroomService implements ISaleroomService {
     this.repos = opts.repos;
     this.lotJobs = opts.lotJobs;
     this.notifications = opts.notifications;
+    this.telephoneBidBookingService = opts.telephoneBidBookingService ?? null;
+  }
+
+  private async completeTelephoneLinesForLot(saleId: string, lotId: string): Promise<void> {
+    await this.telephoneBidBookingService?.completeLinesForLot(saleId, lotId);
   }
 
   private async publish(saleId: string, body: Record<string, unknown>): Promise<void> {
@@ -261,6 +269,7 @@ export class SaleroomService implements ISaleroomService {
       .set({ currentLotId: null, updatedAt: new Date() })
       .where(eq(saleroomSession.id, session.id));
 
+    await this.completeTelephoneLinesForLot(input.saleId, lotId);
     await this.insertEvent(session.id, "hammer", { lotId }, input.actorUserId);
     await this.publish(input.saleId, { kind: "hammer", lotId });
     return ok({ lotId });
@@ -300,6 +309,7 @@ export class SaleroomService implements ISaleroomService {
       .set({ currentLotId: null, updatedAt: new Date() })
       .where(eq(saleroomSession.id, session.id));
 
+    await this.completeTelephoneLinesForLot(input.saleId, lotId);
     await this.insertEvent(session.id, "no_sale", { lotId }, input.actorUserId);
     await this.publish(input.saleId, { kind: "no_sale", lotId });
     return ok({ lotId });
@@ -324,6 +334,7 @@ export class SaleroomService implements ISaleroomService {
         updatedAt: new Date(),
       })
       .where(eq(saleroomSession.id, session.id));
+    await this.telephoneBidBookingService?.closeAllOpenForSale(input.saleId);
     await this.insertEvent(session.id, "closed", {}, input.actorUserId);
     await this.publish(input.saleId, { kind: "closed" });
     return ok({ sessionId: session.id });

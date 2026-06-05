@@ -131,6 +131,7 @@ import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-so
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleSourceOfFundsRepository } from "./repositories/drizzle-source-of-funds.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
+import { DrizzleTelephoneBidBookingRepository } from "./repositories/drizzle-telephone-bid-booking.repository.js";
 import { DrizzleUiPreferenceRepository } from "./repositories/drizzle-ui-preference.repository.js";
 import { DrizzleUserMetricsReader } from "./repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "./repositories/drizzle-user-suspension.checker.js";
@@ -150,6 +151,7 @@ import {
 import { XeroPayoutBillWriter } from "./services/accounting/xero-payout-bill.writer.js";
 import { AddressService } from "./services/address.service.js";
 import { AdminMetricsService } from "./services/admin-metrics.service.js";
+import { AdminSaleOperationsSnapshotService } from "./services/admin-sale-operations-snapshot.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
@@ -274,6 +276,8 @@ import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.s
 import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
 import { StripeCustomerGateway } from "./services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.js";
+import { TelephoneBidBookingService } from "./services/telephone-bid-booking.service.js";
+import { TelephoneBookingNotifier } from "./services/telephone-booking-notifier.js";
 import { UiPreferenceService } from "./services/ui-preference.service.js";
 import { UploadService } from "./services/upload.service.js";
 import { UserService } from "./services/user.service.js";
@@ -318,6 +322,8 @@ export type Container = {
   lotTransitionOrchestrator: LotTransitionOrchestrator;
   adminLotBrowseService: AdminLotBrowseService;
   absenteeBidService: AbsenteeBidService;
+  telephoneBidBookingService: TelephoneBidBookingService;
+  adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomService: SaleroomService;
   lotFulfilmentService: LotFulfilmentService;
   saleLifecycleService: SaleLifecycleService;
@@ -875,6 +881,24 @@ export function createContainer(env: Env): Container {
     userNotificationPublisher,
   );
 
+  const telephoneBidBookingRepo = new DrizzleTelephoneBidBookingRepository(db);
+  const telephoneBookingNotifier = new TelephoneBookingNotifier(
+    db,
+    transactionalMailer,
+    notificationWriteRepo,
+    env.WEB_ORIGIN,
+    env.OPS_SUPPORT_EMAIL,
+  );
+  const telephoneBidBookingService = new TelephoneBidBookingService(
+    db,
+    telephoneBidBookingRepo,
+    legalEntityRepository,
+    kycService,
+    amlHoldStore,
+    domainEventPublisher,
+    telephoneBookingNotifier,
+  );
+
   const lotService = new LotService({
     lotRepo,
     saleRepo,
@@ -893,6 +917,7 @@ export function createContainer(env: Env): Container {
     lotLifecycleRecording,
     lotTransitionOrchestrator,
     qrCodeService,
+    telephoneBidBookingService,
   });
 
   const conditionReportService = new ConditionReportService(
@@ -1178,6 +1203,11 @@ export function createContainer(env: Env): Container {
     },
   });
   const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
+  const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
+    db,
+    saleRegistrationService,
+    telephoneBidBookingService,
+  );
   const autoBidService = new AutoBidService({
     repos: repoFactory,
     bidPlacer: bidService,
@@ -1196,6 +1226,7 @@ export function createContainer(env: Env): Container {
     repos: repoFactory,
     lotJobs: lotJobScheduler,
     notifications: notificationService,
+    telephoneBidBookingService,
   });
   const userService = new UserService(userRepo);
   const personalLegalEntityResolver = new PersonalLegalEntityResolver(
@@ -1362,6 +1393,8 @@ export function createContainer(env: Env): Container {
     lotTransitionOrchestrator,
     adminLotBrowseService,
     absenteeBidService,
+    telephoneBidBookingService,
+    adminSaleOperationsSnapshotService,
     saleroomService,
     lotFulfilmentService,
     saleLifecycleService,

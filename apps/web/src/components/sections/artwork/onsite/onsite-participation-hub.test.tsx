@@ -52,7 +52,18 @@ const participationCtx: OnsiteParticipationContext = {
 
 describe("OnsiteParticipationHub", () => {
   it("renders hub anchor and participation routes", () => {
-    render(<OnsiteParticipationHub sale={baseSale} participationCtx={participationCtx} />);
+    render(
+      <OnsiteParticipationHub
+        sale={baseSale}
+        participationCtx={participationCtx}
+        lotId="lot-1"
+        loginNextPath="/lot/1"
+        isAuthenticated={false}
+        kycApproved={false}
+        mobile={null}
+        buyerEntities={[]}
+      />,
+    );
 
     expect(document.getElementById("bid-onsite-hub")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "In-Person Event Participation Hub" })).toBeTruthy();
@@ -63,7 +74,18 @@ describe("OnsiteParticipationHub", () => {
 
   it("links to live stream section when streamUrl is set", () => {
     const saleWithStream = { ...baseSale, streamUrl: "https://youtube.com/watch?v=abc" };
-    render(<OnsiteParticipationHub sale={saleWithStream} participationCtx={participationCtx} />);
+    render(
+      <OnsiteParticipationHub
+        sale={saleWithStream}
+        participationCtx={participationCtx}
+        lotId="lot-1"
+        loginNextPath="/lot/1"
+        isAuthenticated={false}
+        kycApproved={false}
+        mobile={null}
+        buyerEntities={[]}
+      />,
+    );
 
     const streamLink = screen.getByRole("link", { name: /go to live stream/i });
     expect(streamLink).toHaveAttribute("href", "#live-stream");

@@ -107,6 +107,7 @@ import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-life
 import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
 import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
+import { createAdminTelephoneBookingRoutes } from "./telephone-bookings.js";
 import { attachXeroAdminRoutes } from "./xero-admin.js";
 
 const activityQuerySchema = z.object({
@@ -510,6 +511,27 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminTelephonePlaceBidBodySchema),
     async (c) => {
       const body = c.req.valid("json");
+      if (body.telephoneBookingId) {
+        const lotRow = await container.repoFactory.root.lot.findById(body.lotId);
+        if (!lotRow?.saleId) return c.json({ error: "Lot not found" }, 404);
+        const bookingCheck =
+          await container.telephoneBidBookingService.assertBookingAllowsTelephoneBid({
+            bookingId: body.telephoneBookingId,
+            saleId: lotRow.saleId,
+            lotId: body.lotId,
+            amount: body.amount,
+            ...(body.maxAutoBidAmount !== undefined
+              ? { maxAutoBidAmount: body.maxAutoBidAmount }
+              : {}),
+          });
+        if (bookingCheck.isErr()) {
+          const e = bookingCheck.error;
+          return c.json(
+            e.code ? { error: e.message, code: e.code } : { error: e.message },
+            asHttpStatus(e.status),
+          );
+        }
+      }
       const placement = {
         placedVia: "telephone" as const,
         ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
@@ -529,6 +551,22 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       );
     },
   );
+
+  platform.get(
+    "/sales/:saleId/operations-snapshot",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const data = await container.adminSaleOperationsSnapshotService.getSnapshot(saleId);
+      if (!data) return c.json({ error: "Sale not found or not onsite" }, 404);
+      return c.json({ data });
+    },
+  );
+
+  const adminTelephoneRoutes = createAdminTelephoneBookingRoutes(container);
+  adminTelephoneRoutes.use("*", requireAuctionManage);
+  platform.route("/", adminTelephoneRoutes);
 
   platform.get(
     "/sales/:saleId/saleroom/session",

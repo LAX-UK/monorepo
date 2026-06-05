@@ -53,6 +53,7 @@ import { createSaleRoutes } from "./routes/sales.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
 import { createSubmissionDocumentRoutes } from "./routes/submission-documents.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
+import { createTelephoneBookingRoutes } from "./routes/telephone-bookings.js";
 import { createUploadRoutes } from "./routes/uploads.js";
 import { createUserRoutes } from "./routes/users.js";
 import { createVenueRoutes } from "./routes/venues.js";
@@ -193,6 +194,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator))
     .route("/lots", createLotDocumentRoutes(container, authenticator))
+    .route("/", createTelephoneBookingRoutes(container, authenticator))
     .route("/sales", createSaleRoutes(container, authenticator))
     .route("/sales", createSaleDocumentRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))

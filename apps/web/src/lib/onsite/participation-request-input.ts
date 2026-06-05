@@ -13,14 +13,7 @@ export const absenteeBidFormSchema = z.object({
   maxHammerBid: z.string().min(1, "Enter your maximum hammer bid"),
 });
 
-export const telephoneBidFormSchema = z.object({
-  ...contactFields,
-  primaryPhone: z.string().min(5, "Enter a primary phone number").max(40),
-  backupPhone: z.string().max(40).optional(),
-});
-
 export type AbsenteeBidFormValues = z.infer<typeof absenteeBidFormSchema>;
-export type TelephoneBidFormValues = z.infer<typeof telephoneBidFormSchema>;
 
 export type OnsiteParticipationContext = {
   saleTitle: string;
@@ -51,35 +44,6 @@ export function buildAbsenteeMailto(
       `Name: ${values.name}`,
       `Email: ${values.email}`,
       `Phone: ${values.phone}`,
-      `Billing Address: ${values.billingAddress}`,
-    ].join("\n"),
-  );
-  return `mailto:${supportEmail}?subject=${subject}&body=${body}`;
-}
-
-export function buildTelephoneMailto(
-  ctx: OnsiteParticipationContext,
-  values: TelephoneBidFormValues,
-  supportEmail: string,
-): string {
-  const subject = encodeURIComponent(
-    `Telephone Bid Request: ${ctx.saleTitle} — Lot ${ctx.lotNumber ?? ""} ${ctx.lotTitle}`,
-  );
-  const body = encodeURIComponent(
-    [
-      "I would like to request a live telephone bidding line for:",
-      "",
-      `Sale: ${ctx.saleTitle}`,
-      `Lot Number: ${ctx.lotNumber ?? "N/A"}`,
-      `Lot Title: ${ctx.lotTitle}`,
-      `Lot URL: ${ctx.lotUrl}`,
-      "",
-      `Primary Phone Number: ${values.primaryPhone}`,
-      `Backup Phone Number: ${values.backupPhone?.trim() || "N/A"}`,
-      "",
-      `Name: ${values.name}`,
-      `Email: ${values.email}`,
-      `Contact Phone: ${values.phone}`,
       `Billing Address: ${values.billingAddress}`,
     ].join("\n"),
   );

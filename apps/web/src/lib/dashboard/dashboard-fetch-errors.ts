@@ -14,6 +14,7 @@ export type DashboardSlice =
   | "session"
   | "bids"
   | "conditionReports"
+  | "telephoneBids"
   | "portfolio"
   | "payments"
   | "watchlist"
@@ -98,6 +99,11 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
     title: "Could not load condition reports",
     message: () => "Something went wrong while loading your condition report requests. Try again.",
     retryHref: DASHBOARD_ROUTES.conditionReports,
+  },
+  telephoneBids: {
+    title: "Could not load telephone bookings",
+    message: () => "Something went wrong while loading your telephone bookings. Try again.",
+    retryHref: DASHBOARD_ROUTES.telephoneBids,
   },
   portfolio: {
     title: "Could not load collection",

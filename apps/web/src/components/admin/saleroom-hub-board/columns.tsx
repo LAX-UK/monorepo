@@ -24,6 +24,16 @@ export function saleroomHubColumns(): ColumnDef<Row>[] {
       ),
     },
     {
+      id: "delivery",
+      header: "Delivery",
+      cell: ({ row }) => (
+        <span className="text-xs capitalize text-on-surface-variant">
+          {row.original.sale.deliveryMode}
+        </span>
+      ),
+      enableSorting: false,
+    },
+    {
       id: "schedule",
       header: "Schedule",
       cell: ({ row }) => (
