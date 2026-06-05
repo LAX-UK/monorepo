@@ -67,10 +67,10 @@ describe("LaxUrgencySection", () => {
     loginNextPath: "/",
   };
 
-  it("renders a 2-column grid when layoutView is grid", () => {
+  it("renders a responsive grid when layoutView is grid", () => {
     const { container } = render(<LaxUrgencySection {...baseProps} layoutView="grid" />);
-    const grid = container.querySelector(".grid.grid-cols-2");
-    expect(grid?.className).toMatch(/grid-cols-2/);
+    const grid = container.querySelector(".grid.auto-rows-fr");
+    expect(grid?.className).toMatch(/sm:grid-cols-2/);
     expect(grid?.className).toMatch(/auto-rows-fr/);
   });
 
@@ -83,8 +83,8 @@ describe("LaxUrgencySection", () => {
 
   it("maps card layout to grid for the switcher", () => {
     const { container } = render(<LaxUrgencySection {...baseProps} layoutView="card" />);
-    const grid = container.querySelector(".grid.grid-cols-2");
-    expect(grid?.className).toMatch(/grid-cols-2/);
+    const grid = container.querySelector(".grid.auto-rows-fr");
+    expect(grid?.className).toMatch(/sm:grid-cols-2/);
   });
 
   it("renders Upcoming Lots heading when variant is upcoming", () => {
