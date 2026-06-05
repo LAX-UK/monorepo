@@ -12,6 +12,10 @@ import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
 
+// Generate at request time so the production origin env and live catalogue data
+// are available; a build without these produced an empty sitemap.
+export const dynamic = "force-dynamic";
+
 const STATIC_PATHS = [
   "",
   "/search",
