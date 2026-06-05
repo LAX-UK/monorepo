@@ -3,14 +3,25 @@ export const EVENT_SLUG = "lax001";
 const cdnBase =
   (import.meta.env.VITE_CDN_BASE as string | undefined)?.replace(/\/$/, "") ??
   "https://cdn.lax.bid";
-const apiBase =
-  (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ??
-  "https://api.lax.bid";
+function resolveApiBase(): string {
+  const configured = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "");
+  if (import.meta.env.DEV) {
+    // Same-origin Vite proxy — direct :3001 calls fail browser CORS preflight from :3003.
+    if (!configured || /^https?:\/\/(localhost|127\.0\.0\.1):3001$/.test(configured)) {
+      return "";
+    }
+    return configured;
+  }
+  return configured ?? "https://api.lax.bid";
+}
+
+const apiBase = resolveApiBase();
 const webOrigin =
-  (import.meta.env.VITE_WEB_ORIGIN as string | undefined)?.replace(/\/$/, "") ?? "https://lax.bid";
+  (import.meta.env.VITE_WEB_ORIGIN as string | undefined)?.replace(/\/$/, "") ??
+  (import.meta.env.DEV ? "http://localhost:3000" : "https://lax.bid");
 const eventOrigin =
   (import.meta.env.VITE_EVENT_ORIGIN as string | undefined)?.replace(/\/$/, "") ??
-  "https://event.lax.bid";
+  (import.meta.env.DEV ? "http://localhost:3003" : "https://event.lax.bid");
 
 export const CDN_BASE = cdnBase;
 export const API_BASE = apiBase;
