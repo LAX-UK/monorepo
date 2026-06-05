@@ -78,7 +78,7 @@ export function ConnectActionsBar({
           </Button>
         ) : null}
       </div>
-      {!payoutReady && showOnboardingForm ? (
+      {!payoutReady && showOnboardingForm && showDashboardLink ? (
         <p className="font-body text-xs text-on-surface-variant">
           Prefer the secure form above. Open Manage in Stripe only if you need the Express
           dashboard.

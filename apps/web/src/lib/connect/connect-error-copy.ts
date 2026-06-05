@@ -29,6 +29,23 @@ const CONNECT_API_ERROR_MESSAGES: Record<string, string> = {
     "This payout account cannot be used right now. Contact support@lax.bid for help.",
   preparing_timed_out:
     "Payout account setup is taking longer than expected. Try again or reload the page.",
+  stripe_connect_failed:
+    "We could not start payout setup. Wait a moment, then try again, or contact support@lax.bid if this continues.",
+  stripe_sync_failed:
+    "We could not refresh your payout status. Wait a moment, then use Refresh status.",
+  legal_entity_update_failed:
+    "Your payout account was created but we could not save it. Try again or contact support@lax.bid.",
+  legal_entity_not_found:
+    "We could not find your seller profile. Reload the page or contact support@lax.bid.",
+  missing_legal_entity_context:
+    "We could not determine which seller profile to use. Reload the page and try again.",
+  session_required: "Your session expired. Sign in again, then return to payout setup.",
+  dashboard_link_not_supported:
+    "Payout details are managed in the secure form on this page. Contact support@lax.bid if you need help.",
+  dashboard_link_failed:
+    "Could not open Stripe. Use the secure form above or contact support@lax.bid.",
+  stripe_onboarding_failed:
+    "Could not open the payout setup link. Use the secure form above or contact support@lax.bid.",
 };
 
 /** Maps stable API error codes from /stripe-connect routes to seller-facing copy. */

@@ -2,7 +2,10 @@ import type { Context } from "hono";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import { StripeConnectNotConfiguredError } from "../services/interfaces/stripe-connect.js";
 import { ConnectServiceError } from "../services/stripe/connect/connect-service-errors.js";
-import { stripeConnectErrorToHttp } from "./stripe-connect-http-error.js";
+import {
+  isPlatformProfileStripeMessage,
+  stripeConnectErrorToHttp,
+} from "./stripe-connect-http-error.js";
 
 type RouteErrorOptions = {
   recordAccountCreateFailure?: boolean;
@@ -19,11 +22,17 @@ export function respondStripeConnectRouteError(
   }
 
   if (err instanceof ConnectServiceError) {
-    return c.json({ error: err.code, ...err.meta }, err.httpStatus as 400);
+    return c.json({ error: err.code }, err.httpStatus as 400);
   }
 
   if (err instanceof Error) {
     const msg = err.message;
+    if (isPlatformProfileStripeMessage(msg)) {
+      if (opts?.recordAccountCreateFailure) {
+        recordMoneyPathEvent("stripe_connect_account_create_failed");
+      }
+      return c.json({ error: "stripe_platform_profile_incomplete" }, 503);
+    }
     if (msg === "legal_entity_not_found") return c.json({ error: msg }, 404);
     if (msg === "insufficient_role" || msg === "kyc_not_approved") {
       return c.json({ error: msg }, 403);

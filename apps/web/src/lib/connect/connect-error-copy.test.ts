@@ -12,6 +12,16 @@ describe("connectApiErrorMessage", () => {
     expect(connectApiErrorMessage("finance_awaiting_owner")).toContain("owner or admin");
   });
 
+  it("maps stripe_connect_failed fallback copy", () => {
+    expect(connectApiErrorMessage("stripe_connect_failed")).toContain(
+      "could not start payout setup",
+    );
+  });
+
+  it("maps dashboard_link_not_supported for embedded-only policy", () => {
+    expect(connectApiErrorMessage("dashboard_link_not_supported")).toContain("secure form");
+  });
+
   it("returns null for unknown codes", () => {
     expect(connectApiErrorMessage("unknown_code")).toBeNull();
   });
