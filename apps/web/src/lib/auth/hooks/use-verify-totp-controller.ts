@@ -2,7 +2,10 @@
 
 import { trackLogin } from "@/lib/analytics/events";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
-import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
+import {
+  POST_AUTH_SESSION_LOAD_ERROR,
+  fetchSessionUserWithRetry,
+} from "@/lib/auth/fetch-session-user-with-retry.client";
 import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { verifyBackupCodeService } from "@/lib/auth/services/verify-backup-code.service";
 import { verifyTotpService } from "@/lib/auth/services/verify-totp.service";
@@ -38,36 +41,24 @@ export function useVerifyTotpController(nextHref: string) {
   const completeSignIn = useCallback(async () => {
     await refetchSession();
     postAuthBroadcast({ type: "signed-in" });
-    const me = await fetchSessionUserAfterAuth();
-    if (me) {
-      router.push(
-        resolvePostAuthDestination({
-          user: {
-            ...me,
-            role: normalizeUserRoleOrClient(me.role),
-          },
-          requestedNext: nextHref,
-          context: "sign-in",
-          requireEmailVerification: false,
-          withWelcomeBack: true,
-        }),
-      );
-    } else {
-      router.push(
-        resolvePostAuthDestination({
-          user: {
-            email: "",
-            role: "client",
-            emailVerified: true,
-            suspended: false,
-          },
-          requestedNext: nextHref,
-          context: "sign-in",
-          requireEmailVerification: false,
-          withWelcomeBack: true,
-        }),
-      );
+    const me = await fetchSessionUserWithRetry();
+    if (!me) {
+      setBannerError(POST_AUTH_SESSION_LOAD_ERROR);
+      notify.error(POST_AUTH_SESSION_LOAD_ERROR);
+      return;
     }
+    router.push(
+      resolvePostAuthDestination({
+        user: {
+          ...me,
+          role: normalizeUserRoleOrClient(me.role),
+        },
+        requestedNext: nextHref,
+        context: "sign-in",
+        requireEmailVerification: false,
+        withWelcomeBack: true,
+      }),
+    );
     router.refresh();
   }, [nextHref, refetchSession, router]);
 

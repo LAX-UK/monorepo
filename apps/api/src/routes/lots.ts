@@ -555,7 +555,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   r.delete(
     "/:id/auto-bid",
     requireAuth,
+    biddingKillSwitch,
     requireBuyerRole,
+    kycGate,
+    bidUserRateLimit,
     zValidator("param", lotIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");

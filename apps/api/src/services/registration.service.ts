@@ -65,6 +65,11 @@ export class RegistrationService implements IRegistrationService {
         userId: signup.userId,
         message: profile.message,
       });
+      return {
+        ok: false as const,
+        message: "Registration could not be completed. Please try again.",
+        status: 500,
+      };
     }
     if (input.inviteToken && validatedInvite?.isOk()) {
       if (validatedInvite.value.targetLegalEntityId == null) {

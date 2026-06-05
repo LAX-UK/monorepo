@@ -51,6 +51,7 @@ export function LotRealtimeProvider({
       onLotExtended: (p: unknown) => fanOut((l) => l.onLotExtended?.(p)),
       onLotEnded: (p: LotEndedEvent) => fanOut((l) => l.onLotEnded?.(p)),
       onLotEvent: (p: unknown) => fanOut((l) => l.onLotEvent?.(p)),
+      onReconnect: () => fanOut((l) => l.onReconnect?.()),
     });
   }, [lotId, realtime]);
 

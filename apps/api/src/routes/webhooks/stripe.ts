@@ -94,7 +94,9 @@ export function createStripeWebhookRoutes(container: Container) {
     const signature = c.req.header("stripe-signature");
     try {
       const event = container.stripeWebhookVerifier.verify("payments", raw, signature);
-      let result = { processed: false };
+      let result: { processed: boolean; reason?: string; action?: string } = {
+        processed: false,
+      };
 
       if (event.type === "payment_intent.succeeded") {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
@@ -141,6 +143,15 @@ export function createStripeWebhookRoutes(container: Container) {
       } else if (event.type === "charge.refunded") {
         const charge = event.data.object as Stripe.Charge;
         result = await container.stripePaymentWebhookService.handleChargeRefunded(event, charge);
+      }
+
+      if (
+        !result.processed &&
+        (result.reason === "payment_not_found" || result.reason === "amount_mismatch")
+      ) {
+        recordMoneyPathEvent(`stripe_payment_webhook_${result.reason}`);
+        recordStripeWebhookHttpError("payments", 500);
+        return c.json({ ok: false, ...result }, 500);
       }
 
       return c.json({ ok: true, ...result });

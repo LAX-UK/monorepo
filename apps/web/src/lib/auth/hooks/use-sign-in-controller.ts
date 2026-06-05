@@ -2,13 +2,17 @@
 
 import { trackLogin } from "@/lib/analytics/events";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
-import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
+import {
+  POST_AUTH_SESSION_LOAD_ERROR,
+  fetchSessionUserWithRetry,
+} from "@/lib/auth/fetch-session-user-with-retry.client";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
 import { signInService } from "@/lib/auth/services/sign-in.service";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
+import { notify } from "@/lib/ui/notify";
 import { normalizeUserRoleOrClient } from "@auction/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -24,6 +28,7 @@ export function useSignInController(nextHref: string) {
   );
   const siteKey = turnstileSiteKey();
   const [showCaptcha, setShowCaptcha] = useState(false);
+  const [postAuthError, setPostAuthError] = useState<string | null>(null);
 
   const onTurnstileToken = useCallback((t: string) => {
     turnstileRef.current = t;
@@ -56,36 +61,25 @@ export function useSignInController(nextHref: string) {
       trackLogin();
       await refetchSession();
       postAuthBroadcast({ type: "signed-in" });
-      const me = await fetchSessionUserAfterAuth();
-      if (me) {
-        router.push(
-          resolvePostAuthDestination({
-            user: {
-              ...me,
-              role: normalizeUserRoleOrClient(me.role),
-            },
-            requestedNext: nextHref,
-            context: "sign-in",
-            requireEmailVerification: false,
-            withWelcomeBack: true,
-          }),
-        );
-      } else {
-        router.push(
-          resolvePostAuthDestination({
-            user: {
-              email: "",
-              role: "client",
-              emailVerified: true,
-              suspended: false,
-            },
-            requestedNext: nextHref,
-            context: "sign-in",
-            requireEmailVerification: false,
-            withWelcomeBack: true,
-          }),
-        );
+      setPostAuthError(null);
+      const me = await fetchSessionUserWithRetry();
+      if (!me) {
+        setPostAuthError(POST_AUTH_SESSION_LOAD_ERROR);
+        notify.error(POST_AUTH_SESSION_LOAD_ERROR);
+        return;
       }
+      router.push(
+        resolvePostAuthDestination({
+          user: {
+            ...me,
+            role: normalizeUserRoleOrClient(me.role),
+          },
+          requestedNext: nextHref,
+          context: "sign-in",
+          requireEmailVerification: false,
+          withWelcomeBack: true,
+        }),
+      );
       router.refresh();
       return;
     }
@@ -103,7 +97,7 @@ export function useSignInController(nextHref: string) {
     form,
     onSubmit,
     loading,
-    bannerError,
+    bannerError: bannerError ?? postAuthError,
     lastErrorCode,
     showCaptcha: showCaptcha && Boolean(siteKey),
     turnstileSiteKey: siteKey,

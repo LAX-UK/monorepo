@@ -10,6 +10,7 @@ import { UserBidsHistory } from "@/components/sections/artwork/online/user-bids-
 import { LiveBidFeed } from "@/components/sections/artwork/onsite/live-bid-feed";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useNow } from "@/hooks/use-now";
+import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
@@ -72,6 +73,10 @@ export function OnlineBidsView({
 
   useLotRealtime(lotId, {
     onBidUpdate: (e) => {
+      if (shouldSkipOwnBidEcho(e, onlineCtx?.ownBidEchoGuardRef.current ?? null, currentUserId)) {
+        return;
+      }
+
       setLiveCurrentPrice(e.currentPrice);
       setEntries((prev) =>
         prependBidHistoryEntry(prev, {
