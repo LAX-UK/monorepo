@@ -1,11 +1,11 @@
 import { SITE_NAME } from "@/lib/brand";
 import { getServerLotById } from "@/lib/data/http/lots.server";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
-import { ImageResponse } from "next/og";
+import { renderOgJpeg } from "@/lib/seo/og-image-response";
 
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const contentType = "image/jpeg";
 
 type Props = {
   params: Promise<{ slug: string; id: string }>;
@@ -38,7 +38,7 @@ export default async function Image({ params }: Props) {
   } catch {
     /* fall through */
   }
-  return new ImageResponse(
+  return renderOgJpeg(
     <div
       style={{
         width: "100%",
@@ -93,6 +93,5 @@ export default async function Image({ params }: Props) {
         </div>
       </div>
     </div>,
-    { ...size },
   );
 }
