@@ -7,6 +7,7 @@ import { SaleAnchorTabs } from "@/components/marketing/sale-anchor-tabs";
 import { SaleDesktopStickyBar } from "@/components/marketing/sale-desktop-sticky-bar";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import { SaleParticipationTimeline } from "@/components/marketing/sale-participation-timeline";
+import { SaleTelephoneBookingPanel } from "@/components/marketing/sale-telephone-booking-panel";
 import {
   mapLotToCardVM,
   mapSaleToHeroVM,
@@ -35,6 +36,7 @@ import {
   getServerSaleWithLots,
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -202,13 +204,16 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   );
   if (!lotsPage) notFound();
 
-  const [follow, relatedSales, kycSummary, watchedLotIds] = await Promise.all([
+  const [follow, relatedSales, kycSummary, watchedLotIds, telephoneBooking] = await Promise.all([
     session
       ? getServerSaleFollowState(id).catch(() => ({ isFollowing: false }))
       : Promise.resolve({ isFollowing: false }),
     getServerRelatedSales({ id, categoryId, limit: 4 }).catch(() => []),
     session ? getServerKycStatusSummary().catch(() => null) : Promise.resolve(null),
     session ? getServerWatchedLotIdSet() : Promise.resolve(new Set<string>()),
+    session && bundle.sale.deliveryMode === "onsite"
+      ? getServerTelephoneBookingForSale(id).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const actingCtx = session
@@ -506,9 +511,29 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           endTime={bundle.sale.endTime}
           streamUrl={bundle.sale.streamUrl}
           {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
+          {...(bundle.sale.deliveryMode === "onsite"
+            ? { telephoneAnchorId: "bid-onsite-hub" }
+            : {})}
           registerReturnPath={basePath}
           className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
         />
+        {bundle.sale.deliveryMode === "onsite" &&
+        (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
+          <div className="mt-8">
+            <SaleTelephoneBookingPanel
+              saleId={bundle.sale.id}
+              saleTitle={bundle.sale.title}
+              loginNextPath={basePath}
+              isAuthenticated={isAuthenticated}
+              kycApproved={kycApproved}
+              mobile={session?.mobile ?? null}
+              {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
+              buyerEntities={buyerEntities}
+              existingBooking={telephoneBooking}
+              orgModuleEnabled={orgModuleEnabled}
+            />
+          </div>
+        ) : null}
       </section>
 
       <section

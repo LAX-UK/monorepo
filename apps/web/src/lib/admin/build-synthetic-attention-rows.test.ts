@@ -17,6 +17,15 @@ describe("buildSyntheticAttentionRows", () => {
     expect(rows.some((r) => r.href === "/admin/condition-reports")).toBe(true);
   });
 
+  it("includes telephone booking attention when pending count is non-zero", () => {
+    const rows = buildSyntheticAttentionRows({
+      ...EMPTY_ADMIN_NAV_COUNTS,
+      telephoneBookingsPending: 2,
+    });
+    expect(rows.some((r) => r.id === "nav-telephone-bookings")).toBe(true);
+    expect(rows.some((r) => r.href === "/admin/saleroom")).toBe(true);
+  });
+
   it("includes compliance queue deep links when counts are non-zero", () => {
     const rows = buildSyntheticAttentionRows({
       ...EMPTY_ADMIN_NAV_COUNTS,

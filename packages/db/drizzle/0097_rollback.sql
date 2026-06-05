@@ -1,0 +1,12 @@
+DROP INDEX IF EXISTS "telephone_bid_booking_status_sale_idx";
+DROP INDEX IF EXISTS "telephone_bid_booking_user_idx";
+DROP INDEX IF EXISTS "telephone_bid_booking_active_uidx";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "updated_at";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "cancellation_reason";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "cancelled_by_user_id";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "cancelled_at";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "buyer_notes";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "limit_increase_amount";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "limit_increase_requested_at";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "completed_lot_ids";
+ALTER TABLE "telephone_bid_booking" DROP COLUMN IF EXISTS "approved_by_user_id";

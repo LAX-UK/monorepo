@@ -32,6 +32,7 @@ export const DASHBOARD_ROUTES = {
   overview: "/dashboard",
   bids: "/dashboard/bids",
   conditionReports: "/dashboard/condition-reports",
+  telephoneBids: "/dashboard/telephone-bids",
   portfolio: "/dashboard/portfolio",
   payments: "/dashboard/payments",
   watchlist: "/dashboard/watchlist",

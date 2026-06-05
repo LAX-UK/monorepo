@@ -23,7 +23,9 @@ export default async function AdminSaleroomHubPage() {
   }
 
   const liveOrUpcoming = sales.filter(
-    (row) => row.sale.status === "active" || row.sale.status === "scheduled",
+    (row) =>
+      row.sale.deliveryMode === "onsite" &&
+      (row.sale.status === "active" || row.sale.status === "scheduled"),
   );
   const liveCount = liveOrUpcoming.filter((row) => row.sale.status === "active").length;
   const scheduledCount = liveOrUpcoming.filter((row) => row.sale.status === "scheduled").length;

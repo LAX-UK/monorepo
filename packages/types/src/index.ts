@@ -24,3 +24,4 @@ export * from "./document.js";
 export * from "./marketing-events.js";
 export * from "./gallery.js";
 export * from "./catalog-url.js";
+export * from "./telephone-booking.js";

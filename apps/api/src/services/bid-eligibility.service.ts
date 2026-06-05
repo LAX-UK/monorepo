@@ -5,6 +5,7 @@ import {
   legalEntityMember,
   lot,
   saleRegistration,
+  telephoneBidBooking,
 } from "@auction/db/schema";
 import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
 import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
@@ -43,6 +44,8 @@ export class BidEligibilityService implements IBidEligibility {
       amount,
       maxAutoBidAmount,
       autoBidStepAmount,
+      placedVia,
+      telephoneBookingId,
     } = input;
     const effectiveAmount =
       maxAutoBidAmount != null && Number.isFinite(maxAutoBidAmount)
@@ -125,7 +128,22 @@ export class BidEligibilityService implements IBidEligibility {
       return err(new BidError("Not a member of this legal entity", 403, "membership_required"));
     }
 
-    if (saleId && memberRequiresSaleRegistration(mem.role)) {
+    const telephoneOperatorBypass =
+      placedVia === "telephone" &&
+      telephoneBookingId != null &&
+      saleId != null &&
+      (await this.isActiveTelephoneBooking(telephoneBookingId, saleId));
+
+    if (telephoneOperatorBypass && telephoneBookingId != null) {
+      const cap = await this.telephoneAuthorizedMax(telephoneBookingId);
+      if (cap != null && effectiveAmount > cap + 1e-9) {
+        return err(
+          new BidError("Bid exceeds authorized telephone limit", 403, "authorized_max_exceeded"),
+        );
+      }
+    }
+
+    if (saleId && memberRequiresSaleRegistration(mem.role) && !telephoneOperatorBypass) {
       const [reg] = await this.db
         .select({
           status: saleRegistration.status,
@@ -159,7 +177,7 @@ export class BidEligibilityService implements IBidEligibility {
       }
     }
 
-    if (memberRequiresSaleRegistration(mem.role)) {
+    if (memberRequiresSaleRegistration(mem.role) && !telephoneOperatorBypass) {
       const now = new Date();
       const rows = await this.db
         .select({
@@ -212,5 +230,24 @@ export class BidEligibilityService implements IBidEligibility {
     }
 
     return ok(undefined);
+  }
+
+  private async isActiveTelephoneBooking(bookingId: string, saleId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ status: telephoneBidBooking.status, saleId: telephoneBidBooking.saleId })
+      .from(telephoneBidBooking)
+      .where(eq(telephoneBidBooking.id, bookingId))
+      .limit(1);
+    if (!row || row.saleId !== saleId) return false;
+    return row.status === "confirmed" || row.status === "in_progress";
+  }
+
+  private async telephoneAuthorizedMax(bookingId: string): Promise<number | null> {
+    const [row] = await this.db
+      .select({ reserveAltMax: telephoneBidBooking.reserveAltMax })
+      .from(telephoneBidBooking)
+      .where(eq(telephoneBidBooking.id, bookingId))
+      .limit(1);
+    return parseMoneyCap(row?.reserveAltMax != null ? String(row.reserveAltMax) : null);
   }
 }

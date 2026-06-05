@@ -1,6 +1,8 @@
 "use client";
 
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
+import { LotOnBlockPanel } from "@/components/admin/saleroom-clerk/lot-on-block-panel";
+import { TelephoneLinesPanel } from "@/components/admin/saleroom-clerk/telephone-lines-panel";
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import {
   adminSaleroomAdvanceAction,
@@ -14,6 +16,7 @@ import {
 import type {
   AdminSaleroomEventRow,
   AdminSaleroomSessionSnapshot,
+  AdminTelephoneBookingRow,
 } from "@/lib/data/http/admin.server";
 import { getSocket } from "@/lib/socket";
 import type { Lot } from "@auction/types";
@@ -34,10 +37,18 @@ type Props = {
   saleTitle: string;
   initial: AdminSaleroomSessionSnapshot;
   lots: Lot[];
+  telephoneBookings?: AdminTelephoneBookingRow[];
   error?: string | null;
 };
 
-export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }: Props) {
+export function SaleroomClerkConsole({
+  saleId,
+  saleTitle,
+  initial,
+  lots,
+  telephoneBookings = [],
+  error,
+}: Props) {
   const [liveFeed, setLiveFeed] = useState<SaleroomRealtimePayload[]>([]);
   const [advanceLotId, setAdvanceLotId] = useState(lots[0]?.id ?? "");
 
@@ -173,6 +184,16 @@ export function SaleroomClerkConsole({ saleId, saleTitle, initial, lots, error }
             </SaleroomPendingSubmit>
           </form>
         )}
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <LotOnBlockPanel
+          saleId={saleId}
+          initial={initial}
+          lots={lots}
+          telephoneBookings={telephoneBookings}
+        />
+        <TelephoneLinesPanel saleId={saleId} currentLotId={currentLotId} rows={telephoneBookings} />
       </div>
 
       <div className="flex flex-wrap gap-2">

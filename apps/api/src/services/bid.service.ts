@@ -137,6 +137,10 @@ export class BidService implements IBidPlacer {
           amount,
           ...(maxAutoBidAmount !== undefined ? { maxAutoBidAmount } : {}),
           ...(autoBidStepAmount !== undefined ? { autoBidStepAmount } : {}),
+          ...(bidPlacement?.placedVia != null ? { placedVia: bidPlacement.placedVia } : {}),
+          ...(bidPlacement?.telephoneBookingId != null
+            ? { telephoneBookingId: bidPlacement.telephoneBookingId }
+            : {}),
         });
         if (elig.isErr()) {
           return err(elig.error);
