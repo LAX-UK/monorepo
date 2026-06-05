@@ -17,6 +17,11 @@ Emitted from `apps/api/src/middleware/metrics.ts` via `recordMoneyPathEvent`. La
 | `stripe_webhook_connect_4xx` / `_5xx` | Connect webhook errors |
 | `stripe_webhook_payments_4xx` / `_5xx` | Payments (dispute/refund) webhook errors |
 | `stripe_connect_transfer_failed` | Stripe `transfer.failed` received |
+| `stripe_connect_account_create_failed` | `POST /stripe-connect/account` rejected by Stripe |
+| `stripe_connect_account_orphan_created` | Stripe account created but DB persist failed (retry ensure or reconcile) |
+| `stripe_connect_account_deauthorized` | Seller revoked Connect access (`account.application.deauthorized`) |
+| `payout_transfer_status_cas_miss` | Stripe transfer created but payout row status CAS failed — finance reconcile |
+| `stripe_connect_webhook_unhandled_event` | Connect webhook received unsupported event type |
 | `payout_reconciled_failed` | Payout moved to `failed` during Stripe reconciliation |
 | `payout_clawback_required` | Negative-net payout path emitted `payout.clawback_required` |
 | `payment_intent_amount_mismatch` | Stripe PI amount ≠ local payment row; webhook not claimed (Stripe retries) |

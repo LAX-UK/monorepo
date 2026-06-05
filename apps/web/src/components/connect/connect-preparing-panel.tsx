@@ -8,10 +8,17 @@ type Props = {
   preparingAccount: boolean;
   ensureError: string | null;
   pending: boolean;
+  timedOut?: boolean;
   onRetry: () => void;
 };
 
-export function ConnectPreparingPanel({ preparingAccount, ensureError, pending, onRetry }: Props) {
+export function ConnectPreparingPanel({
+  preparingAccount,
+  ensureError,
+  pending,
+  timedOut = false,
+  onRetry,
+}: Props) {
   const statusMessage = preparingAccount
     ? "Setting up your secure payout account…"
     : "Loading payout setup…";
@@ -28,6 +35,18 @@ export function ConnectPreparingPanel({ preparingAccount, ensureError, pending, 
         ) : null}
         <p className="font-body text-sm text-on-surface-variant">{statusMessage}</p>
       </div>
+      {timedOut && !ensureError ? (
+        <div className="mt-3 space-y-2">
+          <ConnectInlineAlert
+            kind="init_failed"
+            detail="preparing_timed_out"
+            title="Still setting up"
+          />
+          <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
       {ensureError ? (
         <div className="mt-3 space-y-2">
           <ConnectInlineAlert kind="init_failed" detail={ensureError} />

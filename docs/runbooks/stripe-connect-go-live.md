@@ -14,8 +14,10 @@ Stripe allows **one scope per destination** ([Connect webhooks](https://docs.str
 | Transfers | **Your account** | `/webhooks/stripe/transfers` | `transfer.created`, `transfer.updated`, `transfer.reversed` |
 | Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `payment_intent.processing`, `payment_intent.partially_funded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.dispute.*`, `charge.refunded` |
 
-Optional (subscribe only if you add handlers later): `account.application.deauthorized` (Connect), `radar.early_fraud_warning.created` (Payments), `payout.failed` (Connected accounts).
+Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Connected accounts).
+- [ ] **Connect accounts destination** also subscribes to `account.application.deauthorized` (seller revokes platform access).
 
+- [ ] **Connect → Platform profile** (Live and Test): complete integration questionnaire; acknowledge **platform manages losses** for connected accounts (required because accounts are created with `controller.losses.payments=application`). Settings → Connect → [Platform profile](https://dashboard.stripe.com/settings/connect/platform-profile).
 - [ ] **Connect** integration profile: platform collects payments → pays sellers (separate charges & transfers); individual payouts; embedded onboarding + Express dashboard fallback.
 - [ ] **Connect → Onboarding**: **GB** enabled; upfront requirements preferred for auction sellers.
 - [ ] **Settings → Branding** and **Connect → Express Dashboard → Branding** (platform name/icon/color).

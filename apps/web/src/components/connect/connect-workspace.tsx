@@ -16,7 +16,7 @@ import {
   type StripeConnectSessionSurface,
   createStripeConnectAccountSessionAction,
 } from "@/lib/actions/stripe-connect.actions";
-import { connectGapStageSummary } from "@/lib/connect/connect-gap-copy";
+import { connectGapReadOnlySummary, connectGapStageSummary } from "@/lib/connect/connect-gap-copy";
 import { deriveConnectWorkspaceFlags } from "@/lib/connect/connect-workspace-flags";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
@@ -54,6 +54,20 @@ function canManageConnect(role: string): boolean {
   return role === "owner" || role === "admin" || role === "finance";
 }
 
+function canOnboardConnect(role: string): boolean {
+  return role === "owner" || role === "admin";
+}
+
+function resolveConnectSessionSurface(input: {
+  gapStage: string;
+  memberRole: string;
+  hasStripeAccount: boolean;
+}): StripeConnectSessionSurface {
+  if (input.gapStage === "ready") return "management";
+  if (!canOnboardConnect(input.memberRole) && input.hasStripeAccount) return "management";
+  return "onboarding";
+}
+
 export function ConnectWorkspace({
   publishableKey,
   connectEnforced,
@@ -86,6 +100,7 @@ export function ConnectWorkspace({
     runEnsureAccount,
     reloadEmbeddedSetup,
     pollingTimedOut,
+    preparingTimedOut,
   } = useStripeConnectAccount({
     status,
     legalEntityId,
@@ -97,10 +112,15 @@ export function ConnectWorkspace({
     onConnectReady,
   });
 
-  const surface: StripeConnectSessionSurface = useMemo(() => {
-    if (gap.stage === "ready") return "management";
-    return "onboarding";
-  }, [gap.stage]);
+  const surface: StripeConnectSessionSurface = useMemo(
+    () =>
+      resolveConnectSessionSurface({
+        gapStage: gap.stage,
+        memberRole,
+        hasStripeAccount: Boolean(localStatus?.stripeAccountId),
+      }),
+    [gap.stage, memberRole, localStatus?.stripeAccountId],
+  );
 
   const hasStripeAccount = Boolean(localStatus?.stripeAccountId);
 
@@ -117,6 +137,8 @@ export function ConnectWorkspace({
     showFinanceAwaitingOwner,
     showRefreshAction,
     showPreparingPanel,
+    showEmbeddedPanels,
+    showRestrictedPanel,
     useCompactHeader,
   } = workspaceFlags;
 
@@ -179,7 +201,7 @@ export function ConnectWorkspace({
     );
   }
 
-  const canMountConnectShell = hasStripeAccount;
+  const canMountConnectShell = hasStripeAccount && showEmbeddedPanels;
   const showSyncDegraded = syncDegraded || localStatus?.syncDegraded;
   const preparingAccount = showPreparingPanel && pending;
   const showActionablePastDueAlert =
@@ -212,7 +234,21 @@ export function ConnectWorkspace({
         readOnly={showFinanceReadOnly}
       />
 
-      {showFinanceAwaitingOwner ? <ConnectInlineAlert kind="role_blocked" /> : null}
+      {showFinanceAwaitingOwner ? (
+        <ConnectInlineAlert
+          kind="role_blocked"
+          detail="finance_awaiting_owner"
+          title="Payout setup not started"
+        />
+      ) : null}
+
+      {showRestrictedPanel ? (
+        <Surface variant="section" padding="md" className="space-y-2">
+          <p className="font-body text-sm text-on-surface">
+            {connectGapStageSummary("restricted", gap, { readOnly: showFinanceReadOnly })}
+          </p>
+        </Surface>
+      ) : null}
 
       {showSyncDegraded ? <ConnectInlineAlert kind="sync_degraded" /> : null}
 
@@ -267,7 +303,16 @@ export function ConnectWorkspace({
                 <ConnectOnboardingPanel onExit={handleOnboardingExit} />
               </Surface>
             ) : null}
-            {showManagement ? <ConnectManagementPanel /> : null}
+            {showManagement ? (
+              <Surface variant="section" padding="md" className="space-y-4">
+                {showFinanceReadOnly && gap.stage !== "ready" ? (
+                  <p className="font-body text-sm text-on-surface-variant">
+                    {connectGapReadOnlySummary(gap.stage)}
+                  </p>
+                ) : null}
+                <ConnectManagementPanel />
+              </Surface>
+            ) : null}
           </ConnectComponentsShell>
         </ConnectErrorBoundary>
       ) : showPreparingPanel ? (
@@ -275,6 +320,7 @@ export function ConnectWorkspace({
           preparingAccount={preparingAccount}
           ensureError={ensureError}
           pending={pending}
+          timedOut={preparingTimedOut}
           onRetry={runEnsureAccount}
         />
       ) : null}

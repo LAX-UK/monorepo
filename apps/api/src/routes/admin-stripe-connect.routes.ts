@@ -1,10 +1,10 @@
 import type { Hono } from "hono";
 import { z } from "zod";
 import { assertConnectUrlAllowed } from "../lib/stripe-connect-return-url.js";
+import { respondStripeConnectRouteError } from "../lib/stripe-connect-route-errors.js";
 import { zValidator } from "../lib/z-validator.js";
 import { requireLegalEntityBrowse } from "../middleware/require-capability.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
-import { StripeConnectNotConfiguredError } from "../services/interfaces/stripe-connect.js";
 
 const legalEntityIdParamSchema = z.object({
   id: z.string().uuid(),
@@ -32,12 +32,8 @@ export function attachAdminStripeConnectRoutes(
         const status = await stripeConnectService.syncAccountFromStripe(id);
         return c.json({ data: status });
       } catch (err) {
-        if (err instanceof StripeConnectNotConfiguredError) {
-          return c.json({ error: "stripe_not_configured" }, 503);
-        }
-        if (err instanceof Error && err.message === "legal_entity_not_found") {
-          return c.json({ error: "not_found" }, 404);
-        }
+        const mapped = respondStripeConnectRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -61,12 +57,8 @@ export function attachAdminStripeConnectRoutes(
         );
         return c.json({ data: link });
       } catch (err) {
-        if (err instanceof StripeConnectNotConfiguredError) {
-          return c.json({ error: "stripe_not_configured" }, 503);
-        }
-        if (err instanceof Error && err.message.startsWith("connect_url_")) {
-          return c.json({ error: err.message }, 400);
-        }
+        const mapped = respondStripeConnectRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
