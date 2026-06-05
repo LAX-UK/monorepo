@@ -54,5 +54,46 @@ export const submitOnsiteEventRsvpBodySchema = z
     }
   });
 
+export const ONSITE_EVENT_CHECK_IN_TOKEN_MAX = 128;
+
+export const onsiteEventPassTokenParamSchema = z.object({
+  slug: onsiteEventSlugParamSchema.shape.slug,
+  token: z
+    .string()
+    .trim()
+    .min(16)
+    .max(ONSITE_EVENT_CHECK_IN_TOKEN_MAX)
+    .regex(/^[A-Za-z0-9_-]+$/),
+});
+
+export const onsiteEventCheckInBodySchema = z
+  .object({
+    token: z.string().trim().min(1).max(512).optional(),
+    rsvpId: z.string().uuid().optional(),
+  })
+  .superRefine((body, ctx) => {
+    if (!body.token?.trim() && !body.rsvpId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide a pass token or RSVP id",
+        path: ["token"],
+      });
+    }
+  });
+
+export const onsiteEventCheckInSearchQuerySchema = z.object({
+  q: z.string().trim().min(2).max(120),
+});
+
+export const onsiteEventRsvpIdParamSchema = z.object({
+  slug: onsiteEventSlugParamSchema.shape.slug,
+  rsvpId: z.string().uuid(),
+});
+
+export const onsiteEventCheckInDryRunBodySchema = z.object({
+  enabled: z.boolean(),
+});
+
 export type OnsiteEventEmailBody = z.infer<typeof onsiteEventEmailBodySchema>;
 export type SubmitOnsiteEventRsvpBody = z.infer<typeof submitOnsiteEventRsvpBodySchema>;
+export type OnsiteEventCheckInBody = z.infer<typeof onsiteEventCheckInBodySchema>;

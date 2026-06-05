@@ -3,6 +3,7 @@ export type TransactionalMailPayload = {
   to: string;
   subject: string;
   text: string;
+  html?: string;
   meta?: Record<string, unknown>;
 };
 

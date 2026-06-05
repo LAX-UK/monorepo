@@ -37,8 +37,14 @@ resource "random_password" "email_unsubscribe_secret" {
   special = false
 }
 
+resource "random_password" "check_in_token_secret" {
+  length  = 48
+  special = false
+}
+
 locals {
   effective_better_auth_secret       = var.better_auth_secret != "" ? var.better_auth_secret : random_password.better_auth_secret.result
+  effective_check_in_token_secret    = var.check_in_token_secret != "" ? var.check_in_token_secret : random_password.check_in_token_secret.result
   effective_spaces_access_key_id     = var.spaces_access_key_id != "" ? var.spaces_access_key_id : "pending-media-spaces-access-key"
   effective_spaces_secret_key        = var.spaces_secret_access_key != "" ? var.spaces_secret_access_key : "pending-media-spaces-secret-key"
   effective_shopify_webhook_secret   = var.shopify_webhook_secret != "" ? var.shopify_webhook_secret : "pending-shopify-webhook-secret"
@@ -210,6 +216,8 @@ locals {
         { key = "CRON_INTERNAL_SECRET", value = var.cron_internal_secret, type = "SECRET", scope = "RUN_TIME" },
         { key = "KYC_THRESHOLD_AMOUNT", value = var.kyc_threshold_amount, type = "GENERAL", scope = "RUN_TIME" },
         { key = "KYC_THRESHOLD_CURRENCY", value = var.kyc_threshold_currency, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "CHECK_IN_TOKEN_SECRET", value = local.effective_check_in_token_secret, type = "SECRET", scope = "RUN_TIME" },
+        { key = "INVITE_EMAIL_FROM", value = var.invite_email_from, type = "GENERAL", scope = "RUN_TIME" },
         { key = "OPS_SUPPORT_EMAIL", value = var.ops_support_email, type = "GENERAL", scope = "RUN_TIME" },
         { key = "OPS_ONCALL_EMAIL", value = var.ops_oncall_email, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_CLIENT_ID", value = var.xero_client_id, type = "SECRET", scope = "RUN_TIME" },
