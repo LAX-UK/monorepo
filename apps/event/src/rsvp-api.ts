@@ -57,9 +57,7 @@ async function parseJson<T>(res: Response): Promise<T> {
 }
 
 export async function fetchEventConfig(): Promise<OnsiteEventPublicConfig> {
-  const res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/config`, {
-    headers: { Accept: "application/json" },
-  });
+  const res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/config`);
   if (!res.ok) {
     throw new Error(`config_failed_${res.status}`);
   }
@@ -67,11 +65,27 @@ export async function fetchEventConfig(): Promise<OnsiteEventPublicConfig> {
   return body.data;
 }
 
+const CONFIG_RETRY_DELAYS_MS = [0, 600, 1500];
+
+export async function fetchEventConfigWithRetry(): Promise<OnsiteEventPublicConfig> {
+  let lastError: unknown;
+  for (const delay of CONFIG_RETRY_DELAYS_MS) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    try {
+      return await fetchEventConfig();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 export async function lookupByEmail(email: string): Promise<OnsiteEventEmailLookup> {
   const res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/lookup`, {
     method: "POST",
     headers: {
-      Accept: "application/json",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ email }),
@@ -87,7 +101,6 @@ export async function submitRsvp(input: SubmitRsvpInput): Promise<SubmitRsvpResu
   const res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/rsvp`, {
     method: "POST",
     headers: {
-      Accept: "application/json",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(input),

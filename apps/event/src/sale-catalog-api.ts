@@ -85,9 +85,7 @@ function mapApiLot(lot: ApiLot, saleTitle: string): CatalogLot {
 }
 
 async function fetchSaleLots(saleId: string): Promise<ApiLot[]> {
-  const res = await fetch(`${API_BASE}/sales/${saleId}/lots?limit=48&offset=0&sort=lot`, {
-    headers: { Accept: "application/json" },
-  });
+  const res = await fetch(`${API_BASE}/sales/${saleId}/lots?limit=48&offset=0&sort=lot`);
   if (!res.ok) return [];
   const body = (await res.json()) as { data?: ApiSaleLotsPage };
   return body.data?.items ?? [];
@@ -101,7 +99,6 @@ export type OnsiteCatalog = {
 export async function fetchOnsiteCatalog(): Promise<OnsiteCatalog> {
   const res = await fetch(
     `${API_BASE}/sales?deliveryMode=onsite&statuses=scheduled,active&limit=20&offset=0`,
-    { headers: { Accept: "application/json" } },
   );
   if (!res.ok) {
     throw new Error(`catalog_failed_${res.status}`);
