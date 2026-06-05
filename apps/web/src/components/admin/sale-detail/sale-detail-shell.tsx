@@ -42,6 +42,7 @@ type Props = {
   bundle: AdminSaleListRow;
   registrationCount?: number | null;
   pendingRegistrationCount?: number | null;
+  pendingTelephoneBookingCount?: number | null;
   documentCount?: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
   canManageSales?: boolean;
@@ -56,6 +57,7 @@ export function SaleDetailShell({
   bundle,
   registrationCount = null,
   pendingRegistrationCount = null,
+  pendingTelephoneBookingCount = null,
   documentCount = null,
   activityEvents = [],
   canManageSales = false,
@@ -86,6 +88,10 @@ export function SaleDetailShell({
   const pendingRegs =
     liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
       ? pendingRegistrationCount
+      : 0;
+  const pendingTelephone =
+    isOnsite && pendingTelephoneBookingCount != null && pendingTelephoneBookingCount > 0
+      ? pendingTelephoneBookingCount
       : 0;
 
   const setupReadiness =
@@ -129,6 +135,21 @@ export function SaleDetailShell({
       href: saleDetailTabHref(saleId, "registrations"),
       ...(pendingRegs > 0 ? { badge: "pending" as const } : {}),
     },
+    ...(isOnsite
+      ? [
+          {
+            id: "operations",
+            label: "Operations",
+            href: saleDetailTabHref(saleId, "operations"),
+          },
+          {
+            id: "telephone-bookings",
+            label: "Telephone",
+            href: saleDetailTabHref(saleId, "telephone-bookings"),
+            ...(pendingTelephone > 0 ? { badge: "pending" as const } : {}),
+          },
+        ]
+      : []),
     {
       id: "activity",
       label: "Activity",

@@ -54,3 +54,4 @@ export * from "./api-error-message.js";
 export * from "./exports.js";
 export * from "./qr.js";
 export * from "./catalog-public-visibility.js";
+export * from "./telephone-booking.js";

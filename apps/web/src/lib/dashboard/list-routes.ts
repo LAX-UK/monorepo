@@ -2,6 +2,7 @@
 const COMPACT_BANNER_PREFIXES = [
   "/dashboard/watchlist",
   "/dashboard/bids",
+  "/dashboard/telephone-bids",
   "/dashboard/payments",
   "/dashboard/portfolio",
   "/dashboard/notifications",

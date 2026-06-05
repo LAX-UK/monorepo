@@ -8,7 +8,10 @@ import {
   loadAdminSaleRegistrationCount,
 } from "@/lib/admin/load-sale-detail";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
+import {
+  getAdminDomainEventsForAggregate,
+  getAdminTelephoneBookings,
+} from "@/lib/data/http/admin.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -28,12 +31,14 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     SALES_ACCESS,
   );
   const bundle = await loadAdminSaleDetail(id);
+  const isOnsite = bundle.sale.deliveryMode === "onsite";
   const [
     registrationCount,
     pendingRegistrationCount,
     documents,
     activityEvents,
     connectRequiredByLotId,
+    pendingTelephoneBookings,
   ] = await Promise.all([
     loadAdminSaleRegistrationCount(id, bundle.sale),
     loadAdminSalePendingRegistrationCount(id, bundle.sale),
@@ -42,6 +47,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       () => [],
     ),
     loadSaleConnectRequiredByLotId(id),
+    isOnsite ? getAdminTelephoneBookings(id, "requested").catch(() => []) : Promise.resolve([]),
   ]);
   const liveish = isSaleLiveish(bundle.sale);
   const pendingRegs =
@@ -62,6 +68,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       bundle={bundle}
       registrationCount={registrationCount}
       pendingRegistrationCount={pendingRegistrationCount}
+      pendingTelephoneBookingCount={pendingTelephoneBookings.length}
       documentCount={documents.length}
       activityEvents={activityEvents}
       canManageSales={canManageSales}

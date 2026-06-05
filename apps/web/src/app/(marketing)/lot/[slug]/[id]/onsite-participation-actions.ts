@@ -6,7 +6,6 @@ import { consoleParticipationRequestDispatcher } from "@/lib/onsite/participatio
 import {
   type OnsiteParticipationContext,
   absenteeBidFormSchema,
-  telephoneBidFormSchema,
 } from "@/lib/onsite/participation-request-input";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
 import { headers } from "next/headers";
@@ -49,32 +48,6 @@ export async function submitAbsenteeBidRequest(
 
     await consoleParticipationRequestDispatcher.dispatch({
       kind: "absentee",
-      ...ctx,
-      ...parsed.data,
-    });
-    return actionSuccess();
-  });
-}
-
-export async function submitTelephoneBidRequest(
-  ctx: OnsiteParticipationContext,
-  values: unknown,
-): Promise<ActionResult<void>> {
-  return instrumentServerAction("submitTelephoneBidRequest", async () => {
-    const parsed = telephoneBidFormSchema.safeParse(values);
-    if (!parsed.success) {
-      return actionFailure("Please check the form and try again.");
-    }
-    const honeypot = rejectHoneypot(parsed.data.website);
-    if (honeypot) return honeypot;
-
-    const key = await rateLimitKey();
-    if (!rateLimiter.consume(key)) {
-      return actionFailure("Too many submissions. Please wait a minute and try again.");
-    }
-
-    await consoleParticipationRequestDispatcher.dispatch({
-      kind: "telephone",
       ...ctx,
       ...parsed.data,
     });
