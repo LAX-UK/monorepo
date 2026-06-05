@@ -68,6 +68,7 @@ services:
       ENGLISH_ONLY_AUCTIONS: ${ENGLISH_ONLY_AUCTIONS:-true}
       OPS_SUPPORT_EMAIL: ${OPS_SUPPORT_EMAIL:?set OPS_SUPPORT_EMAIL in .env}
       OPS_ONCALL_EMAIL: ${OPS_ONCALL_EMAIL:?set OPS_ONCALL_EMAIL in .env}
+      WEB_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,6 +137,17 @@ services:
       api:
         condition: service_healthy
 
+  event:
+    build:
+      context: .
+      dockerfile: apps/event/Dockerfile
+      args:
+        VITE_API_BASE: ${API_PUBLIC_URL}
+        VITE_WEB_ORIGIN: ${WEB_ORIGIN}
+        VITE_EVENT_ORIGIN: ${EVENT_ORIGIN:-https://event.lax.bid}
+        VITE_CDN_BASE: ${VITE_CDN_BASE:-https://cdn.lax.bid}
+    restart: unless-stopped
+
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -147,6 +159,7 @@ services:
       - web
       - api
       - ws
+      - event
 
 volumes:
   postgres_data:

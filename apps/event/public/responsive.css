@@ -1,0 +1,230 @@
+/* Layout shell — centered 600px invitation card */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background-color: #efefef;
+}
+
+img,
+video,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Grey field + centered card */
+.event-page {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #efefef;
+}
+
+.event-card {
+  width: 100%;
+  max-width: 600px;
+  overflow: hidden;
+  background-color: #efefef;
+  flex: 0 1 600px;
+}
+
+table.email-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.email-container td {
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+.email-container td > div,
+.email-container td > section,
+.email-container td > ol {
+  max-width: 100%;
+}
+
+.site-logo {
+  width: 180px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.site-logo--footer {
+  width: 140px;
+}
+
+.content-pad {
+  padding-left: 32px !important;
+  padding-right: 32px !important;
+}
+
+.content-pad-block {
+  padding: 28px 32px 12px !important;
+}
+
+.section-title {
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.section-heading {
+  letter-spacing: 6px;
+  text-align: center;
+}
+
+.footer-tagline {
+  letter-spacing: 2px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.intro-copy.reveal {
+  text-align: left;
+}
+
+@media only screen and (max-width: 600px) {
+  .content-pad {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .content-pad-block {
+    padding: 20px 20px 10px !important;
+  }
+
+  .section-title {
+    font-size: 20px !important;
+    line-height: 26px !important;
+  }
+
+  .section-heading {
+    font-size: 15px !important;
+    line-height: 20px !important;
+    letter-spacing: 4px !important;
+  }
+
+  .footer-tagline {
+    font-size: 9px !important;
+    letter-spacing: 1.5px !important;
+  }
+
+  .intro-copy.reveal {
+    font-size: 14px !important;
+    line-height: 22px !important;
+  }
+
+  .hero-bid-strip {
+    padding: 24px 20px 20px;
+  }
+
+  .hero-bid-strip__headline {
+    font-size: 19px;
+    line-height: 27px;
+  }
+
+  .event-countdown {
+    padding: 18px 20px 6px;
+  }
+
+  .event-countdown__value {
+    font-size: 22px;
+  }
+
+  .event-meta-actions {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .event-meta-actions__btn {
+    min-height: 44px;
+    padding: 12px 14px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+  }
+
+  .highlight-lot {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .highlight-lot__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .highlight-lot__title {
+    font-size: 20px;
+    line-height: 26px;
+  }
+
+  .highlight-lot__bid-amount {
+    font-size: 30px;
+  }
+
+  .lot-carousel-section__head,
+  .catalogue-cta,
+  .lot-carousel__track,
+  .lot-carousel__dots {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .rsvp-band {
+    padding: 24px 20px 20px !important;
+  }
+
+  .rsvp-band__title {
+    font-size: 28px;
+    line-height: 32px;
+    letter-spacing: 3px;
+  }
+
+  .rsvp-panel {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .lot-carousel__nav {
+    display: none;
+  }
+}
+
+@media only screen and (max-width: 380px) {
+  .key-fact__value {
+    font-size: 18px;
+  }
+
+  .key-fact__label {
+    font-size: 8px;
+    letter-spacing: 1.5px;
+  }
+
+  .hero-bid-strip__headline {
+    font-size: 17px;
+    line-height: 25px;
+  }
+
+  .event-meta-actions__btn {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+}

@@ -5,7 +5,7 @@ name: Build images
 # Registry. App Platform then only PULLS these images instead of building from
 # source, which is the bulk of the ~30 min deploy time.
 #
-# Scope: api, auth, ws, worker, migrate, web. `web` bakes NEXT_PUBLIC_* at build
+# Scope: api, auth, ws, worker, migrate, web, event. `web` bakes NEXT_PUBLIC_* at build
 # time, so its build args come from infra/web-build/<env>.env (public values) plus
 # GitHub env vars/secrets (GTM, Turnstile site key, Sentry client DSN) — see
 # scripts/ci/web-build-args.sh and infra/web-build/README.md.
@@ -40,6 +40,7 @@ permissions:
 
 jobs:
   build-push:
+    if: ${{ matrix.prod_only != true || inputs.environment == 'prod' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     strategy:
@@ -58,6 +59,9 @@ jobs:
             dockerfile: docker/migrate.Dockerfile
           - component: web
             dockerfile: apps/web/Dockerfile
+          - component: event
+            dockerfile: apps/event/Dockerfile
+            prod_only: true
     env:
       # Account-level DOCR registry name (registry.digitalocean.com/<name>).
       # Set as a repository or environment variable. Terraform output:
@@ -96,6 +100,32 @@ jobs:
           chmod +x scripts/ci/web-build-args.sh
           ./scripts/ci/web-build-args.sh verify-origin
 
+      - name: Compose event build args
+        id: eventargs
+        if: matrix.component == 'event'
+        env:
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+        run: |
+          if [ "$ENVIRONMENT" = "prod" ]; then
+            api_base="https://api.lax.bid"
+            web_origin="https://lax.bid"
+            event_origin="https://event.lax.bid"
+            cdn_base="https://cdn.lax.bid"
+          else
+            api_base="https://test-api.lax.bid"
+            web_origin="https://test.lax.bid"
+            event_origin="https://test.lax.bid"
+            cdn_base="https://cdn.lax.bid"
+          fi
+          {
+            echo 'args<<__BUILD_ARGS_EOF__'
+            echo "VITE_API_BASE=${api_base}"
+            echo "VITE_WEB_ORIGIN=${web_origin}"
+            echo "VITE_EVENT_ORIGIN=${event_origin}"
+            echo "VITE_CDN_BASE=${cdn_base}"
+            echo '__BUILD_ARGS_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Compose web build args
         id: webargs
         if: matrix.component == 'web'
@@ -124,7 +154,7 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: false
-          build-args: ${{ steps.webargs.outputs.args }}
+          build-args: ${{ steps.webargs.outputs.args || steps.eventargs.outputs.args }}
           tags: |
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.ENVIRONMENT }}
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}
