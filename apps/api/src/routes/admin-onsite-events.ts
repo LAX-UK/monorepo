@@ -24,6 +24,15 @@ export function createAdminOnsiteEventRoutes(container: Container) {
     return c.json({ data: rows });
   });
 
+  r.get("/:slug", zValidator("param", onsiteEventSlugParamSchema), async (c) => {
+    const { slug } = c.req.valid("param");
+    const detail = await container.onsiteEventRsvpService.getAdminEventDetail(slug);
+    if (isOnsiteEventRsvpServiceError(detail)) {
+      return c.json({ error: detail.message, code: detail.code }, asHttpStatus(detail.status));
+    }
+    return c.json({ data: detail });
+  });
+
   r.get("/:slug/rsvps", zValidator("param", onsiteEventSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
     const rows = await container.onsiteEventRsvpService.listAdminRsvps(slug);

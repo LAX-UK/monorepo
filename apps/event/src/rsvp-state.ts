@@ -1,4 +1,9 @@
-import type { OnsiteEventEmailLookup, SegmentOption, SubmitRsvpResult } from "./rsvp-api.js";
+import type {
+  OnsiteEventEmailLookup,
+  OnsiteEventPublicConfig,
+  SegmentOption,
+  SubmitRsvpResult,
+} from "./rsvp-api.js";
 
 export type RsvpUiState =
   | { kind: "email_prompt" }
@@ -12,6 +17,13 @@ export type RsvpUiState =
       user: { name: string; email: string };
       segmentOptions: SegmentOption[];
       existing?: NonNullable<Extract<OnsiteEventEmailLookup, { status: "ready" }>["existingRsvp"]>;
+      draft?: {
+        attendanceSegment: string;
+        plusOne: number;
+        guestName: string;
+        notes: string;
+      };
+      submitError?: string;
     }
   | {
       kind: "submitting";
@@ -23,6 +35,7 @@ export type RsvpUiState =
       result: SubmitRsvpResult;
       user: { name: string; email: string };
       segmentOptions: SegmentOption[];
+      eventConfig: OnsiteEventPublicConfig;
     };
 
 export function lookupToState(lookup: OnsiteEventEmailLookup, email: string): RsvpUiState {

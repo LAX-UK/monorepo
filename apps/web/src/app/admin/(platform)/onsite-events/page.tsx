@@ -1,10 +1,14 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { getAdminOnsiteEvents } from "@/lib/data/http/onsite-event.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatDateTime } from "@/lib/ui/format";
 import { Badge } from "@auction/ui/components/badge";
+import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import { ScanLine } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -23,52 +27,77 @@ export default async function AdminOnsiteEventsPage() {
     loadError = e instanceof Error ? e.message : "Could not load onsite events.";
   }
 
+  const totalRsvps = events.reduce((sum, event) => sum + event.rsvpCount, 0);
+  const publishedCount = events.filter((event) => event.status === "published").length;
+
+  const empty =
+    !loadError && events.length === 0 ? (
+      <AdminEmptyState
+        title="No onsite events"
+        description="Events appear here once they are registered in the platform."
+      />
+    ) : null;
+
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="font-display text-2xl tracking-tight">Onsite events</h1>
-        <p className="font-body text-sm text-on-surface-variant">
-          RSVP operations for invitation-only onsite events.
-        </p>
-      </div>
-
-      {loadError ? <AdminListAlert>{loadError}</AdminListAlert> : null}
-
-      {events.length === 0 && !loadError ? (
-        <AdminEmptyState
-          title="No onsite events"
-          description="Events appear here once they are registered in the platform."
-        />
-      ) : (
-        <Surface className="divide-y divide-border-hairline">
-          {events.map((event) => (
-            <div key={event.slug} className="flex flex-wrap items-center justify-between gap-4 p-4">
-              <Link
-                href={`/admin/onsite-events/${encodeURIComponent(event.slug)}`}
-                className="min-w-0 flex-1 space-y-1 transition-colors hover:text-on-surface"
+    <AdminListShell
+      layout="hub"
+      title="Onsite events"
+      description="RSVP operations for invitation-only onsite events."
+      showCommandPaletteHint
+      mobileSummary={
+        !loadError ? (
+          <CatalogListMobileSummary
+            metrics={[
+              { id: "events", label: "Events", value: String(events.length) },
+              { id: "published", label: "Published", value: String(publishedCount) },
+              { id: "rsvps", label: "RSVPs", value: String(totalRsvps) },
+            ]}
+          />
+        ) : null
+      }
+      errorAlert={
+        loadError ? (
+          <AdminListAlert title="Could not load events">{loadError}</AdminListAlert>
+        ) : null
+      }
+      view={
+        !loadError && events.length > 0 ? (
+          <Surface className="divide-y divide-border-hairline">
+            {events.map((event) => (
+              <div
+                key={event.slug}
+                className="flex flex-wrap items-center justify-between gap-4 p-4"
               >
-                <p className="font-medium">{event.title}</p>
-                <p className="font-body text-xs text-on-surface-variant">{event.slug}</p>
-                {event.startsAt ? (
-                  <p className="font-body text-xs text-on-surface-variant">
-                    Starts {formatDateTime(event.startsAt)}
-                  </p>
-                ) : null}
-              </Link>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{event.status}</Badge>
-                <Badge variant="outline">{event.rsvpCount} RSVPs</Badge>
                 <Link
-                  href={`/admin/onsite-events/${encodeURIComponent(event.slug)}/check-in`}
-                  className="font-body text-xs text-on-surface-variant underline-offset-4 hover:underline"
+                  href={`/admin/onsite-events/${encodeURIComponent(event.slug)}`}
+                  className="min-w-0 flex-1 space-y-1 transition-colors hover:text-on-surface"
                 >
-                  Check-in
+                  <p className="font-medium">{event.title}</p>
+                  <p className="font-body text-xs text-on-surface-variant">{event.slug}</p>
+                  {event.startsAt ? (
+                    <p className="font-body text-xs text-on-surface-variant">
+                      Starts {formatDateTime(event.startsAt)}
+                    </p>
+                  ) : null}
                 </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">{event.status}</Badge>
+                  <Badge variant="outline">
+                    {event.rsvpCount} RSVP{event.rsvpCount === 1 ? "" : "s"}
+                  </Badge>
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <Link href={`/admin/onsite-events/${encodeURIComponent(event.slug)}/check-in`}>
+                      <ScanLine className="mr-2 size-4" />
+                      Check-in
+                    </Link>
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
-        </Surface>
-      )}
-    </div>
+            ))}
+          </Surface>
+        ) : null
+      }
+      empty={empty}
+    />
   );
 }

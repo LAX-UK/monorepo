@@ -32,6 +32,22 @@ export type OnsiteEventListItem = {
   rsvpCount: number;
 };
 
+export type OnsiteEventAdminDetail = {
+  slug: string;
+  title: string;
+  status: OnsiteEventStatus;
+  startsAt: string | null;
+  rsvpCloseAt: string | null;
+  segmentOptions: OnsiteEventSegmentOption[];
+  micrositeUrl: string | null;
+  venue: string | null;
+  dressCode: string | null;
+  arrivalNote: string | null;
+  checkInDryRun: boolean;
+  rsvpCount: number;
+  checkedInCount: number;
+};
+
 export type OnsiteEventPublicConfig = {
   slug: string;
   title: string;
@@ -39,6 +55,10 @@ export type OnsiteEventPublicConfig = {
   rsvpOpen: boolean;
   rsvpCloseAt: string | null;
   micrositeUrl: string | null;
+  startsAt: string | null;
+  venue: string | null;
+  dressCode: string | null;
+  arrivalNote: string | null;
 };
 
 export type OnsiteEventRsvp = {

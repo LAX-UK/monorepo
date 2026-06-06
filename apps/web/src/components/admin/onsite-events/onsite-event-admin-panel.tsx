@@ -2,16 +2,21 @@
 
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { OnsiteEventBreadcrumbs } from "@/components/admin/onsite-events/onsite-event-breadcrumbs";
+import { OnsiteEventRsvpMobileCards } from "@/components/admin/onsite-events/onsite-event-rsvp-mobile-cards";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 import { resendOnsiteEventPass } from "@/lib/data/http/onsite-event-check-in.client";
 import { formatDateTime } from "@/lib/ui/format";
 import type { OnsiteEventRsvpAdminRow, OnsiteEventSegmentOption } from "@auction/types";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { Surface } from "@auction/ui/components/surface";
 import { Download, ExternalLink, Mail, ScanLine } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+const RESEND_ALERT_MS = 8_000;
 
 type Props = {
   slug: string;
@@ -48,6 +53,9 @@ export function OnsiteEventAdminPanel({
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [filter, setFilter] = useState<ArrivalFilter>("all");
+  const [resendConfirm, setResendConfirm] = useState<{ rsvpId: string; guestName: string } | null>(
+    null,
+  );
 
   const arrivedCount = useMemo(
     () => rsvps.filter((row) => row.checkedInAt != null).length,
@@ -60,12 +68,13 @@ export function OnsiteEventAdminPanel({
     return rsvps;
   }, [filter, rsvps]);
 
-  async function resendPass(rsvpId: string, guestName: string) {
-    const confirmed = window.confirm(
-      `Resend entry pass email to ${guestName}? If no stored token exists, a new pass link will be issued and the previous link will stop working.`,
-    );
-    if (!confirmed) return;
+  useEffect(() => {
+    if (!resendMessage) return;
+    const timer = window.setTimeout(() => setResendMessage(null), RESEND_ALERT_MS);
+    return () => window.clearTimeout(timer);
+  }, [resendMessage]);
 
+  async function resendPass(rsvpId: string) {
     setResendingId(rsvpId);
     setResendMessage(null);
     setResendSuccess(false);
@@ -114,9 +123,12 @@ export function OnsiteEventAdminPanel({
 
   return (
     <div className="space-y-8">
+      <OnsiteEventBreadcrumbs slug={slug} eventTitle={title} current="rsvps" />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="font-display text-2xl tracking-tight">{title}</h1>
+          <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
+            {title}
+          </h1>
           <p className="font-body text-sm text-on-surface-variant">
             RSVPs for this onsite event · {arrivedCount} / {rsvps.length} arrived
           </p>
@@ -156,7 +168,18 @@ export function OnsiteEventAdminPanel({
           title={resendSuccess ? "Pass sent" : "Something went wrong"}
           variant={resendSuccess ? "default" : "destructive"}
         >
-          {resendMessage}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <span>{resendMessage}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 shrink-0 px-2"
+              onClick={() => setResendMessage(null)}
+            >
+              Dismiss
+            </Button>
+          </div>
         </AdminListAlert>
       ) : null}
 
@@ -170,6 +193,7 @@ export function OnsiteEventAdminPanel({
                 type="button"
                 size="sm"
                 variant={filter === value ? "default" : "outline"}
+                aria-pressed={filter === value}
                 onClick={() => setFilter(value)}
               >
                 {value === "all" ? "All" : value === "pending" ? "Not arrived" : "Arrived"}
@@ -191,66 +215,100 @@ export function OnsiteEventAdminPanel({
             }
           />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border-hairline">
-            <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="border-b border-border-hairline bg-surface-container-low/50">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Guest</th>
-                  <th className="px-3 py-2 font-medium">Segment</th>
-                  <th className="px-3 py-2 font-medium">Plus-one</th>
-                  <th className="px-3 py-2 font-medium">Check-in</th>
-                  <th className="px-3 py-2 font-medium">Notes</th>
-                  <th className="px-3 py-2 font-medium">Pass</th>
-                  <th className="px-3 py-2 font-medium">Updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRsvps.map((row) => (
-                  <tr key={row.id} className="border-b border-border-hairline last:border-0">
-                    <td className="px-3 py-3 align-top">
-                      <p className="font-medium">{row.name}</p>
-                      <p className="font-body text-xs text-on-surface-variant">{row.email}</p>
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      {segmentLabel(segmentOptions, row.attendanceSegment)}
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      {row.plusOne > 0 ? row.plusOneGuestName?.trim() || "Yes (+1)" : "Just guest"}
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      {row.checkedInAt ? (
-                        <Badge variant="secondary">
-                          Checked in {formatDateTime(row.checkedInAt)}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Not arrived</Badge>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 align-top max-w-xs whitespace-pre-wrap text-on-surface-variant">
-                      {row.notes?.trim() || "—"}
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={resendingId === row.id}
-                        onClick={() => void resendPass(row.id, row.name)}
-                      >
-                        <Mail className="mr-2 size-3.5" />
-                        {resendingId === row.id ? "Sending…" : "Resend pass"}
-                      </Button>
-                    </td>
-                    <td className="px-3 py-3 align-top text-on-surface-variant whitespace-nowrap">
-                      {formatDateTime(row.updatedAt)}
-                    </td>
+          <>
+            <OnsiteEventRsvpMobileCards
+              rows={filteredRsvps}
+              segmentOptions={segmentOptions}
+              resendingId={resendingId}
+              onResend={(rsvpId, guestName) => setResendConfirm({ rsvpId, guestName })}
+            />
+            <div className="hidden overflow-x-auto rounded-lg border border-border-hairline lg:block">
+              <table className="w-full min-w-[820px] text-left text-sm">
+                <thead className="border-b border-border-hairline bg-surface-container-low/50">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Guest</th>
+                    <th className="px-3 py-2 font-medium">Segment</th>
+                    <th className="px-3 py-2 font-medium">Plus-one</th>
+                    <th className="px-3 py-2 font-medium">Check-in</th>
+                    <th className="px-3 py-2 font-medium">Notes</th>
+                    <th className="px-3 py-2 font-medium">Pass</th>
+                    <th className="px-3 py-2 font-medium">Updated</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredRsvps.map((row) => (
+                    <tr key={row.id} className="border-b border-border-hairline last:border-0">
+                      <td className="px-3 py-3 align-top">
+                        <p className="font-medium">{row.name}</p>
+                        <p className="font-body text-xs text-on-surface-variant">{row.email}</p>
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        {segmentLabel(segmentOptions, row.attendanceSegment)}
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        {row.plusOne > 0
+                          ? row.plusOneGuestName?.trim() || "Yes (+1)"
+                          : "Just guest"}
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        {row.checkedInAt ? (
+                          <Badge variant="secondary">
+                            Checked in {formatDateTime(row.checkedInAt)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Not arrived</Badge>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 align-top max-w-xs whitespace-pre-wrap text-on-surface-variant">
+                        {row.notes?.trim() || "—"}
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={resendingId === row.id}
+                          onClick={() => setResendConfirm({ rsvpId: row.id, guestName: row.name })}
+                        >
+                          <Mail className="mr-2 size-3.5" />
+                          {resendingId === row.id ? "Sending…" : "Resend pass"}
+                        </Button>
+                      </td>
+                      <td className="px-3 py-3 align-top text-on-surface-variant whitespace-nowrap">
+                        {formatDateTime(row.updatedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Surface>
+
+      <ConfirmDialog
+        open={resendConfirm != null}
+        onOpenChange={(open) => {
+          if (!open) setResendConfirm(null);
+        }}
+        title="Resend entry pass?"
+        body={
+          resendConfirm ? (
+            <p>
+              Send a new pass email to <strong>{resendConfirm.guestName}</strong>? If no stored
+              token exists, a new pass link will be issued and the previous link will stop working.
+            </p>
+          ) : null
+        }
+        confirmLabel="Resend pass"
+        tone="info"
+        loading={resendingId != null}
+        onConfirm={() => {
+          if (!resendConfirm) return;
+          const { rsvpId } = resendConfirm;
+          void resendPass(rsvpId).finally(() => setResendConfirm(null));
+        }}
+      />
     </div>
   );
 }

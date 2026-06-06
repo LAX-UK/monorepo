@@ -1,5 +1,6 @@
 import type {
   OnsiteEvent,
+  OnsiteEventAdminDetail,
   OnsiteEventEmailLookup,
   OnsiteEventExistingRsvp,
   OnsiteEventListItem,
@@ -9,6 +10,7 @@ import type {
 } from "@auction/types";
 import type { SubmitOnsiteEventRsvpBody } from "@auction/validators";
 import { decryptCheckInToken, encryptCheckInToken } from "../lib/check-in-token-ciphertext.js";
+import { type AppLogger, createBaseLogger } from "../lib/logger.js";
 import { buildPassUrl, issueCheckInToken } from "../lib/onsite-event-check-in-token.js";
 import { onsiteEventRsvpsToCsv } from "../lib/onsite-event-rsvp-csv.js";
 import type { IOnsiteEventClientReader } from "../repositories/interfaces/onsite-event-client.reader.js";
@@ -21,13 +23,22 @@ import type {
 } from "./interfaces/onsite-event-rsvp-service.js";
 
 export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
+  private readonly log: AppLogger;
+
   constructor(
     private readonly eventRepo: IOnsiteEventRepository,
     private readonly rsvpRepo: IOnsiteEventRsvpRepository,
     private readonly clientReader: IOnsiteEventClientReader,
     private readonly notifier: IOnsiteEventNotifier | null = null,
     private readonly tokenCipherSecret: string | null = null,
-  ) {}
+    logger?: AppLogger,
+  ) {
+    this.log =
+      logger ??
+      createBaseLogger({ LOG_LEVEL: "fatal", NODE_ENV: "test" }).child({
+        module: "onsite-event-rsvp",
+      });
+  }
 
   private notFound(): OnsiteEventRsvpServiceError {
     return { message: "Event not found", status: 404, code: "event_not_found" };
@@ -84,6 +95,10 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
       rsvpOpen: !this.isEventClosed(event),
       rsvpCloseAt: event.rsvpCloseAt?.toISOString() ?? null,
       micrositeUrl: event.micrositeUrl,
+      startsAt: event.startsAt?.toISOString() ?? null,
+      venue: event.venue,
+      dressCode: event.dressCode,
+      arrivalNote: event.arrivalNote,
     };
   }
 
@@ -195,12 +210,15 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
           ? this.notifier.notifyUpdated(event, saved, payload)
           : this.notifier.notifySubmitted(event, saved, payload)
       ).catch((error) => {
-        console.error("[onsite-event-mail] RSVP notification failed", {
-          eventSlug,
-          rsvpId: saved.id,
-          isUpdate: existing != null,
-          error,
-        });
+        this.log.error(
+          {
+            eventSlug,
+            rsvpId: saved.id,
+            isUpdate: existing != null,
+            err: error,
+          },
+          "onsite_event_rsvp_notification_failed",
+        );
       });
     }
 
@@ -209,6 +227,30 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
 
   async listAdminEvents(): Promise<OnsiteEventListItem[]> {
     return this.eventRepo.listAdminItems();
+  }
+
+  async getAdminEventDetail(
+    eventSlug: string,
+  ): Promise<OnsiteEventAdminDetail | OnsiteEventRsvpServiceError> {
+    const event = await this.requireAdminEvent(eventSlug);
+    if ("status" in event && typeof event.status === "number") return event;
+
+    const stats = await this.rsvpRepo.countCheckInStats(eventSlug);
+    return {
+      slug: event.slug,
+      title: event.title,
+      status: event.status,
+      startsAt: event.startsAt?.toISOString() ?? null,
+      rsvpCloseAt: event.rsvpCloseAt?.toISOString() ?? null,
+      segmentOptions: event.segmentOptions,
+      micrositeUrl: event.micrositeUrl,
+      venue: event.venue,
+      dressCode: event.dressCode,
+      arrivalNote: event.arrivalNote,
+      checkInDryRun: event.checkInDryRun,
+      rsvpCount: stats.total,
+      checkedInCount: stats.checkedIn,
+    };
   }
 
   async listAdminRsvps(
@@ -286,24 +328,6 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
       };
     }
 
-    const passUrl = buildPassUrl(event.micrositeUrl, plainToken);
-    try {
-      await this.notifier.notifyResent(event, rsvp, {
-        userEmail: rsvp.guestEmail,
-        userName: rsvp.guestName,
-        passUrl,
-      });
-    } catch {
-      return {
-        ok: false,
-        error: {
-          message: "Pass email could not be sent",
-          status: 502,
-          code: "pass_email_failed",
-        },
-      };
-    }
-
     let rotated = false;
     if (pendingRotation) {
       const updated = await this.rsvpRepo.updateCheckInToken(rsvpId, {
@@ -322,6 +346,35 @@ export class OnsiteEventRsvpService implements IOnsiteEventRsvpService {
         };
       }
       rotated = true;
+    }
+
+    const passUrl = buildPassUrl(event.micrositeUrl, plainToken);
+    try {
+      await this.notifier.notifyResent(event, rsvp, {
+        userEmail: rsvp.guestEmail,
+        userName: rsvp.guestName,
+        passUrl,
+      });
+    } catch (error) {
+      this.log.error(
+        {
+          eventSlug,
+          rsvpId,
+          rotated,
+          err: error,
+        },
+        rotated ? "onsite_event_pass_token_saved_email_failed" : "onsite_event_pass_email_failed",
+      );
+      return {
+        ok: false,
+        error: {
+          message: rotated
+            ? "A new pass link was saved but the email could not be sent. Try resending again — the guest's previous link no longer works."
+            : "Pass email could not be sent",
+          status: 502,
+          code: rotated ? "pass_token_saved_email_failed" : "pass_email_failed",
+        },
+      };
     }
 
     return { ok: true, rotated, emailSent: true };
