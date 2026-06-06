@@ -74,6 +74,42 @@ describe("createTransactionalMailer", () => {
     );
   });
 
+  it("sends inline CID attachments through Postmark", async () => {
+    const mailer = createTransactionalMailer({
+      ...baseEnv,
+      EMAIL_PROVIDER: "postmark",
+      POSTMARK_SERVER_TOKEN: "pm-token",
+    });
+
+    await mailer.send({
+      to: "guest@example.com",
+      subject: "Your pass",
+      text: "plain",
+      html: '<img src="cid:onsite-pass-qr" alt="QR">',
+      inlineAttachments: [
+        {
+          contentId: "onsite-pass-qr",
+          filename: "entry-pass-qr.png",
+          contentType: "image/png",
+          contentBase64: "abc123",
+        },
+      ],
+    });
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Attachments: [
+          {
+            Name: "entry-pass-qr.png",
+            Content: "abc123",
+            ContentType: "image/png",
+            ContentID: "cid:onsite-pass-qr",
+          },
+        ],
+      }),
+    );
+  });
+
   it("prefers Postmark over INVITE_EMAIL_WEBHOOK_URL when both are configured", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")

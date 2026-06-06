@@ -56,7 +56,16 @@ describe("OnsiteEventNotifier", () => {
 
     expect(send).toHaveBeenCalled();
     const guestMail = send.mock.calls[0]?.[0];
-    expect(guestMail?.html).toContain("base64png");
+    expect(guestMail?.html).toContain('src="cid:onsite-pass-qr"');
+    expect(guestMail?.html).not.toContain("data:image/png");
+    expect(guestMail?.inlineAttachments).toEqual([
+      {
+        contentId: "onsite-pass-qr",
+        filename: "entry-pass-qr.png",
+        contentType: "image/png",
+        contentBase64: "base64png",
+      },
+    ]);
     expect(guestMail?.text).toContain("Smart formal");
   });
 

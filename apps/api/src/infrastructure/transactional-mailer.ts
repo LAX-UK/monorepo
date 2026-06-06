@@ -82,6 +82,15 @@ class PostmarkTransactionalMailer implements ITransactionalMailer {
       }
     }
 
+    if (input.inlineAttachments && input.inlineAttachments.length > 0) {
+      message.Attachments = input.inlineAttachments.map((attachment) => ({
+        Name: attachment.filename,
+        Content: attachment.contentBase64,
+        ContentType: attachment.contentType,
+        ContentID: `cid:${attachment.contentId}`,
+      }));
+    }
+
     await this.client.sendEmail(message);
   }
 }
