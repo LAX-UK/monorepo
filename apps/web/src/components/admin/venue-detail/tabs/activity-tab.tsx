@@ -9,7 +9,10 @@ type Props = {
 
 export function VenueActivityTab({ venueId }: Props) {
   return (
-    <CatalogDetailTabPanel title="Activity" description="Audit timeline for changes to this venue.">
+    <CatalogDetailTabPanel
+      title="Activity"
+      description="Timeline of changes and key events for this venue."
+    >
       <ActivityContent venueId={venueId} />
     </CatalogDetailTabPanel>
   );
@@ -26,6 +29,7 @@ async function ActivityContent({ venueId }: { venueId: string }) {
     <CatalogDomainEventsTimeline
       events={events}
       exportFilters={{ aggregateType: "venue", aggregateId: venueId }}
+      showTechnicalDetails={false}
     />
   );
 }

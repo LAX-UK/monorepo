@@ -48,3 +48,12 @@ export const adminFinanceDisputeDomainEventsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(200),
   offset: z.coerce.number().int().min(0).max(50_000).default(0),
 });
+
+const disputeCaseStatusChip = z.enum(["open", "under_review", "closed"]);
+
+/** Finance-only: folded Stripe dispute cases derived from domain events. */
+export const adminFinanceDisputesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).max(50_000).default(0),
+  status: disputeCaseStatusChip.optional(),
+});

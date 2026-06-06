@@ -49,8 +49,8 @@ export default async function PayoutSettlementPage({
       <Surface variant="card">
         <div className="space-y-4 p-4">
           <p className="text-sm text-on-surface-variant">
-            When the worker and API share <code className="text-xs">CRON_INTERNAL_SECRET</code>, a
-            daily job also settles every eligible legal entity automatically.
+            Eligible sellers are settled automatically each night; use this form for on-demand
+            settlement.
           </p>
           <PayoutSettlementForm />
         </div>

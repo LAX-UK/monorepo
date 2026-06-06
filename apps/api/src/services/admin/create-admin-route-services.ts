@@ -27,6 +27,7 @@ import type { PaymentService } from "../payment.service.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
 import { AdminCatalogApplicationService } from "./admin-catalog-application.service.js";
 import { AdminDashboardQueryService } from "./admin-dashboard-query.service.js";
+import { AdminDisputeCaseQueryService } from "./admin-dispute-case-query.service.js";
 import { AdminDomainEventQueryService } from "./admin-domain-event-query.service.js";
 import { AdminEmailApplicationService } from "./admin-email-application.service.js";
 import { AdminImpersonationService } from "./admin-impersonation.service.js";
@@ -67,6 +68,7 @@ export type CreateAdminRouteServicesInput = {
 };
 
 export function createAdminRouteServices(input: CreateAdminRouteServicesInput): AdminRouteServices {
+  const domainEvents = new AdminDomainEventQueryService(input.db);
   return {
     requestLifecycle: new AdminRequestLifecycleApplicationService(
       input.impersonationAuditService,
@@ -85,7 +87,8 @@ export function createAdminRouteServices(input: CreateAdminRouteServicesInput): 
       input.impersonationSessionService,
       input.domainEventPublisher,
     ),
-    domainEvents: new AdminDomainEventQueryService(input.db),
+    domainEvents,
+    disputeCases: new AdminDisputeCaseQueryService(domainEvents, input.db),
     dashboard: new AdminDashboardQueryService(input.db),
     catalog: new AdminCatalogApplicationService(input.categoryService, input.artistProfileService),
     email: new AdminEmailApplicationService(input.emailObservabilityRepository),

@@ -12,12 +12,15 @@ type Props = {
   events: readonly AdminDomainEventRow[];
   emptyMessage?: string;
   exportFilters?: { aggregateType: string; aggregateId: string };
+  /** When false, hides raw event types and JSON payloads behind a disclosure. */
+  showTechnicalDetails?: boolean;
 };
 
 export function CatalogDomainEventsTimeline({
   events,
   emptyMessage = "No activity recorded yet.",
   exportFilters,
+  showTechnicalDetails = false,
 }: Props) {
   if (events.length === 0) {
     return (
@@ -58,15 +61,25 @@ export function CatalogDomainEventsTimeline({
                   {relativeFromIso(event.occurredAt.toISOString())}
                 </time>
               </div>
-              <p className="mt-1 font-mono text-[10px] text-on-surface-variant">
-                {event.eventType}
-              </p>
-              {event.actorUserId ? (
-                <p className="mt-1 font-body text-xs text-on-surface-variant">
-                  Actor: {event.actorUserId.slice(0, 8)}…
-                </p>
-              ) : null}
-              <EventPayload payload={event.payload} />
+              {showTechnicalDetails ? (
+                <>
+                  <p className="mt-1 font-mono text-[10px] text-on-surface-variant">
+                    {event.eventType}
+                  </p>
+                  {event.actorUserId ? (
+                    <p className="mt-1 font-body text-xs text-on-surface-variant">
+                      Actor: {event.actorUserId.slice(0, 8)}…
+                    </p>
+                  ) : null}
+                  <EventPayload payload={event.payload} label="payload" />
+                </>
+              ) : (
+                <EventTechnicalDetails
+                  eventType={event.eventType}
+                  actorUserId={event.actorUserId}
+                  payload={event.payload}
+                />
+              )}
             </div>
           </li>
         ))}
@@ -75,10 +88,18 @@ export function CatalogDomainEventsTimeline({
   );
 }
 
-function EventPayload({ payload }: { payload: Record<string, unknown> }) {
+function EventTechnicalDetails({
+  eventType,
+  actorUserId,
+  payload,
+}: {
+  eventType: string;
+  actorUserId: string | null;
+  payload: Record<string, unknown>;
+}) {
   const [open, setOpen] = useState(false);
-  const keys = Object.keys(payload);
-  if (keys.length === 0) return null;
+  const hasPayload = Object.keys(payload).length > 0;
+  if (!hasPayload && !actorUserId) return null;
 
   return (
     <div className="mt-2">
@@ -88,8 +109,48 @@ function EventPayload({ payload }: { payload: Record<string, unknown> }) {
         onClick={() => setOpen((v) => !v)}
         className="h-auto min-h-0 p-0 font-label text-[10px] uppercase tracking-wide shadow-none"
       >
-        {open ? "Hide payload" : "Show payload"}
+        {open ? "Hide technical details" : "Technical details"}
       </Button>
+      {open ? (
+        <div className="mt-2 space-y-1">
+          <p className="font-mono text-[10px] text-on-surface-variant">{eventType}</p>
+          {actorUserId ? (
+            <p className="font-body text-xs text-on-surface-variant">
+              Actor: {actorUserId.slice(0, 8)}…
+            </p>
+          ) : null}
+          {hasPayload ? <EventPayload payload={payload} label="payload" defaultOpen /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EventPayload({
+  payload,
+  label = "payload",
+  defaultOpen = false,
+}: {
+  payload: Record<string, unknown>;
+  label?: string;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const keys = Object.keys(payload);
+  if (keys.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      {!defaultOpen ? (
+        <Button
+          type="button"
+          variant="link"
+          onClick={() => setOpen((v) => !v)}
+          className="h-auto min-h-0 p-0 font-label text-[10px] uppercase tracking-wide shadow-none"
+        >
+          {open ? `Hide ${label}` : `Show ${label}`}
+        </Button>
+      ) : null}
       {open ? (
         <pre
           className={cn(
