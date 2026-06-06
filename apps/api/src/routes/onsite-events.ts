@@ -35,7 +35,6 @@ function mapRsvpResponse(
   return {
     id: rsvp.id,
     eventSlug: rsvp.eventSlug,
-    userId: rsvp.userId,
     attendanceSegment: rsvp.attendanceSegment,
     plusOne: rsvp.plusOne,
     plusOneGuestName: rsvp.plusOneGuestName,

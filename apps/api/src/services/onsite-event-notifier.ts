@@ -1,4 +1,5 @@
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
+import { type AppLogger, createBaseLogger } from "../lib/logger.js";
 import {
   ONSITE_PASS_QR_CONTENT_ID,
   buildOnsiteEventPassEmailHtml,
@@ -11,11 +12,20 @@ import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
 import type { PassQrRenderService } from "./pass-qr-render.service.js";
 
 export class OnsiteEventNotifier implements IOnsiteEventNotifier {
+  private readonly log: AppLogger;
+
   constructor(
     private readonly mailer: ITransactionalMailer,
     private readonly qrRender: PassQrRenderService,
     private readonly fallbackOpsEmail: string,
-  ) {}
+    logger?: AppLogger,
+  ) {
+    this.log =
+      logger ??
+      createBaseLogger({ LOG_LEVEL: "fatal", NODE_ENV: "test" }).child({
+        module: "onsite-event-notifier",
+      });
+  }
 
   async notifySubmitted(
     event: OnsiteEvent,
@@ -132,12 +142,15 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
     ]);
 
     if (guestResult.status === "rejected") {
-      console.error("[onsite-event-mail] guest email failed", {
-        kind,
-        rsvpId: rsvp.id,
-        eventSlug: rsvp.eventSlug,
-        error: guestResult.reason,
-      });
+      this.log.error(
+        {
+          kind,
+          rsvpId: rsvp.id,
+          eventSlug: rsvp.eventSlug,
+          err: guestResult.reason,
+        },
+        "onsite_event_guest_email_failed",
+      );
       if (requireGuestDelivery) {
         throw guestResult.reason instanceof Error
           ? guestResult.reason
@@ -146,12 +159,15 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
     }
 
     if (opsResult.status === "rejected") {
-      console.error("[onsite-event-mail] ops email failed", {
-        kind,
-        rsvpId: rsvp.id,
-        eventSlug: rsvp.eventSlug,
-        error: opsResult.reason,
-      });
+      this.log.warn(
+        {
+          kind,
+          rsvpId: rsvp.id,
+          eventSlug: rsvp.eventSlug,
+          err: opsResult.reason,
+        },
+        "onsite_event_ops_email_failed",
+      );
     }
   }
 }

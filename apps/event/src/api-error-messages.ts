@@ -1,4 +1,10 @@
 export function lookupErrorMessage(code: string): string {
+  if (code === "timeout") {
+    return "This is taking longer than expected. Please try again.";
+  }
+  if (code === "offline") {
+    return "We couldn't reach the server. Check your connection and try again.";
+  }
   if (code === "rate_limited" || code.startsWith("lookup_failed_429")) {
     return "Too many attempts. Please wait a minute and try again.";
   }
@@ -9,6 +15,12 @@ export function lookupErrorMessage(code: string): string {
 }
 
 export function submitErrorMessage(code: string): string {
+  if (code === "timeout") {
+    return "This is taking longer than expected. Please try again.";
+  }
+  if (code === "offline") {
+    return "We couldn't reach the server. Check your connection and try again.";
+  }
   if (code === "rate_limited" || code.startsWith("submit_failed_429")) {
     return "Too many attempts. Please wait a minute and try again.";
   }

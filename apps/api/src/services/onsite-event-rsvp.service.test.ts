@@ -127,6 +127,34 @@ describe("OnsiteEventRsvpService", () => {
     });
   });
 
+  it("getAdminEventDetail returns admin metadata and arrival counts", async () => {
+    const service = new OnsiteEventRsvpService(
+      mockEventRepo(),
+      mockRepo({
+        countCheckInStats: vi.fn().mockResolvedValue({ total: 12, checkedIn: 4 }),
+      }),
+      mockClientReader(),
+    );
+
+    const result = await service.getAdminEventDetail("lax001");
+
+    expect(result).toEqual({
+      slug: "lax001",
+      title: "LAX 001: The First Hammer",
+      status: "published",
+      startsAt: "2026-06-18T18:00:00.000Z",
+      rsvpCloseAt: "2099-01-01T00:00:00.000Z",
+      segmentOptions: lax001Event().segmentOptions,
+      micrositeUrl: "https://event.lax.bid",
+      venue: null,
+      dressCode: null,
+      arrivalNote: null,
+      checkInDryRun: false,
+      rsvpCount: 12,
+      checkedInCount: 4,
+    });
+  });
+
   it("upserts RSVP with guest name column", async () => {
     const upsert = vi.fn().mockResolvedValue({
       ...baseRsvp(),
@@ -203,14 +231,14 @@ describe("OnsiteEventRsvpService", () => {
     );
   });
 
-  it("resendPass sends email before persisting a new token", async () => {
-    let emailDelivered = false;
+  it("resendPass persists a new token before sending email", async () => {
+    let tokenPersisted = false;
     const updateCheckInToken = vi.fn().mockImplementation(async () => {
-      expect(emailDelivered).toBe(true);
+      tokenPersisted = true;
       return baseRsvp();
     });
     const notifyResent = vi.fn().mockImplementation(async () => {
-      emailDelivered = true;
+      expect(tokenPersisted).toBe(true);
     });
     const notifier: IOnsiteEventNotifier = {
       notifyResent,
@@ -240,8 +268,8 @@ describe("OnsiteEventRsvpService", () => {
     expect(updateCheckInToken).toHaveBeenCalledTimes(1);
   });
 
-  it("resendPass does not rotate token when email delivery fails", async () => {
-    const updateCheckInToken = vi.fn();
+  it("resendPass persists token before email and returns error when email fails", async () => {
+    const updateCheckInToken = vi.fn().mockResolvedValue(baseRsvp());
     const notifier: IOnsiteEventNotifier = {
       notifyResent: vi.fn().mockRejectedValue(new Error("smtp down")),
       notifySubmitted: vi.fn(),
@@ -267,9 +295,42 @@ describe("OnsiteEventRsvpService", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("pass_email_failed");
+      expect(result.error.code).toBe("pass_token_saved_email_failed");
+      expect(result.error.message).toContain("previous link no longer works");
     }
-    expect(updateCheckInToken).not.toHaveBeenCalled();
+    expect(updateCheckInToken).toHaveBeenCalledTimes(1);
+  });
+
+  it("resendPass does not send email when token persistence fails", async () => {
+    const notifyResent = vi.fn();
+    const notifier: IOnsiteEventNotifier = {
+      notifyResent,
+      notifySubmitted: vi.fn(),
+      notifyUpdated: vi.fn(),
+    };
+    const service = new OnsiteEventRsvpService(
+      mockEventRepo(),
+      mockRepo({
+        findByIdWithGuest: vi.fn().mockResolvedValue({
+          ...baseRsvp(),
+          guestEmail: "guest@example.com",
+          guestName: "Guest User",
+          checkInTokenCiphertext: null,
+        }),
+        updateCheckInToken: vi.fn().mockResolvedValue(null),
+      }),
+      mockClientReader(),
+      notifier,
+      TEST_CIPHER_SECRET,
+    );
+
+    const result = await service.resendPass("lax001", "rsvp-1");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("token_update_failed");
+    }
+    expect(notifyResent).not.toHaveBeenCalled();
   });
 
   it("resendPass fails when notifier is not configured", async () => {
@@ -296,6 +357,57 @@ describe("OnsiteEventRsvpService", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe("pass_email_not_configured");
+    }
+  });
+
+  it("lookupByEmail returns event_closed after rsvp deadline", async () => {
+    const service = new OnsiteEventRsvpService(
+      mockEventRepo({
+        findBySlug: vi.fn().mockResolvedValue({
+          ...lax001Event(),
+          rsvpCloseAt: new Date("2020-01-01T00:00:00.000Z"),
+        }),
+      }),
+      mockRepo(),
+      mockClientReader(),
+    );
+    const result = await service.lookupByEmail("lax001", "guest@example.com");
+    expect(result).toEqual({ status: "event_closed" });
+  });
+
+  it("lookupByEmail returns suspended for suspended client", async () => {
+    const service = new OnsiteEventRsvpService(
+      mockEventRepo(),
+      mockRepo(),
+      mockClientReader({
+        findByEmail: vi.fn().mockResolvedValue({
+          id: "user-1",
+          email: "guest@example.com",
+          name: "Guest User",
+          suspended: true,
+        }),
+      }),
+    );
+    const result = await service.lookupByEmail("lax001", "guest@example.com");
+    expect(result).toEqual({ status: "suspended" });
+  });
+
+  it("submitRsvp rejects invalid attendance segment", async () => {
+    const service = new OnsiteEventRsvpService(
+      mockEventRepo(),
+      mockRepo(),
+      mockClientReader(),
+      null,
+      TEST_CIPHER_SECRET,
+    );
+    const result = await service.submitRsvp("lax001", {
+      email: "guest@example.com",
+      attendanceSegment: "invalid_segment",
+      plusOne: 0,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("invalid_segment");
     }
   });
 

@@ -52,7 +52,6 @@ describe("onsite event routes", () => {
       data: {
         id: "rsvp-1",
         eventSlug: "lax001",
-        userId: "u1",
         attendanceSegment: "full_evening",
         plusOne: 0,
         plusOneGuestName: null,
@@ -62,6 +61,7 @@ describe("onsite event routes", () => {
       },
     }),
     listAdminEvents: vi.fn(),
+    getAdminEventDetail: vi.fn(),
     listAdminRsvps: vi.fn(),
     exportAdminCsv: vi.fn(),
     resendPass: vi.fn(),
