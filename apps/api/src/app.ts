@@ -23,7 +23,7 @@ import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js"
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
-import { requirePlatformAdmin } from "./middleware/require-capability.js";
+import { requirePlatformShell } from "./middleware/require-capability.js";
 import { requireSuperAdminStaffRole } from "./middleware/require-staff-role.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
@@ -168,7 +168,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     }
   });
 
-  app.get("/metrics", requireAuth, requirePlatformAdmin, async (c) => {
+  app.get("/metrics", requireAuth, requirePlatformShell, async (c) => {
     const [activeRow] = await container.db
       .select({ n: sql<number>`count(*)::int` })
       .from(lot)
@@ -233,7 +233,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   assertBullBoardProductionSafety(env);
   mountBullBoard(app, connectionOptionsFromRedisUrl(env.REDIS_URL), env, {
     requireAuth,
-    requirePlatformAdmin,
+    requirePlatformShell,
     requireSuperAdminStaffRole,
     auditAccess: createAuditAccessMiddleware(appLogger),
   });

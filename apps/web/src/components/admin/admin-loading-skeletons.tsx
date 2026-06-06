@@ -15,8 +15,6 @@ type ListSkeletonProps = {
   tableRows?: number;
   tableColumns?: number;
   showFilterBar?: boolean;
-  /** @deprecated Use showFilterBar */
-  showToolbar?: boolean;
   showReadinessBand?: boolean;
   showTabBar?: boolean;
   showMobileCards?: boolean;
@@ -65,13 +63,12 @@ export function AdminListPageSkeleton({
   kpiTiles = 4,
   tableRows = 10,
   tableColumns = 6,
-  showFilterBar,
-  showToolbar = true,
+  showFilterBar = true,
   showReadinessBand = false,
   showTabBar = false,
   showMobileCards = false,
 }: ListSkeletonProps) {
-  const showFilters = showFilterBar ?? showToolbar;
+  const showFilters = showFilterBar;
 
   return (
     <AdminListShell

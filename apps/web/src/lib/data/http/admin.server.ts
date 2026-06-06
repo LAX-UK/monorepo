@@ -1178,13 +1178,7 @@ function parseLegalEntityBrowseRow(row: {
   };
 }
 
-/** Supports `{ rows, total }` and legacy bare-array browse responses. */
 function parseAdminLegalEntityBrowsePayload(data: unknown): AdminLegalEntityListResult {
-  if (Array.isArray(data)) {
-    const rows = data.map((row) => parseLegalEntityBrowseRow(row));
-    return { rows, total: rows.length };
-  }
-
   if (data && typeof data === "object" && "rows" in data) {
     const payload = data as { rows?: unknown; total?: unknown };
     const rawRows = Array.isArray(payload.rows) ? payload.rows : [];

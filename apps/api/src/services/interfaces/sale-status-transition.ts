@@ -21,17 +21,6 @@ export interface ISaleStatusTransitionService {
     actorUserId?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>>;
 
-  /** Cancel a single lot within a draft or scheduled sale. Useful when an admin
-   * pulls a single lot pre-publication or before a scheduled sale opens.
-   */
-  cancelLot(
-    userRole: string,
-    saleId: string,
-    lotId: string,
-    reason?: string,
-    userStaffRole?: string | null,
-  ): Promise<Result<Lot, LotError | AuthzError>>;
-
   /** Force a lot status change (admin override). Validates that the requested
    * transition is one of the allowed administrative paths so admins can't
    * accidentally regress a lot back into bidding.

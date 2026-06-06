@@ -10,7 +10,6 @@ export {
   toCalendarDate,
   toDateFormString,
   toDatetimeFormString,
-  toDatetimeLocalValue,
   toTimeFormString,
   tzDateFromParts,
   zonedInstantToDatetimeFormString,

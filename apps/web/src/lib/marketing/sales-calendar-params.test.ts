@@ -112,10 +112,6 @@ describe("hasExplicitCalendarTab", () => {
     expect(hasExplicitCalendarTab({ tab: "newlots" })).toBe(true);
   });
 
-  it("returns true for legacy filter param", () => {
-    expect(hasExplicitCalendarTab({ filter: "scheduled" })).toBe(true);
-  });
-
   it("returns false when tab is omitted", () => {
     expect(hasExplicitCalendarTab({})).toBe(false);
     expect(hasExplicitCalendarTab({ categoryId: "cat-1" })).toBe(false);
@@ -133,9 +129,7 @@ describe("parseCalendarPrimaryTab", () => {
     expect(parseCalendarPrimaryTab({ tab: "PRIVATESALES" })).toBe("privateSales");
   });
 
-  it("maps legacy filter values and defaults to upcoming", () => {
-    expect(parseCalendarPrimaryTab({ filter: "ended" })).toBe("results");
-    expect(parseCalendarPrimaryTab({ filter: "scheduled" })).toBe("upcoming");
+  it("defaults to upcoming when tab is omitted", () => {
     expect(parseCalendarPrimaryTab({})).toBe("upcoming");
   });
 });

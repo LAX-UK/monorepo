@@ -80,9 +80,6 @@ export const requirePlatformShell = createMiddleware<{
   await next();
 });
 
-/** @deprecated Prefer `requirePlatformShell` — name reflects shell access, not `platform.admin.full`. */
-export const requirePlatformAdmin = requirePlatformShell;
-
 export const requireFinanceAccess = createRequireCapability("finance.read");
 export const requireUserInvite = createRequireCapability("user.invite");
 export const requireArtistRead = createRequireCapability("artist.read");

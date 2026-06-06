@@ -122,26 +122,3 @@ export function LotPricingStatusHeader({
     </div>
   );
 }
-
-/** @deprecated Use LotPricingStatusHeader — kept for imports during migration. */
-export function LotMobilePricingStrip(
-  props: Omit<Props, "reservePrice" | "lifecycle" | "countdownClock"> & {
-    reservePrice?: string | null;
-    lifecycle?: LotLifecycle;
-    countdownClock?: string;
-  },
-) {
-  const lifecycle = props.lifecycle ?? { kind: "live" as const, msLeft: null };
-  return (
-    <LotPricingStatusHeader
-      seed={props.seed}
-      currentPrice={props.currentPrice}
-      minNextBid={props.minNextBid}
-      {...(props.lotNumber !== undefined ? { lotNumber: props.lotNumber } : {})}
-      reservePrice={props.reservePrice ?? null}
-      lifecycle={lifecycle}
-      countdownClock={props.countdownClock ?? ""}
-      className="lg:hidden"
-    />
-  );
-}

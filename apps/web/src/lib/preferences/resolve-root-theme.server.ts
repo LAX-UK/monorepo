@@ -1,6 +1,5 @@
 import type { ThemePreference } from "@auction/validators";
 
-/** @deprecated Root layout now fetches session whenever an auth cookie exists. Kept for tests. */
 export function shouldFetchSessionForTheme(
   hasSessionCookie: boolean,
   existingTheme: ThemePreference | null,
