@@ -233,9 +233,14 @@ export function parseItemSubmission(raw: unknown): ItemSubmission {
   const o = raw as Record<string, unknown>;
   const status =
     typeof o.status === "string" && isItemSubmissionStatus(o.status) ? o.status : "draft";
+  const legalEntityId =
+    o.legalEntityId == null || o.legalEntityId === "" ? undefined : String(o.legalEntityId);
+  const sellerId = o.sellerId == null || o.sellerId === "" ? undefined : String(o.sellerId);
+
   return {
     id: String(o.id),
-    sellerId: String(o.sellerId ?? ""),
+    ...(legalEntityId ? { legalEntityId } : {}),
+    ...(sellerId ? { sellerId } : {}),
     title: String(o.title),
     description: o.description == null || o.description === "" ? null : String(o.description),
     medium: o.medium == null || o.medium === "" ? null : String(o.medium),
