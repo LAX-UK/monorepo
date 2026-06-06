@@ -1,4 +1,5 @@
 import { paletteApiBase } from "@/components/layout/palette/api-base";
+import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
 
 const LIMIT = 5;
@@ -33,7 +34,8 @@ export const invitationsPaletteSource: PaletteSource = {
         id: `inv-${inv.id}`,
         href: "/admin/invitations",
         label: inv.email,
-        hint: inv.status,
+        hint: paletteRecordHint("record", inv.status) ?? "Invitation",
+        kind: "record" as const,
       }));
   },
 };

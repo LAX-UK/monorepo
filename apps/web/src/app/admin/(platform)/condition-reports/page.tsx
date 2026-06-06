@@ -1,4 +1,5 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { CatalogConditionReportsFilterToolbar } from "@/components/admin/catalog/catalog-condition-reports-filter-toolbar";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
@@ -121,6 +122,18 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
       meta={<CatalogRelatedWork variant="conditionReports" navCounts={navCounts} />}
       breadcrumbs={<CatalogOpsBreadcrumb current="Condition reports" />}
       filterBar={filterBar}
+      kpiStrip={
+        !loadError ? (
+          <AdminListKpiStrip
+            ariaLabel="Condition reports summary"
+            tiles={[
+              { label: "Open (nav)", value: navCounts.conditionReportsPending },
+              { label: "Total matching", value: total },
+              { label: "On this page", value: rows.length },
+            ]}
+          />
+        ) : null
+      }
       errorAlert={errorAlert}
       mobileSummary={
         !loadError && rows.length > 0 ? (

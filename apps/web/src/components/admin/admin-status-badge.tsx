@@ -15,6 +15,23 @@ export type AdminStatusBadgeProps = {
   className?: string;
 };
 
+/** Tab/queue count chip (not a domain status). */
+export function AdminQueueCountBadge({
+  count,
+  size = "sm",
+  className,
+}: {
+  count: number;
+  size?: ComponentProps<typeof StatusBadge>["size"];
+  className?: string;
+}) {
+  return (
+    <StatusBadge variant="warning" size={size} className={className}>
+      {count}
+    </StatusBadge>
+  );
+}
+
 /** Single staff status chip — maps domain status → StatusBadge variant + label. */
 export function AdminStatusBadge({
   domain,

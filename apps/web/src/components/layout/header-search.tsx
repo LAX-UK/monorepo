@@ -16,14 +16,31 @@ import { useEffect, useState } from "react";
 
 type HeaderSearchBarFrom = "xl" | "2xl";
 
-const HEADER_SEARCH_BAR_FROM: Record<HeaderSearchBarFrom, { bar: string; icon: string }> = {
+type HeaderSearchIconFrom = "default" | "lg";
+
+const HEADER_SEARCH_BAR_FROM: Record<
+  HeaderSearchBarFrom,
+  Record<HeaderSearchIconFrom, { bar: string; icon: string }>
+> = {
   xl: {
-    bar: "hidden xl:flex xl:w-[231px] xl:flex-none",
-    icon: "flex xl:hidden",
+    default: {
+      bar: "hidden xl:flex xl:w-[231px] xl:flex-none",
+      icon: "flex xl:hidden",
+    },
+    lg: {
+      bar: "hidden xl:flex xl:w-[231px] xl:flex-none",
+      icon: "hidden lg:flex xl:hidden",
+    },
   },
   "2xl": {
-    bar: "hidden 2xl:flex 2xl:w-[231px] 2xl:flex-none",
-    icon: "flex 2xl:hidden",
+    default: {
+      bar: "hidden 2xl:flex 2xl:w-[231px] 2xl:flex-none",
+      icon: "flex 2xl:hidden",
+    },
+    lg: {
+      bar: "hidden 2xl:flex 2xl:w-[231px] 2xl:flex-none",
+      icon: "hidden lg:flex 2xl:hidden",
+    },
   },
 };
 
@@ -94,7 +111,7 @@ export function HeaderSearchPaletteTrigger({
       onClick={open}
       className={cn(
         "min-h-11 min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b px-0 py-0 text-left transition-[border-color,color,opacity] duration-300 ease-out hover:bg-transparent motion-reduce:transition-none",
-        HEADER_SEARCH_BAR_FROM[fullBarFrom].bar,
+        HEADER_SEARCH_BAR_FROM[fullBarFrom].default.bar,
         headerSearchTriggerClass(tone, className),
       )}
       aria-haspopup="dialog"
@@ -120,11 +137,13 @@ function HeaderSearchIconTrigger({
   className = "",
   tone = "on-light",
   fullBarFrom = "xl",
+  iconFrom = "default",
   onOpen,
 }: {
   className?: string;
   tone?: SiteHeaderTone;
   fullBarFrom?: HeaderSearchBarFrom;
+  iconFrom?: HeaderSearchIconFrom;
   onOpen?: () => void;
 }) {
   const open = () => {
@@ -136,7 +155,7 @@ function HeaderSearchIconTrigger({
     <ChromeIconButton
       label="Open search"
       className={cn(
-        HEADER_SEARCH_BAR_FROM[fullBarFrom].icon,
+        HEADER_SEARCH_BAR_FROM[fullBarFrom][iconFrom].icon,
         headerChromeIconClass(tone, className),
       )}
       onClick={open}
@@ -152,16 +171,21 @@ export function HeaderSearchTrigger({
   tone = "on-light",
   showIcon = false,
   fullBarFrom = "xl",
+  iconFrom = "default",
 }: {
   className?: string;
   tone?: SiteHeaderTone;
   /** Icon-only trigger below `fullBarFrom` (marketing header). */
   showIcon?: boolean;
   fullBarFrom?: HeaderSearchBarFrom;
+  /** `lg` shows the icon from lg until `fullBarFrom` (staff shell gap). */
+  iconFrom?: HeaderSearchIconFrom;
 }) {
   return (
     <>
-      {showIcon ? <HeaderSearchIconTrigger tone={tone} fullBarFrom={fullBarFrom} /> : null}
+      {showIcon ? (
+        <HeaderSearchIconTrigger tone={tone} fullBarFrom={fullBarFrom} iconFrom={iconFrom} />
+      ) : null}
       <HeaderSearchPaletteTrigger
         className={className}
         tone={tone}

@@ -5,11 +5,11 @@ type Props = {
   financeIssues: AdminFinanceIssuesPayload;
 };
 
-/** Finance + onboarding queues as `KpiRow` bands (replaces linked-number cards). */
+/** Finance + onboarding queues as full-width `KpiRow` bands (finance hub). */
 export function AdminFinanceKpiRows({ financeIssues }: Props) {
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      <div className="space-y-3">
+    <div className="space-y-8">
+      <section className="space-y-3">
         <h3 className="font-headline text-lg font-semibold text-on-surface">
           Stripe Connect &amp; payouts
         </h3>
@@ -18,7 +18,6 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
         </p>
         <KpiRow
           columns={4}
-          className="xl:grid-cols-3"
           aria-label="Stripe Connect and payouts"
           tiles={[
             {
@@ -47,13 +46,13 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
                   ? "warning"
                   : "default",
               href: "/admin/legal-entities?stripe=1",
-              trendSlot: <span className="text-xs font-semibold text-primary">Entities</span>,
+              trendSlot: <span className="text-xs font-semibold text-primary">View entities</span>,
             },
           ]}
         />
-      </div>
+      </section>
 
-      <div className="space-y-3">
+      <section className="space-y-3">
         <h3 className="font-headline text-lg font-semibold text-on-surface">
           Onboarding &amp; verification
         </h3>
@@ -61,48 +60,47 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
           KYB/KYC queues with drill-down lists.
         </p>
         <KpiRow
-          columns={6}
-          className="xl:grid-cols-3"
+          columns={5}
           aria-label="Onboarding and verification queues"
           tiles={[
             {
               id: "entities",
               label: "Entities pending",
               value: String(financeIssues.entitiesPendingReviewCount ?? 0),
-              href: "/admin/onboarding-issues#entities-pending-review",
-              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
+              href: "/admin/onboarding-issues?tab=entities",
+              trendSlot: <span className="text-xs font-semibold text-primary">Open queue</span>,
             },
             {
               id: "artists",
               label: "Artists pending",
               value: String(financeIssues.artistsPendingApprovalCount ?? 0),
-              href: "/admin/onboarding-issues#artists-pending",
-              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
+              href: "/admin/onboarding-issues?tab=artists",
+              trendSlot: <span className="text-xs font-semibold text-primary">Open queue</span>,
             },
             {
               id: "identity",
               label: "Stale KYC",
               value: String(financeIssues.staleKycSessionsCount ?? 0),
-              href: "/admin/onboarding-issues#stale-kyc",
-              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
+              href: "/admin/onboarding-issues?tab=kyc",
+              trendSlot: <span className="text-xs font-semibold text-primary">Open queue</span>,
             },
             {
               id: "documents",
               label: "Documents awaiting",
               value: String(financeIssues.documentsAwaitingReviewCount ?? 0),
-              href: "/admin/onboarding-issues#documents-awaiting",
-              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
+              href: "/admin/onboarding-issues?tab=documents",
+              trendSlot: <span className="text-xs font-semibold text-primary">Open queue</span>,
             },
             {
               id: "lead-orgs",
               label: "Stale lead orgs",
               value: String(financeIssues.staleLeadOrganisationsCount ?? 0),
-              href: "/admin/onboarding-issues#stale-lead-orgs",
-              trendSlot: <span className="text-xs font-semibold text-primary">Queue</span>,
+              href: "/admin/onboarding-issues?tab=orgs",
+              trendSlot: <span className="text-xs font-semibold text-primary">Open queue</span>,
             },
           ]}
         />
-      </div>
+      </section>
     </div>
   );
 }

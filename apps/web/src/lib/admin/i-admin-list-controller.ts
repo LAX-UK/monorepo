@@ -1,3 +1,5 @@
+import type { AdminDisputeCaseSummary } from "@auction/types";
+
 /**
  * List-page abstraction: URL query parsing + paged fetch behind one seam (DIP).
  */
@@ -18,6 +20,8 @@ export type AdminListResult<TRow> = {
   rowsForSummary?: TRow[] | undefined;
   /** When total is unknown, set from limit+1 fetch. */
   hasNextPage?: boolean | undefined;
+  /** Populated by finance dispute list (full-queue KPI strip). */
+  summary?: AdminDisputeCaseSummary | undefined;
 };
 
 export interface IAdminListController<

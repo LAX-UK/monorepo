@@ -46,6 +46,7 @@ function AppShellFrame({ user, config, children }: Props) {
   const hideBottomTabBar = config.hideBottomTabBar || hideBottomTabBarOverride;
   const pendingSubmissionCount = config.pendingSubmissionCount ?? 0;
   const pendingArtistCount = config.pendingArtistCount ?? 0;
+  const navCounts = config.navCounts;
   const clientWorkspaceMode = config.clientWorkspaceMode ?? "buying";
   const hideEmailStatusBanner = config.hideEmailStatusBanner ?? false;
   const headerLeftSlot = config.header.leftSlot;
@@ -118,7 +119,12 @@ function AppShellFrame({ user, config, children }: Props) {
         sessionUser={user}
         {...(shellRole === "client"
           ? { clientWorkspaceMode }
-          : { pendingSubmissionCount, pendingArtistCount })}
+          : {
+              shellRole,
+              pendingSubmissionCount,
+              pendingArtistCount,
+              ...(navCounts ? { navCounts } : {}),
+            })}
       />
 
       <div
@@ -170,7 +176,9 @@ function AppShellFrame({ user, config, children }: Props) {
             <div className="flex shrink-0 items-center gap-1 border-l border-border-hairline pl-2 lg:border-l-0 lg:pl-0">
               {headerRightSlot}
               {headerLeftSlot}
-              {shellRole === "platform" || shellRole === "finance" ? <HeaderSearchTrigger /> : null}
+              {shellRole === "platform" || shellRole === "finance" ? (
+                <HeaderSearchTrigger showIcon iconFrom="lg" fullBarFrom="xl" />
+              ) : null}
               {shellRole !== "client" ? (
                 <Button
                   type="button"

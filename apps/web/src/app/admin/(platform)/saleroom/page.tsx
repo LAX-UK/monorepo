@@ -1,5 +1,6 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
@@ -51,7 +52,18 @@ export default async function AdminSaleroomHubPage() {
       layout="hub"
       title="Saleroom console"
       description="Pick a live or upcoming sale to open the clerk console."
-      showCommandPaletteHint
+      kpiStrip={
+        !loadError ? (
+          <AdminListKpiStrip
+            ariaLabel="Saleroom summary"
+            tiles={[
+              { label: "Live sales", value: liveCount },
+              { label: "Scheduled", value: scheduledCount },
+              { label: "Available", value: liveOrUpcoming.length },
+            ]}
+          />
+        ) : null
+      }
       mobileSummary={
         !loadError ? (
           <CatalogListMobileSummary

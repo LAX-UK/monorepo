@@ -12,7 +12,7 @@ export function MyQueueWidget({ attention }: Props) {
       <div className="space-y-1">
         <h3 className="font-headline text-lg font-semibold text-on-surface">My queue</h3>
         <p className="font-body text-sm text-on-surface-variant">
-          Submissions, stale payments, and catalog items needing a decision.
+          Finance holds, compliance reviews, onboarding, and catalog work matched to sidebar badges.
         </p>
       </div>
       <AttentionList items={[...attention]} />

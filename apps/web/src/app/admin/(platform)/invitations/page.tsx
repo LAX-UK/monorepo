@@ -6,14 +6,15 @@ import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminInvitationsBoard } from "@/components/admin/admin-invitations-board";
 import { AdminInviteForm } from "@/components/admin/admin-invite-form";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { InvitationsMobileCards } from "@/components/admin/people/invitations-mobile-cards";
 import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { invitationsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { PaginationFooter } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
 
@@ -33,18 +34,22 @@ export default async function AdminInvitationsPage({
 
   let rows: Awaited<ReturnType<typeof invitationsListController.fetch>>["rows"] = [];
   let total = 0;
+  let pendingTotal = 0;
   let loadError: string | null = null;
   try {
     const result = await invitationsListController.fetch(query);
     rows = result.rows;
     total = result.total ?? 0;
+    pendingTotal = (result.rowsForSummary ?? result.rows).filter(
+      (r) => r.status === "pending",
+    ).length;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load invitations.";
   }
 
   const pagination =
     !loadError && total > 0 ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         total={total}
@@ -90,10 +95,21 @@ export default async function AdminInvitationsPage({
     <AdminBulkSelectionProvider>
       <PeopleListShell
         title="Invitations"
-        description="Invite staff or clients by email. They complete signup with the link we send (or log in the server console in development)."
+        description="Invite staff or clients by email. They complete signup using the link we send."
         wrapView={false}
-        showCommandPaletteHint
         bulkBar={<AdminBulkSelectionBar />}
+        kpiStrip={
+          !loadError && total > 0 ? (
+            <AdminListKpiStrip
+              ariaLabel="Invitations summary"
+              tiles={[
+                { label: "Total invitations", value: total },
+                { label: "Pending", value: pendingTotal },
+                { label: "On this page", value: rows.length },
+              ]}
+            />
+          ) : null
+        }
         mobileSummary={
           !loadError && total > 0 ? (
             <CatalogListMobileSummary

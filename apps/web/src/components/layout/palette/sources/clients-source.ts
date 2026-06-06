@@ -22,7 +22,8 @@ export const clientsPaletteSource: PaletteSource = {
       id: `client-${user.id}`,
       href: `/admin/clients/${user.id}`,
       label: user.name || user.email,
-      hint: user.email,
+      hint: user.email || "Client",
+      kind: "record" as const,
     }));
   },
 };

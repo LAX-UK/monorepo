@@ -116,7 +116,6 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
       title="Analytics"
       description="Period KPIs compare first vs second half of the loaded window. Export raw series as CSV."
       primaryAction={primaryAction}
-      showCommandPaletteHint
       mobileSummary={
         data ? (
           <CatalogListMobileSummary

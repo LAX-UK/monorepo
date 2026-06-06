@@ -1,3 +1,5 @@
+import type { UserStaffRole } from "@auction/types";
+
 export const ADMIN_DASHBOARD_WIDGETS_COOKIE = "lax_admin_dashboard_widgets";
 
 export type DashboardWidgetId =
@@ -25,11 +27,35 @@ export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetState[] = [
   { id: "activity", order: 6, hidden: false },
 ] as const;
 
+/** Role-specific first-visit layout when no saved cookie exists. */
+export const DEFAULT_DASHBOARD_WIDGETS_BY_STAFF_ROLE: Partial<
+  Record<UserStaffRole, readonly DashboardWidgetState[]>
+> = {
+  super_admin: [
+    { id: "greeting", order: 0, hidden: false },
+    { id: "kpi-band", order: 1, hidden: false },
+    { id: "my-queue", order: 2, hidden: false },
+    { id: "anomalies", order: 3, hidden: false },
+    { id: "saleroom-live", order: 4, hidden: true },
+    { id: "onsite-radar", order: 5, hidden: true },
+    { id: "activity", order: 6, hidden: true },
+  ],
+};
+
+export function defaultDashboardWidgetsForStaffRole(
+  staffRole: UserStaffRole | null | undefined,
+): readonly DashboardWidgetState[] {
+  if (staffRole == null) return DEFAULT_DASHBOARD_WIDGETS;
+  return DEFAULT_DASHBOARD_WIDGETS_BY_STAFF_ROLE[staffRole] ?? DEFAULT_DASHBOARD_WIDGETS;
+}
+
 export function mergeDashboardWidgets(
   saved: readonly Partial<DashboardWidgetState>[] | null | undefined,
+  staffRole?: UserStaffRole | null,
 ): DashboardWidgetState[] {
+  const base = defaultDashboardWidgetsForStaffRole(staffRole);
   const byId = new Map<DashboardWidgetId, DashboardWidgetState>();
-  for (const def of DEFAULT_DASHBOARD_WIDGETS) {
+  for (const def of base) {
     byId.set(def.id, { ...def });
   }
   for (const patch of saved ?? []) {
@@ -47,14 +73,15 @@ export function mergeDashboardWidgets(
 
 export function parseDashboardWidgetsCookie(
   raw: string | null | undefined,
+  staffRole?: UserStaffRole | null,
 ): DashboardWidgetState[] {
-  if (!raw?.trim()) return mergeDashboardWidgets(null);
+  if (!raw?.trim()) return mergeDashboardWidgets(null, staffRole);
   try {
     const parsed = JSON.parse(raw) as Partial<DashboardWidgetState>[];
-    if (!Array.isArray(parsed)) return mergeDashboardWidgets(null);
-    return mergeDashboardWidgets(parsed);
+    if (!Array.isArray(parsed)) return mergeDashboardWidgets(null, staffRole);
+    return mergeDashboardWidgets(parsed, staffRole);
   } catch {
-    return mergeDashboardWidgets(null);
+    return mergeDashboardWidgets(null, staffRole);
   }
 }
 

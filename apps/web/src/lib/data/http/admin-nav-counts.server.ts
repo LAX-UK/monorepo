@@ -9,7 +9,7 @@ import {
 import {
   getAdminArtistStats,
   getAdminConditionReportRequests,
-  getAdminFinanceDisputeDomainEvents,
+  getAdminDisputeOpenCount,
   getAdminFinanceIssues,
   getAdminLotList,
   getAdminManualReviewPayments,
@@ -87,15 +87,7 @@ const defaultFetchers: AdminNavCountFetchers = {
     const rows = await getLotWithdrawalRequests();
     return rows.length;
   },
-  getDisputesOpen: async () => {
-    const rows = await getAdminFinanceDisputeDomainEvents({ limit: 100, offset: 0 });
-    return rows.filter(
-      (r) =>
-        r.eventType.includes("opened") ||
-        r.eventType.includes("funds_withdrawn") ||
-        (!r.eventType.includes("closed") && !r.eventType.includes("won")),
-    ).length;
-  },
+  getDisputesOpen: getAdminDisputeOpenCount,
   getPayoutsFailed: async () => {
     const finance = await getAdminFinanceIssues();
     return finance.failedPayoutCount;
