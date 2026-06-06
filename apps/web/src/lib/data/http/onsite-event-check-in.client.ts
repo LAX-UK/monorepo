@@ -46,8 +46,16 @@ export async function resendOnsiteEventPass(slug: string, rsvpId: string): Promi
     { method: "POST" },
   );
   if (!res.ok) {
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(payload?.error ?? `Resend failed (${res.status})`);
+    const payload = (await res.json().catch(() => null)) as {
+      error?: string;
+      code?: string;
+    } | null;
+    const message =
+      payload?.error ??
+      (payload?.code === "pass_token_saved_email_failed"
+        ? "A new pass link was saved but the email could not be sent. Try resending again."
+        : `Resend failed (${res.status})`);
+    throw new Error(message);
   }
   const body = (await res.json()) as { data?: { rotated?: boolean } };
   return body.data?.rotated ?? false;
