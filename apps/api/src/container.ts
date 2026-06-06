@@ -145,7 +145,6 @@ import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.rep
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
 import { AbsenteeBidService } from "./services/absentee-bid.service.js";
-import { AccountLinkingService } from "./services/account-linking.service.js";
 import { NoOpAccountingProvider } from "./services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "./services/accounting/xero-accounting.provider.js";
 import {
@@ -283,7 +282,7 @@ import { SavedSearchService } from "./services/saved-search.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { SourceOfFundsService } from "./services/source-of-funds/source-of-funds.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
-import { StripeConnectService } from "./services/stripe/stripe-connect.service.js";
+import { StripeConnectFacade } from "./services/stripe/stripe-connect.facade.js";
 import { StripeCustomerGateway } from "./services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "./services/stripe/stripe-payment-gateway.js";
 import { TelephoneBidBookingService } from "./services/telephone-bid-booking.service.js";
@@ -379,7 +378,6 @@ export type Container = {
   profileService: ProfileService;
   addressService: AddressService;
   analyticsService: AnalyticsService;
-  accountLinkingService: AccountLinkingService;
   domainEventPublisher: DomainEventPublisher;
   /** `auth.*` rows in `domain_events` (password setup, email change, suspension, etc.). */
   authAuditPublisher: AuthAuditPublisher;
@@ -586,7 +584,7 @@ export function createContainer(env: Env): Container {
   );
   const stripeClientFactory = new StripeClientFactory(env);
   const stripeWebhookVerifier = new StripeWebhookVerifier(stripeClientFactory, env);
-  const stripeConnectService: IStripeConnectService = new StripeConnectService(
+  const stripeConnectService: IStripeConnectService = new StripeConnectFacade(
     env,
     db,
     payoutService,
@@ -1322,8 +1320,6 @@ export function createContainer(env: Env): Container {
     userMetrics,
     metricsAggregator,
   );
-  const accountLinkingService = new AccountLinkingService(db);
-
   const orgModuleGate = createOrgModuleGate(env.WEB_ORIGIN);
 
   const adminUserReader = new DrizzleAdminUserReader(db);
@@ -1479,7 +1475,6 @@ export function createContainer(env: Env): Container {
     profileService,
     addressService,
     analyticsService,
-    accountLinkingService,
     domainEventPublisher,
     authAuditPublisher,
     legalEntityLifecycleAdminService,

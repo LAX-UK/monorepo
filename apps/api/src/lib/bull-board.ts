@@ -18,7 +18,7 @@ import { queueRuntimeEnvFromApiEnv } from "./queue-runtime-env.js";
 
 export type BullBoardMiddleware = {
   requireAuth: MiddlewareHandler;
-  requirePlatformAdmin: MiddlewareHandler;
+  requirePlatformShell: MiddlewareHandler;
   requireSuperAdminStaffRole: MiddlewareHandler;
   auditAccess: MiddlewareHandler;
 };
@@ -86,7 +86,7 @@ export function mountBullBoard(
   const boardPath = "/admin/system/job-queues";
   for (const mw of [
     middleware.requireAuth,
-    middleware.requirePlatformAdmin,
+    middleware.requirePlatformShell,
     middleware.requireSuperAdminStaffRole,
     middleware.auditAccess,
   ]) {

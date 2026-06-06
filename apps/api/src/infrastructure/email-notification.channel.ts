@@ -8,6 +8,7 @@ import type {
   NotificationPayload,
 } from "../services/interfaces/notification-channel.js";
 import type { IUserRepository } from "../services/interfaces/repositories.js";
+import { notificationLotTitle, notificationLotWebPath } from "../services/notification-payload.js";
 
 const OPT_OUTABLE = new Set(["outbid", "lot_won", "lot_ended_seller"]);
 
@@ -45,13 +46,14 @@ export class EmailNotificationChannel implements INotificationChannel {
     userName: string,
     userId: string,
   ): TemplateVarsByName[TemplateName] {
-    const lotUrl = this.lotUrl(payload.lotId);
+    const lotUrl = this.lotUrl(payload);
+    const lotTitle = notificationLotTitle(payload);
     const unsubscribeUrl = this.unsubscribeUrl(userId, payload.type);
     switch (template) {
       case "bid-outbid":
         return {
           userName,
-          lotTitle: payload.title,
+          lotTitle,
           lotUrl,
           currentBid: payload.message,
           unsubscribeUrl,
@@ -59,7 +61,7 @@ export class EmailNotificationChannel implements INotificationChannel {
       case "lot-won":
         return {
           userName,
-          lotTitle: payload.title,
+          lotTitle,
           lotUrl,
           winningBid: payload.message,
           unsubscribeUrl,
@@ -67,14 +69,14 @@ export class EmailNotificationChannel implements INotificationChannel {
       case "lot-ended-seller":
         return {
           userName,
-          lotTitle: payload.title,
+          lotTitle,
           lotUrl,
           unsubscribeUrl,
         };
       case "payment-receipt":
         return {
           userName,
-          lotTitle: payload.title,
+          lotTitle,
           amount: payload.message,
         };
       case "payment-invoice": {
@@ -104,9 +106,10 @@ export class EmailNotificationChannel implements INotificationChannel {
     }
   }
 
-  private lotUrl(lotId?: string): string {
+  private lotUrl(payload: NotificationPayload): string {
     const base = this.apiBaseUrl.replace(/\/$/, "");
-    return lotId ? `${base}/lot/${encodeURIComponent(lotId)}` : base;
+    const path = notificationLotWebPath(payload);
+    return path ? `${base}${path}` : base;
   }
 
   private unsubscribeUrl(userId: string, type: string): string {
