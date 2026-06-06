@@ -1,4 +1,4 @@
-import type { OnsiteEventPassView } from "@auction/types";
+import type { OnsiteEventPassView } from "./pass-types.js";
 import { EVENTS_EMAIL, EVENT_DETAILS } from "./config.js";
 import { PassFetchError, fetchPass } from "./pass-api.js";
 import { downloadOpeningEventCalendar } from "./rsvp-calendar.js";
