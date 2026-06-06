@@ -21,6 +21,7 @@ import {
   adminCreateCategoryBodySchema,
   adminDomainEventsQuerySchema,
   adminFinanceDisputeDomainEventsQuerySchema,
+  adminFinanceDisputesQuerySchema,
   adminListEventsQuerySchema,
   adminListOutboxQuerySchema,
   adminListSuppressionsQuerySchema,
@@ -1806,6 +1807,31 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       return c.json({ data });
     },
   );
+
+  /** GET /admin/finance/disputes — folded Stripe dispute cases for finance admin UI. */
+  finance.get(
+    "/finance/disputes",
+    zValidator("query", adminFinanceDisputesQuerySchema),
+    async (c) => {
+      const { limit, offset, status } = c.req.valid("query");
+      const result = await container.admin.disputeCases.listCases({
+        limit,
+        offset,
+        ...(status !== undefined ? { status } : {}),
+      });
+      return c.json({
+        data: result.rows,
+        hasNextPage: result.hasNextPage,
+        summary: result.summary,
+      });
+    },
+  );
+
+  /** GET /admin/finance/disputes/open-count — nav badge + anomaly counts. */
+  finance.get("/finance/disputes/open-count", async (c) => {
+    const count = await container.admin.disputeCases.countOpenCases();
+    return c.json({ data: { count } });
+  });
 
   finance.post("/payments/:id/xero-sync", zValidator("param", paymentIdParamSchema), async (c) => {
     const role = c.get("userRole") ?? "client";

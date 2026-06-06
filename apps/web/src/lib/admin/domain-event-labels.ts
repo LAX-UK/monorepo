@@ -27,6 +27,9 @@ const LABELS: Record<string, string> = {
   "category.archived": "Category archived",
   "category.deleted": "Category deleted",
   "artist.deleted": "Artist deleted",
+  "payment.dispute_opened": "Dispute opened",
+  "payment.dispute_funds_withdrawn": "Dispute funds withdrawn",
+  "payment.dispute_closed": "Dispute closed",
 };
 
 export function domainEventLabel(eventType: string): string {
