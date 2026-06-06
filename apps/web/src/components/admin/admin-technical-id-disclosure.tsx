@@ -16,7 +16,13 @@ type Props = {
   triggerLabel?: string;
 };
 
-/** Collapsed reference IDs for support — copy on expand, hidden from default drawer view. */
+/**
+ * Collapsed reference IDs for support — copy on expand, hidden from default drawer view.
+ *
+ * Queue drawer contract: primary `<dl>` fields must be human-readable (names, links, badges).
+ * UUIDs, Stripe IDs, and raw JSON belong in `AdminTechnicalIdDisclosure` or `AdminJsonDisclosure`.
+ * Reference: `payments-board/drawer.tsx`, `payouts-board/drawer.tsx`.
+ */
 export function AdminTechnicalIdDisclosure({ items, triggerLabel = "Show reference IDs" }: Props) {
   const panelId = useId();
   const [open, setOpen] = useState(false);

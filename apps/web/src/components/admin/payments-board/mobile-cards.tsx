@@ -28,7 +28,9 @@ export function PaymentsMobileCards({ rows, onOpen }: Props) {
             </Button>
             <AdminStatusBadge domain="payment" status={p.status} />
           </div>
-          <p className="mt-2 font-mono text-[10px] text-on-surface-variant">{p.buyerId}</p>
+          <p className="mt-2 text-sm text-on-surface-variant">
+            {p.buyerLabel?.trim() || "Buyer profile"}
+          </p>
           <p className="mt-1 tabular-nums text-sm">{p.amount}</p>
           {p.fulfilmentStatus ? (
             <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">

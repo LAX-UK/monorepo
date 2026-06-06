@@ -1,7 +1,6 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
-import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { disputeColumns } from "@/components/admin/disputes-board/columns";
 import { DisputeDrawerContent } from "@/components/admin/disputes-board/drawer";
 import { DisputesMobileCards } from "@/components/admin/disputes-board/mobile-cards";
@@ -42,18 +41,7 @@ export function AdminDisputesBoard({ rows }: Props) {
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
           {selected ? (
-            <div className="space-y-4 pt-2">
-              <AdminPreviewSheetHeader
-                title="Dispute case"
-                fullPageHref="/admin/disputes"
-                subtitle={
-                  <p className="truncate font-body text-sm text-on-surface-variant">
-                    {selected.lotTitle ?? selected.stripeDisputeId}
-                  </p>
-                }
-              />
-              <DisputeDrawerContent row={selected} onClose={() => setSelected(null)} />
-            </div>
+            <DisputeDrawerContent row={selected} onClose={() => setSelected(null)} />
           ) : null}
         </SheetContent>
       </Sheet>

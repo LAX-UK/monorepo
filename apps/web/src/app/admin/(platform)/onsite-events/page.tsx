@@ -1,4 +1,5 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
@@ -73,8 +74,17 @@ export default async function AdminOnsiteEventsPage() {
         ) : null
       }
       view={
-        !loadError && events.length > 0 ? (
-          <Surface className="divide-y divide-border-hairline">
+        <div className="space-y-8">
+          <AdminHubQuickLinks
+            ariaLabel="Onsite events quick links"
+            links={[
+              { href: "/admin/saleroom", label: "Saleroom console" },
+              { href: "/admin/sales", label: "Sales" },
+              { href: "/admin/invitations", label: "Invitations" },
+            ]}
+          />
+          {!loadError && events.length > 0 ? (
+            <Surface className="divide-y divide-border-hairline">
             {events.map((event) => (
               <div
                 key={event.slug}
@@ -106,8 +116,9 @@ export default async function AdminOnsiteEventsPage() {
                 </div>
               </div>
             ))}
-          </Surface>
-        ) : null
+            </Surface>
+          ) : null}
+        </div>
       }
       empty={empty}
     />

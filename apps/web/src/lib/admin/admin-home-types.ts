@@ -1,3 +1,5 @@
+export type AttentionDomain = "Finance" | "Compliance" | "People" | "Catalog" | "Operations";
+
 /** Shared row shapes for admin home / personal dashboard widgets. */
 export type AdminAttentionRow = {
   id: string;
@@ -5,6 +7,8 @@ export type AdminAttentionRow = {
   hint: string;
   href: string;
   ctaLabel: string;
+  /** Optional domain for My Queue grouping; inferred from id/href when omitted. */
+  domain?: AttentionDomain;
 };
 
 export type AdminActivityRow = {
