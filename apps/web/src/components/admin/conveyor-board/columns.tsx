@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { conveyorStageForRow } from "@/lib/admin/conveyor-pipeline.vm";
 import type { AdminConveyorPipelineRow } from "@/lib/data/http/admin.server";
 import { Button } from "@auction/ui";
@@ -24,9 +25,7 @@ export function conveyorColumns(): ColumnDef<AdminConveyorPipelineRow>[] {
       accessorKey: "submissionStatus",
       header: "Submission status",
       cell: ({ row }) => (
-        <span className="font-mono text-xs">
-          {row.original.submissionStatus.replaceAll("_", " ")}
-        </span>
+        <AdminStatusBadge domain="submission" status={row.original.submissionStatus} />
       ),
     },
     {
@@ -43,9 +42,9 @@ export function conveyorColumns(): ColumnDef<AdminConveyorPipelineRow>[] {
       header: "Lot",
       cell: ({ row }) =>
         row.original.lotId ? (
-          <Button variant="link" className="h-auto px-0 font-mono text-xs" asChild>
+          <Button variant="link" className="h-auto px-0 text-sm" asChild>
             <Link href={`/admin/lots/${row.original.lotId}`}>
-              {row.original.lotStatus ?? "lot"}
+              {row.original.lotStatus?.replaceAll("_", " ") ?? "View lot"}
             </Link>
           </Button>
         ) : (

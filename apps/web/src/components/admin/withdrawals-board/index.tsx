@@ -59,6 +59,12 @@ export function AdminWithdrawalsBoard({ tasks }: { tasks: LotWithdrawalRequestTa
                     ? `/admin/lots/${selected.targetLotId}`
                     : "/admin/lots?lens=attention"
                 }
+                subtitle={
+                  <p className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+                    {selected.kind.replaceAll("_", " ")}
+                    {selected.status ? ` · ${selected.status.replaceAll("_", " ")}` : ""}
+                  </p>
+                }
               />
               <WithdrawalDrawerContent task={selected} />
             </div>
