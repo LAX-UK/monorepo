@@ -3,8 +3,8 @@ import {
   normalizeApiErrorMessage,
   parseApiErrorCodeFromBody,
 } from "./api-error-body.js";
-import type { OnsiteEventPassView } from "./pass-types.js";
 import { API_BASE, EVENT_SLUG } from "./config.js";
+import type { OnsiteEventPassView } from "./pass-types.js";
 
 const PASS_FETCH_TIMEOUT_MS = 15_000;
 
