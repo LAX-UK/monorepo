@@ -15,6 +15,3 @@ export type QrCodeScanJobPayload = {
   referrer?: string | null;
   requestId?: string | null;
 };
-
-/** @deprecated Use DataExportJobPayload */
-export type ExportJobPayload = DataExportJobPayload;

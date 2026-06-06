@@ -237,9 +237,6 @@ export type EmptyStateIllustrationKey =
   | "error"
   | "notFound";
 
-/** @deprecated Use EmptyStateIllustrationKey */
-export type AdminEmptyIllustrationKey = EmptyStateIllustrationKey;
-
 const ILLUSTRATIONS: Record<
   EmptyStateIllustrationKey,
   (props: IllustrationProps) => React.JSX.Element
@@ -266,6 +263,3 @@ export function EmptyStateIllustration({
   const Component = ILLUSTRATIONS[name];
   return <Component className={className ?? DEFAULT_CLASS} />;
 }
-
-/** @deprecated Use EmptyStateIllustration */
-export const AdminEmptyIllustration = EmptyStateIllustration;

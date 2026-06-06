@@ -10,6 +10,7 @@ export class NotificationFactory {
       title: "You have been outbid",
       message: `Another bidder placed a higher bid on "${lot.title}".`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -20,6 +21,7 @@ export class NotificationFactory {
       title: "Congratulations — you won",
       message: `You won "${lot.title}". Complete payment from your portfolio when ready.`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -30,6 +32,7 @@ export class NotificationFactory {
       title: "Lot ended",
       message: `The lot "${lot.title}" has ended. Another bidder had the winning bid.`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -40,6 +43,7 @@ export class NotificationFactory {
       title: "Lot ending soon",
       message: `"${lot.title}" ends in about one hour.`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -50,6 +54,7 @@ export class NotificationFactory {
       title: "Saved lot is now live",
       message: `"${lot.title}" is now accepting bids.`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -60,6 +65,7 @@ export class NotificationFactory {
       title: "Saved lot ending soon",
       message: `"${lot.title}" ends in about one hour.`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -70,6 +76,7 @@ export class NotificationFactory {
       title: "Payment received",
       message: `Your payment for "${lot.title}" was recorded.`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -84,6 +91,7 @@ export class NotificationFactory {
       title: "Payment received",
       message: `Payment of ${amount} was recorded for "${lot.title}".`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -94,6 +102,7 @@ export class NotificationFactory {
       title: "Condition report ready",
       message: `Your condition report for "${lot.title}" is ready to view.`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -112,6 +121,7 @@ export class NotificationFactory {
       title: "Condition report unavailable",
       message: `We could not provide a condition report for "${lot.title}".${detail}`,
       lotId: lot.id,
+      meta: { lotTitle: lot.title },
     };
   }
 
@@ -131,6 +141,7 @@ export class NotificationFactory {
         amount: input.amount,
         invoiceUrl: input.checkoutUrl,
         invoiceNumber: `PAY-${input.paymentId.slice(0, 8).toUpperCase()}`,
+        lotTitle: lot.title,
       },
     };
   }

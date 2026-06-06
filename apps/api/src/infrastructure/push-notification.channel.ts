@@ -7,6 +7,7 @@ import type {
   IPushSubscriptionRepository,
   PushPayload,
 } from "../services/interfaces/push.js";
+import { notificationLotWebPath } from "../services/notification-payload.js";
 
 const PUSH_TYPES = new Set([
   "outbid",
@@ -35,12 +36,21 @@ export class PushNotificationChannel implements INotificationChannel {
     const pushPayload: PushPayload = {
       title: payload.title,
       body: payload.message,
-      url: payload.lotId ? `/lot/${payload.lotId}` : undefined,
+      url: notificationLotWebPath(payload),
+      tag: payload.lotId ? `${payload.type}:${payload.lotId}` : payload.type,
     };
     for (const sub of subs) {
-      const ok = await this.sender.send(sub.endpoint, sub.p256dh, sub.auth, pushPayload);
-      if (!ok) {
-        await this.subscriptions.deleteByEndpoint(sub.endpoint);
+      try {
+        const ok = await this.sender.send(sub.endpoint, sub.p256dh, sub.auth, pushPayload);
+        if (!ok) {
+          await this.subscriptions.deleteByEndpoint(sub.endpoint);
+        }
+      } catch (err) {
+        console.warn("[PushNotificationChannel] send failed", {
+          userId,
+          endpoint: sub.endpoint,
+          err,
+        });
       }
     }
   }

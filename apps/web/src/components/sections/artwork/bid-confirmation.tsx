@@ -10,6 +10,7 @@ type Props = {
   autoBidStep?: string | null;
   error: BidErrorPresentation | null;
   submitting: boolean;
+  biddingDisabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -20,6 +21,7 @@ export function BidConfirmation({
   autoBidStep = null,
   error,
   submitting,
+  biddingDisabled = false,
   onCancel,
   onConfirm,
 }: Props) {
@@ -69,7 +71,7 @@ export function BidConfirmation({
           type="button"
           variant="primary"
           className="flex-1 py-6"
-          disabled={submitting}
+          disabled={submitting || biddingDisabled}
           onClick={() => void onConfirm()}
         >
           {submitting ? "Submitting…" : "Place bid"}

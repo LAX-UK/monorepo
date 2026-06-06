@@ -1,5 +1,6 @@
 import type {
   INotificationChannel,
+  NotificationChannelKind,
   NotificationPayload,
 } from "./interfaces/notification-channel.js";
 import type { INotificationPreferenceReader } from "./interfaces/notification-preference.js";
@@ -21,23 +22,27 @@ export class NotificationDispatcher {
         : false;
 
     for (const ch of this.channels) {
-      if (!ch.supports(payload.type)) continue;
-      if (ch.channelKind === "in_app") {
-        if (!(await this.preferences.isChannelEnabled(userId, payload.type, "in_app"))) continue;
+      if (!(await this.shouldDeliver(userId, payload.type, ch, quiet))) continue;
+      try {
         await ch.send(userId, payload);
-      } else if (ch.channelKind === "push") {
-        if (!(await this.preferences.isChannelEnabled(userId, payload.type, "push"))) continue;
-        if (quiet) continue;
-        await ch.send(userId, payload);
-      } else if (ch.channelKind === "email") {
-        if (!(await this.preferences.isChannelEnabled(userId, payload.type, "email"))) continue;
-        if (quiet) continue;
-        await ch.send(userId, payload);
-      } else if (ch.channelKind === "whatsapp") {
-        if (!(await this.preferences.isChannelEnabled(userId, payload.type, "whatsapp"))) continue;
-        if (quiet) continue;
-        await ch.send(userId, payload);
+      } catch (err) {
+        console.error(`[NotificationDispatcher] ${ch.channelKind} delivery failed`, err);
       }
     }
+  }
+
+  private async shouldDeliver(
+    userId: string,
+    type: string,
+    channel: INotificationChannel,
+    quiet: boolean,
+  ): Promise<boolean> {
+    if (!channel.supports(type)) return false;
+    const kind = channel.channelKind;
+    if (kind === "in_app") {
+      return this.preferences.isChannelEnabled(userId, type, "in_app");
+    }
+    if (quiet) return false;
+    return this.preferences.isChannelEnabled(userId, type, kind as NotificationChannelKind);
   }
 }
