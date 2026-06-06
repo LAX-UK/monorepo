@@ -1,4 +1,12 @@
+import {
+  type ApiErrorBody,
+  normalizeApiErrorMessage,
+  parseApiErrorCodeFromBody,
+} from "@auction/validators";
 import { API_BASE, EVENT_SLUG } from "./config.js";
+import { RsvpApiError } from "./rsvp-api-error.js";
+
+const RSVP_FETCH_TIMEOUT_MS = 15_000;
 
 export type SegmentOption = {
   value: string;
@@ -13,6 +21,10 @@ export type OnsiteEventPublicConfig = {
   rsvpOpen: boolean;
   rsvpCloseAt: string | null;
   micrositeUrl: string | null;
+  startsAt: string | null;
+  venue: string | null;
+  dressCode: string | null;
+  arrivalNote: string | null;
 };
 
 export type OnsiteEventEmailLookup =
@@ -50,8 +62,6 @@ export type SubmitRsvpResult = {
   passUrl: string;
 };
 
-type ApiError = { error: string; code?: string };
-
 async function parseJson<T>(res: Response): Promise<T> {
   try {
     return (await res.json()) as T;
@@ -60,13 +70,37 @@ async function parseJson<T>(res: Response): Promise<T> {
   }
 }
 
-function apiErrorCode(res: Response, body: ApiError | undefined, prefix: string): string {
-  if (res.status === 429) return "rate_limited";
-  return body?.code ?? body?.error ?? `${prefix}_${res.status}`;
+function throwApiError(res: Response, body: ApiErrorBody | undefined, prefix: string): never {
+  if (res.status === 429) {
+    throw new RsvpApiError("rate_limited");
+  }
+  const code = parseApiErrorCodeFromBody(body ?? {}) ?? `${prefix}_${res.status}`;
+  const message =
+    code === "validation_failed"
+      ? normalizeApiErrorMessage(body?.error, "Please check your RSVP details and try again.")
+      : undefined;
+  throw new RsvpApiError(code, message);
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(RSVP_FETCH_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      throw new RsvpApiError("timeout", "This is taking longer than expected. Please try again.");
+    }
+    throw new RsvpApiError(
+      "offline",
+      "We couldn't reach the server. Check your connection and try again.",
+    );
+  }
 }
 
 export async function fetchEventConfig(): Promise<OnsiteEventPublicConfig> {
-  const res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/config`);
+  const res = await fetchWithTimeout(`${API_BASE}/events/${EVENT_SLUG}/config`);
   if (!res.ok) {
     throw new Error(`config_failed_${res.status}`);
   }
@@ -92,7 +126,7 @@ export async function fetchEventConfigWithRetry(): Promise<OnsiteEventPublicConf
 }
 
 export async function lookupByEmail(email: string): Promise<OnsiteEventEmailLookup> {
-  const res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/lookup`, {
+  const res = await fetchWithTimeout(`${API_BASE}/events/${EVENT_SLUG}/lookup`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -100,30 +134,29 @@ export async function lookupByEmail(email: string): Promise<OnsiteEventEmailLook
     body: JSON.stringify({ email }),
   });
   if (!res.ok) {
-    const body = await parseJson<ApiError>(res).catch(() => undefined);
-    throw new Error(apiErrorCode(res, body, "lookup_failed"));
+    const body = await parseJson<ApiErrorBody>(res).catch(() => undefined);
+    throwApiError(res, body, "lookup_failed");
   }
   const body = await parseJson<{ data: OnsiteEventEmailLookup }>(res);
   return body.data;
 }
 
 export async function submitRsvp(input: SubmitRsvpInput): Promise<SubmitRsvpResult> {
-  const res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/rsvp`, {
+  const res = await fetchWithTimeout(`${API_BASE}/events/${EVENT_SLUG}/rsvp`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(input),
   });
-  const body = await parseJson<{
-    data?: SubmitRsvpResult & { attendanceSegment: string; passUrl: string };
-    isUpdate?: boolean;
-    error?: string;
-    code?: string;
-  }>(res);
+  const body = await parseJson<
+    {
+      data?: SubmitRsvpResult & { attendanceSegment: string; passUrl: string };
+      isUpdate?: boolean;
+    } & ApiErrorBody
+  >(res);
   if (!res.ok) {
-    const err = body as ApiError;
-    throw new Error(apiErrorCode(res, err, "submit_failed"));
+    throwApiError(res, body, "submit_failed");
   }
   const data = body.data;
   if (!data) {

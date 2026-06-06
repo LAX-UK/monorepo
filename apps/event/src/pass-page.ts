@@ -39,13 +39,18 @@ function renderLoading(mount: HTMLElement) {
   main.append(card);
 }
 
-function renderOffline(mount: HTMLElement, onRetry: () => void) {
+function renderOffline(mount: HTMLElement, onRetry: () => void, message?: string) {
   const main = passMain(mount);
   const card = el("div", "pass-card pass-card--error");
+  card.setAttribute("role", "alert");
   card.append(el("p", "pass-eyebrow", "Entry pass"));
   card.append(el("h1", "pass-title", "Connection problem"));
   card.append(
-    el("p", "pass-subtext", "We couldn't load your pass. Check your connection and try again."),
+    el(
+      "p",
+      "pass-subtext",
+      message ?? "We couldn't load your pass. Check your connection and try again.",
+    ),
   );
   const actions = el("div", "pass-actions");
   actions.append(button("Try again", onRetry, true));
@@ -56,6 +61,7 @@ function renderOffline(mount: HTMLElement, onRetry: () => void) {
 function renderError(mount: HTMLElement, onRetry: () => void, message?: string) {
   const main = passMain(mount);
   const card = el("div", "pass-card pass-card--error");
+  card.setAttribute("role", "alert");
   card.append(el("p", "pass-eyebrow", "Entry pass"));
   card.append(el("h1", "pass-title", "Pass not found"));
   card.append(
@@ -222,8 +228,17 @@ export async function initPassPage(mount: HTMLElement, token: string): Promise<v
       const pass = await fetchPass(token);
       renderPass(mount, pass, load);
     } catch (error) {
-      if (error instanceof PassFetchError && error.code === "offline") {
-        renderOffline(mount, () => void load());
+      if (
+        error instanceof PassFetchError &&
+        (error.code === "offline" || error.code === "timeout")
+      ) {
+        renderOffline(
+          mount,
+          () => void load(),
+          error.code === "timeout"
+            ? "This is taking longer than expected. Check your connection and try again."
+            : undefined,
+        );
         return;
       }
       const message =

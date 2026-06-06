@@ -1,7 +1,12 @@
 import type { OnsiteEventPassView } from "@auction/types";
+import {
+  type ApiErrorBody,
+  normalizeApiErrorMessage,
+  parseApiErrorCodeFromBody,
+} from "@auction/validators";
 import { API_BASE, EVENT_SLUG } from "./config.js";
 
-type ApiError = { error: string; code?: string };
+const PASS_FETCH_TIMEOUT_MS = 15_000;
 
 async function parseJson<T>(res: Response): Promise<T> {
   try {
@@ -24,16 +29,19 @@ export class PassFetchError extends Error {
 export async function fetchPass(token: string): Promise<OnsiteEventPassView> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/pass/${encodeURIComponent(token)}`);
-  } catch {
+    res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/pass/${encodeURIComponent(token)}`, {
+      signal: AbortSignal.timeout(PASS_FETCH_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      throw new PassFetchError("This is taking longer than expected", "timeout");
+    }
     throw new PassFetchError("Could not reach the server", "offline");
   }
-  const body = await parseJson<{ data?: OnsiteEventPassView } & ApiError>(res);
+  const body = await parseJson<{ data?: OnsiteEventPassView } & ApiErrorBody>(res);
   if (!res.ok) {
-    throw new PassFetchError(
-      body.error ?? "Pass not found",
-      body.code ?? `pass_failed_${res.status}`,
-    );
+    const code = parseApiErrorCodeFromBody(body) ?? `pass_failed_${res.status}`;
+    throw new PassFetchError(normalizeApiErrorMessage(body.error, "Pass not found"), code);
   }
   if (!body.data) {
     throw new Error("pass_empty_response");

@@ -1,4 +1,5 @@
 import type {
+  OnsiteEventAdminDetail,
   OnsiteEventEmailLookup,
   OnsiteEventListItem,
   OnsiteEventPublicConfig,
@@ -29,6 +30,9 @@ export interface IOnsiteEventRsvpService {
     | { ok: false; error: OnsiteEventRsvpServiceError }
   >;
   listAdminEvents(): Promise<OnsiteEventListItem[]>;
+  getAdminEventDetail(
+    eventSlug: string,
+  ): Promise<OnsiteEventAdminDetail | OnsiteEventRsvpServiceError>;
   listAdminRsvps(
     eventSlug: string,
   ): Promise<OnsiteEventRsvpAdminRow[] | OnsiteEventRsvpServiceError>;

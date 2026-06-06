@@ -1,8 +1,8 @@
 import { OnsiteEventCheckInConsole } from "@/components/admin/onsite-events/check-in-console";
+import { OnsiteEventBreadcrumbs } from "@/components/admin/onsite-events/onsite-event-breadcrumbs";
 import { getAdminOnsiteEventDetail } from "@/lib/data/http/onsite-event.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -22,13 +22,8 @@ export default async function AdminOnsiteEventCheckInPage({ params }: Props) {
   if (!detail) notFound();
 
   return (
-    <div className="space-y-4">
-      <Link
-        href={`/admin/onsite-events/${encodeURIComponent(slug)}`}
-        className="font-body text-sm text-on-surface-variant underline-offset-4 hover:underline"
-      >
-        Back to RSVPs
-      </Link>
+    <div className="space-y-6">
+      <OnsiteEventBreadcrumbs slug={slug} eventTitle={detail.title} current="check-in" />
       <OnsiteEventCheckInConsole slug={slug} title={`${detail.title} · Check-in`} />
     </div>
   );

@@ -1,10 +1,11 @@
-import { EVENT_DETAILS, EVENT_START_AT } from "./config.js";
+import { EVENT_DETAILS } from "./config.js";
+import { initEventCountdown } from "./event-countdown.js";
 import { downloadOpeningEventCalendar } from "./rsvp-calendar.js";
 
 export function initPageEffects(): void {
   initScrollReveal();
   initSmoothScroll();
-  initCountdown();
+  initEventCountdown();
   initStickyRsvp();
   initAddToCalendar();
   initShareInvite();
@@ -55,42 +56,6 @@ function initSmoothScroll(): void {
     });
     history.replaceState(null, "", target.hash);
   });
-}
-
-function initCountdown(): void {
-  const root = document.getElementById("event-countdown");
-  if (!root) return;
-
-  const parts = {
-    days: root.querySelector<HTMLElement>("[data-countdown='days']"),
-    hours: root.querySelector<HTMLElement>("[data-countdown='hours']"),
-    minutes: root.querySelector<HTMLElement>("[data-countdown='minutes']"),
-  };
-
-  const tick = () => {
-    const remaining = EVENT_START_AT.getTime() - Date.now();
-    if (remaining <= 0) {
-      root.classList.add("is-live");
-      const label = root.querySelector<HTMLElement>(".event-countdown__label");
-      if (label) label.textContent = "Tonight";
-      for (const node of Object.values(parts)) {
-        if (node) node.textContent = "—";
-      }
-      return;
-    }
-
-    const totalMinutes = Math.floor(remaining / 60_000);
-    const days = Math.floor(totalMinutes / (60 * 24));
-    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-    const minutes = totalMinutes % 60;
-
-    if (parts.days) parts.days.textContent = String(days);
-    if (parts.hours) parts.hours.textContent = String(hours).padStart(2, "0");
-    if (parts.minutes) parts.minutes.textContent = String(minutes).padStart(2, "0");
-  };
-
-  tick();
-  window.setInterval(tick, 30_000);
 }
 
 function initStickyRsvp(): void {
