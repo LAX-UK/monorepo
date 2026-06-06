@@ -1,5 +1,6 @@
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
 import {
+  ONSITE_PASS_QR_CONTENT_ID,
   buildOnsiteEventPassEmailHtml,
   buildOnsiteEventPassEmailSubject,
   buildOnsiteEventPassEmailText,
@@ -80,7 +81,6 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
       plusOneLine,
       notesLine,
       passUrl: input.passUrl,
-      qrPngBase64,
       opsEmail,
       arrivalNote: event.arrivalNote,
       dressCode: event.dressCode,
@@ -93,6 +93,14 @@ export class OnsiteEventNotifier implements IOnsiteEventNotifier {
         subject: buildOnsiteEventPassEmailSubject(emailInput),
         text: buildOnsiteEventPassEmailText(emailInput),
         html: buildOnsiteEventPassEmailHtml(emailInput),
+        inlineAttachments: [
+          {
+            contentId: ONSITE_PASS_QR_CONTENT_ID,
+            filename: "entry-pass-qr.png",
+            contentType: "image/png",
+            contentBase64: qrPngBase64,
+          },
+        ],
         meta: { kind: `onsite_event_rsvp_${kind}`, rsvpId: rsvp.id, eventSlug: rsvp.eventSlug },
       }),
       this.mailer.send({
