@@ -7,6 +7,7 @@ import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-dat
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { PaymentsFilterToolbar } from "@/components/admin/finance/payments-filter-toolbar";
 import { AdminManualReviewBoard } from "@/components/admin/manual-review-board";
@@ -17,6 +18,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { detectAnomalies, detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-review";
+import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminPaymentsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
@@ -27,7 +29,6 @@ import { buildPaymentsSummary } from "@/lib/data/view-models/admin-payments-summ
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatCompactMoney } from "@/lib/ui/format";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
-import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import type { Metadata } from "next";
@@ -230,7 +231,7 @@ export default async function AdminPaymentsPage({
                 },
                 {
                   id: "mr-aml",
-                  label: "AML hold",
+                  label: manualReviewReasonLabel("aml_hold"),
                   href: buildListHref("/admin/payments", sp, {
                     manualReview: "1",
                     manualReviewReason: "aml_hold",
@@ -240,7 +241,7 @@ export default async function AdminPaymentsPage({
                 },
                 {
                   id: "mr-sof",
-                  label: "Source of funds",
+                  label: manualReviewReasonLabel("source_of_funds_required"),
                   href: buildListHref("/admin/payments", sp, {
                     manualReview: "1",
                     manualReviewReason: "source_of_funds_required",
@@ -309,7 +310,7 @@ export default async function AdminPaymentsPage({
 
   const pagination =
     !loadError && total > 0 ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={paymentRows.length}
@@ -413,7 +414,6 @@ export default async function AdminPaymentsPage({
           <AdminListAlert title="Could not load payments">{loadError ?? error}</AdminListAlert>
         ) : null
       }
-      showCommandPaletteHint
       wrapView={false}
       view={
         !loadError && summaryRows.length > 0 ? (

@@ -21,6 +21,7 @@ export const lotsPaletteSource: PaletteSource = {
       href: `/admin/lots/${lot.id}`,
       label: lot.title,
       hint: "Lot",
+      kind: "record" as const,
     }));
   },
 };

@@ -1,4 +1,5 @@
 import type { ActingContext } from "@/lib/auth/capabilities";
+import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { CapabilityRequirement, LegalEntitySummary } from "@auction/types";
 import type { LucideIcon } from "lucide-react";
@@ -53,6 +54,7 @@ export type ShellConfig = {
   clientWorkspaceMode?: "buying" | "selling";
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
+  navCounts?: AdminNavCounts;
   /** Client dashboard mobile header identity (acting entity + org context). */
   mobileHeader?: {
     acting: LegalEntitySummary | null;

@@ -16,6 +16,7 @@ const ALL_STAFF_CAPABILITIES: RoleCapability[] = [
   "artist.read",
   "artist.review",
   "artist.merge",
+  "artist.delete",
   "payout.read",
   "payout.process",
   "payout.reverse",
@@ -25,6 +26,8 @@ const ALL_STAFF_CAPABILITIES: RoleCapability[] = [
   "operations.fulfilment",
   "content.write",
   "support.respond",
+  "aml.review",
+  "compliance.mlro",
 ];
 
 /** Capabilities granted to a staff user for read-only admin display. */

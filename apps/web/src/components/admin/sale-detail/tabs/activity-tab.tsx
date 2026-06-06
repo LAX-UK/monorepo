@@ -10,7 +10,7 @@ export function SaleActivityTab({ saleId }: Props) {
   return (
     <CatalogDetailTabPanel
       title="Activity"
-      description="Audit timeline for this sale — publish, cancel, and lifecycle events."
+      description="Timeline of changes and key events for this sale."
     >
       <ActivityContent saleId={saleId} />
     </CatalogDetailTabPanel>
@@ -28,6 +28,7 @@ async function ActivityContent({ saleId }: { saleId: string }) {
     <CatalogDomainEventsTimeline
       events={events}
       exportFilters={{ aggregateType: "sale", aggregateId: saleId }}
+      showTechnicalDetails={false}
       emptyMessage="No sale activity recorded yet. Events appear when the sale is published, cancelled, or ended."
     />
   );

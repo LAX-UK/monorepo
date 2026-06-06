@@ -1,9 +1,18 @@
+import type { NavBadgeTone } from "@/lib/shell/contracts";
+import type { LucideIcon } from "lucide-react";
+
+export type PaletteItemKind = "page" | "record" | "action" | "recent" | "shortcut";
+
 export type PaletteItem = {
   id: string;
   href: string;
   label: string;
   hint?: string;
   keywords?: string;
+  icon?: LucideIcon;
+  badge?: number;
+  badgeTone?: NavBadgeTone;
+  kind?: PaletteItemKind;
 };
 
 export type PaletteSection = {

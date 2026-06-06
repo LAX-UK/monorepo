@@ -3,8 +3,11 @@ import type {
   AdminArtistListResult,
   AdminArtistStats,
   AdminCategory,
+  AdminDisputeCaseRow,
+  AdminDisputeCaseSummary,
   ArtistProfile,
   Category,
+  DisputeCaseListFilter,
   ItemSubmissionStatus,
   LegalEntity,
   LegalEntityStatus,
@@ -104,6 +107,21 @@ export interface IAdminDomainEventQueryService {
     aggregateId?: string;
     includePii: boolean;
   }): Promise<RedactedDomainEventRow[]>;
+}
+
+export type { AdminDisputeCaseRow, AdminDisputeCaseSummary, DisputeCaseListFilter };
+
+export interface IAdminDisputeCaseQueryService {
+  listCases(input: {
+    limit: number;
+    offset: number;
+    status?: DisputeCaseListFilter;
+  }): Promise<{
+    rows: AdminDisputeCaseRow[];
+    hasNextPage: boolean;
+    summary: AdminDisputeCaseSummary;
+  }>;
+  countOpenCases(): Promise<number>;
 }
 
 export type FinanceIssueSnapshot = {
@@ -377,6 +395,7 @@ export type AdminRouteServices = {
   ops: IAdminOpsReadService;
   impersonation: IAdminImpersonationService;
   domainEvents: IAdminDomainEventQueryService;
+  disputeCases: IAdminDisputeCaseQueryService;
   dashboard: IAdminDashboardQueryService;
   catalog: IAdminCatalogApplicationService;
   email: IAdminEmailApplicationService;

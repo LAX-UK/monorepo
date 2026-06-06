@@ -1,11 +1,23 @@
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
-import { CommandPaletteHint } from "@/components/admin/command-palette-hint";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { EntityList } from "@auction/ui";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
+/**
+ * Staff list-page layout shell (presentation only).
+ *
+ * SOLID layering — reference: `/admin/disputes`
+ * 1. `page.tsx` — orchestrates shell props; no column defs or label maps.
+ * 2. `*ListController` in `admin-list-controllers.ts` — `parseQuery` + `fetch` (DIP).
+ * 3. `*.vm.ts` view-models — row shaping and display labels.
+ * 4. `*-board/` — `EntityList`, columns, mobile-cards, drawer; accepts view-model rows only.
+ * 5. Presenters — `status-badge-variants`, `domain-event-labels`, `capability-presenter`.
+ *
+ * Variants: `queue` for work queues; `layout="hub"` for lookup/settings (no pagination).
+ * Checklist: kpiStrip, mobileCards or board EntityList, illustrated empty, loading.tsx sibling.
+ */
 export type AdminListShellVariant = "default" | "overview" | "report" | "queue";
 export type AdminListShellLayout = "list" | "hub";
 
@@ -41,7 +53,6 @@ export type AdminListShellProps = {
   mobileCards?: ReactNode;
   pagination?: ReactNode;
   empty?: ReactNode;
-  showCommandPaletteHint?: boolean;
   /** When false, `view` renders directly (boards that include their own EntityList). */
   wrapView?: boolean;
   className?: string;
@@ -81,7 +92,6 @@ export function AdminListShell({
   mobileCards,
   pagination,
   empty,
-  showCommandPaletteHint = false,
   wrapView = true,
   className,
 }: AdminListShellProps) {
@@ -150,7 +160,6 @@ export function AdminListShell({
         )
       ) : null}
       {!isHub && showEmpty ? empty : null}
-      {showCommandPaletteHint ? <CommandPaletteHint className="mt-2" /> : null}
       {pagination}
     </AppScreen>
   );

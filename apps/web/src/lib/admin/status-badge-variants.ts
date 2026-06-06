@@ -127,6 +127,15 @@ export function submissionStatusToBadgeVariant(
   }
 }
 
+export const paymentStatusLabel: Record<PaymentStatus, string> = {
+  pending: "Pending",
+  authorized: "Authorized",
+  captured: "Captured",
+  refunded: "Refunded",
+  requires_manual_review: "Manual review",
+  cancelled: "Cancelled",
+};
+
 export function paymentStatusToBadgeVariant(status: PaymentStatus): AdminStatusBadgeVariant {
   switch (status) {
     case "captured":
@@ -517,12 +526,19 @@ export function legalEntityStatusToBadgeVariant(
   }
 }
 
-export type DisputeStatus = "open" | "won" | "lost" | "warning_needs_response" | "under_review";
+export type DisputeStatus =
+  | "open"
+  | "won"
+  | "lost"
+  | "closed"
+  | "warning_needs_response"
+  | "under_review";
 
 export const disputeStatusLabel: Record<DisputeStatus, string> = {
   open: "Open",
   won: "Won",
   lost: "Lost",
+  closed: "Closed",
   warning_needs_response: "Needs response",
   under_review: "Under review",
 };
@@ -535,11 +551,101 @@ export function disputeStatusToBadgeVariant(
       return "success";
     case "lost":
       return "danger";
+    case "closed":
+      return "neutral";
     case "open":
     case "warning_needs_response":
       return "warning";
     case "under_review":
       return "info";
+    default:
+      return "neutral";
+  }
+}
+
+export type AmlMatchStatus = "no_match" | "potential_match" | "true_positive" | "false_positive";
+
+export const amlMatchStatusLabel: Record<string, string> = {
+  no_match: "No match",
+  potential_match: "Potential match",
+  true_positive: "Confirmed match",
+  false_positive: "False positive",
+};
+
+export function amlMatchStatusToBadgeVariant(status: string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "true_positive":
+      return "danger";
+    case "potential_match":
+      return "warning";
+    case "false_positive":
+      return "success";
+    case "no_match":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export type AmlDecisionOutcome = "pending" | "clear" | "block" | "escalate";
+
+export const amlDecisionOutcomeLabel: Record<string, string> = {
+  pending: "Pending review",
+  clear: "Clear",
+  block: "Block",
+  escalate: "Escalated",
+};
+
+export function amlDecisionOutcomeToBadgeVariant(status: string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "clear":
+      return "success";
+    case "block":
+      return "danger";
+    case "escalate":
+      return "warning";
+    case "pending":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+export type SofCaseStatus = "pending" | "approved" | "rejected";
+
+export const sofCaseStatusLabel: Record<string, string> = {
+  pending: "Pending review",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+export function sofCaseStatusToBadgeVariant(status: string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "approved":
+      return "success";
+    case "rejected":
+      return "danger";
+    case "pending":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
+export const onsiteEventStatusLabel: Record<string, string> = {
+  published: "Published",
+  draft: "Draft",
+  cancelled: "Cancelled",
+};
+
+export function onsiteEventStatusToBadgeVariant(status: string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "published":
+      return "success";
+    case "draft":
+      return "neutral";
+    case "cancelled":
+      return "danger";
     default:
       return "neutral";
   }
@@ -552,6 +658,9 @@ export type AdminStatusDomain =
   | "submission"
   | "payment"
   | "payout"
+  | "amlMatch"
+  | "amlDecision"
+  | "sofCase"
   | "invitation"
   | "inviteLifecycle"
   | "user"
@@ -565,7 +674,8 @@ export type AdminStatusDomain =
   | "legalEntity"
   | "dispute"
   | "category"
-  | "venue";
+  | "venue"
+  | "onsiteEvent";
 
 export function adminStatusLabel(domain: AdminStatusDomain, status: string): string {
   switch (domain) {
@@ -578,7 +688,13 @@ export function adminStatusLabel(domain: AdminStatusDomain, status: string): str
     case "submission":
       return submissionStatusLabel[status as ItemSubmissionStatus] ?? status;
     case "payment":
-      return status.replaceAll("_", " ");
+      return paymentStatusLabel[status as PaymentStatus] ?? status.replaceAll("_", " ");
+    case "amlMatch":
+      return amlMatchStatusLabel[status] ?? status.replaceAll("_", " ");
+    case "amlDecision":
+      return amlDecisionOutcomeLabel[status] ?? status.replaceAll("_", " ");
+    case "sofCase":
+      return sofCaseStatusLabel[status] ?? status.replaceAll("_", " ");
     case "payout":
       return payoutStatusLabel[status as PayoutStatus] ?? status.replaceAll("_", " ");
     case "invitation":
@@ -612,6 +728,8 @@ export function adminStatusLabel(domain: AdminStatusDomain, status: string): str
       return categoryLifecycleLabel[status as CategoryLifecycleStatus] ?? status;
     case "venue":
       return status === "archived" ? "Archived" : "Active";
+    case "onsiteEvent":
+      return onsiteEventStatusLabel[status] ?? status.replaceAll("_", " ");
     default:
       return status;
   }
@@ -632,6 +750,12 @@ export function adminStatusToBadgeVariant(
       return submissionStatusToBadgeVariant(status as ItemSubmissionStatus);
     case "payment":
       return paymentStatusToBadgeVariant(status as PaymentStatus);
+    case "amlMatch":
+      return amlMatchStatusToBadgeVariant(status);
+    case "amlDecision":
+      return amlDecisionOutcomeToBadgeVariant(status);
+    case "sofCase":
+      return sofCaseStatusToBadgeVariant(status);
     case "payout":
       return payoutStatusToBadgeVariant(status);
     case "invitation":
@@ -662,6 +786,8 @@ export function adminStatusToBadgeVariant(
       return categoryLifecycleToBadgeVariant(status as CategoryLifecycleStatus);
     case "venue":
       return status === "archived" ? "neutral" : "success";
+    case "onsiteEvent":
+      return onsiteEventStatusToBadgeVariant(status);
     default:
       return "neutral";
   }

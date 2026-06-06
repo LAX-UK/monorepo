@@ -6,6 +6,7 @@ import {
   type AdminPaymentTableRow,
 } from "@/components/admin/admin-payments-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import Link from "next/link";
 
 export function PaymentDrawerContent({
@@ -31,16 +32,28 @@ export function PaymentDrawerContent({
       </div>
       <dl className="grid grid-cols-1 gap-3 text-sm">
         <div>
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Payment ID</dt>
-          <dd className="font-mono text-xs">{p.id}</dd>
-        </div>
-        <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Buyer</dt>
-          <dd className="font-mono text-xs break-all">{p.buyerId}</dd>
+          <dd>
+            <Link
+              href={`/admin/clients/${encodeURIComponent(p.buyerId)}`}
+              className="font-medium text-primary underline"
+              onClick={onClose}
+            >
+              {p.buyerLabel?.trim() || "View buyer profile"}
+            </Link>
+          </dd>
         </div>
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Seller</dt>
-          <dd className="font-mono text-xs break-all">{p.sellerId}</dd>
+          <dd>
+            <Link
+              href={`/admin/clients/${encodeURIComponent(p.sellerId)}`}
+              className="font-medium text-primary underline"
+              onClick={onClose}
+            >
+              View seller profile
+            </Link>
+          </dd>
         </div>
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Amount</dt>
@@ -58,11 +71,23 @@ export function PaymentDrawerContent({
         </div>
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Fulfilment</dt>
-          <dd className="font-label text-xs uppercase tracking-wide text-on-surface-variant">
-            {p.fulfilmentStatus ? p.fulfilmentStatus.replaceAll("_", " ") : "—"}
+          <dd>
+            {p.fulfilmentStatus ? (
+              <AdminStatusBadge domain="fulfilment" status={p.fulfilmentStatus} />
+            ) : (
+              <span className="text-on-surface-variant">—</span>
+            )}
           </dd>
         </div>
       </dl>
+
+      <AdminTechnicalIdDisclosure
+        items={[
+          { label: "Payment ID", value: p.id },
+          { label: "Buyer ID", value: p.buyerId },
+          { label: "Seller ID", value: p.sellerId },
+        ]}
+      />
 
       <AdminPaymentXeroPanel
         id={p.id}

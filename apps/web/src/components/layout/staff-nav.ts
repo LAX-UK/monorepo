@@ -218,7 +218,7 @@ function buildStaffNavGroupSpecs(
         {
           id: "conveyor",
           href: "/admin/conveyor",
-          label: "Conveyor",
+          label: "Submission pipeline",
           icon: Workflow,
           match: (pathname) => pathname.startsWith("/admin/conveyor"),
           requirement: CONVEYOR_ACCESS,

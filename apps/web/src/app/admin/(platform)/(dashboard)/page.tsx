@@ -37,7 +37,10 @@ export default async function AdminHomePage({
   const periodDays = parseAdminKpiPeriod(sp.period);
   const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
   const jar = await cookies();
-  const widgets = parseDashboardWidgetsCookie(jar.get(ADMIN_DASHBOARD_WIDGETS_COOKIE)?.value);
+  const widgets = parseDashboardWidgetsCookie(
+    jar.get(ADMIN_DASHBOARD_WIDGETS_COOKIE)?.value,
+    user.staffRole ?? null,
+  );
 
   let metrics = {
     liveLots: 0,
@@ -160,6 +163,7 @@ export default async function AdminHomePage({
         anomalies={anomalies}
         onsiteRadarRows={onsiteRadarRows}
         loadWarning={dashboardLoadWarning}
+        staffRole={user.staffRole ?? null}
       />
     </AppScreen>
   );

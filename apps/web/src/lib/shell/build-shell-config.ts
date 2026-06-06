@@ -147,6 +147,7 @@ export function buildShellConfig({
     ...(role === "client" ? { clientWorkspaceMode } : {}),
     pendingSubmissionCount,
     pendingArtistCount,
+    ...(navCounts ? { navCounts } : {}),
     ...(mobileHeader ? { mobileHeader } : {}),
     ...(hideBottomTabBar ? { hideBottomTabBar: true } : {}),
   };
