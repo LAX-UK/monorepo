@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseBid } from "./parse";
+import { parseBid, parseItemSubmission } from "./parse";
 
 describe("parseBid", () => {
   it("maps placedByUserId and autoBidStepAmount from API rows", () => {
@@ -17,5 +17,23 @@ describe("parseBid", () => {
     expect(bid.placedByUserId).toBe("user-1");
     expect(bid.bidderId).toBe("user-1");
     expect(bid.autoBidStepAmount).toBe("10.00");
+  });
+});
+
+describe("parseItemSubmission", () => {
+  it("maps legalEntityId from API rows for admin seller resolution", () => {
+    const submission = parseItemSubmission({
+      id: "sub-1",
+      legalEntityId: "00000000-0000-4000-8000-000000000010",
+      title: "Blue vase",
+      description: null,
+      images: [],
+      categoryId: "cat-1",
+      status: "submitted",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(submission.legalEntityId).toBe("00000000-0000-4000-8000-000000000010");
+    expect(submission.sellerId).toBeUndefined();
   });
 });
