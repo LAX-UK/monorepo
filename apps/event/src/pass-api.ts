@@ -1,10 +1,10 @@
-import type { OnsiteEventPassView } from "@auction/types";
 import {
   type ApiErrorBody,
   normalizeApiErrorMessage,
   parseApiErrorCodeFromBody,
-} from "@auction/validators";
+} from "./api-error-body.js";
 import { API_BASE, EVENT_SLUG } from "./config.js";
+import type { OnsiteEventPassView } from "./pass-types.js";
 
 const PASS_FETCH_TIMEOUT_MS = 15_000;
 

@@ -11,10 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@auction/types": "workspace:*",
-    "@auction/validators": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "@types/node": "^22.10.5",
