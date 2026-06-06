@@ -1,4 +1,5 @@
 import { paletteApiBase } from "@/components/layout/palette/api-base";
+import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
 
 const LIMIT = 5;
@@ -10,6 +11,7 @@ type PaymentRow = {
   status: string;
 };
 
+/** Known gap: fetches the payments list then filters client-side until a search API exists. */
 export const paymentsPaletteSource: PaletteSource = {
   id: "payments",
   heading: "Payments",
@@ -33,7 +35,8 @@ export const paymentsPaletteSource: PaletteSource = {
         id: `payment-${p.id}`,
         href: `/admin/payments?q=${encodeURIComponent(p.id)}`,
         label: p.lotTitle ?? p.buyerEmail ?? p.id,
-        hint: p.status,
+        hint: paletteRecordHint("record", p.status) ?? "Payment",
+        kind: "record" as const,
       }));
   },
 };

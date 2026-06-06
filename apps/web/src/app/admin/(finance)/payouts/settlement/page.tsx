@@ -24,7 +24,7 @@ export default async function PayoutSettlementPage({
   return (
     <AdminPanelPage
       title="Run settlement"
-      description="Create a payout from captured payments for one legal entity on demand."
+      description="Run on-demand settlement for one legal entity. Nightly automation handles the rest."
       actions={
         <Link
           href="/admin/payouts"
@@ -49,8 +49,16 @@ export default async function PayoutSettlementPage({
       <Surface variant="card">
         <div className="space-y-4 p-4">
           <p className="text-sm text-on-surface-variant">
-            Eligible sellers are settled automatically each night; use this form for on-demand
-            settlement.
+            Captured payments for eligible sellers are settled automatically each night. Use this
+            form when finance needs an immediate payout for a specific legal entity — for example
+            after a manual adjustment or before a sale closes.
+          </p>
+          <p className="text-sm text-on-surface-variant">
+            Review existing payouts on{" "}
+            <Link href="/admin/payouts" className="text-primary underline">
+              Payouts
+            </Link>{" "}
+            before running settlement.
           </p>
           <PayoutSettlementForm />
         </div>

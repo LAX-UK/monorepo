@@ -1,6 +1,8 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CommandPaletteHint } from "@/components/admin/command-palette-hint";
 import { LegalEntitiesBoard } from "@/components/admin/legal-entities/legal-entities-board";
 import { LegalEntitiesFilterToolbar } from "@/components/admin/legal-entities/legal-entities-filter-toolbar";
 import { LegalEntitiesMobileCards } from "@/components/admin/legal-entities/legal-entities-mobile-cards";
@@ -17,7 +19,6 @@ import {
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import type { AdminLegalEntityListRow } from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { PaginationFooter } from "@auction/ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -67,7 +68,7 @@ export default async function AdminLegalEntitiesPage({
 
   const pagination =
     !loadError && total > 0 ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
@@ -168,15 +169,17 @@ export default async function AdminLegalEntitiesPage({
       }
       empty={
         !loadError && rows.length === 0 ? (
-          <FilterEmptyState
-            entity="legal entities"
-            segment="admin"
-            hasActiveFilters={hasFilters}
-            clearFiltersHref="/admin/legal-entities"
-          />
+          <div className="space-y-2">
+            <FilterEmptyState
+              entity="legal entities"
+              segment="admin"
+              hasActiveFilters={hasFilters}
+              clearFiltersHref="/admin/legal-entities"
+            />
+            <CommandPaletteHint />
+          </div>
         ) : null
       }
-      showCommandPaletteHint={!loadError && rows.length === 0}
       pagination={pagination}
     />
   );

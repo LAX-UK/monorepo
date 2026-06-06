@@ -1,6 +1,7 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminFinanceKpiRows } from "@/components/admin/admin-finance-kpi-rows";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
@@ -56,7 +57,6 @@ export default async function FinanceAdminHomePage() {
       layout="hub"
       title="Finance"
       description="Payments, payouts, disputes, and accounting integrations."
-      showCommandPaletteHint
       mobileSummary={
         <CatalogListMobileSummary
           metrics={[
@@ -74,9 +74,20 @@ export default async function FinanceAdminHomePage() {
           ]}
         />
       }
-      kpiStrip={financeIssues ? <AdminFinanceKpiRows financeIssues={financeIssues} /> : null}
       view={
         <div className="space-y-8">
+          {financeIssues ? (
+            <AdminFinanceKpiRows financeIssues={financeIssues} />
+          ) : !financeIssuesLoadError ? (
+            <AdminListKpiStrip
+              ariaLabel="Finance nav counts"
+              tiles={[
+                { label: "Manual review", value: navCounts.manualReviewCount },
+                { label: "Open disputes", value: navCounts.disputesOpen },
+                { label: "Failed payouts", value: navCounts.payoutsFailed },
+              ]}
+            />
+          ) : null}
           {anomalies.length > 0 ? (
             <AdminAnomalyBanner anomalies={anomalies} storageKey="finance-home" />
           ) : null}

@@ -1,8 +1,10 @@
 "use client";
 
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { sofReopenAction } from "@/lib/actions/compliance";
 import type { AdminSourceOfFundsRow } from "@/lib/data/http/compliance.server";
+import { buildAdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -23,19 +25,20 @@ export function ComplianceRejectedSofPanel({ rows, canReopen }: Props) {
       </p>
       <ul className="divide-y divide-outline-variant/30">
         {rows.map((row) => {
+          const vm = buildAdminSofTableRow(row);
           const formId = `sof-reopen-${row.id}`;
           return (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-              <div className="text-sm">
+              <div className="flex min-w-0 flex-col gap-1 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
                 <Link
                   href={`/admin/clients/${row.userId}`}
-                  className="font-mono text-primary underline"
+                  className="font-medium text-primary underline"
                 >
-                  {row.userId.slice(0, 8)}…
+                  View client profile
                 </Link>
+                <AdminStatusBadge domain="sofCase" status="rejected" />
                 <span className="text-on-surface-variant">
-                  {" "}
-                  · {row.currency} {row.exposureAmount} · {row.trigger}
+                  {vm.triggerLabel} · {vm.exposureLabel}
                 </span>
               </div>
               {canReopen ? (

@@ -1,4 +1,5 @@
 import { paletteApiBase } from "@/components/layout/palette/api-base";
+import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
 
 const LIMIT = 5;
@@ -36,7 +37,8 @@ export const payoutsPaletteSource: PaletteSource = {
         id: `payout-${row.id}`,
         href: `/admin/payouts?legalEntityId=${encodeURIComponent(row.legalEntityId)}`,
         label: `Payout ${row.netAmount}`,
-        hint: row.status,
+        hint: paletteRecordHint("record", row.status) ?? "Payout",
+        kind: "record" as const,
       }));
   },
 };

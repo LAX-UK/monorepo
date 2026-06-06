@@ -135,6 +135,112 @@ test.describe("admin a11y smoke", () => {
     ).toHaveLength(0);
   });
 
+  test("payments list has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/payments");
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("payouts list at mobile has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin/payouts");
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("AML compliance queue has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/compliance/aml");
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("source of funds compliance queue at mobile has no serious axe violations in main", async ({
+    page,
+  }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin/compliance/source-of-funds");
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("onboarding issues page has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/onboarding-issues");
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("invitations page has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/invitations");
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
   test("lot fulfilment list at mobile has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);
