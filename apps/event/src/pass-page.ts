@@ -1,6 +1,6 @@
-import type { OnsiteEventPassView } from "@auction/types";
 import { EVENTS_EMAIL, EVENT_DETAILS } from "./config.js";
 import { PassFetchError, fetchPass } from "./pass-api.js";
+import type { OnsiteEventPassView } from "./pass-types.js";
 import { downloadOpeningEventCalendar } from "./rsvp-calendar.js";
 
 function el<K extends keyof HTMLElementTagNameMap>(

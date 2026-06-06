@@ -2,7 +2,7 @@ import {
   type ApiErrorBody,
   normalizeApiErrorMessage,
   parseApiErrorCodeFromBody,
-} from "@auction/validators";
+} from "./api-error-body.js";
 import { API_BASE, EVENT_SLUG } from "./config.js";
 import { RsvpApiError } from "./rsvp-api-error.js";
 
