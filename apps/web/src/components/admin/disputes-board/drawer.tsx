@@ -1,6 +1,8 @@
 "use client";
 
+import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { CatalogDomainEventsTimeline } from "@/components/admin/catalog/catalog-domain-events-timeline";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import type { AdminDisputeTableRow } from "@/lib/data/view-models/admin-disputes-table.vm";
@@ -29,9 +31,20 @@ export function DisputeDrawerContent({
   onClose: () => void;
 }) {
   const timeline = toTimelineEvents(row);
+  const buyerLinkLabel = row.buyerLabel?.trim() || "View buyer profile";
 
   return (
     <div className="space-y-6">
+      <AdminPreviewSheetHeader
+        title="Dispute case"
+        fullPageHref="/admin/disputes"
+        subtitle={
+          <p className="truncate font-body text-sm text-on-surface-variant">
+            {row.lotTitle ?? row.reasonLabel}
+          </p>
+        }
+      />
+
       <div className="flex flex-wrap items-center gap-2">
         <AdminStatusBadge domain="dispute" status={row.status} />
         <span className="font-body text-sm tabular-nums text-on-surface">{row.amountLabel}</span>
@@ -75,7 +88,7 @@ export function DisputeDrawerContent({
                 className="text-primary hover:underline"
                 onClick={onClose}
               >
-                {row.buyerLabel ?? row.buyerId}
+                {buyerLinkLabel}
               </Link>
             </dd>
           </div>
@@ -88,11 +101,21 @@ export function DisputeDrawerContent({
               className="text-primary hover:underline"
               onClick={onClose}
             >
-              {row.sellerDisplayName ?? row.sellerLegalEntityId}
+              {row.sellerDisplayName ?? "View legal entity"}
             </Link>
           </dd>
         </div>
       </dl>
+
+      <AdminTechnicalIdDisclosure
+        items={[
+          { label: "Stripe dispute ID", value: row.stripeDisputeId },
+          { label: "Payment ID", value: row.paymentId },
+          { label: "Buyer ID", value: row.buyerId },
+          { label: "Seller legal entity ID", value: row.sellerLegalEntityId },
+          { label: "Lot ID", value: row.lotId },
+        ]}
+      />
 
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" asChild>

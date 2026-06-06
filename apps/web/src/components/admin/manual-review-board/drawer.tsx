@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { ManualReviewPaymentActions } from "@/components/admin/manual-review-payment-actions";
 import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-review";
 import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
@@ -16,7 +17,8 @@ export function ManualReviewDrawerContent({
   payment: AdminManualReviewPaymentRow;
   canOpenComplianceQueues?: boolean;
 }) {
-  const lotReference = payment.lotNumber == null ? payment.lotId : `Lot ${payment.lotNumber}`;
+  const lotReference =
+    payment.lotNumber == null ? "Lot details on full page" : `Lot ${payment.lotNumber}`;
   const compliance = isComplianceManualReviewReason(payment.manualReviewReason);
 
   return (
@@ -36,7 +38,7 @@ export function ManualReviewDrawerContent({
         ) : null}
         <p className="mt-2 text-sm">
           <Link href={`/admin/clients/${payment.winnerUserId}`} className="text-primary underline">
-            Buyer profile
+            {payment.winnerEmail?.trim() || "Buyer profile"}
           </Link>
           {compliance && canOpenComplianceQueues ? (
             <>
@@ -57,18 +59,10 @@ export function ManualReviewDrawerContent({
       </div>
       <dl className="grid gap-3 text-sm">
         <div>
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Payment</dt>
-          <dd className="font-mono text-xs break-all">{payment.paymentId}</dd>
-        </div>
-        <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Amount</dt>
           <dd className="text-lg font-semibold tabular-nums">
             {formatMoney(payment.amount, payment.currency)}
           </dd>
-        </div>
-        <div>
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Winner</dt>
-          <dd>{payment.winnerEmail}</dd>
         </div>
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">
@@ -81,6 +75,15 @@ export function ManualReviewDrawerContent({
           <dd>{formatDateTime(payment.archiveTimestamp ?? payment.sellerArchivedAt)}</dd>
         </div>
       </dl>
+
+      <AdminTechnicalIdDisclosure
+        items={[
+          { label: "Payment ID", value: payment.paymentId },
+          { label: "Lot ID", value: payment.lotId },
+          { label: "Winner user ID", value: payment.winnerUserId },
+        ]}
+      />
+
       {!compliance ? (
         <Alert>
           <AlertTitle>Archive reason</AlertTitle>

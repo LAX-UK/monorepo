@@ -2,6 +2,7 @@
 
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import {
   ComplianceDecideForm,
   ComplianceTriageForm,
@@ -28,9 +29,9 @@ export function AmlDrawerContent({ row, canTriage, canDecide, currentUserId }: P
           </div>
         }
       />
-      <dl className="grid gap-2 text-sm">
+      <dl className="grid gap-3 text-sm">
         <div>
-          <dt className="text-xs text-on-surface-variant">User</dt>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">User</dt>
           <dd>
             <Link href={`/admin/clients/${row.userId}`} className="text-primary underline">
               View client profile
@@ -38,24 +39,37 @@ export function AmlDrawerContent({ row, canTriage, canDecide, currentUserId }: P
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-on-surface-variant">Categories</dt>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Categories</dt>
           <dd>{row.categoriesLabel}</dd>
         </div>
         <div>
-          <dt className="text-xs text-on-surface-variant">Watchlist hits</dt>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+            Watchlist hits
+          </dt>
           <dd>{row.totalHits}</dd>
         </div>
         <div>
-          <dt className="text-xs text-on-surface-variant">Screened</dt>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Screened</dt>
           <dd>{row.screenedAt}</dd>
         </div>
         {row.triageNotes ? (
           <div>
-            <dt className="text-xs text-on-surface-variant">Triage notes</dt>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+              Triage notes
+            </dt>
             <dd>{row.triageNotes}</dd>
           </div>
         ) : null}
       </dl>
+
+      <AdminTechnicalIdDisclosure
+        items={[
+          { label: "Case ID", value: row.id },
+          { label: "User ID", value: row.userId },
+          { label: "Provider session ID", value: row.providerSessionId },
+        ]}
+      />
+
       <ComplianceTriageForm
         entityId={row.id}
         entityKind="aml"
