@@ -1,9 +1,10 @@
+import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { OnboardingIssuesBoard } from "@/components/admin/onboarding-issues-board";
-import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { onboardingIssuesListController } from "@/lib/admin/onboarding-issues-list-controller";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -34,10 +35,10 @@ export default async function AdminOnboardingIssuesPage({
   const queueTotal = summary?.queueTotal ?? 0;
 
   return (
-    <PeopleListShell
+    <AdminListShell
+      layout="hub"
       title="Onboarding & verification queues"
       description="Consolidated verification queues for entities, artists, KYC, and documents."
-      wrapView={false}
       mobileSummary={
         summary ? (
           <CatalogListMobileSummary
@@ -70,9 +71,6 @@ export default async function AdminOnboardingIssuesPage({
           <AdminListAlert title="Could not load queues">{loadError}</AdminListAlert>
         ) : undefined
       }
-      view={
-        data ? <OnboardingIssuesBoard data={data} defaultTab={result?.tab ?? "entities"} /> : null
-      }
       empty={
         data && queueTotal === 0 ? (
           <CatalogListEmptyState
@@ -80,6 +78,21 @@ export default async function AdminOnboardingIssuesPage({
             description="No entities, artists, KYC sessions, or documents need attention right now."
           />
         ) : null
+      }
+      view={
+        <div className="space-y-8">
+          <AdminHubQuickLinks
+            ariaLabel="Onboarding quick links"
+            links={[
+              { href: "/admin/legal-entities", label: "Legal entities" },
+              { href: "/admin/invitations", label: "Invitations" },
+              { href: "/admin/clients", label: "Clients" },
+            ]}
+          />
+          {data ? (
+            <OnboardingIssuesBoard data={data} defaultTab={result?.tab ?? "entities"} />
+          ) : null}
+        </div>
       }
     />
   );

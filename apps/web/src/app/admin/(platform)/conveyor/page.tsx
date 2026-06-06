@@ -1,9 +1,9 @@
 import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { AdminConveyorTableBoard } from "@/components/admin/conveyor-board";
 import { ConveyorKanbanBoard } from "@/components/admin/conveyor-board/kanban";
 import { ConveyorLayoutToggle } from "@/components/admin/conveyor-board/layout-toggle";
@@ -40,11 +40,6 @@ export default async function AdminConveyorPage({
   const columns = buildConveyorColumns(rows);
   const pipelineTotal = columns.reduce((sum, col) => sum + col.items.length, 0);
 
-  const errorAlert =
-    error || loadError ? (
-      <AdminListAlert title="Could not load conveyor">{loadError ?? error}</AdminListAlert>
-    ) : null;
-
   const empty =
     !loadError && rows.length === 0 ? (
       <CatalogListEmptyState
@@ -53,31 +48,9 @@ export default async function AdminConveyorPage({
       />
     ) : null;
 
-  const view = (
-    <div className="space-y-8">
-      <AdminHubQuickLinks
-        ariaLabel="Conveyor quick links"
-        links={[
-          { href: "/admin/submissions", label: "Submissions" },
-          { href: "/admin/artists", label: "Artists" },
-          { href: "/admin/lots?lens=attention", label: "Lots attention" },
-        ]}
-      />
-      {!loadError && rows.length > 0 ? (
-        <div className="space-y-4">
-          <ConveyorLayoutToggle viewTable={viewTable} />
-          {viewTable ? (
-            <AdminConveyorTableBoard rows={rows} />
-          ) : (
-            <ConveyorKanbanBoard columns={columns} />
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-
   return (
-    <CatalogListShell
+    <AdminListShell
+      layout="hub"
       className="max-w-[1600px]"
       title="Conveyor"
       description="Single view of seller submissions through specialist review, catalogue build, live sale, and settlement hand-off."
@@ -108,10 +81,34 @@ export default async function AdminConveyorPage({
           />
         ) : null
       }
-      errorAlert={errorAlert}
+      errorAlert={
+        error || loadError ? (
+          <AdminListAlert title="Could not load conveyor">{loadError ?? error}</AdminListAlert>
+        ) : null
+      }
       empty={empty}
-    >
-      {view}
-    </CatalogListShell>
+      view={
+        <div className="space-y-8">
+          <AdminHubQuickLinks
+            ariaLabel="Conveyor quick links"
+            links={[
+              { href: "/admin/submissions", label: "Submissions" },
+              { href: "/admin/artists", label: "Artists" },
+              { href: "/admin/lots?lens=attention", label: "Lots attention" },
+            ]}
+          />
+          {!loadError && rows.length > 0 ? (
+            <div className="space-y-4">
+              <ConveyorLayoutToggle viewTable={viewTable} />
+              {viewTable ? (
+                <AdminConveyorTableBoard rows={rows} />
+              ) : (
+                <ConveyorKanbanBoard columns={columns} />
+              )}
+            </div>
+          ) : null}
+        </div>
+      }
+    />
   );
 }

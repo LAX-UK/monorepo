@@ -1,11 +1,13 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
@@ -17,13 +19,13 @@ import { paymentStatusesForChip, paymentsListController } from "@/lib/admin/admi
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { detectAnomalies, detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
-import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-review";
+import { manualReviewListController } from "@/lib/admin/manual-review-list-controller";
 import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminPaymentsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminManualReviewPayments, getAdminUsersByIds } from "@/lib/data/http/admin.server";
+import { getAdminUsersByIds } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { buildPaymentsSummary } from "@/lib/data/view-models/admin-payments-summary.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
@@ -55,8 +57,9 @@ export default async function AdminPaymentsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const manualReviewQueue = sp.manualReview === "1";
-  const manualReviewReasonFilter = sp.manualReviewReason?.trim() || "";
+  const manualReviewQuery = manualReviewListController.parseQuery(sp);
+  const manualReviewQueue = manualReviewQuery.manualReview;
+  const manualReviewReasonFilter = manualReviewQuery.reasonFilter;
   const success = safeDecodeAdminErrorParam(sp.success);
   const periodDays = parseAdminKpiPeriod(sp.period);
   const error = safeDecodeAdminErrorParam(sp.error);
@@ -68,19 +71,18 @@ export default async function AdminPaymentsPage({
     dailyCounts: [] as number[],
   }));
 
-  let manualReviewRows: Awaited<ReturnType<typeof getAdminManualReviewPayments>> = [];
+  let manualReviewRows: Awaited<ReturnType<typeof manualReviewListController.fetch>>["rows"] = [];
+  let manualReviewAllRows: Awaited<ReturnType<typeof manualReviewListController.fetch>>["allRows"] =
+    [];
+  let manualReviewSummary: Awaited<ReturnType<typeof manualReviewListController.fetch>>["summary"] =
+    { total: 0, financeHolds: 0, complianceHolds: 0, amlHolds: 0, sofHolds: 0 };
   let manualReviewLoadError: string | null = null;
   if (manualReviewQueue) {
     try {
-      const all = await getAdminManualReviewPayments();
-      manualReviewRows =
-        manualReviewReasonFilter === "finance"
-          ? all.filter((r) => !isComplianceManualReviewReason(r.manualReviewReason))
-          : manualReviewReasonFilter === "compliance"
-            ? all.filter((r) => isComplianceManualReviewReason(r.manualReviewReason))
-            : manualReviewReasonFilter.length > 0
-              ? all.filter((r) => r.manualReviewReason === manualReviewReasonFilter)
-              : all;
+      const result = await manualReviewListController.fetch(manualReviewQuery);
+      manualReviewRows = result.rows;
+      manualReviewAllRows = result.allRows;
+      manualReviewSummary = result.summary;
     } catch (e) {
       manualReviewLoadError =
         e instanceof Error ? e.message : "Could not load manual review payments.";
@@ -186,6 +188,8 @@ export default async function AdminPaymentsPage({
       { manualReviewCount: manualReviewRows.length },
       { manualReviewCount: 0 },
     );
+    const financeHoldCount = manualReviewSummary.financeHolds;
+    const complianceHoldCount = manualReviewSummary.complianceHolds;
     return (
       <AdminListShell
         variant="queue"
@@ -261,8 +265,41 @@ export default async function AdminPaymentsPage({
           ) : null
         }
         kpiStrip={
-          manualAnomalies.length > 0 ? (
+          manualReviewAllRows.length > 0 ? (
+            <div className="space-y-4">
+              <AdminListKpiStrip
+                ariaLabel="Manual review summary"
+                tiles={[
+                  { label: "Total holds", value: manualReviewAllRows.length },
+                  {
+                    label: "Finance holds",
+                    value: financeHoldCount,
+                    ...(financeHoldCount > 0 ? { semanticTone: "warning" as const } : {}),
+                  },
+                  {
+                    label: "Compliance holds",
+                    value: complianceHoldCount,
+                    ...(complianceHoldCount > 0 ? { semanticTone: "danger" as const } : {}),
+                  },
+                ]}
+              />
+              {manualAnomalies.length > 0 ? (
+                <AdminAnomalyBanner anomalies={manualAnomalies} storageKey="manual-review" />
+              ) : null}
+            </div>
+          ) : manualAnomalies.length > 0 ? (
             <AdminAnomalyBanner anomalies={manualAnomalies} storageKey="manual-review" />
+          ) : null
+        }
+        mobileSummary={
+          manualReviewAllRows.length > 0 ? (
+            <CatalogListMobileSummary
+              metrics={[
+                { id: "total", label: "Holds", value: String(manualReviewAllRows.length) },
+                { id: "finance", label: "Finance", value: String(financeHoldCount) },
+                { id: "compliance", label: "Compliance", value: String(complianceHoldCount) },
+              ]}
+            />
           ) : null
         }
         wrapView={false}
@@ -286,7 +323,7 @@ export default async function AdminPaymentsPage({
         }
         empty={
           !manualReviewLoadError && !success && manualReviewRows.length === 0 ? (
-            <AdminEmptyState
+            <CatalogListEmptyState
               title="No manual review payments"
               description="Payments in requires_manual_review will appear here — finance or compliance holds."
             />

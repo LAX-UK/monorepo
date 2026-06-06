@@ -136,7 +136,7 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
           href={`/admin/clients/${row.original.buyerId}`}
           className="block max-w-[12rem] truncate text-sm font-medium text-primary underline-offset-2 hover:underline"
         >
-          {row.original.buyerLabel ?? `ID: ${row.original.buyerId.slice(0, 8)}…`}
+          {row.original.buyerLabel?.trim() || "View buyer"}
         </Link>
       ),
     },

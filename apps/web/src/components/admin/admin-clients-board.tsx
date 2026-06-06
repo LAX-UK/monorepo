@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { UserSuspendAction } from "@/components/admin/admin-user-actions";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
@@ -158,38 +159,38 @@ function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
   const mobile = formatPhoneDisplay(u.mobile);
 
   return (
-    <dl className="grid grid-cols-1 gap-4 rounded-md border border-border-hairline bg-surface-container-lowest p-4 sm:grid-cols-2">
-      <DetailItem label="Email" className="sm:col-span-2">
-        <span className="break-all">{u.email}</span>
-      </DetailItem>
-      <DetailItem label="Email status">
-        <span className={u.emailVerified ? "text-success" : "text-on-surface-variant"}>
-          {u.emailVerified ? "Verified" : "Unverified"}
-        </span>
-      </DetailItem>
-      <DetailItem label="KYC">
-        <AdminStatusBadge domain="kyc" status={u.kycStatus ?? ""} size="sm" />
-      </DetailItem>
-      <DetailItem label="Persona">{formatPersona(u.signupPersona)}</DetailItem>
-      <DetailItem label="2FA">
-        <Badge variant={u.twoFactorEnabled ? "default" : "secondary"}>
-          {u.twoFactorEnabled ? "On" : "Off"}
-        </Badge>
-      </DetailItem>
-      <DetailItem label="Joined">{formatAdminUserDate(u.createdAt)}</DetailItem>
-      <DetailItem label="Updated">{relativeFromIso(u.updatedAt)}</DetailItem>
-      {mobile ? (
-        <DetailItem label="Mobile" className="sm:col-span-2">
-          <span title={u.mobile ?? undefined}>
-            {mobile}
-            {u.mobileCountry ? ` (${u.mobileCountry})` : ""}
+    <div className="space-y-4">
+      <dl className="grid grid-cols-1 gap-4 rounded-md border border-border-hairline bg-surface-container-lowest p-4 sm:grid-cols-2">
+        <DetailItem label="Email" className="sm:col-span-2">
+          <span className="break-all">{u.email}</span>
+        </DetailItem>
+        <DetailItem label="Email status">
+          <span className={u.emailVerified ? "text-success" : "text-on-surface-variant"}>
+            {u.emailVerified ? "Verified" : "Unverified"}
           </span>
         </DetailItem>
-      ) : null}
-      <DetailItem label="User ID" className="sm:col-span-2">
-        <span className="break-all font-mono text-xs">{u.id}</span>
-      </DetailItem>
-    </dl>
+        <DetailItem label="KYC">
+          <AdminStatusBadge domain="kyc" status={u.kycStatus ?? ""} size="sm" />
+        </DetailItem>
+        <DetailItem label="Persona">{formatPersona(u.signupPersona)}</DetailItem>
+        <DetailItem label="2FA">
+          <Badge variant={u.twoFactorEnabled ? "default" : "secondary"}>
+            {u.twoFactorEnabled ? "On" : "Off"}
+          </Badge>
+        </DetailItem>
+        <DetailItem label="Joined">{formatAdminUserDate(u.createdAt)}</DetailItem>
+        <DetailItem label="Updated">{relativeFromIso(u.updatedAt)}</DetailItem>
+        {mobile ? (
+          <DetailItem label="Mobile" className="sm:col-span-2">
+            <span title={u.mobile ?? undefined}>
+              {mobile}
+              {u.mobileCountry ? ` (${u.mobileCountry})` : ""}
+            </span>
+          </DetailItem>
+        ) : null}
+      </dl>
+      <AdminTechnicalIdDisclosure items={[{ label: "User ID", value: u.id }]} />
+    </div>
   );
 }
 
