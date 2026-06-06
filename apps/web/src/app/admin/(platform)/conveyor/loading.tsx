@@ -5,7 +5,7 @@ export default function ConveyorLoading() {
     <CatalogListPageSkeleton
       title="Conveyor"
       description="Loading pipeline…"
-      kpiTiles={0}
+      kpiTiles={3}
       tableRows={0}
       tableColumns={5}
       showFilterBar={false}

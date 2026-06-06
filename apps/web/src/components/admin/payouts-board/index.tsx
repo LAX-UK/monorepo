@@ -7,6 +7,7 @@ import { PayoutDrawerContent } from "@/components/admin/payouts-board/drawer";
 import { PayoutsMobileCards } from "@/components/admin/payouts-board/mobile-cards";
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
+import { formatDate } from "@/lib/ui/format";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { useCallback, useMemo, useState } from "react";
 
@@ -43,11 +44,11 @@ export function AdminPayoutsBoard({ rows }: Props) {
           {selected ? (
             <div className="space-y-4 pt-2">
               <AdminPreviewSheetHeader
-                title={`Payout ${selected.id.slice(0, 8)}…`}
+                title="Seller payout"
                 fullPageHref="/admin/payouts"
                 subtitle={
                   <p className="truncate font-body text-sm text-on-surface-variant">
-                    Entity {selected.legalEntityId.slice(0, 8)}…
+                    {formatDate(selected.periodStart)} → {formatDate(selected.periodEnd)}
                   </p>
                 }
               />

@@ -5,7 +5,7 @@ import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
-import { getAdminSalesList } from "@/lib/data/http/admin.server";
+import { saleroomHubController } from "@/lib/admin/saleroom-hub-controller";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -16,21 +16,18 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function AdminSaleroomHubPage() {
-  let sales: Awaited<ReturnType<typeof getAdminSalesList>> = [];
+  let liveOrUpcoming: Awaited<ReturnType<typeof saleroomHubController.fetch>>["rows"] = [];
+  let liveCount = 0;
+  let scheduledCount = 0;
   let loadError: string | null = null;
   try {
-    sales = await getAdminSalesList({ limit: 50 });
+    const result = await saleroomHubController.fetch();
+    liveOrUpcoming = result.rows;
+    liveCount = result.summary.liveCount;
+    scheduledCount = result.summary.scheduledCount;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load sales.";
   }
-
-  const liveOrUpcoming = sales.filter(
-    (row) =>
-      row.sale.deliveryMode === "onsite" &&
-      (row.sale.status === "active" || row.sale.status === "scheduled"),
-  );
-  const liveCount = liveOrUpcoming.filter((row) => row.sale.status === "active").length;
-  const scheduledCount = liveOrUpcoming.filter((row) => row.sale.status === "scheduled").length;
 
   const empty =
     !loadError && liveOrUpcoming.length === 0 ? (

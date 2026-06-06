@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { amlColumns } from "@/components/admin/compliance-aml-board/columns";
 import { AmlDrawerContent } from "@/components/admin/compliance-aml-board/drawer";
 import { AmlMobileCards } from "@/components/admin/compliance-aml-board/mobile-cards";
@@ -45,15 +46,24 @@ export function ComplianceAmlBoard({ rows, canTriage, canDecide, currentUserId }
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-lg overflow-y-auto">
           {selected ? (
-            <AmlDrawerContent
-              row={selected}
-              canTriage={canTriage}
-              canDecide={canDecide}
-              currentUserId={currentUserId}
-            />
-          ) : (
-            <AdminPreviewSheetHeader title="Watchlist screening" />
-          )}
+            <div className="space-y-4 pt-2">
+              <AdminPreviewSheetHeader
+                title="Watchlist screening"
+                subtitle={
+                  <div className="flex flex-wrap gap-2">
+                    <AdminStatusBadge domain="amlMatch" status={selected.matchStatus} />
+                    <AdminStatusBadge domain="amlDecision" status={selected.decisionOutcome} />
+                  </div>
+                }
+              />
+              <AmlDrawerContent
+                row={selected}
+                canTriage={canTriage}
+                canDecide={canDecide}
+                currentUserId={currentUserId}
+              />
+            </div>
+          ) : null}
         </SheetContent>
       </Sheet>
     </>
