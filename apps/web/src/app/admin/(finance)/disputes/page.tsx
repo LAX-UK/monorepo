@@ -1,8 +1,9 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { AdminDisputesBoard } from "@/components/admin/disputes-board";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { disputesListController } from "@/lib/admin/admin-list-controllers";
@@ -10,7 +11,6 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { AdminDisputeCaseSummary } from "@auction/types";
-import { PaginationFooter } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -87,7 +87,7 @@ export default async function AdminDisputesPage({
 
   const pagination =
     !loadError && (query.offset > 0 || hasNextPage) ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
@@ -112,7 +112,6 @@ export default async function AdminDisputesPage({
       title="Payment disputes"
       description="Stripe chargebacks and disputes. Open a case for payment context and timeline."
       meta={meta}
-      showCommandPaletteHint
       chips={<FilterChipRow label="Status" chips={statusChips} />}
       mobileSummary={
         !loadError ? (
@@ -147,7 +146,10 @@ export default async function AdminDisputesPage({
       view={!loadError && rows.length > 0 ? <AdminDisputesBoard rows={rows} /> : null}
       empty={
         !loadError && rows.length === 0 ? (
-          <AdminEmptyState title="No disputes" description="No dispute cases match this filter." />
+          <CatalogListEmptyState
+            title="No disputes"
+            description="No dispute cases match this filter."
+          />
         ) : null
       }
       pagination={pagination}

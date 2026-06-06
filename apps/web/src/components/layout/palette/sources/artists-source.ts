@@ -23,6 +23,7 @@ export const artistsPaletteSource: PaletteSource = {
       href: `/admin/artists/${artist.id}`,
       label: artist.displayName,
       hint: "Artist",
+      kind: "record" as const,
     }));
   },
 };

@@ -2,11 +2,11 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminQueueCountBadge, AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-tabs";
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminOnboardingIssuesPayload } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
-import { StatusBadge } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -101,7 +101,11 @@ export function OnboardingIssuesBoard({
   const entityColumns = useMemo(
     (): ColumnDef<AdminOnboardingIssuesPayload["entitiesPendingReview"][number]>[] => [
       { accessorKey: "displayName", header: "Entity" },
-      { accessorKey: "status", header: "Status" },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => <AdminStatusBadge domain="legalEntity" status={row.original.status} />,
+      },
       linkColumn(
         (r) => `/admin/legal-entities/${r.id}`,
         () => "Open",
@@ -133,14 +137,18 @@ export function OnboardingIssuesBoard({
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-on-surface">{label}</p>
               {label !== r.userId ? (
-                <p className="truncate font-mono text-[10px] text-on-surface-variant">{r.userId}</p>
+                <p className="truncate text-xs text-on-surface-variant">Client record</p>
               ) : null}
             </div>
           );
         },
       },
       { accessorKey: "provider", header: "Provider" },
-      { accessorKey: "status", header: "Status" },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => <AdminStatusBadge domain="kyc" status={row.original.status} />,
+      },
       {
         accessorKey: "createdAt",
         header: "Created",
@@ -176,7 +184,7 @@ export function OnboardingIssuesBoard({
       {
         accessorKey: "uploadObjectId",
         header: "Upload",
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.uploadObjectId}</span>,
+        cell: () => <span className="text-xs text-on-surface-variant">Document upload</span>,
       },
       linkColumn(
         (r) => `/admin/legal-entities/${r.legalEntityId}`,
@@ -192,11 +200,7 @@ export function OnboardingIssuesBoard({
       label: "Entities",
       ...(data.entitiesPendingReview.length > 0
         ? {
-            badge: (
-              <StatusBadge variant="info" size="sm">
-                {data.entitiesPendingReview.length}
-              </StatusBadge>
-            ),
+            badge: <AdminQueueCountBadge count={data.entitiesPendingReview.length} />,
           }
         : {}),
       content: (
@@ -207,7 +211,9 @@ export function OnboardingIssuesBoard({
           renderCard={(r) => (
             <>
               <p className="font-medium">{r.displayName}</p>
-              <p className="mt-1 text-xs text-on-surface-variant">{r.status}</p>
+              <div className="mt-1">
+                <AdminStatusBadge domain="legalEntity" status={r.status} />
+              </div>
               <Link
                 href={`/admin/legal-entities/${r.id}`}
                 className="mt-2 inline-block text-sm text-primary underline"
@@ -224,11 +230,7 @@ export function OnboardingIssuesBoard({
       label: "Artists",
       ...(data.artistsPendingApproval.length > 0
         ? {
-            badge: (
-              <StatusBadge variant="info" size="sm">
-                {data.artistsPendingApproval.length}
-              </StatusBadge>
-            ),
+            badge: <AdminQueueCountBadge count={data.artistsPendingApproval.length} />,
           }
         : {}),
       content: (
@@ -255,11 +257,7 @@ export function OnboardingIssuesBoard({
       label: "KYC sessions",
       ...(data.staleKycSessions.length > 0
         ? {
-            badge: (
-              <StatusBadge variant="info" size="sm">
-                {data.staleKycSessions.length}
-              </StatusBadge>
-            ),
+            badge: <AdminQueueCountBadge count={data.staleKycSessions.length} />,
           }
         : {}),
       content: (
@@ -270,12 +268,10 @@ export function OnboardingIssuesBoard({
           renderCard={(r) => (
             <>
               <p className="font-medium">{kycUserLabel(r)}</p>
-              {kycUserLabel(r) !== r.userId ? (
-                <p className="mt-0.5 font-mono text-[10px] text-on-surface-variant">{r.userId}</p>
-              ) : null}
-              <p className="mt-1 text-xs text-on-surface-variant">
-                {r.provider} · {r.status}
-              </p>
+              <p className="mt-1 text-xs text-on-surface-variant">{r.provider}</p>
+              <div className="mt-1">
+                <AdminStatusBadge domain="kyc" status={r.status} />
+              </div>
               <p className="mt-1 text-xs text-on-surface-variant">{formatDateTime(r.createdAt)}</p>
               <Link
                 href={`/admin/clients/${encodeURIComponent(r.userId)}`}
@@ -293,11 +289,7 @@ export function OnboardingIssuesBoard({
       label: "Lead orgs",
       ...(data.staleLeadOrganisations.length > 0
         ? {
-            badge: (
-              <StatusBadge variant="info" size="sm">
-                {data.staleLeadOrganisations.length}
-              </StatusBadge>
-            ),
+            badge: <AdminQueueCountBadge count={data.staleLeadOrganisations.length} />,
           }
         : {}),
       content: (
@@ -327,11 +319,7 @@ export function OnboardingIssuesBoard({
       label: "Documents",
       ...(data.documentsAwaitingReview.length > 0
         ? {
-            badge: (
-              <StatusBadge variant="info" size="sm">
-                {data.documentsAwaitingReview.length}
-              </StatusBadge>
-            ),
+            badge: <AdminQueueCountBadge count={data.documentsAwaitingReview.length} />,
           }
         : {}),
       content: (
@@ -342,7 +330,7 @@ export function OnboardingIssuesBoard({
           renderCard={(r) => (
             <>
               <p className="font-medium">{r.entityDisplayName}</p>
-              <p className="mt-1 font-mono text-xs text-on-surface-variant">{r.uploadObjectId}</p>
+              <p className="mt-1 text-xs text-on-surface-variant">Document awaiting review</p>
               <Link
                 href={`/admin/legal-entities/${r.legalEntityId}`}
                 className="mt-2 inline-block text-sm text-primary underline"

@@ -5,6 +5,7 @@ import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { PayoutsFilterToolbar } from "@/components/admin/finance/payouts-filter-toolbar";
 import { AdminPayoutsBoard } from "@/components/admin/payouts-board";
@@ -28,7 +29,6 @@ import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatMoney } from "@/lib/ui/format";
 import { payoutStatuses } from "@auction/types";
-import { PaginationFooter } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
@@ -196,7 +196,7 @@ export default async function AdminPayoutsPage({
 
   const pagination =
     !loadError && (query.offset > 0 || hasNextPage) ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={payouts.length}
@@ -287,7 +287,6 @@ export default async function AdminPayoutsPage({
           />
         ) : null
       }
-      showCommandPaletteHint
       pagination={pagination}
     />
   );

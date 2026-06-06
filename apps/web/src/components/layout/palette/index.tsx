@@ -1,32 +1,38 @@
 "use client";
 
-import { PALETTE_OPEN_EVENT } from "@/components/layout/command-palette-events";
 import {
-  pushPaletteRecent,
-  readPalettePinned,
-  readPaletteRecents,
-} from "@/components/layout/palette/palette-cookie-client";
+  PALETTE_OPEN_EVENT,
+  clearPendingPaletteOpen,
+  takePendingPaletteOpen,
+} from "@/components/layout/command-palette-events";
 import { PaletteResults } from "@/components/layout/palette/palette-results";
 import { PaletteSearch } from "@/components/layout/palette/palette-search";
-import { buildActionPaletteItems } from "@/components/layout/palette/sources/actions-source";
+import {
+  buildStaticPaletteSections,
+  defaultPaletteNavCounts,
+} from "@/components/layout/palette/palette-static-sections";
+import { buildVisiblePaletteSections } from "@/components/layout/palette/palette-visible-sections";
 import { artistsPaletteSource } from "@/components/layout/palette/sources/artists-source";
 import { clientsPaletteSource } from "@/components/layout/palette/sources/clients-source";
 import { conditionReportsPaletteSource } from "@/components/layout/palette/sources/condition-reports-source";
 import { invitationsPaletteSource } from "@/components/layout/palette/sources/invitations-source";
 import { lotFulfilmentPaletteSource } from "@/components/layout/palette/sources/lot-fulfilment-source";
 import { lotsPaletteSource } from "@/components/layout/palette/sources/lots-source";
-import { buildNavPaletteSections } from "@/components/layout/palette/sources/nav-source";
 import { paymentsPaletteSource } from "@/components/layout/palette/sources/payments-source";
 import { payoutsPaletteSource } from "@/components/layout/palette/sources/payouts-source";
 import { salesPaletteSource } from "@/components/layout/palette/sources/sales-source";
 import { submissionsPaletteSource } from "@/components/layout/palette/sources/submissions-source";
-import type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
+import type { PaletteItem } from "@/components/layout/palette/types";
 import { useDebouncedPaletteSearch } from "@/components/layout/palette/use-debounced-palette-search";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import type { ShellRole } from "@/lib/shell/contracts";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { Command, CommandDialog } from "@auction/ui";
+import { cn } from "@auction/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { pushPaletteRecent } from "./palette-cookie-client";
 
 export type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
 
@@ -49,74 +55,56 @@ type Props = {
   variant: "marketing" | "dashboard" | "admin";
   sessionUser?: SessionUser | null;
   clientWorkspaceMode?: ClientWorkspaceMode;
+  shellRole?: ShellRole;
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
+  navCounts?: AdminNavCounts;
 };
 
 export function CommandPalette({
   variant,
   sessionUser = null,
   clientWorkspaceMode = "buying",
+  shellRole = "platform",
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
+  navCounts = defaultPaletteNavCounts(),
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const asyncSources = variant === "admin" ? ADMIN_ASYNC_SOURCES : EMPTY_ASYNC_SOURCES;
-
   const { sections: asyncSections, loading } = useDebouncedPaletteSearch(asyncSources, query);
 
-  const staticSections = useMemo(() => {
-    const nav = buildNavPaletteSections(
+  const staticSections = useMemo(
+    () =>
+      buildStaticPaletteSections({
+        variant,
+        query,
+        sessionUser,
+        shellRole,
+        clientWorkspaceMode,
+        pendingSubmissionCount,
+        pendingArtistCount,
+        navCounts,
+      }),
+    [
       variant,
       query,
       sessionUser,
+      shellRole,
       clientWorkspaceMode,
       pendingSubmissionCount,
       pendingArtistCount,
-    );
-    const recents = readPaletteRecents().map((e) => ({
-      id: `recent-${e.kind}-${e.id}`,
-      href: e.href,
-      label: e.label,
-      hint: "Recent",
-    }));
-    const pinned = readPalettePinned().map((e) => ({
-      id: `pinned-${e.kind}-${e.id}`,
-      href: e.href,
-      label: e.label,
-      hint: "Pinned",
-    }));
-    const sections: PaletteSection[] = [];
-    if (!query.trim() && pinned.length > 0) {
-      sections.push({ id: "pinned", heading: "Pinned", items: pinned });
-    }
-    if (!query.trim() && recents.length > 0) {
-      sections.push({ id: "recents", heading: "Recents", items: recents });
-    }
-    sections.push(...nav);
-    const actions = buildActionPaletteItems(query, variant, sessionUser);
-    if (actions.length > 0) {
-      sections.push({ id: "actions", heading: "Actions", items: actions });
-    }
-    return sections;
-  }, [
-    variant,
-    query,
-    sessionUser,
-    clientWorkspaceMode,
-    pendingSubmissionCount,
-    pendingArtistCount,
-  ]);
+      navCounts,
+    ],
+  );
 
-  const visibleSections = useMemo(() => {
-    if (query.trim().length >= 2) {
-      return [...staticSections.filter((s) => s.id === "actions"), ...asyncSections];
-    }
-    return staticSections;
-  }, [staticSections, asyncSections, query]);
+  const visibleSections = useMemo(
+    () => buildVisiblePaletteSections(staticSections, asyncSections, query),
+    [staticSections, asyncSections, query],
+  );
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -135,8 +123,12 @@ export function CommandPalette({
   );
 
   useEffect(() => {
-    const onPaletteOpen = () => setOpen(true);
+    const onPaletteOpen = () => {
+      clearPendingPaletteOpen();
+      setOpen(true);
+    };
     window.addEventListener(PALETTE_OPEN_EVENT, onPaletteOpen);
+    if (takePendingPaletteOpen()) setOpen(true);
     return () => window.removeEventListener(PALETTE_OPEN_EVENT, onPaletteOpen);
   }, []);
 
@@ -144,17 +136,26 @@ export function CommandPalette({
     if (!open) setQuery("");
   }, [open]);
 
+  const dialogWidth = variant === "admin" ? "max-w-xl" : "max-w-lg";
+  const listHeight = variant === "admin" ? "max-h-[min(60vh,28rem)]" : "max-h-[min(50vh,24rem)]";
+
   return (
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
       title="Quick go"
       description="Search pages and records"
-      className="max-w-lg"
+      className={cn(dialogWidth)}
     >
       <Command shouldFilter={false} className="rounded-xl">
-        <PaletteSearch value={query} onValueChange={setQuery} />
-        <PaletteResults sections={visibleSections} loading={loading} onNavigate={navigateTo} />
+        <PaletteSearch value={query} onValueChange={setQuery} variant={variant} />
+        <PaletteResults
+          sections={visibleSections}
+          query={query}
+          loading={loading}
+          listClassName={listHeight}
+          onNavigate={navigateTo}
+        />
       </Command>
     </CommandDialog>
   );
@@ -168,6 +169,6 @@ function inferPaletteKind(
   if (href.includes("/admin/clients/")) return "client";
   if (href.includes("/admin/artists/")) return "artist";
   if (href.includes("/admin/payments")) return "payment";
-  if (href.includes("/admin/invitations")) return "invitation";
+  if (href.includes("/admin/invitations/")) return "invitation";
   return "route";
 }

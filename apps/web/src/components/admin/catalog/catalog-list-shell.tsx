@@ -17,7 +17,6 @@ type Props = {
   empty?: ReactNode;
   pagination?: ReactNode;
   className?: string;
-  showCommandPaletteHint?: boolean;
 };
 
 /**
@@ -39,7 +38,6 @@ export function CatalogListShell({
   empty,
   pagination,
   className,
-  showCommandPaletteHint,
 }: Props) {
   return (
     <AdminListShell
@@ -49,7 +47,6 @@ export function CatalogListShell({
       {...(breadcrumbs ? { breadcrumbs } : {})}
       {...(primaryAction ? { primaryAction } : {})}
       {...(meta ? { meta } : {})}
-      {...(showCommandPaletteHint ? { showCommandPaletteHint } : {})}
       {...(filterBar
         ? {
             headerAfter: (

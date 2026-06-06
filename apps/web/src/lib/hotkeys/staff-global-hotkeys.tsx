@@ -2,6 +2,7 @@
 
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { useHotkeyUi } from "@/lib/hotkeys/hotkey-provider";
+import { useCommandPaletteHotkey } from "@/lib/hotkeys/use-command-palette-hotkey";
 import { useHotkey } from "@/lib/hotkeys/use-hotkey";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +10,7 @@ import { useRouter } from "next/navigation";
 export function StaffGlobalHotkeys() {
   const router = useRouter();
   const { openHelp } = useHotkeyUi();
+  useCommandPaletteHotkey();
 
   const go = (href: string) => (event: KeyboardEvent) => {
     event.preventDefault();

@@ -4,6 +4,7 @@ import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminUserPreviewProvider } from "@/components/admin/admin-user-preview-provider";
 import { AdminUsersFilterToolbar } from "@/components/admin/admin-users-filter-toolbar";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import {
   AdminUserListBulkBar,
@@ -23,7 +24,6 @@ import {
 } from "@/lib/admin/users-list-query";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { PaginationFooter } from "@auction/ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -66,7 +66,7 @@ export default async function AdminClientsPage({
 
   const pagination =
     !loadError && total > 0 ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
