@@ -25,11 +25,6 @@ export function LegalEntitiesListSkeleton() {
   );
 }
 
-/** @deprecated Use LegalEntitiesListSkeleton */
-export function LegalEntitiesLookupSkeleton() {
-  return <LegalEntitiesListSkeleton />;
-}
-
 /** Invitations page: invite form + sent list. */
 export function InvitationsListPageSkeleton() {
   return (
@@ -51,6 +46,4 @@ export function InvitationsListPageSkeleton() {
   );
 }
 
-/** @deprecated Use PeopleListErrorShell */
-export { PeopleListErrorShell as LegalEntitiesListErrorShell } from "./people-list-error-shell";
 export { PeopleListErrorShell } from "./people-list-error-shell";

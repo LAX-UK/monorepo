@@ -12,6 +12,7 @@ export type CreateNotificationRow = {
     amount?: string;
     invoiceUrl?: string | null;
     invoiceNumber?: string;
+    lotTitle?: string;
   };
 };
 

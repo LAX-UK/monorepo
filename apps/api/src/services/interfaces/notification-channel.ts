@@ -9,6 +9,8 @@ export type NotificationPayload = {
     amount?: string;
     invoiceUrl?: string | null;
     invoiceNumber?: string;
+    /** Canonical lot title for deep links (push/email). */
+    lotTitle?: string;
   };
 };
 

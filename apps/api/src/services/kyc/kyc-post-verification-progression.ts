@@ -57,6 +57,3 @@ export async function progressIndividualsAfterKycApproval(
     }
   });
 }
-
-/** @deprecated Use {@link progressIndividualsAfterKycApproval}. */
-export const progressIndividualsAfterIdentityVerification = progressIndividualsAfterKycApproval;

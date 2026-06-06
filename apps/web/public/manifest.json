@@ -11,6 +11,22 @@
   "background_color": "#f1f1f3",
   "theme_color": "#121414",
   "categories": ["shopping", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "My bids",
+      "short_name": "Bids",
+      "description": "View your active bids",
+      "url": "/dashboard/bids",
+      "icons": [{ "src": "/favicons/android-chrome-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sales",
+      "short_name": "Sales",
+      "description": "Browse upcoming auctions",
+      "url": "/sales",
+      "icons": [{ "src": "/favicons/android-chrome-192x192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "/favicons/android-chrome-192x192.png",

@@ -49,3 +49,7 @@ export type PushSubscriptionRecord = {
   auth: string;
   createdAt: Date;
 };
+
+export type PushSubscriptionStatusDto = {
+  hasServerSubscription: boolean;
+};

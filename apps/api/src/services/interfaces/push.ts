@@ -5,6 +5,8 @@ export type PushPayload = {
   body: string;
   icon?: string | undefined;
   url?: string | undefined;
+  /** Notification tag — dedupes replacements per lot/event type. */
+  tag?: string | undefined;
 };
 
 export type CreatePushSubscriptionRow = {

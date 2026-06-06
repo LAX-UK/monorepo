@@ -2,6 +2,7 @@
 
 import { BidGate } from "@/components/bid/bid-gate";
 import { BidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar";
+import { ConnectionStatusBannerContainer } from "@/components/realtime/connection-status-banner-container";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
@@ -16,6 +17,7 @@ import { useLotBidState } from "@/hooks/use-lot-bid-state";
 import { type LotBidEntryMode, defaultLotBidEntryMode } from "@/lib/bid/lot-bid-entry-mode";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
+import { useLiveConnection } from "@/lib/connection/use-live-connection";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
@@ -71,6 +73,7 @@ export function ArtworkBidPanel({
 }: Props) {
   const { bidWriter } = useLotPorts();
   const onlineLifecycle = useOnlineLotLifecycle();
+  const { biddingAllowed } = useLiveConnection();
 
   const bidState = useLotBidState({
     auction,
@@ -236,6 +239,14 @@ export function ArtworkBidPanel({
 
   const onReview = useCallback(() => {
     setError(null);
+    if (biddingLive && !biddingAllowed) {
+      setError(
+        clientBidError(
+          "Live bidding is unavailable until your connection to the saleroom is restored.",
+        ),
+      );
+      return;
+    }
     const n = Number.parseFloat(amount);
     if (Number.isNaN(n) || n + 1e-9 < minNumeric) {
       setError(clientBidError(`Enter at least ${formatMoney(minNumeric.toFixed(2))}`));
@@ -275,10 +286,20 @@ export function ArtworkBidPanel({
     maxAuto,
     minNumeric,
     saleRegistrationBidGate?.approvedBidLimit,
+    biddingAllowed,
+    biddingLive,
   ]);
 
   const onConfirm = useCallback(async () => {
     setError(null);
+    if (biddingLive && !biddingAllowed) {
+      setError(
+        clientBidError(
+          "Live bidding is unavailable until your connection to the saleroom is restored.",
+        ),
+      );
+      return;
+    }
     const n = Number.parseFloat(amount);
     if (Number.isNaN(n)) {
       setError(clientBidError("Invalid amount"));
@@ -365,6 +386,8 @@ export function ArtworkBidPanel({
     maxAuto,
     saleRegistrationPath,
     setActiveAutoBid,
+    biddingAllowed,
+    biddingLive,
   ]);
 
   const onUseMinimum = useCallback(() => {
@@ -389,6 +412,9 @@ export function ArtworkBidPanel({
     (lifecycle.kind === "scheduled" || lifecycle.kind === "preLaunch");
 
   const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
+  const connectionBlocked = biddingLive && !biddingAllowed;
+  const bidControlsDisabled = (d: { kind: "allow" } | { kind: "block" }) =>
+    gateBlocked(d) || connectionBlocked;
   const bidCardInView = onlineLifecycle?.bidCardInView ?? true;
   const showPricingHeader = omitPricingHeader;
 
@@ -414,6 +440,7 @@ export function ArtworkBidPanel({
     >
       {({ decision }) => (
         <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
+          {biddingLive ? <ConnectionStatusBannerContainer className="mb-4" /> : null}
           <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
             {showPricingHeader ? (
               <LotPricingStatusHeader
@@ -494,7 +521,7 @@ export function ArtworkBidPanel({
                 <LotBidModeChooser
                   mode={entryMode}
                   onModeChange={setEntryMode}
-                  disabled={gateBlocked(decision)}
+                  disabled={bidControlsDisabled(decision)}
                 />
               </div>
             ) : null}
@@ -507,7 +534,7 @@ export function ArtworkBidPanel({
                   currentPrice={currentPrice}
                   minNextBid={minNumeric}
                   isWinning={isWinning}
-                  disabled={gateBlocked(decision)}
+                  disabled={bidControlsDisabled(decision)}
                   loginNextPath={loginNext}
                   initialSettings={activeAutoBid}
                   approvedBidLimit={saleRegistrationBidGate?.approvedBidLimit ?? null}
@@ -557,6 +584,7 @@ export function ArtworkBidPanel({
                       stepNumeric={bidStepNumeric}
                       step1ButtonLabel="Review bid"
                       activeAutoBidNote={activeAutoBidNote}
+                      biddingDisabled={connectionBlocked}
                     />
                   ) : (
                     <BidConfirmation
@@ -567,6 +595,7 @@ export function ArtworkBidPanel({
                       }
                       error={error}
                       submitting={submitting}
+                      biddingDisabled={connectionBlocked}
                       onCancel={() => {
                         clearConfirmAttempt();
                         setStep(1);

@@ -45,6 +45,3 @@ export function bullBoardReadOnlyInProd(queueName: QueueName, appEnv: AppEnv): b
 export function bullBoardAllowRetries(queueName: QueueName, appEnv: AppEnv): boolean {
   return QUEUE_REGISTRY[queueName].allowUiRetries && appEnv !== "production";
 }
-
-/** @deprecated Use bullBoardAllowRetries */
-export const bullBoardAllowRetriesInProd = bullBoardAllowRetries;

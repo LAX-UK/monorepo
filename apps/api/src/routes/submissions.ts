@@ -13,7 +13,7 @@ import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole, requireBuyerRoleUnlessStaff } from "../middleware/require-buyer-role.js";
-import { requirePlatformAdmin } from "../middleware/require-capability.js";
+import { requirePlatformShell } from "../middleware/require-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ListSubmissionsFilter } from "../services/interfaces/repositories.js";
@@ -112,7 +112,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.get(
     "/",
     requireAuth,
-    requirePlatformAdmin,
+    requirePlatformShell,
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -225,7 +225,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/:id/review/start",
     requireAuth,
-    requirePlatformAdmin,
+    requirePlatformShell,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
       const adminId = c.get("userId") as string;
@@ -241,7 +241,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/bulk",
     requireAuth,
-    requirePlatformAdmin,
+    requirePlatformShell,
     zValidator("json", adminBulkSubmissionsBodySchema),
     async (c) => {
       const adminId = c.get("userId") as string;
@@ -266,7 +266,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/:id/approve",
     requireAuth,
-    requirePlatformAdmin,
+    requirePlatformShell,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", approveSubmissionBodySchema),
     async (c) => {
@@ -284,7 +284,7 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/:id/reject",
     requireAuth,
-    requirePlatformAdmin,
+    requirePlatformShell,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", rejectSubmissionBodySchema),
     async (c) => {

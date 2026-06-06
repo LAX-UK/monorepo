@@ -23,19 +23,6 @@ import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.
 import type { ISaleStatusTransitionService } from "./interfaces/sale-status-transition.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 
-/** Allowed admin overrides per current lot status. These intentionally do not
- * include moves back into `active` (admins should only be ending or cancelling).
- * @deprecated Use canAdminOverrideLotStatus from domain/lot-transitions.ts
- */
-const ALLOWED_LOT_TRANSITIONS: Record<LotStatus, ReadonlySet<LotStatus>> = {
-  draft: new Set(["scheduled", "cancelled"]),
-  scheduled: new Set(["cancelled"]),
-  active: new Set(["ended", "cancelled"]),
-  ended: new Set(["draft"]),
-  cancelled: new Set(["draft"]),
-  voided: new Set(["draft"]),
-};
-
 export class SaleStatusTransitionService implements ISaleStatusTransitionService {
   constructor(
     private readonly saleRepo: ISaleRepository,
@@ -157,40 +144,6 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     return ok({ sale: updatedSale, lots: updatedLots });
   }
 
-  /**
-   * @deprecated No route callers — use {@link LotService.cancel} via POST .../cancel.
-   */
-  async cancelLot(
-    userRole: string,
-    saleId: string,
-    lotId: string,
-    _reason?: string,
-    userStaffRole?: string | null,
-  ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can cancel lots", 403));
-    }
-    const sale = await this.saleRepo.findById(saleId);
-    if (!sale) return err(new LotError("Sale not found", 404));
-    const l = await this.lotRepo.findById(lotId);
-    if (!l || l.saleId !== saleId) {
-      return err(new LotError("Lot not found in this sale", 404));
-    }
-    return err(
-      new LotError(
-        "Use POST /sales/:id/lots/:lotId/cancel to cancel lots with bidder notifications",
-        422,
-        "use_dedicated_cancel",
-      ),
-    );
-  }
-
   async setLotStatus(
     userRole: string,
     saleId: string,
@@ -214,8 +167,7 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     if (!l || l.saleId !== saleId) {
       return err(new LotError("Lot not found in this sale", 404));
     }
-    const allowed = ALLOWED_LOT_TRANSITIONS[l.status];
-    if (!allowed.has(status) && !canAdminOverrideLotStatus(l.status, status)) {
+    if (!canAdminOverrideLotStatus(l.status, status)) {
       return err(new LotError(`Cannot move lot from ${l.status} to ${status} via admin override`));
     }
     if (status === "draft") {
