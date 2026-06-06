@@ -26,13 +26,12 @@ export function manualReviewColumns(
     {
       id: "lotRef",
       header: "Ref",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">
-          {row.original.lotNumber == null
-            ? row.original.lotId.slice(0, 8)
-            : `Lot ${row.original.lotNumber}`}
-        </span>
-      ),
+      cell: ({ row }) =>
+        row.original.lotNumber == null ? (
+          <span className="text-on-surface-variant">—</span>
+        ) : (
+          <span className="text-sm">Lot {row.original.lotNumber}</span>
+        ),
     },
     {
       accessorKey: "winnerEmail",

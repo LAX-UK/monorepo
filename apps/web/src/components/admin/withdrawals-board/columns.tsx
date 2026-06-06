@@ -4,6 +4,7 @@ import type { LotWithdrawalRequestTask } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 
 export function withdrawalColumns(
   onOpen: (row: LotWithdrawalRequestTask) => void,
@@ -21,11 +22,17 @@ export function withdrawalColumns(
     {
       id: "lot",
       header: "Lot",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">
-          {row.original.targetLotId ? `${row.original.targetLotId.slice(0, 8)}…` : "—"}
-        </span>
-      ),
+      cell: ({ row }) =>
+        row.original.targetLotId ? (
+          <Link
+            href={`/admin/lots/${row.original.targetLotId}`}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            View lot
+          </Link>
+        ) : (
+          <span className="text-on-surface-variant">—</span>
+        ),
     },
     {
       accessorKey: "createdAt",
