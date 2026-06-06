@@ -1,6 +1,5 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminSubmissionsBoard } from "@/components/admin/admin-submissions-board";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
@@ -9,6 +8,7 @@ import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell"
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { CatalogSubmissionsFilterToolbar } from "@/components/admin/catalog/catalog-submissions-filter-toolbar";
+import { AdminSubmissionsBoard } from "@/components/admin/submissions-board";
 import { ExportButton } from "@/components/exports/export-button";
 import {
   type SubmissionDecisionQueue,

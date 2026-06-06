@@ -1,3 +1,4 @@
+import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AnomalyCalloutsWidget } from "@/components/admin/personal-dashboard/anomaly-callouts-widget";
 import { PersonalDashboardCustomizeSheet } from "@/components/admin/personal-dashboard/customize-sheet";
 import { GreetingWidget } from "@/components/admin/personal-dashboard/greeting-widget";
@@ -132,6 +133,15 @@ export function PersonalDashboard({
           <AlertDescription>{loadWarning}</AlertDescription>
         </Alert>
       ) : null}
+
+      <AdminHubQuickLinks
+        ariaLabel="Staff hub shortcuts"
+        links={[
+          { href: "/admin/finance", label: "Finance" },
+          { href: "/admin/sales", label: "Catalog" },
+          { href: "/admin/compliance/aml", label: "Compliance" },
+        ]}
+      />
 
       {blocks.map((block) => (
         <div key={block.id}>{block.node}</div>

@@ -113,5 +113,75 @@ export function StaffGlobalHotkeys() {
     handler: go("/admin"),
   });
 
+  useHotkey({
+    id: "nav-disputes",
+    keys: "g d",
+    label: "Disputes",
+    description: "Go to payment disputes",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/disputes"),
+  });
+
+  useHotkey({
+    id: "nav-finance-hub",
+    keys: "g f",
+    label: "Finance hub",
+    description: "Go to finance home",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/finance"),
+  });
+
+  useHotkey({
+    id: "nav-manual-review",
+    keys: "g m",
+    label: "Manual review",
+    description: "Go to manual payment review",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/payments?manualReview=1"),
+  });
+
+  useHotkey({
+    id: "nav-aml",
+    keys: "g b",
+    label: "AML queue",
+    description: "Go to AML screening queue",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/compliance/aml"),
+  });
+
+  useHotkey({
+    id: "nav-condition-reports",
+    keys: "g r",
+    label: "Condition reports",
+    description: "Go to condition report requests",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/condition-reports"),
+  });
+
+  useHotkey({
+    id: "nav-conveyor",
+    keys: "g v",
+    label: "Conveyor",
+    description: "Go to conveyor pipeline",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/conveyor"),
+  });
+
+  useHotkey({
+    id: "nav-onboarding",
+    keys: "g n",
+    label: "Onboarding",
+    description: "Go to onboarding queues",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/onboarding-issues"),
+  });
+
   return null;
 }

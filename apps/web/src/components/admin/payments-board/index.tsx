@@ -45,11 +45,11 @@ export function AdminPaymentsBoard({ rows }: Props) {
           {selected ? (
             <div className="space-y-4 pt-2">
               <AdminPreviewSheetHeader
-                title={`Payment ${selected.id.slice(0, 8)}…`}
+                title={selected.lotTitle}
                 fullPageHref="/admin/payments"
                 subtitle={
                   <p className="truncate font-body text-sm text-on-surface-variant">
-                    {selected.lotTitle}
+                    {selected.buyerLabel?.trim() || "Buyer payment"}
                   </p>
                 }
               />

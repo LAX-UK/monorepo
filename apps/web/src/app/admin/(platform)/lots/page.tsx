@@ -22,6 +22,7 @@ import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { buildLotsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { withdrawalsListController } from "@/lib/admin/withdrawals-list-controller";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminLotsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
@@ -30,7 +31,6 @@ import {
   getAdminArtistById,
   getAdminCategoryById,
   getAdminSaleById,
-  getLotWithdrawalRequests,
 } from "@/lib/data/http/admin.server";
 import { toAdminLotTableRows } from "@/lib/data/view-models/admin-lots.vm";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -100,7 +100,7 @@ export default async function AdminLotsPage({
   const [lotResult, lotsTrendResult, withdrawalResult] = await Promise.allSettled([
     lotsListController.fetch(query),
     getAdminLotsKpiTrend(periodDays),
-    attentionLens ? getLotWithdrawalRequests() : Promise.resolve([]),
+    attentionLens ? withdrawalsListController.fetch().then((r) => r.tasks) : Promise.resolve([]),
   ]);
 
   const lotsTrend =

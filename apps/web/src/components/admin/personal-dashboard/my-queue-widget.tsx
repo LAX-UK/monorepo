@@ -1,4 +1,5 @@
 import { AdminQueueCountBadge } from "@/components/admin/admin-status-badge";
+import { CommandPaletteHint } from "@/components/admin/command-palette-hint";
 import { AttentionList } from "@/components/dashboard/attention-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import type { AdminAttentionRow } from "@/lib/admin/admin-home-types";
@@ -23,12 +24,15 @@ export function MyQueueWidget({ attention }: Props) {
       </div>
 
       {groups.length === 0 ? (
-        <DashboardEmptyState
-          variant="quiet"
-          title="All clear"
-          description="Nothing urgent right now. New queue items will appear here when nav badges update."
-          headingLevel="h3"
-        />
+        <div className="space-y-3">
+          <DashboardEmptyState
+            variant="quiet"
+            title="All clear"
+            description="Nothing urgent right now. New queue items will appear here when nav badges update."
+            headingLevel="h3"
+          />
+          <CommandPaletteHint />
+        </div>
       ) : (
         <div className="space-y-6">
           {groups.map((group) => (
