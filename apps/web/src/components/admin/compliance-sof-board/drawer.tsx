@@ -1,7 +1,5 @@
 "use client";
 
-import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import {
   ComplianceDecideForm,
@@ -19,11 +17,7 @@ type Props = {
 
 export function SofDrawerContent({ row, canTriage, canDecide, currentUserId }: Props) {
   return (
-    <div className="space-y-4 pt-2">
-      <AdminPreviewSheetHeader
-        title="Source of Funds"
-        subtitle={<AdminStatusBadge domain="sofCase" status={row.status} />}
-      />
+    <div className="space-y-4">
       <dl className="grid gap-3 text-sm">
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Buyer</dt>

@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { sofColumns } from "@/components/admin/compliance-sof-board/columns";
 import { SofDrawerContent } from "@/components/admin/compliance-sof-board/drawer";
 import { SofMobileCards } from "@/components/admin/compliance-sof-board/mobile-cards";
@@ -45,15 +46,19 @@ export function ComplianceSofBoard({ rows, canTriage, canDecide, currentUserId }
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-lg overflow-y-auto">
           {selected ? (
-            <SofDrawerContent
-              row={selected}
-              canTriage={canTriage}
-              canDecide={canDecide}
-              currentUserId={currentUserId}
-            />
-          ) : (
-            <AdminPreviewSheetHeader title="Source of Funds" />
-          )}
+            <div className="space-y-4 pt-2">
+              <AdminPreviewSheetHeader
+                title="Source of Funds"
+                subtitle={<AdminStatusBadge domain="sofCase" status={selected.status} />}
+              />
+              <SofDrawerContent
+                row={selected}
+                canTriage={canTriage}
+                canDecide={canDecide}
+                currentUserId={currentUserId}
+              />
+            </div>
+          ) : null}
         </SheetContent>
       </Sheet>
     </>

@@ -21,6 +21,18 @@ function formatAxeViolations(
   return violations.map((v) => `  - ${v.id} (${v.impact ?? "?"}): ${v.help}`).join("\n");
 }
 
+async function expectNoSeriousAxeViolationsInMain(page: import("@playwright/test").Page) {
+  const axe = await new AxeBuilder({ page })
+    .include("#main-content")
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+  expect(
+    blocking,
+    blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+  ).toHaveLength(0);
+}
+
 test.describe("admin a11y smoke", () => {
   test("admin home has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
@@ -28,15 +40,7 @@ test.describe("admin a11y smoke", () => {
     await page.goto("/admin");
     await expect(page.locator("#main-content")).toBeVisible();
 
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await expectNoSeriousAxeViolationsInMain(page);
   });
 
   test("admin lots list has no serious axe violations in main", async ({ page }) => {
@@ -73,11 +77,12 @@ test.describe("admin a11y smoke", () => {
     ).toHaveLength(0);
   });
 
-  test("staff list has accessible data table", async ({ page }) => {
+  test("staff list has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);
     await page.goto("/admin/staff");
-    await expect(page.getByRole("table", { name: /staff directory/i })).toBeVisible();
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
   });
 
   test("submissions list at mobile has no serious axe violations in main", async ({ page }) => {
@@ -359,5 +364,78 @@ test.describe("admin a11y smoke", () => {
       blocking,
       blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
     ).toHaveLength(0);
+  });
+
+  test("artists catalog browse has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/artists");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("categories catalog browse has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/categories");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("venues catalog browse has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/venues");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("analytics report hub has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/analytics");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("onsite events hub has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/onsite-events");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("xero integration page has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/integrations/xero");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("payout settlement page has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/payouts/settlement");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("lots attention lens has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/lots?lens=attention");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("payments list at mobile has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin/payments");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
   });
 });

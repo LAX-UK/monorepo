@@ -18,8 +18,8 @@ export function LegalEntityBrowseRow({ entity }: Props) {
         <span className="block truncate font-headline text-base text-on-surface">
           {entity.displayName}
         </span>
-        <span className="mt-0.5 block truncate font-mono text-[10px] text-on-surface-variant">
-          {entity.id}
+        <span className="mt-0.5 block truncate font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+          Legal entity
         </span>
       </span>
       <AdminStatusBadge domain="legalEntity" status={entity.status} size="sm" />
