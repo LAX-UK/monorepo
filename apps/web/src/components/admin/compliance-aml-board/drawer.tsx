@@ -1,7 +1,5 @@
 "use client";
 
-import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import {
   ComplianceDecideForm,
@@ -19,16 +17,7 @@ type Props = {
 
 export function AmlDrawerContent({ row, canTriage, canDecide, currentUserId }: Props) {
   return (
-    <div className="space-y-4 pt-2">
-      <AdminPreviewSheetHeader
-        title="Watchlist screening"
-        subtitle={
-          <div className="flex flex-wrap gap-2">
-            <AdminStatusBadge domain="amlMatch" status={row.matchStatus} />
-            <AdminStatusBadge domain="amlDecision" status={row.decisionOutcome} />
-          </div>
-        }
-      />
+    <div className="space-y-4">
       <dl className="grid gap-3 text-sm">
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">User</dt>

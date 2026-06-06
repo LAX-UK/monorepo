@@ -6,24 +6,12 @@ import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
+import { mapFinanceHubQuickLinks } from "@/lib/admin/finance-hub-links";
 import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminFinanceIssues } from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
-
-const FINANCE_QUICK_LINKS = [
-  { href: "/admin/payments", label: "Payments" },
-  {
-    href: "/admin/payments?manualReview=1",
-    label: "Manual review",
-    countKey: "manualReviewCount" as const,
-  },
-  { href: "/admin/disputes", label: "Disputes", countKey: "disputesOpen" as const },
-  { href: "/admin/payouts", label: "Payouts", countKey: "payoutsFailed" as const },
-  { href: "/admin/payouts/settlement", label: "Run settlement" },
-  { href: "/admin/integrations/xero", label: "Xero integration" },
-] as const;
 
 export const metadata: Metadata = metadataForPrivate(
   "Finance",
@@ -97,13 +85,7 @@ export default async function FinanceAdminHomePage() {
           ) : null}
           <AdminHubQuickLinks
             ariaLabel="Finance quick links"
-            links={FINANCE_QUICK_LINKS.map((item) => {
-              const count =
-                "countKey" in item && item.countKey ? navCounts[item.countKey] : undefined;
-              return count != null && count > 0
-                ? { href: item.href, label: item.label, count }
-                : { href: item.href, label: item.label };
-            })}
+            links={mapFinanceHubQuickLinks(navCounts)}
           />
         </div>
       }
