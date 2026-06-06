@@ -4,7 +4,7 @@ import {
   checkInInputKey,
   shouldDebounceSuccessfulScan,
   shouldSuppressRepeatScan,
-} from "./check-in-scan-debounce.js";
+} from "./check-in-scan-debounce";
 
 describe("checkInInputKey", () => {
   it("keys token and rsvp scans separately", () => {

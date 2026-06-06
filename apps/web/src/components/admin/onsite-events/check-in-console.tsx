@@ -29,7 +29,7 @@ import {
   checkInInputKey,
   shouldDebounceSuccessfulScan,
   shouldSuppressRepeatScan,
-} from "./check-in-scan-debounce.js";
+} from "./check-in-scan-debounce";
 
 type Props = {
   slug: string;
@@ -414,10 +414,11 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
               </p>
             ) : null}
             {searchResults.map((row) => (
-              <button
+              <Button
                 key={row.rsvpId}
                 type="button"
-                className="flex w-full min-h-11 flex-col rounded-lg border border-border-hairline bg-surface px-4 py-3 text-left disabled:opacity-60"
+                variant="outline"
+                className="flex h-auto w-full min-h-11 flex-col items-start rounded-lg px-4 py-3 text-left"
                 disabled={busy}
                 aria-label={`Check in ${row.name}`}
                 onClick={() => void runCheckIn({ rsvpId: row.rsvpId })}
@@ -427,7 +428,7 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
                   {row.email} · {row.attendanceSegmentLabel}
                   {row.checkedInAt ? ` · Checked in ${formatDateTime(row.checkedInAt)}` : ""}
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </TabsContent>
