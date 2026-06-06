@@ -1,3 +1,6 @@
+/** CID for the inline QR PNG attachment (referenced as `cid:onsite-pass-qr` in HTML). */
+export const ONSITE_PASS_QR_CONTENT_ID = "onsite-pass-qr";
+
 export type OnsiteEventPassEmailInput = {
   userName: string;
   eventTitle: string;
@@ -5,7 +8,6 @@ export type OnsiteEventPassEmailInput = {
   plusOneLine: string | null;
   notesLine: string | null;
   passUrl: string;
-  qrPngBase64: string;
   opsEmail: string;
   arrivalNote: string | null;
   dressCode: string | null;
@@ -98,7 +100,7 @@ export function buildOnsiteEventPassEmailHtml(input: OnsiteEventPassEmailInput):
           ${notesLine}
         </td></tr>
         <tr><td align="center" style="padding:8px 28px 24px;">
-          <img src="data:image/png;base64,${input.qrPngBase64}" width="240" height="240" alt="Entry pass QR code" style="display:block;border:1px solid #e8e4dc;">
+          <img src="cid:${ONSITE_PASS_QR_CONTENT_ID}" width="240" height="240" alt="Entry pass QR code" style="display:block;border:1px solid #e8e4dc;">
         </td></tr>
         <tr><td style="padding:0 28px 24px;text-align:center;">
           <a href="${escapeHtml(input.passUrl)}" style="display:inline-block;padding:12px 24px;background:#1a1a1a;color:#ffffff;text-decoration:none;font-size:14px;letter-spacing:0.04em;">Open entry pass</a>
