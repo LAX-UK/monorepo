@@ -85,37 +85,39 @@ export default async function AdminOnsiteEventsPage() {
           />
           {!loadError && events.length > 0 ? (
             <Surface className="divide-y divide-border-hairline">
-            {events.map((event) => (
-              <div
-                key={event.slug}
-                className="flex flex-wrap items-center justify-between gap-4 p-4"
-              >
-                <Link
-                  href={`/admin/onsite-events/${encodeURIComponent(event.slug)}`}
-                  className="min-w-0 flex-1 space-y-1 transition-colors hover:text-on-surface"
+              {events.map((event) => (
+                <div
+                  key={event.slug}
+                  className="flex flex-wrap items-center justify-between gap-4 p-4"
                 >
-                  <p className="font-medium">{event.title}</p>
-                  <p className="font-body text-xs text-on-surface-variant">{event.slug}</p>
-                  {event.startsAt ? (
-                    <p className="font-body text-xs text-on-surface-variant">
-                      Starts {formatDateTime(event.startsAt)}
-                    </p>
-                  ) : null}
-                </Link>
-                <div className="flex flex-wrap items-center gap-2">
-                  <AdminStatusBadge domain="onsiteEvent" status={event.status} />
-                  <span className="font-body text-xs text-on-surface-variant">
-                    {event.rsvpCount} RSVP{event.rsvpCount === 1 ? "" : "s"}
-                  </span>
-                  <Button type="button" variant="outline" size="sm" asChild>
-                    <Link href={`/admin/onsite-events/${encodeURIComponent(event.slug)}/check-in`}>
-                      <ScanLine className="mr-2 size-4" />
-                      Check-in
-                    </Link>
-                  </Button>
+                  <Link
+                    href={`/admin/onsite-events/${encodeURIComponent(event.slug)}`}
+                    className="min-w-0 flex-1 space-y-1 transition-colors hover:text-on-surface"
+                  >
+                    <p className="font-medium">{event.title}</p>
+                    <p className="font-body text-xs text-on-surface-variant">{event.slug}</p>
+                    {event.startsAt ? (
+                      <p className="font-body text-xs text-on-surface-variant">
+                        Starts {formatDateTime(event.startsAt)}
+                      </p>
+                    ) : null}
+                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AdminStatusBadge domain="onsiteEvent" status={event.status} />
+                    <span className="font-body text-xs text-on-surface-variant">
+                      {event.rsvpCount} RSVP{event.rsvpCount === 1 ? "" : "s"}
+                    </span>
+                    <Button type="button" variant="outline" size="sm" asChild>
+                      <Link
+                        href={`/admin/onsite-events/${encodeURIComponent(event.slug)}/check-in`}
+                      >
+                        <ScanLine className="mr-2 size-4" />
+                        Check-in
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </Surface>
           ) : null}
         </div>
