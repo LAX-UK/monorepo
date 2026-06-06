@@ -1,11 +1,12 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { getAdminOnsiteEvents } from "@/lib/data/http/onsite-event.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatDateTime } from "@/lib/ui/format";
-import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { ScanLine } from "lucide-react";
@@ -43,7 +44,18 @@ export default async function AdminOnsiteEventsPage() {
       layout="hub"
       title="Onsite events"
       description="RSVP operations for invitation-only onsite events."
-      showCommandPaletteHint
+      kpiStrip={
+        !loadError ? (
+          <AdminListKpiStrip
+            ariaLabel="Onsite events summary"
+            tiles={[
+              { label: "Events", value: events.length },
+              { label: "Published", value: publishedCount },
+              { label: "Total RSVPs", value: totalRsvps },
+            ]}
+          />
+        ) : null
+      }
       mobileSummary={
         !loadError ? (
           <CatalogListMobileSummary
@@ -81,10 +93,10 @@ export default async function AdminOnsiteEventsPage() {
                   ) : null}
                 </Link>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">{event.status}</Badge>
-                  <Badge variant="outline">
+                  <AdminStatusBadge domain="onsiteEvent" status={event.status} />
+                  <span className="font-body text-xs text-on-surface-variant">
                     {event.rsvpCount} RSVP{event.rsvpCount === 1 ? "" : "s"}
-                  </Badge>
+                  </span>
                   <Button type="button" variant="outline" size="sm" asChild>
                     <Link href={`/admin/onsite-events/${encodeURIComponent(event.slug)}/check-in`}>
                       <ScanLine className="mr-2 size-4" />

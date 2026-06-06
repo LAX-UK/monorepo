@@ -2,8 +2,9 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
-import { formatMoney } from "@/lib/ui/format";
+import { formatDate, formatMoney } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
+import Link from "next/link";
 
 export function PayoutsMobileCards({
   rows,
@@ -21,10 +22,18 @@ export function PayoutsMobileCards({
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="font-mono text-xs text-on-surface-variant">{row.id.slice(0, 12)}…</p>
-              <p className="mt-1 text-sm font-medium tabular-nums">
+              <p className="text-sm font-medium tabular-nums">
                 {formatMoney(row.netAmount, row.currency)}
               </p>
+              <p className="mt-1 text-xs text-on-surface-variant">
+                {formatDate(row.periodStart)} → {formatDate(row.periodEnd)}
+              </p>
+              <Link
+                href={`/admin/legal-entities/${row.legalEntityId}`}
+                className="mt-1 inline-block text-xs text-primary underline"
+              >
+                View legal entity
+              </Link>
             </div>
             <AdminStatusBadge domain="payout" status={row.status} />
           </div>

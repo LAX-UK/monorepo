@@ -1,4 +1,5 @@
 import { paletteApiBase } from "@/components/layout/palette/api-base";
+import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
 
 const LIMIT = 5;
@@ -26,7 +27,8 @@ export const submissionsPaletteSource: PaletteSource = {
       id: `submission-${row.id}`,
       href: `/admin/submissions/${row.id}`,
       label: row.title,
-      hint: row.status.replaceAll("_", " "),
+      hint: paletteRecordHint("record", row.status) ?? "Submission",
+      kind: "record" as const,
     }));
   },
 };

@@ -2,12 +2,14 @@
 
 import { AdminPayoutReverseButton } from "@/components/admin/admin-payout-reverse-button";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { PayoutMarkPaidButton } from "@/components/admin/payout-mark-paid-button";
 import { addPayoutAdjustmentAction } from "@/lib/admin/payout.actions";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
 import { formatDate, formatMoney } from "@/lib/ui/format";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
+import Link from "next/link";
 
 export function PayoutDrawerContent({ payout }: { payout: AdminPayoutRow }) {
   const adjustmentDisabled =
@@ -20,13 +22,22 @@ export function PayoutDrawerContent({ payout }: { payout: AdminPayoutRow }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
         <AdminStatusBadge domain="payout" status={payout.status} />
-        <span className="font-mono text-xs text-on-surface-variant">{payout.id}</span>
+        <span className="font-body text-sm text-on-surface-variant">
+          {formatDate(payout.periodStart)} → {formatDate(payout.periodEnd)}
+        </span>
       </div>
 
       <dl className="grid grid-cols-1 gap-3 text-sm">
         <div className="min-w-0">
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Entity</dt>
-          <dd className="break-all font-mono text-xs">{payout.legalEntityId}</dd>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Legal entity</dt>
+          <dd>
+            <Link
+              href={`/admin/legal-entities/${payout.legalEntityId}`}
+              className="font-medium text-primary underline"
+            >
+              View legal entity
+            </Link>
+          </dd>
         </div>
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Period</dt>
@@ -48,11 +59,23 @@ export function PayoutDrawerContent({ payout }: { payout: AdminPayoutRow }) {
             {formatMoney(payout.stripeFee, payout.currency)}
           </dd>
         </div>
-        <div>
-          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Transfer</dt>
-          <dd className="break-all font-mono text-xs">{payout.stripeTransferId ?? "—"}</dd>
-        </div>
+        {payout.stripeTransferId ? (
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+              Stripe transfer
+            </dt>
+            <dd className="text-on-surface">Transfer recorded</dd>
+          </div>
+        ) : null}
       </dl>
+
+      <AdminTechnicalIdDisclosure
+        items={[
+          { label: "Payout ID", value: payout.id },
+          { label: "Legal entity ID", value: payout.legalEntityId },
+          { label: "Stripe transfer ID", value: payout.stripeTransferId },
+        ]}
+      />
 
       {payout.failureReason ? (
         <Alert variant="destructive">

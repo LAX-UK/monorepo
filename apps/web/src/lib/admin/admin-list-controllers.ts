@@ -13,7 +13,6 @@ import type { ListLotsParams } from "@/lib/data/contracts";
 import {
   type AdminConditionReportRequestRow,
   type AdminConveyorPipelineRow,
-  type AdminDomainEventRow,
   type AdminPayoutRow,
   type AdminSaleListRow,
   type GetAdminArtistListParams,
@@ -22,7 +21,6 @@ import {
   getAdminConditionReportRequests,
   getAdminConveyorPipeline,
   getAdminDisputeCases,
-  getAdminFinanceDisputeDomainEvents,
   getAdminLegalEntityList,
   getAdminLotFulfilmentList,
   getAdminLotList,
@@ -34,10 +32,18 @@ import {
   getAdminUsersByIds,
 } from "@/lib/data/http/admin.server";
 import {
+  getAdminAmlScreeningsPending,
+  getAdminSourceOfFundsPending,
+} from "@/lib/data/http/compliance.server";
+import {
   type AdminInvitationSummary,
   getAdminInvitations,
 } from "@/lib/data/http/invitations.server";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
+import {
+  type AdminAmlTableRow,
+  buildAdminAmlTableRows,
+} from "@/lib/data/view-models/admin-aml-table.vm";
 import {
   type AdminDisputeTableRow,
   buildAdminDisputeTableRows,
@@ -47,6 +53,10 @@ import {
   buildAdminPaymentTableRows,
   filterPaymentTableRowsByStatus,
 } from "@/lib/data/view-models/admin-payments-table.vm";
+import {
+  type AdminSofTableRow,
+  buildAdminSofTableRows,
+} from "@/lib/data/view-models/admin-sof-table.vm";
 import type {
   AdminArtistListRow,
   AdminCategory,
@@ -468,29 +478,7 @@ export const invitationsListController: IAdminListController<
   async fetch(q) {
     const all = await getAdminInvitations();
     const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
-    return { rows, offset: q.offset, limit: q.limit, total };
-  },
-};
-
-export const disputesDomainEventsListController: IAdminListController<
-  AdminDomainEventRow,
-  AdminListQueryBase
-> = {
-  id: "disputes-domain-events",
-  parseQuery(sp) {
-    const base = parseListSearchParams(sp);
-    const limit = base.limit === 50 ? 200 : Math.min(500, base.limit);
-    return { ...base, limit };
-  },
-  async fetch(q) {
-    const fetchLimit = q.limit + 1;
-    const fetched = await getAdminFinanceDisputeDomainEvents({
-      limit: fetchLimit,
-      offset: q.offset,
-    });
-    const hasNextPage = fetched.length > q.limit;
-    const rows = hasNextPage ? fetched.slice(0, q.limit) : fetched;
-    return { rows, offset: q.offset, limit: q.limit, hasNextPage };
+    return { rows, offset: q.offset, limit: q.limit, total, rowsForSummary: all };
   },
 };
 
@@ -715,5 +703,33 @@ export const venuesListController: IAdminListController<
     });
     if (!result.ok) throw new Error(result.message);
     return { rows: result.data.venues, offset: q.offset, limit: q.limit, total: result.data.total };
+  },
+};
+
+export const amlListController: IAdminListController<AdminAmlTableRow, AdminListQueryBase> = {
+  id: "aml",
+  parseQuery(sp) {
+    const base = parseListSearchParams(sp);
+    return { ...base, limit: Math.min(100, base.limit) };
+  },
+  async fetch(q) {
+    const raw = await getAdminAmlScreeningsPending();
+    const all = buildAdminAmlTableRows(raw);
+    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
+    return { rows, offset: q.offset, limit: q.limit, total, rowsForSummary: all };
+  },
+};
+
+export const sofListController: IAdminListController<AdminSofTableRow, AdminListQueryBase> = {
+  id: "sof",
+  parseQuery(sp) {
+    const base = parseListSearchParams(sp);
+    return { ...base, limit: Math.min(100, base.limit) };
+  },
+  async fetch(q) {
+    const raw = await getAdminSourceOfFundsPending();
+    const all = buildAdminSofTableRows(raw);
+    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
+    return { rows, offset: q.offset, limit: q.limit, total, rowsForSummary: all };
   },
 };

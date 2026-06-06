@@ -33,7 +33,7 @@ export default async function AdminXeroIntegrationPage({
     <AdminPanelPage
       className="max-w-[640px]"
       title="Xero"
-      description="Connect one Xero organisation for hosted invoices and payment collection."
+      description="Connect your Xero organisation for hosted invoices and payment collection."
     >
       {error ? (
         <Alert variant="destructive" className="mb-6">

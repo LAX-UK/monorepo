@@ -21,6 +21,7 @@ export const salesPaletteSource: PaletteSource = {
       href: `/admin/sales/${row.sale.id}`,
       label: row.sale.title,
       hint: "Sale",
+      kind: "record" as const,
     }));
   },
 };

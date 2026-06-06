@@ -59,7 +59,6 @@ export function AdminUserCapabilitiesPanel({
                 <p className="mt-1 font-body text-xs text-on-surface-variant">
                   {capabilityDescription(cap)}
                 </p>
-                <p className="mt-2 font-mono text-[10px] text-on-surface-variant/80">{cap}</p>
               </li>
             ))}
           </ul>

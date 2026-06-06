@@ -65,7 +65,9 @@ export function XeroIntegrationPanel({ status, oauthStartAction, disconnectActio
             ) : null}
           </div>
           {!status.oauthConfigured ? (
-            <p className="text-xs text-on-surface-variant">Set XERO_* env on API.</p>
+            <p className="text-xs text-on-surface-variant">
+              OAuth is not configured for this environment. Contact your platform administrator.
+            </p>
           ) : null}
         </div>
       </div>
@@ -95,7 +97,7 @@ export function XeroIntegrationPanel({ status, oauthStartAction, disconnectActio
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Org short code
                 </dt>
-                <dd className="mt-1 font-mono text-xs">{status.orgShortCode ?? "—"}</dd>
+                <dd className="mt-1 text-xs text-on-surface">{status.orgShortCode ?? "—"}</dd>
               </div>
             ) : null}
             {status.orgShortCode || status.orgBaseCurrency ? (
@@ -103,7 +105,7 @@ export function XeroIntegrationPanel({ status, oauthStartAction, disconnectActio
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Base currency
                 </dt>
-                <dd className="mt-1 font-mono text-xs">{status.orgBaseCurrency ?? "—"}</dd>
+                <dd className="mt-1 text-xs text-on-surface">{status.orgBaseCurrency ?? "—"}</dd>
               </div>
             ) : null}
             <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
@@ -142,12 +144,9 @@ export function XeroIntegrationPanel({ status, oauthStartAction, disconnectActio
                 <dt className="font-label text-[10px] uppercase text-on-surface-variant">
                   Scopes granted
                 </dt>
-                <dd className="mt-2 flex flex-wrap gap-1.5">
-                  {scopeList.map((scope) => (
-                    <Badge key={scope} variant="outline" className="font-mono text-[10px]">
-                      {scope}
-                    </Badge>
-                  ))}
+                <dd className="mt-2 text-xs text-on-surface-variant">
+                  {scopeList.length} permission{scopeList.length === 1 ? "" : "s"} approved for
+                  invoice and payment sync.
                 </dd>
               </div>
             ) : null}
@@ -171,7 +170,9 @@ export function XeroIntegrationPanel({ status, oauthStartAction, disconnectActio
               Webhook configured
             </dt>
             <dd className="mt-1 text-on-surface">
-              {status.webhookConfigured ? "Yes" : "No — set XERO_WEBHOOK_KEY on API"}
+              {status.webhookConfigured
+                ? "Yes — payment events are delivered to the platform"
+                : "Not configured — ask your platform administrator"}
             </dd>
           </div>
           {status.webhookUrl ? (
@@ -183,14 +184,14 @@ export function XeroIntegrationPanel({ status, oauthStartAction, disconnectActio
                 <AdminCopyField value={status.webhookUrl} label="Webhook URL" />
               </dd>
               <p className="mt-2 text-xs text-on-surface-variant">
-                Register this URL in the Xero developer portal. See{" "}
+                Register this URL in your Xero organisation webhook settings.{" "}
                 <a
                   href="https://developer.xero.com/documentation/guides/webhooks/overview/"
                   className="underline underline-offset-2"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Xero webhook docs
+                  Xero webhook guide (external)
                 </a>
                 .
               </p>

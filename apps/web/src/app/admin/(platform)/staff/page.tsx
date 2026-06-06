@@ -4,6 +4,8 @@ import { AdminStaffBoard } from "@/components/admin/admin-staff-board";
 import { AdminStaffFilterToolbar } from "@/components/admin/admin-staff-filter-toolbar";
 import { AdminUserPreviewProvider } from "@/components/admin/admin-user-preview-provider";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CommandPaletteHint } from "@/components/admin/command-palette-hint";
 import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import {
   AdminUserListBulkBar,
@@ -23,7 +25,6 @@ import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { UserStaffRole } from "@auction/types";
-import { PaginationFooter } from "@auction/ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -94,7 +95,7 @@ export default async function AdminStaffPage({
 
   const pagination =
     !loadError && total > 0 ? (
-      <PaginationFooter
+      <CatalogPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
@@ -192,15 +193,17 @@ export default async function AdminStaffPage({
         mobileCards={!loadError && rows.length > 0 ? <PeopleStaffMobileCards rows={rows} /> : null}
         empty={
           !loadError && rows.length === 0 ? (
-            <FilterEmptyState
-              entity="staff"
-              segment="admin"
-              hasActiveFilters={hasFilters}
-              clearFiltersHref="/admin/staff"
-            />
+            <div className="space-y-2">
+              <FilterEmptyState
+                entity="staff"
+                segment="admin"
+                hasActiveFilters={hasFilters}
+                clearFiltersHref="/admin/staff"
+              />
+              <CommandPaletteHint />
+            </div>
           ) : null
         }
-        showCommandPaletteHint={!loadError && rows.length === 0}
         pagination={pagination}
       />
     </AdminUserPreviewProvider>

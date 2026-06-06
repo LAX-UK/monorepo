@@ -1,4 +1,5 @@
 import { paletteApiBase } from "@/components/layout/palette/api-base";
+import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
 
 const LIMIT = 5;
@@ -46,7 +47,8 @@ export const conditionReportsPaletteSource: PaletteSource = {
         id: `condition-report-${row.id}`,
         href: "/admin/condition-reports?lens=open",
         label: row.lotTitle ?? `Lot ${row.lotId.slice(0, 8)}…`,
-        hint: row.status.replaceAll("_", " "),
+        hint: paletteRecordHint("record", row.status) ?? "Condition report",
+        kind: "record" as const,
       }));
   },
 };

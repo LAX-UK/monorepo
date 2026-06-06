@@ -2,30 +2,12 @@
 
 import { ManualReviewPaymentActions } from "@/components/admin/manual-review-payment-actions";
 import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-review";
+import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Badge } from "@auction/ui/components/badge";
 import Link from "next/link";
-
-function manualReviewReasonLabel(
-  reason: AdminManualReviewPaymentRow["manualReviewReason"],
-): string {
-  switch (reason) {
-    case "high_value":
-      return "High value";
-    case "seller_archived":
-      return "Archived seller";
-    case "seller_archived_and_high_value":
-      return "Archived seller + high value";
-    case "aml_hold":
-      return "AML / sanctions hold";
-    case "source_of_funds_required":
-      return "Source of funds required";
-    default:
-      return "Manual review";
-  }
-}
 
 export function ManualReviewDrawerContent({
   payment,
