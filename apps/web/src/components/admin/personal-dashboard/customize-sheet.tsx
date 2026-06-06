@@ -2,11 +2,12 @@
 
 import { persistAdminDashboardWidgetsAction } from "@/lib/actions/admin-dashboard-widgets";
 import {
-  DEFAULT_DASHBOARD_WIDGETS,
   type DashboardWidgetId,
   type DashboardWidgetState,
+  defaultDashboardWidgetsForStaffRole,
 } from "@/lib/admin/dashboard-widgets.vm";
 import { notify } from "@/lib/ui/notify";
+import type { UserStaffRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -35,9 +36,10 @@ const WIDGET_LABELS: Record<DashboardWidgetId, { label: string; description: str
 
 type Props = {
   widgets: readonly DashboardWidgetState[];
+  staffRole?: UserStaffRole | null;
 };
 
-export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
+export function PersonalDashboardCustomizeSheet({ widgets, staffRole = null }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DashboardWidgetState[]>([...widgets]);
@@ -65,7 +67,7 @@ export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
   };
 
   const reset = () => {
-    setSelected([...DEFAULT_DASHBOARD_WIDGETS]);
+    setSelected([...defaultDashboardWidgetsForStaffRole(staffRole)]);
   };
 
   return (
@@ -127,7 +129,7 @@ export function PersonalDashboardCustomizeSheet({ widgets }: Props) {
             Save layout
           </Button>
           <Button type="button" variant="ghost" disabled={pending} onClick={reset}>
-            Reset defaults
+            Reset to role default
           </Button>
         </div>
       </SheetContent>

@@ -517,12 +517,19 @@ export function legalEntityStatusToBadgeVariant(
   }
 }
 
-export type DisputeStatus = "open" | "won" | "lost" | "warning_needs_response" | "under_review";
+export type DisputeStatus =
+  | "open"
+  | "won"
+  | "lost"
+  | "closed"
+  | "warning_needs_response"
+  | "under_review";
 
 export const disputeStatusLabel: Record<DisputeStatus, string> = {
   open: "Open",
   won: "Won",
   lost: "Lost",
+  closed: "Closed",
   warning_needs_response: "Needs response",
   under_review: "Under review",
 };
@@ -535,6 +542,8 @@ export function disputeStatusToBadgeVariant(
       return "success";
     case "lost":
       return "danger";
+    case "closed":
+      return "neutral";
     case "open":
     case "warning_needs_response":
       return "warning";

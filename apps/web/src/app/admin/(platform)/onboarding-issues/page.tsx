@@ -42,7 +42,7 @@ export default async function AdminOnboardingIssuesPage({
   return (
     <PeopleListShell
       title="Onboarding & verification queues"
-      description="Operational queues surfaced on the admin home dashboard (DSE20)."
+      description="Consolidated verification queues for entities, artists, KYC, and documents."
       wrapView={false}
       showCommandPaletteHint
       mobileSummary={

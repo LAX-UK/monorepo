@@ -11,7 +11,7 @@ export function CategoryActivityTab({ categoryId }: Props) {
   return (
     <CatalogDetailTabPanel
       title="Activity"
-      description="Audit timeline for taxonomy changes to this category."
+      description="Timeline of changes and key events for this category."
     >
       <ActivityContent categoryId={categoryId} />
     </CatalogDetailTabPanel>
@@ -29,6 +29,7 @@ async function ActivityContent({ categoryId }: { categoryId: string }) {
     <CatalogDomainEventsTimeline
       events={events}
       exportFilters={{ aggregateType: "category", aggregateId: categoryId }}
+      showTechnicalDetails={false}
     />
   );
 }

@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin/dashboard-widgets.vm";
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
+import type { UserStaffRole } from "@auction/types";
 import { LabelCaps } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
@@ -34,6 +35,7 @@ type Props = {
   anomalies: readonly AdminAnomaly[];
   onsiteRadarRows?: readonly OnsiteSalesRadarRow[];
   loadWarning?: string | null;
+  staffRole?: UserStaffRole | null;
 };
 
 export function PersonalDashboard({
@@ -49,6 +51,7 @@ export function PersonalDashboard({
   anomalies,
   onsiteRadarRows = [],
   loadWarning = null,
+  staffRole = null,
 }: Props) {
   const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(widgets, id);
   const orderOf = (id: DashboardWidgetId) => widgets.find((w) => w.id === id)?.order ?? 999;
@@ -120,7 +123,7 @@ export function PersonalDashboard({
         title="Your dashboard"
         meta={<LabelCaps className="text-lot-orange">Admin · Personal</LabelCaps>}
         description="Trend-aware KPIs, queue, anomalies, and saleroom pulse — layout saved on this device."
-        actions={<PersonalDashboardCustomizeSheet widgets={widgets} />}
+        actions={<PersonalDashboardCustomizeSheet widgets={widgets} staffRole={staffRole} />}
       />
 
       {loadWarning ? (

@@ -12,7 +12,7 @@ export function LotActivityTab({ lotId }: Props) {
   return (
     <CatalogDetailTabPanel
       title="Activity"
-      description="Audit timeline for this lot — lifecycle transitions, sale attachment, bids, and condition reports."
+      description="Timeline of changes and key events for this lot."
     >
       <ActivityContent lotId={lotId} />
       <p className="mt-6 font-body text-xs text-on-surface-variant">
@@ -36,6 +36,7 @@ async function ActivityContent({ lotId }: { lotId: string }) {
     <CatalogDomainEventsTimeline
       events={events}
       exportFilters={{ aggregateType: "lot", aggregateId: lotId }}
+      showTechnicalDetails={false}
     />
   );
 }

@@ -21,6 +21,7 @@ import {
   getAdminCategoryList,
   getAdminConditionReportRequests,
   getAdminConveyorPipeline,
+  getAdminDisputeCases,
   getAdminFinanceDisputeDomainEvents,
   getAdminLegalEntityList,
   getAdminLotFulfilmentList,
@@ -37,6 +38,10 @@ import {
   getAdminInvitations,
 } from "@/lib/data/http/invitations.server";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
+import {
+  type AdminDisputeTableRow,
+  buildAdminDisputeTableRows,
+} from "@/lib/data/view-models/admin-disputes-table.vm";
 import {
   type AdminPaymentTableRow,
   buildAdminPaymentTableRows,
@@ -488,6 +493,38 @@ export const disputesDomainEventsListController: IAdminListController<
     return { rows, offset: q.offset, limit: q.limit, hasNextPage };
   },
 };
+
+export type DisputesListQuery = AdminListQueryBase & {
+  status?: "open" | "under_review" | "closed" | undefined;
+};
+
+export const disputesListController: IAdminListController<AdminDisputeTableRow, DisputesListQuery> =
+  {
+    id: "disputes",
+    parseQuery(sp) {
+      const base = parseListSearchParams(sp);
+      const statusRaw = firstString(sp.status);
+      const status =
+        statusRaw === "open" || statusRaw === "under_review" || statusRaw === "closed"
+          ? statusRaw
+          : undefined;
+      return { ...base, limit: Math.min(200, base.limit), status };
+    },
+    async fetch(q) {
+      const result = await getAdminDisputeCases({
+        limit: q.limit,
+        offset: q.offset,
+        ...(q.status !== undefined ? { status: q.status } : {}),
+      });
+      return {
+        rows: buildAdminDisputeTableRows(result.rows),
+        offset: q.offset,
+        limit: q.limit,
+        hasNextPage: result.hasNextPage,
+        summary: result.summary,
+      };
+    },
+  };
 
 export type CategoriesListQuery = AdminListQueryBase & {
   includeArchived?: boolean | undefined;
