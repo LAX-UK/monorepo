@@ -31,6 +31,7 @@ type Props = {
   step1ButtonLabel?: string;
   /** Shown when manual bid will also send an active auto-bid max. */
   activeAutoBidNote?: { max: string; onChangeAutoBid?: () => void } | null;
+  biddingDisabled?: boolean;
 };
 
 const CHIP_ADDS = [500, 1000, 5000] as const;
@@ -52,6 +53,7 @@ export function BidForm({
   stepNumeric = 0.01,
   step1ButtonLabel = "Review bid",
   activeAutoBidNote = null,
+  biddingDisabled = false,
 }: Props) {
   const minStr = minNumeric.toFixed(2);
   const amountInputId = useId();
@@ -189,6 +191,7 @@ export function BidForm({
         <Button
           type="button"
           className={cn("h-auto w-full py-6", reviewButtonClassName)}
+          disabled={biddingDisabled}
           onClick={onReview}
         >
           {step1ButtonLabel}

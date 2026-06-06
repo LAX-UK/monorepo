@@ -10,6 +10,9 @@ import { ThemeInit } from "@/components/layout/theme-init";
 import { ThemeSystemListener } from "@/components/layout/theme-system-listener";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
+import { BrowserOfflineBanner } from "@/components/pwa/browser-offline-banner";
+import { PushBootstrap } from "@/components/pwa/push-bootstrap";
+import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { Toaster } from "@/components/ui/toaster";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
 import { readEffectiveConsentFromCookies } from "@/lib/analytics/consent/server";
@@ -140,7 +143,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <AnalyticsPageView />
           </Suspense>
           <MarketingClickIdsSync />
-          <AuthSessionProvider serverUser={user}>{children}</AuthSessionProvider>
+          <BrowserOfflineBanner />
+          <AuthSessionProvider serverUser={user}>
+            <PushBootstrap />
+            <PwaInstallPrompt />
+            {children}
+          </AuthSessionProvider>
           <Toaster />
           <WebVitalsReporter />
           <ConsentShell />

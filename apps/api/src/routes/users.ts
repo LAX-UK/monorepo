@@ -495,6 +495,12 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data: { publicKey: container.vapidPublicKey } });
   });
 
+  r.get("/me/push-subscription/status", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const subs = await container.pushSubscriptionRepository.findByUser(userId);
+    return c.json({ data: { hasServerSubscription: subs.length > 0 } });
+  });
+
   r.get("/me/preferences/notifications", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
     const row = await container.notificationPreferenceRepository.getForUser(userId);

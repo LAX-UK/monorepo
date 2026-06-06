@@ -8,7 +8,7 @@ import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.j
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
-import { StripeConnectService } from "./stripe-connect.service.js";
+import { StripeConnectFacade as StripeConnectService } from "./stripe-connect.facade.js";
 
 vi.mock("../../lib/stripe-processed-event.js", () => ({
   tryClaimProcessedStripeEvent: vi.fn().mockResolvedValue({ claimed: true }),

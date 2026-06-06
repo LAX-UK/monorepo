@@ -7,9 +7,6 @@ import {
 import { buildLegalEntityAccessFailure } from "@/lib/legal-entity/legal-entity-access-errors";
 import { parseApiErrorCodeFromBody } from "@auction/validators";
 
-/** @deprecated Use DashboardSliceFailure from dashboard-fetch-errors */
-export type SubmissionsAccessFailure = DashboardSliceFailure;
-
 /** Structured failure for seller submission list loads. */
 export class SubmissionsAccessError extends Error {
   readonly failure: DashboardSliceFailure;

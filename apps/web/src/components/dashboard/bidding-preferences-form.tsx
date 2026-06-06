@@ -1,5 +1,6 @@
 "use client";
 
+import { PushSubscriptionCard } from "@/components/dashboard/push-subscription-card";
 import { updateBiddingPreferencesFromValuesAction } from "@/lib/actions/user-bidding-preferences";
 import { notify } from "@/lib/ui/notify";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -156,6 +157,7 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             )}
           />
         </div>
+        <PushSubscriptionCard saveDisabled={pending} enableDefaultPrefs={false} />
         <div className="space-y-2">
           <FormField
             control={form.control}

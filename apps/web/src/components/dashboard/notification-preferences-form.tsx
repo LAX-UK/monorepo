@@ -1,6 +1,6 @@
 "use client";
 
-import { NotificationPushEnableButton } from "@/components/dashboard/notification-push-enable-button";
+import { PushSubscriptionCard } from "@/components/dashboard/push-subscription-card";
 import { RhfTimePicker } from "@/components/ui/rhf-time-picker";
 import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
 import { notify } from "@/lib/ui/notify";
@@ -340,7 +340,7 @@ export function NotificationPreferencesForm({
             </Button>
           </div>
           <PreferencesMatrix form={form} />
-          <NotificationPushEnableButton saveDisabled={pending} />
+          <PushSubscriptionCard saveDisabled={pending} />
         </section>
 
         <section>

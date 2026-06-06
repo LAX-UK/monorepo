@@ -3,9 +3,6 @@ import type { EmptyStateIllustrationKey } from "@/components/illustrations/empty
 import type { EmptyStateContext } from "@/lib/ui/empty-state-copy";
 import type { ComponentProps } from "react";
 
-/** @deprecated Use EmptyStateIllustrationKey */
-export type AdminEmptyIllustrationKey = EmptyStateIllustrationKey;
-
 export type AdminEmptyStateProps = ComponentProps<typeof DashboardEmptyState> & {
   illustration?: EmptyStateIllustrationKey;
   context?: EmptyStateContext;

@@ -61,11 +61,6 @@ export function formatDatetimeDisplayHuman(
   return format(tz, "EEE d MMM yyyy, h:mm a");
 }
 
-/** @deprecated Use `toDatetimeFormString`. Kept for migration shims. */
-export function toDatetimeLocalValue(d: Date, zone: string = DEFAULT_AUCTION_ZONE): string {
-  return toDatetimeFormString(d, zone);
-}
-
 export function fromDateFormString(
   raw: DateFormString,
   zone: string = DEFAULT_AUCTION_ZONE,

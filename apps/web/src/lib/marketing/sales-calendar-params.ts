@@ -26,8 +26,6 @@ const CALENDAR_PRIMARY_TAB_DEFINITIONS: readonly CalendarPrimaryTabDefinition[] 
 
 export type CalendarSalesUrlParams = {
   tab?: CalendarPrimaryTab;
-  /** Legacy filter still supported for deep links; tab wins when both set. */
-  filter?: string;
   categoryId?: string;
   deliveryMode?: SaleDeliveryMode | "all";
   location?: "all" | "online" | string;
@@ -59,21 +57,12 @@ export function parseCalendarPrimaryTab(
 ): CalendarPrimaryTab {
   const match = matchCanonicalTab(firstString(sp.tab));
   if (match) return match;
-  const legacy = firstString(sp.filter)?.toLowerCase();
-  if (legacy === "ended") return "results";
-  if (legacy === "live" || legacy === "active") return "live";
-  if (legacy === "scheduled") return "upcoming";
   return "upcoming";
 }
 
-/** True when the URL explicitly selects a calendar section (tab or legacy filter). */
+/** True when the URL explicitly selects a calendar section via `tab`. */
 export function hasExplicitCalendarTab(sp: Record<string, string | string[] | undefined>): boolean {
-  if (matchCanonicalTab(firstString(sp.tab))) {
-    return true;
-  }
-  const legacy = firstString(sp.filter)?.toLowerCase();
-  if (!legacy) return false;
-  return legacy === "ended" || legacy === "live" || legacy === "active" || legacy === "scheduled";
+  return matchCanonicalTab(firstString(sp.tab)) != null;
 }
 
 /** Default landing tab when no explicit tab is in the URL. */

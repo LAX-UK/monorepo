@@ -42,6 +42,14 @@ vi.mock("@/lib/context/online-lot-lifecycle", () => ({
   }),
 }));
 
+vi.mock("@/lib/connection/use-live-connection", () => ({
+  useLiveConnection: () => ({
+    state: "live",
+    message: null,
+    biddingAllowed: true,
+  }),
+}));
+
 const lot = (sellerId: string): Lot => ({
   id: "lot-x",
   saleId: null,
