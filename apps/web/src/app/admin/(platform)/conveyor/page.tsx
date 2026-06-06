@@ -1,3 +1,4 @@
+import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
@@ -52,17 +53,28 @@ export default async function AdminConveyorPage({
       />
     ) : null;
 
-  const view =
-    !loadError && rows.length > 0 ? (
-      <div className="space-y-4">
-        <ConveyorLayoutToggle viewTable={viewTable} />
-        {viewTable ? (
-          <AdminConveyorTableBoard rows={rows} />
-        ) : (
-          <ConveyorKanbanBoard columns={columns} />
-        )}
-      </div>
-    ) : null;
+  const view = (
+    <div className="space-y-8">
+      <AdminHubQuickLinks
+        ariaLabel="Conveyor quick links"
+        links={[
+          { href: "/admin/submissions", label: "Submissions" },
+          { href: "/admin/artists", label: "Artists" },
+          { href: "/admin/lots?lens=attention", label: "Lots attention" },
+        ]}
+      />
+      {!loadError && rows.length > 0 ? (
+        <div className="space-y-4">
+          <ConveyorLayoutToggle viewTable={viewTable} />
+          {viewTable ? (
+            <AdminConveyorTableBoard rows={rows} />
+          ) : (
+            <ConveyorKanbanBoard columns={columns} />
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <CatalogListShell

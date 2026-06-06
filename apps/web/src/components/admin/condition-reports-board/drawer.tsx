@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { ConditionReportDeclineButton } from "@/components/admin/condition-report-decline-button";
 import { ConditionReportFulfillForm } from "@/components/admin/condition-report-fulfill-form";
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
@@ -12,6 +13,7 @@ import Link from "next/link";
 export function ConditionReportDrawerContent({ row }: { row: AdminConditionReportRequestRow }) {
   const terminal = row.status === "fulfilled" || row.status === "declined";
   const markInProgressFormId = `condition-report-progress-${row.id}`;
+  const requesterLabel = row.requesterEmail?.trim() || "View client";
 
   return (
     <div className="space-y-6">
@@ -21,12 +23,17 @@ export function ConditionReportDrawerContent({ row }: { row: AdminConditionRepor
             href={`/admin/lots/${row.lotId}`}
             className="font-headline text-base text-primary hover:underline"
           >
-            {row.lotTitle ?? row.lotId}
+            {row.lotTitle ?? "View lot"}
           </Link>
           <AdminStatusBadge domain="conditionReport" status={row.status} />
         </div>
         <p className="mt-1 text-sm text-on-surface-variant">
-          From {row.requesterEmail ?? row.requestedByUserId}
+          <Link
+            href={`/admin/clients/${row.requestedByUserId}`}
+            className="text-primary hover:underline"
+          >
+            {requesterLabel}
+          </Link>
           {row.createdAt ? ` · ${formatDateTime(row.createdAt)}` : ""}
         </p>
       </div>
@@ -35,6 +42,15 @@ export function ConditionReportDrawerContent({ row }: { row: AdminConditionRepor
           {row.requestNote}
         </blockquote>
       ) : null}
+
+      <AdminTechnicalIdDisclosure
+        items={[
+          { label: "Request ID", value: row.id },
+          { label: "Lot ID", value: row.lotId },
+          { label: "Requester user ID", value: row.requestedByUserId },
+        ]}
+      />
+
       {terminal ? (
         <div className="rounded-lg border border-border-hairline bg-surface-container-low p-4">
           <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">

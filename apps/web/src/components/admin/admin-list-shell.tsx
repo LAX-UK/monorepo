@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
  * 2. `*ListController` in `admin-list-controllers.ts` — `parseQuery` + `fetch` (DIP).
  * 3. `*.vm.ts` view-models — row shaping and display labels.
  * 4. `*-board/` — `EntityList`, columns, mobile-cards, drawer; accepts view-model rows only.
+ *    Drawer previews: human fields in the main body; technical IDs via `AdminTechnicalIdDisclosure`.
  * 5. Presenters — `status-badge-variants`, `domain-event-labels`, `capability-presenter`.
  *
  * Variants: `queue` for work queues; `layout="hub"` for lookup/settings (no pagination).

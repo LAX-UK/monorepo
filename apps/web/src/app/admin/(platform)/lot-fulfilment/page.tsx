@@ -9,11 +9,11 @@ import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination
 import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { AdminLotFulfilmentBoard } from "@/components/admin/lot-fulfilment-board";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { lotFulfilmentListController } from "@/lib/admin/lot-fulfilment-list-controller";
 import { buildFulfilmentActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { loadAdminLotFulfilmentQueue } from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
@@ -24,21 +24,6 @@ export const metadata: Metadata = metadataForPrivate(
   "Lot fulfilment",
   "Release, shipping, and collection workflow for sold lots.",
 );
-
-const FILTER_STATUSES = [
-  "awaiting_payment",
-  "awaiting_release",
-  "released",
-  "ready_for_collection",
-  "in_transit",
-  "delivered",
-  "cancelled",
-] as const;
-
-function parseStatusFilter(raw: string | undefined): string | undefined {
-  if (!raw) return undefined;
-  return (FILTER_STATUSES as readonly string[]).includes(raw) ? raw : undefined;
-}
 
 type Props = {
   searchParams: Promise<{
@@ -52,24 +37,15 @@ type Props = {
 
 export default async function AdminLotFulfilmentQueuePage({ searchParams }: Props) {
   const sp = await searchParams;
-  const statusFilter = parseStatusFilter(typeof sp.status === "string" ? sp.status : undefined);
-  const q = typeof sp.q === "string" ? sp.q.trim() : "";
-  const error = safeDecodeAdminErrorParam(sp.error);
+  const query = lotFulfilmentListController.parseQuery(sp);
+  const error = safeDecodeAdminErrorParam(query.error ?? sp.error);
   const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
   const activeFilterChips = buildFulfilmentActiveFilterChips(sp, {
-    ...(statusFilter ? { status: statusFilter } : {}),
-    ...(q ? { q } : {}),
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.q ? { q: query.q } : {}),
   });
 
-  const limit = Math.min(100, Math.max(1, Number(sp.limit) || 25));
-  const offset = Math.max(0, Number(sp.offset) || 0);
-
-  const loaded = await loadAdminLotFulfilmentQueue({
-    ...(statusFilter !== undefined ? { status: statusFilter } : {}),
-    ...(q ? { q } : {}),
-    limit,
-    offset,
-  });
+  const loaded = await lotFulfilmentListController.fetch(query);
 
   if (loaded.access === "forbidden") {
     return (
@@ -99,14 +75,8 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
     );
   }
 
-  const rows = loaded.rows;
-  const total = loaded.total;
+  const { rows, total, summary, offset, limit, statusFilter, q } = loaded;
   const returnStatus = statusFilter ?? "";
-  const statusCounts = loaded.statusCounts;
-
-  const awaitingPickup =
-    (statusCounts.ready_for_collection ?? 0) + (statusCounts.awaiting_release ?? 0);
-  const inTransit = (statusCounts.in_transit ?? 0) + (statusCounts.released ?? 0);
 
   const filterBar = (
     <Suspense
@@ -212,13 +182,13 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
           <AdminListKpiStrip
             ariaLabel="Fulfilment summary"
             tiles={[
-              { label: "In queue", value: total },
+              { label: "In queue", value: summary.total },
               {
                 label: "Awaiting pickup / release",
-                value: awaitingPickup,
+                value: summary.awaitingPickup,
                 semanticTone: "warning",
               },
-              { label: "In transit / released", value: inTransit },
+              { label: "In transit / released", value: summary.inTransit },
             ]}
           />
         ) : null

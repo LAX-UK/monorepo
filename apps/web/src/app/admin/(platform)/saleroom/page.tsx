@@ -1,4 +1,5 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
@@ -79,9 +80,19 @@ export default async function AdminSaleroomHubPage() {
         loadError ? <AdminListAlert title="Could not load sales">{loadError}</AdminListAlert> : null
       }
       view={
-        !loadError && liveOrUpcoming.length > 0 ? (
-          <AdminSaleroomHubBoard rows={liveOrUpcoming} />
-        ) : null
+        <div className="space-y-8">
+          <AdminHubQuickLinks
+            ariaLabel="Saleroom quick links"
+            links={[
+              { href: "/admin/sales", label: "All sales" },
+              { href: "/admin/onsite-events", label: "Onsite events" },
+              { href: "/admin/lots?lens=attention", label: "Lots attention" },
+            ]}
+          />
+          {!loadError && liveOrUpcoming.length > 0 ? (
+            <AdminSaleroomHubBoard rows={liveOrUpcoming} />
+          ) : null}
+        </div>
       }
       empty={empty}
     />
