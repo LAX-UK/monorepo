@@ -36,6 +36,7 @@ describe("admin onsite event routes", () => {
     lookupByEmail: vi.fn(),
     submitRsvp: vi.fn(),
     listAdminEvents: vi.fn(),
+    getAdminEventDetail: vi.fn(),
     listAdminRsvps: vi.fn(),
     exportAdminCsv: vi.fn(),
     resendPass,
@@ -65,6 +66,30 @@ describe("admin onsite event routes", () => {
     hono.route("/admin/onsite-events", createAdminOnsiteEventRoutes(container));
     return hono;
   }
+
+  it("GET detail returns admin event metadata", async () => {
+    vi.mocked(onsiteEventRsvpService.getAdminEventDetail).mockResolvedValue({
+      slug: "lax001",
+      title: "LAX 001",
+      status: "published",
+      startsAt: "2026-06-18T18:00:00.000Z",
+      rsvpCloseAt: null,
+      segmentOptions: [{ value: "full_evening", label: "Full evening" }],
+      micrositeUrl: "https://event.lax.bid",
+      venue: null,
+      dressCode: null,
+      arrivalNote: null,
+      checkInDryRun: false,
+      rsvpCount: 3,
+      checkedInCount: 1,
+    });
+
+    const res = await app("staff-1").request("/admin/onsite-events/lax001");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { slug: string; rsvpCount: number } };
+    expect(body.data.slug).toBe("lax001");
+    expect(body.data.rsvpCount).toBe(3);
+  });
 
   it("POST resend-pass requires staff auth", async () => {
     const res = await app().request(

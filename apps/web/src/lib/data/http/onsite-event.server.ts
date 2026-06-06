@@ -2,9 +2,11 @@ import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import type {
+  OnsiteEventAdminDetail,
   OnsiteEventListItem,
   OnsiteEventRsvpAdminRow,
   OnsiteEventSegmentOption,
+  OnsiteEventStatus,
 } from "@auction/types";
 
 function parseAdminRow(value: unknown): OnsiteEventRsvpAdminRow | null {
@@ -73,6 +75,40 @@ function parseSegmentOptions(value: unknown): OnsiteEventSegmentOption[] {
   });
 }
 
+const EVENT_STATUSES = new Set<OnsiteEventStatus>(["draft", "published", "closed"]);
+
+function parseAdminDetail(value: unknown): OnsiteEventAdminDetail | null {
+  if (typeof value !== "object" || value === null) return null;
+  const row = value as Record<string, unknown>;
+  if (
+    typeof row.slug !== "string" ||
+    typeof row.title !== "string" ||
+    typeof row.status !== "string" ||
+    typeof row.checkInDryRun !== "boolean" ||
+    typeof row.rsvpCount !== "number" ||
+    typeof row.checkedInCount !== "number"
+  ) {
+    return null;
+  }
+  if (!EVENT_STATUSES.has(row.status as OnsiteEventStatus)) return null;
+
+  return {
+    slug: row.slug,
+    title: row.title,
+    status: row.status as OnsiteEventStatus,
+    startsAt: typeof row.startsAt === "string" ? row.startsAt : null,
+    rsvpCloseAt: typeof row.rsvpCloseAt === "string" ? row.rsvpCloseAt : null,
+    segmentOptions: parseSegmentOptions(row.segmentOptions),
+    micrositeUrl: typeof row.micrositeUrl === "string" ? row.micrositeUrl : null,
+    venue: typeof row.venue === "string" ? row.venue : null,
+    dressCode: typeof row.dressCode === "string" ? row.dressCode : null,
+    arrivalNote: typeof row.arrivalNote === "string" ? row.arrivalNote : null,
+    checkInDryRun: row.checkInDryRun,
+    rsvpCount: row.rsvpCount,
+    checkedInCount: row.checkedInCount,
+  };
+}
+
 export async function getAdminOnsiteEvents(): Promise<OnsiteEventListItem[]> {
   const res = await authedServerFetch("/admin/onsite-events", { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to load onsite events: ${res.status}`);
@@ -82,37 +118,28 @@ export async function getAdminOnsiteEvents(): Promise<OnsiteEventListItem[]> {
     .filter((row): row is OnsiteEventListItem => row != null);
 }
 
+export async function getAdminOnsiteEventDetail(
+  slug: string,
+): Promise<OnsiteEventAdminDetail | null> {
+  const res = await authedServerFetch(`/admin/onsite-events/${encodeURIComponent(slug)}`, {
+    cache: "no-store",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load onsite event: ${res.status}`);
+  const body = (await res.json()) as { data?: unknown };
+  return parseAdminDetail(body.data);
+}
+
 export async function getAdminOnsiteEventRsvps(slug: string): Promise<OnsiteEventRsvpAdminRow[]> {
   const res = await authedServerFetch(`/admin/onsite-events/${encodeURIComponent(slug)}/rsvps`, {
     cache: "no-store",
   });
-  if (res.status === 404) return [];
+  if (res.status === 404) {
+    throw new Error("Onsite event not found");
+  }
   if (!res.ok) throw new Error(`Failed to load onsite event RSVPs: ${res.status}`);
   const body = (await res.json()) as { data?: unknown[] };
   return (body.data ?? [])
     .map(parseAdminRow)
     .filter((row): row is OnsiteEventRsvpAdminRow => row != null);
-}
-
-export async function getAdminOnsiteEventDetail(slug: string): Promise<{
-  title: string;
-  segmentOptions: OnsiteEventSegmentOption[];
-  micrositeUrl: string | null;
-} | null> {
-  const events = await getAdminOnsiteEvents();
-  const event = events.find((item) => item.slug === slug);
-  if (!event) return null;
-
-  const res = await authedServerFetch(`/events/${encodeURIComponent(slug)}/config`, {
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    return { title: event.title, segmentOptions: [], micrositeUrl: null };
-  }
-  const body = (await res.json()) as { data?: Record<string, unknown> };
-  return {
-    title: typeof body.data?.title === "string" ? body.data.title : event.title,
-    segmentOptions: parseSegmentOptions(body.data?.segmentOptions),
-    micrositeUrl: typeof body.data?.micrositeUrl === "string" ? body.data.micrositeUrl : null,
-  };
 }

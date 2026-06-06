@@ -1,5 +1,6 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { OnsiteEventAdminPanel } from "@/components/admin/onsite-events/onsite-event-admin-panel";
+import { OnsiteEventRefreshOnReturn } from "@/components/admin/onsite-events/onsite-event-refresh-on-return";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import {
   getAdminOnsiteEventDetail,
@@ -8,6 +9,7 @@ import {
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -45,20 +47,27 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
   if (!detail) {
     return (
       <div className="space-y-4">
-        <h1 className="font-display text-2xl tracking-tight">{slug}</h1>
+        <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
+          {slug}
+        </h1>
         <AdminListAlert>{loadError ?? "Could not load onsite event data."}</AdminListAlert>
       </div>
     );
   }
 
   return (
-    <OnsiteEventAdminPanel
-      slug={slug}
-      title={detail.title}
-      segmentOptions={detail.segmentOptions}
-      micrositeUrl={detail.micrositeUrl}
-      rsvps={rsvps}
-      error={error ?? loadError}
-    />
+    <>
+      <Suspense fallback={null}>
+        <OnsiteEventRefreshOnReturn />
+      </Suspense>
+      <OnsiteEventAdminPanel
+        slug={slug}
+        title={detail.title}
+        segmentOptions={detail.segmentOptions}
+        micrositeUrl={detail.micrositeUrl}
+        rsvps={rsvps}
+        error={error ?? loadError}
+      />
+    </>
   );
 }

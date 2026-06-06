@@ -83,6 +83,10 @@ export class RsvpFormController {
     this.onChangeEmail = handlers.onChangeEmail;
   }
 
+  getState(): RsvpUiState {
+    return this.state;
+  }
+
   setState(state: RsvpUiState) {
     this.state = state;
     this.render();
@@ -159,6 +163,9 @@ export class RsvpFormController {
 
     for (const step of steps) {
       const item = el("div", `rsvp-step${step.n === active ? " rsvp-step-active" : ""}`);
+      if (step.n === active) {
+        item.setAttribute("aria-current", "step");
+      }
       item.append(el("span", "rsvp-step-num", String(step.n)));
       item.append(el("span", "rsvp-step-label", step.label));
       nav.append(item);
@@ -252,17 +259,34 @@ export class RsvpFormController {
     return fragment;
   }
 
+  private formatEventDateTime(startsAt: string | null): string | null {
+    if (!startsAt) return null;
+    const date = new Date(startsAt);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Europe/London",
+    });
+  }
+
   private renderSuccess() {
     if (this.state.kind !== "success") return document.createDocumentFragment();
-    const { result, user, segmentOptions } = this.state;
+    const { result, user, segmentOptions, eventConfig } = this.state;
     const fragment = document.createDocumentFragment();
+    const eventTitle = eventConfig.title || EVENT_DETAILS.title;
+    const eventWhen =
+      this.formatEventDateTime(eventConfig.startsAt) ??
+      `${EVENT_DETAILS.date} · ${EVENT_DETAILS.time}`;
+    const venue = eventConfig.venue?.trim() || EVENT_DETAILS.venue;
+    const dressCode = eventConfig.dressCode?.trim() || EVENT_DETAILS.dressCode;
 
     fragment.append(
-      el(
-        "p",
-        "rsvp-success",
-        `Thank you, ${user.name}. Your place at ${EVENT_DETAILS.title} is confirmed.`,
-      ),
+      el("p", "rsvp-success", `Thank you, ${user.name}. Your place at ${eventTitle} is confirmed.`),
     );
 
     const details = el("dl", "rsvp-details");
@@ -274,9 +298,9 @@ export class RsvpFormController {
       "Guest",
       result.plusOne > 0 ? `You + ${result.plusOneGuestName?.trim() || "1 guest"}` : "Just you",
     );
-    addRow("Date", `${EVENT_DETAILS.date} · ${EVENT_DETAILS.time}`);
-    addRow("Venue", EVENT_DETAILS.venue);
-    addRow("Dress code", EVENT_DETAILS.dressCode);
+    addRow("Date", eventWhen);
+    addRow("Venue", venue);
+    addRow("Dress code", dressCode);
     if (result.notes?.trim()) addRow("Notes", result.notes.trim());
     fragment.append(details);
 
@@ -284,7 +308,7 @@ export class RsvpFormController {
       el(
         "p",
         "rsvp-hint",
-        "A confirmation email has been sent to your inbox. Show your entry pass QR at registration on 18 June.",
+        `If you do not receive a confirmation email within a few minutes, open your entry pass below or contact ${EVENTS_EMAIL}. Show your pass QR at registration.`,
       ),
     );
 
@@ -301,7 +325,7 @@ export class RsvpFormController {
 
   private renderForm() {
     if (this.state.kind !== "form") return document.createDocumentFragment();
-    const { user, existing, segmentOptions } = this.state;
+    const { user, existing, segmentOptions, draft, submitError } = this.state;
     const fragment = document.createDocumentFragment();
 
     const identity = el("div", "rsvp-identity");
@@ -342,7 +366,8 @@ export class RsvpFormController {
     group.setAttribute("aria-required", "true");
     group.setAttribute("aria-labelledby", "rsvp-segment-legend");
 
-    const defaultSegment = existing?.attendanceSegment ?? segmentOptions[0]?.value ?? "";
+    const defaultSegment =
+      draft?.attendanceSegment ?? existing?.attendanceSegment ?? segmentOptions[0]?.value ?? "";
     for (const option of segmentOptions) {
       const card = el("label", "rsvp-radio-card");
       const input = document.createElement("input");
@@ -371,7 +396,8 @@ export class RsvpFormController {
       const opt = document.createElement("option");
       opt.value = value;
       opt.textContent = value === "0" ? "No — attending alone" : "Yes — one guest (+1)";
-      if (String(existing?.plusOne ?? 0) === value) opt.selected = true;
+      const plusOneDefault = draft?.plusOne ?? existing?.plusOne ?? 0;
+      if (String(plusOneDefault) === value) opt.selected = true;
       plusSelect.append(opt);
     }
     plusLabel.htmlFor = "plusOne";
@@ -379,7 +405,7 @@ export class RsvpFormController {
     form.append(plusWrap);
 
     const guestWrap = el("div", "rsvp-guest-name");
-    guestWrap.hidden = (existing?.plusOne ?? 0) === 0;
+    guestWrap.hidden = (draft?.plusOne ?? existing?.plusOne ?? 0) === 0;
     const guestLabel = el("label", "rsvp-label", "Guest full name *") as HTMLLabelElement;
     const guestInput = document.createElement("input");
     guestInput.type = "text";
@@ -387,7 +413,7 @@ export class RsvpFormController {
     guestInput.id = "rsvp-guest-name";
     guestInput.autocomplete = "name";
     guestInput.maxLength = 120;
-    guestInput.value = existing?.plusOneGuestName ?? "";
+    guestInput.value = draft?.guestName ?? existing?.plusOneGuestName ?? "";
     guestLabel.htmlFor = "rsvp-guest-name";
     guestWrap.append(guestLabel, guestInput);
     form.append(guestWrap);
@@ -400,7 +426,7 @@ export class RsvpFormController {
     notes.maxLength = NOTES_MAX;
     notes.rows = 3;
     notes.placeholder = "Dietary requirements, accessibility needs, or other requests";
-    notes.value = existing?.notes ?? "";
+    notes.value = draft?.notes ?? existing?.notes ?? "";
     notes.setAttribute("aria-describedby", "rsvp-notes-hint");
     const hint = el("p", "rsvp-hint", `Optional. Up to ${NOTES_MAX} characters.`);
     hint.id = "rsvp-notes-hint";
@@ -410,7 +436,12 @@ export class RsvpFormController {
 
     const error = el("p", "rsvp-error");
     error.setAttribute("role", "alert");
-    error.hidden = true;
+    if (submitError) {
+      error.textContent = submitError;
+      error.hidden = false;
+    } else {
+      error.hidden = true;
+    }
     form.append(error);
 
     const submit = button(existing ? "UPDATE RSVP" : "CONFIRM ATTENDANCE", () => undefined, {
@@ -425,6 +456,7 @@ export class RsvpFormController {
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (submit.disabled) return;
       error.hidden = true;
       const segmentInput = form.querySelector<HTMLInputElement>(
         'input[name="attendanceSegment"]:checked',
@@ -442,12 +474,17 @@ export class RsvpFormController {
         guestInput.focus();
         return;
       }
-      await this.onSubmit({
-        attendanceSegment: segmentInput.value,
-        plusOne: Number.isFinite(plusOne) ? plusOne : 0,
-        guestName,
-        notes: notes.value.trim(),
-      });
+      submit.disabled = true;
+      try {
+        await this.onSubmit({
+          attendanceSegment: segmentInput.value,
+          plusOne: Number.isFinite(plusOne) ? plusOne : 0,
+          guestName,
+          notes: notes.value.trim(),
+        });
+      } finally {
+        submit.disabled = false;
+      }
     });
 
     fragment.append(form);

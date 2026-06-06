@@ -5,6 +5,7 @@ import type {
   OnsiteEventCheckInSearchRow,
   OnsiteEventPassView,
 } from "@auction/types";
+import { type AppLogger, createBaseLogger } from "../lib/logger.js";
 import {
   buildPassUrl,
   hashCheckInInput,
@@ -25,12 +26,21 @@ import type {
 import type { PassQrRenderService } from "./pass-qr-render.service.js";
 
 export class OnsiteEventCheckInService implements IOnsiteEventCheckInService {
+  private readonly log: AppLogger;
+
   constructor(
     private readonly eventRepo: IOnsiteEventRepository,
     private readonly rsvpRepo: IOnsiteEventRsvpRepository,
     private readonly checkInLogRepo: IOnsiteEventCheckInLogRepository,
     private readonly qrRender: PassQrRenderService,
-  ) {}
+    logger?: AppLogger,
+  ) {
+    this.log =
+      logger ??
+      createBaseLogger({ LOG_LEVEL: "fatal", NODE_ENV: "test" }).child({
+        module: "onsite-event-check-in",
+      });
+  }
 
   private notFound(): OnsiteEventCheckInServiceError {
     return { message: "Pass not found", status: 404, code: "pass_not_found" };
@@ -95,11 +105,15 @@ export class OnsiteEventCheckInService implements IOnsiteEventCheckInService {
         rawInputHash: hashCheckInInput(input.rawInput),
       });
     } catch (error) {
-      console.error("[onsite-event-check-in-log] audit insert failed", {
-        eventSlug: input.eventSlug,
-        result: input.result,
-        error,
-      });
+      this.log.error(
+        {
+          eventSlug: input.eventSlug,
+          rsvpId: input.rsvpId,
+          result: input.result,
+          err: error,
+        },
+        "onsite_event_check_in_audit_insert_failed",
+      );
     }
   }
 

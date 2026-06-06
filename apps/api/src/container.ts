@@ -916,10 +916,12 @@ export function createContainer(env: Env): Container {
   const onsiteEventCheckInLogRepo = new DrizzleOnsiteEventCheckInLogRepository(db);
   const onsiteEventClientReader = new DrizzleOnsiteEventClientReader(db);
   const passQrRenderService = new PassQrRenderService();
+  const onsiteEventLog = createBaseLogger(env).child({ component: "onsite_event" });
   const onsiteEventNotifier = new OnsiteEventNotifier(
     transactionalMailer,
     passQrRenderService,
     env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
+    onsiteEventLog.child({ module: "notifier" }),
   );
   const onsiteEventRsvpService = new OnsiteEventRsvpService(
     onsiteEventRepo,
@@ -927,12 +929,14 @@ export function createContainer(env: Env): Container {
     onsiteEventClientReader,
     onsiteEventNotifier,
     env.CHECK_IN_TOKEN_SECRET ?? env.BETTER_AUTH_SECRET,
+    onsiteEventLog.child({ module: "rsvp" }),
   );
   const onsiteEventCheckInService = new OnsiteEventCheckInService(
     onsiteEventRepo,
     onsiteEventRsvpRepo,
     onsiteEventCheckInLogRepo,
     passQrRenderService,
+    onsiteEventLog.child({ module: "check_in" }),
   );
 
   const lotService = new LotService({

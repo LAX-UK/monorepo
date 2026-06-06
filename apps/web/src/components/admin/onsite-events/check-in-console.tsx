@@ -10,6 +10,7 @@ declare global {
   }
 }
 
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import {
   checkInOnsiteEventGuest,
   fetchOnsiteEventCheckInStats,
@@ -19,27 +20,21 @@ import {
 import { formatDateTime } from "@/lib/ui/format";
 import type { OnsiteEventCheckInResult, OnsiteEventCheckInSearchRow } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { Input } from "@auction/ui/components/input";
 import { Surface } from "@auction/ui/components/surface";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  checkInInputKey,
+  shouldDebounceSuccessfulScan,
+  shouldSuppressRepeatScan,
+} from "./check-in-scan-debounce.js";
 
 type Props = {
   slug: string;
   title: string;
 };
-
-const DUPLICATE_SCAN_MS = 2000;
-
-function checkInInputKey(input: { token?: string; rsvpId?: string }): string | null {
-  if (input.rsvpId) return `rsvp:${input.rsvpId}`;
-  if (input.token?.trim()) return `token:${input.token.trim()}`;
-  return null;
-}
-
-function shouldDebounceScan(_status: OnsiteEventCheckInResult["status"]): boolean {
-  return true;
-}
 
 function resultTone(status: OnsiteEventCheckInResult["status"]): string {
   switch (status) {
@@ -85,11 +80,12 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [duplicateScanNotice, setDuplicateScanNotice] = useState<string | null>(null);
+  const [dryRunConfirmOpen, setDryRunConfirmOpen] = useState(false);
   const busyRef = useRef(false);
   const searchGenerationRef = useRef(0);
-  const lastDuplicateKeyRef = useRef<string | null>(null);
-  const lastDuplicateAtRef = useRef(0);
+  const lastScanKeyRef = useRef<string | null>(null);
+  const lastScanAtRef = useRef(0);
+  const lastScanStatusRef = useRef<OnsiteEventCheckInResult["status"] | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanTimerRef = useRef<number | null>(null);
@@ -113,33 +109,44 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
       if (busyRef.current) return;
 
       const inputKey = checkInInputKey(input);
-      const now = Date.now();
       if (
-        inputKey &&
-        inputKey === lastDuplicateKeyRef.current &&
-        now - lastDuplicateAtRef.current < DUPLICATE_SCAN_MS
+        shouldSuppressRepeatScan({
+          inputKey,
+          lastKey: lastScanKeyRef.current,
+          lastAt: lastScanAtRef.current,
+          lastStatus: lastScanStatusRef.current,
+        })
       ) {
-        setDuplicateScanNotice("Already processed — hold steady or scan the next guest.");
         return;
       }
 
       busyRef.current = true;
       setBusy(true);
       setNetworkError(null);
-      setDuplicateScanNotice(null);
+      setResult(null);
       try {
         const next = await checkInOnsiteEventGuest(slug, input);
         setResult(next);
-        if (shouldDebounceScan(next.status) && inputKey) {
-          lastDuplicateKeyRef.current = inputKey;
-          lastDuplicateAtRef.current = Date.now();
+        if (inputKey) {
+          lastScanKeyRef.current = inputKey;
+          lastScanAtRef.current = Date.now();
+          lastScanStatusRef.current = shouldDebounceSuccessfulScan(next.status)
+            ? next.status
+            : next.status === "INVALID" || next.status === "WRONG_EVENT"
+              ? next.status
+              : null;
         }
         if (next.status === "VALID" || next.status === "DRY_RUN_VALID") {
           setManualToken("");
           await refreshStats();
         }
       } catch (e) {
-        setNetworkError(e instanceof Error ? e.message : "Check-in failed");
+        const message = e instanceof Error ? e.message : "Check-in failed";
+        setNetworkError(
+          message.includes("401")
+            ? "Your session may have expired. Sign in again and return to this page."
+            : message,
+        );
       } finally {
         busyRef.current = false;
         setBusy(false);
@@ -274,7 +281,9 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="font-display text-2xl tracking-tight">{title}</h1>
+          <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
+            {title}
+          </h1>
           <p className="font-body text-sm text-on-surface-variant">
             {stats.checkedIn} / {stats.total} arrived
             {stats.checkInDryRun ? " · Dry-run mode on" : ""}
@@ -285,11 +294,16 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
           size="sm"
           variant={stats.checkInDryRun ? "default" : "outline"}
           disabled={dryRunBusy}
+          aria-pressed={stats.checkInDryRun}
+          aria-describedby="check-in-dry-run-hint"
           onClick={() => {
-            const nextEnabled = !stats.checkInDryRun;
+            if (stats.checkInDryRun) {
+              setDryRunConfirmOpen(true);
+              return;
+            }
             setDryRunBusy(true);
             setDryRunError(null);
-            void setOnsiteEventCheckInDryRun(slug, nextEnabled)
+            void setOnsiteEventCheckInDryRun(slug, true)
               .then((enabled) => setStats((prev) => ({ ...prev, checkInDryRun: enabled })))
               .catch((e) => {
                 setDryRunError(e instanceof Error ? e.message : "Could not update dry-run mode");
@@ -301,17 +315,30 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
         </Button>
       </div>
 
-      {statsError ? (
-        <Surface className="border border-amber-500/40 bg-amber-50 p-4" aria-live="polite">
-          <p className="font-body text-sm text-amber-950">{statsError}</p>
+      <p id="check-in-dry-run-hint" className="sr-only">
+        Dry-run mode validates passes without recording arrivals. Turn off when the door opens for
+        live check-in.
+      </p>
+
+      {stats.checkInDryRun ? (
+        <Surface className="border border-amber-500/50 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-950/30">
+          <output
+            aria-live="polite"
+            className="block font-body text-sm font-medium text-amber-950 dark:text-amber-100"
+          >
+            Dry-run mode is on — scans are validated but not recorded. Turn off before admitting
+            guests for real.
+          </output>
         </Surface>
       ) : null}
 
-      {dryRunError ? (
-        <Surface className="border border-border-hairline p-4" aria-live="assertive">
-          <p className="font-body text-sm text-on-surface-variant">{dryRunError}</p>
-        </Surface>
+      {statsError ? (
+        <AdminListAlert title="Could not refresh arrival stats" variant="default">
+          {statsError}
+        </AdminListAlert>
       ) : null}
+
+      {dryRunError ? <AdminListAlert>{dryRunError}</AdminListAlert> : null}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
@@ -333,10 +360,10 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
             <p className="font-body text-sm text-on-surface-variant">Starting camera…</p>
           ) : null}
           {cameraSupported === false ? (
-            <p className="font-body text-sm text-on-surface-variant">
+            <output aria-live="polite" className="block font-body text-sm text-on-surface-variant">
               Camera scanning is unavailable on this device. Paste the pass link or token below, or
               use Search name.
-            </p>
+            </output>
           ) : null}
           <div className="space-y-2">
             <label className="font-body text-sm text-on-surface-variant" htmlFor="manual-token">
@@ -392,6 +419,7 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
                 type="button"
                 className="flex w-full min-h-11 flex-col rounded-lg border border-border-hairline bg-surface px-4 py-3 text-left disabled:opacity-60"
                 disabled={busy}
+                aria-label={`Check in ${row.name}`}
                 onClick={() => void runCheckIn({ rsvpId: row.rsvpId })}
               >
                 <span className="font-medium">{row.name}</span>
@@ -405,12 +433,6 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
         </TabsContent>
       </Tabs>
 
-      {duplicateScanNotice ? (
-        <p className="font-body text-sm text-on-surface-variant" aria-live="polite">
-          {duplicateScanNotice}
-        </p>
-      ) : null}
-
       {busy ? (
         <p className="font-body text-sm text-on-surface-variant" aria-live="polite">
           Checking in…
@@ -418,13 +440,12 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
       ) : null}
 
       {networkError ? (
-        <Surface className="border border-border-hairline p-4" aria-live="assertive">
-          <p className="font-medium">Could not reach the server</p>
-          <p className="font-body text-sm text-on-surface-variant">{networkError}</p>
-          <p className="mt-2 font-body text-sm text-on-surface-variant">
+        <AdminListAlert title="Could not reach the server">
+          {networkError}
+          <span className="mt-2 block">
             Try again or use Search name to admit the guest manually.
-          </p>
-        </Surface>
+          </span>
+        </AdminListAlert>
       ) : null}
 
       {result ? (
@@ -455,6 +476,34 @@ export function OnsiteEventCheckInConsole({ slug, title }: Props) {
           )}
         </output>
       ) : null}
+
+      <ConfirmDialog
+        open={dryRunConfirmOpen}
+        onOpenChange={setDryRunConfirmOpen}
+        title="Go live with check-in?"
+        body={
+          <p>
+            Turning off dry-run will record real arrivals. Only continue when you are ready to admit
+            guests at the door.
+          </p>
+        }
+        confirmLabel="Go live"
+        tone="danger"
+        loading={dryRunBusy}
+        onConfirm={() => {
+          setDryRunBusy(true);
+          setDryRunError(null);
+          void setOnsiteEventCheckInDryRun(slug, false)
+            .then((enabled) => setStats((prev) => ({ ...prev, checkInDryRun: enabled })))
+            .catch((e) => {
+              setDryRunError(e instanceof Error ? e.message : "Could not update dry-run mode");
+            })
+            .finally(() => {
+              setDryRunBusy(false);
+              setDryRunConfirmOpen(false);
+            });
+        }}
+      />
     </div>
   );
 }
