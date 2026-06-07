@@ -707,8 +707,8 @@ export class ItemSubmissionService implements IItemSubmissionService {
         for (const recipientId of recipients) {
           await this.dispatcher.dispatch(recipientId, {
             type: "submission_draft_reminder",
-            title: "Draft submission waiting",
-            message: `Your draft "${s.title}" has not been updated in ${input.staleDays} days. Resume when you are ready to submit for review.`,
+            title: "Submission waiting",
+            message: `Your in-progress submission "${s.title}" has not been updated in ${input.staleDays} days. Resume when you are ready to submit for review.`,
             submissionId: s.id,
           });
         }

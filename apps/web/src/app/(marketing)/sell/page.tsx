@@ -13,7 +13,7 @@ import { SellValuationSection } from "@/components/marketing/sell-journey/sell-v
 import { SellPageClosingPromo } from "@/components/marketing/sell-page-closing-promo";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { SELL_PAGE_INTRO, SELL_TIME_EXPECTATIONS } from "@/lib/marketing/sell-flow-copy";
-import { sellContactHref, sellIntakeHref } from "@/lib/marketing/sell-intake";
+import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { SELL_PAGE_TOC } from "@/lib/marketing/sell-page-toc";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -64,15 +64,7 @@ export default function SellPage() {
           <SellCtaLink href={sellIntakeHref()} source="sell_intro" className={MARKETING_PROSE_LINK}>
             Start your submission
           </SellCtaLink>{" "}
-          or{" "}
-          <SellCtaLink
-            href={sellContactHref()}
-            source="sell_intro_contact"
-            className={MARKETING_PROSE_LINK}
-          >
-            speak to a specialist
-          </SellCtaLink>
-          .
+          — create an account and complete the wizard in about 3 minutes.
         </p>
 
         <LegalH2 id="departments" className="scroll-mt-28">

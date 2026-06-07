@@ -14,21 +14,20 @@ import {
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
 import { MoreVertical } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Props = {
   isSubmitting: boolean;
   onFinishLater: () => void;
+  onLeaveWithoutSaving: () => void;
 };
 
-export function WizardHeaderActions({ isSubmitting, onFinishLater }: Props) {
-  const router = useRouter();
+export function WizardHeaderActions({ isSubmitting, onFinishLater, onLeaveWithoutSaving }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const leaveWithoutSaving = () => {
     setMenuOpen(false);
-    router.push("/dashboard/submissions");
+    onLeaveWithoutSaving();
   };
 
   return (

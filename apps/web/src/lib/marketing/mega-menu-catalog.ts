@@ -63,11 +63,9 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
       items: [
         { href: "/sell", label: "Consignment Guide" },
         { href: sellDepartmentsAnchorHref(), label: "What we accept" },
-        { href: sellIntakeHref(), label: "Request valuation" },
-        { href: sellIntakeHref({ categorySlug: "watches-clocks" }), label: "Watches & clocks" },
-        { href: "/sell/watches", label: "Sell watches" },
-        { href: sellIntakeHref({ categorySlug: "motor-cars" }), label: "Motor cars" },
-        { href: "/sell/motor-cars", label: "Sell motor cars" },
+        { href: sellIntakeHref(), label: "Start a submission" },
+        { href: "/sell/watches", label: "Watches & clocks" },
+        { href: "/sell/motor-cars", label: "Motor cars" },
         { href: "/sell/prints", label: "Prints & editions" },
         { href: "/sell/estate", label: "Estate collections" },
         { href: "/sell/corporate", label: "Corporate collections" },
@@ -97,7 +95,7 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: "/artists/historical", label: "Historical & deceased" },
         { href: "/artists/kind/brands", label: "Brands" },
         { href: "/artists/kind/marques", label: "Marques" },
-        { href: sellIntakeHref(), label: "Submit your portfolio" },
+        { href: sellIntakeHref(), label: "Start a submission" },
       ],
     },
   ];

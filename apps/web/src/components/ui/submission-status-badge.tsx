@@ -1,7 +1,5 @@
-import {
-  submissionStatusLabel,
-  submissionStatusToBadgeVariant,
-} from "@/lib/admin/status-badge-variants";
+import { submissionStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
+import { SELLER_SUBMISSION_STATUS_LABELS } from "@/lib/marketing/sell-flow-copy";
 import type { ItemSubmissionStatus } from "@auction/types";
 
 const variantClasses: Record<ReturnType<typeof submissionStatusToBadgeVariant>, string> = {
@@ -18,7 +16,7 @@ export function SubmissionStatusBadge({ status }: { status: ItemSubmissionStatus
     <span
       className={`inline-flex rounded-full px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${variantClasses[submissionStatusToBadgeVariant(status)]}`}
     >
-      {submissionStatusLabel[status]}
+      {SELLER_SUBMISSION_STATUS_LABELS[status]}
     </span>
   );
 }

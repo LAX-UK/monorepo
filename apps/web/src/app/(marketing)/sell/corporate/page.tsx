@@ -19,7 +19,6 @@ export default function SellCorporatePage() {
       description="We support office art programmes, corporate collections, and deaccession projects with tailored logistics and compliance review."
       eyebrow="Corporate consignment"
       lead="Deaccessioning office art or a corporate collection? Tell us about locations, timelines, and any compliance requirements."
-      contactType="corporate"
       bullets={[
         "Overview of collection size, locations, and disposal timeline",
         "Compliance or data-retention requirements we should know about",
