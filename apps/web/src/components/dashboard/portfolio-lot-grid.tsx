@@ -82,11 +82,6 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                     >
                       {row.settlementLabel}
                     </StatusBadge>
-                    {row.paymentStatus ? (
-                      <span className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        {row.paymentStatus}
-                      </span>
-                    ) : null}
                   </div>
                   <h3 className="font-headline text-2xl font-light leading-tight group-hover:italic">
                     <Link href={row.checkoutHref} className="underline-offset-4 hover:underline">

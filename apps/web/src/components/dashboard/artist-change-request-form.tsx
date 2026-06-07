@@ -136,18 +136,18 @@ export function ArtistChangeRequestForm({ recipient }: ArtistChangeRequestFormPr
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="primary" asChild={!submitDisabled} disabled={submitDisabled}>
-          {submitDisabled ? (
-            <span className="inline-flex items-center gap-2">
-              <Send className="size-4" aria-hidden /> Send request
-            </span>
-          ) : (
+        {submitDisabled ? (
+          <Button type="button" variant="primary" disabled aria-disabled>
+            <Send className="size-4" aria-hidden /> Send request
+          </Button>
+        ) : (
+          <Button variant="primary" asChild>
             <a href={mailtoHref} className="inline-flex items-center gap-2">
               <Send className="size-4" aria-hidden /> Send request{" "}
               <ArrowRight className="size-4" aria-hidden />
             </a>
-          )}
-        </Button>
+          </Button>
+        )}
         <p className="font-body text-xs text-on-surface-variant">
           Submitting opens your email client with a pre-filled draft. We act on requests within 2
           working days.

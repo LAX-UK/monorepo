@@ -19,6 +19,7 @@ export type DashboardOverviewErrors = {
   bids: string | null;
   submissions: string | null;
   notifications: string | null;
+  addresses: string | null;
 };
 
 export type DashboardOverviewVm = {
