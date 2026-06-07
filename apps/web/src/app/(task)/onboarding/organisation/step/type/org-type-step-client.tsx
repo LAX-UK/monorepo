@@ -1,6 +1,7 @@
 "use client";
 
 import { postOrgOnboardingStepCompleteAction } from "@/app/(task)/onboarding/organisation/onboarding-actions";
+import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
@@ -100,7 +101,7 @@ export function OrgTypeStepClient({ subkinds, entityId, fresh }: Props) {
           {pending ? "Saving…" : "Continue"}
         </Button>
         <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">Save and continue later</Link>
+          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </div>

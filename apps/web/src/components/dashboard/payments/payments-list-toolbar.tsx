@@ -21,6 +21,7 @@ import {
   buildPaymentsHref,
   countPaymentsMobileSheetFilters,
   countPaymentsSheetFilters,
+  countPaymentsStatusSheetFilters,
   getPaymentsActiveFilters,
 } from "@/lib/dashboard/filters/payments/payments-filters";
 import type { PaymentsSort } from "@/lib/data/view-models/dashboard-payments.vm";
@@ -60,8 +61,10 @@ export function PaymentsListToolbar({ filters, years }: Props) {
 
   const activeFilters = useMemo(() => getPaymentsActiveFilters(filters), [filters]);
   const mobileSheetCount = countPaymentsMobileSheetFilters(filters);
-  const desktopSheetCount = countPaymentsSheetFilters(filters);
   const useYearSheet = years.length > PAYMENTS_INLINE_YEAR_THRESHOLD;
+  const desktopSheetCount = useYearSheet
+    ? countPaymentsSheetFilters(filters)
+    : countPaymentsStatusSheetFilters(filters);
 
   const statusItems = PAYMENTS_STATUS_FILTER_OPTIONS.map((opt) => ({
     id: opt.value,
@@ -128,19 +131,32 @@ export function PaymentsListToolbar({ filters, years }: Props) {
     </DashboardFilterSheet>
   );
 
-  const desktopYearSheet =
-    years.length > 0 && useYearSheet ? (
-      <DashboardFilterSheet
-        open={desktopSheetOpen}
-        onOpenChange={setDesktopSheetOpen}
-        title="Payment filters"
-        onApply={applyDesktopYearDraft}
-        onReset={resetDraft}
-        trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
-      >
-        {yearChipSection(draft.year, (year) => setDraft((c) => ({ ...c, year })))}
-      </DashboardFilterSheet>
-    ) : null;
+  const desktopFilterSheet = useYearSheet ? (
+    <DashboardFilterSheet
+      open={desktopSheetOpen}
+      onOpenChange={setDesktopSheetOpen}
+      title="Payment filters"
+      onApply={applyDesktopYearDraft}
+      onReset={resetDraft}
+      trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
+    >
+      <div className="space-y-6">
+        {statusFilterRow}
+        {years.length > 0
+          ? yearChipSection(draft.year, (year) => setDraft((c) => ({ ...c, year })))
+          : null}
+      </div>
+    </DashboardFilterSheet>
+  ) : (
+    <DashboardFilterSheet
+      open={desktopSheetOpen}
+      onOpenChange={setDesktopSheetOpen}
+      title="Payment filters"
+      trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
+    >
+      {statusFilterRow}
+    </DashboardFilterSheet>
+  );
 
   const inlineYears =
     years.length > 0 && !useYearSheet ? (
@@ -175,12 +191,7 @@ export function PaymentsListToolbar({ filters, years }: Props) {
             inputId="payments-q"
           />
         }
-        primaryFilters={
-          <div className="space-y-3">
-            {statusFilterRow}
-            {inlineYears}
-          </div>
-        }
+        primaryFilters={inlineYears ?? undefined}
         sort={
           <DashboardSortSelect
             label="Sort"
@@ -191,7 +202,7 @@ export function PaymentsListToolbar({ filters, years }: Props) {
         }
         hideSortOnMobile
         mobileFilterSheet={mobileFilterSheet}
-        filterSheet={desktopYearSheet}
+        filterSheet={desktopFilterSheet}
       />
       <DashboardActiveFilters filters={activeFilters} clearAllHref={PAYMENTS_BASE_PATH} />
     </div>

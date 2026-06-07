@@ -1,3 +1,4 @@
+import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import type { ItemSubmissionStatus } from "@auction/types";
 
 /** Seller-facing status labels — see docs/sell-flow-ux.md */
@@ -67,6 +68,37 @@ export const SELL_PHOTO_TIPS = [
   "Keep the camera parallel to the work; include a scale reference when helpful.",
   "Upload the highest resolution your connection allows — we accept up to 20 images.",
 ] as const;
+
+/** Shown while editing a private draft in the submission wizard. */
+export const SUBMISSION_DRAFT_EXPLAINER =
+  "Private draft — only you can see this. Submit on the Review step when you're ready for specialist review.";
+
+export const SUBMISSION_FINISH_LATER_LABEL = WIZARD_COPY.finishLater;
+
+export const SUBMISSION_SUBMIT_LABEL = "Submit for specialist review";
+
+export const SUBMISSION_LEAVE_WITHOUT_SAVING_LABEL = WIZARD_COPY.leaveWithoutSaving;
+
+export const SUBMISSION_LEAVE_WITHOUT_SAVING_HINT = WIZARD_COPY.leaveWithoutSavingHint;
+
+/** Collapsible hints on the Review step — not a second progress timeline. */
+export const SUBMISSION_AFTER_SUBMIT_HINTS = [
+  "Submitted — our specialists begin review, usually within 24 hours.",
+  "Under review — we may contact you if we need more detail or photos.",
+  "Accepted — we prepare catalogue materials; complete Stripe Connect when prompted.",
+  "Listed — your work is scheduled for an upcoming sale.",
+] as const;
+
+/** One-line status copy on read-only submission detail pages. */
+export const SUBMISSION_STATUS_HINTS: Partial<Record<ItemSubmissionStatus, string>> = {
+  submitted: "Our specialists will start review within 24 hours.",
+  under_review: "Our specialists are reviewing your submission.",
+  approved: "Accepted — we are preparing your catalogue entry. Complete Connect when prompted.",
+  converted: "Draft lot created — finish checklist items below.",
+  rejected:
+    "Not accepted — read the reason below and start a new submission if you wish to resubmit.",
+  withdrawn: "Withdrawn — you can start a new submission when ready.",
+};
 
 export const WIZARD_STEP_SUMMARIES: Record<string, string> = {
   basics: "Title, category, year, and edition details.",

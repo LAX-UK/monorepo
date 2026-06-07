@@ -72,6 +72,21 @@ describe("DashboardListToolbar", () => {
     expect(screen.getAllByRole("combobox", { name: "Sort" })).toHaveLength(1);
   });
 
+  it("keeps search and filter trigger on one row when only drawer filters are used", () => {
+    const { container } = render(
+      <DashboardListToolbar
+        search={<input aria-label="Search submissions" />}
+        mobileFilterSheet={<button type="button">Filters</button>}
+        filterSheet={<button type="button">Filters desktop</button>}
+      />,
+    );
+
+    const row = container.querySelector("search")?.parentElement;
+    expect(row?.className).toContain("flex-nowrap");
+    expect(row?.className).toContain("items-end");
+    expect(container.querySelector("search")?.className).toContain("max-w-md");
+  });
+
   it("renders mobile overflow trigger when actions are provided", () => {
     render(
       <DashboardListToolbar

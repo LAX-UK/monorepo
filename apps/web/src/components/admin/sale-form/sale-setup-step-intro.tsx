@@ -7,10 +7,9 @@ import { stepIntro } from "@/lib/admin/sale-setup";
 type Props = {
   stepId: SaleSetupStepId;
   stepIndex: number;
-  stepCount?: number;
 };
 
-export function SaleSetupStepIntro({ stepId, stepIndex, stepCount = 6 }: Props) {
+export function SaleSetupStepIntro({ stepId, stepIndex }: Props) {
   const intro = stepIntro(stepId);
   const nextStepIds: SaleSetupStepId[] = [
     "identity",
@@ -25,8 +24,6 @@ export function SaleSetupStepIntro({ stepId, stepIndex, stepCount = 6 }: Props) 
 
   return (
     <WizardStepIntro
-      stepIndex={stepIndex}
-      stepCount={stepCount}
       copy={{
         title: intro.title,
         body: intro.body,

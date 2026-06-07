@@ -14,6 +14,7 @@ import {
   kycInitialPhase,
 } from "@/components/kyc";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
+import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -111,7 +112,7 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
           Submit organisation for review
         </Button>
         <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">Save and continue later</Link>
+          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </div>

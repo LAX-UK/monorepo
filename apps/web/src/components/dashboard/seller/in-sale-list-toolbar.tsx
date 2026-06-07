@@ -13,7 +13,7 @@ import {
   IN_SALE_STATUS_OPTIONS,
   type InSaleFilters,
   buildInSaleHref,
-  countInSaleMobileSheetFilters,
+  countInSaleSheetFilters,
   getInSaleActiveFilters,
 } from "@/lib/dashboard/filters/in-sale/in-sale-filters";
 import { useMemo, useState } from "react";
@@ -24,8 +24,9 @@ type Props = {
 
 export function InSaleListToolbar({ filters }: Props) {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [desktopSheetOpen, setDesktopSheetOpen] = useState(false);
   const activeFilters = useMemo(() => getInSaleActiveFilters(filters), [filters]);
-  const mobileSheetCount = countInSaleMobileSheetFilters(filters);
+  const sheetFilterCount = countInSaleSheetFilters(filters);
 
   const statusItems = IN_SALE_STATUS_OPTIONS.map((opt) => ({
     id: opt.value,
@@ -41,7 +42,18 @@ export function InSaleListToolbar({ filters }: Props) {
       open={mobileSheetOpen}
       onOpenChange={setMobileSheetOpen}
       title="Lot filters"
-      trigger={<DashboardFilterTrigger activeCount={mobileSheetCount} />}
+      trigger={<DashboardFilterTrigger activeCount={sheetFilterCount} />}
+    >
+      {statusFilterRow}
+    </DashboardFilterSheet>
+  );
+
+  const desktopFilterSheet = (
+    <DashboardFilterSheet
+      open={desktopSheetOpen}
+      onOpenChange={setDesktopSheetOpen}
+      title="Lot filters"
+      trigger={<DashboardFilterTrigger activeCount={sheetFilterCount} />}
     >
       {statusFilterRow}
     </DashboardFilterSheet>
@@ -59,8 +71,8 @@ export function InSaleListToolbar({ filters }: Props) {
             inputId="in-sale-q"
           />
         }
-        primaryFilters={statusFilterRow}
         mobileFilterSheet={mobileFilterSheet}
+        filterSheet={desktopFilterSheet}
       />
       <DashboardActiveFilters filters={activeFilters} clearAllHref={IN_SALE_BASE_PATH} />
     </div>

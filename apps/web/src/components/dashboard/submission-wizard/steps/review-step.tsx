@@ -2,7 +2,18 @@
 
 import type { ReviewStepProps } from "@/components/dashboard/submission-wizard/step-props";
 import { type WIZARD_STEPS, wizardStepIndex } from "@/lib/forms/submission/step-validation";
+import {
+  SUBMISSION_AFTER_SUBMIT_HINTS,
+  SUBMISSION_FINISH_LATER_LABEL,
+  SUBMISSION_SUBMIT_LABEL,
+} from "@/lib/marketing/sell-flow-copy";
 import { evaluateSubmissionQuality } from "@auction/domain";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@auction/ui/components/accordion";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import type { ItemSubmissionFormValues } from "@auction/validators";
@@ -24,7 +35,7 @@ export function ReviewStep({
   isSubmitting,
   onJumpTo,
   canSubmitForReview,
-  onSaveDraft,
+  onFinishLater,
   onSubmitForReview,
 }: ReviewStepProps) {
   const v = form.getValues();
@@ -85,8 +96,7 @@ export function ReviewStep({
   return (
     <div className="space-y-6" data-testid="submission-wizard-step-review">
       <p className="font-body text-sm text-on-surface-variant">
-        Check everything before saving or submitting. Specialists review submitted items before
-        cataloguing.
+        Check everything before submitting. Specialists review submitted items before cataloguing.
       </p>
 
       {!canSubmit ? (
@@ -152,15 +162,42 @@ export function ReviewStep({
         ))}
       </ul>
 
+      <Accordion type="single" collapsible className="border-border-hairline">
+        <AccordionItem value="after-submit" className="border-border-hairline">
+          <AccordionTrigger className="font-headline text-sm font-semibold text-on-surface hover:no-underline">
+            What happens after you submit
+          </AccordionTrigger>
+          <AccordionContent>
+            <ul className="list-inside list-disc space-y-2 font-body text-sm text-on-surface-variant">
+              {SUBMISSION_AFTER_SUBMIT_HINTS.map((hint) => (
+                <li key={hint}>{hint}</li>
+              ))}
+            </ul>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <Button type="button" variant="secondary" disabled={isSubmitting} onClick={onSaveDraft}>
-          {isSubmitting ? "Saving…" : "Save draft"}
-        </Button>
         {canSubmitForReview && canSubmit ? (
-          <Button type="button" variant="cta" disabled={isSubmitting} onClick={onSubmitForReview}>
-            {isSubmitting ? "Submitting…" : "Save and submit for review"}
+          <Button
+            type="button"
+            variant="cta"
+            disabled={isSubmitting}
+            onClick={onSubmitForReview}
+            data-testid="wizard-submit-for-review"
+          >
+            {isSubmitting ? "Submitting…" : SUBMISSION_SUBMIT_LABEL}
           </Button>
         ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isSubmitting}
+          onClick={onFinishLater}
+          data-testid="wizard-finish-later-review"
+        >
+          {isSubmitting ? "Saving…" : SUBMISSION_FINISH_LATER_LABEL}
+        </Button>
       </div>
     </div>
   );

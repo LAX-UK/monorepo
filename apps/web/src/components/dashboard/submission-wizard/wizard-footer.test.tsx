@@ -3,7 +3,27 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 describe("WizardFooter", () => {
-  it("renders only Back and Next on mobile layout (no save-and-leave in footer)", () => {
+  it("renders Back and context-aware Continue label in footer", () => {
+    render(
+      <WizardFooter
+        isLastStep={false}
+        isSubmitting={false}
+        autosaveStatus="idle"
+        lastSavedAt={null}
+        showAutosave={false}
+        nextStepLabel="Details"
+        onBack={vi.fn()}
+        onNext={vi.fn()}
+        canGoBack
+      />,
+    );
+
+    expect(screen.getByTestId("wizard-next")).toHaveTextContent("Continue to Details");
+    expect(screen.getByTestId("wizard-back")).toHaveTextContent("Back");
+    expect(screen.queryByTestId("wizard-finish-later")).not.toBeInTheDocument();
+  });
+
+  it("falls back to Continue when nextStepLabel is omitted", () => {
     render(
       <WizardFooter
         isLastStep={false}
@@ -13,14 +33,11 @@ describe("WizardFooter", () => {
         showAutosave={false}
         onBack={vi.fn()}
         onNext={vi.fn()}
-        canGoBack
+        canGoBack={false}
       />,
     );
 
-    expect(screen.getByTestId("wizard-next")).toHaveTextContent("Next");
-    expect(screen.getByTestId("wizard-back")).toHaveTextContent("Back");
-    expect(screen.queryByTestId("wizard-save-and-leave")).not.toBeInTheDocument();
-    expect(screen.queryByText(/save and continue later/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId("wizard-next")).toHaveTextContent("Continue");
   });
 
   it("calls onNext when Next is clicked", () => {

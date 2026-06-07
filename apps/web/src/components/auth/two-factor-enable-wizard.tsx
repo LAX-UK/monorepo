@@ -22,6 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { WizardProgress } from "@auction/ui/components/wizard-progress";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
@@ -68,22 +69,13 @@ export function TwoFactorEnableWizard() {
         <CardDescription>
           Use an app such as Google Authenticator, 1Password, or Authy to scan the QR code.
         </CardDescription>
-        <ol className="mt-4 flex flex-wrap gap-2" aria-label="Setup steps">
-          {steps.map((s, i) => (
-            <li key={s.id}>
-              <span
-                className={`inline-flex items-center rounded-full border px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${
-                  i === stepIndex
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-outline-variant/30 text-on-surface-variant"
-                }`}
-                aria-current={i === stepIndex ? "step" : undefined}
-              >
-                {i + 1}. {s.label}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <WizardProgress
+          steps={steps.map((s) => ({ id: s.id, label: s.label }))}
+          currentIndex={stepIndex < 0 ? 0 : stepIndex}
+          maxReachableIndex={stepIndex < 0 ? 0 : stepIndex}
+          variant="chips"
+          className="mt-4"
+        />
       </CardHeader>
       <CardContent className="space-y-8">
         {step === "password" ? (
