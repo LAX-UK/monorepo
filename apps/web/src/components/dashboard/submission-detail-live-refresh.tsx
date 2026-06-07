@@ -17,7 +17,7 @@ export function SubmissionDetailLiveRefresh({
     const tick = () => {
       if (document.visibilityState === "visible") router.refresh();
     };
-    const id = window.setInterval(tick, 20_000);
+    const id = window.setInterval(tick, 30_000);
     return () => window.clearInterval(id);
   }, [router, status]);
   return null;

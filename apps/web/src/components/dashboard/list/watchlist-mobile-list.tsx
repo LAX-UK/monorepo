@@ -50,6 +50,7 @@ export function WatchlistMobileList({ rows, artistNameById, selectedIds, onToggl
                 <DashboardMobileLotThumbnail
                   href={lotPath({ id: row.lotId, title: row.title })}
                   src={row.image}
+                  alt={`${row.title} thumbnail`}
                 />
               }
               title={

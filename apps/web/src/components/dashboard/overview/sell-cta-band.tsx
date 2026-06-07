@@ -4,7 +4,10 @@ import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 /** Slim seller CTA with editorial visual — replaces the three-column secondary stack. */
-export function SellCtaBand({ vm: _vm }: { vm: DashboardOverviewVm }) {
+export function SellCtaBand({ vm }: { vm: DashboardOverviewVm }) {
+  const href = vm.submissionsCount > 0 ? "/dashboard/submissions" : "/dashboard/submissions/new";
+  const ctaLabel = vm.submissionsCount > 0 ? "View submissions" : "Start a submission";
+
   return (
     <Surface
       variant="quiet"
@@ -19,7 +22,7 @@ export function SellCtaBand({ vm: _vm }: { vm: DashboardOverviewVm }) {
           Submit photos, provenance, and condition notes for specialist review and cataloguing.
         </p>
         <Button className="mt-3 w-fit shrink-0 sm:mt-4" asChild>
-          <Link href="/dashboard/submissions/new">Start a submission</Link>
+          <Link href={href}>{ctaLabel}</Link>
         </Button>
       </div>
       <div

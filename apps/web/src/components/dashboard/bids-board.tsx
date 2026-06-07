@@ -9,7 +9,6 @@ import { BidsMobileList } from "@/components/dashboard/list/bids-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
-import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { MediaImage } from "@/components/ui/media-image";
 import {
   DASHBOARD_CTA,
@@ -27,7 +26,6 @@ import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { Surface } from "@auction/ui/components/surface";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download, Gavel, History } from "lucide-react";
 import Link from "next/link";
@@ -42,10 +40,6 @@ function filterBidRows(rows: BidBoardRow[], q: string): BidBoardRow[] {
     const title = r.lot?.title.toLowerCase() ?? "";
     return title.includes(t);
   });
-}
-
-function tabHref(tab: BidTab, q: string) {
-  return buildBidsTabHref(tab, q);
 }
 
 function statusVariant(row: BidBoardRow) {
@@ -343,34 +337,6 @@ export function BidsBoard({
 
       {!loadFailure ? (
         <>
-          <Surface variant="inset" padding="sm" className="mb-5 lg:hidden">
-            <SectionTabsNav
-              variant="underline"
-              ariaLabel="Bid status"
-              sticky={false}
-              items={[
-                {
-                  href: tabHref("active", appliedQ),
-                  label: "Active",
-                  badge: active.length,
-                  isActive: tab === "active",
-                },
-                {
-                  href: tabHref("won", appliedQ),
-                  label: "Won",
-                  badge: won.length,
-                  isActive: tab === "won",
-                },
-                {
-                  href: tabHref("lost", appliedQ),
-                  label: "Lost",
-                  badge: lost.length,
-                  isActive: tab === "lost",
-                },
-              ]}
-            />
-          </Surface>
-
           <BidsListToolbar
             filters={filters}
             tabCounts={{ active: active.length, won: won.length, lost: lost.length }}

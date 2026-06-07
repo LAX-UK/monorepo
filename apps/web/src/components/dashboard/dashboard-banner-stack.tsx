@@ -40,6 +40,8 @@ type StackProps = {
   suppressOrgStatusBanner?: boolean;
   /** Skip KYC banner on overview when ComplianceStatusStrip covers it. */
   suppressKycOnOverview?: boolean;
+  /** Skip email banner on overview when ComplianceStatusStrip covers deliverability. */
+  suppressEmailOnOverview?: boolean;
   /** Skip connect_pending entity banner when user is on payout setup page. */
   suppressConnectPendingEntityBanner?: boolean;
 };
@@ -57,6 +59,7 @@ export function DashboardBannerStack({
   compactOverflow = false,
   suppressOrgStatusBanner = false,
   suppressKycOnOverview = false,
+  suppressEmailOnOverview = false,
   suppressConnectPendingEntityBanner = false,
 }: StackProps) {
   const candidates: DashboardBannerCandidate[] = [];
@@ -91,7 +94,7 @@ export function DashboardBannerStack({
     });
   }
 
-  if (shouldOfferEmailStatusBanner(user)) {
+  if (shouldOfferEmailStatusBanner(user) && !suppressEmailOnOverview) {
     candidates.push({
       id: "email",
       priority: DASHBOARD_BANNER_PRIORITIES.email,
@@ -99,9 +102,8 @@ export function DashboardBannerStack({
     });
   }
 
-  const sorted = [...candidates].sort((a, b) => b.priority - a.priority);
-  const chosen = selectTopDashboardBannerCandidates(sorted, maxVisible);
-  const overflow = sorted.length - chosen.length;
+  const chosen = selectTopDashboardBannerCandidates(candidates, maxVisible);
+  const overflow = candidates.length - chosen.length;
 
   return (
     <div className="flex flex-col gap-3 empty:hidden" data-testid="dashboard-banner-stack">
