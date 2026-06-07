@@ -18,21 +18,41 @@ import {
   WIZARD_STEP_COUNT,
   type WizardStepId,
 } from "@/lib/forms/submission/step-validation";
+import { submissionExitGuardActive } from "@/lib/forms/submission/submission-exit-guard";
 import { sanitizeSubmissionFormValues } from "@/lib/forms/submission/submission-form-data";
 import {
   type WizardMode,
   useSubmissionWizardController,
 } from "@/lib/forms/submission/use-submission-wizard-controller";
+import {
+  SUBMISSION_FINISH_LATER_LABEL,
+  SUBMISSION_SUBMIT_LABEL,
+} from "@/lib/marketing/sell-flow-copy";
 import { HideBottomTabBarWhileMounted } from "@/lib/shell/shell-chrome-context";
+import { evaluateSubmissionQuality } from "@auction/domain";
+import { Button } from "@auction/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@auction/ui/components/dialog";
 import { Form } from "@auction/ui/components/form";
 import { Surface } from "@auction/ui/components/surface";
 import type { ItemSubmissionFormValues } from "@auction/validators";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   mode: WizardMode;
   categories: SubmissionCategoryOption[];
   initialValues?: ItemSubmissionFormValues;
+  /** Resume wizard at a specific step (e.g. first incomplete or review when ready). */
+  initialStepIndex?: number;
+  /** Show ready-to-submit toast instead of generic resume toast. */
+  readyToSubmit?: boolean;
 };
 
 function renderStep(
@@ -73,19 +93,46 @@ function renderStep(
   }
 }
 
-export function SubmissionWizard({ mode, categories, initialValues }: Props) {
+export function SubmissionWizard({
+  mode,
+  categories,
+  initialValues,
+  initialStepIndex = 0,
+  readyToSubmit = false,
+}: Props) {
+  const router = useRouter();
   const controller = useSubmissionWizardController(mode, initialValues);
   const { form, isSubmitting, autosaveStatus, lastSavedAt, saveDraft, submitForReview } =
     controller;
 
-  const [stepIndex, setStepIndex] = useState(0);
-  const [maxReachableIndex, setMaxReachableIndex] = useState(0);
+  const clampedInitial = Math.max(0, Math.min(initialStepIndex, WIZARD_STEP_COUNT - 1));
+  const [stepIndex, setStepIndex] = useState(clampedInitial);
+  const [maxReachableIndex, setMaxReachableIndex] = useState(clampedInitial);
+  const [exitGuardOpen, setExitGuardOpen] = useState(false);
+  const [pendingExitAction, setPendingExitAction] = useState<"leave" | "navigate" | null>(null);
+  const pendingNavigateHref = useRef<string | null>(null);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const submittedThisSession = useRef(false);
 
   const currentStep = WIZARD_STEPS[stepIndex];
   const nextStep = WIZARD_STEPS[stepIndex + 1];
   const isLastStep = stepIndex === WIZARD_STEP_COUNT - 1;
   const showAutosave = mode.kind === "edit" || controller.submissionId != null;
+
+  const formValues = form.watch();
+  const quality = evaluateSubmissionQuality({
+    title: formValues.title,
+    images: formValues.images,
+    description: formValues.description,
+    provenance: formValues.provenance,
+    categoryId: formValues.categoryIds[0] ?? "",
+    categoryIds: formValues.categoryIds,
+  });
+  const exitGuardActive = submissionExitGuardActive({
+    isReviewStep: isLastStep,
+    canSubmit: quality.canSubmit,
+    submittedThisSession: submittedThisSession.current,
+  });
 
   const goToStep = useCallback((index: number) => {
     setStepIndex(Math.max(0, Math.min(index, WIZARD_STEP_COUNT - 1)));
@@ -126,6 +173,20 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
     void saveDraft({ leaveAfter: true });
   }, [saveDraft]);
 
+  const handleSubmitForReview = useCallback(() => {
+    submittedThisSession.current = true;
+    void submitForReview();
+  }, [submitForReview]);
+
+  const requestLeaveWithoutSaving = useCallback(() => {
+    if (exitGuardActive) {
+      setPendingExitAction("leave");
+      setExitGuardOpen(true);
+      return;
+    }
+    router.push("/dashboard/submissions");
+  }, [exitGuardActive, router]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: refocus step heading on navigation
   useEffect(() => {
     stepHeadingRef.current?.focus();
@@ -142,10 +203,104 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleNext, isLastStep]);
 
+  useEffect(() => {
+    if (!exitGuardActive) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [exitGuardActive]);
+
+  useEffect(() => {
+    if (!exitGuardActive) return;
+    const onDocumentClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        return;
+      }
+      if (!href.startsWith("/")) return;
+      const currentPath = window.location.pathname;
+      if (href === currentPath || href.startsWith(`${currentPath}?`)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      pendingNavigateHref.current = href;
+      setPendingExitAction("navigate");
+      setExitGuardOpen(true);
+    };
+    document.addEventListener("click", onDocumentClick, true);
+    return () => document.removeEventListener("click", onDocumentClick, true);
+  }, [exitGuardActive]);
+
+  const clearPendingExit = useCallback(() => {
+    pendingNavigateHref.current = null;
+    setPendingExitAction(null);
+  }, []);
+
   return (
     <>
-      {mode.kind === "edit" ? <DraftResumeToast /> : null}
+      {mode.kind === "edit" ? <DraftResumeToast readyToSubmit={readyToSubmit} /> : null}
       <HideBottomTabBarWhileMounted />
+      <Dialog
+        open={exitGuardOpen}
+        onOpenChange={(open) => {
+          setExitGuardOpen(open);
+          if (!open) clearPendingExit();
+        }}
+      >
+        <DialogContent className="max-w-md border-border-hairline">
+          <DialogHeader>
+            <DialogTitle>You haven&apos;t submitted yet</DialogTitle>
+            <DialogDescription>
+              Your item won&apos;t be reviewed until you click Submit. Specialists usually respond
+              within 24 hours once submitted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+            <Button
+              type="button"
+              variant="cta"
+              disabled={isSubmitting}
+              onClick={() => {
+                setExitGuardOpen(false);
+                handleSubmitForReview();
+              }}
+            >
+              {SUBMISSION_SUBMIT_LABEL}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSubmitting}
+              onClick={() => {
+                setExitGuardOpen(false);
+                const action = pendingExitAction;
+                const href = pendingNavigateHref.current;
+                clearPendingExit();
+                if (action === "navigate" && href) {
+                  void (async () => {
+                    const ok = await saveDraft({ leaveAfter: false });
+                    if (ok) router.push(href);
+                  })();
+                  return;
+                }
+                if (action === "leave") {
+                  void saveDraft({ leaveAfter: true });
+                }
+              }}
+            >
+              {SUBMISSION_FINISH_LATER_LABEL}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setExitGuardOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Form {...form}>
         <form
           className="space-y-6 pb-[var(--page-bottom-padding)] sm:pb-24"
@@ -174,7 +329,11 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
                 canGoNext={!isLastStep}
               />
             </div>
-            <WizardHeaderActions isSubmitting={isSubmitting} onFinishLater={handleFinishLater} />
+            <WizardHeaderActions
+              isSubmitting={isSubmitting}
+              onFinishLater={handleFinishLater}
+              onLeaveWithoutSaving={requestLeaveWithoutSaving}
+            />
           </div>
 
           {currentStep ? (
@@ -202,7 +361,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
                   categories,
                   onJumpTo: goToStep,
                   finishLater: handleFinishLater,
-                  submitForReview: () => void submitForReview(),
+                  submitForReview: handleSubmitForReview,
                 })
               : null}
           </Surface>

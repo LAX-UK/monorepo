@@ -62,7 +62,7 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
     return { label: "Not accepted", Icon: XCircle, tone: "neutral" };
   }
   if (type === "submission_draft_reminder") {
-    return { label: "Draft reminder", Icon: Clock, tone: "info" };
+    return { label: "Submission reminder", Icon: Clock, tone: "info" };
   }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };

@@ -221,10 +221,10 @@ export default async function SellerOverviewPage() {
 
   const cards = [
     {
-      title: "Drafts",
+      title: "In progress",
       value: drafts,
       href: "/dashboard/submissions?status=draft",
-      hint: "Finish and submit for review",
+      hint: "Finish and submit for specialist review",
     },
     {
       title: "Pending review",

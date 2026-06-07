@@ -7,13 +7,13 @@ describe("SubmissionStatusBadge", () => {
     status: Parameters<typeof SubmissionStatusBadge>[0]["status"];
     label: string;
   }> = [
-    { status: "draft", label: "Draft" },
+    { status: "draft", label: "In progress" },
     { status: "submitted", label: "Submitted" },
     { status: "under_review", label: "Under review" },
-    { status: "approved", label: "Approved" },
-    { status: "rejected", label: "Rejected" },
+    { status: "approved", label: "Accepted" },
+    { status: "rejected", label: "Not accepted" },
     { status: "withdrawn", label: "Withdrawn" },
-    { status: "converted", label: "Converted" },
+    { status: "converted", label: "Catalogue prep" },
   ];
 
   for (const { status, label } of cases) {
