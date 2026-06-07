@@ -35,6 +35,7 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
       ...props,
       suppressOrgStatusBanner: suppressOrgStatus,
       suppressKycOnOverview: suppressKyc,
+      suppressEmailOnOverview: suppressKyc,
       suppressConnectPendingEntityBanner: suppressConnectPending,
     }),
     [props, suppressOrgStatus, suppressKyc, suppressConnectPending],
@@ -90,17 +91,19 @@ function countBannerCandidates(props: DashboardBannerStackProps): number {
   let count = 0;
   if (props.kycSummary?.requiresKyc && !props.suppressKycOnOverview) count += 1;
   if (props.orgModuleEnabled && props.orgOnboardingResume) count += 1;
-  if (
+  const showEntityStatus =
     props.orgModuleEnabled &&
     !props.suppressOrgStatusBanner &&
-    isEntityStatusBannerVisible(props.acting)
-  ) {
+    isEntityStatusBannerVisible(props.acting) &&
+    !(props.suppressConnectPendingEntityBanner && props.acting?.status === "connect_pending");
+  if (showEntityStatus) {
     count += 1;
   }
   if (
-    props.user.emailStatus === "bounced" ||
-    props.user.emailStatus === "complained" ||
-    props.user.emailVerified === false
+    !props.suppressEmailOnOverview &&
+    (props.user.emailStatus === "bounced" ||
+      props.user.emailStatus === "complained" ||
+      props.user.emailVerified === false)
   ) {
     count += 1;
   }

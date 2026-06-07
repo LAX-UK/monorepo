@@ -26,7 +26,7 @@ export default async function AccountSettingsPage({
   return (
     <DashboardPage className="space-y-6">
       <SettingsFormHeader
-        title="Account"
+        title="Account & email"
         description="Manage your sign-in email and account-level settings."
       />
       {sp.changed === "1" ? (

@@ -27,17 +27,18 @@ export function VerifyIdentityClient({ initialStatus }: Props) {
   const safeNext = nextPath && isSafeNextPath(nextPath) ? nextPath : null;
 
   useEffect(() => {
-    if (searchParams.get("kyc") !== "complete") return;
-    if (initialStatus?.feedback?.needsResubmit) {
-      setPhase("needs_resubmit");
-      return;
+    if (searchParams.get("kyc") === "complete") {
+      if (initialStatus?.feedback?.needsResubmit) {
+        setPhase("needs_resubmit");
+        return;
+      }
+      if (isKycAwaitingDecision(initialStatus)) {
+        setPhase("submitted");
+        return;
+      }
     }
-    if (isKycAwaitingDecision(initialStatus)) setPhase("submitted");
-  }, [initialStatus, searchParams]);
-
-  useEffect(() => {
     setPhase(kycInitialPhase(initialStatus));
-  }, [initialStatus]);
+  }, [initialStatus, searchParams]);
 
   useEffect(() => {
     if (initialStatus?.status !== "approved" || !safeNext) return;
