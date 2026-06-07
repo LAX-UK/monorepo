@@ -12,6 +12,10 @@ type OverviewHeroBandProps = {
   kyc: KycStatusSummaryDto | null;
   orgOnboarding: OrgOnboardingResumeVm | null;
   orgModuleEnabled?: boolean;
+  /** When true, KYC attention items are omitted (compliance strip covers them). */
+  suppressKycAttention?: boolean;
+  /** When true, org onboarding attention is omitted (banner stack covers it). */
+  suppressOrgOnboardingAttention?: boolean;
   className?: string;
 };
 
@@ -21,6 +25,8 @@ export function OverviewHeroBand({
   kyc,
   orgOnboarding,
   orgModuleEnabled = true,
+  suppressKycAttention = false,
+  suppressOrgOnboardingAttention = false,
   className,
 }: OverviewHeroBandProps) {
   const firstSettlement = vm.settlementsDue[0];
@@ -30,7 +36,8 @@ export function OverviewHeroBand({
     orgOnboarding,
     orgModuleEnabled,
     skipFirstSettlement: Boolean(firstSettlement),
-    suppressKycAttention: Boolean(kyc && kyc.requiresKyc !== true),
+    suppressKycAttention,
+    suppressOrgOnboardingAttention,
   });
   const hasAttention = attentionItems.length > 0;
 

@@ -1,16 +1,28 @@
 import { ArtistChangeRequestForm } from "@/components/dashboard/artist-change-request-form";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-context-banner";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 /** Read-only seller-facing view of the canonical artist profile. */
 export default async function SellerArtistProfilePage() {
   const workspaceMeta = await readClientWorkspacePageMeta();
+  const user = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard/seller/artist",
+  });
+  const { orgActingSelected } = await resolveSellerWorkspaceContext(
+    user.role,
+    user.staffRole ?? null,
+  );
 
   return (
     <DashboardPage>
+      {orgActingSelected ? <SellerOrgContextBanner /> : null}
       <DashboardPageHeader
         meta={workspaceMeta}
         title="Artist profile"

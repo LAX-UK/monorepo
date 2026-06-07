@@ -3,11 +3,12 @@ import type {
   ActivityKind,
   ActivityTone,
 } from "@/lib/data/view-models/dashboard-activity.vm";
+import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import {
   AlertTriangle,
-  ArrowRight,
   Bell,
+  ChevronRight,
   CreditCard,
   Gavel,
   Mail,
@@ -88,13 +89,12 @@ export function ActivityFeed({
             Outbid, payments, KYC, and shipping events across your account.
           </p>
         </div>
-        <Link
-          href={viewAllHref}
-          className="inline-flex items-center gap-1 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
-        >
-          View all
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
+        <Button variant="chevron" asChild>
+          <Link href={viewAllHref} className="inline-flex items-center gap-1 text-xs">
+            View all
+            <ChevronRight className="size-4" aria-hidden />
+          </Link>
+        </Button>
       </div>
       <div>
         <ul className="divide-y divide-outline-variant/10">
@@ -121,6 +121,7 @@ export function ActivityFeed({
                 </span>
                 <time
                   dateTime={item.at}
+                  suppressHydrationWarning
                   className="shrink-0 font-label text-[10px] uppercase tracking-wider text-on-surface-variant"
                 >
                   {relativeTime(item.at, now)}

@@ -173,7 +173,7 @@ export default async function DashboardWatchlistPage({
             title={DASHBOARD_EMPTY.watchlist.title}
             description={DASHBOARD_EMPTY.watchlist.description}
             action={
-              <Button variant="default" asChild>
+              <Button variant="primary" asChild>
                 <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
               </Button>
             }

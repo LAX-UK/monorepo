@@ -55,6 +55,8 @@ type ComplianceStatusStripProps = {
   className?: string;
   /** When true, omit the identity pill (e.g. KYC blocking banner already covers it). */
   hideIdentityPill?: boolean;
+  /** When true, omit the address pill (e.g. addresses slice failed to load). */
+  hideAddressPill?: boolean;
   /** Seller workspace: payout setup readiness pill. */
   payoutSetup?: PayoutSetupPill | null;
 };
@@ -71,6 +73,7 @@ export function ComplianceStatusStrip({
   addressesCount,
   className,
   hideIdentityPill = false,
+  hideAddressPill = false,
   payoutSetup = null,
 }: ComplianceStatusStripProps) {
   const pills: StatusPill[] = [];
@@ -163,14 +166,16 @@ export function ComplianceStatusStrip({
   }
 
   // Shipping address availability
-  pills.push({
-    id: "address",
-    icon: MapPin,
-    label: "Address",
-    value: addressesCount > 0 ? `${addressesCount} on file` : "Add address",
-    href: "/dashboard/settings/addresses",
-    tone: addressesCount > 0 ? "ok" : "warn",
-  });
+  if (!hideAddressPill) {
+    pills.push({
+      id: "address",
+      icon: MapPin,
+      label: "Address",
+      value: addressesCount > 0 ? `${addressesCount} on file` : "Add address",
+      href: "/dashboard/settings/addresses",
+      tone: addressesCount > 0 ? "ok" : "warn",
+    });
+  }
 
   const twoFaOn = user.twoFactorEnabled === true;
   pills.push({
@@ -198,6 +203,11 @@ export function ComplianceStatusStrip({
           key={pill.id}
           href={pill.href}
           title={pill.hint}
+          aria-label={
+            pill.hint
+              ? `${pill.label}: ${pill.value}. ${pill.hint}`
+              : `${pill.label}: ${pill.value}`
+          }
           className={cn(
             "group inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
             TONE_CLASSES[pill.tone],

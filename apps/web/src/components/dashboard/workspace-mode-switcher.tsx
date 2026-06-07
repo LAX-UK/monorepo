@@ -79,10 +79,18 @@ export function WorkspaceModeSwitcher({ mode, hidden, variant = "sheet" }: Props
   return (
     <>
       <div className="hidden rounded-full border border-outline-variant/25 bg-surface-container-high/40 p-0.5 lg:flex">
-        <WorkspaceModeButton active={mode === "buying"} onClick={() => switchTo("buying")}>
+        <WorkspaceModeButton
+          active={mode === "buying"}
+          disabled={pending}
+          onClick={() => switchTo("buying")}
+        >
           Buying
         </WorkspaceModeButton>
-        <WorkspaceModeButton active={mode === "selling"} onClick={() => switchTo("selling")}>
+        <WorkspaceModeButton
+          active={mode === "selling"}
+          disabled={pending}
+          onClick={() => switchTo("selling")}
+        >
           Selling
         </WorkspaceModeButton>
       </div>
@@ -137,10 +145,12 @@ function WorkspaceModeMobileTrigger({
 function WorkspaceModeButton({
   active,
   children,
+  disabled = false,
   onClick,
 }: {
   active: boolean;
   children: React.ReactNode;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -148,7 +158,9 @@ function WorkspaceModeButton({
       type="button"
       variant="ghost"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
+      {...(disabled ? { "aria-busy": true as const } : {})}
       className={cn(
         "h-auto min-h-9 flex-1 rounded-full px-3 font-label text-[10px] font-bold uppercase tracking-[0.12em] transition-colors hover:text-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0",
         active

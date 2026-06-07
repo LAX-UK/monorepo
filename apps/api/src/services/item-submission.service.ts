@@ -614,13 +614,13 @@ export class ItemSubmissionService implements IItemSubmissionService {
         if (!quality.canAccept) {
           return {
             kind: "bad_request",
-            message: `Submission "${s.title}" is missing required fields and cannot be bulk approved`,
+            message: `Submission "${s.title}" is missing required fields and cannot be bulk accepted`,
           };
         }
       }
       const result =
         op === "approve"
-          ? await this.approve(adminId, id, { reviewNotes })
+          ? await this.accept(adminId, id, { reviewNotes })
           : await this.reject(adminId, id, reason?.trim() ?? "", reviewNotes);
       if (result.isErr()) {
         return { kind: "err", error: result.error };

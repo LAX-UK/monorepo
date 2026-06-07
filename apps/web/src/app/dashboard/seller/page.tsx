@@ -221,7 +221,7 @@ export default async function SellerOverviewPage() {
 
   const cards = [
     {
-      title: "In progress",
+      title: "Draft",
       value: drafts,
       href: "/dashboard/submissions?status=draft",
       hint: "Finish and submit for specialist review",
@@ -235,13 +235,13 @@ export default async function SellerOverviewPage() {
     {
       title: "Accepted",
       value: accepted,
-      href: "/dashboard/submissions",
+      href: "/dashboard/submissions?status=approved",
       hint: "Accepted — catalogue prep starting",
     },
     {
       title: "Catalogue prep",
       value: cataloguePrep,
-      href: "/dashboard/submissions",
+      href: "/dashboard/submissions?status=converted",
       hint: "Draft lots being prepared",
     },
     {

@@ -111,6 +111,7 @@ export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
                     type="button"
                     variant="secondaryOutline"
                     size="sm"
+                    aria-label={`View bid history for ${lot.title}`}
                     onClick={() => onOpenHistory(lot.id, lot.title)}
                   >
                     <History className="mr-1 size-4" aria-hidden />

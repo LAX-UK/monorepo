@@ -1,6 +1,5 @@
 import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
 import { MediaImage } from "@/components/ui/media-image";
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 import type { ReactNode } from "react";
@@ -13,7 +12,13 @@ type Props = {
   belowSplit?: ReactNode;
 };
 
-export function SubmissionDetailSplit({ title, status, images, metaSlot, belowSplit }: Props) {
+export function SubmissionDetailSplit({
+  title,
+  status: _status,
+  images,
+  metaSlot,
+  belowSplit,
+}: Props) {
   const urls = images.filter((src): src is string => Boolean(src));
 
   return (
@@ -51,14 +56,7 @@ export function SubmissionDetailSplit({ title, status, images, metaSlot, belowSp
           </Surface>
         )
       }
-      metaSlot={
-        <div className="space-y-4">
-          <div>
-            <SubmissionStatusBadge status={status} />
-          </div>
-          {metaSlot}
-        </div>
-      }
+      metaSlot={<div className="space-y-4">{metaSlot}</div>}
       secondarySlot={belowSplit}
     />
   );

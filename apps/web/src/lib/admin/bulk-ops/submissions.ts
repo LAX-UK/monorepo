@@ -5,25 +5,33 @@ export function getSubmissionBulkOperations(): BulkOperation[] {
   return [
     {
       id: "approve",
-      label: "Approve",
-      confirm: "Approve selected submissions? Each approval creates a draft lot.",
+      label: "Accept for cataloguing",
+      confirm:
+        "Accept selected submissions for cataloguing? Draft lots are created separately on each submission's decision tab.",
       run: (ids) =>
         adminBulkSubmissionsResultAction({
           ids,
           op: "approve",
-          reviewNotes: "Bulk approved from admin table",
+          reviewNotes: "Bulk accepted from admin table",
         }),
     },
     {
       id: "reject",
       label: "Reject",
       destructive: true,
-      confirm: "Reject selected submissions?",
-      run: (ids) =>
+      reasonPrompt: {
+        title: "Reject selected submissions",
+        description: "This reason is shown to sellers.",
+        fieldLabel: "Rejection reason (required)",
+        placeholder: "Reason for rejection…",
+        actionLabel: "Reject",
+        minLength: 10,
+      },
+      run: (ids, options) =>
         adminBulkSubmissionsResultAction({
           ids,
           op: "reject",
-          reason: "Rejected in bulk by admin",
+          reason: options?.reason,
           reviewNotes: "Bulk rejected from admin table",
         }),
     },

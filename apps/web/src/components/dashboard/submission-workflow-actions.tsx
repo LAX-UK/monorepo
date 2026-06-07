@@ -9,7 +9,7 @@ import { SUBMISSION_SUBMIT_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   submissionId: string;
@@ -19,7 +19,23 @@ type Props = {
 
 export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw }: Props) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
+
+  async function runAction(work: () => Promise<{ ok: boolean; error?: string }>, success: string) {
+    if (pending) return;
+    setPending(true);
+    try {
+      const r = await work();
+      if (r.ok) {
+        notify.success(success);
+        router.refresh();
+        return;
+      }
+      notify.error(r.error ?? "Action failed");
+    } finally {
+      setPending(false);
+    }
+  }
 
   if (!canSubmit && !canWithdraw) {
     return null;
@@ -34,19 +50,13 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
         <Button
           type="button"
           disabled={pending}
-          onClick={() => {
-            startTransition(() => {
-              void (async () => {
-                const r = await submitForReviewFromValuesAction(submissionId);
-                if (r.ok) {
-                  notify.success("Submitted for review");
-                  router.refresh();
-                  return;
-                }
-                notify.error(r.error);
-              })();
-            });
-          }}
+          aria-busy={pending}
+          onClick={() =>
+            void runAction(
+              () => submitForReviewFromValuesAction(submissionId),
+              "Submitted for review",
+            )
+          }
         >
           {SUBMISSION_SUBMIT_LABEL}
         </Button>
@@ -59,19 +69,9 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
           confirmTitle="Withdraw submission"
           confirmBody="Withdraw this submission? You can start a new submission later if needed."
           confirmLabel="Withdraw"
-          onConfirmed={() => {
-            startTransition(() => {
-              void (async () => {
-                const r = await withdrawSubmissionFromValuesAction(submissionId);
-                if (r.ok) {
-                  notify.success("Withdrawn");
-                  router.refresh();
-                  return;
-                }
-                notify.error(r.error);
-              })();
-            });
-          }}
+          onConfirmed={() =>
+            void runAction(() => withdrawSubmissionFromValuesAction(submissionId), "Withdrawn")
+          }
         >
           Withdraw
         </ConfirmActionButton>

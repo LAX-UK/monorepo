@@ -5,10 +5,8 @@ import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-contex
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
-import { SubmissionReadyToSubmitBanner } from "@/components/dashboard/submission-ready-to-submit-banner";
 import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
-import { SubmissionStatusHint } from "@/components/dashboard/submission-status-hint";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
@@ -20,6 +18,7 @@ import {
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
@@ -27,7 +26,6 @@ import {
   wizardStepIndex,
 } from "@/lib/forms/submission/step-validation";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { SUBMISSION_STATUS_HINTS } from "@/lib/marketing/sell-flow-copy";
 import { lotPath } from "@/lib/seo/url";
 import {
   SUBMISSION_TIMELINE_STAGES,
@@ -53,7 +51,7 @@ export default async function SubmissionDetailPage({
     shell: "client",
     loginNext: `/dashboard/submissions/${id}`,
   });
-  const { orgActingSelected } = await resolveSellerWorkspaceContext(
+  const { orgActingSelected, sellerEntityId } = await resolveSellerWorkspaceContext(
     user.role,
     user.staffRole ?? null,
   );
@@ -64,9 +62,10 @@ export default async function SubmissionDetailPage({
   let categoriesFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
   let categories: Awaited<ReturnType<typeof c.categories.tree>> = [];
 
-  const [submissionRes, categoriesRes] = await Promise.allSettled([
+  const [submissionRes, categoriesRes, documentsRes] = await Promise.allSettled([
     c.submissions.getMineById(id),
     c.categories.tree(),
+    getServerSubmissionDocuments(id),
   ]);
 
   if (submissionRes.status === "fulfilled") {
@@ -108,7 +107,15 @@ export default async function SubmissionDetailPage({
 
   if (!s) notFound();
 
-  const submissionDocuments = await getServerSubmissionDocuments(id).catch(() => []);
+  let documentsFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
+  if (documentsRes.status === "rejected") {
+    documentsFailure = describeDashboardSliceFailure(
+      documentsRes.reason,
+      "submissions",
+      "Could not load supporting documents.",
+    );
+  }
+  const submissionDocuments = documentsRes.status === "fulfilled" ? documentsRes.value : [];
 
   const submission = s;
 
@@ -121,8 +128,8 @@ export default async function SubmissionDetailPage({
   if (submission.convertedLotId) {
     convertedLot = await c.buyerLots.getById(submission.convertedLotId).catch(() => null);
   }
-  if (needsConnectCheck) {
-    const connectStatus = await c.stripeConnect.getStatus().catch(() => null);
+  if (needsConnectCheck && sellerEntityId) {
+    const connectStatus = await getServerStripeConnectStatus(sellerEntityId).catch(() => null);
     connectRequired =
       connectStatus == null || !connectStatus.ok || !connectStatus.data.payoutsEnabled;
   }
@@ -146,7 +153,6 @@ export default async function SubmissionDetailPage({
         backHref="/dashboard/submissions"
         backLabel="Submissions"
         title={submission.title}
-        {...(editable ? { description: SUBMISSION_STATUS_HINTS.draft } : {})}
         badges={<SubmissionStatusBadge status={submission.status} />}
       />
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
@@ -159,10 +165,12 @@ export default async function SubmissionDetailPage({
         <>
           <TimelineStages
             stages={SUBMISSION_TIMELINE_STAGES}
-            activeIndex={submissionTimelineActiveIndex(submission.status)}
+            activeIndex={submissionTimelineActiveIndex(
+              submission.status,
+              convertedLot?.status ?? null,
+            )}
             className="mb-2"
           />
-          <SubmissionStatusHint status={submission.status} />
         </>
       ) : null}
       <SubmissionRejectionPanel submission={submission} />
@@ -175,13 +183,13 @@ export default async function SubmissionDetailPage({
         submissionId={submission.id}
         status={submission.status}
         initialDocuments={submissionDocuments}
+        loadFailure={documentsFailure}
       />
       {editable ? (
         <>
-          {readyToSubmit ? <SubmissionReadyToSubmitBanner submissionId={submission.id} /> : null}
           <SubmissionWizard
             mode={{ kind: "edit", submissionId: submission.id }}
-            categories={categories}
+            categories={categoriesFailure ? [] : categories}
             initialValues={submissionFormValues}
             initialStepIndex={wizardInitialStepIndex}
             readyToSubmit={readyToSubmit}
@@ -199,16 +207,7 @@ export default async function SubmissionDetailPage({
                 className="space-y-4 font-body text-sm text-on-surface-variant"
               >
                 <p>{submission.description ?? "No description."}</p>
-                {submission.rejectionReason ? (
-                  <p className="text-error">
-                    <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
-                      Reason
-                    </span>
-                    <br />
-                    {submission.rejectionReason}
-                  </p>
-                ) : null}
-                {submission.reviewNotes ? (
+                {submission.status !== "rejected" && submission.reviewNotes ? (
                   <p>
                     <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
                       Reviewer notes
