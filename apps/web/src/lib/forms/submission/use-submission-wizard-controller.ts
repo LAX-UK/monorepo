@@ -164,8 +164,14 @@ export function useSubmissionWizardController(
       return;
     }
 
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    saveInFlight.current = true;
+    setAutosaveStatus("saving");
+
     startTransition(async () => {
-      setAutosaveStatus("saving");
       let id = submissionId ?? (mode.kind === "edit" ? mode.submissionId : null);
 
       if (!id) {
@@ -174,12 +180,14 @@ export function useSubmissionWizardController(
           applyFieldErrors(form, r.fieldErrors);
           setAutosaveStatus("error");
           notify.error(r.error);
+          saveInFlight.current = false;
           return;
         }
         id = r.data?.id ?? null;
         if (!id) {
           setAutosaveStatus("error");
           notify.error("Could not create submission");
+          saveInFlight.current = false;
           return;
         }
         setSubmissionId(id);
@@ -189,6 +197,7 @@ export function useSubmissionWizardController(
           applyFieldErrors(form, updated.fieldErrors);
           setAutosaveStatus("error");
           notify.error(updated.error);
+          saveInFlight.current = false;
           return;
         }
       }
@@ -197,6 +206,7 @@ export function useSubmissionWizardController(
       if (!submitted.ok) {
         setAutosaveStatus("error");
         notify.error(submitted.error);
+        saveInFlight.current = false;
         return;
       }
 
@@ -206,6 +216,7 @@ export function useSubmissionWizardController(
       setLastSavedAt(new Date());
       router.push(`/dashboard/submissions/${id}`);
       router.refresh();
+      saveInFlight.current = false;
     });
   }, [form, mode, router, submissionId]);
 

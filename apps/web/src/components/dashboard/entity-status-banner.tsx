@@ -136,7 +136,7 @@ export function EntityStatusBanner({ acting }: Props) {
   if (!copy) return null;
 
   return (
-    <Alert className="mb-6 border-lot-orange/40 bg-surface-container-low/80" variant="default">
+    <Alert className="border-lot-orange/40 bg-surface-container-low/80" variant="default">
       <AlertTitle>{copy.title}</AlertTitle>
       <AlertDescription className="text-on-surface">{copy.body}</AlertDescription>
     </Alert>

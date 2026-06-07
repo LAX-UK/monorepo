@@ -13,6 +13,7 @@ import {
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
+import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import { Button } from "@auction/ui/components/button";
 import { Inbox } from "lucide-react";
 import Link from "next/link";
@@ -48,9 +49,11 @@ export default async function InvitationsInboxPage() {
     loadFailure = buildDashboardSliceFailure("invitations", 500, null);
   }
 
+  const workspaceMeta = await readClientWorkspacePageMeta();
+
   return (
     <DashboardListPage
-      meta="Invitation"
+      meta={workspaceMeta}
       title="Invitations"
       description="Pending organisation invitations for your account email."
       actions={

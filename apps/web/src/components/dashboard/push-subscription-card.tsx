@@ -49,7 +49,15 @@ export function PushSubscriptionCard({ saveDisabled = false, enableDefaultPrefs 
           wonPush: true,
         });
         if (!r.ok) {
-          notify.error(r.error);
+          try {
+            await disable();
+          } catch {
+            // Best-effort rollback when prefs sync fails.
+          }
+          notify.error(
+            `Push was enabled but notification preferences could not sync. ${r.error ?? "Try again from notification settings."}`,
+          );
+          router.refresh();
           return;
         }
       }
@@ -161,9 +169,10 @@ export function PushSubscriptionCard({ saveDisabled = false, enableDefaultPrefs 
             ) : (
               <Button
                 type="button"
+                variant="primary"
                 disabled={busy || saveDisabled}
                 onClick={() => void onEnable()}
-                className="h-auto rounded-md bg-primary px-4 py-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary disabled:opacity-50"
+                className="h-auto min-h-11 px-4 py-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
               >
                 {busy ? "Working…" : "Enable browser push"}
               </Button>

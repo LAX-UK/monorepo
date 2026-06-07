@@ -5,7 +5,10 @@ type Props = {
 
 export function SubmissionResubmitBanner({ rejectionReason, reviewNotes }: Props) {
   return (
-    <output className="block space-y-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3">
+    <output
+      className="block space-y-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3"
+      aria-live="polite"
+    >
       <p className="font-headline text-sm text-on-surface">Starting a new submission</p>
       <p className="font-body text-sm text-on-surface-variant">
         We pre-filled your previous details. Update anything the specialist flagged before
