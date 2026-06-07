@@ -16,6 +16,8 @@ export type KpiRowProps = {
   sticky?: boolean;
   track?: AccentTrack;
   className?: string;
+  /** Extra responsive grid classes merged into the underlying `StatStrip`. */
+  stripClassName?: string;
   "aria-label"?: string;
 };
 
@@ -28,14 +30,15 @@ export function KpiRow({
   sticky,
   track = "buying",
   className,
+  stripClassName,
   "aria-label": ariaLabel = "Summary at a glance",
 }: KpiRowProps) {
   const columnClass =
     columns === 6
       ? "md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-6"
       : columns === 5
-        ? "md:grid-cols-4 xl:grid-cols-5"
-        : "md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4";
+        ? "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4";
 
   const showHeroChrome = variant === "hero" && !embedded;
 
@@ -51,7 +54,7 @@ export function KpiRow({
         className,
       )}
     >
-      <StatStrip {...(sticky ? { sticky: true } : {})} className={columnClass}>
+      <StatStrip {...(sticky ? { sticky: true } : {})} className={cn(columnClass, stripClassName)}>
         {tiles.map((tile, index) => {
           const { id, href, ...tileProps } = tile;
           const content = (

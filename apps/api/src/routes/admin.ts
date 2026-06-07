@@ -40,6 +40,7 @@ import {
   adminSaleRegistrationParamsSchema,
   adminSaleroomSaleIdParamSchema,
   adminSetRoleBodySchema,
+  adminSubmissionCountBySellersQuerySchema,
   adminSubmissionCountQuerySchema,
   adminSuspendBodySchema,
   adminTelephonePlaceBidBodySchema,
@@ -226,6 +227,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const count = await container.admin.ops.countPendingSubmissions({
         status: q.status,
       });
+      return c.json({ data: { count } });
+    },
+  );
+
+  platform.get(
+    "/submissions/count-by-sellers",
+    requireSubmissionsAccess,
+    zValidator("query", adminSubmissionCountBySellersQuerySchema),
+    async (c) => {
+      const { sellerIds } = c.req.valid("query");
+      const count =
+        await container.itemSubmissionService.countSubmissionsBySellersForAdminApi(sellerIds);
       return c.json({ data: { count } });
     },
   );

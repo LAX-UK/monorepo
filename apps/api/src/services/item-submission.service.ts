@@ -682,6 +682,10 @@ export class ItemSubmissionService implements IItemSubmissionService {
     });
   }
 
+  async countSubmissionsBySellersForAdminApi(sellerIds: readonly string[]): Promise<number> {
+    return this.submissions.countAdminForLegalEntityIds(sellerIds);
+  }
+
   async sendStaleDraftReminders(input: {
     staleDays: number;
     batchLimit?: number;

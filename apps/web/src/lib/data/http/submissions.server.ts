@@ -126,3 +126,15 @@ export async function getAdminSubmissionPendingCount(): Promise<number> {
   const body = (await res.json()) as { data: { count: number } };
   return body.data.count;
 }
+
+/** Total submissions across seller legal entities in one request. */
+export async function getAdminSubmissionCountBySellers(
+  sellerIds: readonly string[],
+): Promise<number> {
+  if (sellerIds.length === 0) return 0;
+  const qs = new URLSearchParams({ sellerIds: sellerIds.join(",") });
+  const res = await authedServerFetch(`/admin/submissions/count-by-sellers?${qs.toString()}`);
+  if (!res.ok) return 0;
+  const body = (await res.json()) as { data: { count: number } };
+  return Number(body.data.count ?? 0);
+}
