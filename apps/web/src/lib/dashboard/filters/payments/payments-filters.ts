@@ -167,11 +167,17 @@ export function getPaymentsActiveFilters(filters: PaymentsFilters): ActiveFilter
   );
 }
 
+/** Desktop filter sheet badge — status and year when year lives in the sheet. */
 export function countPaymentsSheetFilters(filters: PaymentsFilters): number {
   let count = 0;
+  if (filters.status !== "all") count += 1;
   if (filters.year != null) count += 1;
-  if (filters.sort !== "date-desc") count += 1;
   return count;
+}
+
+/** Desktop filter sheet badge when only status is drawer-only (year chips stay inline). */
+export function countPaymentsStatusSheetFilters(filters: PaymentsFilters): number {
+  return filters.status !== "all" ? 1 : 0;
 }
 
 /** Active dimensions shown in the mobile filter sheet (status, year, sort). */

@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import type { SubmissionSlaTone } from "@/lib/admin/submission-sla";
 import type { ItemSubmissionStatus } from "@auction/types";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -13,6 +14,12 @@ export type AdminSubmissionTableRow = {
   sellerPreview: string;
   status: ItemSubmissionStatus;
   createdAtLabel: string;
+  slaDays: number | null;
+  slaLabel: string | null;
+  slaTone: SubmissionSlaTone | null;
+  qualityWarnings: string[];
+  blocksAccept: boolean;
+  assigneeLabel: string;
 };
 
 function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {

@@ -17,6 +17,7 @@ function mapRow(row: Row): UserNotification {
     title: row.title,
     message: row.message,
     lotId: row.lotId,
+    submissionId: row.submissionId,
     read: row.read,
     archivedAt: row.archivedAt ?? null,
     createdAt: row.createdAt,
@@ -37,6 +38,7 @@ export class DrizzleNotificationWriteRepository implements INotificationWriteRep
           title: r.title,
           message: r.message,
           lotId: r.lotId ?? null,
+          submissionId: r.submissionId ?? null,
         })),
       )
       .returning();

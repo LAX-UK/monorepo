@@ -11,7 +11,7 @@ export const PRIVATE_SALE_COPY = {
 export const CONSIGN_COPY = {
   kicker: "Consign with LAX",
   title: "Turn your collection into capital.",
-  body: "Our global network of collectors is waiting. Whether it's a single masterwork or an entire estate, our specialists will guide you from valuation to the final hammer fall.",
+  body: "Our global network of collectors is waiting. Whether it's fine art, watches, motor cars, or an entire estate, our specialists will guide you from valuation to the final hammer fall.",
   cta: "Request a valuation in 3 minutes",
   ctaHref: "/sell",
   microcopy: "Response within 24 hours.",

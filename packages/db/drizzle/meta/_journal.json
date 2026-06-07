@@ -694,6 +694,27 @@
       "when": 1785600000000,
       "tag": "0101_onsite_event_pass_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1785800000000,
+      "tag": "0103_submission_notification_prefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1785900000000,
+      "tag": "0104_submission_draft_reminder_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1786000000000,
+      "tag": "0105_submission_converted_and_draft_reminder_sent",
+      "breakpoints": true
     }
   ]
 }

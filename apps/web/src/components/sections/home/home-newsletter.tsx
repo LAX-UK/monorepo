@@ -1,7 +1,7 @@
 "use client";
 
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { MARKETING_PAGE_SHELL, MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.service";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { LabelCaps, cn } from "@auction/ui";
@@ -122,7 +122,7 @@ export function HomeNewsletter() {
         </MarketingPromoCta>
         <p className="font-footer-links text-xs leading-relaxed text-on-surface-variant">
           Unsubscribe any time. We respect your{" "}
-          <Link href="/privacy" className="text-primary underline underline-offset-2">
+          <Link href="/privacy" className={MARKETING_PROSE_LINK}>
             privacy
           </Link>
           .

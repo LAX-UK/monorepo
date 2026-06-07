@@ -14,6 +14,6 @@ export type BasicsStepProps = StepProps & {
 export type ReviewStepProps = StepProps & {
   onJumpTo: (stepIndex: number) => void;
   canSubmitForReview: boolean;
-  onSaveDraft: () => void;
+  onFinishLater: () => void;
   onSubmitForReview: () => void;
 };

@@ -1,9 +1,46 @@
+import { SELLER_SUBMISSION_STATUS_LABELS } from "@/lib/marketing/sell-flow-copy";
 import type { SubmissionListFilterValues } from "@auction/validators";
 import { buildActiveFilterDescriptors, hasActiveFilters } from "../filter-active";
 import { buildFilterHref } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
 export const SUBMISSIONS_BASE_PATH = "/dashboard/submissions";
+
+/** All submission list status filter values (including `all`). */
+export const SUBMISSION_STATUS_VALUES = [
+  "all",
+  "draft",
+  "submitted",
+  "under_review",
+  "approved",
+  "rejected",
+  "withdrawn",
+  "converted",
+] as const satisfies readonly SubmissionListFilterValues["status"][];
+
+export type SubmissionStatusCounts = Record<SubmissionListFilterValues["status"] | "all", number>;
+
+/** Seller-facing label for a submission status filter chip. */
+export function submissionStatusLabel(status: SubmissionListFilterValues["status"]): string {
+  if (status === "all") return "All";
+  return SELLER_SUBMISSION_STATUS_LABELS[status];
+}
+
+/** Chip label with optional count suffix (`Draft · 2`). */
+export function submissionStatusTabLabel(
+  status: SubmissionListFilterValues["status"],
+  counts?: SubmissionStatusCounts,
+): string {
+  const base = submissionStatusLabel(status);
+  if (!counts) return base;
+  const n = status === "all" ? counts.all : counts[status];
+  return n > 0 ? `${base} · ${n}` : base;
+}
+
+/** Active drawer-only filters for the Filters trigger badge (excludes inline search `q`). */
+export function countSubmissionsSheetFilters(filters: SubmissionsFilters): number {
+  return filters.status !== "all" ? 1 : 0;
+}
 
 export type SubmissionsFilters = {
   status: SubmissionListFilterValues["status"];
@@ -23,7 +60,7 @@ export const SUBMISSIONS_FILTER_CONFIG: ListPageFilterConfig = {
       kind: "search",
       param: "q",
       label: "Title contains",
-      placeholder: "Filter loaded rows by title…",
+      placeholder: "Search by title…",
     },
   ],
 };
@@ -88,6 +125,12 @@ export function getSubmissionsActiveFilters(filters: SubmissionsFilters): Active
       omitDefaults: SUBMISSIONS_FILTER_DEFAULTS,
     },
     [
+      {
+        param: "status",
+        isActive: () => filters.status !== "all",
+        label: () => `Status: ${submissionStatusLabel(filters.status)}`,
+        clearPatch: () => ({ status: undefined }),
+      },
       {
         param: "q",
         isActive: () => Boolean(filters.q.trim()),

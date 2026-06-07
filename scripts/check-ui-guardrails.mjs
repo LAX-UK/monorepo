@@ -80,6 +80,18 @@ for (const file of files) {
       );
     }
   }
+
+  if (rel.startsWith("app/(marketing)/") && /\bSectionCta\b/.test(text)) {
+    violations.push(
+      `${rel}: SectionCta in marketing route — use MarketingBidPromoCta or MarketingPromoCta`,
+    );
+  }
+
+  if (rel.includes("marketing") || rel.includes("sections/home")) {
+    if (/>\s*View All\s*</.test(text)) {
+      violations.push(`${rel}: use "View all" label via MarketingViewAllLink`);
+    }
+  }
 }
 
 if (violations.length > 0) {

@@ -5,11 +5,13 @@ import {
   submitForReviewFromValuesAction,
   updateSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
+import { trackWizardSubmit } from "@/lib/analytics/sell-funnel";
 import type { FormController } from "@/lib/forms/shared/form-controller";
 import { EMPTY_SUBMISSION_FORM_VALUES } from "@/lib/forms/submission/item-submission-form-defaults";
 import { allWizardFieldPaths } from "@/lib/forms/submission/step-validation";
 import { sanitizeSubmissionFormValues } from "@/lib/forms/submission/submission-form-data";
 import { notify } from "@/lib/ui/notify";
+import { evaluateSubmissionQuality } from "@auction/domain";
 import { type ItemSubmissionFormValues, itemSubmissionFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -143,11 +145,16 @@ export function useSubmissionWizardController(
     }
 
     const values = sanitizeSubmissionFormValues(form.getValues());
-    if (values.images.length < 1) {
-      form.setError("images", {
-        message: "Add at least one photo before submitting for review",
-      });
-      notify.error("Add at least one photo before submitting");
+    const quality = evaluateSubmissionQuality({
+      title: values.title,
+      images: values.images,
+      description: values.description,
+      provenance: values.provenance,
+      categoryId: values.categoryIds[0] ?? "",
+      categoryIds: values.categoryIds,
+    });
+    if (!quality.canSubmit) {
+      notify.error("Complete title, category, and at least one photo before submitting");
       return;
     }
 
@@ -193,6 +200,7 @@ export function useSubmissionWizardController(
         return;
       }
 
+      trackWizardSubmit(id);
       notify.success("Submitted for review");
       setAutosaveStatus("saved");
       setLastSavedAt(new Date());

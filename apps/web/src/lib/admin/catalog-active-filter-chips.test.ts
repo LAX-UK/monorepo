@@ -111,4 +111,22 @@ describe("buildSubmissionsActiveFilterChips", () => {
     expect(chips.find((c) => c.id === "categoryId")?.label).toContain("Ceramics");
     expect(chips.find((c) => c.id === "categoryId")?.clearHref).not.toContain("categoryId=");
   });
+
+  it("builds quality gaps chip when active", () => {
+    const chips = buildSubmissionsActiveFilterChips({ qualityGaps: "1" }, { qualityGaps: true });
+    expect(chips).toHaveLength(1);
+    expect(chips[0]?.label).toContain("Quality gaps");
+    expect(chips[0]?.clearHref).not.toContain("qualityGaps=");
+  });
+
+  it("builds my queue and SLA sort chips when active", () => {
+    const chips = buildSubmissionsActiveFilterChips(
+      { assignedTo: "me", sort: "sla" },
+      { assignedToMe: true, sort: "sla" },
+    );
+    expect(chips.find((c) => c.id === "assignedTo")?.label).toBe("My queue");
+    expect(chips.find((c) => c.id === "sort")?.label).toContain("SLA");
+    expect(chips.find((c) => c.id === "assignedTo")?.clearHref).not.toContain("assignedTo=");
+    expect(chips.find((c) => c.id === "sort")?.clearHref).not.toContain("sort=");
+  });
 });

@@ -199,10 +199,17 @@ export function getWatchlistActiveFilters(
   );
 }
 
+/** Desktop filter sheet badge — status and categories when categories live in the sheet. */
 export function countWatchlistSheetFilters(filters: WatchlistFilters): number {
   return countActiveFilterDimensions(watchlistFiltersToParams(filters), WATCHLIST_FILTER_DEFAULTS, [
+    "status",
     "categoryIds",
   ]);
+}
+
+/** Desktop filter sheet badge when only status is drawer-only (category chips stay inline). */
+export function countWatchlistStatusSheetFilters(filters: WatchlistFilters): number {
+  return filters.status ? 1 : 0;
 }
 
 /** Active dimensions in the mobile filter sheet (status, categories, sort). */

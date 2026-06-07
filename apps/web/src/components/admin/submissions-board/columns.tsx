@@ -3,6 +3,8 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { SubmissionInlineActions } from "@/components/admin/submission-inline-actions";
+import { SubmissionQualityBadges } from "@/components/admin/submissions-board/quality-badges";
+import { SubmissionSlaCell } from "@/components/admin/submissions-board/sla-cell";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -31,6 +33,15 @@ export function submissionColumns(
       ),
     },
     {
+      accessorKey: "assigneeLabel",
+      header: "Assignee",
+      cell: ({ row }) => (
+        <span className="font-body text-xs text-on-surface-variant">
+          {row.original.assigneeLabel}
+        </span>
+      ),
+    },
+    {
       accessorKey: "sellerPreview",
       header: "Seller",
       cell: ({ row }) => (
@@ -47,6 +58,26 @@ export function submissionColumns(
           {row.original.createdAtLabel}
         </span>
       ),
+    },
+    {
+      id: "quality",
+      header: "Quality",
+      cell: ({ row }) => (
+        <SubmissionQualityBadges
+          warnings={row.original.qualityWarnings}
+          blocksAccept={row.original.blocksAccept}
+          compact
+        />
+      ),
+      enableSorting: false,
+    },
+    {
+      id: "sla",
+      header: "Queue age",
+      cell: ({ row }) => (
+        <SubmissionSlaCell label={row.original.slaLabel} tone={row.original.slaTone} />
+      ),
+      enableSorting: false,
     },
     {
       id: "actions",

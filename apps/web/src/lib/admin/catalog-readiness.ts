@@ -9,6 +9,7 @@ import {
 } from "@/components/admin/lot-detail/lot-detail-types";
 import { saleDetailTabHref, saleEditHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { readinessLabel } from "@/lib/admin/sale-setup/field-copy";
+import { evaluateLotReadiness } from "@auction/domain";
 import type { AdminCategory, ArtistProfile, Lot, Sale } from "@auction/types";
 import {
   isOnsiteLocationReadyForPublish,
@@ -77,67 +78,48 @@ export function lotEditResumeHref(lotId: string, readiness: CatalogReadinessResu
   return readiness.firstFailing?.href ?? lotEditHref(lotId);
 }
 
+const LOT_READINESS_HREFS = (lotId: string) =>
+  ({
+    images: lotDetailTabHref(lotId, "images"),
+    description: lotEditCatalogHref(lotId),
+    seller: lotDetailTabHref(lotId, "overview"),
+    artist: lotEditHref(lotId),
+    sale: lotDetailTabHref(lotId, "overview"),
+    schedule: lotEditHref(lotId),
+  }) as const;
+
 export function buildLotPublishReadiness(
   lotId: string,
   auction: Lot,
   context: LotPublishReadinessContext = {},
 ): CatalogReadinessResult {
   const connectRequired = context.connectRequired ?? false;
-  const scheduleValid = auction.endTime.getTime() > auction.startTime.getTime();
   const saleWindowOk =
     !context.sale || !auction.saleId || lotFitsSaleWindowForPublish(auction, context.sale);
+  const hrefs = LOT_READINESS_HREFS(lotId);
+  const core = evaluateLotReadiness({ ...auction, connectRequired });
 
-  const items: CatalogReadinessItem[] = [
-    {
-      id: "images",
-      label: "At least one image",
-      ok: auction.images.length >= 1,
-      severity: "required",
-      href: lotDetailTabHref(lotId, "images"),
-    },
-    {
-      id: "description",
-      label: "Catalogue description",
-      ok: Boolean(auction.description?.trim()),
-      severity: "required",
-      href: lotEditCatalogHref(lotId),
-    },
-    {
-      id: "seller",
-      label: connectRequired ? readinessLabel("connect") : "Seller legal entity",
-      ok: Boolean(auction.sellerLegalEntityId) && !connectRequired,
-      severity: "required",
-      href: lotDetailTabHref(lotId, "overview"),
-    },
-    {
-      id: "artist",
-      label: "Artist assigned / review cleared",
-      ok: !auction.artistReviewRequired,
-      severity: "required",
-      href: lotEditHref(lotId),
-    },
-    {
-      id: "sale",
-      label: "Assigned to a sale",
-      ok: Boolean(auction.saleId),
-      severity: "warning",
-      href: lotDetailTabHref(lotId, "overview"),
-    },
-    {
-      id: "sale-window",
-      label: "Lot schedule fits sale window",
-      ok: saleWindowOk,
-      severity: "required",
-      href: lotEditHref(lotId),
-    },
-    {
-      id: "schedule",
-      label: "Valid schedule (end after start)",
-      ok: scheduleValid,
-      severity: "required",
-      href: lotEditHref(lotId),
-    },
-  ];
+  const items: CatalogReadinessItem[] = core.checks.map((check) => ({
+    id: check.id,
+    label: check.id === "seller" && connectRequired ? readinessLabel("connect") : check.label,
+    ok: check.ok,
+    severity: check.severity,
+    href: hrefs[check.id as keyof typeof hrefs],
+  }));
+
+  const saleIndex = items.findIndex((item) => item.id === "sale");
+  const saleWindowItem: CatalogReadinessItem = {
+    id: "sale-window",
+    label: "Lot schedule fits sale window",
+    ok: saleWindowOk,
+    severity: "required",
+    href: lotEditHref(lotId),
+  };
+  if (saleIndex >= 0) {
+    items.splice(saleIndex + 1, 0, saleWindowItem);
+  } else {
+    items.push(saleWindowItem);
+  }
 
   const completeCount = items.filter((i) => i.ok).length;
   const firstFailing = items.find((i) => !i.ok);

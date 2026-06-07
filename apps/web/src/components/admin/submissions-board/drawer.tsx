@@ -4,6 +4,8 @@ import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { SubmissionInlineActions } from "@/components/admin/submission-inline-actions";
+import { SubmissionQualityBadges } from "@/components/admin/submissions-board/quality-badges";
+import { SubmissionSlaCell } from "@/components/admin/submissions-board/sla-cell";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -25,6 +27,25 @@ export function SubmissionDrawerContent({ row }: { row: AdminSubmissionTableRow 
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Created</dt>
           <dd>{row.createdAtLabel}</dd>
         </div>
+        {row.slaLabel ? (
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Queue age</dt>
+            <dd>
+              <SubmissionSlaCell label={row.slaLabel} tone={row.slaTone} />
+            </dd>
+          </div>
+        ) : null}
+        {row.blocksAccept || row.qualityWarnings.length > 0 ? (
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Quality</dt>
+            <dd>
+              <SubmissionQualityBadges
+                warnings={row.qualityWarnings}
+                blocksAccept={row.blocksAccept}
+              />
+            </dd>
+          </div>
+        ) : null}
       </dl>
 
       <AdminTechnicalIdDisclosure items={[{ label: "Submission ID", value: row.id }]} />

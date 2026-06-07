@@ -150,6 +150,9 @@ export function DashboardListToolbar({
   const hidePrimaryOnMobile =
     showPrimaryOnMobile === false || (showPrimaryOnMobile !== true && Boolean(mobileFilterSheet));
 
+  /** Search + Filters drawer only (no inline chip row) — keep controls on one row at md+. */
+  const drawerOnlyFilters = !primaryFilters && (filterSheet != null || mobileFilterSheet != null);
+
   const sortControl =
     sort && hideSortOnMobile ? (
       <div className="hidden shrink-0 lg:block">{sort}</div>
@@ -161,10 +164,18 @@ export function DashboardListToolbar({
     <div className={cn("space-y-3", className)}>
       <div className={TOOLBAR_CARD_CLASS}>
         <div className="flex flex-col gap-3">
-          <div className="flex min-w-0 flex-wrap items-end gap-2 lg:items-center lg:gap-3">
+          <div
+            className={cn(
+              "flex min-w-0 gap-2 lg:gap-3",
+              drawerOnlyFilters ? "flex-nowrap items-end" : "flex-wrap items-end lg:items-center",
+            )}
+          >
             {search ? (
               <search
-                className="min-w-0 flex-1 max-lg:[&_.space-y-2]:space-y-0 max-lg:[&_label]:sr-only lg:max-w-md"
+                className={cn(
+                  "min-w-0 flex-1 max-lg:[&_.space-y-2]:space-y-0 max-lg:[&_label]:sr-only",
+                  drawerOnlyFilters ? "max-w-md" : "lg:max-w-md",
+                )}
                 aria-label={searchLabel}
               >
                 {search}

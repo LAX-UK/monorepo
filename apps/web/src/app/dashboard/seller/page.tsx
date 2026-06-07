@@ -1,5 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { SellerNextActionCard } from "@/components/dashboard/overview/seller-next-action-card";
 import { SellerOverviewActivityBand } from "@/components/dashboard/overview/seller-overview-activity-band";
 import { SellerOverviewArtistCta } from "@/components/dashboard/overview/seller-overview-artist-cta";
 import { SellerOverviewGuideCards } from "@/components/dashboard/overview/seller-overview-guide-cards";
@@ -30,16 +31,13 @@ import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-conne
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
+import { resolveSellerNextAction } from "@/lib/seller/resolve-seller-next-action";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-
-function countByStatus(rows: { status: ItemSubmissionStatus }[], status: ItemSubmissionStatus) {
-  return rows.filter((r) => r.status === status).length;
-}
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -137,18 +135,28 @@ export default async function SellerOverviewPage() {
   const { sellerEntityId, orgActingSelected, bootstrapFailed } = sellerCtx;
 
   const c = await getServerDataContainer();
-  let rows: ItemSubmission[] = [];
   let submissionsFailure: DashboardSliceFailure | null = null;
   let lotsFailure: DashboardSliceFailure | null = null;
   let sellerLots: Lot[] = [];
+  let submissionCounts: Record<ItemSubmissionStatus, number> = {
+    draft: 0,
+    submitted: 0,
+    under_review: 0,
+    approved: 0,
+    rejected: 0,
+    withdrawn: 0,
+    converted: 0,
+  };
+  let rows: ItemSubmission[] = [];
   const [subRes, lotsRes] = await Promise.allSettled([
-    c.submissions.listMine({ limit: 100, offset: 0 }),
+    Promise.all([c.submissions.getSummary(), c.submissions.listMine({ limit: 25, offset: 0 })]),
     sellerEntityId
       ? c.sellerLots.list({ sellerId: sellerEntityId, limit: 100 })
       : Promise.resolve([] as Lot[]),
   ]);
   if (subRes.status === "fulfilled") {
-    rows = subRes.value;
+    submissionCounts = subRes.value[0].counts;
+    rows = subRes.value[1];
   } else {
     submissionsFailure = submissionsFailureFromCaught(subRes.reason);
   }
@@ -205,13 +213,11 @@ export default async function SellerOverviewPage() {
 
   const showConnectAlert = shouldShowConnectPageAlert(complianceChrome, connectPresentation);
 
-  const drafts = countByStatus(rows, "draft");
-  const inReview =
-    countByStatus(rows, "submitted") +
-    countByStatus(rows, "under_review") +
-    countByStatus(rows, "approved");
-  const inSale = countByStatus(rows, "converted");
-  const closed = countByStatus(rows, "rejected") + countByStatus(rows, "withdrawn");
+  const drafts = submissionCounts.draft;
+  const pendingReview = submissionCounts.submitted + submissionCounts.under_review;
+  const accepted = submissionCounts.approved;
+  const cataloguePrep = submissionCounts.converted;
+  const liveLots = sellerLots.filter((lot) => lot.status === "active").length;
 
   const cards = [
     {
@@ -221,26 +227,39 @@ export default async function SellerOverviewPage() {
       hint: "Finish and submit for review",
     },
     {
-      title: "In specialist review",
-      value: inReview,
+      title: "Pending review",
+      value: pendingReview,
       href: "/dashboard/submissions",
-      hint: "Submitted, approved pipeline",
+      hint: "Submitted or under specialist review",
     },
     {
-      title: "Live or catalogued",
-      value: inSale,
+      title: "Accepted",
+      value: accepted,
+      href: "/dashboard/submissions",
+      hint: "Accepted — catalogue prep starting",
+    },
+    {
+      title: "Catalogue prep",
+      value: cataloguePrep,
+      href: "/dashboard/submissions",
+      hint: "Draft lots being prepared",
+    },
+    {
+      title: "Live",
+      value: liveLots,
       href: "/dashboard/seller/in-sale",
-      hint: "Converted to lots",
-    },
-    {
-      title: "Closed outcomes",
-      value: closed,
-      href: "/dashboard/submissions",
-      hint: "Rejected or withdrawn",
+      hint: "Lots active in sales",
     },
   ];
 
   const workspaceMeta = await readClientWorkspacePageMeta();
+  const nextAction = !submissionsFailure
+    ? resolveSellerNextAction({
+        submissions: rows,
+        connectRequired: showConnectAlert,
+      })
+    : null;
+  const hasAnySubmissions = Object.values(submissionCounts).reduce((sum, n) => sum + n, 0) > 0;
 
   return (
     <DashboardPage className="space-y-8">
@@ -277,7 +296,7 @@ export default async function SellerOverviewPage() {
       ) : null}
       {lotsFailure ? <DashboardSliceErrorAlert failure={lotsFailure} /> : null}
 
-      {!submissionsFailure && rows.length === 0 ? (
+      {!submissionsFailure && !hasAnySubmissions ? (
         <DashboardEmptyState
           variant="hero"
           title={DASHBOARD_EMPTY.seller.title}
@@ -292,9 +311,10 @@ export default async function SellerOverviewPage() {
         />
       ) : null}
 
-      {!submissionsFailure && rows.length > 0 ? (
+      {!submissionsFailure && hasAnySubmissions ? (
         <SellerOverviewLayout
           slots={{
+            ...(nextAction ? { nextAction: <SellerNextActionCard action={nextAction} /> } : {}),
             kpis: (
               <section
                 aria-label="Submission pipeline"
@@ -303,7 +323,7 @@ export default async function SellerOverviewPage() {
                 <KpiRow
                   track="selling"
                   embedded
-                  columns={4}
+                  columns={5}
                   tiles={cards.map((card) => ({
                     id: card.title,
                     label: card.title,

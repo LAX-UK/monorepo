@@ -61,6 +61,7 @@ export function DashboardSearchField({
       updateParams((next) => {
         if (trimmed) next.set(paramKey, trimmed);
         else next.delete(paramKey);
+        next.delete("offset");
       });
     }, debounceMs);
     return () => {

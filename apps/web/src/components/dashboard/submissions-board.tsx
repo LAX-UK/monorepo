@@ -5,8 +5,12 @@ import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters"
 import { SubmissionsMobileList } from "@/components/dashboard/list/submissions-mobile-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
-import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
-import { SubmissionsListToolbar } from "@/components/dashboard/submissions/submissions-list-toolbar";
+import { SubmissionStatusGuide } from "@/components/dashboard/submissions/submission-status-guide";
+import {
+  type SubmissionStatusCounts,
+  SubmissionsListToolbar,
+} from "@/components/dashboard/submissions/submissions-list-toolbar";
+import { useTableDensity } from "@/components/layout/density-provider";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -15,10 +19,10 @@ import {
   hasSubmissionsActiveFilters,
   parseSubmissionsParams,
 } from "@/lib/dashboard/filters/submissions/submissions-filters";
+import { SUBMISSION_STATUS_HINTS } from "@/lib/marketing/sell-flow-copy";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
-import { Surface } from "@auction/ui/components/surface";
 import type { SubmissionListFilterValues } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FileStack } from "lucide-react";
@@ -33,43 +37,7 @@ export type SubmissionTableRow = {
   updatedAt: string;
 };
 
-export type SubmissionStatusCounts = Record<ItemSubmissionStatus | "all", number>;
-
-const filterStatusLabel: Record<SubmissionListFilterValues["status"], string> = {
-  all: "All statuses",
-  draft: "Draft",
-  submitted: "Submitted",
-  under_review: "Under review",
-  approved: "Approved",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
-  converted: "Converted",
-};
-
-const statusTabs: readonly SubmissionListFilterValues["status"][] = [
-  "all",
-  "draft",
-  "submitted",
-  "under_review",
-  "approved",
-  "rejected",
-  "withdrawn",
-  "converted",
-];
-
-function statusHref(status: SubmissionListFilterValues["status"], q: string) {
-  return buildSubmissionsHref(parseSubmissionsParams({ status, q }), { status, q });
-}
-
-function tabLabel(
-  status: SubmissionListFilterValues["status"],
-  counts: SubmissionStatusCounts | undefined,
-): string {
-  const base = filterStatusLabel[status].replace(" statuses", "");
-  if (!counts) return base;
-  const n = status === "all" ? counts.all : counts[status];
-  return n > 0 ? `${base} · ${n}` : base;
-}
+export type { SubmissionStatusCounts };
 
 function submissionColumns(): ColumnDef<SubmissionTableRow>[] {
   return [
@@ -153,6 +121,7 @@ export function SubmissionsBoard({
   statusCounts,
 }: Props) {
   const router = useRouter();
+  const { density } = useTableDensity();
   const columns = useMemo(() => submissionColumns(), []);
   const filters = parseSubmissionsParams({
     status: initialStatus,
@@ -163,22 +132,26 @@ export function SubmissionsBoard({
     router.replace(buildSubmissionsHref(filters, { q: null }), { scroll: false });
   }, [filters, router]);
 
+  const statusHint = initialStatus !== "all" ? SUBMISSION_STATUS_HINTS[initialStatus] : undefined;
+
   return (
     <div className="space-y-6">
-      <Surface variant="inset" padding="sm" className="mb-5">
-        <SectionTabsNav
-          variant="underline"
-          ariaLabel="Submission status"
-          sticky={false}
-          items={statusTabs.map((status) => ({
-            href: statusHref(status, filters.q),
-            label: tabLabel(status, statusCounts),
-            isActive: initialStatus === status,
-          }))}
-        />
-      </Surface>
+      <SubmissionsListToolbar
+        filters={filters}
+        initialStatus={initialStatus}
+        {...(statusCounts ? { statusCounts } : {})}
+      />
 
-      <SubmissionsListToolbar filters={filters} />
+      {statusHint ? (
+        <p
+          className="font-body text-sm text-on-surface-variant"
+          data-testid="submission-status-hint"
+        >
+          {statusHint}
+        </p>
+      ) : null}
+
+      <SubmissionStatusGuide />
 
       <DashboardFilterResultsAnnouncer count={rows.length} entityLabel="submissions" />
 
@@ -210,7 +183,7 @@ export function SubmissionsBoard({
         <>
           <SubmissionsMobileList rows={rows} />
           <DashboardDesktopList>
-            <DataTable columns={columns} data={rows} density="compact" />
+            <DataTable columns={columns} data={rows} density={density} />
           </DashboardDesktopList>
         </>
       )}

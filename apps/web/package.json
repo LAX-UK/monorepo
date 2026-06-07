@@ -17,6 +17,7 @@
     "@auction/api": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
+    "@auction/domain": "workspace:*",
     "@auction/exports": "workspace:*",
     "@auction/http-headers": "workspace:*",
     "@auction/observability": "workspace:*",

@@ -1,5 +1,5 @@
 import { startKycVerification } from "@/app/dashboard/verify-identity/actions";
-import { ConnectWorkspace } from "@/components/connect/connect-workspace";
+import { SellerConnectWorkspace } from "@/components/connect/seller-connect-workspace";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
@@ -81,7 +81,7 @@ export default async function SellerStripeConnectPage() {
       {connectFailure ? (
         <DashboardSliceErrorAlert failure={connectFailure} />
       ) : sellerEntityId ? (
-        <ConnectWorkspace
+        <SellerConnectWorkspace
           publishableKey={clientConfig.publishableKey}
           connectEnforced={clientConfig.connectEnforced}
           status={status}

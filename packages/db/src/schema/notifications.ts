@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import { boolean, check, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { itemSubmission } from "./item-submissions.js";
 import { lot } from "./lots.js";
 
 export const notification = pgTable(
@@ -14,6 +15,9 @@ export const notification = pgTable(
     title: text("title").notNull(),
     message: text("message").notNull(),
     lotId: uuid("lot_id").references(() => lot.id, { onDelete: "set null" }),
+    submissionId: uuid("submission_id").references(() => itemSubmission.id, {
+      onDelete: "set null",
+    }),
     read: boolean("read").notNull().default(false),
     archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -23,6 +27,7 @@ export const notification = pgTable(
     index("notification_user_id_created_at_idx").on(table.userId, table.createdAt),
     index("notification_read_idx").on(table.read),
     index("notification_archived_at_idx").on(table.archivedAt),
+    index("notification_submission_id_idx").on(table.submissionId),
     check(
       "notification_type_check",
       sql`${table.type} IN (
@@ -40,6 +45,8 @@ export const notification = pgTable(
         'submission_received_for_review',
         'submission_approved',
         'submission_rejected',
+        'submission_converted',
+        'submission_draft_reminder',
         'condition_report_ready',
         'condition_report_declined'
       )`,
@@ -55,5 +62,9 @@ export const notificationRelations = relations(notification, ({ one }) => ({
   lot: one(lot, {
     fields: [notification.lotId],
     references: [lot.id],
+  }),
+  submission: one(itemSubmission, {
+    fields: [notification.submissionId],
+    references: [itemSubmission.id],
   }),
 }));

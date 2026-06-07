@@ -35,6 +35,10 @@ export const templateNames = [
   "lot-voided-anti-shilling-admin",
   "kyc-resubmission-required",
   "aml-compliance-review-notice",
+  "submission-approved",
+  "submission-converted",
+  "submission-rejected",
+  "submission-draft-reminder",
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -266,6 +270,33 @@ export type TemplateVarsByName = {
     adminReviewUrl: string;
     supportContactEmail: string;
   };
+  "submission-approved": {
+    userName?: string | null;
+    submissionTitle: string;
+    submissionUrl: string;
+    unsubscribeUrl: string;
+  };
+  "submission-converted": {
+    userName?: string | null;
+    submissionTitle: string;
+    submissionUrl: string;
+    unsubscribeUrl: string;
+  };
+  "submission-rejected": {
+    userName?: string | null;
+    submissionTitle: string;
+    submissionUrl: string;
+    resubmitUrl: string;
+    reasonSummary?: string | null;
+    unsubscribeUrl: string;
+  };
+  "submission-draft-reminder": {
+    userName?: string | null;
+    submissionTitle: string;
+    submissionUrl: string;
+    staleDays: number;
+    unsubscribeUrl: string;
+  };
 };
 
 export type RecipientResolution = "live" | "snapshot";
@@ -305,6 +336,10 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "lot-voided-anti-shilling-admin": "live",
   "kyc-resubmission-required": "live",
   "aml-compliance-review-notice": "live",
+  "submission-approved": "live",
+  "submission-converted": "live",
+  "submission-rejected": "live",
+  "submission-draft-reminder": "live",
 };
 
 export type RenderedEmail = {

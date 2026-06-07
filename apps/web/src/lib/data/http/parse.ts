@@ -197,6 +197,8 @@ export function parseNotificationPreference(raw: unknown): NotificationPreferenc
     watchlistEmail: Boolean(o.watchlistEmail),
     paymentEmail: o.paymentEmail !== false,
     lotEndedSellerEmail: o.lotEndedSellerEmail !== false,
+    submissionUpdatesEmail: o.submissionUpdatesEmail !== false,
+    submissionUpdatesPush: o.submissionUpdatesPush !== false,
     outbidWhatsapp: Boolean(o.outbidWhatsapp),
     wonWhatsapp: Boolean(o.wonWhatsapp),
     lostWhatsapp: Boolean(o.lostWhatsapp),
@@ -219,6 +221,7 @@ export function parseUserNotification(raw: unknown): UserNotification {
     title: String(o.title),
     message: String(o.message),
     lotId: o.lotId != null ? String(o.lotId) : o.auctionId != null ? String(o.auctionId) : null,
+    submissionId: o.submissionId != null ? String(o.submissionId) : null,
     read: Boolean(o.read),
     archivedAt: o.archivedAt == null || o.archivedAt === "" ? null : toDate(o.archivedAt),
     createdAt: toDate(o.createdAt),
@@ -232,7 +235,7 @@ function isItemSubmissionStatus(s: string): s is ItemSubmissionStatus {
 export function parseItemSubmission(raw: unknown): ItemSubmission {
   const o = raw as Record<string, unknown>;
   const status =
-    typeof o.status === "string" && isItemSubmissionStatus(o.status) ? o.status : "draft";
+    typeof o.status === "string" && isItemSubmissionStatus(o.status) ? o.status : "submitted";
   const legalEntityId =
     o.legalEntityId == null || o.legalEntityId === "" ? undefined : String(o.legalEntityId);
   const sellerId = o.sellerId == null || o.sellerId === "" ? undefined : String(o.sellerId);
@@ -275,6 +278,8 @@ export function parseItemSubmission(raw: unknown): ItemSubmission {
       o.rejectionReason == null || o.rejectionReason === "" ? null : String(o.rejectionReason),
     convertedLotId:
       o.convertedLotId == null || o.convertedLotId === "" ? null : String(o.convertedLotId),
+    assignedToUserId:
+      o.assignedToUserId == null || o.assignedToUserId === "" ? null : String(o.assignedToUserId),
     createdAt: toDate(o.createdAt),
     updatedAt: toDate(o.updatedAt),
   };

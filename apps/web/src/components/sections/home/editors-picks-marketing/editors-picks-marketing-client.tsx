@@ -1,13 +1,13 @@
 "use client";
 
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
+import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorsPickMarketingCard } from "./editors-pick-marketing-card";
 
@@ -115,7 +115,7 @@ export function EditorsPicksMarketingClient({
 
   return (
     <section
-      className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
+      className={`${MARKETING_PAGE_SHELL} pb-0 pt-[var(--section-spacing-tight)]`}
       aria-labelledby="home-editors-picks-heading"
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-12">
@@ -131,22 +131,7 @@ export function EditorsPicksMarketingClient({
             </DisplayHeading>
           }
           subtitle="Hand-selected pieces by LAX specialists"
-          action={
-            <Button
-              variant="chevron"
-              asChild
-              className="h-auto shrink-0 border-0 bg-transparent p-0 shadow-none hover:bg-transparent dark:hover:bg-transparent"
-            >
-              <Link
-                href={VIEW_ALL_HREF}
-                className="inline-flex items-center gap-[11px] py-[18px] font-headline text-base font-semibold leading-6 tracking-[0.05em] text-on-surface"
-              >
-                View All
-                <span className="sr-only"> lots and catalogue</span>
-                <ChevronRight className="size-5 shrink-0" aria-hidden />
-              </Link>
-            </Button>
-          }
+          action={<MarketingViewAllLink href={VIEW_ALL_HREF} srSuffix="lots and catalogue" />}
         />
 
         <EditorsPicksCarousel

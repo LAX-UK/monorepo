@@ -1,4 +1,5 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import { MarketingBidPromoCta } from "@/components/marketing/marketing-bid-promo-cta";
 import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
@@ -50,7 +51,7 @@ import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/struct
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
-import { Button, SectionCta, cn } from "@auction/ui";
+import { Button, cn } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -352,21 +353,7 @@ export default async function SalesListPage({
         {tab === "newLots" ? (
           <div className="flex flex-col gap-6">
             {!session ? (
-              <SectionCta
-                className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
-                title="Ready to bid?"
-                description="Create a free account to place bids, track lots, and receive saleroom updates."
-                primary={
-                  <Button variant="cta" asChild>
-                    <Link href="/register">Register to bid</Link>
-                  </Button>
-                }
-                secondary={
-                  <Button variant="outline" asChild>
-                    <Link href="/login">Sign in</Link>
-                  </Button>
-                }
-              />
+              <MarketingBidPromoCta className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
             ) : null}
             <SalesNewLotsToolbar resultCount={newLots.length} />
             <ViewItemListTracker
@@ -395,21 +382,7 @@ export default async function SalesListPage({
             calendarView={calendarView}
           >
             {!session ? (
-              <SectionCta
-                className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40"
-                title="Ready to bid?"
-                description="Create a free account to place bids, track lots, and receive saleroom updates."
-                primary={
-                  <Button variant="cta" asChild>
-                    <Link href="/register">Register to bid</Link>
-                  </Button>
-                }
-                secondary={
-                  <Button variant="outline" asChild>
-                    <Link href="/login">Sign in</Link>
-                  </Button>
-                }
-              />
+              <MarketingBidPromoCta className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
             ) : null}
 
             {filteredSales.length === 0 && !err ? (
