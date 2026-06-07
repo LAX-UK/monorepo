@@ -93,6 +93,7 @@ async function DashboardHomeContent({
     bids: null as string | null,
     submissions: null as string | null,
     notifications: null as string | null,
+    addresses: null as string | null,
   };
 
   const user = userR.status === "fulfilled" ? userR.value : null;
@@ -167,7 +168,15 @@ async function DashboardHomeContent({
   const kyc: KycStatusSummaryDto | null = kycR.status === "fulfilled" ? kycR.value : null;
   const orgOnboarding: OrgOnboardingResumeVm | null =
     orgR.status === "fulfilled" ? orgR.value : null;
-  const addresses: ProfileAddressRow[] = addressesR.status === "fulfilled" ? addressesR.value : [];
+  const addresses: ProfileAddressRow[] = takeSettledSlice(
+    addressesR,
+    "addresses",
+    [],
+    (msg) => {
+      errors.addresses = msg;
+    },
+    "Could not load addresses.",
+  );
   let notifications: UserNotification[] = [];
   if (notificationsR.status === "fulfilled") {
     notifications = notificationsR.value.items;
@@ -228,18 +237,11 @@ async function DashboardHomeContent({
       />
       <DashboardOverviewView
         vm={vm}
-        user={
-          user ?? {
-            emailVerified: false,
-            emailStatus: "ok",
-            twoFactorEnabled: false,
-            kycStatus: "unverified",
-          }
-        }
+        user={user}
         kyc={kyc}
         orgOnboarding={orgModuleEnabled ? orgOnboarding : null}
         orgModuleEnabled={orgModuleEnabled}
-        addressesCount={addresses.length}
+        addressesCount={errors.addresses ? null : addresses.length}
         activity={activity}
         clientWorkspaceMode={clientWorkspaceMode}
       />

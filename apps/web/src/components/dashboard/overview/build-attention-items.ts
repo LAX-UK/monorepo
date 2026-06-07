@@ -21,6 +21,8 @@ export type BuildAttentionItemsOptions = {
   skipFirstSettlement?: boolean;
   /** When true, skip KYC items — compliance strip already surfaces identity state. */
   suppressKycAttention?: boolean;
+  /** When true, skip org onboarding — layout banner stack already surfaces it. */
+  suppressOrgOnboardingAttention?: boolean;
 };
 
 /** Aggregates attention items for overview hero band and attention panel. */
@@ -31,6 +33,7 @@ export function buildAttentionItems({
   orgModuleEnabled = true,
   skipFirstSettlement = false,
   suppressKycAttention = false,
+  suppressOrgOnboardingAttention = false,
 }: BuildAttentionItemsOptions): AttentionListItem[] {
   const items: AttentionListItem[] = [];
 
@@ -79,7 +82,7 @@ export function buildAttentionItems({
     }
   }
 
-  if (orgModuleEnabled && orgOnboarding) {
+  if (orgModuleEnabled && orgOnboarding && !suppressOrgOnboardingAttention) {
     items.push({
       id: `org-${orgOnboarding.entityId}`,
       title: `Finish onboarding for ${orgOnboarding.displayName}`,

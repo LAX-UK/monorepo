@@ -35,22 +35,24 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
   const [limitAmount, setLimitAmount] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const loadDetail = useCallback(async () => {
-    const detail = await fetchTelephoneBookingDetail(bookingId);
-    if (!detail) {
-      setLoadError("Booking not found or you do not have access.");
-      return null;
-    }
-    setLoadError(null);
-    setBooking(detail);
-    return detail;
-  }, [bookingId]);
+  const loadDetail = useCallback(
+    async (cancelled?: () => boolean) => {
+      const detail = await fetchTelephoneBookingDetail(bookingId);
+      if (cancelled?.()) return null;
+      if (!detail) {
+        setLoadError("Booking not found or you do not have access.");
+        return null;
+      }
+      setLoadError(null);
+      setBooking(detail);
+      return detail;
+    },
+    [bookingId],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    void loadDetail().then((detail) => {
-      if (cancelled && detail) return;
-    });
+    void loadDetail(() => cancelled);
     return () => {
       cancelled = true;
     };
@@ -59,7 +61,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
   useEffect(() => {
     if (!booking || !shouldPollBooking(booking.status)) return;
     const id = window.setInterval(() => {
-      void loadDetail();
+      void loadDetail(() => false);
     }, LIVE_POLL_MS);
     return () => window.clearInterval(id);
   }, [booking, loadDetail]);

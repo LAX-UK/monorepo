@@ -13,13 +13,19 @@ import type { ActivityItem } from "@/lib/data/view-models/dashboard-activity.vm"
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 
+type SessionComplianceUser = Pick<
+  SessionUser,
+  "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled"
+>;
+
 type Props = {
   vm: DashboardOverviewVm;
-  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled">;
+  user: SessionComplianceUser | null;
   kyc?: KycStatusSummaryDto | null;
   orgOnboarding?: OrgOnboardingResumeVm | null;
   orgModuleEnabled?: boolean;
-  addressesCount?: number;
+  /** null when the addresses slice failed — suppresses the address pill. */
+  addressesCount?: number | null;
   activity?: readonly ActivityItem[];
   clientWorkspaceMode?: ClientWorkspaceMode;
 };
@@ -33,40 +39,50 @@ export function DashboardOverviewView({
   addressesCount = 0,
   activity = [],
 }: Props) {
-  const showCompliance = shouldShowComplianceStrip(user, kyc, addressesCount);
+  const resolvedAddressesCount = addressesCount ?? 0;
+  const showCompliance =
+    user !== null &&
+    shouldShowComplianceStrip(user, kyc, addressesCount === null ? 1 : resolvedAddressesCount);
 
   return (
     <>
       <OverviewErrorsAlert errors={vm.errors} />
       <DashboardOverviewLayout
         slots={{
-          compliance: showCompliance ? (
-            <ComplianceStatusStrip
-              user={user}
-              kyc={kyc}
-              addressesCount={addressesCount}
-              hideIdentityPill={kyc?.requiresKyc === true}
-            />
-          ) : null,
+          compliance:
+            showCompliance && user ? (
+              <ComplianceStatusStrip
+                user={user}
+                kyc={kyc}
+                addressesCount={resolvedAddressesCount}
+                hideIdentityPill={kyc?.requiresKyc === true}
+                hideAddressPill={addressesCount === null}
+              />
+            ) : null,
           kpis: (
             <OverviewHeroBand
               vm={vm}
               kyc={kyc}
               orgOnboarding={orgOnboarding}
               orgModuleEnabled={orgModuleEnabled}
+              suppressKycAttention={showCompliance}
+              suppressOrgOnboardingAttention={orgModuleEnabled && orgOnboarding != null}
             />
           ),
           activity: <ActiveBidsCard vm={vm} />,
           activityFeed: <ActivityFeed items={activity} />,
           watchlist: <WatchlistPreviewCard vm={vm} variant="tile-grid" />,
-          secondary:
-            vm.kpi.activeBidsCount > 0 || vm.settlementsDue.length > 0 || vm.outbidCount > 0 ? (
-              <div className="hidden lg:block">
-                <SellCtaBand vm={vm} />
-              </div>
-            ) : (
+          secondary: (
+            <div
+              className={
+                vm.kpi.activeBidsCount > 0 || vm.settlementsDue.length > 0 || vm.outbidCount > 0
+                  ? "hidden lg:block"
+                  : undefined
+              }
+            >
               <SellCtaBand vm={vm} />
-            ),
+            </div>
+          ),
         }}
       />
       {vm.kpi.activeBidsCount > 0 || vm.settlementsDue.length > 0 || vm.outbidCount > 0 ? (

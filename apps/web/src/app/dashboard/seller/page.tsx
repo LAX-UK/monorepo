@@ -229,19 +229,19 @@ export default async function SellerOverviewPage() {
     {
       title: "Pending review",
       value: pendingReview,
-      href: "/dashboard/submissions",
+      href: "/dashboard/submissions?status=submitted",
       hint: "Submitted or under specialist review",
     },
     {
       title: "Accepted",
       value: accepted,
-      href: "/dashboard/submissions",
+      href: "/dashboard/submissions?status=approved",
       hint: "Accepted — catalogue prep starting",
     },
     {
       title: "Catalogue prep",
       value: cataloguePrep,
-      href: "/dashboard/submissions",
+      href: "/dashboard/submissions?status=converted",
       hint: "Draft lots being prepared",
     },
     {

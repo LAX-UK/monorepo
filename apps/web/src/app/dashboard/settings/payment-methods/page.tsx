@@ -40,8 +40,8 @@ export default async function PaymentMethodsSettingsPage() {
           </p>
         </div>
         <p className="font-body text-sm text-on-surface-variant">
-          You have no saved cards yet. The next invoice you pay will give you the option to save the
-          card for future use.
+          Saved cards appear here after you opt in during checkout. Until then, manage payment
+          methods when you pay an invoice.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button asChild>

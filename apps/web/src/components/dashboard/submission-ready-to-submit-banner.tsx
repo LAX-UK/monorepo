@@ -9,7 +9,7 @@ import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   submissionId: string;
@@ -18,7 +18,7 @@ type Props = {
 /** Prominent submit CTA when a saved submission has all required fields. */
 export function SubmissionReadyToSubmitBanner({ submissionId }: Props) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
   return (
     <Surface
@@ -36,9 +36,12 @@ export function SubmissionReadyToSubmitBanner({ submissionId }: Props) {
         size="lg"
         className="w-full shrink-0 sm:w-auto"
         disabled={pending}
+        aria-busy={pending}
         onClick={() => {
-          startTransition(() => {
-            void (async () => {
+          if (pending) return;
+          setPending(true);
+          void (async () => {
+            try {
               const r = await submitForReviewFromValuesAction(submissionId);
               if (r.ok) {
                 notify.success("Submitted for review");
@@ -46,8 +49,10 @@ export function SubmissionReadyToSubmitBanner({ submissionId }: Props) {
                 return;
               }
               notify.error(r.error);
-            })();
-          });
+            } finally {
+              setPending(false);
+            }
+          })();
         }}
         data-testid="submission-detail-submit-for-review"
       >

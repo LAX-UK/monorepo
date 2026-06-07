@@ -1,7 +1,7 @@
 "use client";
 
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
-import { BuyerGate } from "@/components/marketing/admin-cannot-buy-notice";
+import { BuyerGate, isAdminBuyerBlocked } from "@/components/marketing/admin-cannot-buy-notice";
 import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout-lot-mobile-chrome";
 import {
   type CheckoutPaymentActionData,
@@ -535,12 +535,14 @@ export function CheckoutPurchasePanel({
         </Form>
       </BuyerGate>
 
-      <CheckoutLotMobileChrome
-        totalLabel={total}
-        formId="checkout-purchase-form"
-        isSubmitting={form.formState.isSubmitting}
-        disabled={!canSubmit}
-      />
+      {!isAdminBuyerBlocked(sessionUser) ? (
+        <CheckoutLotMobileChrome
+          totalLabel={total}
+          formId="checkout-purchase-form"
+          isSubmitting={form.formState.isSubmitting}
+          disabled={!canSubmit}
+        />
+      ) : null}
     </div>
   );
 }

@@ -118,7 +118,7 @@ export default async function SellerInSalePage({ searchParams }: PageProps) {
         <KpiRow track="selling" columns={4} tiles={kpiTiles} />
       ) : null}
       {showToolbar ? <InSaleListToolbar filters={filters} /> : null}
-      {!loadFailure ? (
+      {sellerEntityId && !loadFailure ? (
         <InSaleBoard filters={filters} allDisplay={allDisplay} filtered={filtered} />
       ) : null}
     </DashboardListPage>

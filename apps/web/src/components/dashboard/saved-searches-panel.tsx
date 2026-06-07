@@ -1,13 +1,11 @@
 "use client";
 
+import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
+import { clientApiBase } from "@/lib/api/client-api-base";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
 
 type SavedSearchRow = {
   id: string;
@@ -27,20 +25,26 @@ function buildSearchHref(query: Record<string, string>): string {
 export function SavedSearchesPanel() {
   const [rows, setRows] = useState<SavedSearchRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetch(`${apiBase()}/users/me/saved-searches`, { credentials: "include" });
+      const res = await fetch(`${clientApiBase()}/users/me/saved-searches`, {
+        credentials: "include",
+      });
       if (!res.ok) {
         setRows([]);
+        setLoadError("Could not load saved searches. Try again in a moment.");
         return;
       }
       const payload = (await res.json()) as { data?: SavedSearchRow[] };
       setRows(Array.isArray(payload.data) ? payload.data : []);
     } catch {
       setRows([]);
+      setLoadError("Could not load saved searches. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -53,10 +57,13 @@ export function SavedSearchesPanel() {
   async function remove(id: string) {
     setRemovingId(id);
     try {
-      const res = await fetch(`${apiBase()}/users/me/saved-searches/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${clientApiBase()}/users/me/saved-searches/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
       if (!res.ok) {
         notify.error("Could not remove saved search");
         return;
@@ -72,6 +79,16 @@ export function SavedSearchesPanel() {
 
   if (loading) {
     return <p className="font-body text-sm text-on-surface-variant">Loading saved searches…</p>;
+  }
+
+  if (loadError) {
+    return (
+      <DashboardErrorAlert title="Saved searches unavailable" message={loadError}>
+        <Button type="button" variant="secondaryOutline" size="sm" onClick={() => void load()}>
+          Retry
+        </Button>
+      </DashboardErrorAlert>
+    );
   }
 
   if (rows.length === 0) {
