@@ -31,7 +31,7 @@ export default async function OrganisationOnboardingLayout({ children }: { child
           <h1 className="text-3xl font-semibold text-on-surface">Submit to LAX</h1>
           <p className="mt-2 max-w-2xl text-sm text-on-surface-variant">
             Set up your gallery, dealer, or estate. Progress is saved — use{" "}
-            <strong className="text-on-surface">Save and exit</strong> in the steps below to return
+            <strong className="text-on-surface">Finish later</strong> in the steps below to return
             to your <span className="text-on-surface">Organisations</span> hub any time.
           </p>
         </div>

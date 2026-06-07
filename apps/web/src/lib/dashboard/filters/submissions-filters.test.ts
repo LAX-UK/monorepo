@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSubmissionsHref,
+  countSubmissionsSheetFilters,
+  getSubmissionsActiveFilters,
   hasSubmissionsActiveFilters,
   parseSubmissionsParams,
+  submissionStatusLabel,
 } from "./submissions/submissions-filters";
 
 describe("submissions-filters", () => {
@@ -24,5 +27,23 @@ describe("submissions-filters", () => {
     expect(hasSubmissionsActiveFilters(parseSubmissionsParams({ q: "portrait" }))).toBe(true);
     expect(hasSubmissionsActiveFilters(parseSubmissionsParams({ status: "submitted" }))).toBe(true);
     expect(hasSubmissionsActiveFilters(parseSubmissionsParams({}))).toBe(false);
+  });
+
+  it("submissionStatusLabel derives from shared seller labels", () => {
+    expect(submissionStatusLabel("approved")).toBe("Accepted");
+    expect(submissionStatusLabel("all")).toBe("All");
+  });
+
+  it("getSubmissionsActiveFilters emits status chip whose clear href omits status param", () => {
+    const filters = parseSubmissionsParams({ status: "rejected" });
+    const chips = getSubmissionsActiveFilters(filters);
+    const statusChip = chips.find((chip) => chip.id === "status");
+    expect(statusChip?.label).toBe("Status: Not accepted");
+    expect(statusChip?.href).toBe("/dashboard/submissions");
+  });
+
+  it("countSubmissionsSheetFilters counts status only, not q", () => {
+    expect(countSubmissionsSheetFilters(parseSubmissionsParams({ q: "study" }))).toBe(0);
+    expect(countSubmissionsSheetFilters(parseSubmissionsParams({ status: "draft" }))).toBe(1);
   });
 });

@@ -23,6 +23,14 @@ describe("SubmissionsBoard", () => {
     );
   });
 
+  it("shows contextual status hint when a status filter is active", () => {
+    render(<SubmissionsBoard rows={[]} initialStatus="submitted" initialQ="" fetchedCount={0} />);
+
+    expect(screen.getByTestId("submission-status-hint")).toHaveTextContent(
+      /specialists will start review/i,
+    );
+  });
+
   it("uses title-specific FilterEmptyState when q filter matches nothing but rows exist server-side", () => {
     render(
       <SubmissionsBoard rows={[]} initialStatus="all" initialQ="nonexistent" fetchedCount={3} />,

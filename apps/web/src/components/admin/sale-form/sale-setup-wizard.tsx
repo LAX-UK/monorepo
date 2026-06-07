@@ -30,6 +30,7 @@ import {
   adminSaleDraftScheduleSchema,
 } from "@/lib/forms/schemas/admin-sale-form";
 import { validateWizardStep } from "@/lib/forms/validate-wizard-step";
+import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, EntityDocument, Lot, Sale, Venue } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
@@ -254,7 +255,7 @@ export function SaleSetupWizard({
   const mobileCancelAction = useMemo(() => {
     if (saleId) {
       return {
-        label: isReviewStep ? "Save as draft" : "Save & finish later",
+        label: isReviewStep ? "Save as draft" : WIZARD_COPY.finishLater,
         onClick: handleSaveDraft,
       };
     }
@@ -445,7 +446,7 @@ export function SaleSetupWizard({
                 {isReviewStep && saleId
                   ? "Save as draft"
                   : saleId
-                    ? "Save & finish later"
+                    ? WIZARD_COPY.finishLater
                     : "Cancel"}
               </Button>
             }

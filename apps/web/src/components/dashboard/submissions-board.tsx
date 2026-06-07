@@ -19,6 +19,7 @@ import {
   hasSubmissionsActiveFilters,
   parseSubmissionsParams,
 } from "@/lib/dashboard/filters/submissions/submissions-filters";
+import { SUBMISSION_STATUS_HINTS } from "@/lib/marketing/sell-flow-copy";
 import type { ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
@@ -131,15 +132,26 @@ export function SubmissionsBoard({
     router.replace(buildSubmissionsHref(filters, { q: null }), { scroll: false });
   }, [filters, router]);
 
+  const statusHint = initialStatus !== "all" ? SUBMISSION_STATUS_HINTS[initialStatus] : undefined;
+
   return (
     <div className="space-y-6">
-      <SubmissionStatusGuide />
-
       <SubmissionsListToolbar
         filters={filters}
         initialStatus={initialStatus}
         {...(statusCounts ? { statusCounts } : {})}
       />
+
+      {statusHint ? (
+        <p
+          className="font-body text-sm text-on-surface-variant"
+          data-testid="submission-status-hint"
+        >
+          {statusHint}
+        </p>
+      ) : null}
+
+      <SubmissionStatusGuide />
 
       <DashboardFilterResultsAnnouncer count={rows.length} entityLabel="submissions" />
 

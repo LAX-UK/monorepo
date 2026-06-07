@@ -7,6 +7,7 @@ import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
 import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
+import { SubmissionStatusHint } from "@/components/dashboard/submission-status-hint";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
@@ -21,6 +22,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { SUBMISSION_DRAFT_EXPLAINER } from "@/lib/marketing/sell-flow-copy";
 import { lotPath } from "@/lib/seo/url";
 import {
   SUBMISSION_TIMELINE_STAGES,
@@ -91,8 +93,7 @@ export default async function SubmissionDetailPage({
           track="selling"
           backHref={DASHBOARD_ROUTES.submissions}
           backLabel="Submissions"
-          eyebrow="Submission"
-          title="Submission"
+          title="Could not load submission"
         />
         <DashboardSliceErrorAlert failure={loadFailure} />
       </DashboardPage>
@@ -132,8 +133,8 @@ export default async function SubmissionDetailPage({
         track="selling"
         backHref="/dashboard/submissions"
         backLabel="Submissions"
-        eyebrow="Submission"
         title={submission.title}
+        {...(editable ? { description: SUBMISSION_DRAFT_EXPLAINER } : {})}
         badges={<SubmissionStatusBadge status={submission.status} />}
       />
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
@@ -142,11 +143,16 @@ export default async function SubmissionDetailPage({
       ) : null}
       {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
       <SubmissionDetailLiveRefresh status={submission.status} />
-      <TimelineStages
-        stages={SUBMISSION_TIMELINE_STAGES}
-        activeIndex={submissionTimelineActiveIndex(submission.status)}
-        className="mb-2"
-      />
+      {!editable ? (
+        <>
+          <TimelineStages
+            stages={SUBMISSION_TIMELINE_STAGES}
+            activeIndex={submissionTimelineActiveIndex(submission.status)}
+            className="mb-2"
+          />
+          <SubmissionStatusHint status={submission.status} />
+        </>
+      ) : null}
       <SubmissionRejectionPanel submission={submission} />
       <SubmissionLotReadyChecklist
         submission={submission}

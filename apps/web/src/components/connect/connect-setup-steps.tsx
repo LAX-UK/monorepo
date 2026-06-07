@@ -62,7 +62,7 @@ export function ConnectSetupSteps({ kycApproved, payoutComplete, className }: Pr
   return (
     <ol
       className={cn(
-        "flex flex-col gap-2 rounded-xl border border-outline-variant/30 bg-surface-container-low p-4 sm:flex-row sm:items-center sm:gap-6",
+        "flex flex-col gap-2 rounded-xl border border-border-hairline bg-surface-container-low p-4 sm:flex-row sm:items-center sm:gap-6",
         className,
       )}
       aria-label="Payout setup progress"
