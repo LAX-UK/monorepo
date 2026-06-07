@@ -171,13 +171,11 @@ function KpiTileBody({
         </div>
         {hasTrendSlot ? (
           <div className="shrink-0">{trendSlot}</div>
-        ) : (
-          <div className="h-7 w-[72px] shrink-0" aria-hidden={!showSparkline}>
-            {showSparkline && trend ? (
-              <Sparkline values={trend} tone={trendTone} width={72} height={28} />
-            ) : null}
+        ) : showSparkline && trend ? (
+          <div className="h-7 w-[72px] shrink-0">
+            <Sparkline values={trend} tone={trendTone} width={72} height={28} />
           </div>
-        )}
+        ) : null}
       </div>
       <div className="mt-auto min-h-[2.75rem] pt-1">
         {resolvedDelta ? <div className="min-w-0 truncate">{resolvedDelta}</div> : null}

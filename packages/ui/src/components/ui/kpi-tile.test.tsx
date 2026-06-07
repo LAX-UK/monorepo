@@ -12,7 +12,7 @@ describe("KpiTile", () => {
     expect(root?.className).toMatch(/h-full/);
     expect(root?.className).toMatch(/min-h-\[8\.5rem\]/);
     expect(container.querySelector(".min-h-\\[2\\.75rem\\]")).not.toBeNull();
-    expect(container.querySelector(".h-7.w-\\[72px\\]")).not.toBeNull();
+    expect(container.querySelector(".h-7.w-\\[72px\\]")).toBeNull();
   });
 
   it("truncates long currency values and exposes full amount in title", () => {

@@ -60,7 +60,7 @@ export function AdminArtistEditableTitle({
   );
 }
 
-export function AdminClientDisplayNameEditableTitle({
+export function AdminUserDisplayNameEditableTitle({
   userId,
   value,
   ...rest
@@ -73,3 +73,6 @@ export function AdminClientDisplayNameEditableTitle({
     />
   );
 }
+
+/** @deprecated Use {@link AdminUserDisplayNameEditableTitle} */
+export const AdminClientDisplayNameEditableTitle = AdminUserDisplayNameEditableTitle;

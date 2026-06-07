@@ -149,6 +149,7 @@ export interface IItemSubmissionService {
     assignedToUserId: string | null,
   ): Promise<Result<ItemSubmission, SubmissionError>>;
   countQualityGapsForAdminApi(): Promise<number>;
+  countSubmissionsBySellersForAdminApi(sellerIds: readonly string[]): Promise<number>;
   sendStaleDraftReminders(input: {
     staleDays: number;
     batchLimit?: number;
