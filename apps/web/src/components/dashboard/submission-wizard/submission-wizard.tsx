@@ -1,5 +1,6 @@
 "use client";
 
+import { SubmissionReadyToSubmitBanner } from "@/components/dashboard/submission-ready-to-submit-banner";
 import { DraftResumeToast } from "@/components/dashboard/submission-wizard/draft-resume-toast";
 import { BasicsStep } from "@/components/dashboard/submission-wizard/steps/basics-step";
 import { DetailsStep } from "@/components/dashboard/submission-wizard/steps/details-step";
@@ -11,6 +12,7 @@ import { SubmissionDraftContextStrip } from "@/components/dashboard/submission-w
 import { WizardFooter } from "@/components/dashboard/submission-wizard/wizard-footer";
 import { WizardHeaderActions } from "@/components/dashboard/submission-wizard/wizard-header-actions";
 import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
+import { withdrawSubmissionFromValuesAction } from "@/lib/actions/submissions";
 import { trackWizardStepComplete } from "@/lib/analytics/sell-funnel";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
@@ -29,6 +31,7 @@ import {
   SUBMISSION_SUBMIT_LABEL,
 } from "@/lib/marketing/sell-flow-copy";
 import { HideBottomTabBarWhileMounted } from "@/lib/shell/shell-chrome-context";
+import { notify } from "@/lib/ui/notify";
 import { evaluateSubmissionQuality } from "@auction/domain";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -187,6 +190,19 @@ export function SubmissionWizard({
     router.push("/dashboard/submissions");
   }, [exitGuardActive, router]);
 
+  const handleWithdraw = useCallback(() => {
+    if (mode.kind !== "edit" || isSubmitting) return;
+    void (async () => {
+      const result = await withdrawSubmissionFromValuesAction(mode.submissionId);
+      if (result.ok) {
+        notify.success("Withdrawn");
+        router.push("/dashboard/submissions");
+        return;
+      }
+      notify.error(result.error ?? "Withdraw failed");
+    })();
+  }, [isSubmitting, mode, router]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: refocus step heading on navigation
   useEffect(() => {
     stepHeadingRef.current?.focus();
@@ -244,6 +260,12 @@ export function SubmissionWizard({
   return (
     <>
       {mode.kind === "edit" ? <DraftResumeToast readyToSubmit={readyToSubmit} /> : null}
+      {readyToSubmit && mode.kind === "edit" ? (
+        <SubmissionReadyToSubmitBanner
+          onSubmit={handleSubmitForReview}
+          isSubmitting={isSubmitting}
+        />
+      ) : null}
       <HideBottomTabBarWhileMounted />
       <Dialog
         open={exitGuardOpen}
@@ -283,7 +305,7 @@ export function SubmissionWizard({
                 clearPendingExit();
                 if (action === "navigate" && href) {
                   void (async () => {
-                    const ok = await saveDraft({ leaveAfter: false });
+                    const ok = await saveDraft({ leaveAfter: false, skipRedirect: true });
                     if (ok) router.push(href);
                   })();
                   return;
@@ -333,6 +355,7 @@ export function SubmissionWizard({
               isSubmitting={isSubmitting}
               onFinishLater={handleFinishLater}
               onLeaveWithoutSaving={requestLeaveWithoutSaving}
+              {...(mode.kind === "edit" ? { onWithdraw: handleWithdraw } : {})}
             />
           </div>
 

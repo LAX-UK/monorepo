@@ -5,10 +5,8 @@ import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-contex
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
-import { SubmissionReadyToSubmitBanner } from "@/components/dashboard/submission-ready-to-submit-banner";
 import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
-import { SubmissionStatusHint } from "@/components/dashboard/submission-status-hint";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
@@ -28,7 +26,6 @@ import {
   wizardStepIndex,
 } from "@/lib/forms/submission/step-validation";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { SUBMISSION_STATUS_HINTS } from "@/lib/marketing/sell-flow-copy";
 import { lotPath } from "@/lib/seo/url";
 import {
   SUBMISSION_TIMELINE_STAGES,
@@ -110,6 +107,14 @@ export default async function SubmissionDetailPage({
 
   if (!s) notFound();
 
+  let documentsFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
+  if (documentsRes.status === "rejected") {
+    documentsFailure = describeDashboardSliceFailure(
+      documentsRes.reason,
+      "submissions",
+      "Could not load supporting documents.",
+    );
+  }
   const submissionDocuments = documentsRes.status === "fulfilled" ? documentsRes.value : [];
 
   const submission = s;
@@ -148,7 +153,6 @@ export default async function SubmissionDetailPage({
         backHref="/dashboard/submissions"
         backLabel="Submissions"
         title={submission.title}
-        {...(editable ? { description: SUBMISSION_STATUS_HINTS.draft } : {})}
         badges={<SubmissionStatusBadge status={submission.status} />}
       />
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
@@ -161,12 +165,12 @@ export default async function SubmissionDetailPage({
         <>
           <TimelineStages
             stages={SUBMISSION_TIMELINE_STAGES}
-            activeIndex={submissionTimelineActiveIndex(submission.status)}
+            activeIndex={submissionTimelineActiveIndex(
+              submission.status,
+              convertedLot?.status ?? null,
+            )}
             className="mb-2"
           />
-          {submission.status !== "rejected" ? (
-            <SubmissionStatusHint status={submission.status} />
-          ) : null}
         </>
       ) : null}
       <SubmissionRejectionPanel submission={submission} />
@@ -179,13 +183,13 @@ export default async function SubmissionDetailPage({
         submissionId={submission.id}
         status={submission.status}
         initialDocuments={submissionDocuments}
+        loadFailure={documentsFailure}
       />
-      {editable && !categoriesFailure ? (
+      {editable ? (
         <>
-          {readyToSubmit ? <SubmissionReadyToSubmitBanner submissionId={submission.id} /> : null}
           <SubmissionWizard
             mode={{ kind: "edit", submissionId: submission.id }}
-            categories={categories}
+            categories={categoriesFailure ? [] : categories}
             initialValues={submissionFormValues}
             initialStepIndex={wizardInitialStepIndex}
             readyToSubmit={readyToSubmit}
