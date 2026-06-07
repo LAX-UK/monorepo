@@ -1,4 +1,5 @@
 import { AdminClientArtistProfilesPanel } from "@/components/admin/admin-client-artist-profiles-panel";
+import { AdminUserAmlPanel } from "@/components/admin/admin-user-aml-panel";
 import {
   AdminUserLegalEntitiesPanel,
   AdminUserPaymentsPanel,
@@ -12,10 +13,14 @@ import {
   getAdminLegalEntitiesForUser,
   getAdminLotsWonByUser,
   getAdminPaymentsForUser,
+  getAdminUserAmlScreenings,
   getAdminUserById,
   getAdminUserKycSessions,
 } from "@/lib/data/http/admin.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
+import { AML_REVIEW_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import { notFound, redirect } from "next/navigation";
 
 type Props = { params: Promise<{ id: string }> };
@@ -33,13 +38,20 @@ export default async function AdminClientDetailPage({ params }: Props) {
     redirect(`/admin/staff/${id}`);
   }
 
-  const [linkedArtists, payments, wonLots, legalEntities, kycSessions] = await Promise.all([
-    getAdminArtistsByOwnerUserId(user.id).catch(() => []),
-    getAdminPaymentsForUser(user.id).catch(() => []),
-    getAdminLotsWonByUser(user.id).catch(() => []),
-    getAdminLegalEntitiesForUser(user.id).catch(() => []),
-    getAdminUserKycSessions(user.id).catch(() => []),
-  ]);
+  const sessionUser = await getServerSessionUser();
+  const canViewAml =
+    sessionUser != null &&
+    userHasAccessTo(sessionUser.role as UserRole, sessionUser.staffRole ?? null, AML_REVIEW_ACCESS);
+
+  const [linkedArtists, payments, wonLots, legalEntities, kycSessions, amlScreenings] =
+    await Promise.all([
+      getAdminArtistsByOwnerUserId(user.id).catch(() => []),
+      getAdminPaymentsForUser(user.id).catch(() => []),
+      getAdminLotsWonByUser(user.id).catch(() => []),
+      getAdminLegalEntitiesForUser(user.id).catch(() => []),
+      getAdminUserKycSessions(user.id).catch(() => []),
+      canViewAml ? getAdminUserAmlScreenings(user.id).catch(() => []) : Promise.resolve([]),
+    ]);
 
   const lifetimeSpend = payments
     .filter((p) => p.status === "captured")
@@ -53,6 +65,10 @@ export default async function AdminClientDetailPage({ params }: Props) {
     ),
   );
   const submissionsCount = submissionTotals.reduce((a, b) => a + b, 0);
+
+  const amlScreeningBySessionId = Object.fromEntries(
+    amlScreenings.map((screening) => [screening.providerSessionId, screening]),
+  );
 
   return (
     <AdminUserDetailShell
@@ -76,7 +92,12 @@ export default async function AdminClientDetailPage({ params }: Props) {
           content: (
             <div className="space-y-8">
               <AdminUserProfilePanel user={user} />
-              <AdminUserKycHistoryPanel sessions={kycSessions} />
+              <AdminUserKycHistoryPanel
+                sessions={kycSessions}
+                currentKycSessionId={user.currentKycSessionId}
+                amlScreeningBySessionId={amlScreeningBySessionId}
+              />
+              {canViewAml ? <AdminUserAmlPanel screenings={amlScreenings} /> : null}
               <AdminClientArtistProfilesPanel
                 userId={user.id}
                 userName={user.name}

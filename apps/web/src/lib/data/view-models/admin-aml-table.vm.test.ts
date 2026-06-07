@@ -1,30 +1,37 @@
 import { describe, expect, it } from "vitest";
 import { buildAdminAmlTableRow, summarizeAmlQueue } from "./admin-aml-table.vm";
 
+const baseRow = {
+  userId: "u1",
+  providerSessionId: "p1",
+  monitorStatus: "monitored",
+  totalHits: 2,
+  categories: ["sanction"],
+  decisionOutcome: "review",
+  reviewStatus: "pending",
+  triageRecommendation: null,
+  triagedByUserId: null,
+  triagedAt: null,
+  triageNotes: null,
+  reviewedByUserId: null,
+  reviewedAt: null,
+  reviewNotes: null,
+  screenedAt: "2026-01-01",
+  createdAt: "2026-01-01",
+  hits: [],
+  checkType: "initial_result",
+};
+
 describe("admin-aml-table.vm", () => {
   it("humanizes match and decision labels", () => {
     const row = buildAdminAmlTableRow({
       id: "s1",
-      userId: "u1",
-      providerSessionId: "p1",
-      matchStatus: "potential_match",
-      monitorStatus: "open",
-      totalHits: 2,
-      categories: ["sanctions"],
-      decisionOutcome: "pending",
-      reviewStatus: "open",
-      triageRecommendation: null,
-      triagedByUserId: null,
-      triagedAt: null,
-      triageNotes: null,
-      reviewedByUserId: null,
-      reviewedAt: null,
-      reviewNotes: null,
-      screenedAt: "2026-01-01",
-      createdAt: "2026-01-01",
+      matchStatus: "possible_match",
+      ...baseRow,
     });
-    expect(row.matchStatusLabel).toBe("Potential match");
-    expect(row.decisionOutcomeLabel).toBe("Pending review");
+    expect(row.matchStatusLabel).toBe("Possible match");
+    expect(row.monitorStatusLabel).toBe("Monitored");
+    expect(row.decisionOutcomeLabel).toBe("Review");
     expect(row.triageLabel).toBe("Awaiting triage");
   });
 
@@ -32,43 +39,19 @@ describe("admin-aml-table.vm", () => {
     const rows = [
       buildAdminAmlTableRow({
         id: "1",
-        userId: "u",
-        providerSessionId: "p",
         matchStatus: "no_match",
-        monitorStatus: "open",
+        ...baseRow,
         totalHits: 0,
         categories: [],
-        decisionOutcome: "pending",
-        reviewStatus: "open",
-        triageRecommendation: null,
-        triagedByUserId: null,
-        triagedAt: null,
-        triageNotes: null,
-        reviewedByUserId: null,
-        reviewedAt: null,
-        reviewNotes: null,
-        screenedAt: "2026-01-01",
-        createdAt: "2026-01-01",
+        decisionOutcome: "review",
       }),
       buildAdminAmlTableRow({
         id: "2",
-        userId: "u",
-        providerSessionId: "p",
-        matchStatus: "potential_match",
-        monitorStatus: "open",
-        totalHits: 1,
-        categories: [],
+        matchStatus: "possible_match",
+        ...baseRow,
         decisionOutcome: "escalate",
-        reviewStatus: "open",
         triageRecommendation: "recommend_clear",
         triagedByUserId: "staff",
-        triagedAt: null,
-        triageNotes: null,
-        reviewedByUserId: null,
-        reviewedAt: null,
-        reviewNotes: null,
-        screenedAt: "2026-01-01",
-        createdAt: "2026-01-01",
       }),
     ];
     expect(summarizeAmlQueue(rows)).toEqual({ pending: 1, triaged: 0, escalated: 1 });

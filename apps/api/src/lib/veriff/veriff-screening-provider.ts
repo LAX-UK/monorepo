@@ -1,5 +1,6 @@
 import type { Env } from "../../env.js";
 import type { IScreeningProvider } from "../../services/aml/ports.js";
+import { signVeriffSessionId } from "./veriff-hmac.js";
 
 /**
  * Veriff adapter for the AML ongoing-monitoring lifecycle.
@@ -14,20 +15,22 @@ import type { IScreeningProvider } from "../../services/aml/ports.js";
 export class VeriffScreeningProvider implements IScreeningProvider {
   constructor(
     private readonly apiKey: string | undefined,
+    private readonly sharedSecret: string | undefined,
     private readonly baseUrl: string,
   ) {}
 
   static fromEnv(
-    env: Pick<Env, "VERIFF_API_KEY" | "VERIFF_API_BASE_URL">,
+    env: Pick<Env, "VERIFF_API_KEY" | "VERIFF_SHARED_SECRET" | "VERIFF_API_BASE_URL">,
   ): VeriffScreeningProvider {
     return new VeriffScreeningProvider(
       env.VERIFF_API_KEY,
+      env.VERIFF_SHARED_SECRET,
       env.VERIFF_API_BASE_URL ?? "https://stationapi.veriff.com",
     );
   }
 
   isConfigured(): boolean {
-    return Boolean(this.apiKey);
+    return Boolean(this.apiKey && this.sharedSecret);
   }
 
   async enableOngoingMonitoring(providerSessionId: string): Promise<void> {
@@ -39,7 +42,7 @@ export class VeriffScreeningProvider implements IScreeningProvider {
   }
 
   private async setMonitoring(providerSessionId: string, enabled: boolean): Promise<void> {
-    if (!this.apiKey) return;
+    if (!this.apiKey || !this.sharedSecret) return;
     const url = `${this.baseUrl.replace(/\/$/, "")}/v1/sessions/${encodeURIComponent(
       providerSessionId,
     )}/watchlist-screening/monitoring`;
@@ -48,6 +51,7 @@ export class VeriffScreeningProvider implements IScreeningProvider {
       headers: {
         "Content-Type": "application/json",
         "X-AUTH-CLIENT": this.apiKey,
+        "X-HMAC-SIGNATURE": signVeriffSessionId(providerSessionId, this.sharedSecret),
       },
       body: JSON.stringify({ monitoring: enabled }),
     });
