@@ -1,3 +1,4 @@
+import { AdminEntityTabPanel } from "@/components/admin/admin-entity-tab-panel";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminStripeConnectActions } from "@/components/admin/admin-stripe-connect-actions";
 import { CopyUuidButton } from "@/components/admin/copy-uuid-button";
@@ -14,7 +15,6 @@ import type { LegalEntity, LegalEntityStatus } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
-import type { ReactNode } from "react";
 
 function simpleTransitionButtons(status: LegalEntityStatus): { op: string; label: string }[] {
   const out: { op: string; label: string }[] = [];
@@ -31,14 +31,6 @@ function simpleTransitionButtons(status: LegalEntityStatus): { op: string; label
     out.push({ op: "restrict", label: "Restrict" });
   }
   return out;
-}
-
-function EntityTabPanel({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
-      {children}
-    </div>
-  );
 }
 
 type CreatorInfo = {
@@ -78,7 +70,7 @@ export function LegalEntityDetailTabs({ entity, creator, activeTab, error, succe
             value: "overview",
             label: "Overview",
             content: (
-              <EntityTabPanel>
+              <AdminEntityTabPanel>
                 <dl className="grid gap-4 text-sm sm:grid-cols-2">
                   <div className="space-y-1">
                     <dt className="text-on-surface-variant">UUID</dt>
@@ -134,7 +126,7 @@ export function LegalEntityDetailTabs({ entity, creator, activeTab, error, succe
                     </dd>
                   </div>
                 </dl>
-              </EntityTabPanel>
+              </AdminEntityTabPanel>
             ),
           },
           {
@@ -147,7 +139,7 @@ export function LegalEntityDetailTabs({ entity, creator, activeTab, error, succe
                 </Badge>
               ) : undefined,
             content: (
-              <EntityTabPanel>
+              <AdminEntityTabPanel>
                 <dl className="grid gap-4 text-sm sm:grid-cols-2">
                   <div className="space-y-1">
                     <dt className="text-on-surface-variant">Connect account</dt>
@@ -188,14 +180,14 @@ export function LegalEntityDetailTabs({ entity, creator, activeTab, error, succe
                   </div>
                 </dl>
                 <AdminStripeConnectActions entity={entity} />
-              </EntityTabPanel>
+              </AdminEntityTabPanel>
             ),
           },
           {
             value: "lifecycle",
             label: "Lifecycle",
             content: (
-              <EntityTabPanel>
+              <AdminEntityTabPanel>
                 <div className="space-y-6">
                   {simple.length > 0 ? (
                     <div className="space-y-3">
@@ -254,7 +246,7 @@ export function LegalEntityDetailTabs({ entity, creator, activeTab, error, succe
                     </div>
                   ) : null}
                 </div>
-              </EntityTabPanel>
+              </AdminEntityTabPanel>
             ),
           },
         ]}

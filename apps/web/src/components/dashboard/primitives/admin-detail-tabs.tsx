@@ -1,5 +1,6 @@
 "use client";
 
+import { adminDetailTabsStickyTop } from "@/lib/admin/admin-sticky-layout";
 import { cn } from "@auction/ui";
 import { Skeleton } from "@auction/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
@@ -23,12 +24,29 @@ export type AdminDetailTab = {
   content: ReactNode;
 };
 
+/** Legacy tab ids kept for deep-link backwards compatibility. */
+export const ADMIN_DETAIL_TAB_ALIASES: Record<string, string> = {
+  bids: "won-lots",
+  payouts: "payments",
+};
+
+export function resolveAdminDetailTabFromUrl(
+  urlTab: string | null,
+  tabs: readonly Pick<AdminDetailTab, "value">[],
+  defaultValue: string,
+): string {
+  const resolved = urlTab ? (ADMIN_DETAIL_TAB_ALIASES[urlTab] ?? urlTab) : null;
+  return resolved && tabs.some((t) => t.value === resolved) ? resolved : defaultValue;
+}
+
 type Props = {
   defaultValue: string;
   tabs: readonly AdminDetailTab[];
   className?: string;
   /** When true, sync active tab to `?tab=` in the URL. */
   syncUrl?: boolean;
+  /** When true, offset sticky tabs below a sticky `DashboardDetailHeader`. */
+  detailHeaderSticky?: boolean;
   /** Exposes programmatic tab navigation (mirrors wizard `onStepControl`). */
   onTabControl?: (control: { goTo: (value: string) => void }) => void;
 };
@@ -38,19 +56,19 @@ function AdminDetailTabsInner({
   tabs,
   className,
   syncUrl = false,
+  detailHeaderSticky = false,
   onTabControl,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlTab = searchParams.get("tab");
-  const initial = urlTab && tabs.some((t) => t.value === urlTab) ? urlTab : defaultValue;
+  const initial = resolveAdminDetailTabFromUrl(urlTab, tabs, defaultValue);
   const [active, setActive] = useState(initial);
 
   useEffect(() => {
     if (!syncUrl) return;
-    const next = urlTab && tabs.some((t) => t.value === urlTab) ? urlTab : defaultValue;
-    setActive(next);
+    setActive(resolveAdminDetailTabFromUrl(urlTab, tabs, defaultValue));
   }, [urlTab, syncUrl, defaultValue, tabs]);
 
   const onValueChange = useCallback(
@@ -76,7 +94,12 @@ function AdminDetailTabsInner({
 
   return (
     <Tabs value={active} onValueChange={onValueChange} className={cn("w-full", className)}>
-      <div className="sticky top-[calc(var(--header-height-mobile,56px)+3.5rem)] z-10 -mx-1 border-b border-border-hairline bg-page-bg/95 px-1 pb-0 backdrop-blur-sm md:top-[calc(var(--header-height-shell,52px)+3.5rem)]">
+      <div
+        className={cn(
+          "sticky z-10 -mx-1 border-b border-border-hairline bg-page-bg/95 px-1 pb-0 backdrop-blur-sm",
+          adminDetailTabsStickyTop({ detailHeaderSticky }),
+        )}
+      >
         <TabsList
           className={cn(
             "mb-0 flex h-auto w-full min-w-0 justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0",

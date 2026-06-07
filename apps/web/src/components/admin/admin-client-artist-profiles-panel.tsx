@@ -1,5 +1,7 @@
+import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import type { ArtistKind, ArtistProfile, ArtistStatus } from "@auction/types";
+import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 export function AdminClientArtistProfilesPanel({
@@ -17,14 +19,9 @@ export function AdminClientArtistProfilesPanel({
   }).toString()}`;
 
   return (
-    <div className="space-y-6">
+    <Surface variant="quiet" padding="md" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="font-body text-sm text-on-surface-variant">
-          Catalogue artist profiles linked to this user as owner (
-          <code className="font-mono text-xs">owner_user_id</code>). Attribution on lots still uses{" "}
-          <code className="font-mono text-xs">artist_profile</code> — this link is optional
-          metadata.
-        </p>
+        <AdminSectionLabel>Artist profiles</AdminSectionLabel>
         <Link
           href={newArtistHref}
           className="inline-flex min-h-10 shrink-0 items-center rounded-md border border-primary bg-primary px-4 font-label text-xs uppercase tracking-wide text-on-primary"
@@ -32,6 +29,11 @@ export function AdminClientArtistProfilesPanel({
           Create artist profile for this user
         </Link>
       </div>
+      <p className="font-body text-sm text-on-surface-variant">
+        Artist catalogue profiles linked to this user as the maker or owner. Optional attribution
+        only — it does not give the client edit access, and lots still reference the catalogue
+        profile directly.
+      </p>
       {linkedArtists.length === 0 ? (
         <p className="text-sm text-on-surface-variant">No linked artist profiles yet.</p>
       ) : (
@@ -65,6 +67,6 @@ export function AdminClientArtistProfilesPanel({
           })}
         </ul>
       )}
-    </div>
+    </Surface>
   );
 }

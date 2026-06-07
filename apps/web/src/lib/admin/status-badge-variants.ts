@@ -458,11 +458,16 @@ export function kycStatusLabel(status: string | null | undefined): string {
     case "approved":
       return "Verified";
     case "pending":
+    case "submitted":
+      return "Submitted";
+    case "under_review":
       return "In review";
     case "rejected":
       return "Rejected";
+    case "expired":
+      return "Expired";
     default:
-      return "Not verified";
+      return status ? status.replaceAll("_", " ") : "Not verified";
   }
 }
 
