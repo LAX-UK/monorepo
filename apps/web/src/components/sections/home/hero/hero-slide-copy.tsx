@@ -41,7 +41,7 @@ export function HeroSlideCopy({ slide, slideIndex, slideCount }: Props) {
         <OverlayToneText
           as="h1"
           variant="display"
-          className="font-headline text-4xl font-medium uppercase leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
+          className="font-headline text-[length:var(--text-display-hero)] font-medium uppercase leading-[120%] tracking-tight"
         >
           {slide.title}
         </OverlayToneText>

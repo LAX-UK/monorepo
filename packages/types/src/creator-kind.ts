@@ -127,7 +127,7 @@ export const CREATOR_KIND_CONFIG: Record<ArtistKind, CreatorKindConfig> = {
     pluralLabel: "Brands",
     lifespanMode: "organisation",
     schemaOrgType: "Brand",
-    departmentHints: ["Watches", "Jewellery", "Handbags & Accessories", "Wine & Spirits"],
+    departmentHints: ["Watches", "Jewellery", "Handbags & Accessories"],
     attributes: [text("headquarters", "Headquarters"), text("parentCompany", "Parent company")],
   },
   marque: {
@@ -225,12 +225,8 @@ export const CREATOR_KIND_CONFIG: Record<ArtistKind, CreatorKindConfig> = {
     pluralLabel: "Producers & Estates",
     lifespanMode: "organisation",
     schemaOrgType: "Organization",
-    departmentHints: ["Wine & Spirits"],
-    attributes: [
-      text("region", "Region"),
-      text("appellation", "Appellation"),
-      text("estate", "Estate / Château"),
-    ],
+    departmentHints: ["Design & Decorative Arts", "Books & Manuscripts"],
+    attributes: [text("region", "Region"), text("estate", "Estate / atelier")],
   },
 };
 

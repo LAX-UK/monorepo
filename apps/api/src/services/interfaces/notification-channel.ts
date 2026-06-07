@@ -3,6 +3,7 @@ export type NotificationPayload = {
   title: string;
   message: string;
   lotId?: string | undefined;
+  submissionId?: string | undefined;
   /** Structured extras for email/push rendering (not persisted on in-app rows). */
   meta?: {
     paymentId?: string;

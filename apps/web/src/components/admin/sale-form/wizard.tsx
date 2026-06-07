@@ -273,11 +273,7 @@ export function AdminSaleForm({
               const stepId = stepIds[stepIndex] ?? "identity";
               return (
                 <div className="space-y-6">
-                  <WizardStepIntro
-                    stepIndex={stepIndex}
-                    stepCount={SALE_FORM_STEPS.length}
-                    copy={saleFormStepIntro(stepId, "edit")}
-                  />
+                  <WizardStepIntro copy={saleFormStepIntro(stepId, "edit")} />
                   {stepIndex === 0 ? (
                     <SaleIdentityStep
                       form={form}

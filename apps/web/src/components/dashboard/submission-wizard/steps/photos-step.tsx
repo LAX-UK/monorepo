@@ -10,6 +10,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import Link from "next/link";
 
 const labelClass =
   "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
@@ -35,7 +36,10 @@ export function PhotosStep({ form }: StepProps) {
             </div>
             <p className="mb-2 font-body text-xs text-on-surface-variant">
               First image is the primary catalog image when approved. Include overall, detail, and
-              signature or markings where relevant.
+              signature or markings where relevant.{" "}
+              <Link href="/sell#photos" className="text-primary underline-offset-4 hover:underline">
+                Photo tips
+              </Link>
             </p>
             <ul className="mb-3 list-inside list-disc space-y-0.5 font-body text-xs text-on-surface-variant">
               <li>Sharp, colour-accurate photos in good light</li>

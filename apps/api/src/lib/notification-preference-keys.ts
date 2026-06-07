@@ -18,6 +18,8 @@ const DEFAULTS: NotificationPreference = {
   watchlistEmail: false,
   paymentEmail: true,
   lotEndedSellerEmail: true,
+  submissionUpdatesEmail: true,
+  submissionUpdatesPush: true,
   outbidWhatsapp: false,
   wonWhatsapp: false,
   lostWhatsapp: false,
@@ -53,6 +55,11 @@ export function emailPreferenceKey(type: string): keyof NotificationPreference |
       return "paymentEmail";
     case "lot_ended_seller":
       return "lotEndedSellerEmail";
+    case "submission_approved":
+    case "submission_converted":
+    case "submission_rejected":
+    case "submission_draft_reminder":
+      return "submissionUpdatesEmail";
     default:
       return null;
   }
@@ -94,6 +101,14 @@ export function notificationTypeToTemplate(type: string): string | null {
       return "payment-receipt";
     case "payment_due":
       return "payment-invoice";
+    case "submission_approved":
+      return "submission-approved";
+    case "submission_converted":
+      return "submission-converted";
+    case "submission_rejected":
+      return "submission-rejected";
+    case "submission_draft_reminder":
+      return "submission-draft-reminder";
     default:
       return null;
   }
@@ -131,6 +146,11 @@ export function pushPreferenceKey(type: string): keyof NotificationPreference | 
     case "lot_ending_soon":
     case "watchlist_ending_soon":
       return "endingSoonPush";
+    case "submission_approved":
+    case "submission_converted":
+    case "submission_rejected":
+    case "submission_draft_reminder":
+      return "submissionUpdatesPush";
     default:
       return null;
   }

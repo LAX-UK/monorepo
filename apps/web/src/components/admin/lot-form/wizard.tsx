@@ -377,11 +377,7 @@ export function AdminLotForm({
                 const stepId = stepIds[stepIndex] ?? "identity";
                 return (
                   <div className="space-y-6">
-                    <WizardStepIntro
-                      stepIndex={stepIndex}
-                      stepCount={LOT_FORM_STEPS.length}
-                      copy={lotFormStepIntro(stepId)}
-                    />
+                    <WizardStepIntro copy={lotFormStepIntro(stepId)} />
                     {stepIndex === 0 ? (
                       <LotIdentityStep
                         form={form}

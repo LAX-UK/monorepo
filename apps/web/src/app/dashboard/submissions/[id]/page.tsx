@@ -1,17 +1,28 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
+import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-context-banner";
+import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
+import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
+import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
+import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
+import { SubmissionStatusHint } from "@/components/dashboard/submission-status-hint";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   describeDashboardSliceFailure,
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { SUBMISSION_DRAFT_EXPLAINER } from "@/lib/marketing/sell-flow-copy";
 import { lotPath } from "@/lib/seo/url";
 import {
   SUBMISSION_TIMELINE_STAGES,
@@ -32,6 +43,14 @@ export default async function SubmissionDetailPage({
   const { id } = await params;
   const sp = await searchParams;
   const actionError = sp.error ? decodeURIComponent(sp.error) : null;
+  const user = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: `/dashboard/submissions/${id}`,
+  });
+  const { orgActingSelected } = await resolveSellerWorkspaceContext(
+    user.role,
+    user.staffRole ?? null,
+  );
   const c = await getServerDataContainer();
 
   let s: Awaited<ReturnType<typeof c.submissions.getMineById>> = null;
@@ -74,8 +93,7 @@ export default async function SubmissionDetailPage({
           track="selling"
           backHref={DASHBOARD_ROUTES.submissions}
           backLabel="Submissions"
-          eyebrow="Submission"
-          title="Submission"
+          title="Could not load submission"
         />
         <DashboardSliceErrorAlert failure={loadFailure} />
       </DashboardPage>
@@ -84,30 +102,67 @@ export default async function SubmissionDetailPage({
 
   if (!s) notFound();
 
+  const submissionDocuments = await getServerSubmissionDocuments(id).catch(() => []);
+
   const submission = s;
+
+  let convertedLot: Awaited<ReturnType<typeof c.buyerLots.getById>> = null;
+  let connectRequired = false;
+  const needsConnectCheck =
+    submission.status === "approved" ||
+    submission.status === "converted" ||
+    Boolean(submission.convertedLotId);
+  if (submission.convertedLotId) {
+    convertedLot = await c.buyerLots.getById(submission.convertedLotId).catch(() => null);
+  }
+  if (needsConnectCheck) {
+    const connectStatus = await c.stripeConnect.getStatus().catch(() => null);
+    connectRequired =
+      connectStatus == null || !connectStatus.ok || !connectStatus.data.payoutsEnabled;
+  }
+
   const editable = submission.status === "draft";
   const canSubmit = submission.status === "draft";
   const canWithdraw = submission.status === "draft" || submission.status === "submitted";
 
   return (
     <DashboardPage className="mx-auto max-w-4xl space-y-8">
+      <SetMobileShellTitle title={submission.title} />
       <DashboardDetailHeader
         compactOnMobile
         track="selling"
         backHref="/dashboard/submissions"
         backLabel="Submissions"
-        eyebrow="Submission"
         title={submission.title}
+        {...(editable ? { description: SUBMISSION_DRAFT_EXPLAINER } : {})}
         badges={<SubmissionStatusBadge status={submission.status} />}
       />
+      {orgActingSelected ? <SellerOrgContextBanner /> : null}
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
       ) : null}
       {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
-      <TimelineStages
-        stages={SUBMISSION_TIMELINE_STAGES}
-        activeIndex={submissionTimelineActiveIndex(submission.status)}
-        className="mb-2"
+      <SubmissionDetailLiveRefresh status={submission.status} />
+      {!editable ? (
+        <>
+          <TimelineStages
+            stages={SUBMISSION_TIMELINE_STAGES}
+            activeIndex={submissionTimelineActiveIndex(submission.status)}
+            className="mb-2"
+          />
+          <SubmissionStatusHint status={submission.status} />
+        </>
+      ) : null}
+      <SubmissionRejectionPanel submission={submission} />
+      <SubmissionLotReadyChecklist
+        submission={submission}
+        lot={convertedLot}
+        connectRequired={connectRequired}
+      />
+      <SubmissionSellerDocumentsPanel
+        submissionId={submission.id}
+        status={submission.status}
+        initialDocuments={submissionDocuments}
       />
       {editable ? (
         <SubmissionWizard

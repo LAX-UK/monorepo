@@ -63,6 +63,10 @@ export const itemSubmission = pgTable(
     assignedToUserId: text("assigned_to_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    draftReminderSentAt: timestamp("draft_reminder_sent_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },

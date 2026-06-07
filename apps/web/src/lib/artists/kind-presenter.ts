@@ -32,7 +32,7 @@ const DESCRIPTIONS: Partial<Record<ArtistKind, string>> = {
   printer: "A printer or private press.",
   mint: "A mint that strikes coins and medals.",
   issuing_authority: "An issuing authority (monarch, state, central bank).",
-  producer: "A wine or spirits producer / estate.",
+  producer: "A named producer or estate behind collectible objects.",
 };
 
 const META: Record<ArtistKind, ArtistKindMeta> = Object.fromEntries(

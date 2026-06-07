@@ -32,7 +32,7 @@ export const artistKindEnum = pgEnum("artist_kind", [
   // Numismatics
   "mint",
   "issuing_authority",
-  // Wine & spirits
+  // Producer / estate (collectible attributions)
   "producer",
 ]);
 

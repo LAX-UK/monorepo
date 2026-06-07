@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildInSaleHref,
-  countInSaleMobileSheetFilters,
+  countInSaleSheetFilters,
   hasInSaleActiveFilters,
   parseInSaleParams,
 } from "./in-sale/in-sale-filters";
@@ -22,8 +22,8 @@ describe("in-sale-filters", () => {
     expect(hasInSaleActiveFilters(parseInSaleParams({}))).toBe(false);
   });
 
-  it("countInSaleMobileSheetFilters counts non-default status", () => {
-    expect(countInSaleMobileSheetFilters(parseInSaleParams({}))).toBe(0);
-    expect(countInSaleMobileSheetFilters(parseInSaleParams({ status: "ended" }))).toBe(1);
+  it("countInSaleSheetFilters counts non-default status", () => {
+    expect(countInSaleSheetFilters(parseInSaleParams({}))).toBe(0);
+    expect(countInSaleSheetFilters(parseInSaleParams({ status: "ended" }))).toBe(1);
   });
 });

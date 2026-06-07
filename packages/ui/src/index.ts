@@ -192,6 +192,20 @@ export { StatStrip } from "./components/ui/stat-strip.js";
 export type { StatStripProps } from "./components/ui/stat-strip.js";
 export { TimelineStages } from "./components/ui/timeline-stages.js";
 export type { TimelineStage, TimelineStagesProps } from "./components/ui/timeline-stages.js";
+export { WizardProgress } from "./components/ui/wizard-progress.js";
+export type {
+  WizardProgressProps,
+  WizardProgressStep,
+  WizardProgressVariant,
+} from "./components/ui/wizard-progress.js";
+export { WizardNav } from "./components/ui/wizard-nav.js";
+export type { WizardNavLayout, WizardNavProps } from "./components/ui/wizard-nav.js";
+export { wizardContinueLabel } from "./lib/wizard-copy.js";
+export { WizardContextStrip } from "./components/ui/wizard-context-strip.js";
+export type {
+  WizardContextStripProps,
+  WizardContextStripTone,
+} from "./components/ui/wizard-context-strip.js";
 export { BulkActionBar } from "./components/ui/bulk-action-bar.js";
 export type { BulkActionBarProps } from "./components/ui/bulk-action-bar.js";
 export { InlineActionMenu } from "./components/ui/inline-action-menu.js";

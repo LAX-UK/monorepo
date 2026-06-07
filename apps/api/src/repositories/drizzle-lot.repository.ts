@@ -255,7 +255,7 @@ export class DrizzleLotRepository implements ILotRepository {
           ...(input.lotNumber !== undefined && input.lotNumber !== null
             ? { lotNumber: input.lotNumber }
             : {}),
-          marketingDetails: {},
+          marketingDetails: input.marketingDetails ?? {},
         })
         .returning();
       if (!created) throw new Error("Failed to create lot");

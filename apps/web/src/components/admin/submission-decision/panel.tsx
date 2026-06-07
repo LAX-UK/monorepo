@@ -6,18 +6,20 @@ import { RhfAsyncCombobox } from "@/components/ui/rhf-async-combobox";
 import { LabelCaps } from "@/components/ui/typography";
 import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import {
-  adminApproveSubmissionResultAction,
+  adminAcceptSubmissionResultAction,
+  adminConvertSubmissionResultAction,
   adminRejectSubmissionResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { trackStaffAccept, trackStaffConvert } from "@/lib/analytics/sell-funnel";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
 import { apiBaseUrl } from "@/lib/auth/api-base";
 import { Can } from "@/lib/auth/capabilities";
 import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
-import type { ItemSubmissionStatus } from "@auction/types";
+import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -30,10 +32,12 @@ import {
 import { Textarea } from "@auction/ui/components/textarea";
 import { type ApproveSubmissionBody, rejectSubmissionBodySchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { SubmissionQualityChecklist } from "./submission-quality-checklist";
 
 const approveFormSchema = z.object({
   reviewNotes: z.string().max(5000),
@@ -86,6 +90,16 @@ async function resolveArtistHit(id: string): Promise<ArtistSearchHit | null> {
 type Props = {
   submissionId: string;
   status: ItemSubmissionStatus;
+  submission: Pick<
+    ItemSubmission,
+    | "title"
+    | "images"
+    | "description"
+    | "provenance"
+    | "categoryId"
+    | "categoryIds"
+    | "convertedLotId"
+  >;
   /** Display name to seed the inline-create dialog when the admin clicks
    * "Use submitter as artist". Typically the submitter's legal entity name. */
   submitterDisplayName?: string;
@@ -98,6 +112,7 @@ type Props = {
 export function AdminSubmissionDecisionPanel({
   submissionId,
   status,
+  submission,
   submitterDisplayName,
   submitterUserId,
 }: Props) {
@@ -129,7 +144,7 @@ export function AdminSubmissionDecisionPanel({
   const resolveHit = useCallback(async (id: string) => resolveArtistHit(id), []);
 
   useEffect(() => {
-    if (status !== "under_review") return;
+    if (status !== "under_review" && status !== "approved") return;
     const onKey = (e: KeyboardEvent) => {
       if (!isPanelShortcutsActive()) return;
       const el = e.target as HTMLElement | null;
@@ -166,10 +181,13 @@ export function AdminSubmissionDecisionPanel({
       }
     >
       <div ref={panelRootRef} className="space-y-6">
+        {(status === "under_review" || status === "approved") && (
+          <SubmissionQualityChecklist submission={submission} />
+        )}
         <p className="font-body text-xs text-on-surface-variant">
-          Shortcuts when not typing in a field: <span className="font-mono">A</span> approve,{" "}
-          <span className="font-mono">R</span> focus rejection,{" "}
-          <span className="font-mono">⌘ Enter</span> approve.
+          Shortcuts when not typing in a field: <span className="font-mono">A</span>{" "}
+          {status === "approved" ? "convert" : "accept"}, <span className="font-mono">R</span> focus
+          rejection, <span className="font-mono">⌘ Enter</span> submit.
         </p>
 
         {status === "submitted" ? (
@@ -208,14 +226,10 @@ export function AdminSubmissionDecisionPanel({
                       const body: ApproveSubmissionBody = {};
                       const trimmed = values.reviewNotes.trim();
                       if (trimmed) body.reviewNotes = trimmed;
-                      if (values.artistId) body.artistId = values.artistId;
-                      const r = await adminApproveSubmissionResultAction(submissionId, body);
+                      const r = await adminAcceptSubmissionResultAction(submissionId, body);
                       if (r.ok) {
-                        notify.success("Approved — draft lot created");
-                        if (r.data?.lotId) {
-                          router.push(`/admin/lots/${r.data.lotId}`);
-                          return;
-                        }
+                        trackStaffAccept(submissionId);
+                        notify.success("Accepted for cataloguing");
                         router.refresh();
                         return;
                       }
@@ -227,83 +241,6 @@ export function AdminSubmissionDecisionPanel({
                   });
                 })}
               >
-                <div className="space-y-3 rounded-md border border-outline-variant/30 bg-surface-container-lowest/60 p-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <LabelCaps>Catalogue artist</LabelCaps>
-                    {submitterDisplayName ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setCreateSeed(submitterDisplayName);
-                          setCreateOpen(true);
-                        }}
-                        disabled={pending}
-                        className="inline-flex h-auto min-h-0 items-center rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] uppercase tracking-wide text-on-surface shadow-none transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Use submitter as artist
-                      </Button>
-                    ) : null}
-                  </div>
-                  <FormField
-                    control={approveForm.control}
-                    name="artistId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <RhfAsyncCombobox<ArtistSearchHit>
-                          value={field.value ?? null}
-                          onChange={(id) => {
-                            field.onChange(id ?? null);
-                            setCreateSeed(null);
-                          }}
-                          onBlur={field.onBlur}
-                          disabled={pending}
-                          searchHits={searchHits}
-                          resolveHit={resolveHit}
-                          renderHit={(hit) => (
-                            <span className="text-left font-body text-sm text-on-surface">
-                              <span className="font-medium">{hit.displayName}</span>
-                              <span className="mt-0.5 block font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                                {artistKindMeta(hit.kind).badge} · /{hit.slug}
-                              </span>
-                            </span>
-                          )}
-                          renderSelected={(hit) => (
-                            <div className="text-sm">
-                              <p className="font-medium text-on-surface">{hit.displayName}</p>
-                              <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-                                {artistKindMeta(hit.kind).badge} ·{" "}
-                                {artistStatusLabel(hit.status).label} · /{hit.slug}
-                              </p>
-                            </div>
-                          )}
-                          placeholder="Search by name, slug, alias…"
-                          clearLabel="Clear artist"
-                        />
-                        <p className="text-xs text-on-surface-variant">
-                          Required before publish but can be left blank to attach later.
-                          Inline-creating defaults to{" "}
-                          <span className="font-medium">status=approved</span>.
-                        </p>
-                        <FormMessage />
-                        <div className="flex justify-end pt-2">
-                          <Button
-                            type="button"
-                            variant="link"
-                            disabled={pending}
-                            onClick={() => {
-                              setCreateSeed("");
-                              setCreateOpen(true);
-                            }}
-                            className="h-auto min-h-0 p-0 font-label text-[11px] uppercase tracking-wide underline shadow-none underline-offset-2"
-                          >
-                            New artist / maker
-                          </Button>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
                 <FormField
                   control={approveForm.control}
                   name="reviewNotes"
@@ -325,7 +262,7 @@ export function AdminSubmissionDecisionPanel({
                   )}
                 />
                 <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={pending}>
-                  Approve and create draft lot
+                  Accept for cataloguing
                 </Button>
               </form>
             </Form>
@@ -405,6 +342,114 @@ export function AdminSubmissionDecisionPanel({
           </div>
         ) : null}
 
+        {status === "approved" ? (
+          <Form {...approveForm}>
+            <form
+              id={CATALOG_FORM_IDS.submissionApprove}
+              ref={approveFormEl}
+              className="space-y-4"
+              onSubmit={approveForm.handleSubmit((values) => {
+                startTransition(() => {
+                  void (async () => {
+                    const body: ApproveSubmissionBody = {};
+                    const trimmed = values.reviewNotes.trim();
+                    if (trimmed) body.reviewNotes = trimmed;
+                    if (values.artistId) body.artistId = values.artistId;
+                    const r = await adminConvertSubmissionResultAction(submissionId, body);
+                    if (r.ok) {
+                      trackStaffConvert(submissionId);
+                      const pct = r.data?.readinessPercent;
+                      notify.success(
+                        pct != null
+                          ? `Draft lot created — ${pct}% catalogue ready`
+                          : "Draft lot created",
+                      );
+                      if (r.data?.lotId) {
+                        router.push(`/admin/lots/${r.data.lotId}`);
+                        return;
+                      }
+                      router.refresh();
+                      return;
+                    }
+                    if (r.fieldErrors) {
+                      applyActionFieldErrors(approveForm, r.fieldErrors);
+                    }
+                    notify.error(r.error);
+                  })();
+                });
+              })}
+            >
+              <div className="space-y-3 rounded-md border border-outline-variant/30 bg-surface-container-lowest/60 p-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <LabelCaps>Catalogue artist</LabelCaps>
+                  {submitterDisplayName ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setCreateSeed(submitterDisplayName);
+                        setCreateOpen(true);
+                      }}
+                      disabled={pending}
+                      className="inline-flex h-auto min-h-0 items-center rounded-md border border-outline-variant/50 bg-surface-container-lowest px-2.5 py-1 font-label text-[11px] uppercase tracking-wide text-on-surface shadow-none transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Use submitter as artist
+                    </Button>
+                  ) : null}
+                </div>
+                <FormField
+                  control={approveForm.control}
+                  name="artistId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <RhfAsyncCombobox<ArtistSearchHit>
+                        value={field.value ?? null}
+                        onChange={(id) => {
+                          field.onChange(id ?? null);
+                          setCreateSeed(null);
+                        }}
+                        onBlur={field.onBlur}
+                        disabled={pending}
+                        searchHits={searchHits}
+                        resolveHit={resolveHit}
+                        renderHit={(hit) => (
+                          <span className="text-left font-body text-sm text-on-surface">
+                            <span className="font-medium">{hit.displayName}</span>
+                            <span className="mt-0.5 block font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+                              {artistKindMeta(hit.kind).badge} · /{hit.slug}
+                            </span>
+                          </span>
+                        )}
+                        renderSelected={(hit) => (
+                          <div className="text-sm">
+                            <p className="font-medium text-on-surface">{hit.displayName}</p>
+                            <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+                              {artistKindMeta(hit.kind).badge} ·{" "}
+                              {artistStatusLabel(hit.status).label} · /{hit.slug}
+                            </p>
+                          </div>
+                        )}
+                        placeholder="Search by name, slug, alias…"
+                        clearLabel="Clear artist"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={pending}>
+                Convert to draft lot
+              </Button>
+            </form>
+          </Form>
+        ) : null}
+
+        {status === "converted" && submission.convertedLotId ? (
+          <Button className="min-h-11 w-full sm:w-auto" asChild>
+            <Link href={`/admin/lots/${submission.convertedLotId}`}>Open draft lot</Link>
+          </Button>
+        ) : null}
+
         <CreateArtistDialog
           open={createOpen}
           initialName={createSeed ?? ""}
@@ -421,7 +466,7 @@ export function AdminSubmissionDecisionPanel({
           }}
         />
 
-        {status !== "submitted" && status !== "under_review" ? (
+        {status === "rejected" || status === "withdrawn" ? (
           <p className="text-sm text-on-surface-variant">No further actions for this status.</p>
         ) : null}
       </div>

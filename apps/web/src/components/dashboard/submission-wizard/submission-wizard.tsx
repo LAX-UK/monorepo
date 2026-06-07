@@ -1,14 +1,17 @@
 "use client";
 
+import { DraftResumeToast } from "@/components/dashboard/submission-wizard/draft-resume-toast";
 import { BasicsStep } from "@/components/dashboard/submission-wizard/steps/basics-step";
 import { DetailsStep } from "@/components/dashboard/submission-wizard/steps/details-step";
 import { PhotosStep } from "@/components/dashboard/submission-wizard/steps/photos-step";
 import { PricingStep } from "@/components/dashboard/submission-wizard/steps/pricing-step";
 import { ProvenanceStep } from "@/components/dashboard/submission-wizard/steps/provenance-step";
 import { ReviewStep } from "@/components/dashboard/submission-wizard/steps/review-step";
+import { SubmissionDraftContextStrip } from "@/components/dashboard/submission-wizard/submission-draft-context-strip";
 import { WizardFooter } from "@/components/dashboard/submission-wizard/wizard-footer";
 import { WizardHeaderActions } from "@/components/dashboard/submission-wizard/wizard-header-actions";
 import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
+import { trackWizardStepComplete } from "@/lib/analytics/sell-funnel";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
   WIZARD_STEPS,
@@ -24,7 +27,7 @@ import { HideBottomTabBarWhileMounted } from "@/lib/shell/shell-chrome-context";
 import { Form } from "@auction/ui/components/form";
 import { Surface } from "@auction/ui/components/surface";
 import type { ItemSubmissionFormValues } from "@auction/validators";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   mode: WizardMode;
@@ -39,7 +42,7 @@ function renderStep(
     isSubmitting: boolean;
     categories: SubmissionCategoryOption[];
     onJumpTo: (index: number) => void;
-    saveDraft: () => void;
+    finishLater: () => void;
     submitForReview: () => void;
   },
 ) {
@@ -61,7 +64,7 @@ function renderStep(
           {...base}
           onJumpTo={props.onJumpTo}
           canSubmitForReview
-          onSaveDraft={props.saveDraft}
+          onFinishLater={props.finishLater}
           onSubmitForReview={props.submitForReview}
         />
       );
@@ -77,8 +80,10 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [maxReachableIndex, setMaxReachableIndex] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const currentStep = WIZARD_STEPS[stepIndex];
+  const nextStep = WIZARD_STEPS[stepIndex + 1];
   const isLastStep = stepIndex === WIZARD_STEP_COUNT - 1;
   const showAutosave = mode.kind === "edit" || controller.submissionId != null;
 
@@ -107,6 +112,8 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
     const ok = await validateCurrentStep();
     if (!ok) return;
     const next = Math.min(stepIndex + 1, WIZARD_STEP_COUNT - 1);
+    const step = WIZARD_STEPS[stepIndex];
+    if (step) trackWizardStepComplete(step.id, stepIndex);
     setMaxReachableIndex((prev) => Math.max(prev, next));
     setStepIndex(next);
   }, [stepIndex, validateCurrentStep]);
@@ -115,13 +122,14 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
     goToStep(stepIndex - 1);
   }, [goToStep, stepIndex]);
 
-  const handleSaveAndLeave = useCallback(() => {
+  const handleFinishLater = useCallback(() => {
     void saveDraft({ leaveAfter: true });
   }, [saveDraft]);
 
-  const handleSaveDraft = useCallback(() => {
-    void saveDraft();
-  }, [saveDraft]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refocus step heading on navigation
+  useEffect(() => {
+    stepHeadingRef.current?.focus();
+  }, [stepIndex]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -136,6 +144,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
 
   return (
     <>
+      {mode.kind === "edit" ? <DraftResumeToast /> : null}
       <HideBottomTabBarWhileMounted />
       <Form {...form}>
         <form
@@ -144,6 +153,13 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
             e.preventDefault();
           }}
         >
+          {showAutosave ? (
+            <SubmissionDraftContextStrip
+              autosaveStatus={autosaveStatus}
+              lastSavedAt={lastSavedAt}
+              showAutosave={showAutosave}
+            />
+          ) : null}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <WizardStepper
@@ -158,18 +174,26 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
                 canGoNext={!isLastStep}
               />
             </div>
-            <WizardHeaderActions
-              isSubmitting={isSubmitting}
-              onSaveDraft={handleSaveDraft}
-              onSaveAndLeave={handleSaveAndLeave}
-            />
+            <WizardHeaderActions isSubmitting={isSubmitting} onFinishLater={handleFinishLater} />
           </div>
+
+          {currentStep ? (
+            <h2
+              id="submission-wizard-step-heading"
+              ref={stepHeadingRef}
+              tabIndex={-1}
+              className="font-headline text-xl text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              {currentStep.label}
+            </h2>
+          ) : null}
 
           <Surface
             variant="section"
             padding="md"
             className="border-border-hairline"
             data-testid={currentStep ? `submission-wizard-step-${currentStep.id}` : undefined}
+            aria-labelledby={currentStep ? "submission-wizard-step-heading" : undefined}
           >
             {currentStep
               ? renderStep(currentStep.id, {
@@ -177,7 +201,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
                   isSubmitting,
                   categories,
                   onJumpTo: goToStep,
-                  saveDraft: handleSaveDraft,
+                  finishLater: handleFinishLater,
                   submitForReview: () => void submitForReview(),
                 })
               : null}
@@ -190,6 +214,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
               autosaveStatus={autosaveStatus}
               lastSavedAt={lastSavedAt}
               showAutosave={showAutosave}
+              {...(nextStep ? { nextStepLabel: nextStep.label } : {})}
               onBack={handleBack}
               onNext={() => void handleNext()}
               canGoBack={stepIndex > 0}

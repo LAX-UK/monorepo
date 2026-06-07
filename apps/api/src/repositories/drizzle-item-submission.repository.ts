@@ -1,13 +1,58 @@
 import type { Database } from "@auction/db";
 import { itemSubmission, submissionCategories } from "@auction/db/schema";
-import type { CreateItemSubmissionInput } from "@auction/types";
-import { type InferInsertModel, and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import type { CreateItemSubmissionInput, ItemSubmissionStatus } from "@auction/types";
+import {
+  type InferInsertModel,
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  lt,
+  sql,
+} from "drizzle-orm";
 import { mapItemSubmissionRow } from "../lib/mappers.js";
 import type {
   IItemSubmissionRepository,
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
 } from "../services/interfaces/repositories.js";
+
+function qualityGapsSql() {
+  return sql`(
+    btrim(${itemSubmission.title}) = '' OR
+    NOT EXISTS (
+      SELECT 1 FROM ${submissionCategories}
+      WHERE ${submissionCategories.submissionId} = ${itemSubmission.id}
+    ) OR
+    cardinality(${itemSubmission.images}) < 1 OR
+    cardinality(${itemSubmission.images}) < 3 OR
+    ${itemSubmission.description} IS NULL OR btrim(${itemSubmission.description}) = '' OR
+    jsonb_array_length(${itemSubmission.provenance}) = 0
+  )`;
+}
+
+function titleSearchSql(q: string | undefined) {
+  if (!q?.trim()) return undefined;
+  const safe = q
+    .trim()
+    .slice(0, 200)
+    .replace(/[%_\\]/g, "");
+  if (safe.length === 0) return undefined;
+  return ilike(itemSubmission.title, `%${safe}%`);
+}
+
+function sellerWhere(legalEntityId: string, f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
+  const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
+  if (f.statuses && f.statuses.length > 0) {
+    parts.push(inArray(itemSubmission.status, f.statuses));
+  } else if (f.status) parts.push(eq(itemSubmission.status, f.status));
+  const title = titleSearchSql(f.q);
+  if (title) parts.push(title);
+  return and(...parts);
+}
 
 function adminWhere(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
   const parts = [];
@@ -20,14 +65,22 @@ function adminWhere(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
       sql`exists (select 1 from ${submissionCategories} where ${submissionCategories.submissionId} = ${itemSubmission.id} and ${submissionCategories.categoryId} = ${f.categoryId})`,
     );
   }
-  if (f.q?.trim()) {
-    const safe = f.q
-      .trim()
-      .slice(0, 200)
-      .replace(/[%_\\]/g, "");
-    if (safe.length > 0) parts.push(ilike(itemSubmission.title, `%${safe}%`));
-  }
+  const title = titleSearchSql(f.q);
+  if (title) parts.push(title);
+  if (f.qualityGaps) parts.push(qualityGapsSql());
+  if (f.assignedToUserId) parts.push(eq(itemSubmission.assignedToUserId, f.assignedToUserId));
   return parts.length > 0 ? and(...parts) : undefined;
+}
+
+function adminOrderBy(sort: ListSubmissionsFilter["sort"]) {
+  switch (sort) {
+    case "oldest":
+      return asc(itemSubmission.createdAt);
+    case "sla":
+      return asc(itemSubmission.updatedAt);
+    default:
+      return desc(itemSubmission.createdAt);
+  }
 }
 
 export class DrizzleItemSubmissionRepository implements IItemSubmissionRepository {
@@ -149,6 +202,10 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     if (patch.reviewNotes !== undefined) rowPatch.reviewNotes = patch.reviewNotes;
     if (patch.rejectionReason !== undefined) rowPatch.rejectionReason = patch.rejectionReason;
     if (patch.convertedLotId !== undefined) rowPatch.convertedLotId = patch.convertedLotId;
+    if (patch.assignedToUserId !== undefined) rowPatch.assignedToUserId = patch.assignedToUserId;
+    if (patch.draftReminderSentAt !== undefined) {
+      rowPatch.draftReminderSentAt = patch.draftReminderSentAt;
+    }
 
     const row = await this.db.transaction(async (tx) => {
       const [updated] = await tx
@@ -176,19 +233,45 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
   }
 
   async listForLegalEntity(legalEntityId: string, f: ListSubmissionsFilter) {
-    const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
-    if (f.statuses && f.statuses.length > 0) {
-      parts.push(inArray(itemSubmission.status, f.statuses));
-    } else if (f.status) parts.push(eq(itemSubmission.status, f.status));
-    const where = and(...parts);
+    const where = sellerWhere(legalEntityId, f);
     const rows = await this.db
       .select()
       .from(itemSubmission)
       .where(where)
-      .orderBy(desc(itemSubmission.createdAt))
+      .orderBy(desc(itemSubmission.updatedAt))
       .limit(f.limit)
       .offset(f.offset);
     return this.withCategoryIds(rows);
+  }
+
+  async countForLegalEntity(
+    legalEntityId: string,
+    f: Omit<ListSubmissionsFilter, "limit" | "offset">,
+  ) {
+    const where = sellerWhere(legalEntityId, f);
+    const [row] = await this.db.select({ n: count() }).from(itemSubmission).where(where);
+    return Number(row?.n ?? 0);
+  }
+
+  async countStatusForLegalEntity(legalEntityId: string) {
+    const rows = await this.db
+      .select({ status: itemSubmission.status, n: count() })
+      .from(itemSubmission)
+      .where(eq(itemSubmission.legalEntityId, legalEntityId))
+      .groupBy(itemSubmission.status);
+    const out = {
+      draft: 0,
+      submitted: 0,
+      under_review: 0,
+      approved: 0,
+      rejected: 0,
+      withdrawn: 0,
+      converted: 0,
+    } satisfies Record<ItemSubmissionStatus, number>;
+    for (const row of rows) {
+      out[row.status as ItemSubmissionStatus] = Number(row.n ?? 0);
+    }
+    return out;
   }
 
   async listForAdmin(f: ListSubmissionsFilter) {
@@ -196,7 +279,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     const base = this.db
       .select()
       .from(itemSubmission)
-      .orderBy(desc(itemSubmission.createdAt))
+      .orderBy(adminOrderBy(f.sort))
       .limit(f.limit)
       .offset(f.offset);
     const rows = where ? await base.where(where) : await base;
@@ -208,5 +291,21 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     const q = this.db.select({ n: count() }).from(itemSubmission);
     const [row] = where ? await q.where(where) : await q;
     return Number(row?.n ?? 0);
+  }
+
+  async listStaleDraftsWithoutReminder(cutoff: Date, limit: number) {
+    const rows = await this.db
+      .select()
+      .from(itemSubmission)
+      .where(
+        and(
+          eq(itemSubmission.status, "draft"),
+          lt(itemSubmission.updatedAt, cutoff),
+          sql`${itemSubmission.draftReminderSentAt} IS NULL`,
+        ),
+      )
+      .orderBy(asc(itemSubmission.updatedAt))
+      .limit(limit);
+    return this.withCategoryIds(rows);
   }
 }

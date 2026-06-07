@@ -4,6 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { RevealInView } from "@/components/ui/reveal";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { DisplayHeading, cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -42,16 +43,12 @@ export function PrivateSaleHighlightsMarketing({
             </p>
           </RevealInView>
           <RevealInView variant="fadeUp" delayMs={120}>
-            <Link
-              href={PRIVATE_SALE_COPY.ctaHref}
-              className={cn(
-                "inline-flex min-h-[44px] w-fit items-center gap-2 rounded-sm border border-outline-variant bg-transparent px-5 py-3 font-body text-base font-semibold leading-none tracking-[0.8px] text-on-surface outline-offset-4 transition-colors",
-                "hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:hover:bg-white/[0.04]",
-              )}
-            >
-              {PRIVATE_SALE_COPY.cta}
-              <ChevronRight className="size-4 shrink-0" strokeWidth={2} aria-hidden />
-            </Link>
+            <Button variant="outline" asChild className="min-h-[44px] gap-2 px-5">
+              <Link href={PRIVATE_SALE_COPY.ctaHref}>
+                {PRIVATE_SALE_COPY.cta}
+                <ChevronRight className="size-4 shrink-0" aria-hidden />
+              </Link>
+            </Button>
           </RevealInView>
         </div>
 

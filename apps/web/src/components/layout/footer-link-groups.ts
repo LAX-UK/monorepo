@@ -1,9 +1,12 @@
 import type { FooterLink } from "@/components/layout/footer-column";
 import { footerLegalRoutes, policyRouteLabel } from "@/components/marketing/policy-routes";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
+import { sellDepartmentsAnchorHref } from "@/lib/marketing/sell-departments";
+import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 
 export const serviceLinks: FooterLink[] = [
-  { href: "/dashboard/submissions/new", label: "Sell with Us" },
+  { href: sellIntakeHref(), label: "Sell with Us" },
+  { href: sellDepartmentsAnchorHref(), label: "Departments we review" },
   { href: "/contact", label: "Client services" },
   { href: "/archive", label: "Past auctions" },
 ];

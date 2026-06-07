@@ -1,8 +1,11 @@
 import type { CreateItemSubmissionInput, ItemSubmissionStatus, UserRole } from "@auction/types";
 import {
+  adminAssignSubmissionBodySchema,
   adminBulkSubmissionsBodySchema,
   approveSubmissionBodySchema,
+  attachSubmissionDocumentBodySchema,
   createItemSubmissionSchema,
+  entityDocumentIdParamSchema,
   listSubmissionsQuerySchema,
   rejectSubmissionBodySchema,
   submissionIdParamSchema,
@@ -15,24 +18,34 @@ import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole, requireBuyerRoleUnlessStaff } from "../middleware/require-buyer-role.js";
 import { requirePlatformShell } from "../middleware/require-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import { EntityDocumentError } from "../services/entity-document.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ListSubmissionsFilter } from "../services/interfaces/repositories.js";
 
-function submissionsAdminListFilter(q: {
-  queue?: "awaiting" | "accepted" | "rejected" | undefined;
-  status?: ItemSubmissionStatus | undefined;
-  sellerId?: string | undefined;
-  categoryId?: string | undefined;
-  q?: string | undefined;
-  limit: number;
-  offset: number;
-}): ListSubmissionsFilter {
+function submissionsAdminListFilter(
+  q: {
+    queue?: "awaiting" | "accepted" | "rejected" | undefined;
+    status?: ItemSubmissionStatus | undefined;
+    sellerId?: string | undefined;
+    categoryId?: string | undefined;
+    q?: string | undefined;
+    qualityGaps?: "1" | undefined;
+    assignedTo?: "me" | undefined;
+    sort?: "newest" | "oldest" | "sla" | undefined;
+    limit: number;
+    offset: number;
+  },
+  userId: string,
+): ListSubmissionsFilter {
   const base: ListSubmissionsFilter = {
     limit: q.limit,
     offset: q.offset,
     ...(q.sellerId ? { legalEntityId: q.sellerId } : {}),
     ...(q.categoryId ? { categoryId: q.categoryId } : {}),
     ...(q.q ? { q: q.q.trim() || undefined } : {}),
+    ...(q.qualityGaps === "1" ? { qualityGaps: true } : {}),
+    ...(q.assignedTo === "me" ? { assignedToUserId: userId } : {}),
+    ...(q.sort ? { sort: q.sort } : {}),
   };
   const AWAITING: ItemSubmissionStatus[] = ["submitted", "under_review"];
   const ACCEPTED: ItemSubmissionStatus[] = ["approved", "converted"];
@@ -97,17 +110,26 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const q = c.req.valid("query");
-      const { data } = await container.itemSubmissionService.listSubmissionsForSellerApi(
+      const { data, total } = await container.itemSubmissionService.listSubmissionsForSellerApi(
         ctx.legalEntityId,
         {
           status: q.status,
+          q: q.q,
           limit: q.limit,
           offset: q.offset,
         },
       );
-      return c.json({ data });
+      return c.json({ data, total });
     },
   );
+
+  r.get("/mine/summary", requireAuth, requireSubmissionEntityContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const summary = await container.itemSubmissionService.getSubmissionSummaryForSellerApi(
+      ctx.legalEntityId,
+    );
+    return c.json({ data: summary });
+  });
 
   r.get(
     "/",
@@ -116,8 +138,9 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
+      const userId = c.get("userId") as string;
       const { data, total } = await container.itemSubmissionService.listSubmissionsForAdminApi(
-        submissionsAdminListFilter(q),
+        submissionsAdminListFilter(q, userId),
       );
       return c.json({ data, total });
     },
@@ -143,6 +166,76 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
       return c.json({ data: result.value });
+    },
+  );
+
+  r.get(
+    "/:id/documents",
+    requireAuth,
+    requireBuyerRole,
+    requireSubmissionEntityContext,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const { id } = c.req.valid("param");
+      const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+      if (owned.isErr()) {
+        return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
+      }
+      const data = await container.submissionDocumentService.list(id);
+      return c.json({ data });
+    },
+  );
+
+  r.post(
+    "/:id/documents",
+    requireAuth,
+    requireBuyerRole,
+    requireSubmissionEntityContext,
+    zValidator("param", submissionIdParamSchema),
+    zValidator("json", attachSubmissionDocumentBodySchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+      if (owned.isErr()) {
+        return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
+      }
+      try {
+        const doc = await container.submissionDocumentService.attach({
+          entityId: id,
+          kind: body.kind,
+          label: body.label ?? null,
+          uploadObjectId: body.uploadObjectId,
+          userId,
+        });
+        return c.json({ data: doc }, 201);
+      } catch (e) {
+        if (e instanceof EntityDocumentError && e.code === "upload_not_active") {
+          return c.json({ error: e.code }, 400);
+        }
+        throw e;
+      }
+    },
+  );
+
+  r.delete(
+    "/:id/documents/:documentId",
+    requireAuth,
+    requireBuyerRole,
+    requireSubmissionEntityContext,
+    zValidator("param", submissionIdParamSchema.merge(entityDocumentIdParamSchema)),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const { id, documentId } = c.req.valid("param");
+      const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+      if (owned.isErr()) {
+        return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
+      }
+      await container.submissionDocumentService.remove(id, documentId);
+      return c.body(null, 204);
     },
   );
 
@@ -260,6 +353,64 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
         return c.json({ error: out.error.message }, asHttpStatus(out.error.status));
       }
       return c.json({ ok: true, data: { count: out.count } });
+    },
+  );
+
+  r.post(
+    "/:id/accept",
+    requireAuth,
+    requirePlatformShell,
+    zValidator("param", submissionIdParamSchema),
+    zValidator("json", approveSubmissionBodySchema),
+    async (c) => {
+      const adminId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const result = await container.itemSubmissionService.acceptForAdminApi(adminId, id, body);
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: result.value });
+    },
+  );
+
+  r.post(
+    "/:id/convert",
+    requireAuth,
+    requirePlatformShell,
+    zValidator("param", submissionIdParamSchema),
+    zValidator("json", approveSubmissionBodySchema),
+    async (c) => {
+      const adminId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const result = await container.itemSubmissionService.convertForAdminApi(adminId, id, body);
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: result.value });
+    },
+  );
+
+  r.post(
+    "/:id/assign",
+    requireAuth,
+    requirePlatformShell,
+    zValidator("param", submissionIdParamSchema),
+    zValidator("json", adminAssignSubmissionBodySchema),
+    async (c) => {
+      const adminId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const { assignedToUserId } = c.req.valid("json");
+      const result = await container.itemSubmissionService.assignForAdminApi(
+        adminId,
+        id,
+        assignedToUserId,
+      );
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
+      }
+      return c.json({ data: result.value });
     },
   );
 

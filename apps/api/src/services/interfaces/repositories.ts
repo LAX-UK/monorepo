@@ -254,6 +254,12 @@ export type ListSubmissionsFilter = {
   legalEntityId?: string | undefined;
   categoryId?: string | undefined;
   q?: string | undefined;
+  /** When true, only rows with quality warnings or missing required fields. */
+  qualityGaps?: boolean | undefined;
+  /** Admin: filter rows assigned to this staff user id. */
+  assignedToUserId?: string | undefined;
+  /** Admin list ordering. */
+  sort?: "newest" | "oldest" | "sla" | undefined;
   limit: number;
   offset: number;
 };
@@ -282,6 +288,8 @@ export type ItemSubmissionUpdatePatch = {
   reviewNotes?: string | null;
   rejectionReason?: string | null;
   convertedLotId?: string | null;
+  assignedToUserId?: string | null;
+  draftReminderSentAt?: Date | null;
 };
 
 export interface IItemSubmissionRepository {
@@ -289,8 +297,14 @@ export interface IItemSubmissionRepository {
   create(input: CreateItemSubmissionInput): Promise<ItemSubmission>;
   update(id: string, patch: ItemSubmissionUpdatePatch): Promise<ItemSubmission>;
   listForLegalEntity(legalEntityId: string, f: ListSubmissionsFilter): Promise<ItemSubmission[]>;
+  countForLegalEntity(
+    legalEntityId: string,
+    f: Omit<ListSubmissionsFilter, "limit" | "offset">,
+  ): Promise<number>;
+  countStatusForLegalEntity(legalEntityId: string): Promise<Record<ItemSubmissionStatus, number>>;
   listForAdmin(f: ListSubmissionsFilter): Promise<ItemSubmission[]>;
   countAdmin(f: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
+  listStaleDraftsWithoutReminder(cutoff: Date, limit: number): Promise<ItemSubmission[]>;
 }
 
 export interface IEntityDocumentRepository<TKind extends string = string> {

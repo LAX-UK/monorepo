@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  SUBMISSION_FINISH_LATER_LABEL,
+  SUBMISSION_LEAVE_WITHOUT_SAVING_HINT,
+  SUBMISSION_LEAVE_WITHOUT_SAVING_LABEL,
+} from "@/lib/marketing/sell-flow-copy";
+import {
   BottomSheet,
   BottomSheetContent,
   BottomSheetHeader,
@@ -14,43 +19,31 @@ import { useState } from "react";
 
 type Props = {
   isSubmitting: boolean;
-  onSaveDraft: () => void;
-  onSaveAndLeave: () => void;
+  onFinishLater: () => void;
 };
 
-export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave }: Props) {
+export function WizardHeaderActions({ isSubmitting, onFinishLater }: Props) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const exitWithoutSaving = () => {
+  const leaveWithoutSaving = () => {
     setMenuOpen(false);
     router.push("/dashboard/submissions");
   };
 
   return (
     <>
-      <div className="hidden items-center gap-2 sm:flex">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="font-label text-xs uppercase tracking-wider"
-          disabled={isSubmitting}
-          onClick={onSaveDraft}
-          data-testid="wizard-save-draft"
-        >
-          Save draft
-        </Button>
+      <div className="hidden shrink-0 sm:flex">
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="font-label text-xs uppercase tracking-wider"
           disabled={isSubmitting}
-          onClick={onSaveAndLeave}
-          data-testid="wizard-save-and-leave"
+          onClick={onFinishLater}
+          data-testid="wizard-finish-later"
         >
-          Save & exit
+          {SUBMISSION_FINISH_LATER_LABEL}
         </Button>
       </div>
 
@@ -61,7 +54,7 @@ export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave 
             variant="ghost"
             size="icon"
             className="min-h-11 min-w-11 sm:hidden"
-            aria-label="Submission actions"
+            aria-label="More actions"
             data-testid="wizard-actions-menu"
           >
             <MoreVertical className="size-5" aria-hidden />
@@ -70,7 +63,7 @@ export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave 
         <BottomSheetContent className="pb-[max(1rem,env(safe-area-inset-bottom))]">
           <BottomSheetHeader>
             <BottomSheetTitle className="font-headline text-left text-lg">
-              Submission
+              More actions
             </BottomSheetTitle>
           </BottomSheetHeader>
           <ul className="mt-4 flex flex-col gap-1 px-6 pb-6">
@@ -82,26 +75,11 @@ export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave 
                 disabled={isSubmitting}
                 onClick={() => {
                   setMenuOpen(false);
-                  onSaveAndLeave();
+                  onFinishLater();
                 }}
-                data-testid="wizard-save-and-leave-mobile"
+                data-testid="wizard-finish-later-mobile"
               >
-                Save & exit
-              </Button>
-            </li>
-            <li>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-12 w-full justify-start font-body text-base"
-                disabled={isSubmitting}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onSaveDraft();
-                }}
-                data-testid="wizard-save-draft-mobile"
-              >
-                Save draft
+                {SUBMISSION_FINISH_LATER_LABEL}
               </Button>
             </li>
             <li>
@@ -110,11 +88,14 @@ export function WizardHeaderActions({ isSubmitting, onSaveDraft, onSaveAndLeave 
                 variant="ghost"
                 className="h-12 w-full justify-start font-body text-base text-on-surface-variant"
                 disabled={isSubmitting}
-                onClick={exitWithoutSaving}
-                data-testid="wizard-exit-without-saving"
+                onClick={leaveWithoutSaving}
+                data-testid="wizard-leave-without-saving"
               >
-                Exit without saving
+                {SUBMISSION_LEAVE_WITHOUT_SAVING_LABEL}
               </Button>
+              <p className="px-3 pb-2 font-body text-xs text-on-surface-variant">
+                {SUBMISSION_LEAVE_WITHOUT_SAVING_HINT}
+              </p>
             </li>
           </ul>
         </BottomSheetContent>

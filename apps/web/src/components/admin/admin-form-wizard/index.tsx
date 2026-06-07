@@ -256,6 +256,7 @@ export function AdminFormWizard({
   }, [draftKey, isDirty, persistDraft]);
 
   const stepBody = typeof children === "function" ? children(stepIndex) : children;
+  const nextStepLabel = steps[stepIndex + 1]?.label;
 
   return (
     <div className={className ?? "space-y-8"}>
@@ -300,6 +301,7 @@ export function AdminFormWizard({
               submitSlot={submitSlot}
               showSubmitOnAllSteps={showSubmitOnAllSteps}
               pending={pending}
+              {...(nextStepLabel ? { nextLabel: nextStepLabel } : {})}
             />
           </div>
         </div>

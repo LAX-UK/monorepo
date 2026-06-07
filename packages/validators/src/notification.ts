@@ -25,6 +25,8 @@ export const notificationPreferencePatchSchema = z.object({
   watchlistEmail: z.boolean().optional(),
   paymentEmail: z.boolean().optional(),
   lotEndedSellerEmail: z.boolean().optional(),
+  submissionUpdatesEmail: z.boolean().optional(),
+  submissionUpdatesPush: z.boolean().optional(),
   outbidWhatsapp: z.boolean().optional(),
   wonWhatsapp: z.boolean().optional(),
   lostWhatsapp: z.boolean().optional(),

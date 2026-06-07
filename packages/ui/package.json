@@ -225,6 +225,18 @@
       "types": "./dist/components/ui/timeline-stages.d.ts",
       "default": "./dist/components/ui/timeline-stages.js"
     },
+    "./components/wizard-progress": {
+      "types": "./dist/components/ui/wizard-progress.d.ts",
+      "default": "./dist/components/ui/wizard-progress.js"
+    },
+    "./components/wizard-nav": {
+      "types": "./dist/components/ui/wizard-nav.d.ts",
+      "default": "./dist/components/ui/wizard-nav.js"
+    },
+    "./components/wizard-context-strip": {
+      "types": "./dist/components/ui/wizard-context-strip.d.ts",
+      "default": "./dist/components/ui/wizard-context-strip.js"
+    },
     "./components/calendar": {
       "types": "./dist/components/ui/calendar.d.ts",
       "default": "./dist/components/ui/calendar.js"

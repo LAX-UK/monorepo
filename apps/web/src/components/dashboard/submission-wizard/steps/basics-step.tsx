@@ -2,6 +2,7 @@
 
 import type { BasicsStepProps } from "@/components/dashboard/submission-wizard/step-props";
 import { CategoryPicker } from "@/components/forms/category-picker";
+import { SellPrerequisitesInline } from "@/components/marketing/sell-journey/sell-prerequisites-inline";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
 import {
@@ -18,6 +19,7 @@ const labelClass =
 export function BasicsStep({ form, categories }: BasicsStepProps) {
   return (
     <div className="space-y-6" data-testid="submission-wizard-step-basics">
+      <SellPrerequisitesInline />
       <FormField
         control={form.control}
         name="title"

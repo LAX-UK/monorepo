@@ -46,6 +46,7 @@ export type ItemSubmission = {
   reviewNotes: string | null;
   rejectionReason: string | null;
   convertedLotId: string | null;
+  assignedToUserId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

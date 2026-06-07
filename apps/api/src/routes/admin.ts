@@ -212,6 +212,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     }),
   );
 
+  platform.get("/submissions/quality-gaps-count", requireSubmissionsAccess, async (c) => {
+    const count = await container.itemSubmissionService.countQualityGapsForAdminApi();
+    return c.json({ data: { count } });
+  });
+
   platform.get(
     "/submissions/pending-count",
     requireSubmissionsAccess,
