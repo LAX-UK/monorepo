@@ -72,6 +72,9 @@ export type AdminUserDetail = AdminUserListRow & {
   pendingNewEmail: string | null;
   emailChangeExpiresAt: Date | null;
   currentKycSessionId: string | null;
+  amlHoldStatus: string | null;
+  amlHoldReason: string | null;
+  amlHoldAt: Date | null;
 };
 
 export type AdminKycSession = {
@@ -97,6 +100,9 @@ export type AdminKycSession = {
   verifiedIdValidFrom: string | null;
   decisionRiskScore: string | null;
   decisionIpCountry: string | null;
+  decisionStatus: string | null;
+  decisionReasonCode: number | null;
+  decisionReasonLabel: string | null;
   createdAt: Date;
   decisionAt: Date | null;
 };

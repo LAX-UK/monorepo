@@ -1,9 +1,11 @@
 import type { Database } from "@auction/db";
+import type { NormalizedWatchlistScreening } from "../../lib/veriff/veriff-watchlist-normalizer.js";
 import type {
   AmlDecision,
   AmlHoldReason,
   AmlHoldStatus,
   AmlReviewStatus,
+  AmlScreeningHit,
   AmlScreeningMatchStatus,
   AmlScreeningMonitorStatus,
   AmlScreeningResult,
@@ -26,6 +28,12 @@ export interface IScreeningProvider {
   disableOngoingMonitoring(providerSessionId: string): Promise<void>;
 }
 
+/** Pull-based watchlist screening reads (GET /sessions/{id}/watchlist-screening). */
+export interface IWatchlistScreeningFetcher {
+  isConfigured(): boolean;
+  fetchBySessionId(sessionId: string): Promise<NormalizedWatchlistScreening | null>;
+}
+
 /** Persisted watchlist screening record (one per provider session). */
 export type WatchlistScreeningRecord = {
   id: string;
@@ -36,6 +44,8 @@ export type WatchlistScreeningRecord = {
   monitorStatus: AmlScreeningMonitorStatus;
   totalHits: number;
   categories: AmlWatchlistCategory[];
+  hits: AmlScreeningHit[];
+  checkType: "initial_result" | "updated_result" | null;
   decisionOutcome: AmlDecision["outcome"];
   reviewStatus: AmlReviewStatus;
   triageRecommendation: AmlTriageRecommendation | null;
@@ -61,6 +71,7 @@ export interface IWatchlistScreeningReader {
     limit: number,
     conn?: Database,
   ): Promise<WatchlistScreeningRecord[]>;
+  listForUser(userId: string, limit: number, conn?: Database): Promise<WatchlistScreeningRecord[]>;
 }
 
 export type UpsertWatchlistScreeningInput = {
@@ -68,6 +79,7 @@ export type UpsertWatchlistScreeningInput = {
   result: AmlScreeningResult;
   decision: AmlDecision;
   reviewStatus: AmlReviewStatus;
+  checkType?: "initial_result" | "updated_result" | null;
 };
 
 export type WatchlistTriageInput = {

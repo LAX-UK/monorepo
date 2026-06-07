@@ -1,4 +1,13 @@
-import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
+import {
+  amlDecisionOutcomeLabel,
+  amlMatchStatusLabel,
+  amlMonitorStatusLabel,
+  formatAmlCategoriesLabel,
+} from "@/lib/admin/status-badge-variants";
+import type {
+  AdminAmlScreeningHitRow,
+  AdminAmlScreeningRow,
+} from "@/lib/data/http/compliance.server";
 
 export type AdminAmlTableRow = {
   id: string;
@@ -6,29 +15,19 @@ export type AdminAmlTableRow = {
   providerSessionId: string;
   matchStatus: string;
   matchStatusLabel: string;
+  monitorStatus: string;
+  monitorStatusLabel: string;
   decisionOutcome: string;
   decisionOutcomeLabel: string;
   categoriesLabel: string;
   triageLabel: string;
   totalHits: number;
   screenedAt: string;
+  checkType: string | null;
+  hits: AdminAmlScreeningHitRow[];
   triageRecommendation: string | null;
   triagedByUserId: string | null;
   triageNotes: string | null;
-};
-
-const MATCH_STATUS_LABELS: Record<string, string> = {
-  no_match: "No match",
-  potential_match: "Potential match",
-  true_positive: "Confirmed match",
-  false_positive: "False positive",
-};
-
-const DECISION_OUTCOME_LABELS: Record<string, string> = {
-  pending: "Pending review",
-  clear: "Clear",
-  block: "Block",
-  escalate: "Escalated",
 };
 
 function humanizeToken(value: string): string {
@@ -49,14 +48,19 @@ export function buildAdminAmlTableRow(row: AdminAmlScreeningRow): AdminAmlTableR
     userId: row.userId,
     providerSessionId: row.providerSessionId,
     matchStatus: row.matchStatus,
-    matchStatusLabel: MATCH_STATUS_LABELS[row.matchStatus] ?? humanizeToken(row.matchStatus),
+    matchStatusLabel: amlMatchStatusLabel[row.matchStatus] ?? humanizeToken(row.matchStatus),
+    monitorStatus: row.monitorStatus,
+    monitorStatusLabel:
+      amlMonitorStatusLabel[row.monitorStatus] ?? humanizeToken(row.monitorStatus),
     decisionOutcome: row.decisionOutcome,
     decisionOutcomeLabel:
-      DECISION_OUTCOME_LABELS[row.decisionOutcome] ?? humanizeToken(row.decisionOutcome),
-    categoriesLabel: row.categories.length > 0 ? row.categories.join(", ") : "—",
+      amlDecisionOutcomeLabel[row.decisionOutcome] ?? humanizeToken(row.decisionOutcome),
+    categoriesLabel: formatAmlCategoriesLabel(row.categories),
     triageLabel: triageLabel(row.triageRecommendation),
     totalHits: row.totalHits,
     screenedAt: row.screenedAt,
+    checkType: row.checkType,
+    hits: row.hits,
     triageRecommendation: row.triageRecommendation,
     triagedByUserId: row.triagedByUserId,
     triageNotes: row.triageNotes,

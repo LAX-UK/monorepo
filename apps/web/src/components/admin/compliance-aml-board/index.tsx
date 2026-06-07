@@ -9,20 +9,33 @@ import { AmlMobileCards } from "@/components/admin/compliance-aml-board/mobile-c
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminAmlTableRow } from "@/lib/data/view-models/admin-aml-table.vm";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Props = {
   rows: AdminAmlTableRow[];
   canTriage: boolean;
   canDecide: boolean;
   currentUserId: string;
+  initialScreeningId?: string | null;
 };
 
-export function ComplianceAmlBoard({ rows, canTriage, canDecide, currentUserId }: Props) {
+export function ComplianceAmlBoard({
+  rows,
+  canTriage,
+  canDecide,
+  currentUserId,
+  initialScreeningId,
+}: Props) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<AdminAmlTableRow | null>(null);
   const onOpen = useCallback((row: AdminAmlTableRow) => setSelected(row), []);
   const columns = useMemo(() => amlColumns(onOpen), [onOpen]);
+
+  useEffect(() => {
+    if (!initialScreeningId) return;
+    const match = rows.find((row) => row.id === initialScreeningId);
+    if (match) setSelected(match);
+  }, [initialScreeningId, rows]);
 
   return (
     <>

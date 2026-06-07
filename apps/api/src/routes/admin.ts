@@ -1394,6 +1394,17 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
+  platform.get(
+    "/users/:userId/aml-screenings",
+    requireAmlReview,
+    zValidator("param", userIdParamSchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const data = await container.amlService.listForUser(userId);
+      return c.json({ data });
+    },
+  );
+
   // ── AML / sanctions watchlist review (MLRO / compliance) ──────────────────
   platform.get(
     "/compliance/aml/screenings",
