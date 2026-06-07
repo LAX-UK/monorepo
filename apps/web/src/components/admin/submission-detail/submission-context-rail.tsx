@@ -5,6 +5,7 @@ import {
   QuickActionsRail,
   RelatedEntitiesRail,
 } from "@/components/admin/detail-rail";
+import { SubmissionAssignControl } from "@/components/admin/submission-actions/submission-assign-control";
 import { submissionDetailTabHref } from "@/components/admin/submission-detail/submission-detail-types";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
@@ -19,6 +20,7 @@ type Props = {
   documentCount: number;
   submitterLegalEntityId: string | null;
   submitterDisplayName: string | null;
+  currentUserId: string;
   status?: ReactNode;
   activityEvents?: readonly AdminDomainEventRow[];
 };
@@ -29,6 +31,7 @@ export function SubmissionContextRail({
   documentCount,
   submitterLegalEntityId,
   submitterDisplayName,
+  currentUserId,
   status,
   activityEvents = [],
 }: Props) {
@@ -68,11 +71,6 @@ export function SubmissionContextRail({
         <KpiStackRail
           items={[
             {
-              id: "status",
-              label: "Status",
-              value: submission.status.replaceAll("_", " "),
-            },
-            {
               id: "documents",
               label: "Documents",
               value: String(documentCount),
@@ -105,6 +103,12 @@ export function SubmissionContextRail({
               variant: "outline",
             },
           ]}
+        />
+        <SubmissionAssignControl
+          submissionId={submissionId}
+          status={submission.status}
+          assignedToUserId={submission.assignedToUserId}
+          currentUserId={currentUserId}
         />
         {related.length > 0 ? <RelatedEntitiesRail items={related} /> : null}
         {activityEvents.length > 0 ? (

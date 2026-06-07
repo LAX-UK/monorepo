@@ -1,7 +1,14 @@
 import type { Database } from "@auction/db";
+import {
+  canTransition,
+  evaluateLotReadiness,
+  evaluateSubmissionQuality,
+  transitionErrorMessage,
+} from "@auction/domain";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
+  ItemSubmissionStatus,
   LegalEntityStatus,
   Lot,
   UpdateItemSubmissionInput,
@@ -167,8 +174,17 @@ export class ItemSubmissionService implements IItemSubmissionService {
     if (!s || s.legalEntityId !== legalEntityId) return err(new SubmissionError("Not found", 404));
     const gate = await this.assertSellerEntityAllowsSubmissions(legalEntityId);
     if (gate.isErr()) return err(gate.error);
-    if (s.status !== "draft") {
-      return err(new SubmissionError("Only drafts can be submitted for review"));
+    if (!canTransition(s.status, "submit")) {
+      return err(new SubmissionError(transitionErrorMessage(s.status, "submit")));
+    }
+    const quality = evaluateSubmissionQuality(s);
+    if (!quality.canSubmit) {
+      return err(
+        new SubmissionError(
+          "Complete required fields before submitting: title, category, and at least one image",
+          400,
+        ),
+      );
     }
     const updated = await this.submissions.update(id, { status: "submitted" });
     await this.maybeLogRestrictedSellerWrite(legalEntityId, id, "submit_for_review");
@@ -178,6 +194,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
         type: "submission_received_for_review",
         title: "New item submission",
         message: `A seller submitted "${updated.title}" for review.`,
+        submissionId: id,
       });
     }
     return ok(updated);
@@ -225,24 +242,97 @@ export class ItemSubmissionService implements IItemSubmissionService {
     return this.submissions.countAdmin(f);
   }
 
+  async assignForAdmin(
+    _adminId: string,
+    id: string,
+    assignedToUserId: string | null,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const s = await this.submissions.findById(id);
+    if (!s) return err(new SubmissionError("Not found", 404));
+    if (s.status !== "submitted" && s.status !== "under_review") {
+      return err(new SubmissionError("Assignment is only allowed while awaiting decision", 400));
+    }
+    if (assignedToUserId) {
+      const assignee = await this.users.findById(assignedToUserId);
+      if (!assignee) return err(new SubmissionError("Assignee not found", 404));
+      const role = assignee.role as UserRole;
+      if (!canAccessAdminSubmissionsRead(role, normalizeUserStaffRole(assignee.staffRole))) {
+        return err(new SubmissionError("Assignee must be staff with submissions access", 400));
+      }
+    }
+    const updated = await this.submissions.update(id, {
+      assignedToUserId: assignedToUserId ?? null,
+    });
+    return ok(updated);
+  }
+
   async startReview(
     _adminId: string,
     id: string,
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const s = await this.submissions.findById(id);
     if (!s) return err(new SubmissionError("Not found", 404));
-    if (s.status !== "submitted") {
-      return err(new SubmissionError("Only submitted items can move to review"));
+    if (!canTransition(s.status, "startReview")) {
+      return err(new SubmissionError(transitionErrorMessage(s.status, "startReview")));
     }
-    const updated = await this.submissions.update(id, { status: "under_review" });
+    const updated = await this.submissions.update(id, {
+      status: "under_review",
+      assignedToUserId: _adminId,
+    });
     return ok(updated);
   }
 
-  async approve(
+  async accept(
+    adminId: string,
+    id: string,
+    input: Pick<ApproveSubmissionInput, "reviewNotes"> | undefined = undefined,
+    options: { notifySeller?: boolean } = {},
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const s = await this.submissions.findById(id);
+    if (!s) return err(new SubmissionError("Not found", 404));
+    if (!canTransition(s.status, "accept")) {
+      return err(new SubmissionError(transitionErrorMessage(s.status, "accept")));
+    }
+    if (!s.legalEntityId) {
+      return err(new SubmissionError("Legal entity context missing", 400));
+    }
+    const quality = evaluateSubmissionQuality(s);
+    if (!quality.canAccept) {
+      return err(
+        new SubmissionError("Submission does not meet minimum requirements for acceptance", 400),
+      );
+    }
+    const updated = await this.submissions.update(id, {
+      status: "approved",
+      reviewedBy: adminId,
+      reviewedAt: new Date(),
+      reviewNotes: input?.reviewNotes?.trim() ? input.reviewNotes.trim() : null,
+      rejectionReason: null,
+    });
+    if (options.notifySeller !== false) {
+      const recipients = await resolveLegalEntityNotificationRecipients(
+        this.legalEntityNotificationRecipients,
+        { legalEntityId: s.legalEntityId, fallbackUserId: s.legalEntityId, audience: "seller" },
+      );
+      for (const recipientId of recipients) {
+        await this.dispatcher.dispatch(recipientId, {
+          type: "submission_approved",
+          title: "Submission accepted",
+          message: `Your submission "${s.title}" was accepted for cataloguing. Our specialists are preparing your catalogue entry.`,
+          submissionId: id,
+        });
+      }
+    }
+    return ok(updated);
+  }
+
+  async convert(
     adminId: string,
     id: string,
     input: ApproveSubmissionInput | undefined = undefined,
-  ): Promise<Result<{ submission: ItemSubmission; lot: Lot }, SubmissionError>> {
+  ): Promise<
+    Result<{ submission: ItemSubmission; lot: Lot; readinessPercent: number }, SubmissionError>
+  > {
     const reviewNotes = input?.reviewNotes;
     const requestedArtistId = input?.artistId ?? null;
     const newArtist = input?.newArtist;
@@ -250,80 +340,110 @@ export class ItemSubmissionService implements IItemSubmissionService {
       return err(new SubmissionError("Provide either artistId or newArtist, not both", 400));
     }
     try {
-      const { lot, submission, legalEntityId, title } = await this.db.transaction(async (tx) => {
-        const subRepo = new DrizzleItemSubmissionRepository(tx);
-        const lotRepo = new DrizzleLotRepository(tx);
-        const s = await subRepo.findById(id);
-        if (!s) {
-          throw new SubmissionError("Not found", 404);
-        }
-        if (s.status !== "under_review") {
-          throw new SubmissionError("Submission must be under review to approve");
-        }
-        if (!s.legalEntityId) {
-          throw new SubmissionError("Legal entity context missing", 400);
-        }
-        // Admin-driven artist resolution: pick existing, create inline, or
-        // leave unattributed. Inline creates default to `approved` because the
-        // admin is authoring it directly through their privileged surface.
-        let artistId: string | null = requestedArtistId ?? null;
-        if (newArtist) {
-          const created = await insertArtistInTx(tx, adminId, {
-            displayName: newArtist.displayName,
-            kind: newArtist.kind ?? "artist",
-            shortBio: newArtist.shortBio,
-            ownerUserId: newArtist.ownerUserId ?? null,
-            status: "approved",
+      const { lot, submission, legalEntityId, title, readinessPercent } = await this.db.transaction(
+        async (tx) => {
+          const subRepo = new DrizzleItemSubmissionRepository(tx);
+          const lotRepo = new DrizzleLotRepository(tx);
+          const s = await subRepo.findById(id);
+          if (!s) {
+            throw new SubmissionError("Not found", 404);
+          }
+          if (!canTransition(s.status, "convert")) {
+            throw new SubmissionError(transitionErrorMessage(s.status, "convert"));
+          }
+          if (!s.legalEntityId) {
+            throw new SubmissionError("Legal entity context missing", 400);
+          }
+          let artistId: string | null = requestedArtistId ?? null;
+          if (newArtist) {
+            const created = await insertArtistInTx(tx, adminId, {
+              displayName: newArtist.displayName,
+              kind: newArtist.kind ?? "artist",
+              shortBio: newArtist.shortBio,
+              ownerUserId: newArtist.ownerUserId ?? null,
+              status: "approved",
+            });
+            artistId = created.id;
+          }
+          const lotInput = submissionToCreateLotInput(s);
+          const createdLot = await lotRepo.create({
+            ...lotInput,
+            sellerLegalEntityId: s.legalEntityId,
+            artistId,
           });
-          artistId = created.id;
-        }
-        const lotInput = submissionToCreateLotInput(s);
-        const createdLot = await lotRepo.create({
-          ...lotInput,
-          sellerLegalEntityId: s.legalEntityId,
-          artistId,
-        });
-        if (this.lotLifecycleRecording) {
-          await this.lotLifecycleRecording.recordCreated(tx, {
+          if (this.lotLifecycleRecording) {
+            await this.lotLifecycleRecording.recordCreated(tx, {
+              lot: createdLot,
+              source: "submission",
+              actorUserId: adminId,
+            });
+          }
+          const submission = await subRepo.update(id, {
+            status: "converted",
+            convertedLotId: createdLot.id,
+            reviewedBy: adminId,
+            reviewedAt: new Date(),
+            ...(reviewNotes?.trim() ? { reviewNotes: reviewNotes.trim() } : {}),
+            rejectionReason: null,
+          });
+          const readiness = evaluateLotReadiness(createdLot);
+          return {
             lot: createdLot,
-            source: "submission",
-            actorUserId: adminId,
-          });
-        }
-        const submission = await subRepo.update(id, {
-          status: "converted",
-          convertedLotId: createdLot.id,
-          reviewedBy: adminId,
-          reviewedAt: new Date(),
-          reviewNotes: reviewNotes ?? null,
-          rejectionReason: null,
-        });
-        return {
-          lot: createdLot,
-          submission,
-          legalEntityId: s.legalEntityId,
-          title: s.title,
-        };
-      });
+            submission,
+            legalEntityId: s.legalEntityId,
+            title: s.title,
+            readinessPercent: readiness.percent,
+          };
+        },
+      );
       const recipients = await resolveLegalEntityNotificationRecipients(
         this.legalEntityNotificationRecipients,
         { legalEntityId, fallbackUserId: legalEntityId, audience: "seller" },
       );
       for (const recipientId of recipients) {
         await this.dispatcher.dispatch(recipientId, {
-          type: "submission_approved",
-          title: "Submission approved",
-          message: `Your submission "${title}" was approved. A draft lot was created for cataloguing.`,
+          type: "submission_converted",
+          title: "Draft lot created",
+          message: `A draft catalogue lot was created for "${title}". Complete any remaining steps in your seller dashboard.`,
           lotId: lot.id,
+          submissionId: id,
+          meta: { lotTitle: title },
         });
       }
-      return ok({ submission, lot });
+      return ok({ submission, lot, readinessPercent });
     } catch (e) {
       if (e instanceof SubmissionError) {
         return err(e);
       }
       throw e;
     }
+  }
+
+  /** Backward-compatible: accept then convert in one call. */
+  async approve(
+    adminId: string,
+    id: string,
+    input: ApproveSubmissionInput | undefined = undefined,
+  ): Promise<Result<{ submission: ItemSubmission; lot: Lot }, SubmissionError>> {
+    if (input?.artistId && input?.newArtist) {
+      return err(new SubmissionError("Provide either artistId or newArtist, not both", 400));
+    }
+    const s = await this.submissions.findById(id);
+    if (!s) return err(new SubmissionError("Not found", 404));
+    if (s.status === "under_review") {
+      const accepted = await this.accept(
+        adminId,
+        id,
+        { reviewNotes: input?.reviewNotes },
+        { notifySeller: false },
+      );
+      if (accepted.isErr()) return err(accepted.error);
+    } else if (s.status !== "approved") {
+      return err(new SubmissionError(transitionErrorMessage(s.status, "accept")));
+    }
+    const converted = await this.convert(adminId, id, input);
+    if (converted.isErr()) return err(converted.error);
+    return ok({ submission: converted.value.submission, lot: converted.value.lot });
   }
 
   async reject(
@@ -334,8 +454,8 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const s = await this.submissions.findById(id);
     if (!s) return err(new SubmissionError("Not found", 404));
-    if (s.status !== "under_review") {
-      return err(new SubmissionError("Submission must be under review to reject"));
+    if (!canTransition(s.status, "reject")) {
+      return err(new SubmissionError(transitionErrorMessage(s.status, "reject")));
     }
     if (!s.legalEntityId) {
       return err(new SubmissionError("Legal entity context missing", 400));
@@ -356,6 +476,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
         type: "submission_rejected",
         title: "Submission not accepted",
         message: `Your submission "${s.title}" was not accepted: ${rejectionReason}`,
+        submissionId: id,
       });
     }
     return ok(updated);
@@ -364,10 +485,26 @@ export class ItemSubmissionService implements IItemSubmissionService {
   async listSubmissionsForSellerApi(
     legalEntityId: string,
     f: ListSubmissionsFilter,
-  ): Promise<{ data: ItemSubmission[] }> {
-    const rows = await this.listForSeller(legalEntityId, f);
+  ): Promise<{ data: ItemSubmission[]; total: number }> {
+    const countFilter: Omit<ListSubmissionsFilter, "limit" | "offset"> = {
+      ...(f.status ? { status: f.status } : {}),
+      ...(f.statuses && f.statuses.length > 0 ? { statuses: f.statuses } : {}),
+      ...(f.q ? { q: f.q } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.listForSeller(legalEntityId, f),
+      this.submissions.countForLegalEntity(legalEntityId, countFilter),
+    ]);
     const data = await presentSubmissionsImages(this.mediaUrlResolver, rows);
-    return { data };
+    return { data, total };
+  }
+
+  async getSubmissionSummaryForSellerApi(
+    legalEntityId: string,
+  ): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }> {
+    const counts = await this.submissions.countStatusForLegalEntity(legalEntityId);
+    const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+    return { counts, total };
   }
 
   async listSubmissionsForAdminApi(
@@ -378,6 +515,8 @@ export class ItemSubmissionService implements IItemSubmissionService {
       q: f.q,
       ...(f.statuses && f.statuses.length > 0 ? { statuses: f.statuses } : {}),
       ...(f.status && !(f.statuses && f.statuses.length > 0) ? { status: f.status } : {}),
+      ...(f.qualityGaps ? { qualityGaps: true } : {}),
+      ...(f.assignedToUserId ? { assignedToUserId: f.assignedToUserId } : {}),
     };
     const [rows, total] = await Promise.all([
       this.listForAdmin(f),
@@ -468,6 +607,17 @@ export class ItemSubmissionService implements IItemSubmissionService {
       return { kind: "bad_request", message: "Reason is required to reject submissions" };
     }
     for (const id of ids) {
+      if (op === "approve") {
+        const s = await this.submissions.findById(id);
+        if (!s) return { kind: "err", error: new SubmissionError("Not found", 404) };
+        const quality = evaluateSubmissionQuality(s);
+        if (!quality.canAccept) {
+          return {
+            kind: "bad_request",
+            message: `Submission "${s.title}" is missing required fields and cannot be bulk approved`,
+          };
+        }
+      }
       const result =
         op === "approve"
           ? await this.approve(adminId, id, { reviewNotes })
@@ -513,6 +663,87 @@ export class ItemSubmissionService implements IItemSubmissionService {
     const result = await this.startReview(adminId, id);
     if (result.isErr()) return result;
     return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async assignForAdminApi(
+    adminId: string,
+    id: string,
+    assignedToUserId: string | null,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const result = await this.assignForAdmin(adminId, id, assignedToUserId);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async countQualityGapsForAdminApi(): Promise<number> {
+    return this.submissions.countAdmin({
+      statuses: ["submitted", "under_review"],
+      qualityGaps: true,
+    });
+  }
+
+  async sendStaleDraftReminders(input: {
+    staleDays: number;
+    batchLimit?: number;
+    maxBatches?: number;
+  }): Promise<{ reminded: number }> {
+    const batchLimit = input.batchLimit ?? 50;
+    const maxBatches = input.maxBatches ?? 10;
+    const cutoff = new Date(Date.now() - input.staleDays * 24 * 60 * 60 * 1000);
+    let reminded = 0;
+    for (let batch = 0; batch < maxBatches; batch += 1) {
+      const rows = await this.submissions.listStaleDraftsWithoutReminder(cutoff, batchLimit);
+      if (rows.length === 0) break;
+      for (const s of rows) {
+        if (!s.legalEntityId) continue;
+        const recipients = await resolveLegalEntityNotificationRecipients(
+          this.legalEntityNotificationRecipients,
+          { legalEntityId: s.legalEntityId, fallbackUserId: s.legalEntityId, audience: "seller" },
+        );
+        for (const recipientId of recipients) {
+          await this.dispatcher.dispatch(recipientId, {
+            type: "submission_draft_reminder",
+            title: "Draft submission waiting",
+            message: `Your draft "${s.title}" has not been updated in ${input.staleDays} days. Resume when you are ready to submit for review.`,
+            submissionId: s.id,
+          });
+        }
+        await this.submissions.update(s.id, { draftReminderSentAt: new Date() });
+        reminded += 1;
+      }
+      if (rows.length < batchLimit) break;
+    }
+    return { reminded };
+  }
+
+  async acceptForAdminApi(
+    adminId: string,
+    id: string,
+    body: Pick<ApproveSubmissionInput, "reviewNotes">,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    const result = await this.accept(adminId, id, body);
+    if (result.isErr()) return result;
+    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+  }
+
+  async convertForAdminApi(
+    adminId: string,
+    id: string,
+    body: ApproveSubmissionInput,
+  ): Promise<
+    Result<{ submission: ItemSubmission; lot: Lot; readinessPercent: number }, SubmissionError>
+  > {
+    const result = await this.convert(adminId, id, body);
+    if (result.isErr()) return result;
+    const submission = await presentSubmissionImages(
+      this.mediaUrlResolver,
+      result.value.submission,
+    );
+    return ok({
+      submission,
+      lot: result.value.lot,
+      readinessPercent: result.value.readinessPercent,
+    });
   }
 
   async approveForAdminApi(

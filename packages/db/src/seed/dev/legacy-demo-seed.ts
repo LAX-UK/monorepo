@@ -169,7 +169,6 @@ const CAT = {
   watches: "c1000012-0000-4000-8000-000000000012",
   books: "c1000013-0000-4000-8000-000000000013",
   coins: "c1000014-0000-4000-8000-000000000014",
-  wine: "c1000015-0000-4000-8000-000000000015",
   design: "c1000016-0000-4000-8000-000000000016",
 } as const;
 
@@ -181,6 +180,8 @@ const S = {
 const SUB = {
   draft: "d2000001-0000-4000-8000-000000000001",
   submitted: "d2000002-0000-4000-8000-000000000002",
+  underReview: "d2000005-0000-4000-8000-000000000005",
+  approved: "d2000006-0000-4000-8000-000000000006",
   rejected: "d2000003-0000-4000-8000-000000000003",
   converted: "d2000004-0000-4000-8000-000000000004",
 } as const;
@@ -214,7 +215,6 @@ const ARTIST = {
   patekPhilippe: "a1000005-0000-4000-8000-000000000005", // brand/manufacturer
   janeAusten: "a1000006-0000-4000-8000-000000000006", // author
   royalMint: "a1000007-0000-4000-8000-000000000007", // mint
-  chateauPetrus: "a1000008-0000-4000-8000-000000000008", // producer
   northbankDesign: "a1000009-0000-4000-8000-000000000009", // studio
 } as const;
 
@@ -2519,7 +2519,6 @@ export async function runLegacyDemoSeed() {
     { id: CAT.watches, name: "Watches & Clocks", slug: "watches-clocks", parentId: null },
     { id: CAT.books, name: "Books & Manuscripts", slug: "books-manuscripts", parentId: null },
     { id: CAT.coins, name: "Coins & Medals", slug: "coins-medals", parentId: null },
-    { id: CAT.wine, name: "Wine & Spirits", slug: "wine-spirits", parentId: null },
     {
       id: CAT.design,
       name: "Design & Decorative Arts",
@@ -2721,32 +2720,6 @@ export async function runLegacyDemoSeed() {
       updatedAt: stamp,
     },
     {
-      id: ARTIST.chateauPetrus,
-      displayName: "Château Pétrus",
-      slug: "chateau-petrus",
-      shortBio: "Iconic Pomerol estate producing one of the world's most collectible wines.",
-      nationality: "French",
-      location: "Pomerol, Bordeaux, France",
-      countryCode: "FR",
-      foundedYear: "1878",
-      websiteUrl: "https://www.petrus.com",
-      socialLinks: {},
-      attributes: {
-        region: "Pomerol, Bordeaux",
-        appellation: "Pomerol AOC",
-        estate: "Château Pétrus",
-      },
-      featured: false,
-      verified: true,
-      kind: "producer",
-      status: "approved",
-      createdByUserId: ADMIN_ID,
-      reviewedByUserId: ADMIN_ID,
-      reviewedAt: new Date(now - 8 * day),
-      createdAt: new Date(now - 12 * day),
-      updatedAt: stamp,
-    },
-    {
       id: ARTIST.northbankDesign,
       displayName: "Northbank Design Studio",
       slug: "northbank-design-studio",
@@ -2786,7 +2759,6 @@ export async function runLegacyDemoSeed() {
     { artistProfileId: ARTIST.patekPhilippe, categoryId: CAT.watches, sortOrder: 0 },
     { artistProfileId: ARTIST.janeAusten, categoryId: CAT.books, sortOrder: 0 },
     { artistProfileId: ARTIST.royalMint, categoryId: CAT.coins, sortOrder: 0 },
-    { artistProfileId: ARTIST.chateauPetrus, categoryId: CAT.wine, sortOrder: 0 },
     { artistProfileId: ARTIST.northbankDesign, categoryId: CAT.design, sortOrder: 0 },
   ]);
 
@@ -3557,6 +3529,64 @@ export async function runLegacyDemoSeed() {
       updatedAt: new Date(now - 1 * day),
     },
     {
+      id: SUB.underReview,
+      sellerId: CONSIGNOR_ID,
+      title: "Landscape with Red Barn — oil on canvas",
+      description:
+        "Mid-century pastoral scene with strong impasto; consignor holds a 2018 gallery invoice.",
+      medium: "Oil on canvas",
+      dimensions: "30 × 40 in",
+      images: [IMG.c, IMG.a],
+      yearOfWork: "1962",
+      isSigned: true,
+      signatureNote: "Signed lower left.",
+      edition: null,
+      conditionSelfReport: "Good overall; minor craquelure consistent with age.",
+      provenance: [{ period: "2018", note: "Purchased from Northbank Gallery." }],
+      exhibitions: [],
+      askingPrice: "4500.00",
+      reservePrice: "3500.00",
+      categoryId: CAT.paintings,
+      submitterNotes: "Ready for specialist accept/reject decision.",
+      status: "under_review",
+      reviewedBy: SPECIALIST_ID,
+      reviewedAt: new Date(now - 2 * day),
+      reviewNotes: "Provenance verified; awaiting accept decision.",
+      rejectionReason: null,
+      convertedLotId: null,
+      createdAt: new Date(now - 5 * day),
+      updatedAt: new Date(now - 2 * day),
+    },
+    {
+      id: SUB.approved,
+      sellerId: USER1_ID,
+      title: "Ceramic Vessel — studio edition, 2021",
+      description:
+        "Hand-thrown stoneware vessel with celadon glaze; accepted and awaiting lot conversion.",
+      medium: "Stoneware ceramic",
+      dimensions: "12 × 8 × 8 in",
+      images: [IMG.b, IMG.c],
+      yearOfWork: "2021",
+      isSigned: true,
+      signatureNote: "Incised maker's mark on base.",
+      edition: "Studio edition",
+      conditionSelfReport: "Excellent; no chips or restoration.",
+      provenance: [{ period: "2021", note: "Acquired from the maker's studio sale." }],
+      exhibitions: [{ year: "2022", venue: "Clay Works Open", note: "Group show" }],
+      askingPrice: "2200.00",
+      reservePrice: "1800.00",
+      categoryId: CAT.sculpture,
+      submitterNotes: "Accepted — ready for catalogue conversion.",
+      status: "approved",
+      reviewedBy: ADMIN_ID,
+      reviewedAt: new Date(now - 1 * day),
+      reviewNotes: "Accepted for cataloguing; convert when artist is confirmed.",
+      rejectionReason: null,
+      convertedLotId: null,
+      createdAt: new Date(now - 8 * day),
+      updatedAt: new Date(now - 1 * day),
+    },
+    {
       id: SUB.rejected,
       sellerId: USER2_ID,
       title: "Untitled Digital Collage, 2023",
@@ -4205,12 +4235,12 @@ export async function runLegacyDemoSeed() {
   console.log("    Entity   (3 of 4 statuses): pending · accepted · revoked");
   console.log("");
   console.log(
-    "  Also includes: 2 sales · 16 lots · 9 creator profiles · 26 bids · 8 watchlist rows",
+    "  Also includes: 2 sales · 16 lots · 8 creator profiles · 26 bids · 8 watchlist rows",
   );
   console.log("  Creator registry kinds: artist · maker · studio · marque · manufacturer");
   console.log("                          author · mint · producer");
   console.log("  New departments: Motor Cars · Watches & Clocks · Books & Manuscripts");
-  console.log("                   Coins & Medals · Wine & Spirits · Design & Decorative Arts");
+  console.log("                   Coins & Medals · Design & Decorative Arts");
   console.log("  sale/artist follows · notifications · payments (captured/pending/refunded)");
   console.log("  payouts (paid/scheduled-retry/clawback) · KYB documents · domain events");
   console.log("  user addresses · legal entity addresses · retired payout method");

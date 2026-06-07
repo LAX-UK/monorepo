@@ -92,7 +92,11 @@ export function WizardStepper({
   const [stepsOpen, setStepsOpen] = useState(false);
   const currentLabel = WIZARD_STEPS[activeIndex]?.label ?? "";
   const nextLabel = WIZARD_STEPS[activeIndex + 1]?.label;
-  const progressPercent = ((activeIndex + 1) / WIZARD_STEPS.length) * 100;
+  const endowedBase = 100 / WIZARD_STEPS.length;
+  const progressPercent = Math.min(
+    100,
+    endowedBase + (activeIndex / WIZARD_STEPS.length) * (100 - endowedBase),
+  );
 
   return (
     <nav aria-label="Submission wizard progress" className="mb-6">

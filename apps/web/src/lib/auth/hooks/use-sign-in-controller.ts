@@ -1,6 +1,7 @@
 "use client";
 
 import { trackLogin } from "@/lib/analytics/events";
+import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
 import {
   POST_AUTH_SESSION_LOAD_ERROR,
@@ -19,7 +20,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
-export function useSignInController(nextHref: string) {
+type SignInControllerOptions = {
+  sellIntent?: boolean;
+};
+
+export function useSignInController(nextHref: string, options: SignInControllerOptions = {}) {
   const router = useRouter();
   const refetchSession = useRefetchAppSession();
   const turnstileRef = useRef<string | undefined>(undefined);
@@ -59,6 +64,9 @@ export function useSignInController(nextHref: string) {
         return;
       }
       trackLogin();
+      if (options.sellIntent) {
+        trackSellAuthHandoff();
+      }
       await refetchSession();
       postAuthBroadcast({ type: "signed-in" });
       setPostAuthError(null);

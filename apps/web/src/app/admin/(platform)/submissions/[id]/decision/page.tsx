@@ -27,6 +27,15 @@ export default async function AdminSubmissionDecisionPage({ params, searchParams
     <AdminSubmissionDecisionPanel
       submissionId={s.id}
       status={s.status}
+      submission={{
+        title: s.title,
+        images: s.images,
+        description: s.description,
+        provenance: s.provenance ?? [],
+        categoryId: s.categoryId,
+        ...(s.categoryIds ? { categoryIds: s.categoryIds } : {}),
+        convertedLotId: s.convertedLotId,
+      }}
       {...(submitterDisplayName ? { submitterDisplayName } : {})}
       {...(submitterUserId ? { submitterUserId } : {})}
     />

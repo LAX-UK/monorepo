@@ -91,7 +91,16 @@ export function InSaleMobileList({ rows }: Props) {
               </>
             }
             afterBadges={
-              row.status === "active" || row.status === "scheduled" ? (
+              row.status === "ended" ? (
+                <p className="mt-2">
+                  <Link
+                    href={`/dashboard/submissions/new?fromLot=${encodeURIComponent(row.id)}`}
+                    className="font-body text-xs text-primary underline-offset-4 hover:underline"
+                  >
+                    Sell again
+                  </Link>
+                </p>
+              ) : row.status === "active" || row.status === "scheduled" ? (
                 <div className="mt-1">
                   <DashboardLotCountdown
                     status={row.status}
@@ -151,10 +160,18 @@ function InSaleDesktopRowCard({ row }: { row: InSaleDisplayRow }) {
           <div className="flex items-center justify-end">
             <ReserveBadge row={row} />
           </div>
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-2">
             <StatusBadge variant={badgeVariant(row.statusTone)} size="sm">
               {row.statusLabel}
             </StatusBadge>
+            {row.status === "ended" ? (
+              <Link
+                href={`/dashboard/submissions/new?fromLot=${encodeURIComponent(row.id)}`}
+                className="font-body text-xs text-primary underline-offset-4 hover:underline"
+              >
+                Sell again
+              </Link>
+            ) : null}
           </div>
         </div>
       </Surface>

@@ -252,6 +252,21 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     return c.json({ data: { deleted: deleted.length, capped: deleted.length === batchSize } });
   });
 
+  /** Nudge sellers whose draft submissions have been untouched for N days. */
+  r.post("/stale-submission-draft-reminders", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const data = await container.itemSubmissionService.sendStaleDraftReminders({
+      staleDays: env.SUBMISSION_DRAFT_REMINDER_DAYS,
+    });
+    return c.json({ data });
+  });
+
   /** Verify Sentry connectivity from worker/cron callers (guarded by X-Cron-Secret). */
   r.post("/sentry-test", async (c) => {
     if (!env.CRON_INTERNAL_SECRET) {

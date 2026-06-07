@@ -8,6 +8,7 @@ import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -24,11 +25,17 @@ export function AdminSubmissionsTitleFilterForm({
   initialCategoryId,
   categories,
   queue,
+  qualityGaps = false,
+  assignedToMe = false,
+  sortBySla = false,
 }: {
   initialQ: string;
   initialCategoryId?: string | null;
   categories: CategoryNode[];
   queue: SubmissionDecisionQueue;
+  qualityGaps?: boolean;
+  assignedToMe?: boolean;
+  sortBySla?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -37,6 +44,43 @@ export function AdminSubmissionsTitleFilterForm({
   useEffect(() => {
     setCategoryIds(initialCategoryId ? [initialCategoryId] : []);
   }, [initialCategoryId]);
+
+  const sp: Record<string, string | string[] | undefined> = {};
+  searchParams.forEach((v, k) => {
+    sp[k] = v;
+  });
+  const queueFilterLinks = [
+    {
+      id: "assignedTo",
+      label: "My queue",
+      href: buildListHref("/admin/submissions", sp, {
+        assignedTo: assignedToMe ? "" : "me",
+        offset: 0,
+        queue,
+      }),
+      active: assignedToMe,
+    },
+    {
+      id: "sort",
+      label: "Sort by SLA",
+      href: buildListHref("/admin/submissions", sp, {
+        sort: sortBySla ? "" : "sla",
+        offset: 0,
+        queue,
+      }),
+      active: sortBySla,
+    },
+    {
+      id: "qualityGaps",
+      label: "Quality gaps only",
+      href: buildListHref("/admin/submissions", sp, {
+        qualityGaps: qualityGaps ? "" : "1",
+        offset: 0,
+        queue,
+      }),
+      active: qualityGaps,
+    },
+  ] as const;
 
   const form = useForm<AdminSubmissionsTitleFilterValues>({
     resolver: zodResolver(adminSubmissionsTitleFilterSchema),
@@ -96,6 +140,25 @@ export function AdminSubmissionsTitleFilterForm({
             multiple={false}
             placeholder="Any category"
           />
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:basis-full">
+          <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            Queue options
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {queueFilterLinks.map((item) => (
+              <Button
+                key={item.id}
+                variant={item.active ? "secondary" : "secondaryOutline"}
+                size="sm"
+                className="min-h-11"
+                asChild
+                aria-pressed={item.active}
+              >
+                <Link href={item.href}>{item.label}</Link>
+              </Button>
+            ))}
+          </div>
         </div>
         <Button type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto">
           Apply filters

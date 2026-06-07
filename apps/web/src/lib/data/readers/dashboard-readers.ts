@@ -114,9 +114,20 @@ export type DashboardSessionsReader = {
 export type DashboardSubmissionsReader = {
   listMine(params?: {
     status?: ItemSubmissionStatus;
+    q?: string;
     limit?: number;
     offset?: number;
   }): Promise<ItemSubmission[]>;
+  listMinePaged(params?: {
+    status?: ItemSubmissionStatus;
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ rows: ItemSubmission[]; total: number }>;
+  getSummary(): Promise<{
+    counts: Record<ItemSubmissionStatus, number>;
+    total: number;
+  }>;
   getMineById(id: string): Promise<ItemSubmission | null>;
 };
 

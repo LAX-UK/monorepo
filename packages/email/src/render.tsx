@@ -86,6 +86,18 @@ import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
+import SubmissionApprovedEmail, {
+  subject as submissionApprovedSubject,
+} from "./templates/submission-approved.js";
+import SubmissionConvertedEmail, {
+  subject as submissionConvertedSubject,
+} from "./templates/submission-converted.js";
+import SubmissionDraftReminderEmail, {
+  subject as submissionDraftReminderSubject,
+} from "./templates/submission-draft-reminder.js";
+import SubmissionRejectedEmail, {
+  subject as submissionRejectedSubject,
+} from "./templates/submission-rejected.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
 import WelcomeEmail, { subject as welcomeSubject } from "./templates/welcome.js";
 import type { RenderedEmail, TemplateName, TemplateVarsByName } from "./types.js";
@@ -216,6 +228,22 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "aml-compliance-review-notice": {
     subject: amlComplianceReviewNoticeSubject,
     component: (vars) => <AmlComplianceReviewNoticeEmail {...vars} />,
+  },
+  "submission-approved": {
+    subject: submissionApprovedSubject,
+    component: (vars) => <SubmissionApprovedEmail {...vars} />,
+  },
+  "submission-converted": {
+    subject: submissionConvertedSubject,
+    component: (vars) => <SubmissionConvertedEmail {...vars} />,
+  },
+  "submission-rejected": {
+    subject: submissionRejectedSubject,
+    component: (vars) => <SubmissionRejectedEmail {...vars} />,
+  },
+  "submission-draft-reminder": {
+    subject: submissionDraftReminderSubject,
+    component: (vars) => <SubmissionDraftReminderEmail {...vars} />,
   },
 };
 

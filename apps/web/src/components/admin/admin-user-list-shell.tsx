@@ -144,14 +144,10 @@ export function AdminUserListShell({
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
           {selected ? (
             <div className="space-y-4 pt-2">
-              <SheetHeader className="sr-only">
-                <SheetTitle>
-                  {drawerTitle}: {selected.name}
-                </SheetTitle>
-              </SheetHeader>
               {detailHref ? (
                 <AdminPreviewSheetHeader
                   title={selected.name}
+                  sheetTitle={`${drawerTitle}: ${selected.name}`}
                   fullPageHref={detailHref(selected)}
                   subtitle={
                     <div className="space-y-2">
@@ -168,20 +164,27 @@ export function AdminUserListShell({
                 />
               ) : null}
               {!detailHref ? (
-                <div className="flex items-start gap-3 border-b border-border-hairline pb-4">
-                  <AdminUserAvatar user={selected} size="lg" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-headline text-lg text-on-surface">{selected.name}</p>
-                    <p className="truncate text-sm text-on-surface-variant">{selected.email}</p>
-                    <div className="mt-2">
-                      <AdminStatusBadge
-                        domain="user"
-                        status={selected.suspendedAt ? "suspended" : "active"}
-                        size="sm"
-                      />
+                <>
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>
+                      {drawerTitle}: {selected.name}
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex items-start gap-3 border-b border-border-hairline pb-4">
+                    <AdminUserAvatar user={selected} size="lg" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-headline text-lg text-on-surface">{selected.name}</p>
+                      <p className="truncate text-sm text-on-surface-variant">{selected.email}</p>
+                      <div className="mt-2">
+                        <AdminStatusBadge
+                          domain="user"
+                          status={selected.suspendedAt ? "suspended" : "active"}
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                </>
               ) : null}
               {renderDrawerActions ? (
                 <Tabs defaultValue="overview" className="w-full">

@@ -26,6 +26,8 @@ export const notificationPreference = pgTable(
     watchlistEmail: boolean("watchlist_email").notNull().default(false),
     paymentEmail: boolean("payment_email").notNull().default(true),
     lotEndedSellerEmail: boolean("lot_ended_seller_email").notNull().default(true),
+    submissionUpdatesEmail: boolean("submission_updates_email").notNull().default(true),
+    submissionUpdatesPush: boolean("submission_updates_push").notNull().default(true),
     outbidWhatsapp: boolean("outbid_whatsapp").notNull().default(false),
     wonWhatsapp: boolean("won_whatsapp").notNull().default(false),
     lostWhatsapp: boolean("lost_whatsapp").notNull().default(false),

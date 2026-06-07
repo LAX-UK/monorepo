@@ -127,6 +127,7 @@ export function mapItemSubmissionRow(
     reviewNotes: row.reviewNotes,
     rejectionReason: row.rejectionReason,
     convertedLotId: row.convertedLotId,
+    assignedToUserId: row.assignedToUserId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

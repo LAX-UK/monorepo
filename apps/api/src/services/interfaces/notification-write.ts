@@ -6,6 +6,7 @@ export type CreateNotificationRow = {
   title: string;
   message: string;
   lotId?: string | undefined;
+  submissionId?: string | undefined;
   /** Ephemeral fields for email/push channels (not stored on `notification` rows). */
   meta?: {
     paymentId?: string;

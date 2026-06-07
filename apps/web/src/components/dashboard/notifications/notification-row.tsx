@@ -1,6 +1,6 @@
 "use client";
 
-import { lotPath } from "@/lib/seo/url";
+import { notificationHref } from "@/lib/notifications/notification-link";
 import type { UserNotification } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -75,7 +75,7 @@ export function NotificationRow({
   const unread = !item.read;
   const tone = TONE_STYLES[presentation.tone];
   const { Icon, label } = presentation;
-  const titleLink = item.lotId ? lotPath({ id: item.lotId, title: item.title }) : null;
+  const href = notificationHref(item);
 
   return (
     <li
@@ -121,9 +121,9 @@ export function NotificationRow({
               unread ? "font-semibold" : "font-medium text-on-surface-variant",
             )}
           >
-            {titleLink ? (
+            {href ? (
               <Link
-                href={titleLink}
+                href={href}
                 className="underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
                 onClick={() => {
                   if (unread) onMarkRead(item.id);
@@ -157,10 +157,10 @@ export function NotificationRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        {item.lotId ? (
+        {href ? (
           <Button variant="ctaLink" asChild>
             <Link
-              href={lotPath({ id: item.lotId, title: item.title })}
+              href={href}
               onClick={() => {
                 if (unread) onMarkRead(item.id);
               }}

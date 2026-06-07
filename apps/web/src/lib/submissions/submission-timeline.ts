@@ -1,14 +1,19 @@
-import type { ItemSubmissionStatus } from "@auction/types";
+import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
 import type { TimelineStage } from "@auction/ui/components/timeline-stages";
 
 export const SUBMISSION_TIMELINE_STAGES: readonly TimelineStage[] = [
   { id: "draft", label: "Draft" },
   { id: "submitted", label: "Submitted" },
-  { id: "review", label: "Review" },
+  { id: "review", label: "Under review" },
+  { id: "accepted", label: "Accepted" },
+  { id: "catalogue", label: "Catalogue prep" },
   { id: "listed", label: "Listed" },
 ] as const;
 
-export function submissionTimelineActiveIndex(status: ItemSubmissionStatus): number {
+export function submissionTimelineActiveIndex(
+  status: ItemSubmissionStatus,
+  lotStatus?: LotStatus | null,
+): number {
   switch (status) {
     case "draft":
       return 0;
@@ -17,8 +22,10 @@ export function submissionTimelineActiveIndex(status: ItemSubmissionStatus): num
     case "under_review":
       return 2;
     case "approved":
-    case "converted":
       return 3;
+    case "converted":
+      if (lotStatus === "active" || lotStatus === "ended") return 5;
+      return 4;
     case "rejected":
     case "withdrawn":
       return 1;

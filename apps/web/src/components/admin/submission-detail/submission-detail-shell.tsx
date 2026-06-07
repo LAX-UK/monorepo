@@ -25,6 +25,7 @@ type Props = {
   documentCount: number;
   submitterLegalEntityId: string | null;
   submitterDisplayName: string | null;
+  currentUserId: string;
   asideDecision: ReactNode;
   activityEvents?: readonly AdminDomainEventRow[];
   children: ReactNode;
@@ -37,6 +38,7 @@ export function SubmissionDetailShell({
   documentCount,
   submitterLegalEntityId,
   submitterDisplayName,
+  currentUserId,
   asideDecision,
   activityEvents = [],
   children,
@@ -129,6 +131,7 @@ export function SubmissionDetailShell({
             documentCount={documentCount}
             submitterLegalEntityId={submitterLegalEntityId}
             submitterDisplayName={submitterDisplayName}
+            currentUserId={currentUserId}
             status={statusBadge}
             activityEvents={activityEvents}
           />

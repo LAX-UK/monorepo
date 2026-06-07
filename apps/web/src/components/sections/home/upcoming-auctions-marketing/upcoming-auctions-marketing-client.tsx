@@ -5,6 +5,7 @@ import { HomeSectionToolbar } from "@/components/marketing/home-section-toolbar"
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
+import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
@@ -14,7 +15,7 @@ import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { DisplayHeading } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Calendar, ChevronRight } from "lucide-react";
+import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { UpcomingAuctionMarketingCard } from "./upcoming-auction-marketing-card";
@@ -62,7 +63,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
   return (
     <section
       aria-labelledby="home-upcoming-auctions-heading"
-      className={`${MARKETING_PAGE_SHELL} pb-0 pt-10`}
+      className={`${MARKETING_PAGE_SHELL} pb-0 pt-[var(--section-spacing-tight)]`}
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-8">
         <MarketingSectionHeader
@@ -77,15 +78,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
             </DisplayHeading>
           }
           subtitle="Scheduled and live sales curated by LAX specialists"
-          action={
-            <Button variant="chevron" asChild>
-              <Link href="/sales" className="inline-flex items-center gap-2 py-[18px]">
-                View All
-                <span className="sr-only"> auctions and sales</span>
-                <ChevronRight className="size-5 shrink-0" aria-hidden />
-              </Link>
-            </Button>
-          }
+          action={<MarketingViewAllLink href="/sales" srSuffix="auctions and sales" />}
         />
 
         <HomeSectionToolbar

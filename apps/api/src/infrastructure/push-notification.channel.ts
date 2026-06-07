@@ -7,7 +7,7 @@ import type {
   IPushSubscriptionRepository,
   PushPayload,
 } from "../services/interfaces/push.js";
-import { notificationLotWebPath } from "../services/notification-payload.js";
+import { notificationWebPath } from "../services/notification-payload.js";
 
 const PUSH_TYPES = new Set([
   "outbid",
@@ -17,6 +17,11 @@ const PUSH_TYPES = new Set([
   "payment_received",
   "payment_due",
   "lot_cancelled",
+  "submission_approved",
+  "submission_converted",
+  "submission_rejected",
+  "submission_draft_reminder",
+  "submission_received_for_review",
 ]);
 
 export class PushNotificationChannel implements INotificationChannel {
@@ -36,7 +41,7 @@ export class PushNotificationChannel implements INotificationChannel {
     const pushPayload: PushPayload = {
       title: payload.title,
       body: payload.message,
-      url: notificationLotWebPath(payload),
+      url: notificationWebPath(payload),
       tag: payload.lotId ? `${payload.type}:${payload.lotId}` : payload.type,
     };
     for (const sub of subs) {

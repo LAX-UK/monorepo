@@ -135,7 +135,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "consign-work",
         title: "How do I consign a work?",
-        body: `Consignment enquiries can be submitted via the contact page or directly to the LAX.BID team at ${SITE_CONSIGNMENT_EMAIL}. Submissions are reviewed prior to acceptance.`,
+        body: `Start with our selling guide at /sell, then sign in to complete the submission wizard (about 3 minutes). Gather photos, title, dimensions, and provenance before you begin. You can also contact our team at ${SITE_CONSIGNMENT_EMAIL} or use the contact form for estate and corporate enquiries.`,
       },
       {
         id: "submission-information",
@@ -191,6 +191,41 @@ export const faqGroups: FaqGroup[] = [
         id: "seller-fees",
         title: "Are there fees for selling?",
         body: "Seller terms, including commission and any associated costs, are agreed prior to consignment and confirmed in writing.",
+      },
+      {
+        id: "accept-watches-cars",
+        title: "Do you accept watches and motor cars?",
+        body: "Yes. We review wristwatches, pocket watches, clocks, and collectible motor cars through the same submission wizard as fine art. See our selling guide at /sell#departments for department-specific photo guidance, or visit /sell/watches and /sell/motor-cars for tailored preparation tips.",
+      },
+      {
+        id: "accept-design-books-coins",
+        title: "Do you accept design furniture, books, or coins?",
+        body: "We review design and decorative arts, books and manuscripts, and coins and medals when they align with upcoming sales. Submit through the wizard at /sell with clear photographs and provenance where available.",
+      },
+      {
+        id: "watch-car-photos",
+        title: "What photos do you need for a watch or motor car?",
+        body: "For watches: dial, caseback, movement, and box or papers where available — include the reference number in your notes. For motor cars: exterior angles, interior, VIN plate, odometer, and engine bay. Avoid heavy filters; natural light works best.",
+      },
+      {
+        id: "jewellery-handbags",
+        title: "Do you accept jewellery and handbags?",
+        body: `Jewellery and designer handbags are reviewed by specialist enquiry before intake. Contact our team at ${SITE_CONSIGNMENT_EMAIL} or use the contact form with intent=selling — we will confirm suitability and next steps.`,
+      },
+      {
+        id: "single-vs-collection",
+        title: "Should I submit one item or contact you for a collection?",
+        body: "Single items can be submitted through the wizard in about 3 minutes. Estates, corporate collections, and multi-item consignments should use /sell/estate or /sell/corporate, or contact us with an inventory list and representative photographs.",
+      },
+      {
+        id: "minimum-standards",
+        title: "What are your minimum standards for consignment?",
+        body: "All submissions are subject to internal review for suitability, market positioning, and alignment with upcoming sales. We do not guarantee acceptance or sale. Clear images, accurate dimensions, and honest condition information help specialists assess your item faster.",
+      },
+      {
+        id: "maker-field",
+        title: "Do I need to name the artist or maker?",
+        body: "Include the artist, maker, or manufacturer in the title or description. The wizard does not have a separate maker field — use the title and catalogue description to identify who created or produced the item.",
       },
     ],
   },

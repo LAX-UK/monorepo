@@ -2,13 +2,13 @@ import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switche
 import { HomeSectionToolbar } from "@/components/marketing/home-section-toolbar";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
+import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { LaxUrgencySectionBody } from "./lax-urgency-section-body";
 
@@ -67,17 +67,7 @@ function UrgencySectionHeader({ variant }: { variant: UrgencySectionVariant }) {
           {c.heading}
         </DisplayHeading>
       }
-      action={
-        <Button variant="chevron" asChild>
-          <Link href={c.viewAllHref} className="inline-flex items-center gap-[11px] py-[18px]">
-            <span className="text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface">
-              View all
-            </span>
-            <span className="sr-only"> {c.srAction}</span>
-            <ChevronRight className="size-5 shrink-0" aria-hidden />
-          </Link>
-        </Button>
-      }
+      action={<MarketingViewAllLink href={c.viewAllHref} srSuffix={c.srAction} />}
     />
   );
 }

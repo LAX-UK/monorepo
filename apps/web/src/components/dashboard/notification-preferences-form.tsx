@@ -51,6 +51,8 @@ const notificationPreferencesFormSchema = z.object({
   watchlistEmail: z.boolean(),
   paymentEmail: z.boolean(),
   lotEndedSellerEmail: z.boolean(),
+  submissionUpdatesEmail: z.boolean(),
+  submissionUpdatesPush: z.boolean(),
   outbidWhatsapp: z.boolean(),
   wonWhatsapp: z.boolean(),
   lostWhatsapp: z.boolean(),
@@ -164,6 +166,16 @@ const events: EventDescriptor[] = [
       whatsapp: "lotEndedSellerWhatsapp",
     },
   },
+  {
+    id: "submissionUpdates",
+    label: "Consignment updates",
+    description:
+      "When your submission is accepted, converted to a draft lot, not accepted, or needs a draft reminder.",
+    fields: {
+      email: "submissionUpdatesEmail",
+      push: "submissionUpdatesPush",
+    },
+  },
 ];
 
 function prefsToFormValues(prefs: NotificationPreference): NotificationPreferencesFormValues {
@@ -184,6 +196,8 @@ function prefsToFormValues(prefs: NotificationPreference): NotificationPreferenc
     watchlistEmail: prefs.watchlistEmail,
     paymentEmail: prefs.paymentEmail,
     lotEndedSellerEmail: prefs.lotEndedSellerEmail,
+    submissionUpdatesEmail: prefs.submissionUpdatesEmail,
+    submissionUpdatesPush: prefs.submissionUpdatesPush,
     outbidWhatsapp: prefs.outbidWhatsapp,
     wonWhatsapp: prefs.wonWhatsapp,
     lostWhatsapp: prefs.lostWhatsapp,
@@ -225,6 +239,8 @@ function buildPreset(
     watchlistEmail: mode === "activeBidder",
     paymentEmail: enabled,
     lotEndedSellerEmail: enabled,
+    submissionUpdatesEmail: enabled,
+    submissionUpdatesPush: enabled,
   };
 }
 
