@@ -5,6 +5,7 @@ import { SellerOrgContextBanner } from "@/components/dashboard/seller-org-contex
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
+import { SubmissionReadyToSubmitBanner } from "@/components/dashboard/submission-ready-to-submit-banner";
 import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
 import { SubmissionStatusHint } from "@/components/dashboard/submission-status-hint";
@@ -21,13 +22,18 @@ import {
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
+import {
+  firstIncompleteWizardStepIndex,
+  wizardStepIndex,
+} from "@/lib/forms/submission/step-validation";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { SUBMISSION_DRAFT_EXPLAINER } from "@/lib/marketing/sell-flow-copy";
+import { SUBMISSION_STATUS_HINTS } from "@/lib/marketing/sell-flow-copy";
 import { lotPath } from "@/lib/seo/url";
 import {
   SUBMISSION_TIMELINE_STAGES,
   submissionTimelineActiveIndex,
 } from "@/lib/submissions/submission-timeline";
+import { evaluateSubmissionQuality } from "@auction/domain";
 import { Surface } from "@auction/ui/components/surface";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
 import Link from "next/link";
@@ -124,6 +130,12 @@ export default async function SubmissionDetailPage({
   const editable = submission.status === "draft";
   const canSubmit = submission.status === "draft";
   const canWithdraw = submission.status === "draft" || submission.status === "submitted";
+  const submissionFormValues = itemSubmissionToFormValues(submission);
+  const submissionQuality = evaluateSubmissionQuality(submission);
+  const readyToSubmit = editable && submissionQuality.canSubmit;
+  const wizardInitialStepIndex = readyToSubmit
+    ? wizardStepIndex("review")
+    : firstIncompleteWizardStepIndex(submissionFormValues);
 
   return (
     <DashboardPage className="mx-auto max-w-4xl space-y-8">
@@ -134,7 +146,7 @@ export default async function SubmissionDetailPage({
         backHref="/dashboard/submissions"
         backLabel="Submissions"
         title={submission.title}
-        {...(editable ? { description: SUBMISSION_DRAFT_EXPLAINER } : {})}
+        {...(editable ? { description: SUBMISSION_STATUS_HINTS.draft } : {})}
         badges={<SubmissionStatusBadge status={submission.status} />}
       />
       {orgActingSelected ? <SellerOrgContextBanner /> : null}
@@ -165,11 +177,16 @@ export default async function SubmissionDetailPage({
         initialDocuments={submissionDocuments}
       />
       {editable ? (
-        <SubmissionWizard
-          mode={{ kind: "edit", submissionId: submission.id }}
-          categories={categories}
-          initialValues={itemSubmissionToFormValues(submission)}
-        />
+        <>
+          {readyToSubmit ? <SubmissionReadyToSubmitBanner submissionId={submission.id} /> : null}
+          <SubmissionWizard
+            mode={{ kind: "edit", submissionId: submission.id }}
+            categories={categories}
+            initialValues={submissionFormValues}
+            initialStepIndex={wizardInitialStepIndex}
+            readyToSubmit={readyToSubmit}
+          />
+        </>
       ) : (
         <SubmissionDetailSplit
           title={submission.title}
