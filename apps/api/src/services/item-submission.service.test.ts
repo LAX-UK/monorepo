@@ -44,7 +44,7 @@ function mkSubmission(
     description: "Desc",
     medium: null,
     dimensions: null,
-    images: [],
+    images: ["https://example.com/photo.jpg"],
     askingPrice: "100.00",
     reservePrice: null,
     categoryId: catId,
@@ -207,7 +207,8 @@ describe("ItemSubmissionService", () => {
       rejectionReason: null,
     };
 
-    hoisted.txSubFindById.mockResolvedValue(under);
+    const approved = { ...under, status: "approved" as const };
+    hoisted.txSubFindById.mockResolvedValue(approved);
     hoisted.txLotCreate.mockResolvedValue(createdLot);
     hoisted.txSubUpdate.mockResolvedValue(convertedSubmission);
 
@@ -222,9 +223,14 @@ describe("ItemSubmissionService", () => {
       listUserIdsForAudience: vi.fn().mockResolvedValue(["owner-1", "consignor-1"]),
     };
 
+    const submissions: IItemSubmissionRepository = {
+      findById: vi.fn().mockResolvedValue(under),
+      update: vi.fn().mockResolvedValue(approved),
+    } as unknown as IItemSubmissionRepository;
+
     const svc = new ItemSubmissionService(
       db,
-      {} as IItemSubmissionRepository,
+      submissions,
       {} as unknown as IUserRepository,
       dispatcher,
       undefined,
@@ -250,14 +256,18 @@ describe("ItemSubmissionService", () => {
       under.legalEntityId,
       "seller",
     );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "owner-1",
-      expect.objectContaining({ type: "submission_approved", lotId: "lot-new" }),
-    );
-    expect(dispatcher.dispatch).toHaveBeenCalledWith(
-      "consignor-1",
-      expect.objectContaining({ type: "submission_approved", lotId: "lot-new" }),
-    );
+    expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);
+    for (const recipientId of ["owner-1", "consignor-1"]) {
+      expect(dispatcher.dispatch).toHaveBeenCalledWith(
+        recipientId,
+        expect.objectContaining({
+          type: "submission_converted",
+          title: "Draft lot created",
+          lotId: "lot-new",
+          submissionId: "sub-1",
+        }),
+      );
+    }
   });
 
   it("approve passes a pre-existing artistId straight through to the lot mapper", async () => {
@@ -296,7 +306,8 @@ describe("ItemSubmissionService", () => {
       updatedAt: new Date(),
       marketingDetails: {},
     };
-    hoisted.txSubFindById.mockResolvedValue(under);
+    const approved = { ...under, status: "approved" as const };
+    hoisted.txSubFindById.mockResolvedValue(approved);
     hoisted.txLotCreate.mockResolvedValue(createdLot);
     hoisted.txSubUpdate.mockResolvedValue({
       ...under,
@@ -314,9 +325,14 @@ describe("ItemSubmissionService", () => {
       listUserIdsForAudience: vi.fn().mockResolvedValue([]),
     };
 
+    const submissions: IItemSubmissionRepository = {
+      findById: vi.fn().mockResolvedValue(under),
+      update: vi.fn().mockResolvedValue(approved),
+    } as unknown as IItemSubmissionRepository;
+
     const svc = new ItemSubmissionService(
       db,
-      {} as IItemSubmissionRepository,
+      submissions,
       {} as unknown as IUserRepository,
       dispatcher,
       undefined,
@@ -342,9 +358,12 @@ describe("ItemSubmissionService", () => {
     const db = {
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
     } as unknown as Database;
+    const submissions: IItemSubmissionRepository = {
+      findById: vi.fn().mockResolvedValue(under),
+    } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
       db,
-      {} as IItemSubmissionRepository,
+      submissions,
       {} as unknown as IUserRepository,
       { dispatch: vi.fn() } as unknown as NotificationDispatcher,
     );
@@ -399,7 +418,7 @@ describe("ItemSubmissionService", () => {
     );
     expect(dispatcher.dispatch).toHaveBeenCalledWith(
       "admin-entity-1",
-      expect.objectContaining({ type: "submission_rejected" }),
+      expect.objectContaining({ type: "submission_rejected", submissionId: "sub-1" }),
     );
   });
 
@@ -439,15 +458,16 @@ describe("ItemSubmissionService", () => {
   });
 
   it("bulkApproveOrReject fails when any submission is not under review", async () => {
-    hoisted.txSubFindById.mockResolvedValue(
-      mkSubmission({ id: "sub-1", status: "submitted", legalEntityId: "ent-1" }),
-    );
+    const submitted = mkSubmission({ id: "sub-1", status: "submitted", legalEntityId: "ent-1" });
+    const submissions: IItemSubmissionRepository = {
+      findById: vi.fn().mockResolvedValue(submitted),
+    } as unknown as IItemSubmissionRepository;
     const db = {
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
     } as unknown as Database;
     const svc = new ItemSubmissionService(
       db,
-      {} as IItemSubmissionRepository,
+      submissions,
       {} as unknown as IUserRepository,
       {} as NotificationDispatcher,
     );

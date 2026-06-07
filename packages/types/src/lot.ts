@@ -131,4 +131,5 @@ export type CreateLotInput = {
   endTime: Date;
   saleId?: string | null | undefined;
   lotNumber?: number | null | undefined;
+  marketingDetails?: LotMarketingDetails | undefined;
 };

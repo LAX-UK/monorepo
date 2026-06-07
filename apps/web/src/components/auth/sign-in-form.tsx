@@ -5,6 +5,7 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
+import { SellAuthIntentBanner } from "@/components/auth/sell-auth-intent-banner";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { LogoutButton } from "@/components/layout/logout-button";
@@ -26,6 +27,7 @@ type SignInFormProps = {
 export function SignInForm({ switchAccount = false }: SignInFormProps) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
+  const sellIntent = searchParams.get("intent") === "sell";
   const {
     form,
     onSubmit,
@@ -35,7 +37,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     turnstileSiteKey,
     onTurnstileToken,
     onTurnstileExpire,
-  } = useSignInController(next);
+  } = useSignInController(next, { sellIntent });
   const socialError =
     searchParams.get("social_error") === "1"
       ? socialErrorMessage(searchParams.get("reason"))
@@ -194,6 +196,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           Please sign in to continue.
         </p>
       ) : null}
+      <SellAuthIntentBanner />
       {verifyPending ? (
         <output
           className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"

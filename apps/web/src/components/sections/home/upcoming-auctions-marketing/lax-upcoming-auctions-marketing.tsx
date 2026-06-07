@@ -1,11 +1,12 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
+import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
 import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { Calendar, ChevronRight } from "lucide-react";
+import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { UpcomingAuctionsMarketingClient } from "./upcoming-auctions-marketing-client";
 
@@ -35,15 +36,7 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
               </DisplayHeading>
             }
             subtitle="Scheduled and live sales curated by LAX specialists"
-            action={
-              <Button variant="chevron" asChild>
-                <Link href="/sales" className="inline-flex items-center gap-2 py-[18px]">
-                  View All
-                  <span className="sr-only"> auctions and sales</span>
-                  <ChevronRight className="size-5 shrink-0" aria-hidden />
-                </Link>
-              </Button>
-            }
+            action={<MarketingViewAllLink href="/sales" srSuffix="auctions and sales" />}
           />
           <MarketingEmptyState
             variant="marketing"

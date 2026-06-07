@@ -18,10 +18,21 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildSubmissionsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { submissionsDecisionQueueHref } from "@/lib/admin/list-presets/submissions-presets";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import {
+  submissionBlocksAccept,
+  submissionQualityWarnings,
+} from "@/lib/admin/submission-quality-warnings";
+import {
+  formatSubmissionSlaLabel,
+  submissionQueueSlaDays,
+  submissionSlaTone,
+} from "@/lib/admin/submission-sla";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminCategoryById, getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
@@ -48,11 +59,15 @@ export default async function AdminSubmissionsPage({
     error?: string;
     q?: string;
     categoryId?: string;
+    qualityGaps?: string;
+    assignedTo?: string;
+    sort?: string;
     limit?: string;
     offset?: string;
   }>;
 }) {
   const sp = await searchParams;
+  const user = await requireAdminCapability(SUBMISSIONS_ACCESS, "/admin/submissions");
   const error = safeDecodeAdminErrorParam(sp.error);
   const query = submissionsListController.parseQuery(sp);
   const initialQ = query.q ?? "";
@@ -87,14 +102,31 @@ export default async function AdminSubmissionsPage({
     const sellerPreview = entityId
       ? (sellerNameById.get(entityId) ?? `ID: ${entityId.slice(0, 8)}…`)
       : "Unknown seller";
+    const slaDays = submissionQueueSlaDays(s.status, s.updatedAt);
+    const qualityWarnings = submissionQualityWarnings(s);
+    const blocksAccept = submissionBlocksAccept(s);
     return {
       id: s.id,
       title: s.title,
       sellerPreview,
       status: s.status,
       createdAtLabel: formatDateTime(s.createdAt),
+      slaDays,
+      slaLabel: slaDays == null ? null : formatSubmissionSlaLabel(slaDays),
+      slaTone: slaDays == null ? null : submissionSlaTone(slaDays),
+      qualityWarnings,
+      blocksAccept,
+      assigneeLabel: s.assignedToUserId
+        ? s.assignedToUserId === user.id
+          ? "You"
+          : "Assigned"
+        : "—",
     };
   });
+
+  const qualityGapsOnPage = submissionRows.filter(
+    (r) => r.blocksAccept || r.qualityWarnings.length > 0,
+  ).length;
 
   const clearTitleHref = buildListHref("/admin/submissions", sp, {
     q: "",
@@ -119,6 +151,11 @@ export default async function AdminSubmissionsPage({
                   value: awaitingOnPage,
                   delta: "On this page",
                 },
+                {
+                  label: "Quality gaps",
+                  value: qualityGapsOnPage,
+                  delta: "On this page",
+                },
               ]
             : []),
         ]}
@@ -131,7 +168,12 @@ export default async function AdminSubmissionsPage({
     href: submissionsDecisionQueueHref(tab.id, sp),
   }));
 
-  const activeFilterCount = (initialQ.trim() !== "" ? 1 : 0) + (query.categoryId ? 1 : 0);
+  const activeFilterCount =
+    (initialQ.trim() !== "" ? 1 : 0) +
+    (query.categoryId ? 1 : 0) +
+    (query.qualityGaps ? 1 : 0) +
+    (query.assignedToMe ? 1 : 0) +
+    (query.sort ? 1 : 0);
   const categoryFilter = query.categoryId
     ? await getAdminCategoryById(query.categoryId).catch(() => null)
     : null;
@@ -152,6 +194,9 @@ export default async function AdminSubmissionsPage({
     ...(query.categoryId
       ? { categoryId: query.categoryId, categoryName: categoryFilter?.name ?? null }
       : {}),
+    ...(query.qualityGaps ? { qualityGaps: true } : {}),
+    ...(query.assignedToMe ? { assignedToMe: true } : {}),
+    ...(query.sort ? { sort: query.sort } : {}),
   });
 
   const pagination =
@@ -207,7 +252,11 @@ export default async function AdminSubmissionsPage({
                   href={buildListHref("/admin/submissions", sp, {
                     categoryId: undefined,
                     q: "",
+                    qualityGaps: "",
+                    assignedTo: "",
+                    sort: "",
                     offset: 0,
+                    queue: activeQueue,
                   })}
                 >
                   View all in queue
@@ -260,6 +309,9 @@ export default async function AdminSubmissionsPage({
             initialCategoryId={query.categoryId ?? null}
             categories={categories}
             queue={activeQueue}
+            qualityGaps={query.qualityGaps ?? false}
+            assignedToMe={query.assignedToMe ?? false}
+            sortBySla={query.sort === "sla"}
           />
         </Suspense>
       }
@@ -270,6 +322,9 @@ export default async function AdminSubmissionsPage({
             ...(activeQueue ? { queue: activeQueue } : {}),
             ...(initialQ ? { q: initialQ } : {}),
             ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+            ...(query.qualityGaps ? { qualityGaps: "1" } : {}),
+            ...(query.assignedToMe ? { assignedTo: "me" } : {}),
+            ...(query.sort ? { sort: query.sort } : {}),
           }}
         />
       }

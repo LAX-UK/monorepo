@@ -3,6 +3,7 @@ import { type ServiceResult, serviceSuccess } from "../http/service-result";
 import type {
   ApproveSubmissionBody,
   ApproveSubmissionResult,
+  ConvertSubmissionResult,
   IAdminSubmissionService,
   RejectSubmissionBody,
 } from "../interfaces/admin-submission-service";
@@ -22,6 +23,39 @@ export class AdminSubmissionService implements IAdminSubmissionService {
       `/submissions/${encodeURIComponent(id)}/review/start`,
       { method: "POST" },
     );
+  }
+
+  async accept(
+    id: string,
+    body: ApproveSubmissionBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(`/submissions/${encodeURIComponent(id)}/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async convert(
+    id: string,
+    body: ApproveSubmissionBody,
+  ): Promise<ServiceResult<ConvertSubmissionResult>> {
+    const r = await this.api.json<unknown>(`/submissions/${encodeURIComponent(id)}/convert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return r;
+    type ConvertPayload = {
+      data?: { lot?: { id?: string }; readinessPercent?: number };
+    };
+    const payload = r.data as ConvertPayload;
+    const lotId = payload.data?.lot?.id ?? readLotIdFromApprove(r.data);
+    const out: ConvertSubmissionResult = { lotId: lotId ?? undefined };
+    if (payload.data?.readinessPercent !== undefined) {
+      out.readinessPercent = payload.data.readinessPercent;
+    }
+    return serviceSuccess(out, r.status);
   }
 
   async approve(
@@ -46,6 +80,17 @@ export class AdminSubmissionService implements IAdminSubmissionService {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+    });
+  }
+
+  async assign(
+    id: string,
+    assignedToUserId: string | null,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(`/submissions/${encodeURIComponent(id)}/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignedToUserId }),
     });
   }
 }

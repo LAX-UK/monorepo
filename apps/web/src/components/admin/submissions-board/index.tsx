@@ -7,11 +7,11 @@ import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
 import { submissionColumns } from "@/components/admin/submissions-board/columns";
 import { SubmissionDrawerContent } from "@/components/admin/submissions-board/drawer";
 import { SubmissionsMobileCards } from "@/components/admin/submissions-board/mobile-cards";
-import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
 import {
   areSubmissionBulkIdsActionable,
+  mergeSubmissionBlocksAccept,
   mergeSubmissionStatuses,
 } from "@/lib/admin/submission-bulk-selection";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
@@ -33,14 +33,16 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
   const bulkOperations = useMemo(() => getSubmissionBulkOperations(), []);
   const pageIds = useMemo(() => rows.map((r) => r.id), [rows]);
   const [statusById, setStatusById] = useState<Map<string, string>>(() => new Map());
+  const [blocksAcceptById, setBlocksAcceptById] = useState<Map<string, boolean>>(() => new Map());
 
   useEffect(() => {
     setStatusById((prev) => mergeSubmissionStatuses(prev, rows));
+    setBlocksAcceptById((prev) => mergeSubmissionBlocksAccept(prev, rows));
   }, [rows]);
 
   const selectedBulkActionable = useMemo(
-    () => areSubmissionBulkIdsActionable(selectedIds, statusById),
-    [selectedIds, statusById],
+    () => areSubmissionBulkIdsActionable(selectedIds, statusById, blocksAcceptById),
+    [selectedIds, statusById, blocksAcceptById],
   );
 
   return (
@@ -55,11 +57,9 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
             columns={columns}
             data={rows}
             emptyComponent={
-              <FilterEmptyState
-                entity="submissions"
-                segment="admin"
-                hasActiveFilters={Boolean(filterForm)}
-              />
+              <p className="py-8 text-center font-body text-sm text-on-surface-variant">
+                No submissions on this page.
+              </p>
             }
             density={density}
             enableRowSelection
@@ -85,7 +85,7 @@ export function AdminSubmissionsBoard({ rows, filterForm }: Props) {
         onClear={clear}
         preflightWarning={
           selectedIds.length > 0 && !selectedBulkActionable
-            ? "Bulk approve and reject are available only for submissions already under review. Start review on submitted rows first."
+            ? "Bulk approve and reject are available only for submissions under review without missing required fields. Start review first or fix quality gaps."
             : null
         }
         pageRowCount={pageIds.length}

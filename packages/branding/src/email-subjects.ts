@@ -9,4 +9,8 @@ export const emailSubjects = {
   passwordChangedElsewhere: `Your ${SITE_NAME} password was reset from another session`,
   passwordChangedSessionsNotRevoked: `Action needed: review active ${SITE_NAME} sessions`,
   kycResubmissionRequired: `Action needed on your ${SITE_NAME} identity verification`,
+  submissionApproved: `Your ${SITE_NAME} submission was accepted`,
+  submissionConverted: `Draft lot created for your ${SITE_NAME} submission`,
+  submissionRejected: `Update on your ${SITE_NAME} submission`,
+  submissionDraftReminder: `Reminder: finish your ${SITE_NAME} submission`,
 } as const;

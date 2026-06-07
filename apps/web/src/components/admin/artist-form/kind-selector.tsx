@@ -13,8 +13,8 @@ import {
   Gem,
   Landmark,
   PenTool,
+  Sprout,
   Tag,
-  Wine,
 } from "lucide-react";
 
 /** Icons per kind with a safe fallback so new kinds never break the grid. (OCP) */
@@ -32,7 +32,7 @@ const KIND_ICONS: Partial<Record<ArtistKind, typeof Brush>> = {
   printer: BookOpen,
   mint: Coins,
   issuing_authority: Landmark,
-  producer: Wine,
+  producer: Sprout,
 };
 
 type Props = {

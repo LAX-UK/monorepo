@@ -25,6 +25,7 @@ export class InAppNotificationChannel implements INotificationChannel {
         title: payload.title,
         message: payload.message,
         lotId: payload.lotId,
+        submissionId: payload.submissionId,
       },
     ]);
     for (const row of rows) {

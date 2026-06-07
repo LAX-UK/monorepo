@@ -31,6 +31,7 @@
     "@auction/auth": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/db": "workspace:*",
+    "@auction/domain": "workspace:*",
     "@auction/email": "workspace:^",
     "@auction/exports": "workspace:*",
     "@auction/http-headers": "workspace:*",

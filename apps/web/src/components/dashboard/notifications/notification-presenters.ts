@@ -55,8 +55,14 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "submission_approved") {
     return { label: "Approved", Icon: Trophy, tone: "success" };
   }
+  if (type === "submission_converted") {
+    return { label: "Catalogue prep", Icon: FileText, tone: "success" };
+  }
   if (type === "submission_rejected") {
     return { label: "Not accepted", Icon: XCircle, tone: "neutral" };
+  }
+  if (type === "submission_draft_reminder") {
+    return { label: "Draft reminder", Icon: Clock, tone: "info" };
   }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };

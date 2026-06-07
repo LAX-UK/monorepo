@@ -104,6 +104,7 @@ function itemSubmissionRow(
     rejectionReason: null,
     convertedLotId: null,
     assignedToUserId: null,
+    draftReminderSentAt: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

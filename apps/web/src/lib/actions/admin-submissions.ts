@@ -12,7 +12,11 @@ import {
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { approveSubmissionBodySchema, rejectSubmissionBodySchema } from "@auction/validators";
+import {
+  adminAssignSubmissionBodySchema,
+  approveSubmissionBodySchema,
+  rejectSubmissionBodySchema,
+} from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { z } from "zod";
@@ -113,6 +117,65 @@ export async function adminStartSubmissionReviewResultAction(
   });
 }
 
+export async function adminAcceptSubmissionResultAction(
+  submissionId: string,
+  body: z.infer<typeof approveSubmissionBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminAcceptSubmissionResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
+    const id = submissionId.trim();
+    if (!id) {
+      return actionFailure("Missing submission");
+    }
+    const parsed = approveSubmissionBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSubmissions } = getWriteContainer();
+    const r = await adminSubmissions.accept(id, parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/admin/submissions");
+    revalidatePath(`/admin/submissions/${id}`);
+    return actionSuccess();
+  });
+}
+
+export async function adminConvertSubmissionResultAction(
+  submissionId: string,
+  body: z.infer<typeof approveSubmissionBodySchema>,
+): Promise<ActionResult<{ lotId: string | undefined; readinessPercent?: number }>> {
+  return instrumentServerAction("adminConvertSubmissionResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
+    const id = submissionId.trim();
+    if (!id) {
+      return actionFailure("Missing submission");
+    }
+    const parsed = approveSubmissionBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSubmissions } = getWriteContainer();
+    const r = await adminSubmissions.convert(id, parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/admin/submissions");
+    revalidatePath(`/admin/submissions/${id}`);
+    revalidatePath("/admin/lots");
+    const out: { lotId: string | undefined; readinessPercent?: number } = {
+      lotId: r.data.lotId,
+    };
+    if (r.data.readinessPercent !== undefined) {
+      out.readinessPercent = r.data.readinessPercent;
+    }
+    return actionSuccess(out);
+  });
+}
+
 export async function adminApproveSubmissionResultAction(
   submissionId: string,
   body: z.infer<typeof approveSubmissionBodySchema>,
@@ -158,6 +221,32 @@ export async function adminRejectSubmissionResultAction(
     }
     const { adminSubmissions } = getWriteContainer();
     const r = await adminSubmissions.reject(id, parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/admin/submissions");
+    revalidatePath(`/admin/submissions/${id}`);
+    return actionSuccess();
+  });
+}
+
+export async function adminAssignSubmissionResultAction(
+  submissionId: string,
+  assignedToUserId: string | null,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminAssignSubmissionResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
+    const id = submissionId.trim();
+    if (!id) {
+      return actionFailure("Missing submission");
+    }
+    const parsed = adminAssignSubmissionBodySchema.safeParse({ assignedToUserId });
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSubmissions } = getWriteContainer();
+    const r = await adminSubmissions.assign(id, parsed.data.assignedToUserId);
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }

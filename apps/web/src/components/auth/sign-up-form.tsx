@@ -3,6 +3,7 @@
 import { AuthFooterLink } from "@/components/auth/primitives/footer-link";
 import { FormBanner } from "@/components/auth/primitives/form-error";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
+import { SellAuthIntentBanner } from "@/components/auth/sell-auth-intent-banner";
 import { SignUpFields } from "@/components/auth/sign-up-fields";
 import { SignUpLegalConsent } from "@/components/auth/sign-up-legal-consent";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
@@ -31,6 +32,7 @@ export function SignUpForm({
   const rawNext = searchParams.get("next");
   const safeNext = rawNext && isSafeNextPath(rawNext) ? rawNext : undefined;
   const next = safeNext ?? "/dashboard";
+  const sellIntent = searchParams.get("intent") === "sell";
   const loginHref = buildAuthHref("/login", {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
   });
@@ -38,6 +40,7 @@ export function SignUpForm({
     ...(inviteToken ? { inviteToken } : {}),
     ...(safeNext ? { next: safeNext } : {}),
     phoneDefaultCountry,
+    ...(sellIntent ? { sellIntent: true } : {}),
   };
   const {
     form,
@@ -78,6 +81,7 @@ export function SignUpForm({
 
   return (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
+      <SellAuthIntentBanner />
       <FormBanner
         message={(form.formState.errors.root?.message as string | undefined) ?? bannerError ?? null}
       />

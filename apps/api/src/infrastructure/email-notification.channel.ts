@@ -8,7 +8,11 @@ import type {
   NotificationPayload,
 } from "../services/interfaces/notification-channel.js";
 import type { IUserRepository } from "../services/interfaces/repositories.js";
-import { notificationLotTitle, notificationLotWebPath } from "../services/notification-payload.js";
+import {
+  notificationLotTitle,
+  notificationLotWebPath,
+  notificationWebPath,
+} from "../services/notification-payload.js";
 
 const OPT_OUTABLE = new Set(["outbid", "lot_won", "lot_ended_seller"]);
 
@@ -101,14 +105,55 @@ export class EmailNotificationChannel implements INotificationChannel {
           billTo,
         };
       }
+      case "submission-approved":
+      case "submission-converted": {
+        const submissionUrl = this.absoluteWebPath(payload);
+        return {
+          userName,
+          submissionTitle: payload.message.match(/"(.+?)"/)?.[1] ?? "Your item",
+          submissionUrl,
+          unsubscribeUrl,
+        };
+      }
+      case "submission-rejected": {
+        const submissionUrl = this.absoluteWebPath(payload);
+        const submissionId = payload.submissionId;
+        const resubmitUrl = submissionId
+          ? `${this.apiBaseUrl.replace(/\/$/, "")}/dashboard/submissions/new?fromRejected=${encodeURIComponent(submissionId)}`
+          : submissionUrl;
+        return {
+          userName,
+          submissionTitle: payload.message.match(/"(.+?)"/)?.[1] ?? "Your item",
+          submissionUrl,
+          resubmitUrl,
+          reasonSummary: payload.message.includes(": ")
+            ? payload.message.split(": ").slice(1).join(": ")
+            : null,
+          unsubscribeUrl,
+        };
+      }
+      case "submission-draft-reminder": {
+        const staleMatch = payload.message.match(/(\d+) days/);
+        return {
+          userName,
+          submissionTitle: payload.message.match(/"(.+?)"/)?.[1] ?? "Your item",
+          submissionUrl: this.absoluteWebPath(payload),
+          staleDays: staleMatch ? Number(staleMatch[1]) : 7,
+          unsubscribeUrl,
+        };
+      }
       default:
         throw new Error(`Notification payload cannot render template ${template}`);
     }
   }
 
   private lotUrl(payload: NotificationPayload): string {
+    return this.absoluteWebPath(payload);
+  }
+
+  private absoluteWebPath(payload: NotificationPayload): string {
     const base = this.apiBaseUrl.replace(/\/$/, "");
-    const path = notificationLotWebPath(payload);
+    const path = notificationWebPath(payload) ?? notificationLotWebPath(payload);
     return path ? `${base}${path}` : base;
   }
 
