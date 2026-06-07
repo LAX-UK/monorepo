@@ -7,6 +7,7 @@ import {
 
 import type { ListLotsParams } from "@/lib/data/contracts";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { type AdminAmlScreeningRow, screeningFromJson } from "@/lib/data/http/compliance.server";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
 import type {
@@ -1482,6 +1483,9 @@ export type AdminUserDetailPayload = AdminUserRow & {
   pendingNewEmail: string | null;
   emailChangeExpiresAt: string | null;
   currentKycSessionId: string | null;
+  amlHoldStatus: string | null;
+  amlHoldReason: string | null;
+  amlHoldAt: string | null;
 };
 
 export type AdminKycSessionRow = {
@@ -1507,6 +1511,9 @@ export type AdminKycSessionRow = {
   verifiedIdValidFrom: string | null;
   decisionRiskScore: string | null;
   decisionIpCountry: string | null;
+  decisionStatus: string | null;
+  decisionReasonCode: number | null;
+  decisionReasonLabel: string | null;
   createdAt: string;
   decisionAt: string | null;
 };
@@ -1518,6 +1525,17 @@ export async function getAdminUserKycSessions(userId: string): Promise<AdminKycS
   }
   const body = (await res.json()) as { data: AdminKycSessionRow[] };
   return body.data;
+}
+
+export async function getAdminUserAmlScreenings(userId: string): Promise<AdminAmlScreeningRow[]> {
+  const res = await authedServerFetch(`/admin/users/${encodeURIComponent(userId)}/aml-screenings`);
+  if (!res.ok) {
+    throw new Error(`Failed to load AML screenings: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data
+    .map((row) => screeningFromJson(row))
+    .filter((r): r is AdminAmlScreeningRow => r != null);
 }
 
 export async function getAdminUserById(id: string): Promise<AdminUserDetailPayload | null> {

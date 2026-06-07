@@ -5,6 +5,7 @@ import type {
   AmlHoldReason,
   AmlHoldStatus,
   AmlReviewStatus,
+  AmlScreeningHit,
   AmlTriageRecommendation,
   AmlWatchlistCategory,
 } from "../services/aml/aml-types.js";
@@ -28,6 +29,11 @@ function rowToRecord(row: typeof kycWatchlistScreening.$inferSelect): WatchlistS
     monitorStatus: row.monitorStatus,
     totalHits: row.totalHits,
     categories: (row.categories ?? []) as AmlWatchlistCategory[],
+    hits: (row.hits ?? []) as AmlScreeningHit[],
+    checkType:
+      row.checkType === "initial_result" || row.checkType === "updated_result"
+        ? row.checkType
+        : null,
     decisionOutcome: row.decisionOutcome,
     reviewStatus: row.reviewStatus,
     triageRecommendation: (row.triageRecommendation as AmlTriageRecommendation | null) ?? null,
@@ -100,6 +106,21 @@ export class DrizzleAmlScreeningRepository
     return rows.map(rowToRecord);
   }
 
+  async listForUser(
+    userId: string,
+    limit: number,
+    conn?: Database,
+  ): Promise<WatchlistScreeningRecord[]> {
+    const cap = Math.min(50, Math.max(1, limit));
+    const rows = await this.conn(conn)
+      .select()
+      .from(kycWatchlistScreening)
+      .where(eq(kycWatchlistScreening.userId, userId))
+      .orderBy(desc(kycWatchlistScreening.screenedAt))
+      .limit(cap);
+    return rows.map(rowToRecord);
+  }
+
   async upsertFromResult(
     input: UpsertWatchlistScreeningInput,
     conn?: Database,
@@ -115,6 +136,8 @@ export class DrizzleAmlScreeningRepository
         monitorStatus: result.monitorStatus,
         totalHits: result.totalHits,
         categories: result.categories,
+        hits: result.hits,
+        checkType: input.checkType ?? null,
         decisionOutcome: decision.outcome,
         reviewStatus,
         payload: result.rawPayload,
@@ -127,6 +150,8 @@ export class DrizzleAmlScreeningRepository
           monitorStatus: result.monitorStatus,
           totalHits: result.totalHits,
           categories: result.categories,
+          hits: result.hits,
+          checkType: input.checkType ?? null,
           decisionOutcome: decision.outcome,
           reviewStatus,
           // A fresh provider result supersedes any prior human disposition.
