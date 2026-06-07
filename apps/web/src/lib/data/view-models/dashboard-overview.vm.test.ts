@@ -12,6 +12,7 @@ const emptyErrors = {
   bids: null,
   submissions: null,
   notifications: null,
+  addresses: null,
 };
 
 describe("buildDashboardOverviewVm", () => {

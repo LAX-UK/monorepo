@@ -15,7 +15,7 @@ import { evaluateSubmissionQuality } from "@auction/domain";
 import { type ItemSubmissionFormValues, itemSubmissionFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type FieldPath, useForm, useFormState } from "react-hook-form";
 
 export type WizardMode = { kind: "create" } | { kind: "edit"; submissionId: string };
@@ -23,7 +23,7 @@ export type WizardMode = { kind: "create" } | { kind: "edit"; submissionId: stri
 export type AutosaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
 export type SubmissionWizardController = FormController<ItemSubmissionFormValues> & {
-  saveDraft: (opts?: { leaveAfter?: boolean }) => Promise<boolean>;
+  saveDraft: (opts?: { leaveAfter?: boolean; skipRedirect?: boolean }) => Promise<boolean>;
   submitForReview: () => Promise<void>;
   autosaveStatus: AutosaveStatus;
   lastSavedAt: Date | null;
@@ -50,7 +50,7 @@ export function useSubmissionWizardController(
   initial?: ItemSubmissionFormValues,
 ): SubmissionWizardController {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [submitInFlight, setSubmitInFlight] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(
@@ -85,7 +85,7 @@ export function useSubmissionWizardController(
   );
 
   const saveDraft = useCallback(
-    async (opts?: { leaveAfter?: boolean }): Promise<boolean> => {
+    async (opts?: { leaveAfter?: boolean; skipRedirect?: boolean }): Promise<boolean> => {
       const values = sanitizeSubmissionFormValues(form.getValues());
       const parsed = itemSubmissionFormSchema.safeParse(values);
       if (!parsed.success) {
@@ -129,7 +129,7 @@ export function useSubmissionWizardController(
       form.reset(parsed.data);
       if (opts?.leaveAfter) {
         router.push("/dashboard/submissions");
-      } else {
+      } else if (!opts?.skipRedirect) {
         router.replace(r.data?.redirectTo ?? `/dashboard/submissions/${newId}`);
       }
       return true;
@@ -164,8 +164,17 @@ export function useSubmissionWizardController(
       return;
     }
 
-    startTransition(async () => {
-      setAutosaveStatus("saving");
+    if (submitInFlight || saveInFlight.current) return;
+
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    saveInFlight.current = true;
+    setAutosaveStatus("saving");
+    setSubmitInFlight(true);
+
+    try {
       let id = submissionId ?? (mode.kind === "edit" ? mode.submissionId : null);
 
       if (!id) {
@@ -206,8 +215,11 @@ export function useSubmissionWizardController(
       setLastSavedAt(new Date());
       router.push(`/dashboard/submissions/${id}`);
       router.refresh();
-    });
-  }, [form, mode, router, submissionId]);
+    } finally {
+      saveInFlight.current = false;
+      setSubmitInFlight(false);
+    }
+  }, [form, mode, router, submissionId, submitInFlight]);
 
   useEffect(() => {
     if (mode.kind !== "edit" && !submissionId) return;
@@ -248,7 +260,7 @@ export function useSubmissionWizardController(
   return {
     form,
     onSubmit,
-    isSubmitting: pending || form.formState.isSubmitting,
+    isSubmitting: submitInFlight || formIsSubmitting,
     error: null,
     saveDraft,
     submitForReview,

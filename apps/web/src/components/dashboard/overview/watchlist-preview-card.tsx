@@ -1,5 +1,6 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { lotStatusLabel } from "@/lib/admin/status-badge-variants";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";
@@ -76,7 +77,7 @@ export function WatchlistPreviewCard({
                       </span>
                     </span>
                     <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
-                      {lot.status}
+                      {lotStatusLabel[lot.status] ?? lot.status}
                     </StatusBadge>
                   </Link>
                 </li>
@@ -109,7 +110,7 @@ export function WatchlistPreviewCard({
                       </span>
                     </span>
                     <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
-                      {lot.status}
+                      {lotStatusLabel[lot.status] ?? lot.status}
                     </StatusBadge>
                   </Link>
                 </li>

@@ -94,7 +94,7 @@ export function InSaleMobileList({ rows }: Props) {
               row.status === "ended" ? (
                 <p className="mt-2">
                   <Link
-                    href={`/dashboard/submissions/new?fromLot=${encodeURIComponent(row.id)}`}
+                    href="/dashboard/submissions/new"
                     className="font-body text-xs text-primary underline-offset-4 hover:underline"
                   >
                     Sell again
@@ -166,7 +166,7 @@ function InSaleDesktopRowCard({ row }: { row: InSaleDisplayRow }) {
             </StatusBadge>
             {row.status === "ended" ? (
               <Link
-                href={`/dashboard/submissions/new?fromLot=${encodeURIComponent(row.id)}`}
+                href="/dashboard/submissions/new"
                 className="font-body text-xs text-primary underline-offset-4 hover:underline"
               >
                 Sell again

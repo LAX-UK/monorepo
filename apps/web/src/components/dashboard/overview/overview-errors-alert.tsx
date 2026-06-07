@@ -13,6 +13,7 @@ const SLICE_LINKS: Partial<Record<keyof DashboardOverviewErrors, { href: string;
     bids: { href: DASHBOARD_ROUTES.bids, label: "Open bids" },
     submissions: { href: DASHBOARD_ROUTES.submissions, label: "Open submissions" },
     notifications: { href: DASHBOARD_ROUTES.notifications, label: "Open notifications" },
+    addresses: { href: "/dashboard/settings/addresses", label: "Open addresses" },
     session: { href: dashboardLoginUrl(DASHBOARD_ROUTES.overview), label: "Sign in again" },
   };
 
@@ -31,6 +32,7 @@ export function OverviewErrorsAlert({ errors }: OverviewErrorsAlertProps) {
       ["bids", errors.bids],
       ["submissions", errors.submissions],
       ["notifications", errors.notifications],
+      ["addresses", errors.addresses],
     ] as const
   ).filter(([, message]) => Boolean(message));
 
@@ -40,6 +42,8 @@ export function OverviewErrorsAlert({ errors }: OverviewErrorsAlertProps) {
     <DashboardErrorAlert
       title="Some sections could not load"
       message="Your dashboard is partially available. Retry the affected sections below."
+      role="alert"
+      aria-live="polite"
     >
       <ul className="mt-2 space-y-3 font-body text-sm">
         {entries.map(([key, message]) => {

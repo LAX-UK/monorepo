@@ -95,7 +95,7 @@ export default async function OrganisationsHubPage() {
       title="Organisations"
       description="Manage organisations you belong to, respond to invitations, and continue setup."
       actions={
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="cta" size="sm">
           <Link href="/onboarding/organisation?fresh=1" prefetch>
             Register organisation
           </Link>

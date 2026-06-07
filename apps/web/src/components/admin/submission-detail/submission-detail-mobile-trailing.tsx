@@ -75,6 +75,23 @@ export function SubmissionDetailMobileTrailing({
     );
   }
 
+  if (status === "approved") {
+    return showDecisionActions ? (
+      <Button
+        type="submit"
+        size="sm"
+        className="min-h-11"
+        form={CATALOG_FORM_IDS.submissionApprove}
+      >
+        Convert to lot
+      </Button>
+    ) : (
+      <Button type="button" size="sm" variant="outline" className="min-h-11" asChild>
+        <Link href={`/admin/submissions/${submissionId}/decision`}>Convert to lot</Link>
+      </Button>
+    );
+  }
+
   return null;
 }
 
@@ -89,7 +106,7 @@ function SubmissionDecisionMobileActions() {
         className="min-h-11"
         form={CATALOG_FORM_IDS.submissionApprove}
       >
-        Approve
+        Accept
       </Button>
       <div className="lg:hidden">
         <BottomSheet open={moreOpen} onOpenChange={setMoreOpen}>

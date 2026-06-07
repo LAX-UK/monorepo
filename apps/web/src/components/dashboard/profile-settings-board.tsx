@@ -198,14 +198,16 @@ function ProfileAvatarBlock({ initialImage }: { initialImage: string | null }) {
   const router = useRouter();
 
   function persist(next: string[]) {
-    setValue(next);
+    const previous = value;
     startTransition(async () => {
       const r = await updateProfileImageAction({ image: next[0] ?? null });
       if (r.ok) {
+        setValue(next);
         notify.success("Profile image updated");
         router.refresh();
         return;
       }
+      setValue(previous);
       notify.error(r.error);
     });
   }

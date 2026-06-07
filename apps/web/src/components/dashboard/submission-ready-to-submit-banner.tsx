@@ -1,25 +1,19 @@
 "use client";
 
-import { submitForReviewFromValuesAction } from "@/lib/actions/submissions";
 import {
   SUBMISSION_READY_TO_SUBMIT_BANNER,
   SUBMISSION_SUBMIT_LABEL,
 } from "@/lib/marketing/sell-flow-copy";
-import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 
 type Props = {
-  submissionId: string;
+  onSubmit: () => void;
+  isSubmitting?: boolean;
 };
 
 /** Prominent submit CTA when a saved submission has all required fields. */
-export function SubmissionReadyToSubmitBanner({ submissionId }: Props) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
+export function SubmissionReadyToSubmitBanner({ onSubmit, isSubmitting = false }: Props) {
   return (
     <Surface
       variant="quiet"
@@ -35,23 +29,15 @@ export function SubmissionReadyToSubmitBanner({ submissionId }: Props) {
         variant="cta"
         size="lg"
         className="w-full shrink-0 sm:w-auto"
-        disabled={pending}
+        disabled={isSubmitting}
+        aria-busy={isSubmitting}
         onClick={() => {
-          startTransition(() => {
-            void (async () => {
-              const r = await submitForReviewFromValuesAction(submissionId);
-              if (r.ok) {
-                notify.success("Submitted for review");
-                router.refresh();
-                return;
-              }
-              notify.error(r.error);
-            })();
-          });
+          if (isSubmitting) return;
+          onSubmit();
         }}
         data-testid="submission-detail-submit-for-review"
       >
-        {pending ? "Submitting…" : SUBMISSION_SUBMIT_LABEL}
+        {isSubmitting ? "Submitting…" : SUBMISSION_SUBMIT_LABEL}
       </Button>
     </Surface>
   );

@@ -230,12 +230,15 @@ function AddressFields({ form }: { form: ReturnType<typeof useForm<AddressFormVa
 }
 
 function AddressForm({
+  resetKey,
   initialValues,
   pending,
   submitLabel,
   onCancel,
   onSubmit,
 }: {
+  /** Stable id — form resets only when this changes, not on parent re-renders. */
+  resetKey: string;
   initialValues: AddressFormValues;
   pending: boolean;
   submitLabel: string;
@@ -248,9 +251,10 @@ function AddressForm({
     mode: "onTouched",
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the edited address (resetKey) changes, not on every initialValues identity change during re-renders.
   useEffect(() => {
     form.reset(initialValues);
-  }, [form, initialValues]);
+  }, [form, resetKey]);
 
   return (
     <Form {...form}>
@@ -285,11 +289,12 @@ export function AddressesBoard({
   const run = (
     work: () => Promise<{ ok: boolean; error?: string }>,
     success: string,
-    options?: { returnToCheckout?: boolean },
+    options?: { returnToCheckout?: boolean; onSuccess?: () => void },
   ) => {
     startTransition(async () => {
       const result = await work();
       if (result.ok) {
+        options?.onSuccess?.();
         notify.success(success);
         if (options?.returnToCheckout && returnAfterSave) {
           router.push(returnAfterSave);
@@ -321,6 +326,7 @@ export function AddressesBoard({
               <div key={address.id} className="rounded-sm border border-border-hairline p-4">
                 {editingId === address.id ? (
                   <AddressForm
+                    resetKey={address.id}
                     initialValues={addressToForm(address)}
                     pending={pending}
                     submitLabel="Save"
@@ -330,6 +336,7 @@ export function AddressesBoard({
                         async () =>
                           updateAddressFromValuesAction(address.id, normalizeAddress(values)),
                         "Address updated",
+                        { onSuccess: () => setEditingId(null) },
                       )
                     }
                   />
@@ -418,6 +425,7 @@ export function AddressesBoard({
         </div>
         <div className="space-y-4">
           <AddressForm
+            resetKey="new"
             initialValues={emptyAddress}
             pending={pending}
             submitLabel={pending ? "Saving..." : "Add address"}

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  adminApproveSubmissionResultAction,
+  adminAcceptSubmissionResultAction,
   adminRejectSubmissionResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
@@ -17,7 +17,8 @@ import {
   DialogTrigger,
 } from "@auction/ui/components/dialog";
 import { Textarea } from "@auction/ui/components/textarea";
-import { CheckCircle, PlayCircle, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, PlayCircle, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
@@ -30,10 +31,10 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
-  const [approveOpen, setApproveOpen] = useState(false);
+  const [acceptOpen, setAcceptOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [reviewNotes, setReviewNotes] = useState("");
-  const approveNotesFieldId = useId();
+  const acceptNotesFieldId = useId();
   const rejectReasonFieldId = useId();
 
   function startReview() {
@@ -48,14 +49,14 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
     });
   }
 
-  function approve() {
+  function acceptForCataloguing() {
     startTransition(async () => {
-      const result = await adminApproveSubmissionResultAction(submissionId, {
+      const result = await adminAcceptSubmissionResultAction(submissionId, {
         reviewNotes: reviewNotes.trim() || undefined,
       });
       if (result.ok) {
-        notify.success("Submission approved — draft lot created");
-        setApproveOpen(false);
+        notify.success("Accepted for cataloguing");
+        setAcceptOpen(false);
         router.refresh();
       } else {
         notify.error(result.error);
@@ -97,27 +98,27 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
   if (status === "under_review") {
     return (
       <div className="flex flex-wrap gap-2">
-        <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
+        <Dialog open={acceptOpen} onOpenChange={setAcceptOpen}>
           <DialogTrigger asChild>
             <Button type="button" size="sm" disabled={pending}>
               <CheckCircle className="size-3.5" aria-hidden />
-              Approve
+              Accept
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Approve submission</DialogTitle>
+              <DialogTitle>Accept for cataloguing</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-on-surface-variant">
-              This will create a draft lot. You can assign the artist on the lot detail page after
-              approval.
+              Moves this submission to accepted. Create the draft lot from the decision tab with an
+              artist assignment.
             </p>
-            <label htmlFor={approveNotesFieldId} className="flex flex-col gap-1.5">
+            <label htmlFor={acceptNotesFieldId} className="flex flex-col gap-1.5">
               <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                 Internal notes (optional)
               </span>
               <Textarea
-                id={approveNotesFieldId}
+                id={acceptNotesFieldId}
                 rows={3}
                 value={reviewNotes}
                 onChange={(e) => setReviewNotes(e.target.value)}
@@ -126,11 +127,11 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
               />
             </label>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setApproveOpen(false)} disabled={pending}>
+              <Button variant="outline" onClick={() => setAcceptOpen(false)} disabled={pending}>
                 Cancel
               </Button>
-              <Button onClick={approve} disabled={pending}>
-                {pending ? "Approving…" : "Approve"}
+              <Button onClick={acceptForCataloguing} disabled={pending}>
+                {pending ? "Accepting…" : "Accept for cataloguing"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -171,6 +172,17 @@ export function SubmissionInlineActions({ submissionId, status }: Props) {
           </DialogContent>
         </Dialog>
       </div>
+    );
+  }
+
+  if (status === "approved") {
+    return (
+      <Button type="button" variant="outline" size="sm" asChild>
+        <Link href={`/admin/submissions/${submissionId}/decision`}>
+          Convert to lot
+          <ArrowRight className="size-3.5" aria-hidden />
+        </Link>
+      </Button>
     );
   }
 

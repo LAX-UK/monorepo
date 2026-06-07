@@ -92,7 +92,7 @@ export default async function DashboardSubmissionsPage({
     updatedAt: s.updatedAt.toISOString(),
   }));
 
-  const hasBlockingError = Boolean(queryFailure || loadFailure);
+  const hasBlockingError = Boolean(loadFailure);
   const workspaceMeta = await readClientWorkspacePageMeta();
   const listFilters = { status: initialStatus, q: initialQ };
   const baseHref = buildSubmissionsHref(listFilters, {});
@@ -115,9 +115,9 @@ export default async function DashboardSubmissionsPage({
           </Link>
         </Button>
       }
+      banner={orgActingSelected ? <SellerOrgContextBanner /> : null}
       errorAlert={
         <>
-          {orgActingSelected ? <SellerOrgContextBanner /> : null}
           {queryFailure ? <DashboardSliceErrorAlert failure={queryFailure} /> : null}
           {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
         </>

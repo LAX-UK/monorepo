@@ -58,7 +58,7 @@ export function SettingsMobileHeader() {
         <ChevronLeft className="size-4 shrink-0" aria-hidden />
         All settings
       </Link>
-      <p className="font-headline text-lg font-semibold text-on-surface">{title}</p>
+      <h1 className="font-headline text-lg font-semibold text-on-surface">{title}</h1>
     </div>
   );
 }
