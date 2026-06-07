@@ -1,9 +1,9 @@
-import { sellContactHref, sellIntakeHref } from "@/lib/marketing/sell-intake";
+import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 
 /** Anchor id on `/sell` for department grid and navigation deep links. */
 export const SELL_DEPARTMENTS_ANCHOR = "departments";
 
-export type SellDepartmentIntake = "wizard" | "contact" | "landing";
+export type SellDepartmentIntake = "wizard" | "landing";
 
 export type SellDepartment = {
   id: string;
@@ -13,8 +13,10 @@ export type SellDepartment = {
   examples?: readonly string[];
   photoHints?: readonly string[];
   intake: SellDepartmentIntake;
+  /** SEO landing page — not used as the primary CTA href; wizard intake is always preferred. */
   landing?: string;
-  contactType?: "estate" | "corporate" | "prints" | "jewellery";
+  /** Hide from the public department grid until wizard categories exist in DB. */
+  hidden?: boolean;
   note?: string;
 };
 
@@ -123,9 +125,8 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
         slug: "fine-prints",
         examples: ["Limited editions", "Portfolios", "Multiples"],
         photoHints: ["Overall", "Signature", "Edition number"],
-        intake: "landing",
+        intake: "wizard",
         landing: "/sell/prints",
-        contactType: "prints",
       },
     ],
   },
@@ -151,16 +152,16 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
         id: "jewellery",
         label: "Jewellery",
         examples: ["Signed pieces", "Gem-set", "Vintage"],
-        intake: "contact",
-        contactType: "jewellery",
+        intake: "wizard",
+        hidden: true,
         note: "Specialist review before submission",
       },
       {
         id: "handbags-accessories",
         label: "Handbags & accessories",
         examples: ["Designer handbags", "Luxury accessories"],
-        intake: "contact",
-        contactType: "jewellery",
+        intake: "wizard",
+        hidden: true,
         note: "Enquire first — categories added on request",
       },
     ],
@@ -173,17 +174,15 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
         id: "estate",
         label: "Estate & collections",
         examples: ["Family collections", "Multi-item estates"],
-        intake: "landing",
+        intake: "wizard",
         landing: "/sell/estate",
-        contactType: "estate",
       },
       {
         id: "corporate",
         label: "Corporate disposals",
         examples: ["Office art", "Deaccession programmes"],
-        intake: "landing",
+        intake: "wizard",
         landing: "/sell/corporate",
-        contactType: "corporate",
       },
     ],
   },
@@ -227,15 +226,19 @@ export function allSellDepartments(): SellDepartment[] {
   return SELL_DEPARTMENT_GROUPS.flatMap((group) => [...group.departments]);
 }
 
+/** Departments shown in the public marketing grid (excludes hidden). */
+export function visibleSellDepartmentGroups(): SellDepartmentGroup[] {
+  return SELL_DEPARTMENT_GROUPS.map((group) => ({
+    ...group,
+    departments: group.departments.filter((dept) => !dept.hidden),
+  })).filter((group) => group.departments.length > 0);
+}
+
 export function sellDepartmentsAnchorHref(): string {
   return `/sell#${SELL_DEPARTMENTS_ANCHOR}`;
 }
 
-/** Resolve marketing CTA href for a department card. */
+/** Resolve marketing CTA href for a department card — always routes to the submission wizard. */
 export function departmentIntakeHref(dept: SellDepartment): string {
-  if (dept.intake === "landing" && dept.landing) return dept.landing;
-  if (dept.intake === "contact") {
-    return sellContactHref(dept.contactType ?? "jewellery");
-  }
   return sellIntakeHref(dept.slug ? { categorySlug: dept.slug } : undefined);
 }

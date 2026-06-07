@@ -14,6 +14,7 @@ import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { socialErrorMessage } from "@/lib/auth/social-error-message";
 import { useAppSession } from "@/lib/auth/use-app-session";
+import { sellRegisterHrefFromSubmissionNext } from "@/lib/marketing/sell-intake";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -75,6 +76,10 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
   const registerHref = buildAuthHref("/register", {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
   });
+  const sellRegisterHref =
+    sellIntent && safeNext
+      ? sellRegisterHrefFromSubmissionNext(safeNext)
+      : sellRegisterHrefFromSubmissionNext("/dashboard/submissions/new");
   const forgotPasswordHref = buildAuthHref("/forgot-password", {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
     ...(emailValue ? { email: emailValue } : {}),
@@ -268,10 +273,32 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
       </div>
 
       <div className="flex flex-col gap-6">
-        <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
-          Sign In
-        </AuthSubmitButton>
-        <AuthFooterLink prefix="Don't have an account?" linkText="Sign up" href={registerHref} />
+        {sellIntent ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <AuthSubmitButton loading={loading} loadingLabel="Signing in…" className="flex-1">
+              Sign In
+            </AuthSubmitButton>
+            <Button
+              asChild
+              variant="cta"
+              size="lg"
+              className="min-h-[44px] flex-1 font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+            >
+              <Link href={sellRegisterHref}>Create an account</Link>
+            </Button>
+          </div>
+        ) : (
+          <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
+            Sign In
+          </AuthSubmitButton>
+        )}
+        {sellIntent ? (
+          <p className="text-center font-footer-links text-sm text-on-surface-variant">
+            New to LAX? Create an account to start your submission in about 3 minutes.
+          </p>
+        ) : (
+          <AuthFooterLink prefix="Don't have an account?" linkText="Sign up" href={registerHref} />
+        )}
       </div>
     </form>
   );

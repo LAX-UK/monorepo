@@ -2,7 +2,7 @@
 
 import type { AutosaveStatus } from "@/lib/forms/submission/use-submission-wizard-controller";
 import { wizardAutosaveLabel } from "@/lib/forms/submission/wizard-autosave-label";
-import { SUBMISSION_DRAFT_EXPLAINER } from "@/lib/marketing/sell-flow-copy";
+import { SUBMISSION_AUTOSAVE_EXPLAINER } from "@/lib/marketing/sell-flow-copy";
 import { WizardContextStrip } from "@auction/ui/components/wizard-context-strip";
 
 type Props = {
@@ -16,7 +16,7 @@ export function SubmissionDraftContextStrip({ autosaveStatus, lastSavedAt, showA
 
   return (
     <WizardContextStrip
-      explainer={SUBMISSION_DRAFT_EXPLAINER}
+      explainer={SUBMISSION_AUTOSAVE_EXPLAINER}
       statusTone={autosaveStatus === "error" ? "error" : "default"}
       {...(statusText ? { statusText } : {})}
     />

@@ -42,25 +42,12 @@ export function LaxConsignCTA() {
           <div className="flex flex-col items-start gap-3">
             <Button variant="cta" size="xl" className="min-h-[44px] w-fit" asChild>
               <SellCtaLink
-                href={CONSIGN_COPY.ctaHref}
+                href={sellIntakeHref()}
                 source="home_consign"
                 className="inline-flex items-center gap-2"
               >
-                {CONSIGN_COPY.cta}
+                Start your submission
                 <ArrowRight className="size-5 shrink-0" aria-hidden />
-              </SellCtaLink>
-            </Button>
-            <Button
-              variant="ctaLink"
-              asChild
-              className="font-label text-xs uppercase tracking-[0.16em]"
-            >
-              <SellCtaLink
-                href={sellIntakeHref()}
-                source="home_start_now"
-                className="underline-offset-4"
-              >
-                Start submission now
               </SellCtaLink>
             </Button>
             <p className="font-label text-xs uppercase tracking-[0.16em] text-on-surface-variant">

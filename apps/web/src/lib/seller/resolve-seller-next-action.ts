@@ -22,10 +22,10 @@ export function resolveSellerNextAction(input: {
   const draft = mostRecentlyUpdated(submissions.filter((s) => s.status === "draft"));
   if (draft) {
     return {
-      title: "Finish your draft submission",
+      title: "Finish your submission",
       description: `"${draft.title}" is saved — complete and submit for specialist review.`,
       href: `/dashboard/submissions/${draft.id}`,
-      cta: "Continue draft",
+      cta: "Resume submission",
     };
   }
 

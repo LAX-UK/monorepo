@@ -1,22 +1,19 @@
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
-import { FOCUS_RING, MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { sellDepartmentIcon } from "@/lib/marketing/sell-department-icons";
 import {
-  SELL_DEPARTMENT_GROUPS,
   type SellDepartment,
   departmentIntakeHref,
+  visibleSellDepartmentGroups,
 } from "@/lib/marketing/sell-departments";
 import { SELL_PAGE_ACCEPTANCE } from "@/lib/marketing/sell-flow-copy";
-import { sellContactHref } from "@/lib/marketing/sell-intake";
 import { cn } from "@auction/ui";
 
 const DEPT_CARD_CLASS =
   "group relative block rounded-lg border border-border-hairline bg-surface-container-lowest p-4 motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none motion-safe:hover:-translate-y-px motion-safe:hover:ring-1 motion-safe:hover:ring-primary/20";
 
-function departmentAffordance(dept: SellDepartment): string {
-  if (dept.intake === "contact") return "Speak to a specialist →";
-  if (dept.intake === "landing") return "Learn more →";
-  return "Submit →";
+function departmentAffordance(): string {
+  return "Start submission →";
 }
 
 function DepartmentCard({ dept }: { dept: SellDepartment }) {
@@ -30,7 +27,7 @@ function DepartmentCard({ dept }: { dept: SellDepartment }) {
         href={href}
         source={`sell_dept_${dept.id}`}
         data-testid={`sell-department-${dept.id}`}
-        aria-label={`${dept.label}: ${departmentAffordance(dept).replace(" →", "")}`}
+        aria-label={`${dept.label}: start submission`}
         className={cn(DEPT_CARD_CLASS, FOCUS_RING)}
       >
         <div className="flex items-start gap-3">
@@ -51,7 +48,7 @@ function DepartmentCard({ dept }: { dept: SellDepartment }) {
           </div>
         </div>
         <p className="mt-3 font-label text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
-          {departmentAffordance(dept)}
+          {departmentAffordance()}
         </p>
       </SellCtaLink>
     </li>
@@ -68,7 +65,7 @@ export function SellDepartmentsSection() {
         more. Every submission is assessed for suitability; acceptance is not guaranteed.
       </p>
 
-      {SELL_DEPARTMENT_GROUPS.map((group) => (
+      {visibleSellDepartmentGroups().map((group) => (
         <div key={group.id} className="space-y-3">
           <h3 className="font-label text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
             {group.label}
@@ -80,19 +77,6 @@ export function SellDepartmentsSection() {
           </ul>
         </div>
       ))}
-
-      <p>
-        Jewellery and handbags are reviewed by specialist enquiry. For estates or corporate
-        collections,{" "}
-        <SellCtaLink
-          href={sellContactHref("estate")}
-          source="sell_dept_estate_footer"
-          className={MARKETING_PROSE_LINK}
-        >
-          contact our team
-        </SellCtaLink>
-        .
-      </p>
     </div>
   );
 }

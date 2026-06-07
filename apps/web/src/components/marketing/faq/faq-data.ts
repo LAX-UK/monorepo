@@ -135,7 +135,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "consign-work",
         title: "How do I consign a work?",
-        body: `Start with our selling guide at /sell, then sign in to complete the submission wizard (about 3 minutes). Gather photos, title, dimensions, and provenance before you begin. You can also contact our team at ${SITE_CONSIGNMENT_EMAIL} or use the contact form for estate and corporate enquiries.`,
+        body: "Start with our selling guide at /sell, then sign in to complete the submission wizard (about 3 minutes). Gather photos, title, dimensions, and provenance before you begin. Estate and corporate collections use the same wizard — add collection details in submitter notes.",
       },
       {
         id: "submission-information",

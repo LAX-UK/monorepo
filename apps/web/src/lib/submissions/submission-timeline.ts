@@ -2,7 +2,7 @@ import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
 import type { TimelineStage } from "@auction/ui/components/timeline-stages";
 
 export const SUBMISSION_TIMELINE_STAGES: readonly TimelineStage[] = [
-  { id: "draft", label: "Draft" },
+  { id: "draft", label: "In progress" },
   { id: "submitted", label: "Submitted" },
   { id: "review", label: "Under review" },
   { id: "accepted", label: "Accepted" },

@@ -1,9 +1,8 @@
-import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import type { ItemSubmissionStatus } from "@auction/types";
 
 /** Seller-facing status labels — see docs/sell-flow-ux.md */
 export const SELLER_SUBMISSION_STATUS_LABELS: Record<ItemSubmissionStatus, string> = {
-  draft: "Draft",
+  draft: "In progress",
   submitted: "Submitted",
   under_review: "Under review",
   approved: "Accepted",
@@ -60,7 +59,7 @@ export const SELL_PAGE_CONSIGNMENT_WORKS =
   "Start with a submission, then our team vets the object, confirms sale suitability, prepares catalogue materials, coordinates photography and logistics, and markets the lot to collectors. After the auction, we coordinate payment, buyer handover, and consignor settlement.";
 
 export const SELL_AUTH_INTENT_BANNER =
-  "Sign in to start your consignment submission. Takes about 3 minutes. You'll need photos and basic object details.";
+  "Sign in or create an account to start your consignment submission. Takes about 3 minutes. You'll need photos and basic object details.";
 
 export const SELL_PHOTO_TIPS = [
   "Shoot in natural daylight or neutral indoor light — avoid harsh flash.",
@@ -69,17 +68,20 @@ export const SELL_PHOTO_TIPS = [
   "Upload the highest resolution your connection allows — we accept up to 20 images.",
 ] as const;
 
-/** Shown while editing a private draft in the submission wizard. */
-export const SUBMISSION_DRAFT_EXPLAINER =
-  "Private draft — only you can see this. Submit on the Review step when you're ready for specialist review.";
+/** Shown while editing an in-progress submission in the wizard (autosave chrome only). */
+export const SUBMISSION_AUTOSAVE_EXPLAINER = "Saved automatically";
 
-export const SUBMISSION_FINISH_LATER_LABEL = WIZARD_COPY.finishLater;
+export const SUBMISSION_FINISH_LATER_LABEL = "Save and finish later";
 
 export const SUBMISSION_SUBMIT_LABEL = "Submit for specialist review";
 
-export const SUBMISSION_LEAVE_WITHOUT_SAVING_LABEL = WIZARD_COPY.leaveWithoutSaving;
+export const SUBMISSION_READY_TO_SUBMIT_BANNER =
+  "Ready to submit — specialists usually respond within 24 hours.";
 
-export const SUBMISSION_LEAVE_WITHOUT_SAVING_HINT = WIZARD_COPY.leaveWithoutSavingHint;
+export const SUBMISSION_LEAVE_WITHOUT_SAVING_LABEL = "Leave without saving";
+
+export const SUBMISSION_LEAVE_WITHOUT_SAVING_HINT =
+  "Recent edits may already be saved automatically.";
 
 /** Collapsible hints on the Review step — not a second progress timeline. */
 export const SUBMISSION_AFTER_SUBMIT_HINTS = [
@@ -91,10 +93,11 @@ export const SUBMISSION_AFTER_SUBMIT_HINTS = [
 
 /** One-line status copy on read-only submission detail pages. */
 export const SUBMISSION_STATUS_HINTS: Partial<Record<ItemSubmissionStatus, string>> = {
+  draft: "Complete your submission and submit for specialist review.",
   submitted: "Our specialists will start review within 24 hours.",
   under_review: "Our specialists are reviewing your submission.",
   approved: "Accepted — we are preparing your catalogue entry. Complete Connect when prompted.",
-  converted: "Draft lot created — finish checklist items below.",
+  converted: "Catalogue entry in progress — finish checklist items below.",
   rejected:
     "Not accepted — read the reason below and start a new submission if you wish to resubmit.",
   withdrawn: "Withdrawn — you can start a new submission when ready.",
@@ -108,3 +111,6 @@ export const WIZARD_STEP_SUMMARIES: Record<string, string> = {
   pricing: "Estimate, reserve preference, condition notes, and notes for specialists.",
   review: "Check your details and submit for specialist review.",
 };
+
+/** @deprecated Use SUBMISSION_AUTOSAVE_EXPLAINER — kept for test migration only. */
+export const SUBMISSION_DRAFT_EXPLAINER = SUBMISSION_AUTOSAVE_EXPLAINER;

@@ -3,6 +3,7 @@ import {
   SELL_DEPARTMENT_GROUPS,
   type SellDepartment,
   departmentIntakeHref,
+  visibleSellDepartmentGroups,
 } from "./sell-departments";
 
 function departmentById(id: string): SellDepartment {
@@ -12,20 +13,31 @@ function departmentById(id: string): SellDepartment {
 }
 
 describe("departmentIntakeHref", () => {
-  it("routes wizard departments through sellIntakeHref with categorySlug", () => {
+  it("routes wizard departments to the submission wizard with categorySlug", () => {
     const watches = departmentById("watches-clocks");
     expect(departmentIntakeHref(watches)).toBe(
-      "/login?next=%2Fdashboard%2Fsubmissions%2Fnew%3FcategorySlug%3Dwatches-clocks&intent=sell",
+      "/dashboard/submissions/new?categorySlug=watches-clocks",
     );
   });
 
-  it("routes landing departments to tailored pages", () => {
+  it("routes estate collections to the submission wizard", () => {
     const estate = departmentById("estate");
-    expect(departmentIntakeHref(estate)).toBe("/sell/estate");
+    expect(departmentIntakeHref(estate)).toBe("/dashboard/submissions/new");
   });
 
-  it("routes contact departments to specialist enquiry", () => {
-    const jewellery = departmentById("jewellery");
-    expect(departmentIntakeHref(jewellery)).toBe("/contact?intent=selling&type=jewellery");
+  it("routes prints through the wizard with category preselect", () => {
+    const prints = departmentById("fine-prints");
+    expect(departmentIntakeHref(prints)).toBe(
+      "/dashboard/submissions/new?categorySlug=fine-prints",
+    );
+  });
+});
+
+describe("visibleSellDepartmentGroups", () => {
+  it("excludes hidden jewellery and handbags departments", () => {
+    const visibleIds = visibleSellDepartmentGroups().flatMap((g) => g.departments.map((d) => d.id));
+    expect(visibleIds).not.toContain("jewellery");
+    expect(visibleIds).not.toContain("handbags-accessories");
+    expect(visibleIds).toContain("watches-clocks");
   });
 });
