@@ -167,6 +167,27 @@ export const adminSubmissionCountQuerySchema = z.object({
   status: z.enum(itemSubmissionStatuses).optional().default("submitted"),
 });
 
+/** Admin: total submissions across one or more seller legal entities (comma-separated UUIDs). */
+export const adminSubmissionCountBySellersQuerySchema = z.object({
+  sellerIds: z
+    .string()
+    .trim()
+    .max(4000)
+    .optional()
+    .default("")
+    .transform((raw) => {
+      if (!raw) return [] as string[];
+      const out: string[] = [];
+      for (const token of raw.split(",")) {
+        const id = token.trim();
+        if (!id) continue;
+        const parsed = z.string().uuid().safeParse(id);
+        if (parsed.success) out.push(parsed.data);
+      }
+      return out.slice(0, 50);
+    }),
+});
+
 /** Admin-only: optional notes on a submission under review. */
 export const adminSubmissionNotesSchema = z.object({
   reviewNotes: z.string().max(5000).optional(),

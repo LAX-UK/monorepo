@@ -304,6 +304,7 @@ export interface IItemSubmissionRepository {
   countStatusForLegalEntity(legalEntityId: string): Promise<Record<ItemSubmissionStatus, number>>;
   listForAdmin(f: ListSubmissionsFilter): Promise<ItemSubmission[]>;
   countAdmin(f: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
+  countAdminForLegalEntityIds(legalEntityIds: readonly string[]): Promise<number>;
   listStaleDraftsWithoutReminder(cutoff: Date, limit: number): Promise<ItemSubmission[]>;
 }
 
