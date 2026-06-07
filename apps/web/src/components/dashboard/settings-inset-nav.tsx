@@ -19,8 +19,7 @@ const identity: NavItem[] = [
   {
     href: "/dashboard/settings/profile",
     label: "Profile",
-    match: (pathname) =>
-      pathname === "/dashboard/settings/profile" || pathname === "/dashboard/settings",
+    match: (pathname) => pathname === "/dashboard/settings/profile",
   },
   {
     href: "/dashboard/settings/account",
@@ -101,7 +100,7 @@ function SettingsNavRow({
   active: boolean;
 }) {
   return (
-    <Link href={href} className="block">
+    <Link href={href} className="block" {...(active ? { "aria-current": "page" as const } : {})}>
       <ListRow
         title={label}
         trailing={
@@ -136,7 +135,7 @@ export function SettingsInsetNav({ className }: SettingsInsetNavProps) {
   }, [query]);
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <nav aria-label="Settings" className={cn("space-y-4", className)}>
       <Input
         type="search"
         placeholder="Find a setting…"
@@ -157,6 +156,6 @@ export function SettingsInsetNav({ className }: SettingsInsetNavProps) {
           ))}
         </InsetGroup>
       ))}
-    </div>
+    </nav>
   );
 }

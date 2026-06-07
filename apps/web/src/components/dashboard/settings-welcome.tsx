@@ -14,14 +14,14 @@ export function SettingsWelcome({ displayName, email }: SettingsWelcomeProps) {
         <p className="hidden font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant lg:block">
           Settings
         </p>
-        <h1 className="sr-only font-headline text-2xl font-semibold tracking-tight text-on-surface lg:not-sr-only lg:static lg:h-auto lg:w-auto lg:overflow-visible lg:clip-auto lg:whitespace-normal">
+        <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
           Hello, {displayName}
         </h1>
         <p className="mt-1 font-body text-sm text-on-surface-variant">{email}</p>
       </div>
       <p className="font-body text-sm text-on-surface-variant">
-        Use the navigation to update your profile, security, and bidding preferences. On mobile,
-        open the menu above to jump between sections.
+        Use the navigation to update your profile, security, and bidding preferences. On mobile, use
+        the list above to jump between sections.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" asChild>

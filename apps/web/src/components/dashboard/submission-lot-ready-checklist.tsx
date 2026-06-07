@@ -64,15 +64,10 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                     </Link>
                   </>
                 ) : check.id === "images-recommended" ? (
-                  <>
+                  <span className="text-on-surface-variant">
                     {" — "}
-                    <Link
-                      href={`/dashboard/submissions/${submission.id}`}
-                      className="text-primary underline-offset-4 hover:underline"
-                    >
-                      Add photos
-                    </Link>
-                  </>
+                    Add photos via your specialist while catalogue entry is prepared
+                  </span>
                 ) : null}
               </li>
             ))}

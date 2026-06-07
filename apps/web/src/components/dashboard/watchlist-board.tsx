@@ -8,6 +8,7 @@ import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboar
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
+import { clientApiBase } from "@/lib/api/client-api-base";
 import { lotPath } from "@/lib/seo/url";
 import { BulkActionBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -17,14 +18,10 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WatchlistBoardRow } from "./watchlist-board-rows";
 
 export type { WatchlistBoardRow } from "./watchlist-board-rows";
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
 
 function watchlistColumns(artistNameById: Record<string, string>): ColumnDef<WatchlistBoardRow>[] {
   return [
@@ -96,7 +93,7 @@ function watchlistColumns(artistNameById: Record<string, string>): ColumnDef<Wat
             endTime={row.original.endTime}
           />
         ) : (
-          <span className="text-on-surface-variant">\u2014</span>
+          <span className="text-on-surface-variant">{"—"}</span>
         ),
       enableSorting: false,
     },
@@ -143,6 +140,21 @@ export function WatchlistBoard({
   // Board handles client-side title search only; page handles server-filtered empty states.
   const hasTitleFilter = initialQ.trim().length > 0;
 
+  useEffect(() => {
+    const visible = new Set(filtered.map((row) => row.lotId));
+    setSelection((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        if (next[key] && !visible.has(key)) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [filtered]);
+
   const columns = useMemo(() => watchlistColumns(artistNameById), [artistNameById]);
 
   const selectedIds = useMemo(
@@ -160,7 +172,7 @@ export function WatchlistBoard({
     try {
       const results = await Promise.allSettled(
         selectedIds.map((lotId) =>
-          fetch(`${apiBase()}/users/me/watchlist/${encodeURIComponent(lotId)}`, {
+          fetch(`${clientApiBase()}/users/me/watchlist/${encodeURIComponent(lotId)}`, {
             method: "DELETE",
             credentials: "include",
           }),
