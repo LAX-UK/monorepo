@@ -80,7 +80,7 @@ export function hasInSaleActiveFilters(filters: InSaleFilters): boolean {
   return hasActiveFilters(inSaleFiltersToParams(filters), IN_SALE_FILTER_DEFAULTS, ["status", "q"]);
 }
 
-export function countInSaleMobileSheetFilters(filters: InSaleFilters): number {
+export function countInSaleSheetFilters(filters: InSaleFilters): number {
   return filters.status !== "live" ? 1 : 0;
 }
 

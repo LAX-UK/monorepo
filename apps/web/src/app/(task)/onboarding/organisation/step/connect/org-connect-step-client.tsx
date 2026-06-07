@@ -4,6 +4,7 @@ import { postOrgOnboardingStepCompleteAction } from "@/app/(task)/onboarding/org
 import { ConnectWorkspace } from "@/components/connect/connect-workspace";
 import { humanizeOrgConnectStepError } from "@/lib/connect/org-onboarding-connect-errors";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
+import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -104,7 +105,7 @@ export function OrgConnectStepClient({
           Continue to identity verification
         </Button>
         <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">Save and continue later</Link>
+          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </div>

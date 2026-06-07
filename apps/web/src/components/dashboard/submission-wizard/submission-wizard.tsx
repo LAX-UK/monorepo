@@ -7,6 +7,7 @@ import { PhotosStep } from "@/components/dashboard/submission-wizard/steps/photo
 import { PricingStep } from "@/components/dashboard/submission-wizard/steps/pricing-step";
 import { ProvenanceStep } from "@/components/dashboard/submission-wizard/steps/provenance-step";
 import { ReviewStep } from "@/components/dashboard/submission-wizard/steps/review-step";
+import { SubmissionDraftContextStrip } from "@/components/dashboard/submission-wizard/submission-draft-context-strip";
 import { WizardFooter } from "@/components/dashboard/submission-wizard/wizard-footer";
 import { WizardHeaderActions } from "@/components/dashboard/submission-wizard/wizard-header-actions";
 import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
@@ -41,7 +42,7 @@ function renderStep(
     isSubmitting: boolean;
     categories: SubmissionCategoryOption[];
     onJumpTo: (index: number) => void;
-    saveDraft: () => void;
+    finishLater: () => void;
     submitForReview: () => void;
   },
 ) {
@@ -63,7 +64,7 @@ function renderStep(
           {...base}
           onJumpTo={props.onJumpTo}
           canSubmitForReview
-          onSaveDraft={props.saveDraft}
+          onFinishLater={props.finishLater}
           onSubmitForReview={props.submitForReview}
         />
       );
@@ -82,6 +83,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const currentStep = WIZARD_STEPS[stepIndex];
+  const nextStep = WIZARD_STEPS[stepIndex + 1];
   const isLastStep = stepIndex === WIZARD_STEP_COUNT - 1;
   const showAutosave = mode.kind === "edit" || controller.submissionId != null;
 
@@ -120,12 +122,8 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
     goToStep(stepIndex - 1);
   }, [goToStep, stepIndex]);
 
-  const handleSaveAndLeave = useCallback(() => {
+  const handleFinishLater = useCallback(() => {
     void saveDraft({ leaveAfter: true });
-  }, [saveDraft]);
-
-  const handleSaveDraft = useCallback(() => {
-    void saveDraft();
   }, [saveDraft]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refocus step heading on navigation
@@ -155,6 +153,13 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
             e.preventDefault();
           }}
         >
+          {showAutosave ? (
+            <SubmissionDraftContextStrip
+              autosaveStatus={autosaveStatus}
+              lastSavedAt={lastSavedAt}
+              showAutosave={showAutosave}
+            />
+          ) : null}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <WizardStepper
@@ -169,11 +174,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
                 canGoNext={!isLastStep}
               />
             </div>
-            <WizardHeaderActions
-              isSubmitting={isSubmitting}
-              onSaveDraft={handleSaveDraft}
-              onSaveAndLeave={handleSaveAndLeave}
-            />
+            <WizardHeaderActions isSubmitting={isSubmitting} onFinishLater={handleFinishLater} />
           </div>
 
           {currentStep ? (
@@ -200,7 +201,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
                   isSubmitting,
                   categories,
                   onJumpTo: goToStep,
-                  saveDraft: handleSaveDraft,
+                  finishLater: handleFinishLater,
                   submitForReview: () => void submitForReview(),
                 })
               : null}
@@ -213,6 +214,7 @@ export function SubmissionWizard({ mode, categories, initialValues }: Props) {
               autosaveStatus={autosaveStatus}
               lastSavedAt={lastSavedAt}
               showAutosave={showAutosave}
+              {...(nextStep ? { nextStepLabel: nextStep.label } : {})}
               onBack={handleBack}
               onNext={() => void handleNext()}
               canGoBack={stepIndex > 0}

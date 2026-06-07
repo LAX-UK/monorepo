@@ -22,6 +22,7 @@ import {
   buildWatchlistHref,
   countWatchlistMobileSheetFilters,
   countWatchlistSheetFilters,
+  countWatchlistStatusSheetFilters,
   getWatchlistActiveFilters,
   toggleWatchlistCategory,
 } from "@/lib/dashboard/filters/watchlist/watchlist-filters";
@@ -72,8 +73,10 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
   );
 
   const mobileSheetCount = countWatchlistMobileSheetFilters(filters);
-  const desktopSheetCount = countWatchlistSheetFilters(filters);
   const useCategorySheet = categories.length > WATCHLIST_INLINE_CATEGORY_THRESHOLD;
+  const desktopSheetCount = useCategorySheet
+    ? countWatchlistSheetFilters(filters)
+    : countWatchlistStatusSheetFilters(filters);
 
   const statusItems = WATCHLIST_STATUS_OPTIONS.map((opt) => ({
     id: opt.value,
@@ -161,7 +164,7 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
     </DashboardFilterSheet>
   );
 
-  const desktopCategorySheet =
+  const desktopFilterSheet =
     categories.length > 0 && useCategorySheet ? (
       <DashboardFilterSheet
         open={desktopSheetOpen}
@@ -171,9 +174,21 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
         onReset={resetDraft}
         trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
       >
-        {categoryMultiSelect}
+        <div className="space-y-6">
+          {statusFilterRow}
+          {categoryMultiSelect}
+        </div>
       </DashboardFilterSheet>
-    ) : null;
+    ) : (
+      <DashboardFilterSheet
+        open={desktopSheetOpen}
+        onOpenChange={setDesktopSheetOpen}
+        title="Watchlist filters"
+        trigger={<DashboardFilterTrigger activeCount={desktopSheetCount} />}
+      >
+        {statusFilterRow}
+      </DashboardFilterSheet>
+    );
 
   const inlineCategories =
     !useCategorySheet && categories.length > 0 ? (
@@ -204,12 +219,7 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
             inputId="watchlist-q"
           />
         }
-        primaryFilters={
-          <div className="space-y-3">
-            {statusFilterRow}
-            {inlineCategories}
-          </div>
-        }
+        primaryFilters={inlineCategories ?? undefined}
         sort={
           <DashboardSortSelect
             label="Sort"
@@ -220,7 +230,7 @@ export function WatchlistListToolbar({ filters, categories }: Props) {
         }
         hideSortOnMobile
         mobileFilterSheet={mobileFilterSheet}
-        filterSheet={desktopCategorySheet}
+        filterSheet={desktopFilterSheet}
       />
       <DashboardActiveFilters filters={activeFilters} clearAllHref={WATCHLIST_BASE_PATH} />
     </div>

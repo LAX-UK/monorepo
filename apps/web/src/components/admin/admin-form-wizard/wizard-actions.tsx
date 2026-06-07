@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
+import { WizardNav } from "@auction/ui/components/wizard-nav";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
   pending?: boolean;
 };
 
+/** Admin wizard Back/Continue/submit — thin wrapper over the shared {@link WizardNav}. */
 export function WizardActions({
   isFirst,
   isLast,
@@ -24,30 +25,22 @@ export function WizardActions({
   onNext,
   submitSlot,
   showSubmitOnAllSteps = false,
-  nextLabel = "Continue",
+  nextLabel,
   backLabel = "Back",
   pending = false,
 }: Props) {
-  const showSubmit = isLast || showSubmitOnAllSteps;
-  const showNext = !isLast;
-
   return (
-    <div className="flex flex-col justify-end gap-3 sm:flex-row sm:items-center">
-      {!isFirst ? (
-        <Button type="button" variant="outline" disabled={pending} onClick={onBack}>
-          {backLabel}
-        </Button>
-      ) : (
-        <span />
-      )}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        {showNext ? (
-          <Button type="button" disabled={pending} onClick={onNext}>
-            {nextLabel}
-          </Button>
-        ) : null}
-        {showSubmit ? (submitSlot ?? null) : null}
-      </div>
-    </div>
+    <WizardNav
+      isFirst={isFirst}
+      isLast={isLast}
+      onBack={onBack}
+      onNext={onNext}
+      backLabel={backLabel}
+      showSubmitOnAllSteps={showSubmitOnAllSteps}
+      pending={pending}
+      layout="end"
+      {...(submitSlot ? { submitSlot } : {})}
+      {...(nextLabel ? { nextStepLabel: nextLabel } : {})}
+    />
   );
 }

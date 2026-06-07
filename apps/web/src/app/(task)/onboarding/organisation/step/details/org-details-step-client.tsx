@@ -4,6 +4,7 @@ import {
   patchOrgOnboardingProfileAction,
   postOrgOnboardingStepCompleteAction,
 } from "@/app/(task)/onboarding/organisation/onboarding-actions";
+import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import {
   checkOrgNameAction,
   createOrganizationAction,
@@ -291,7 +292,7 @@ export function OrgDetailsStepClient({
           {pending ? "Saving…" : "Continue"}
         </Button>
         <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">Save and continue later</Link>
+          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </form>

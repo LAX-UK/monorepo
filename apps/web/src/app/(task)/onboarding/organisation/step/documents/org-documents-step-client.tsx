@@ -5,6 +5,7 @@ import {
   postOrgOnboardingStepCompleteAction,
 } from "@/app/(task)/onboarding/organisation/onboarding-actions";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { Button } from "@auction/ui/components/button";
 import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 import { Input } from "@auction/ui/components/input";
@@ -200,7 +201,7 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
           {pending ? "Saving…" : "Continue"}
         </Button>
         <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">Save and continue later</Link>
+          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </div>
