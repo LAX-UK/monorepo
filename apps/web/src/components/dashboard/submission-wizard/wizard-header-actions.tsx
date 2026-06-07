@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import {
   SUBMISSION_FINISH_LATER_LABEL,
   SUBMISSION_LEAVE_WITHOUT_SAVING_HINT,
@@ -20,9 +21,15 @@ type Props = {
   isSubmitting: boolean;
   onFinishLater: () => void;
   onLeaveWithoutSaving: () => void;
+  onWithdraw?: () => void;
 };
 
-export function WizardHeaderActions({ isSubmitting, onFinishLater, onLeaveWithoutSaving }: Props) {
+export function WizardHeaderActions({
+  isSubmitting,
+  onFinishLater,
+  onLeaveWithoutSaving,
+  onWithdraw,
+}: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const leaveWithoutSaving = () => {
@@ -30,9 +37,30 @@ export function WizardHeaderActions({ isSubmitting, onFinishLater, onLeaveWithou
     onLeaveWithoutSaving();
   };
 
+  const withdraw = () => {
+    setMenuOpen(false);
+    onWithdraw?.();
+  };
+
   return (
     <>
-      <div className="hidden shrink-0 sm:flex">
+      <div className="hidden shrink-0 items-center gap-2 sm:flex">
+        {onWithdraw ? (
+          <ConfirmActionButton
+            type="button"
+            variant="secondaryOutline"
+            size="sm"
+            className="font-label text-xs uppercase tracking-wider"
+            disabled={isSubmitting}
+            confirmTitle="Withdraw submission"
+            confirmBody="Withdraw this submission? You can start a new submission later if needed."
+            confirmLabel="Withdraw"
+            onConfirmed={withdraw}
+            data-testid="wizard-withdraw"
+          >
+            Withdraw
+          </ConfirmActionButton>
+        ) : null}
         <Button
           type="button"
           variant="outline"
@@ -81,6 +109,23 @@ export function WizardHeaderActions({ isSubmitting, onFinishLater, onLeaveWithou
                 {SUBMISSION_FINISH_LATER_LABEL}
               </Button>
             </li>
+            {onWithdraw ? (
+              <li>
+                <ConfirmActionButton
+                  type="button"
+                  variant="ghost"
+                  className="h-12 w-full justify-start font-body text-base text-on-surface-variant"
+                  disabled={isSubmitting}
+                  confirmTitle="Withdraw submission"
+                  confirmBody="Withdraw this submission? You can start a new submission later if needed."
+                  confirmLabel="Withdraw"
+                  onConfirmed={withdraw}
+                  data-testid="wizard-withdraw-mobile"
+                >
+                  Withdraw
+                </ConfirmActionButton>
+              </li>
+            ) : null}
             <li>
               <Button
                 type="button"

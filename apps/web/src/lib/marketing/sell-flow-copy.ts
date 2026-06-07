@@ -2,7 +2,7 @@ import type { ItemSubmissionStatus } from "@auction/types";
 
 /** Seller-facing status labels — see docs/sell-flow-ux.md */
 export const SELLER_SUBMISSION_STATUS_LABELS: Record<ItemSubmissionStatus, string> = {
-  draft: "In progress",
+  draft: "Draft",
   submitted: "Submitted",
   under_review: "Under review",
   approved: "Accepted",

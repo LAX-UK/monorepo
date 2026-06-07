@@ -30,7 +30,7 @@ describe("submissions-filters", () => {
   });
 
   it("submissionStatusLabel derives from shared seller labels", () => {
-    expect(submissionStatusLabel("draft")).toBe("In progress");
+    expect(submissionStatusLabel("draft")).toBe("Draft");
     expect(submissionStatusLabel("approved")).toBe("Accepted");
     expect(submissionStatusLabel("all")).toBe("All");
   });

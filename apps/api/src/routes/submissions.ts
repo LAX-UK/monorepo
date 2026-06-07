@@ -1,4 +1,11 @@
-import type { CreateItemSubmissionInput, ItemSubmissionStatus, UserRole } from "@auction/types";
+import {
+  type CreateItemSubmissionInput,
+  type ItemSubmissionStatus,
+  type UserRole,
+  canAccessAdminSubmissionsRead,
+  normalizeUserStaffRole,
+  roleHasCapability,
+} from "@auction/types";
 import {
   adminAssignSubmissionBodySchema,
   adminBulkSubmissionsBodySchema,
@@ -21,6 +28,18 @@ import type { LegalEntityContext } from "../middleware/require-legal-entity-cont
 import { EntityDocumentError } from "../services/entity-document.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ListSubmissionsFilter } from "../services/interfaces/repositories.js";
+
+function canStaffManageSubmissionDocuments(
+  role: UserRole,
+  staffRole: ReturnType<typeof normalizeUserStaffRole>,
+): boolean {
+  if (role !== "staff") return false;
+  return (
+    roleHasCapability(role, "specialist.appraise", staffRole) ||
+    roleHasCapability(role, "catalogue.write", staffRole) ||
+    roleHasCapability(role, "auction.manage", staffRole)
+  );
+}
 
 function submissionsAdminListFilter(
   q: {
@@ -172,12 +191,18 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.get(
     "/:id/documents",
     requireAuth,
-    requireBuyerRole,
+    requireBuyerRoleUnlessStaff,
     requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
-      const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      if (canAccessAdminSubmissionsRead(role, staff)) {
+        const data = await container.submissionDocumentService.list(id);
+        return c.json({ data });
+      }
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
       if (owned.isErr()) {
         return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
@@ -190,18 +215,22 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.post(
     "/:id/documents",
     requireAuth,
-    requireBuyerRole,
+    requireBuyerRoleUnlessStaff,
     requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", attachSubmissionDocumentBodySchema),
     async (c) => {
-      const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
-      if (owned.isErr()) {
-        return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      if (!canStaffManageSubmissionDocuments(role, staff)) {
+        const ctx = c.get("legalEntityContext") as LegalEntityContext;
+        const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+        if (owned.isErr()) {
+          return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
+        }
       }
       try {
         const doc = await container.submissionDocumentService.attach({
@@ -224,15 +253,19 @@ export function createSubmissionRoutes(container: Container, authenticator: IAut
   r.delete(
     "/:id/documents/:documentId",
     requireAuth,
-    requireBuyerRole,
+    requireBuyerRoleUnlessStaff,
     requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema.merge(entityDocumentIdParamSchema)),
     async (c) => {
-      const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id, documentId } = c.req.valid("param");
-      const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
-      if (owned.isErr()) {
-        return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      if (!canStaffManageSubmissionDocuments(role, staff)) {
+        const ctx = c.get("legalEntityContext") as LegalEntityContext;
+        const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+        if (owned.isErr()) {
+          return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
+        }
       }
       await container.submissionDocumentService.remove(id, documentId);
       return c.body(null, 204);
