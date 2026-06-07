@@ -1,6 +1,12 @@
-import { AdminCopyField } from "@/components/admin/admin-copy-field";
+import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import {
+  formatEmailDeliverabilityStatus,
+  formatSignupPersona,
+  formatUserRole,
+} from "@/lib/admin/admin-user-presenters";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
@@ -20,9 +26,7 @@ function ProfileSection({
 }) {
   return (
     <Surface variant="quiet" padding="md" className="space-y-3">
-      <h3 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        {title}
-      </h3>
+      <AdminSectionLabel>{title}</AdminSectionLabel>
       {children}
     </Surface>
   );
@@ -32,28 +36,16 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
   const isStaff = user.role === "staff";
   const mobileDisplay = formatPhoneDisplay(user.mobile);
 
+  const hasAdvancedDetails =
+    Boolean(user.image) ||
+    Boolean(user.currentKycSessionId) ||
+    Boolean(user.emailStatusChangedAt) ||
+    Boolean(user.pendingNewEmail);
+
   return (
     <div className="space-y-4">
       <ProfileSection title="Identity">
-        <div className="flex items-center gap-3">
-          <AdminUserAvatar user={user} size="lg" />
-          <div>
-            <p className="font-headline text-lg">{user.name}</p>
-            {(user.firstName || user.lastName) && (
-              <p className="text-sm text-on-surface-variant">
-                {[user.firstName, user.lastName].filter(Boolean).join(" ")}
-              </p>
-            )}
-            <p className="text-sm text-on-surface-variant">{user.email}</p>
-          </div>
-        </div>
-        <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-          <div>
-            <dt className="font-label text-[10px] uppercase text-on-surface-variant">User ID</dt>
-            <dd className="mt-1">
-              <AdminCopyField value={user.id} label="User ID" />
-            </dd>
-          </div>
+        <dl className="grid gap-3 text-sm md:grid-cols-2">
           {mobileDisplay ? (
             <div>
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">Mobile</dt>
@@ -73,14 +65,6 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
               <dd>{user.dateOfBirth}</dd>
             </div>
           ) : null}
-          {user.image ? (
-            <div className="md:col-span-2">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Avatar URL
-              </dt>
-              <dd className="break-all text-xs">{user.image}</dd>
-            </div>
-          ) : null}
         </dl>
       </ProfileSection>
 
@@ -88,7 +72,7 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
         <dl className="grid gap-3 text-sm md:grid-cols-2">
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Role</dt>
-            <dd className="capitalize">{user.role}</dd>
+            <dd>{formatUserRole(user.role)}</dd>
           </div>
           {isStaff ? (
             <div>
@@ -100,7 +84,7 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
           ) : null}
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Persona</dt>
-            <dd className="capitalize">{user.signupPersona ?? "Not set"}</dd>
+            <dd>{formatSignupPersona(user.signupPersona)}</dd>
           </div>
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Created</dt>
@@ -152,29 +136,8 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">
               Email deliverability
             </dt>
-            <dd className="capitalize">{user.emailStatus}</dd>
+            <dd>{formatEmailDeliverabilityStatus(user.emailStatus)}</dd>
           </div>
-          {user.emailStatusChangedAt ? (
-            <div>
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Email status changed
-              </dt>
-              <dd>{formatAdminUserDate(user.emailStatusChangedAt)}</dd>
-            </div>
-          ) : null}
-          {user.pendingNewEmail ? (
-            <div className="md:col-span-2">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Pending email change
-              </dt>
-              <dd className="break-all">{user.pendingNewEmail}</dd>
-              {user.emailChangeExpiresAt ? (
-                <p className="text-xs text-on-surface-variant">
-                  Expires {formatAdminUserDate(user.emailChangeExpiresAt)}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">KYC</dt>
             <dd>
@@ -195,14 +158,6 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             </dt>
             <dd>{user.kycRetryCount}</dd>
           </div>
-          {user.currentKycSessionId ? (
-            <div className="md:col-span-2">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Current KYC session
-              </dt>
-              <dd className="break-all font-mono text-xs">{user.currentKycSessionId}</dd>
-            </div>
-          ) : null}
           {user.amlHoldStatus && user.amlHoldStatus !== "none" ? (
             <div className="md:col-span-2">
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">AML hold</dt>
@@ -241,6 +196,56 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
           </div>
         </dl>
       </ProfileSection>
+
+      {hasAdvancedDetails ? (
+        <CollapsibleSection title="Advanced details">
+          <dl className="grid gap-3 p-4 text-sm md:grid-cols-2">
+            {user.image ? (
+              <div className="md:col-span-2">
+                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                  Avatar URL
+                </dt>
+                <dd className="break-all text-xs">{user.image}</dd>
+              </div>
+            ) : null}
+            {user.currentKycSessionId ? (
+              <div className="md:col-span-2">
+                <AdminTechnicalIdDisclosure
+                  triggerLabel="Show Veriff session ID"
+                  items={[
+                    {
+                      label: "Current Veriff session",
+                      value: user.currentKycSessionId,
+                      copyLabel: "Veriff session ID",
+                    },
+                  ]}
+                />
+              </div>
+            ) : null}
+            {user.emailStatusChangedAt ? (
+              <div>
+                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                  Email status changed
+                </dt>
+                <dd>{formatAdminUserDate(user.emailStatusChangedAt)}</dd>
+              </div>
+            ) : null}
+            {user.pendingNewEmail ? (
+              <div className="md:col-span-2">
+                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                  Pending email change
+                </dt>
+                <dd className="break-all">{user.pendingNewEmail}</dd>
+                {user.emailChangeExpiresAt ? (
+                  <p className="text-xs text-on-surface-variant">
+                    Expires {formatAdminUserDate(user.emailChangeExpiresAt)}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </dl>
+        </CollapsibleSection>
+      ) : null}
     </div>
   );
 }

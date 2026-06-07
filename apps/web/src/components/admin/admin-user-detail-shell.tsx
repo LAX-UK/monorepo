@@ -1,37 +1,29 @@
 "use client";
 
 import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
+import { AdminEntityTabPanel } from "@/components/admin/admin-entity-tab-panel";
 import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import {
-  UserRoleAction,
-  UserStaffRoleAction,
-  UserSuspendAction,
-} from "@/components/admin/admin-user-actions";
-import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
-import { AdminUserQuickActions } from "@/components/admin/admin-user-quick-actions";
-import {
-  type AdminUserSummaryMetrics,
-  AdminUserSummaryStrip,
-} from "@/components/admin/admin-user-summary-strip";
-import { AdminClientDisplayNameEditableTitle } from "@/components/admin/editable-titles";
+import { AdminUserAccountControls } from "@/components/admin/admin-user-account-controls";
+import { AdminUserAttentionBanner } from "@/components/admin/admin-user-attention-banner";
+import { AdminUserDangerZone } from "@/components/admin/admin-user-danger-zone";
+import { AdminUserDetailHeaderMeta } from "@/components/admin/admin-user-detail-header-meta";
+import { AdminUserDisplayNameEditableTitle } from "@/components/admin/editable-titles";
 import { UserDetailContextRail } from "@/components/admin/user-detail-context-rail";
 import {
   type AdminDetailTab,
   AdminDetailTabs,
 } from "@/components/dashboard/primitives/admin-detail-tabs";
-import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
-import { relativeFromIso } from "@/lib/admin/relative-time";
-import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
+import type { AdminUserSummaryMetrics } from "@/lib/admin/admin-user-metrics";
+import type { UserAttentionItem, UserDetailRailContext } from "@/lib/admin/admin-user-readiness.vm";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { UserRole, UserStaffRole } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
 import type { ReactNode } from "react";
 
 type TabDef = {
   id: string;
   label: string;
   content: ReactNode;
+  badge?: ReactNode;
 };
 
 type Props = {
@@ -39,8 +31,12 @@ type Props = {
   listHref: string;
   listLabel: string;
   tabs: TabDef[];
+  title?: ReactNode;
   summaryMetrics?: AdminUserSummaryMetrics;
   legalEntitiesForActions?: { id: string; displayName: string }[];
+  attentionItems?: readonly UserAttentionItem[];
+  railContext?: UserDetailRailContext;
+  showContextRail?: boolean;
 };
 
 export function AdminUserDetailShell({
@@ -48,115 +44,63 @@ export function AdminUserDetailShell({
   listHref,
   listLabel,
   tabs,
+  title,
   summaryMetrics,
   legalEntitiesForActions = [],
+  attentionItems = [],
+  railContext,
+  showContextRail = true,
 }: Props) {
   const isStaff = user.role === "staff";
-
-  const accountControls = (
-    <div className="space-y-6 rounded-xl border border-border-hairline bg-surface-container-low/60 p-5">
-      <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Account controls
-      </p>
-      <div className="space-y-4">
-        <UserRoleAction userId={user.id} defaultRole={user.role as UserRole} layout="block" />
-      </div>
-      {isStaff ? (
-        <div className="space-y-4 border-t border-border-hairline pt-4">
-          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Internal staff role
-          </p>
-          <UserStaffRoleAction
-            userId={user.id}
-            defaultStaffRole={(user.staffRole as UserStaffRole | null) ?? null}
-          />
-        </div>
-      ) : null}
-      <div className="border-t border-border-hairline pt-4">
-        <UserSuspendAction userId={user.id} suspendedAt={user.suspendedAt} fullWidthButton />
-      </div>
-    </div>
+  const detailHeaderSticky = false;
+  const resolvedTitle = title ?? (
+    <AdminUserDisplayNameEditableTitle userId={user.id} value={user.name} />
   );
 
   return (
     <AdminEntityDetailShell
       detailHeader
-      detailHeaderSticky={false}
+      detailHeaderSticky={detailHeaderSticky}
       backHref={listHref}
       backLabel={listLabel}
-      title={<AdminClientDisplayNameEditableTitle userId={user.id} value={user.name} />}
+      title={resolvedTitle}
       actions={<AdminPinPageButton label={user.name} />}
+      entityId={user.id}
+      updatedAt={user.updatedAt}
       meta={
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <AdminUserAvatar user={user} size="lg" />
-            <p className="font-body text-sm text-on-surface-variant">{user.email}</p>
-          </div>
-          {summaryMetrics ? <AdminUserSummaryStrip metrics={summaryMetrics} /> : null}
-          {!isStaff ? (
-            <AdminUserQuickActions
-              userId={user.id}
-              email={user.email}
-              legalEntities={legalEntitiesForActions}
-            />
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminStatusBadge domain="user" status="active" label={isStaff ? "Staff" : "Client"} />
-            {isStaff ? (
-              <AdminStatusBadge
-                domain="user"
-                status="active"
-                label={staffRoleLabel(user.staffRole as UserStaffRole | null)}
-              />
-            ) : null}
-            <AdminStatusBadge domain="user" status={user.suspendedAt ? "suspended" : "active"} />
-            <span className="font-body text-xs text-on-surface-variant">
-              Created {formatAdminUserDate(user.createdAt)} ({relativeFromIso(user.createdAt)})
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="font-mono text-xs"
-              onClick={() => void navigator.clipboard.writeText(user.id)}
-            >
-              Copy user ID
-            </Button>
-          </div>
-          <p className="font-mono text-xs text-on-surface-variant">{user.id}</p>
-        </div>
+        <AdminUserDetailHeaderMeta user={user} {...(summaryMetrics ? { summaryMetrics } : {})} />
       }
       rail={
         <div className="space-y-6">
-          <UserDetailContextRail
-            user={user}
-            {...(summaryMetrics?.lifetimeSpend != null
-              ? { lifetimeSpend: summaryMetrics.lifetimeSpend }
-              : {})}
-            {...(summaryMetrics?.lotsWon != null ? { lotsWon: summaryMetrics.lotsWon } : {})}
-            {...(summaryMetrics?.submissionsCount != null
-              ? { submissionsCount: summaryMetrics.submissionsCount }
-              : {})}
-            legalEntities={legalEntitiesForActions}
+          {!isStaff && showContextRail ? (
+            <UserDetailContextRail
+              email={user.email}
+              legalEntities={legalEntitiesForActions}
+              {...(railContext ? { context: railContext } : {})}
+            />
+          ) : null}
+          <AdminUserAccountControls
+            userId={user.id}
+            role={user.role as UserRole}
+            staffRole={(user.staffRole as UserStaffRole | null) ?? null}
+            isStaff={isStaff}
           />
-          {accountControls}
+          <AdminUserDangerZone userId={user.id} suspendedAt={user.suspendedAt} />
         </div>
       }
       railSticky={false}
     >
+      <AdminUserAttentionBanner items={attentionItems} />
       <AdminDetailTabs
         defaultValue={tabs[0]?.id ?? "overview"}
+        syncUrl
+        detailHeaderSticky={detailHeaderSticky}
         tabs={tabs.map(
           (tab): AdminDetailTab => ({
             value: tab.id,
             label: tab.label,
-            content: (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
-                {tab.content}
-              </div>
-            ),
+            badge: tab.badge,
+            content: <AdminEntityTabPanel>{tab.content}</AdminEntityTabPanel>,
           }),
         )}
       />

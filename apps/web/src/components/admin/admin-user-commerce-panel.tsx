@@ -1,5 +1,7 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { sumCapturedPayments } from "@/lib/admin/admin-user-metrics";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import type { AdminPaymentRow } from "@/lib/data/http/admin.server";
@@ -9,10 +11,15 @@ import type { LegalEntity, Lot } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
-function sumCapturedPayments(payments: AdminPaymentRow[]): number {
-  return payments
-    .filter((p) => p.status === "captured")
-    .reduce((acc, p) => acc + Number.parseFloat(p.amount || "0"), 0);
+function PanelHeader({ title, summary }: { title: string; summary?: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <AdminSectionLabel>{title}</AdminSectionLabel>
+      {summary ? (
+        <span className="font-headline text-lg tabular-nums text-on-surface">{summary}</span>
+      ) : null}
+    </div>
+  );
 }
 
 export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow[] }) {
@@ -22,13 +29,11 @@ export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow
     .slice(0, 12);
 
   return (
-    <Surface variant="card" padding="md" className="space-y-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-headline text-lg text-on-surface">Payments</h3>
-        <p className="font-headline text-2xl text-on-surface">
-          {lifetime > 0 ? formatMoney(lifetime.toFixed(2)) : "—"}
-        </p>
-      </div>
+    <div className="space-y-4">
+      <PanelHeader
+        title="Payments"
+        {...(lifetime > 0 ? { summary: formatMoney(lifetime.toFixed(2)) } : {})}
+      />
       <p className="font-body text-xs text-on-surface-variant">Lifetime spend (captured)</p>
       {recentPayments.length === 0 ? (
         <p className="text-sm text-on-surface-variant">No payments for this buyer yet.</p>
@@ -68,14 +73,17 @@ export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow
           ))}
         </ul>
       )}
-    </Surface>
+    </div>
   );
 }
 
 export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
   return (
-    <Surface variant="card" padding="md" className="space-y-3">
-      <h3 className="font-headline text-lg text-on-surface">Won lots</h3>
+    <div className="space-y-3">
+      <PanelHeader
+        title="Won lots"
+        {...(wonLots.length > 0 ? { summary: String(wonLots.length) } : {})}
+      />
       {wonLots.length === 0 ? (
         <AdminEmptyState title="No wins" description="This client has not won any lots yet." />
       ) : (
@@ -98,14 +106,17 @@ export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
           ))}
         </ul>
       )}
-    </Surface>
+    </div>
   );
 }
 
 export function AdminUserLegalEntitiesPanel({ legalEntities }: { legalEntities: LegalEntity[] }) {
   return (
-    <Surface variant="card" padding="md" className="space-y-3">
-      <h3 className="font-headline text-lg text-on-surface">Legal entities</h3>
+    <Surface variant="quiet" padding="md" className="space-y-3">
+      <PanelHeader
+        title="Legal entities"
+        {...(legalEntities.length > 0 ? { summary: String(legalEntities.length) } : {})}
+      />
       {legalEntities.length === 0 ? (
         <p className="text-sm text-on-surface-variant">
           No seller organisations created by this user.

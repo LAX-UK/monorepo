@@ -1,6 +1,10 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import {
+  formatEmailDeliverabilityStatus,
+  formatSignupPersona,
+} from "@/lib/admin/admin-user-presenters";
 import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { relativeFromIso } from "@/lib/admin/relative-time";
@@ -66,8 +70,8 @@ export function userPersonaColumn(): ColumnDef<AdminUserRow> {
     id: "persona",
     header: "Persona",
     cell: ({ row }) => (
-      <span className="text-xs capitalize text-on-surface-variant">
-        {row.original.signupPersona ?? "—"}
+      <span className="text-xs text-on-surface-variant">
+        {formatSignupPersona(row.original.signupPersona)}
       </span>
     ),
   };
@@ -93,7 +97,9 @@ export function userEmailStatusColumn(): ColumnDef<AdminUserRow> {
     id: "emailStatus",
     header: "Email health",
     cell: ({ row }) => (
-      <span className="text-xs capitalize text-on-surface-variant">{row.original.emailStatus}</span>
+      <span className="text-xs text-on-surface-variant">
+        {formatEmailDeliverabilityStatus(row.original.emailStatus)}
+      </span>
     ),
   };
 }

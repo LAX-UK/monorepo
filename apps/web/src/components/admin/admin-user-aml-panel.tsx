@@ -1,5 +1,9 @@
 import { AdminAmlHitListings } from "@/components/admin/admin-aml-hit-listings";
+import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { formatAmlCheckType } from "@/lib/admin/admin-user-presenters";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { formatAmlCategoriesLabel } from "@/lib/admin/status-badge-variants";
 import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
@@ -19,9 +23,7 @@ export function AdminUserAmlPanel({ screenings }: { screenings: AdminAmlScreenin
   return (
     <Surface variant="quiet" padding="md" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          AML / watchlist screening
-        </h3>
+        <AdminSectionLabel>AML / watchlist screening</AdminSectionLabel>
         <Link href={queueHref} className="text-xs text-primary underline">
           {latest?.reviewStatus === "pending" ? "Review in queue" : "Open review queue"}
         </Link>
@@ -37,10 +39,13 @@ export function AdminUserAmlPanel({ screenings }: { screenings: AdminAmlScreenin
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border-hairline/60 bg-surface-container-low/40 px-3 py-2">
             <AdminStatusBadge domain="amlMatch" status={latest.matchStatus} size="sm" />
             <AdminStatusBadge domain="amlDecision" status={latest.decisionOutcome} size="sm" />
-            <AdminStatusBadge domain="amlMonitor" status={latest.monitorStatus} size="sm" />
+            <span className="font-body text-sm text-on-surface-variant">
+              {latest.totalHits} hit{latest.totalHits === 1 ? "" : "s"} ·{" "}
+              {formatAmlCategoriesLabel(latest.categories)}
+            </span>
             {latest.reviewStatus === "pending" ? (
               <AdminStatusBadge
                 domain="amlDecision"
@@ -50,66 +55,78 @@ export function AdminUserAmlPanel({ screenings }: { screenings: AdminAmlScreenin
               />
             ) : null}
           </div>
-          <dl className="grid gap-2 text-sm md:grid-cols-2">
-            <div>
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Categories
-              </dt>
-              <dd>{formatAmlCategoriesLabel(latest.categories)}</dd>
+
+          <CollapsibleSection
+            title="Screening details"
+            defaultOpen={latest.reviewStatus === "pending"}
+          >
+            <div className="space-y-3 p-4">
+              <dl className="grid gap-2 text-sm md:grid-cols-2">
+                <div>
+                  <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                    Screened
+                  </dt>
+                  <dd>{formatAdminUserDate(latest.screenedAt)}</dd>
+                </div>
+                <div>
+                  <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                    Check type
+                  </dt>
+                  <dd>{formatAmlCheckType(latest.checkType)}</dd>
+                </div>
+                <div className="md:col-span-2">
+                  <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                    Veriff verification
+                  </dt>
+                  <dd>
+                    <a
+                      href={`${VERIFF_STATION_BASE}/verifications/${latest.providerSessionId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >
+                      Open in Veriff
+                    </a>
+                  </dd>
+                </div>
+              </dl>
+              <AdminTechnicalIdDisclosure
+                triggerLabel="Show Veriff session ID"
+                items={[
+                  {
+                    label: "Veriff session",
+                    value: latest.providerSessionId,
+                    copyLabel: "Veriff session ID",
+                  },
+                ]}
+              />
+              {latest.hits.length > 0 ? (
+                <div>
+                  <h4 className="font-label text-[10px] uppercase text-on-surface-variant">
+                    Hit detail
+                  </h4>
+                  <div className="mt-2">
+                    <AdminAmlHitListings hits={latest.hits} compact />
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <div>
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">Hits</dt>
-              <dd className="tabular-nums">{latest.totalHits}</dd>
-            </div>
-            <div>
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">Screened</dt>
-              <dd>{formatAdminUserDate(latest.screenedAt)}</dd>
-            </div>
-            <div>
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Check type
-              </dt>
-              <dd>{latest.checkType ?? "—"}</dd>
-            </div>
-            <div className="md:col-span-2">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Provider session
-              </dt>
-              <dd className="break-all font-mono text-xs">
-                {latest.providerSessionId}{" "}
-                <a
-                  href={`${VERIFF_STATION_BASE}/verifications/${latest.providerSessionId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-sans text-primary underline"
-                >
-                  Open in Veriff
-                </a>
-              </dd>
-            </div>
-          </dl>
-          {latest.hits.length > 0 ? (
-            <div>
-              <h4 className="font-label text-[10px] uppercase text-on-surface-variant">
-                Hit detail
-              </h4>
-              <div className="mt-2">
-                <AdminAmlHitListings hits={latest.hits} compact />
-              </div>
-            </div>
-          ) : null}
+          </CollapsibleSection>
+
           {screenings.length > 1 ? (
-            <ul className="divide-y divide-outline-variant/30 border-t border-outline-variant/30 pt-2">
-              {screenings.slice(1, 4).map((s) => {
-                const row = buildAdminAmlTableRow(s);
-                return (
-                  <li key={s.id} className="py-2 text-sm text-on-surface-variant">
-                    {formatAdminUserDate(s.screenedAt)} · {row.matchStatusLabel} ·{" "}
-                    {row.categoriesLabel}
-                  </li>
-                );
-              })}
-            </ul>
+            <CollapsibleSection title={`Older screenings (${screenings.length - 1})`}>
+              <ul className="divide-y divide-outline-variant/30 p-4">
+                {screenings.slice(1, 4).map((s) => {
+                  const row = buildAdminAmlTableRow(s);
+                  return (
+                    <li key={s.id} className="py-2 text-sm text-on-surface-variant">
+                      {formatAdminUserDate(s.screenedAt)} · {row.matchStatusLabel} ·{" "}
+                      {row.categoriesLabel}
+                    </li>
+                  );
+                })}
+              </ul>
+            </CollapsibleSection>
           ) : null}
         </>
       )}

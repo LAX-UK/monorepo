@@ -293,6 +293,15 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     return Number(row?.n ?? 0);
   }
 
+  async countAdminForLegalEntityIds(legalEntityIds: readonly string[]) {
+    if (legalEntityIds.length === 0) return 0;
+    const [row] = await this.db
+      .select({ n: count() })
+      .from(itemSubmission)
+      .where(inArray(itemSubmission.legalEntityId, [...legalEntityIds]));
+    return Number(row?.n ?? 0);
+  }
+
   async listStaleDraftsWithoutReminder(cutoff: Date, limit: number) {
     const rows = await this.db
       .select()

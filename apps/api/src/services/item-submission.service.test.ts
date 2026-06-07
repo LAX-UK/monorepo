@@ -503,4 +503,28 @@ describe("ItemSubmissionService", () => {
     });
     expect(r.isOk()).toBe(true);
   });
+
+  it("countSubmissionsBySellersForAdminApi batches seller legal entity ids", async () => {
+    const countAdminForLegalEntityIds = vi.fn().mockResolvedValue(7);
+    const submissions: IItemSubmissionRepository = {
+      countAdminForLegalEntityIds,
+    } as unknown as IItemSubmissionRepository;
+    const svc = new ItemSubmissionService(
+      stubDb,
+      submissions,
+      {} as unknown as IUserRepository,
+      {} as NotificationDispatcher,
+    );
+
+    const count = await svc.countSubmissionsBySellersForAdminApi([
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222",
+    ]);
+
+    expect(count).toBe(7);
+    expect(countAdminForLegalEntityIds).toHaveBeenCalledWith([
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222",
+    ]);
+  });
 });
