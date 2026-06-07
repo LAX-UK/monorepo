@@ -78,6 +78,7 @@ import {
   enqueueStaleEmailOutboxRows,
   sendEmailJob,
 } from "./jobs/send-email.js";
+import { runStaleSubmissionDraftRemindersJob } from "./jobs/stale-submission-draft-reminders.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho-campaigns-sync.js";
 import { createMarketingContactSync } from "./lib/marketing-contact-sync/index.js";
@@ -742,6 +743,49 @@ if (env.CRON_INTERNAL_SECRET) {
   );
 }
 
+const STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME = "stale-submission-draft-reminders";
+
+let staleSubmissionDraftRemindersQueue: Queue | undefined;
+let staleSubmissionDraftRemindersWorker: Worker | undefined;
+if (env.CRON_INTERNAL_SECRET) {
+  const cronSecret = env.CRON_INTERNAL_SECRET;
+  staleSubmissionDraftRemindersQueue = new Queue(
+    STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
+    bullConnection,
+  );
+  staleSubmissionDraftRemindersWorker = new Worker(
+    STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        "stale-submission-draft-reminders",
+        sentryMonitorSlugs,
+        async () => {
+          await runStaleSubmissionDraftRemindersJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret,
+            log,
+          });
+          await heartbeat("stale-submission-draft-reminders");
+        },
+      );
+    },
+    bullConnection,
+  );
+  staleSubmissionDraftRemindersWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME, job, err);
+  });
+  void staleSubmissionDraftRemindersQueue.add(
+    "stale-submission-draft-reminders",
+    {},
+    {
+      jobId: "daily-stale-submission-draft-reminders",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("stale-submission-draft-reminders repeat registered (daily)");
+}
+
 registerWorkerErrorHandlers([
   { worker: webhookWorker, queue: WEBHOOK_EVENTS_QUEUE_NAME },
   { worker: validateUploadWorker, queue: VALIDATE_UPLOAD_QUEUE_NAME },
@@ -771,6 +815,14 @@ registerWorkerErrorHandlers([
     : []),
   ...(payoutSettlementWorker
     ? [{ worker: payoutSettlementWorker, queue: PAYOUT_SETTLEMENT_QUEUE_NAME }]
+    : []),
+  ...(staleSubmissionDraftRemindersWorker
+    ? [
+        {
+          worker: staleSubmissionDraftRemindersWorker,
+          queue: STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
+        },
+      ]
     : []),
 ]);
 
@@ -808,7 +860,9 @@ void Promise.all([
   heartbeat("legal-entity-archive"),
   heartbeat("impersonation-sweeper"),
   heartbeat("purge-expired-verifications"),
-  ...(env.CRON_INTERNAL_SECRET ? [heartbeat("payout-settlement")] : []),
+  ...(env.CRON_INTERNAL_SECRET
+    ? [heartbeat("payout-settlement"), heartbeat("stale-submission-draft-reminders")]
+    : []),
 ]);
 
 const internalCronSecret = env.CRON_INTERNAL_SECRET;
@@ -947,6 +1001,10 @@ function shutdown(signal: NodeJS.Signals) {
         purgeQrCodeScansQueue.close(),
         ...(payoutSettlementWorker ? [payoutSettlementWorker.close()] : []),
         ...(payoutSettlementQueue ? [payoutSettlementQueue.close()] : []),
+        ...(staleSubmissionDraftRemindersWorker
+          ? [staleSubmissionDraftRemindersWorker.close()]
+          : []),
+        ...(staleSubmissionDraftRemindersQueue ? [staleSubmissionDraftRemindersQueue.close()] : []),
         deadLetterQueue.close(),
         projectorRunner.stop(),
       ]),

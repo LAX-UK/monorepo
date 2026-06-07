@@ -21,6 +21,7 @@ test.describe("marketing pages smoke", () => {
     "/terms",
     "/contact",
     "/artists",
+    "/sell",
   ]) {
     test(`${path} responds, exposes main landmark, and has no wcag2a/2aa violations in #main-content`, async ({
       page,

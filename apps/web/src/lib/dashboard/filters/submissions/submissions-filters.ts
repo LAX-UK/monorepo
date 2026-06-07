@@ -23,7 +23,7 @@ export const SUBMISSIONS_FILTER_CONFIG: ListPageFilterConfig = {
       kind: "search",
       param: "q",
       label: "Title contains",
-      placeholder: "Filter loaded rows by title…",
+      placeholder: "Search by title…",
     },
   ],
 };

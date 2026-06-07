@@ -1,5 +1,6 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { CatalogLotViewClient } from "@/components/marketing/catalog-lot-view-client";
+import { MarketingBidPromoCta } from "@/components/marketing/marketing-bid-promo-cta";
 import {
   MARKETING_HUB_BREADCRUMB_CLASS,
   MarketingBreadcrumb,
@@ -37,7 +38,6 @@ import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/struct
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
-import { SectionCta } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -418,23 +418,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 totalCount={exactTotal}
                 getPageHref={(page) => `/search?${qsBaseOffset((page - 1) * PAGE_SIZE)}`}
               />
-              {!session ? (
-                <SectionCta
-                  className="mt-16"
-                  title="Ready to bid?"
-                  description="Create a free account to place bids and track lots you care about."
-                  primary={
-                    <Button variant="cta" asChild>
-                      <Link href="/register">Register to bid</Link>
-                    </Button>
-                  }
-                  secondary={
-                    <Button variant="outline" asChild>
-                      <Link href="/login">Sign in</Link>
-                    </Button>
-                  }
-                />
-              ) : null}
+              {!session ? <MarketingBidPromoCta className="mt-16" /> : null}
             </>
           )}
         </SearchResultsShell>

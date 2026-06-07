@@ -1,6 +1,6 @@
 /** Artist / creator Kind - taxonomy for the creator registry. Covers every
  * collecting category an auction house attributes lots to (fine art, design,
- * automobilia, books, numismatics, wine...). Keep in sync with the
+ * automobilia, books, numismatics, design...). Keep in sync with the
  * `artist_kind` Postgres enum and {@link CREATOR_KIND_CONFIG}. */
 export const artistKinds = [
   "artist",

@@ -5,6 +5,8 @@ import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissio
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
 import { CatalogVirtualizedList } from "@/components/admin/catalog/catalog-virtualized-list";
 import { SubmissionInlineActions } from "@/components/admin/submission-inline-actions";
+import { SubmissionQualityBadges } from "@/components/admin/submissions-board/quality-badges";
+import { SubmissionSlaCell } from "@/components/admin/submissions-board/sla-cell";
 import { Button } from "@auction/ui";
 import type { OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 import Link from "next/link";
@@ -46,7 +48,14 @@ export function SubmissionsMobileCards({
               <AdminStatusBadge domain="submission" status={r.status} />
               <span className="font-body text-[10px] text-on-surface-variant">
                 {r.createdAtLabel}
+                {r.assigneeLabel !== "—" ? ` · ${r.assigneeLabel}` : ""}
               </span>
+              <SubmissionSlaCell label={r.slaLabel} tone={r.slaTone} />
+              <SubmissionQualityBadges
+                warnings={r.qualityWarnings}
+                blocksAccept={r.blocksAccept}
+                compact
+              />
             </div>
           }
           footer={

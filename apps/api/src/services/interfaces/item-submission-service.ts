@@ -2,6 +2,7 @@ import type {
   ArtistKind,
   CreateItemSubmissionInput,
   ItemSubmission,
+  ItemSubmissionStatus,
   Lot,
   UpdateItemSubmissionInput,
   UserRole,
@@ -56,6 +57,23 @@ export interface IItemSubmissionService {
   getForAdmin(id: string): Promise<Result<ItemSubmission, SubmissionError>>;
   countPendingForAdmin(f: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
   startReview(adminId: string, id: string): Promise<Result<ItemSubmission, SubmissionError>>;
+  assignForAdmin(
+    adminId: string,
+    id: string,
+    assignedToUserId: string | null,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  accept(
+    adminId: string,
+    id: string,
+    input?: Pick<ApproveSubmissionInput, "reviewNotes"> | undefined,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  convert(
+    adminId: string,
+    id: string,
+    input?: ApproveSubmissionInput | undefined,
+  ): Promise<
+    Result<{ submission: ItemSubmission; lot: Lot; readinessPercent: number }, SubmissionError>
+  >;
   approve(
     adminId: string,
     id: string,
@@ -72,7 +90,10 @@ export interface IItemSubmissionService {
   listSubmissionsForSellerApi(
     legalEntityId: string,
     f: ListSubmissionsFilter,
-  ): Promise<{ data: ItemSubmission[] }>;
+  ): Promise<{ data: ItemSubmission[]; total: number }>;
+  getSubmissionSummaryForSellerApi(
+    legalEntityId: string,
+  ): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }>;
   listSubmissionsForAdminApi(
     f: ListSubmissionsFilter,
   ): Promise<{ data: ItemSubmission[]; total: number }>;
@@ -122,6 +143,28 @@ export interface IItemSubmissionService {
     adminId: string,
     id: string,
   ): Promise<Result<ItemSubmission, SubmissionError>>;
+  assignForAdminApi(
+    adminId: string,
+    id: string,
+    assignedToUserId: string | null,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  countQualityGapsForAdminApi(): Promise<number>;
+  sendStaleDraftReminders(input: {
+    staleDays: number;
+    batchLimit?: number;
+  }): Promise<{ reminded: number }>;
+  acceptForAdminApi(
+    adminId: string,
+    id: string,
+    body: Pick<ApproveSubmissionInput, "reviewNotes">,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  convertForAdminApi(
+    adminId: string,
+    id: string,
+    body: ApproveSubmissionInput,
+  ): Promise<
+    Result<{ submission: ItemSubmission; lot: Lot; readinessPercent: number }, SubmissionError>
+  >;
   approveForAdminApi(
     adminId: string,
     id: string,

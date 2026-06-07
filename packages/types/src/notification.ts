@@ -5,6 +5,7 @@ export type UserNotification = {
   title: string;
   message: string;
   lotId: string | null;
+  submissionId: string | null;
   read: boolean;
   /** When set, hidden from default inbox lists (soft archive). */
   archivedAt?: Date | null;
@@ -29,6 +30,8 @@ export type NotificationPreference = {
   watchlistEmail: boolean;
   paymentEmail: boolean;
   lotEndedSellerEmail: boolean;
+  submissionUpdatesEmail: boolean;
+  submissionUpdatesPush: boolean;
   outbidWhatsapp: boolean;
   wonWhatsapp: boolean;
   lostWhatsapp: boolean;

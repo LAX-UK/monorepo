@@ -279,6 +279,26 @@ variable "kyc_threshold_currency" {
   default     = "GBP"
   description = "ISO 4217 currency code for KYC threshold."
 }
+
+# --- Web Push (apps/api only; generate: npx web-push generate-vapid-keys) ---
+variable "vapid_public_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "VAPID public key for browser push (exposed to clients via /users/me/push/vapid-key)."
+}
+variable "vapid_private_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "VAPID private key for signing push payloads. API only — never set on web."
+}
+variable "vapid_subject" {
+  type        = string
+  default     = "mailto:admin@test.lax.bid"
+  description = "VAPID subject (mailto: or https: contact URI). Required with both keys for push to activate."
+}
+
 # --- Onsite event pass / check-in (apps/api) ---
 variable "check_in_token_secret" {
   type        = string

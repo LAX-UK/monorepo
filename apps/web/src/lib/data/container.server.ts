@@ -31,7 +31,11 @@ import {
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerMySessions } from "@/lib/data/http/sessions.server";
 import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
-import { getMySubmissions, getSubmissionForUser } from "@/lib/data/http/submissions.server";
+import {
+  getMySubmissionSummary,
+  getMySubmissions,
+  getSubmissionForUser,
+} from "@/lib/data/http/submissions.server";
 import type {
   DashboardActiveLotsReader,
   DashboardAddressesReader,
@@ -97,7 +101,12 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
     notificationPreferences: { getMine: getServerMyNotificationPreferences },
     addresses: { listMine: getServerMyAddresses },
     legalEntities: { listMine: getServerMyLegalEntityMemberships },
-    submissions: { listMine: getMySubmissions, getMineById: getSubmissionForUser },
+    submissions: {
+      listMine: async (params) => (await getMySubmissions(params)).rows,
+      listMinePaged: getMySubmissions,
+      getSummary: getMySubmissionSummary,
+      getMineById: getSubmissionForUser,
+    },
     orgOnboarding: { getResume: getServerOrgOnboardingResume },
     categories: {
       list: () => categoryReader.list(),

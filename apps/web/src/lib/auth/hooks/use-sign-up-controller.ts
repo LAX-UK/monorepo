@@ -1,6 +1,7 @@
 "use client";
 
 import { trackSignUp } from "@/lib/analytics/events";
+import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 /** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
@@ -16,6 +17,7 @@ export function useSignUpController(opts?: {
   inviteToken?: string;
   next?: string;
   phoneDefaultCountry?: string;
+  sellIntent?: boolean;
 }) {
   const router = useRouter();
   const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(signUpService);
@@ -64,6 +66,9 @@ export function useSignUpController(opts?: {
     const result = await run(turnstileToken ? { ...base, turnstileToken } : base);
     if (result.ok) {
       trackSignUp();
+      if (opts?.sellIntent) {
+        trackSellAuthHandoff();
+      }
       const params = new URLSearchParams({ persona: data.persona, email: data.email });
       const safe = opts?.next && isSafeNextPath(opts.next) ? opts.next : undefined;
       if (safe) params.set("next", safe);

@@ -5,6 +5,8 @@ import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { contactFormValuesSchema } from "@/lib/contact/contact-input";
 import { useActionForm } from "@/lib/forms/use-action-form";
+import { contactIntentFromSearchParams } from "@/lib/marketing/contact-intent-copy";
+import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -17,6 +19,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
+import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
 
@@ -33,6 +36,8 @@ type ContactFormProps = {
    * split first/last fields. Both submit through the same wire schema.
    */
   nameMode?: "split" | "single";
+  intent?: string | null;
+  sellType?: string | null;
 };
 
 const underlineField =
@@ -44,7 +49,12 @@ const labelClass =
 const messageField =
   "min-h-[8rem] w-full resize-y rounded-none border-0 border-b-2 border-outline/40 bg-transparent py-3 font-body text-sm text-on-surface shadow-none transition-colors placeholder:text-on-surface-variant/55 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-0";
 
-export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
+export function ContactForm({
+  nameMode = "split",
+  intent = null,
+  sellType = null,
+}: ContactFormProps = {}) {
+  const intentConfig = contactIntentFromSearchParams({ intent, type: sellType });
   const [done, setDone] = useState(false);
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
     schema: contactFormValuesSchema,
@@ -53,7 +63,7 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
       firstName: "",
       lastName: "",
       email: "",
-      topic: "buying",
+      topic: intentConfig.topic,
       message: "",
       website: "",
     },
@@ -62,13 +72,19 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
   });
 
   if (done) {
+    const ctaLabel = intentConfig.successCtaLabel;
+    const ctaHref = intentConfig.successCtaHref ?? (ctaLabel ? sellIntakeHref() : null);
     return (
       <output
         className="mt-6 block rounded-sm border border-divider-soft bg-surface px-6 py-8 text-center font-body text-sm text-on-surface"
         aria-live="polite"
       >
-        Thank you — we&apos;ve received your message and will respond within two business days
-        (GMT).
+        <p>{intentConfig.successMessage}</p>
+        {ctaLabel && ctaHref ? (
+          <Button variant="cta" asChild className="mt-5">
+            <Link href={ctaHref}>{ctaLabel}</Link>
+          </Button>
+        ) : null}
       </output>
     );
   }
@@ -76,6 +92,9 @@ export function ContactForm({ nameMode = "split" }: ContactFormProps = {}) {
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} className="mt-6 max-w-[520px] space-y-6" noValidate>
+        {intentConfig.headline ? (
+          <p className="font-body text-sm text-on-surface-variant">{intentConfig.headline}</p>
+        ) : null}
         {rootError ? (
           <p
             className="rounded-sm border border-error/40 bg-error-container/20 px-4 py-3 text-sm text-error"
