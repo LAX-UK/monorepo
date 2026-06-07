@@ -1,6 +1,12 @@
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { describe, expect, it } from "vitest";
-import { WIZARD_STEPS, allWizardFieldPaths } from "./step-validation";
+import { EMPTY_SUBMISSION_FORM_VALUES } from "./item-submission-form-defaults";
+import {
+  WIZARD_STEPS,
+  allWizardFieldPaths,
+  firstIncompleteWizardStepIndex,
+  wizardStepIndex,
+} from "./step-validation";
 
 const FORM_FIELD_KEYS = [
   "title",
@@ -32,5 +38,38 @@ describe("step-validation", () => {
         expect(step.fields).toHaveLength(0);
       }
     }
+  });
+
+  it("firstIncompleteWizardStepIndex opens basics when title or category missing", () => {
+    expect(
+      firstIncompleteWizardStepIndex({
+        ...EMPTY_SUBMISSION_FORM_VALUES,
+        title: "",
+        categoryIds: [],
+        images: [],
+      }),
+    ).toBe(wizardStepIndex("basics"));
+  });
+
+  it("firstIncompleteWizardStepIndex opens photos when images missing", () => {
+    expect(
+      firstIncompleteWizardStepIndex({
+        ...EMPTY_SUBMISSION_FORM_VALUES,
+        title: "Study",
+        categoryIds: ["cat-1"],
+        images: [],
+      }),
+    ).toBe(wizardStepIndex("photos"));
+  });
+
+  it("firstIncompleteWizardStepIndex opens review when required fields are complete", () => {
+    expect(
+      firstIncompleteWizardStepIndex({
+        ...EMPTY_SUBMISSION_FORM_VALUES,
+        title: "Study",
+        categoryIds: ["cat-1"],
+        images: ["https://example.com/a.jpg"],
+      }),
+    ).toBe(wizardStepIndex("review"));
   });
 });

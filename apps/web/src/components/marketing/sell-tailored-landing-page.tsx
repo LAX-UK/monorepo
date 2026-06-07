@@ -8,7 +8,7 @@ import { MarketingSectionSubheading } from "@/components/marketing/marketing-sec
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
-import { sellContactHref, sellIntakeHref } from "@/lib/marketing/sell-intake";
+import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { Button } from "@auction/ui/components/button";
@@ -23,9 +23,7 @@ type Props = {
   lead: string;
   bullets: readonly string[];
   breadcrumbLabel: string;
-  /** Specialist contact routing — omit for wizard-first vertical landings. */
-  contactType?: "estate" | "corporate" | "prints";
-  /** Pre-select category when primary CTA is the submission wizard. */
+  /** Pre-select category when starting the submission wizard. */
   categorySlug?: string;
 };
 
@@ -44,11 +42,9 @@ export function SellTailoredLandingPage({
   eyebrow,
   lead,
   bullets,
-  contactType,
   categorySlug,
   breadcrumbLabel,
 }: Props) {
-  const wizardFirst = Boolean(categorySlug);
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
@@ -94,41 +90,16 @@ export function SellTailoredLandingPage({
         <MarketingPromoCta
           className="mt-8"
           title="Ready to begin?"
-          description="Speak with a specialist for multi-item routing, or submit a single work directly."
+          description="Create an account and start your submission — our specialists review every item within 24 hours."
           actions={
-            wizardFirst ? (
-              <>
-                <Button variant="cta" asChild>
-                  <SellCtaLink
-                    href={sellIntakeHref(categorySlug ? { categorySlug } : undefined)}
-                    source={`${path}_submit`}
-                  >
-                    Submit this item
-                  </SellCtaLink>
-                </Button>
-                <Button variant="outline" asChild>
-                  <SellCtaLink href={sellContactHref()} source={`${path}_contact`}>
-                    Speak to a specialist
-                  </SellCtaLink>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="cta" asChild>
-                  <SellCtaLink
-                    href={contactType ? sellContactHref(contactType) : sellContactHref()}
-                    source={`${path}_contact`}
-                  >
-                    Speak to a specialist
-                  </SellCtaLink>
-                </Button>
-                <Button variant="outline" asChild>
-                  <SellCtaLink href={sellIntakeHref()} source={`${path}_submit`}>
-                    Submit one item
-                  </SellCtaLink>
-                </Button>
-              </>
-            )
+            <Button variant="cta" asChild>
+              <SellCtaLink
+                href={sellIntakeHref(categorySlug ? { categorySlug } : undefined)}
+                source={`${path}_submit`}
+              >
+                Start your submission
+              </SellCtaLink>
+            </Button>
           }
         />
 

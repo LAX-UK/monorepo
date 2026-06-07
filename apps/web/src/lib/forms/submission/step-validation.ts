@@ -1,6 +1,14 @@
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import type { FieldPath } from "react-hook-form";
 
+function hasBasicsComplete(values: ItemSubmissionFormValues): boolean {
+  return Boolean(values.title?.trim()) && values.categoryIds.length > 0;
+}
+
+function hasPhotosComplete(values: ItemSubmissionFormValues): boolean {
+  return values.images.length >= 1;
+}
+
 export type WizardStepId = "basics" | "details" | "photos" | "provenance" | "pricing" | "review";
 
 export type WizardStepDefinition = {
@@ -52,4 +60,11 @@ export function wizardStepIndex(id: WizardStepId): number {
 /** All form fields assigned to a wizard step (excludes review). */
 export function allWizardFieldPaths(): FieldPath<ItemSubmissionFormValues>[] {
   return WIZARD_STEPS.flatMap((s) => [...s.fields]);
+}
+
+/** Lowest wizard step that still needs required input before submit. */
+export function firstIncompleteWizardStepIndex(values: ItemSubmissionFormValues): number {
+  if (!hasBasicsComplete(values)) return wizardStepIndex("basics");
+  if (!hasPhotosComplete(values)) return wizardStepIndex("photos");
+  return wizardStepIndex("review");
 }
