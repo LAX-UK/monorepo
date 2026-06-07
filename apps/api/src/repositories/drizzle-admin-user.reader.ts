@@ -56,6 +56,9 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         pendingNewEmail: user.pendingNewEmail,
         emailChangeExpiresAt: user.emailChangeExpiresAt,
         currentKycSessionId: user.currentKycSessionId,
+        amlHoldStatus: user.amlHoldStatus,
+        amlHoldReason: user.amlHoldReason,
+        amlHoldAt: user.amlHoldAt,
       })
       .from(user)
       .where(eq(user.id, id))
@@ -69,6 +72,9 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       pendingNewEmail: row.pendingNewEmail ?? null,
       emailChangeExpiresAt: row.emailChangeExpiresAt ?? null,
       currentKycSessionId: row.currentKycSessionId ?? null,
+      amlHoldStatus: row.amlHoldStatus ?? null,
+      amlHoldReason: row.amlHoldReason ?? null,
+      amlHoldAt: row.amlHoldAt ?? null,
     };
   }
 

@@ -65,6 +65,25 @@ async function runKycProgression(container: Container, userId: string): Promise<
   await progressIndividualsAfterKycApproval(container.db, container.domainEventPublisher, userId);
 }
 
+/** Best-effort pull of watchlist screening after IDV approval (webhook may have failed). */
+async function reconcileWatchlistAfterApproval(
+  container: Container,
+  providerSessionId: string | null | undefined,
+): Promise<void> {
+  if (!providerSessionId) return;
+  try {
+    await container.amlService.ingestFromFetch(providerSessionId);
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        msg: "aml_watchlist_reconcile_failed",
+        providerSessionId,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
+}
+
 function readVeriffWebhookHeaders(c: {
   req: { header: (name: string) => string | undefined };
 }): { signature: string | undefined; authClient: string | undefined } {
@@ -87,6 +106,7 @@ export function createVeriffWebhookRoutes(container: Container) {
       const progressionUserId = shouldProgressIndividuals && updated ? updated.userId : null;
       if (progressionUserId) {
         await runKycProgression(container, progressionUserId);
+        await reconcileWatchlistAfterApproval(container, updated?.providerSessionId);
       }
       if (result.marketingEventToEnqueue) {
         await container.marketingEventService.enqueue(result.marketingEventToEnqueue);

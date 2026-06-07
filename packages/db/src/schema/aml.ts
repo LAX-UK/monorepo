@@ -49,6 +49,10 @@ export const kycWatchlistScreening = pgTable(
     totalHits: integer("total_hits").notNull().default(0),
     /** Distinct watchlist categories present across hits (sanction/pep/adverse_media/…). */
     categories: jsonb("categories").$type<string[]>().notNull().default([]),
+    /** Structured hit detail for MLRO adjudication (normalized from provider payload). */
+    hits: jsonb("hits").$type<Record<string, unknown>[]>().notNull().default([]),
+    /** Veriff check type: initial_result or updated_result (ongoing monitoring). */
+    checkType: text("check_type"),
     decisionOutcome: amlDecisionOutcomeEnum("decision_outcome").notNull(),
     reviewStatus: amlReviewStatusEnum("review_status").notNull().default("not_required"),
     /** First-line analyst triage (maker) — advisory recommendation + author. */

@@ -11,6 +11,8 @@ export type AdminAmlScreeningRow = {
   monitorStatus: string;
   totalHits: number;
   categories: string[];
+  hits: AdminAmlScreeningHitRow[];
+  checkType: string | null;
   decisionOutcome: string;
   reviewStatus: string;
   triageRecommendation: string | null;
@@ -22,6 +24,25 @@ export type AdminAmlScreeningRow = {
   reviewNotes: string | null;
   screenedAt: string;
   createdAt: string;
+};
+
+export type AdminAmlScreeningHitRow = {
+  matchedName: string | null;
+  countries: string[];
+  dateOfBirth: string | null;
+  matchTypes: string[];
+  categories: string[];
+  listings: Partial<
+    Record<
+      string,
+      Array<{
+        sourceName: string;
+        sourceUrl: string | null;
+        snippet: string | null;
+        date: string | null;
+      }>
+    >
+  >;
 };
 
 export type AdminSourceOfFundsRow = {
@@ -49,7 +70,7 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-function screeningFromJson(raw: unknown): AdminAmlScreeningRow | null {
+export function screeningFromJson(raw: unknown): AdminAmlScreeningRow | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const id = str(o.id);
@@ -63,6 +84,22 @@ function screeningFromJson(raw: unknown): AdminAmlScreeningRow | null {
           .map((c) => c.trim())
           .filter(Boolean)
       : [];
+  const hits = Array.isArray(o.hits)
+    ? o.hits.map((hit) => {
+        const h = hit as Record<string, unknown>;
+        return {
+          matchedName: h.matchedName == null ? null : str(h.matchedName),
+          countries: Array.isArray(h.countries) ? h.countries.map(String) : [],
+          dateOfBirth: h.dateOfBirth == null ? null : str(h.dateOfBirth),
+          matchTypes: Array.isArray(h.matchTypes) ? h.matchTypes.map(String) : [],
+          categories: Array.isArray(h.categories) ? h.categories.map(String) : [],
+          listings:
+            h.listings && typeof h.listings === "object"
+              ? (h.listings as AdminAmlScreeningHitRow["listings"])
+              : {},
+        };
+      })
+    : [];
   return {
     id,
     userId,
@@ -71,6 +108,8 @@ function screeningFromJson(raw: unknown): AdminAmlScreeningRow | null {
     monitorStatus: str(o.monitorStatus),
     totalHits: Number(o.totalHits ?? 0),
     categories,
+    hits,
+    checkType: o.checkType == null ? null : str(o.checkType),
     decisionOutcome: str(o.decisionOutcome),
     reviewStatus: str(o.reviewStatus),
     triageRecommendation: o.triageRecommendation == null ? null : str(o.triageRecommendation),

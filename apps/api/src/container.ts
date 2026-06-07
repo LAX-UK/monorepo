@@ -80,6 +80,7 @@ import { StripeClientFactory } from "./lib/stripe-client.js";
 import { StripeWebhookVerifier } from "./lib/stripe-webhook-verifier.js";
 import { trustedWebOrigins } from "./lib/trusted-origins.js";
 import { VeriffScreeningProvider } from "./lib/veriff/veriff-screening-provider.js";
+import { VeriffWatchlistFetcher } from "./lib/veriff/veriff-watchlist-fetcher.js";
 import { VeriffWebhookVerifier } from "./lib/veriff/veriff-webhook-verifier.js";
 import {
   createRequireLegalEntityContext,
@@ -793,6 +794,7 @@ export function createContainer(env: Env): Container {
     amlHoldStore,
     domainEventPublisher,
     VeriffScreeningProvider.fromEnv(env),
+    VeriffWatchlistFetcher.fromEnv(env),
   );
   const sourceOfFundsRepository = new DrizzleSourceOfFundsRepository(db);
   const sourceOfFundsService = new SourceOfFundsService(

@@ -3,6 +3,10 @@ import type { Database } from "@auction/db";
 import { kycVerification } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
+import {
+  type NormalizedWatchlistScreening,
+  normalizeVeriffWatchlistWebhook,
+} from "../../lib/veriff/veriff-watchlist-normalizer.js";
 import { veriffWatchlistWebhookSchema } from "../../lib/veriff/veriff-watchlist-types.js";
 import type { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-verifier.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
@@ -17,11 +21,11 @@ import type {
   IAmlDecisionPolicy,
   IAmlHoldStore,
   IScreeningProvider,
+  IWatchlistScreeningFetcher,
   IWatchlistScreeningReader,
   IWatchlistScreeningWriter,
   WatchlistScreeningRecord,
 } from "./ports.js";
-import { normalizeVeriffWatchlistWebhook } from "./veriff-watchlist-normalizer.js";
 
 export const AML_SCREENING_EVALUATED_EVENT = "aml.screening_evaluated";
 export const AML_MATCH_FLAGGED_EVENT = "aml.match_flagged";
@@ -61,6 +65,13 @@ function reviewStatusFor(decision: AmlDecision): AmlReviewStatus {
   return "pending";
 }
 
+type ApplyScreeningResult = {
+  processed: boolean;
+  outcome: AmlDecision["outcome"] | null;
+  alreadyMonitored: boolean;
+  record: WatchlistScreeningRecord | null;
+};
+
 /**
  * AML application service. Owns watchlist screening ingest, MLRO review, and the
  * ongoing-monitoring lifecycle. Depends only on ports (Dependency Inversion), so
@@ -76,6 +87,7 @@ export class AmlService {
     private readonly holdStore: IAmlHoldStore,
     private readonly events: DomainEventPublisher,
     private readonly provider: IScreeningProvider,
+    private readonly fetcher: IWatchlistScreeningFetcher | null = null,
   ) {}
 
   isConfigured(): boolean {
@@ -107,66 +119,33 @@ export class AmlService {
     }
 
     const normalized = normalizeVeriffWatchlistWebhook(parsed.data);
-    const providerSessionId = normalized.providerSessionId;
-    if (!providerSessionId) {
-      throw new VeriffWebhookPayloadError("missing_provider_session_id");
-    }
-    const subjectFromPayload = normalized.userId;
-    const result: AmlScreeningResult = {
-      ...normalized.result,
-      providerSessionId,
-    };
-    const decision = this.policy.evaluate(result);
-    const reviewStatus = reviewStatusFor(decision);
-    // Content hash dedupes exact re-deliveries while allowing genuine monitoring updates.
     const eventId = `veriff_watchlist:${createHash("sha256").update(rawBody).digest("hex")}`;
+    const txResult = await this.applyScreening(normalized, eventId, "veriff_watchlist");
+    return { processed: txResult.processed, outcome: txResult.outcome };
+  }
 
-    const txResult = await this.db.transaction(async (tx) => {
-      const { claimed } = await tryClaimProcessedWebhookEvent(tx, eventId, "veriff_watchlist");
-      if (!claimed) {
-        return { processed: false, outcome: null, alreadyMonitored: true };
-      }
-
-      const userId = await this.resolveUserId(subjectFromPayload, providerSessionId, tx);
-      if (!userId) {
-        throw new VeriffWebhookPayloadError("unknown_screening_subject");
-      }
-
-      const record = await this.screeningWriter.upsertFromResult(
-        { userId, result, decision, reviewStatus },
-        tx,
-      );
-
-      if (decision.outcome === "block") {
-        await this.holdStore.setHold(userId, "blocked", holdReasonFor(decision, result), tx);
-      } else if (decision.outcome === "review") {
-        await this.holdStore.setHold(userId, "hold", holdReasonFor(decision, result), tx);
-      } else {
-        // Only clear a hold that was set by screening (never override a manual block here).
-        const existing = await this.holdStore.getHold(userId, tx);
-        if (existing && existing.status !== "blocked") {
-          await this.holdStore.clearHold(userId, tx);
-        }
-      }
-
-      await this.publishScreeningEvents(tx, record, result, decision);
-      return {
-        processed: true,
-        outcome: decision.outcome,
-        alreadyMonitored: record.monitorStatus === "monitored",
-      };
-    });
-
-    // Enrol clear subjects into ongoing monitoring (best-effort, off the tx path).
-    if (txResult.processed && txResult.outcome === "clear" && !txResult.alreadyMonitored) {
-      await this.tryEnableMonitoring(providerSessionId);
+  /** Pull screening results from Veriff and ingest (backfill / reconciliation). */
+  async ingestFromFetch(providerSessionId: string): Promise<AmlWatchlistWebhookResult> {
+    if (!this.fetcher?.isConfigured()) {
+      throw new Error("aml_fetch_not_configured");
     }
+    const normalized = await this.fetcher.fetchBySessionId(providerSessionId);
+    if (!normalized) {
+      return { processed: false, outcome: null };
+    }
+    const eventId = `veriff_watchlist_fetch:${providerSessionId}:${normalized.checkType ?? "unknown"}`;
+    const txResult = await this.applyScreening(normalized, eventId, "veriff_watchlist");
     return { processed: txResult.processed, outcome: txResult.outcome };
   }
 
   /** Pending watchlist screenings awaiting MLRO/compliance review. */
   async listPendingReviews(limit = 50): Promise<WatchlistScreeningRecord[]> {
     return this.screeningReader.listByReviewStatus("pending", limit);
+  }
+
+  /** All screenings for a user (latest first), including cleared/no-match. */
+  async listForUser(userId: string, limit = 20): Promise<WatchlistScreeningRecord[]> {
+    return this.screeningReader.listForUser(userId, limit);
   }
 
   /**
@@ -179,11 +158,9 @@ export class AmlService {
       const record = await this.screeningReader.findById(input.screeningId, tx);
       if (!record) throw new Error("aml_screening_not_found");
       if (record.userId === input.analystUserId) {
-        // A subject can never triage their own screening.
         throw new Error("aml_triage_self_forbidden");
       }
       if (record.reviewStatus !== "pending") {
-        // Only an open (pending) screening can be triaged.
         throw new Error("aml_screening_not_pending");
       }
       if (record.triageRecommendation) {
@@ -215,18 +192,15 @@ export class AmlService {
       const record = await this.screeningReader.findById(input.screeningId, tx);
       if (!record) throw new Error("aml_screening_not_found");
       if (record.userId === input.reviewerUserId) {
-        // A subject can never decide their own screening.
         throw new Error("aml_review_self_forbidden");
       }
       if (record.reviewStatus !== "pending") {
         throw new Error("aml_screening_not_pending");
       }
       if (!record.triagedByUserId || !record.triageRecommendation) {
-        // Maker-checker: a first-line triage must precede the MLRO decision.
         throw new Error("aml_triage_required");
       }
       if (record.triagedByUserId === input.reviewerUserId) {
-        // Maker-checker: the checker must differ from the maker.
         throw new Error("aml_review_same_as_triager");
       }
 
@@ -241,7 +215,6 @@ export class AmlService {
       if (input.decision === "clear") {
         await this.holdStore.clearHold(record.userId, tx);
       } else {
-        // Settlement gate checks hold presence only; reason is audit metadata.
         await this.holdStore.setHold(record.userId, "blocked", "sanctions_match", tx);
       }
 
@@ -263,7 +236,6 @@ export class AmlService {
       return updated;
     });
 
-    // A cleared subject re-enters ongoing monitoring so future hits re-flag them.
     if (input.decision === "clear" && updated.monitorStatus !== "monitored") {
       await this.tryEnableMonitoring(updated.providerSessionId);
     }
@@ -277,13 +249,82 @@ export class AmlService {
     await this.screeningWriter.setMonitorStatus(providerSessionId, "monitored");
   }
 
-  /** Best-effort monitoring enrolment that never throws into the caller. */
+  private async applyScreening(
+    normalized: NormalizedWatchlistScreening,
+    eventId: string,
+    eventSource: string,
+  ): Promise<ApplyScreeningResult> {
+    const providerSessionId = normalized.providerSessionId;
+    if (!providerSessionId) {
+      throw new VeriffWebhookPayloadError("missing_provider_session_id");
+    }
+
+    const subjectFromPayload = normalized.userId;
+    const result: AmlScreeningResult = {
+      ...normalized.result,
+      providerSessionId,
+    };
+    const decision = this.policy.evaluate(result);
+    const reviewStatus = reviewStatusFor(decision);
+
+    const txResult = await this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedWebhookEvent(tx, eventId, eventSource);
+      if (!claimed) {
+        return {
+          processed: false,
+          outcome: null,
+          alreadyMonitored: true,
+          record: null,
+        };
+      }
+
+      const userId = await this.resolveUserId(subjectFromPayload, providerSessionId, tx);
+      if (!userId) {
+        throw new VeriffWebhookPayloadError("unknown_screening_subject");
+      }
+
+      const record = await this.screeningWriter.upsertFromResult(
+        {
+          userId,
+          result,
+          decision,
+          reviewStatus,
+          checkType: normalized.checkType,
+        },
+        tx,
+      );
+
+      if (decision.outcome === "block") {
+        await this.holdStore.setHold(userId, "blocked", holdReasonFor(decision, result), tx);
+      } else if (decision.outcome === "review") {
+        await this.holdStore.setHold(userId, "hold", holdReasonFor(decision, result), tx);
+      } else {
+        const existing = await this.holdStore.getHold(userId, tx);
+        if (existing && existing.status !== "blocked") {
+          await this.holdStore.clearHold(userId, tx);
+        }
+      }
+
+      await this.publishScreeningEvents(tx, record, result, decision);
+      return {
+        processed: true,
+        outcome: decision.outcome,
+        alreadyMonitored: record.monitorStatus === "monitored",
+        record,
+      };
+    });
+
+    if (txResult.processed && txResult.outcome === "clear" && !txResult.alreadyMonitored) {
+      await this.tryEnableMonitoring(providerSessionId);
+    }
+    return txResult;
+  }
+
   private async tryEnableMonitoring(providerSessionId: string): Promise<void> {
     try {
       await this.enableMonitoring(providerSessionId);
     } catch {
-      // Monitoring is non-critical to the screening decision; failures are
-      // retried on the next webhook/review and surface via provider logs.
+      // Monitoring is non-critical to the screening decision.
     }
   }
 

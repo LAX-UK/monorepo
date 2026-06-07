@@ -4,6 +4,7 @@ import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
+import { formatAmlHoldReason } from "@/lib/admin/status-badge-variants";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
@@ -200,6 +201,24 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
                 Current KYC session
               </dt>
               <dd className="break-all font-mono text-xs">{user.currentKycSessionId}</dd>
+            </div>
+          ) : null}
+          {user.amlHoldStatus && user.amlHoldStatus !== "none" ? (
+            <div className="md:col-span-2">
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">AML hold</dt>
+              <dd className="flex flex-wrap items-center gap-2">
+                <AdminStatusBadge domain="amlHold" status={user.amlHoldStatus} size="sm" />
+                {formatAmlHoldReason(user.amlHoldReason) ? (
+                  <span className="text-sm text-on-surface-variant">
+                    {formatAmlHoldReason(user.amlHoldReason)}
+                  </span>
+                ) : null}
+                {user.amlHoldAt ? (
+                  <span className="text-xs text-on-surface-variant">
+                    since {formatAdminUserDate(user.amlHoldAt)}
+                  </span>
+                ) : null}
+              </dd>
             </div>
           ) : null}
         </dl>

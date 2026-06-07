@@ -29,12 +29,31 @@ export type AmlWatchlistCategory =
   | "fitness_probity"
   | "other";
 
+/** A matched listing entry (sanctions / PEP / adverse media source). */
+export type AmlScreeningListing = {
+  sourceName: string;
+  sourceUrl: string | null;
+  snippet: string | null;
+  date: string | null;
+};
+
 /** A single matched record returned by the provider. */
 export type AmlScreeningHit = {
+  matchedName: string | null;
+  countries: string[];
+  dateOfBirth: string | null;
+  dateOfDeath: string | null;
+  matchTypes: string[];
+  aka: string[];
+  associates: string[];
+  /** Distinct watchlist categories present on this hit. */
+  categories: AmlWatchlistCategory[];
+  /** Grouped source listings by category (for MLRO adjudication). */
+  listings: Partial<Record<AmlWatchlistCategory, AmlScreeningListing[]>>;
+  /** Primary category (first detected) — kept for legacy callers. */
   category: AmlWatchlistCategory;
   listName: string | null;
-  matchedName: string | null;
-  /** Provider match confidence in [0,1] when available. */
+  /** Provider match confidence in [0,1] when available (legacy payloads). */
   score: number | null;
 };
 

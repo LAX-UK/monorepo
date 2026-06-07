@@ -563,19 +563,29 @@ export function disputeStatusToBadgeVariant(
   }
 }
 
-export type AmlMatchStatus = "no_match" | "potential_match" | "true_positive" | "false_positive";
+export type AmlMatchStatus =
+  | "no_match"
+  | "possible_match"
+  | "confirmed_match"
+  | "false_positive"
+  | "potential_match"
+  | "true_positive";
 
 export const amlMatchStatusLabel: Record<string, string> = {
   no_match: "No match",
-  potential_match: "Potential match",
-  true_positive: "Confirmed match",
+  possible_match: "Possible match",
+  confirmed_match: "Confirmed match",
   false_positive: "False positive",
+  potential_match: "Possible match",
+  true_positive: "Confirmed match",
 };
 
 export function amlMatchStatusToBadgeVariant(status: string): AdminStatusBadgeVariant {
   switch (status) {
+    case "confirmed_match":
     case "true_positive":
       return "danger";
+    case "possible_match":
     case "potential_match":
       return "warning";
     case "false_positive":
@@ -587,12 +597,43 @@ export function amlMatchStatusToBadgeVariant(status: string): AdminStatusBadgeVa
   }
 }
 
-export type AmlDecisionOutcome = "pending" | "clear" | "block" | "escalate";
+export type AmlMonitorStatus =
+  | "monitored"
+  | "not_monitored"
+  | "monitoring_paused"
+  | "enabled"
+  | "disabled";
+
+export const amlMonitorStatusLabel: Record<string, string> = {
+  monitored: "Monitored",
+  not_monitored: "Not monitored",
+  monitoring_paused: "Monitoring paused",
+  enabled: "Monitored",
+  disabled: "Not monitored",
+};
+
+export function amlMonitorStatusToBadgeVariant(status: string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "monitored":
+    case "enabled":
+      return "info";
+    case "monitoring_paused":
+      return "warning";
+    case "not_monitored":
+    case "disabled":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export type AmlDecisionOutcome = "pending" | "clear" | "block" | "review" | "escalate";
 
 export const amlDecisionOutcomeLabel: Record<string, string> = {
   pending: "Pending review",
   clear: "Clear",
   block: "Block",
+  review: "Review",
   escalate: "Escalated",
 };
 
@@ -602,6 +643,7 @@ export function amlDecisionOutcomeToBadgeVariant(status: string): AdminStatusBad
       return "success";
     case "block":
       return "danger";
+    case "review":
     case "escalate":
       return "warning";
     case "pending":
@@ -609,6 +651,53 @@ export function amlDecisionOutcomeToBadgeVariant(status: string): AdminStatusBad
     default:
       return "neutral";
   }
+}
+
+export const amlWatchlistCategoryLabel: Record<string, string> = {
+  sanction: "Sanctions",
+  pep: "PEP",
+  adverse_media: "Adverse media",
+  warning: "Warnings",
+  fitness_probity: "Fitness & probity",
+  other: "Other",
+};
+
+export function formatAmlCategoriesLabel(categories: string[]): string {
+  if (categories.length === 0) return "—";
+  return categories
+    .map((category) => amlWatchlistCategoryLabel[category] ?? category.replaceAll("_", " "))
+    .join(", ");
+}
+
+export type AmlHoldStatus = "none" | "hold" | "blocked";
+
+export const amlHoldStatusLabel: Record<string, string> = {
+  none: "No hold",
+  hold: "Settlement hold",
+  blocked: "Blocked",
+};
+
+export const amlHoldReasonLabel: Record<string, string> = {
+  sanctions_match: "Sanctions match",
+  pep_match: "PEP match",
+  adverse_media_match: "Adverse media match",
+  screening_review: "Screening review",
+};
+
+export function amlHoldStatusToBadgeVariant(status: string): AdminStatusBadgeVariant {
+  switch (status) {
+    case "blocked":
+      return "danger";
+    case "hold":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
+export function formatAmlHoldReason(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  return amlHoldReasonLabel[reason] ?? reason.replaceAll("_", " ");
 }
 
 export type SofCaseStatus = "pending" | "approved" | "rejected";
@@ -660,6 +749,8 @@ export type AdminStatusDomain =
   | "payout"
   | "amlMatch"
   | "amlDecision"
+  | "amlMonitor"
+  | "amlHold"
   | "sofCase"
   | "invitation"
   | "inviteLifecycle"
@@ -693,6 +784,10 @@ export function adminStatusLabel(domain: AdminStatusDomain, status: string): str
       return amlMatchStatusLabel[status] ?? status.replaceAll("_", " ");
     case "amlDecision":
       return amlDecisionOutcomeLabel[status] ?? status.replaceAll("_", " ");
+    case "amlMonitor":
+      return amlMonitorStatusLabel[status] ?? status.replaceAll("_", " ");
+    case "amlHold":
+      return amlHoldStatusLabel[status] ?? status.replaceAll("_", " ");
     case "sofCase":
       return sofCaseStatusLabel[status] ?? status.replaceAll("_", " ");
     case "payout":
@@ -754,6 +849,10 @@ export function adminStatusToBadgeVariant(
       return amlMatchStatusToBadgeVariant(status);
     case "amlDecision":
       return amlDecisionOutcomeToBadgeVariant(status);
+    case "amlMonitor":
+      return amlMonitorStatusToBadgeVariant(status);
+    case "amlHold":
+      return amlHoldStatusToBadgeVariant(status);
     case "sofCase":
       return sofCaseStatusToBadgeVariant(status);
     case "payout":

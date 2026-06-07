@@ -1,5 +1,7 @@
 "use client";
 
+import { AdminAmlHitListings } from "@/components/admin/admin-aml-hit-listings";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import {
   ComplianceDecideForm,
@@ -28,6 +30,12 @@ export function AmlDrawerContent({ row, canTriage, canDecide, currentUserId }: P
           </dd>
         </div>
         <div>
+          <dt className="font-label text-[10px] uppercase text-on-surface-variant">Monitor</dt>
+          <dd>
+            <AdminStatusBadge domain="amlMonitor" status={row.monitorStatus} size="sm" />
+          </dd>
+        </div>
+        <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Categories</dt>
           <dd>{row.categoriesLabel}</dd>
         </div>
@@ -41,6 +49,12 @@ export function AmlDrawerContent({ row, canTriage, canDecide, currentUserId }: P
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Screened</dt>
           <dd>{row.screenedAt}</dd>
         </div>
+        {row.checkType ? (
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Check type</dt>
+            <dd>{row.checkType}</dd>
+          </div>
+        ) : null}
         {row.triageNotes ? (
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">
@@ -50,6 +64,13 @@ export function AmlDrawerContent({ row, canTriage, canDecide, currentUserId }: P
           </div>
         ) : null}
       </dl>
+
+      <div>
+        <h4 className="font-label text-[10px] uppercase text-on-surface-variant">Hit detail</h4>
+        <div className="mt-2">
+          <AdminAmlHitListings hits={row.hits} />
+        </div>
+      </div>
 
       <AdminTechnicalIdDisclosure
         items={[
