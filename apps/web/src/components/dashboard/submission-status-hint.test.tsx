@@ -11,8 +11,10 @@ describe("SubmissionStatusHint", () => {
     );
   });
 
-  it("returns null for draft (no hint configured)", () => {
-    const { container } = render(<SubmissionStatusHint status="draft" />);
-    expect(container).toBeEmptyDOMElement();
+  it("renders in-progress hint for draft status", () => {
+    render(<SubmissionStatusHint status="draft" />);
+    expect(screen.getByTestId("submission-status-hint")).toHaveTextContent(
+      SUBMISSION_STATUS_HINTS.draft ?? "",
+    );
   });
 });

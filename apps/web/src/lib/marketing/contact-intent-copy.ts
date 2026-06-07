@@ -59,7 +59,7 @@ export function contactIntentFromSearchParams(input: {
       topic: "selling",
       headline,
       successMessage,
-      successCtaHref: "/login?next=/dashboard/submissions/new&intent=sell",
+      successCtaHref: "/dashboard/submissions/new",
       successCtaLabel: "Start a submission",
     };
   }

@@ -40,7 +40,7 @@ describe("resolveSellerNextAction", () => {
       ],
       connectRequired: false,
     });
-    expect(action?.cta).toBe("Continue draft");
+    expect(action?.cta).toBe("Resume submission");
     expect(action?.href).toBe("/dashboard/submissions/b");
   });
 

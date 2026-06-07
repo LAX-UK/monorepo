@@ -101,7 +101,7 @@ export function useSubmissionWizardController(
         const ok = await persistUpdate(parsed.data, id);
         saveInFlight.current = false;
         if (ok && opts?.leaveAfter) {
-          notify.success("Draft saved");
+          notify.success("Progress saved");
           router.push("/dashboard/submissions");
         }
         return ok;
@@ -116,11 +116,11 @@ export function useSubmissionWizardController(
         return false;
       }
 
-      notify.success("Draft saved");
+      notify.success("Progress saved");
       const newId = r.data?.id;
       if (!newId) {
         setAutosaveStatus("error");
-        notify.error("Draft saved but response was incomplete");
+        notify.error("Saved but response was incomplete");
         return false;
       }
       setSubmissionId(newId);

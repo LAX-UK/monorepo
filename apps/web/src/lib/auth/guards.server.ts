@@ -2,6 +2,7 @@ import "server-only";
 
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { isRequireEmailVerificationServer } from "@/lib/auth/require-email-verification.server";
+import { isSellerSubmissionPath, sellLoginRedirect } from "@/lib/auth/seller-submission-path";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
@@ -27,9 +28,21 @@ export async function requireAuthenticatedUser(opts: {
   const user = await getServerSessionUser();
   if (!user) {
     if (fromAuthEdge) {
-      redirect("/login?session_expired=1");
+      const params = new URLSearchParams({ session_expired: "1" });
+      if (isSafeNextPath(opts.loginNext)) {
+        params.set("next", opts.loginNext);
+      }
+      if (opts.shell === "client" && isSellerSubmissionPath(opts.loginNext)) {
+        params.set("intent", "sell");
+      }
+      redirect(`/login?${params.toString()}`);
     }
-    redirect(`/login?next=${encodeURIComponent(opts.loginNext)}&auth=required`);
+    const isSellSubmission = opts.shell === "client" && isSellerSubmissionPath(opts.loginNext);
+    redirect(
+      isSellSubmission
+        ? sellLoginRedirect(opts.loginNext)
+        : `/login?next=${encodeURIComponent(opts.loginNext)}&auth=required`,
+    );
   }
 
   if (user.suspended === true) {
@@ -49,7 +62,11 @@ export async function requireAuthenticatedUser(opts: {
   const role = user.role as UserRole;
   const staff = user.staffRole ?? null;
 
-  if (opts.shell === "client" && canAccessStaffAdminShell(role)) {
+  if (
+    opts.shell === "client" &&
+    canAccessStaffAdminShell(role) &&
+    !isSellerSubmissionPath(opts.loginNext)
+  ) {
     const dest = staffRoleDefaultDestination(role, staff);
     const destPath = dest.split("?")[0] ?? dest;
     const loginPath = opts.loginNext.split("?")[0] ?? opts.loginNext;

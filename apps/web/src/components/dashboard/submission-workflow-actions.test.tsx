@@ -29,6 +29,8 @@ describe("SubmissionWorkflowActions", () => {
 
   it("renders submit when canSubmit", () => {
     render(<SubmissionWorkflowActions submissionId="s1" canSubmit canWithdraw={false} />);
-    expect(screen.getByRole("button", { name: /submit for review/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /submit for specialist review/i }),
+    ).toBeInTheDocument();
   });
 });
