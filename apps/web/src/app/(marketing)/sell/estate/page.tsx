@@ -19,7 +19,6 @@ export default function SellEstatePage() {
       description="Our estate desk coordinates inventory review, photography, storage, and sale scheduling across multiple works."
       eyebrow="Estate consignment"
       lead="Selling an estate or family collection? Share representative photos and an inventory list — our specialists will guide valuation, logistics, and sale planning."
-      contactType="estate"
       bullets={[
         "Representative photographs of key works and any inventory spreadsheet you have",
         "Provenance summaries and certificates where available",

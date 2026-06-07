@@ -5,6 +5,7 @@ import {
   submitForReviewFromValuesAction,
   withdrawSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
+import { SUBMISSION_SUBMIT_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -47,7 +48,7 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
             });
           }}
         >
-          Submit for review
+          {SUBMISSION_SUBMIT_LABEL}
         </Button>
       ) : null}
       {canWithdraw ? (

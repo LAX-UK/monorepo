@@ -31,6 +31,6 @@ describe("SubmissionsListToolbar", () => {
     expect(
       screen.getAllByRole("button", { name: /Filters, 1 applied/i }).length,
     ).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Status: Draft")).toBeInTheDocument();
+    expect(screen.getByText("Status: In progress")).toBeInTheDocument();
   });
 });

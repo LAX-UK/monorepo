@@ -1,6 +1,6 @@
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
-import { sellContactHref, sellIntakeHref } from "@/lib/marketing/sell-intake";
+import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 
 /** Valuation routing body — heading lives on parent `LegalH2`. */
 export function SellValuationSection() {
@@ -12,17 +12,10 @@ export function SellValuationSection() {
         source="sell_valuation_submit"
         className={MARKETING_PROSE_LINK}
       >
-        start a submission
+        start your submission
       </SellCtaLink>{" "}
-      with the key details and images. If you need to speak with a specialist first,{" "}
-      <SellCtaLink
-        href={sellContactHref()}
-        source="sell_valuation_contact"
-        className={MARKETING_PROSE_LINK}
-      >
-        contact our team
-      </SellCtaLink>{" "}
-      and choose the selling topic so we can route your enquiry.
+      with the key details and images. Our specialists review every submission and respond within 24
+      hours.
     </p>
   );
 }

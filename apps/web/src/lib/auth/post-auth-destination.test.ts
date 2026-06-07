@@ -159,6 +159,29 @@ describe("resolvePostAuthDestination", () => {
     ).toBe("/sales/foo");
   });
 
+  it("allows staff to open seller submission routes", () => {
+    const staffMarketing = {
+      ...clientUser,
+      role: "staff" as const,
+      staffRole: "content_marketing" as const,
+    };
+    expect(
+      resolvePostAuthDestination({
+        user: staffMarketing,
+        requestedNext: "/dashboard/submissions/new",
+        context: "sign-in",
+        withWelcomeBack: true,
+      }),
+    ).toBe("/dashboard/submissions/new?welcome=back");
+    expect(
+      resolvePostAuthDestination({
+        user: staffMarketing,
+        requestedNext: "/dashboard/submissions/new?categorySlug=motor-cars",
+        context: "redirect-if-authed",
+      }),
+    ).toBe("/dashboard/submissions/new?categorySlug=motor-cars");
+  });
+
   it("preserves client dashboard deep links", () => {
     expect(
       resolvePostAuthDestination({

@@ -26,9 +26,14 @@ export default async function NewSubmissionPage({
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const categorySlug =
+    typeof sp.categorySlug === "string" && sp.categorySlug.length > 0 ? sp.categorySlug : null;
+  const loginNext = categorySlug
+    ? `/dashboard/submissions/new?categorySlug=${encodeURIComponent(categorySlug)}`
+    : "/dashboard/submissions/new";
   const user = await requireAuthenticatedUser({
     shell: "client",
-    loginNext: "/dashboard/submissions/new",
+    loginNext,
   });
   const { orgActingSelected } = await resolveSellerWorkspaceContext(
     user.role,
@@ -52,8 +57,6 @@ export default async function NewSubmissionPage({
         }
       : null;
 
-  const categorySlug =
-    typeof sp.categorySlug === "string" && sp.categorySlug.length > 0 ? sp.categorySlug : null;
   const preselectedCategoryId = categorySlug
     ? findCategoryIdBySlug(categories, categorySlug)
     : null;
