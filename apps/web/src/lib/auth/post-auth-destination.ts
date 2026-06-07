@@ -1,3 +1,4 @@
+import { isSellerSubmissionPath } from "@/lib/auth/seller-submission-path";
 import type { SessionUser } from "@/lib/data/contracts";
 import {
   type UserRole,
@@ -92,8 +93,13 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
   const isStaff = canAccessStaffAdminShell(role);
   const requestedIsClientHome =
     requestedNext === "/dashboard" || (requestedNext?.startsWith("/dashboard/") ?? false);
+  const requestedIsSellerSubmission =
+    requestedNext != null && isSellerSubmissionPath(requestedNext);
 
-  if (isSafeNextPath(requestedNext ?? undefined) && !(isStaff && requestedIsClientHome)) {
+  if (
+    isSafeNextPath(requestedNext ?? undefined) &&
+    !(isStaff && requestedIsClientHome && !requestedIsSellerSubmission)
+  ) {
     return appendWelcomeBack(requestedNext as string, withWelcomeBack);
   }
 

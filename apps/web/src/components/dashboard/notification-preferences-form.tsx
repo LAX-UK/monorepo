@@ -170,7 +170,7 @@ const events: EventDescriptor[] = [
     id: "submissionUpdates",
     label: "Consignment updates",
     description:
-      "When your submission is accepted, converted to a draft lot, not accepted, or needs a draft reminder.",
+      "When your submission is accepted, converted to a catalogue entry, not accepted, or needs a submission reminder.",
     fields: {
       email: "submissionUpdatesEmail",
       push: "submissionUpdatesPush",

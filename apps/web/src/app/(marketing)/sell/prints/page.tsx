@@ -19,7 +19,7 @@ export default function SellPrintsPage() {
       description="Our prints desk reviews edition numbers, publisher details, and condition notes before catalogue preparation."
       eyebrow="Prints & editions"
       lead="Selling limited editions, portfolios, or multiples? Share edition details, publisher information, and clear photographs for specialist review."
-      contactType="prints"
+      categorySlug="fine-prints"
       bullets={[
         "Edition number and total edition size (e.g. 12/75)",
         "Publisher, printer, and year of publication where known",

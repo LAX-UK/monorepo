@@ -5,6 +5,7 @@ import { type WIZARD_STEPS, wizardStepIndex } from "@/lib/forms/submission/step-
 import {
   SUBMISSION_AFTER_SUBMIT_HINTS,
   SUBMISSION_FINISH_LATER_LABEL,
+  SUBMISSION_READY_TO_SUBMIT_BANNER,
   SUBMISSION_SUBMIT_LABEL,
 } from "@/lib/marketing/sell-flow-copy";
 import { evaluateSubmissionQuality } from "@auction/domain";
@@ -17,7 +18,6 @@ import {
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import type { ItemSubmissionFormValues } from "@auction/validators";
-
 function formatProvenance(values: ItemSubmissionFormValues): string {
   if (values.provenance.length === 0) return "—";
   return values.provenance.map((e) => [e.period, e.note].filter(Boolean).join(" — ")).join("; ");
@@ -177,11 +177,21 @@ export function ReviewStep({
         </AccordionItem>
       </Accordion>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+      {canSubmitForReview && canSubmit ? (
+        <Surface variant="quiet" padding="md" className="border-primary/30 bg-primary/5">
+          <p className="font-body text-sm font-medium text-on-surface">
+            {SUBMISSION_READY_TO_SUBMIT_BANNER}
+          </p>
+        </Surface>
+      ) : null}
+
+      <div className="flex flex-col gap-3">
         {canSubmitForReview && canSubmit ? (
           <Button
             type="button"
             variant="cta"
+            size="lg"
+            className="w-full"
             disabled={isSubmitting}
             onClick={onSubmitForReview}
             data-testid="wizard-submit-for-review"
@@ -189,15 +199,15 @@ export function ReviewStep({
             {isSubmitting ? "Submitting…" : SUBMISSION_SUBMIT_LABEL}
           </Button>
         ) : null}
-        <Button
+        <button
           type="button"
-          variant="secondary"
+          className="font-body text-sm text-on-surface-variant underline-offset-4 hover:text-primary hover:underline disabled:opacity-50"
           disabled={isSubmitting}
           onClick={onFinishLater}
           data-testid="wizard-finish-later-review"
         >
           {isSubmitting ? "Saving…" : SUBMISSION_FINISH_LATER_LABEL}
-        </Button>
+        </button>
       </div>
     </div>
   );
