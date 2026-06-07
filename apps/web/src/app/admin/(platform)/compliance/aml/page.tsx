@@ -18,7 +18,13 @@ import Link from "next/link";
 export default async function AdminComplianceAmlPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string; limit?: string; offset?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+    limit?: string;
+    offset?: string;
+    screening?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
@@ -131,6 +137,7 @@ export default async function AdminComplianceAmlPage({
               canTriage={canTriage}
               canDecide={canDecide}
               currentUserId={user.id}
+              initialScreeningId={sp.screening ?? null}
             />
           </div>
         ) : null

@@ -283,5 +283,27 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     return c.json({ ok: true, eventId });
   });
 
+  /** Pull Veriff watchlist screening for a session (backfill when webhook ingest failed). */
+  r.post("/aml/reconcile-watchlist", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const body = (await c.req.json().catch(() => ({}))) as { providerSessionId?: string };
+    if (!body.providerSessionId) {
+      return c.json({ error: "provider_session_id_required" }, 400);
+    }
+    try {
+      const result = await container.amlService.ingestFromFetch(body.providerSessionId);
+      return c.json({ data: result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "reconcile_failed";
+      return c.json({ error: message }, 502);
+    }
+  });
+
   return r;
 }

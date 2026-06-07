@@ -30,6 +30,13 @@ export function amlColumns(onOpen: (row: AdminAmlTableRow) => void): ColumnDef<A
       ),
     },
     {
+      id: "monitor",
+      header: "Monitor",
+      cell: ({ row }) => (
+        <AdminStatusBadge domain="amlMonitor" status={row.original.monitorStatus} size="sm" />
+      ),
+    },
+    {
       id: "triage",
       header: "Triage",
       cell: ({ row }) => (

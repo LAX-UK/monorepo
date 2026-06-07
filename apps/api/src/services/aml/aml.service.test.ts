@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
+import { VERIFF_WATCHLIST_MATCH_FOUND } from "../../lib/veriff/veriff-watchlist-fixtures.js";
+import { DefaultAmlDecisionPolicy } from "./aml-decision.policy.js";
 import { AmlService } from "./aml.service.js";
 import type {
   IAmlDecisionPolicy,
@@ -11,6 +14,10 @@ import type {
   WatchlistTriageInput,
 } from "./ports.js";
 
+vi.mock("../../lib/processed-webhook-event.js", () => ({
+  tryClaimProcessedWebhookEvent: vi.fn().mockResolvedValue({ claimed: true }),
+}));
+
 function makeRecord(partial: Partial<WatchlistScreeningRecord> = {}): WatchlistScreeningRecord {
   return {
     id: "scr_1",
@@ -21,6 +28,8 @@ function makeRecord(partial: Partial<WatchlistScreeningRecord> = {}): WatchlistS
     monitorStatus: "monitored",
     totalHits: 1,
     categories: ["pep"],
+    hits: [],
+    checkType: null,
     decisionOutcome: "review",
     reviewStatus: "pending",
     triageRecommendation: null,
@@ -61,6 +70,9 @@ function makeService(initial: WatchlistScreeningRecord): Harness {
       return record;
     },
     async listByReviewStatus() {
+      return [record];
+    },
+    async listForUser() {
       return [record];
     },
   };
@@ -120,6 +132,7 @@ function makeService(initial: WatchlistScreeningRecord): Harness {
     holdStore,
     events,
     provider,
+    null,
   );
 
   return { service, record, holds };
@@ -277,5 +290,99 @@ describe("AmlService two-stage maker-checker", () => {
         notes: null,
       }),
     ).rejects.toThrow("aml_screening_not_pending");
+  });
+});
+
+describe("AmlService watchlist webhook ingest", () => {
+  it("processes documented Veriff match_found payload", async () => {
+    vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: true });
+    const holds: Array<{ op: string; userId: string }> = [];
+    let upsertInput: Parameters<IWatchlistScreeningWriter["upsertFromResult"]>[0] | undefined;
+
+    const db = {
+      transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn({}),
+    } as never;
+
+    const writer: IWatchlistScreeningWriter = {
+      async upsertFromResult(input) {
+        upsertInput = input;
+        return makeRecord({
+          userId: input.userId,
+          categories: input.result.categories,
+          matchStatus: input.result.matchStatus,
+          monitorStatus: input.result.monitorStatus,
+          hits: input.result.hits,
+          checkType: input.checkType ?? null,
+        });
+      },
+      async setTriage() {
+        return makeRecord();
+      },
+      async setReviewOutcome() {
+        return makeRecord();
+      },
+      async setMonitorStatus() {},
+    };
+
+    const reader: IWatchlistScreeningReader = {
+      async findById() {
+        return makeRecord();
+      },
+      async findLatestByUserId() {
+        return makeRecord();
+      },
+      async findByProviderSessionId() {
+        return makeRecord();
+      },
+      async listByReviewStatus() {
+        return [];
+      },
+      async listForUser() {
+        return [];
+      },
+    };
+
+    const holdStore: IAmlHoldStore = {
+      async setHold(userId) {
+        holds.push({ op: "set", userId });
+      },
+      async clearHold(userId) {
+        holds.push({ op: "clear", userId });
+      },
+      async getHold() {
+        return null;
+      },
+    };
+
+    const provider: IScreeningProvider = {
+      isConfigured: () => false,
+      async enableOngoingMonitoring() {},
+      async disableOngoingMonitoring() {},
+    };
+
+    const service = new AmlService(
+      db,
+      { verify: () => {} } as never,
+      new DefaultAmlDecisionPolicy(),
+      writer,
+      reader,
+      holdStore,
+      { publish: async () => {} } as never,
+      provider,
+      null,
+    );
+
+    const rawBody = JSON.stringify(VERIFF_WATCHLIST_MATCH_FOUND);
+    const result = await service.handleWatchlistWebhook(rawBody, "sig", "key");
+
+    expect(result.processed).toBe(true);
+    expect(result.outcome).toBe("review");
+    expect(upsertInput?.userId).toBe("user_test_123");
+    expect(upsertInput?.checkType).toBe("initial_result");
+    expect(upsertInput?.result.categories).toEqual(
+      expect.arrayContaining(["pep", "sanction", "adverse_media"]),
+    );
+    expect(upsertInput?.result.monitorStatus).toBe("monitored");
+    expect(holds).toContainEqual({ op: "set", userId: "user_test_123" });
   });
 });
