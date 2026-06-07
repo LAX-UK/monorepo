@@ -15,9 +15,17 @@ import {
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@auction/ui/components/dialog";
+import { Textarea } from "@auction/ui/components/textarea";
 import { MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 
 export type BulkTypedConfirmConfig = {
   title: string;
@@ -26,8 +34,18 @@ export type BulkTypedConfirmConfig = {
   confirmationPhrase: (selectedCount: number) => string;
 };
 
+export type BulkReasonPromptConfig = {
+  title: string;
+  description: string;
+  fieldLabel: string;
+  placeholder: string;
+  actionLabel: string;
+  minLength?: number;
+};
+
 export type BulkOperationRunOptions = {
   confirmationPhrase?: string;
+  reason?: string;
 };
 
 export type BulkOperation = {
@@ -35,6 +53,7 @@ export type BulkOperation = {
   label: string;
   confirm?: string;
   typedConfirm?: BulkTypedConfirmConfig;
+  reasonPrompt?: BulkReasonPromptConfig;
   destructive?: boolean;
   run: (ids: string[], options?: BulkOperationRunOptions) => Promise<ActionResult<unknown>>;
 };
@@ -60,7 +79,10 @@ export function BulkActionsToolbar({
   const [pending, startTransition] = useTransition();
   const [confirmOp, setConfirmOp] = useState<BulkOperation | null>(null);
   const [typedConfirmOp, setTypedConfirmOp] = useState<BulkOperation | null>(null);
+  const [reasonPromptOp, setReasonPromptOp] = useState<BulkOperation | null>(null);
+  const [reasonValue, setReasonValue] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
+  const reasonFieldId = useId();
   const router = useRouter();
 
   const orderedOperations = useMemo(
@@ -117,12 +139,20 @@ export function BulkActionsToolbar({
       setTypedConfirmOp(operation);
       return;
     }
+    if (operation.reasonPrompt) {
+      setReasonValue("");
+      setReasonPromptOp(operation);
+      return;
+    }
     if (operation.confirm) {
       setConfirmOp(operation);
       return;
     }
     execute(operation);
   };
+
+  const reasonMinLength = reasonPromptOp?.reasonPrompt?.minLength ?? 1;
+  const reasonValid = reasonValue.trim().length >= reasonMinLength;
 
   const renderOpButton = (
     operation: BulkOperation,
@@ -243,6 +273,53 @@ export function BulkActionsToolbar({
           execute(op);
         }}
       />
+      {reasonPromptOp?.reasonPrompt ? (
+        <Dialog
+          open={reasonPromptOp !== null}
+          onOpenChange={(open) => {
+            if (!open) setReasonPromptOp(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{reasonPromptOp.reasonPrompt.title}</DialogTitle>
+            </DialogHeader>
+            <p className="font-body text-sm text-on-surface-variant">
+              {reasonPromptOp.reasonPrompt.description}
+            </p>
+            <label htmlFor={reasonFieldId} className="flex flex-col gap-1.5">
+              <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                {reasonPromptOp.reasonPrompt.fieldLabel}
+              </span>
+              <Textarea
+                id={reasonFieldId}
+                rows={4}
+                value={reasonValue}
+                onChange={(e) => setReasonValue(e.target.value)}
+                placeholder={reasonPromptOp.reasonPrompt.placeholder}
+                disabled={pending}
+              />
+            </label>
+            <DialogFooter>
+              <Button variant="outline" disabled={pending} onClick={() => setReasonPromptOp(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={pending || !reasonValid}
+                onClick={() => {
+                  const op = reasonPromptOp;
+                  if (!op) return;
+                  setReasonPromptOp(null);
+                  execute(op, { reason: reasonValue.trim() });
+                }}
+              >
+                {pending ? "Working…" : reasonPromptOp.reasonPrompt.actionLabel}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
       {typedConfirmOp?.typedConfirm ? (
         <TypedConfirmationDialog
           open={typedConfirmOp !== null}

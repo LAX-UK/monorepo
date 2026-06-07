@@ -1,10 +1,12 @@
 "use client";
 
 import { DocumentAttachmentManager } from "@/components/admin/document-attachment-manager";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import {
   sellerAttachSubmissionDocumentResultAction,
   sellerRemoveSubmissionDocumentResultAction,
 } from "@/lib/actions/seller-submission-documents";
+import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import type { EntityDocument, ItemSubmission, SubmissionDocumentKind } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 
@@ -19,6 +21,7 @@ type Props = {
   submissionId: string;
   status: ItemSubmission["status"];
   initialDocuments: EntityDocument[];
+  loadFailure?: DashboardSliceFailure | null;
 };
 
 const UPLOAD_STATUSES = new Set<ItemSubmission["status"]>([
@@ -28,7 +31,12 @@ const UPLOAD_STATUSES = new Set<ItemSubmission["status"]>([
   "converted",
 ]);
 
-export function SubmissionSellerDocumentsPanel({ submissionId, status, initialDocuments }: Props) {
+export function SubmissionSellerDocumentsPanel({
+  submissionId,
+  status,
+  initialDocuments,
+  loadFailure = null,
+}: Props) {
   if (!UPLOAD_STATUSES.has(status)) return null;
 
   return (
@@ -39,22 +47,26 @@ export function SubmissionSellerDocumentsPanel({ submissionId, status, initialDo
           Upload certificates, invoices, or condition reports to help specialists review your item.
         </p>
       </div>
-      <DocumentAttachmentManager
-        entityKind="submission"
-        entityId={submissionId}
-        kinds={SUBMISSION_DOC_KINDS}
-        initialDocuments={initialDocuments}
-        actions={{
-          attach: (input) =>
-            sellerAttachSubmissionDocumentResultAction(submissionId, {
-              uploadObjectId: input.uploadObjectId,
-              kind: input.kind,
-              label: input.label,
-            }),
-          remove: (documentId) =>
-            sellerRemoveSubmissionDocumentResultAction(submissionId, documentId),
-        }}
-      />
+      {loadFailure ? (
+        <DashboardSliceErrorAlert failure={loadFailure} />
+      ) : (
+        <DocumentAttachmentManager
+          entityKind="submission"
+          entityId={submissionId}
+          kinds={SUBMISSION_DOC_KINDS}
+          initialDocuments={initialDocuments}
+          actions={{
+            attach: (input) =>
+              sellerAttachSubmissionDocumentResultAction(submissionId, {
+                uploadObjectId: input.uploadObjectId,
+                kind: input.kind,
+                label: input.label,
+              }),
+            remove: (documentId) =>
+              sellerRemoveSubmissionDocumentResultAction(submissionId, documentId),
+          }}
+        />
+      )}
     </Surface>
   );
 }

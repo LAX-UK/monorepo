@@ -75,7 +75,7 @@ export default async function NewSubmissionPage({
         title="New submission"
         hideTitleOnMobile
         hideDescriptionOnMobile
-        description="Tell our specialists about an artwork or collectible. Your progress is saved when you continue later."
+        description="Tell our specialists about an artwork or collectible. After your first save, progress syncs automatically on the submission page."
         actions={
           <Link
             href={DASHBOARD_ROUTES.submissions}
