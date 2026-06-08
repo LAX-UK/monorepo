@@ -74,8 +74,8 @@ export class StripeConnectFacade implements IStripeConnectService {
     return this.sessionService.createAccountSession(legalEntityId, role, surface);
   }
 
-  ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult> {
-    return this.accountService.ensureAccount(legalEntityId, country);
+  ensureAccount(legalEntityId: string): Promise<CreateAccountResult> {
+    return this.accountService.ensureAccount(legalEntityId);
   }
 
   getStatus(legalEntityId: string): Promise<ConnectAccountStatus> {
