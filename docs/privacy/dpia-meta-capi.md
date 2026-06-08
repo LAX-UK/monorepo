@@ -1,7 +1,7 @@
 # DPIA note: Meta Conversions API (server-side)
 
 **Scope**: LAX auction platform production (`lax.bid`).  
-**Last updated**: 2026-05-21.
+**Last updated**: 2026-06-08.
 
 ## Processing activities
 

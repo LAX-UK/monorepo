@@ -1,6 +1,6 @@
 export const CONSENT_COOKIE_NAME = "lax_consent";
 
-export const CONSENT_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 365;
+export const CONSENT_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 180;
 
 const CURRENT_VERSION = 1 as const;
 
