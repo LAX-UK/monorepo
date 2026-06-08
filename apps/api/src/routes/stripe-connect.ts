@@ -8,9 +8,8 @@ import type { LegalEntityContext } from "../middleware/require-legal-entity-cont
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { StripeConnectNotConfiguredError } from "../services/interfaces/stripe-connect.js";
 
-const ensureBodySchema = z.object({
-  country: z.string().length(2).default("GB"),
-});
+/** Country is derived server-side (immutable on Stripe accounts); body is ignored. */
+const ensureBodySchema = z.object({}).optional().default({});
 
 const linkBodySchema = z.object({
   returnUrl: z.string().url(),
@@ -105,12 +104,8 @@ export function createStripeConnectRoutes(container: Container, authenticator: I
       if (ctx.role !== "owner" && ctx.role !== "admin") {
         return c.json({ error: "insufficient_role" }, 403);
       }
-      const body = c.req.valid("json");
       try {
-        const result = await container.stripeConnectService.ensureAccount(
-          ctx.legalEntityId,
-          body.country,
-        );
+        const result = await container.stripeConnectService.ensureAccount(ctx.legalEntityId);
         return c.json({ data: result }, 201);
       } catch (err) {
         const mapped = respondStripeConnectRouteError(c, err, {

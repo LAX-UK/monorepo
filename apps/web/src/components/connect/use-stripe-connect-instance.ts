@@ -2,7 +2,7 @@
 
 import { useConnectAppearance } from "@/lib/connect/use-connect-appearance";
 import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Options = {
   publishableKey: string;
@@ -13,19 +13,24 @@ export function useStripeConnectInstance({ publishableKey, fetchClientSecret }: 
   const appearance = useConnectAppearance();
   const [connectInstance, setConnectInstance] = useState<StripeConnectInstance | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const instanceRef = useRef<StripeConnectInstance | null>(null);
+  const fetchClientSecretRef = useRef(fetchClientSecret);
+  fetchClientSecretRef.current = fetchClientSecret;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: appearance applied via instance.update() — do not recreate on theme change
   useEffect(() => {
     let cancelled = false;
-    let instance: StripeConnectInstance | null = null;
     setError(null);
     setConnectInstance(null);
+    instanceRef.current = null;
 
     try {
-      instance = loadConnectAndInitialize({
+      const instance = loadConnectAndInitialize({
         publishableKey,
-        fetchClientSecret,
+        fetchClientSecret: () => fetchClientSecretRef.current(),
         appearance,
       });
+      instanceRef.current = instance;
       if (!cancelled) setConnectInstance(instance);
     } catch (err: unknown) {
       if (!cancelled) {
@@ -35,11 +40,14 @@ export function useStripeConnectInstance({ publishableKey, fetchClientSecret }: 
 
     return () => {
       cancelled = true;
-      // Stripe Connect JS does not expose explicit teardown; drop the reference on unmount.
-      instance = null;
+      instanceRef.current = null;
       setConnectInstance(null);
     };
-  }, [publishableKey, fetchClientSecret, appearance]);
+  }, [publishableKey]);
+
+  useEffect(() => {
+    instanceRef.current?.update({ appearance });
+  }, [appearance]);
 
   return { connectInstance, error };
 }
