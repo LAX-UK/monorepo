@@ -28,7 +28,7 @@ export async function ensureStripeConnectAccountAction(
         "Content-Type": "application/json",
         ...entityHeaders(entityId),
       },
-      body: JSON.stringify({ country: "GB" }),
+      body: JSON.stringify({}),
     });
     if (!res.ok) {
       return {

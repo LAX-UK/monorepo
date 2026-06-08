@@ -75,7 +75,7 @@ export interface IConnectAccountReadinessSync {
 export interface IConnectAccountSync
   extends IConnectAccountWebhookPort,
     IConnectAccountReadinessSync {
-  ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult>;
+  ensureAccount(legalEntityId: string): Promise<CreateAccountResult>;
   getStatus(legalEntityId: string): Promise<ConnectAccountStatus>;
   syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus>;
   createOnboardingLink(

@@ -72,7 +72,7 @@ describe("stripe-connect routes — role gates", () => {
     const res = await app.request("/stripe-connect/account", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ country: "GB" }),
+      body: JSON.stringify({}),
     });
     expect(res.status).toBe(403);
     expect(stripeConnectService.ensureAccount).not.toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe("stripe-connect routes — role gates", () => {
     const res = await app.request("/stripe-connect/account", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ country: "GB" }),
+      body: JSON.stringify({}),
     });
 
     expect(res.status).toBe(503);

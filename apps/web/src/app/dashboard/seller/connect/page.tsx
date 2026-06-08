@@ -33,6 +33,7 @@ export default async function SellerStripeConnectPage() {
     getServerStripeConnectClientConfig(),
     getServerKycStatusSummary().catch(() => null),
   ]);
+  const kycApproved = kycSummary?.status === "approved";
 
   let status = null;
   let connectFailure = null;
@@ -62,7 +63,6 @@ export default async function SellerStripeConnectPage() {
     }
   }
 
-  const kycApproved = kycSummary?.status === "approved";
   const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (

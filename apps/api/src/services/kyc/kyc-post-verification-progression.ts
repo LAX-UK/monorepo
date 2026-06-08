@@ -3,13 +3,17 @@ import { legalEntity } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 
-/** After KYC approval, advance sole-trader individuals stuck in `lead`. Idempotent. */
+/**
+ * After KYC approval, advance sole-trader individuals stuck in `lead`. Idempotent.
+ * Returns the legal entity ids advanced to `connect_pending` so callers can provision
+ * Stripe Connect accounts outside this transaction (best-effort).
+ */
 export async function progressIndividualsAfterKycApproval(
   db: Database,
   publisher: DomainEventPublisher | undefined,
   userId: string,
-): Promise<void> {
-  await db.transaction(async (tx) => {
+): Promise<string[]> {
+  return db.transaction(async (tx) => {
     const bumped = await tx
       .update(legalEntity)
       .set({
@@ -26,8 +30,10 @@ export async function progressIndividualsAfterKycApproval(
       )
       .returning({ id: legalEntity.id });
 
+    const advancedIds = bumped.map((b) => b.id);
+
     if (!publisher || bumped.length === 0) {
-      return;
+      return advancedIds;
     }
 
     await publisher.publish(tx, {
@@ -35,7 +41,7 @@ export async function progressIndividualsAfterKycApproval(
       aggregateId: userId,
       eventType: "kyc.verified",
       payload: {
-        legalEntityIdsAdvancedToConnectPending: bumped.map((b) => b.id),
+        legalEntityIdsAdvancedToConnectPending: advancedIds,
       },
       actorUserId: null,
       actingLegalEntityId: null,
@@ -55,5 +61,7 @@ export async function progressIndividualsAfterKycApproval(
         actingLegalEntityId: row.id,
       });
     }
+
+    return advancedIds;
   });
 }

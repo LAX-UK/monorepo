@@ -649,8 +649,61 @@ describe("StripeConnectService.initiateTransfer", () => {
   });
 });
 
+function makeEnsureAccountDb(input: {
+  entityJoinRow: Record<string, unknown>;
+  entityAddressRows?: unknown[];
+  userAddressRows?: unknown[];
+  kycRows?: unknown[];
+  updatedRow: Record<string, unknown>;
+}): Database {
+  let selectCount = 0;
+  return {
+    select: vi.fn().mockImplementation(() => {
+      selectCount += 1;
+      if (selectCount === 1) {
+        return {
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([input.entityJoinRow]),
+              }),
+            }),
+          }),
+        };
+      }
+      if (selectCount === 2 || selectCount === 3) {
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi
+              .fn()
+              .mockResolvedValue(
+                selectCount === 2 ? (input.entityAddressRows ?? []) : (input.userAddressRows ?? []),
+              ),
+          }),
+        };
+      }
+      return {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue(input.kycRows ?? []),
+            }),
+          }),
+        }),
+      };
+    }),
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([input.updatedRow]),
+        }),
+      }),
+    }),
+  } as unknown as Database;
+}
+
 describe("StripeConnectService.ensureAccount", () => {
-  it("creates individual Express account with business_type individual", async () => {
+  it("creates individual Custom account with business_type individual", async () => {
     const entityRow = {
       id: "le1",
       displayName: "Ada",
@@ -681,38 +734,32 @@ describe("StripeConnectService.ensureAccount", () => {
       status: "connect_pending" as const,
     };
     const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_test_1" });
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          innerJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                {
-                  entity: entityRow,
-                  ownerEmail: "ada@example.com",
-                  ownerFirstName: "Ada",
-                  ownerLastName: "Lovelace",
-                  ownerDisplayName: "Ada Lovelace",
-                  ownerKycStatus: "approved",
-                },
-              ]),
-            }),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([updatedRow]),
-          }),
-        }),
-      }),
-    } as unknown as Database;
+    const db = makeEnsureAccountDb({
+      entityJoinRow: {
+        entity: entityRow,
+        ownerEmail: "ada@example.com",
+        ownerFirstName: "Ada",
+        ownerLastName: "Lovelace",
+        ownerDisplayName: "Ada Lovelace",
+        ownerKycStatus: "approved",
+        ownerMobile: "+447400123456",
+        ownerUserId: "user-1",
+      },
+      kycRows: [
+        {
+          verifiedFirstName: "Ada",
+          verifiedLastName: "Lovelace",
+          verifiedDateOfBirth: "1815-12-10",
+          verifiedIdCountry: "GB",
+        },
+      ],
+      updatedRow,
+    });
 
     const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
-    const result = await svc.ensureAccount("le1", "GB");
+    const result = await svc.ensureAccount("le1");
 
     expect(accountsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -724,20 +771,96 @@ describe("StripeConnectService.ensureAccount", () => {
           requirement_collection: "application",
           stripe_dashboard: { type: "none" },
         },
-        individual: {
+        individual: expect.objectContaining({
           first_name: "Ada",
           last_name: "Lovelace",
           email: "ada@example.com",
-        },
+          phone: "+447400123456",
+          dob: { year: 1815, month: 12, day: 10 },
+        }),
         capabilities: { transfers: { requested: true } },
       }),
-      { idempotencyKey: "connect:account:v3:le1" },
+      { idempotencyKey: "connect:account:v4:le1" },
     );
     expect(result.stripeAccountId).toBe("acct_test_1");
     expect(result.legalEntity.status).toBe("connect_pending");
   });
 
-  it("creates organisation Express account with company business_type", async () => {
+  it("derives country from entity address instead of hardcoded GB", async () => {
+    const entityRow = {
+      id: "le-fr",
+      displayName: "Galerie",
+      legalName: "Galerie SA",
+      slug: null,
+      kind: "organisation",
+      subkind: "gallery",
+      createdByUserId: "user-1",
+      status: "lead",
+      statusChangedAt: null,
+      statusChangedByUserId: null,
+      stripeConnectAccountId: null,
+      stripeConnectChargesEnabled: false,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: [],
+      stripeConnectDisabledReason: null,
+      xeroContactId: null,
+      vatNumber: "FR123",
+      marginSchemeEligible: false,
+      isLaxManaged: false,
+      platformFeeBps: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const updatedRow = {
+      ...entityRow,
+      stripeConnectAccountId: "acct_fr",
+      status: "connect_pending" as const,
+    };
+    const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_fr" });
+    const db = makeEnsureAccountDb({
+      entityJoinRow: {
+        entity: entityRow,
+        ownerEmail: "owner@example.com",
+        ownerFirstName: null,
+        ownerLastName: null,
+        ownerDisplayName: "Gallery Owner",
+        ownerKycStatus: "approved",
+        ownerMobile: null,
+        ownerUserId: "user-1",
+      },
+      entityAddressRows: [
+        {
+          line1: "10 Rue de Rivoli",
+          line2: null,
+          city: "Paris",
+          state: null,
+          postalCode: "75001",
+          country: "FR",
+          addressType: "registered_office",
+          isDefault: true,
+        },
+      ],
+      updatedRow,
+    });
+
+    const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
+    injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
+
+    await svc.ensureAccount("le-fr");
+
+    expect(accountsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "FR",
+        company: expect.objectContaining({
+          tax_id: "FR123",
+          address: expect.objectContaining({ country: "FR", city: "Paris" }),
+        }),
+      }),
+      { idempotencyKey: "connect:account:v4:le-fr" },
+    );
+  });
+
+  it("creates organisation Custom account with company business_type", async () => {
     const entityRow = {
       id: "le-org",
       displayName: "Gallery",
@@ -768,44 +891,31 @@ describe("StripeConnectService.ensureAccount", () => {
       status: "connect_pending" as const,
     };
     const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_org" });
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          innerJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                {
-                  entity: entityRow,
-                  ownerEmail: "owner@example.com",
-                  ownerFirstName: null,
-                  ownerLastName: null,
-                  ownerDisplayName: "Gallery Owner",
-                },
-              ]),
-            }),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([updatedRow]),
-          }),
-        }),
-      }),
-    } as unknown as Database;
+    const db = makeEnsureAccountDb({
+      entityJoinRow: {
+        entity: entityRow,
+        ownerEmail: "owner@example.com",
+        ownerFirstName: null,
+        ownerLastName: null,
+        ownerDisplayName: "Gallery Owner",
+        ownerKycStatus: "approved",
+        ownerMobile: null,
+        ownerUserId: "user-1",
+      },
+      updatedRow,
+    });
 
     const svc = new StripeConnectService(baseEnv(), db, makePayoutService(null));
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
-    const result = await svc.ensureAccount("le-org", "GB");
+    const result = await svc.ensureAccount("le-org");
 
     expect(accountsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         business_type: "company",
         metadata: expect.objectContaining({ legalEntityId: "le-org" }),
       }),
-      { idempotencyKey: "connect:account:v3:le-org" },
+      { idempotencyKey: "connect:account:v4:le-org" },
     );
     expect(result.legalEntity.status).toBe("connect_pending");
   });
