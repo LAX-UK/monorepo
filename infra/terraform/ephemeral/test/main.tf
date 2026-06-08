@@ -166,7 +166,6 @@ locals {
         { key = "NEXT_PUBLIC_TURNSTILE_SITE_KEY", value = var.turnstile_site_key, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "CSP_ENFORCE", value = var.csp_enforce, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_CSP_REPORT_URI", value = var.next_public_csp_report_uri, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
-        { key = "NEXT_PUBLIC_DISABLE_CONSENT_BANNER", value = var.next_public_disable_consent_banner, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_ALLOW_INDEXING", value = "false", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" }
       ])
     },
