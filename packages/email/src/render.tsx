@@ -6,6 +6,9 @@ import TwoFactorDisabledEmail, {
 import TwoFactorEnabledEmail, {
   subject as twoFactorEnabledSubject,
 } from "./templates/2fa-enabled.js";
+import AccountActivation, {
+  subject as accountActivationSubject,
+} from "./templates/account-activation.js";
 import AccountSuspendedEmail, {
   subject as accountSuspendedSubject,
 } from "./templates/account-suspended.js";
@@ -114,6 +117,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   },
   welcome: { subject: welcomeSubject, component: (vars) => <WelcomeEmail {...vars} /> },
   "verify-email": { subject: verifyEmailSubject, component: (vars) => <VerifyEmail {...vars} /> },
+  "account-activation": {
+    subject: accountActivationSubject,
+    component: (vars) => <AccountActivation {...vars} />,
+  },
   "reset-password": {
     subject: resetPasswordSubject,
     component: (vars) => <ResetPassword {...vars} />,

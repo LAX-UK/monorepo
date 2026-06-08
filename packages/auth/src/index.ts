@@ -10,6 +10,7 @@ export * from "./permissions.js";
 export {
   runSignInTurnstileGate,
   isSignInEmailPost,
+  isSignInMagicLinkPost,
   type SignInGateRedis,
 } from "./sign-in-turnstile-gate.js";
 export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";

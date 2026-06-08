@@ -4,6 +4,7 @@ export const templateNames = [
   "account-suspended",
   "welcome",
   "verify-email",
+  "account-activation",
   "reset-password",
   "oauth-account-reset-attempt",
   "password-changed",
@@ -54,6 +55,11 @@ export type TemplateVarsByName = {
   "verify-email": {
     verificationUrl: string;
     userName?: string | null;
+  };
+  "account-activation": {
+    activationUrl: string;
+    userName?: string | null;
+    expirationMinutes: number;
   };
   "reset-password": {
     resetLink: string;
@@ -305,6 +311,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "account-suspended": "live",
   welcome: "live",
   "verify-email": "live",
+  "account-activation": "live",
   "reset-password": "live",
   "oauth-account-reset-attempt": "live",
   "password-changed": "live",

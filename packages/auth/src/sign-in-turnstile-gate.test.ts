@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { isSignInEmailPost, runSignInTurnstileGate } from "./sign-in-turnstile-gate.js";
+import {
+  isSignInEmailPost,
+  isSignInMagicLinkPost,
+  runSignInTurnstileGate,
+} from "./sign-in-turnstile-gate.js";
 
 describe("isSignInEmailPost", () => {
   it("matches Better Auth email sign-in path", () => {
@@ -16,6 +20,16 @@ describe("isSignInEmailPost", () => {
         new Request("https://api.example.com/api/auth/session", { method: "POST" }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("isSignInMagicLinkPost", () => {
+  it("matches Better Auth magic-link sign-in path", () => {
+    expect(
+      isSignInMagicLinkPost(
+        new Request("https://api.example.com/api/auth/sign-in/magic-link", { method: "POST" }),
+      ),
+    ).toBe(true);
   });
 });
 

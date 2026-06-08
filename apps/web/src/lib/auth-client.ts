@@ -1,4 +1,4 @@
-import { twoFactorClient } from "better-auth/client/plugins";
+import { magicLinkClient, twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 const baseURL =
@@ -14,7 +14,7 @@ export function getAuthIssuerBaseUrl(): string {
 function createAppAuthClient() {
   return createAuthClient({
     baseURL,
-    plugins: [twoFactorClient()],
+    plugins: [twoFactorClient(), magicLinkClient()],
   });
 }
 
@@ -31,6 +31,12 @@ type AuctionAuthClient = {
       error?: AuthErr;
     }>;
     social: (args: Record<string, unknown>) => Promise<{ data?: unknown; error?: AuthErr }>;
+    magicLink: (args: {
+      email: string;
+      callbackURL?: string;
+      errorCallbackURL?: string;
+      turnstileToken?: string;
+    }) => Promise<{ data?: { status?: boolean } | null; error?: AuthErr }>;
   };
   signOut: () => Promise<{ data?: unknown; error?: AuthErr }>;
   sendVerificationEmail: (

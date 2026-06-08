@@ -25,7 +25,10 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadAuthEnv } from "./env.js";
 import { trustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
-import { createAuthIssuerRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
+import {
+  createAuthIssuerRateLimitMiddleware,
+  createMagicLinkIssuerRateLimitMiddleware,
+} from "./middleware/auth-rate-limit.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { publishUserEmailVerified } from "./services/publish-user-email-verified.js";
 import { publishUserRegistered } from "./services/publish-user-registered.js";
@@ -176,6 +179,7 @@ app.use(
 );
 app.use("/api/auth/*", createAuthNoStoreMiddleware());
 app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(redis));
+app.use("/api/auth/*", createMagicLinkIssuerRateLimitMiddleware(redis));
 app.get("/.well-known/jwks.json", async (c) => {
   c.header("Cache-Control", "public, max-age=60");
   return c.json(await jwks.getPublicJwks());

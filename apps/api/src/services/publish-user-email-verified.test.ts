@@ -24,7 +24,7 @@ describe("publishUserEmailVerified", () => {
         aggregateType: "user",
         aggregateId: "user-1",
         eventType: "user.email_verified",
-        producer: "apps/auth",
+        producer: "apps/api",
         payload: expect.objectContaining({
           userId: "user-1",
           email: "a@b.com",
