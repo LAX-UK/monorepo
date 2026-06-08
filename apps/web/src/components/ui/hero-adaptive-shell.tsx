@@ -16,6 +16,8 @@ type Props = {
   sizes?: string;
   priority?: boolean;
   imgClassName?: string;
+  fadeInOnLoad?: boolean;
+  showPlaceholder?: boolean;
   backdropScrim?: ReactNode;
   /** Applied to the AdaptiveMediaFrame root. */
   className?: string;
@@ -31,6 +33,8 @@ export function HeroAdaptiveShell({
   sizes,
   priority = false,
   imgClassName,
+  fadeInOnLoad,
+  showPlaceholder,
   backdropScrim,
   className,
   shellClassName,
@@ -52,6 +56,8 @@ export function HeroAdaptiveShell({
             priority={priority}
             className="h-full w-full"
             {...(imgClassName ? { imgClassName } : {})}
+            {...(fadeInOnLoad !== undefined ? { fadeInOnLoad } : {})}
+            {...(showPlaceholder !== undefined ? { showPlaceholder } : {})}
           />
           {backdropScrim}
         </AdaptiveMediaFrameContainer>

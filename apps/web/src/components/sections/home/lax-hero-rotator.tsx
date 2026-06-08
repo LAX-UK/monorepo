@@ -42,7 +42,7 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
       opts={{ loop: true, align: "start" }}
       plugins={plugins}
       className={cn(
-        "relative mx-auto w-full max-w-[var(--container-max,1440px)] overflow-x-hidden bg-hero-cream dark:bg-surface-container-low",
+        "relative w-full overflow-x-hidden bg-hero-cream dark:bg-surface-container-low",
         HOME_HERO_MIN_H,
         FOCUS_RING,
       )}
@@ -122,21 +122,22 @@ function HeroChrome({ slides }: { slides: HeroSaleSlideVM[] }) {
   if (!current) return null;
 
   return (
-    <div
-      className={cn(
-        "pointer-events-none absolute inset-0 z-[2] flex flex-col px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-10",
-        HOME_HERO_MIN_H,
-        HOME_HERO_CONTENT_PT,
-      )}
-    >
-      <div className="mt-auto flex flex-col">
-        <HeroSlideCopy slide={current} slideIndex={selectedIndex} slideCount={n} />
-        {n > 1 ? (
-          <div className="pointer-events-auto mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <HeroNavButtons onPrev={scrollPrev} onNext={scrollNext} />
-            <HeroDots />
-          </div>
-        ) : null}
+    <div className={cn("pointer-events-none absolute inset-0 z-[2]", HOME_HERO_MIN_H)}>
+      <div
+        className={cn(
+          "mx-auto flex h-full w-full max-w-[var(--container-max,1440px)] flex-col px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-10",
+          HOME_HERO_CONTENT_PT,
+        )}
+      >
+        <div className="mt-auto flex flex-col">
+          <HeroSlideCopy slide={current} slideIndex={selectedIndex} slideCount={n} />
+          {n > 1 ? (
+            <div className="pointer-events-auto mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+              <HeroNavButtons onPrev={scrollPrev} onNext={scrollNext} />
+              <HeroDots />
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
