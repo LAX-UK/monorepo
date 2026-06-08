@@ -21,30 +21,37 @@ export function Filmstrip({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "max-w-full shrink-0 border-t border-white/10 bg-surface-container-low/40 px-2 py-2",
+        "max-w-full shrink-0 border-t border-white/10 bg-surface-container-low/40 px-3 py-3",
         className,
       )}
       aria-label="Image thumbnails"
     >
-      <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
-        {images.map((img, i) => (
-          <Button
-            key={`thumb-${img.src}__${i}`}
-            ref={i === index ? activeRef : undefined}
-            type="button"
-            variant="ghost"
-            onClick={() => setIndex(i)}
-            aria-label={`Show image ${i + 1} of ${images.length}`}
-            aria-current={i === index ? "true" : undefined}
-            className={cn(
-              "relative h-14 w-14 shrink-0 snap-center overflow-hidden rounded-md p-0 hover:bg-transparent",
-              "ring-2 ring-offset-2 ring-offset-surface-container-lowest transition-shadow",
-              i === index ? "ring-primary" : "ring-transparent hover:ring-outline-variant/40",
-            )}
-          >
-            <MediaImage src={img.src} alt="" label={GALLERY_MEDIA_PLACEHOLDER_LABEL} sizes="56px" />
-          </Button>
-        ))}
+      <div className="snap-x snap-mandatory overflow-x-auto pb-1 [scrollbar-width:thin]">
+        <div className="mx-auto flex w-max gap-2.5">
+          {images.map((img, i) => (
+            <Button
+              key={`thumb-${img.src}__${i}`}
+              ref={i === index ? activeRef : undefined}
+              type="button"
+              variant="ghost"
+              onClick={() => setIndex(i)}
+              aria-label={`Show image ${i + 1} of ${images.length}`}
+              aria-current={i === index ? "true" : undefined}
+              className={cn(
+                "relative h-16 w-16 shrink-0 snap-center overflow-hidden rounded-md p-0 hover:bg-transparent lg:h-[72px] lg:w-[72px]",
+                "ring-2 ring-offset-2 ring-offset-surface-container-lowest transition-shadow",
+                i === index ? "ring-primary" : "ring-transparent hover:ring-outline-variant/30",
+              )}
+            >
+              <MediaImage
+                src={img.src}
+                alt=""
+                label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
+                sizes="72px"
+              />
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   );

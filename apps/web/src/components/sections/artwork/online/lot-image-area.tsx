@@ -21,7 +21,7 @@ export function LotImageArea({ lot, wide = false, className }: Props) {
       <div
         className={cn(
           "mx-auto w-full overflow-hidden rounded-lg border border-border-hairline bg-surface-container-lowest shadow-sm dark:bg-surface-container-low/30",
-          wide ? "max-w-[900px]" : "max-w-[786px]",
+          wide ? "max-w-[1040px]" : "max-w-[880px]",
         )}
       >
         <LotMediaBlock lot={lot} wide={wide} />
