@@ -28,14 +28,14 @@ export function LotMediaBlock({ lot, wide = false }: Props) {
   const custom = parseDimensionsAspect(lot.dimensions);
   const aspectStyle = custom
     ? ({ aspectRatio: `${custom.w} / ${custom.h}` } as const)
-    : ({ aspectRatio: wide ? "900 / 575" : "786 / 502" } as const);
+    : ({ aspectRatio: wide ? "1040 / 664" : "880 / 562" } as const);
 
   return (
     <LotHeroViewTransitionShell
       lotId={lot.id}
       className={cn(
-        "relative w-full overflow-hidden bg-surface-container-lowest shadow-sm lg:max-h-full",
-        wide ? "max-w-[900px]" : "max-w-[786px]",
+        "relative w-full overflow-hidden bg-surface-container-lowest shadow-sm lg:max-h-full lg:min-h-[520px]",
+        wide ? "max-w-[1040px]" : "max-w-[880px]",
       )}
       style={aspectStyle}
     >
