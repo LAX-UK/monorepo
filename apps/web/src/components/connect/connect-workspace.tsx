@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * Stripe Connect onboarding (Custom accounts + embedded Connect.js).
+ *
+ * Identity flow notes:
+ * - Individual sellers: Veriff KYC gates Connect; Stripe still collects proof_of_liveness
+ *   inside embedded onboarding (required by Stripe — cannot be API-supplied).
+ * - Organisations: Connect runs before the org wizard identity step; Stripe collects
+ *   representative verification in embedded onboarding while the wizard identity step
+ *   covers platform KYC/compliance separately.
+ */
+
 import { ConnectActionsBar } from "@/components/connect/connect-actions-bar";
 import { ConnectComponentsShell } from "@/components/connect/connect-components-shell";
 import { ConnectErrorBoundary } from "@/components/connect/connect-error-boundary";

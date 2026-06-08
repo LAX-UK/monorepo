@@ -32,6 +32,7 @@ export default async function OrgOnboardingConnectStepPage({
 
   const memberships = await hub.listMemberships().catch(() => []);
   const member = memberships.find((m) => m.id === entityId);
+  const memberRole = member?.role ?? "owner";
 
   const connectFailure =
     connectRes.ok || connectRes.error === "not_connected"
@@ -50,7 +51,7 @@ export default async function OrgOnboardingConnectStepPage({
       connectEnforced={clientConfig.connectEnforced}
       status={connectRes.ok ? connectRes.data : null}
       syncDegraded={connectRes.ok ? Boolean(connectRes.data.syncDegraded) : false}
-      memberRole={member?.role ?? "owner"}
+      memberRole={memberRole}
       entityStatus={entity?.status ?? "connect_pending"}
       isLaxManaged={entity?.isLaxManaged ?? false}
     />

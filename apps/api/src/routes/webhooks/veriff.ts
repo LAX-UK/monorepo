@@ -11,6 +11,7 @@ import {
   VeriffWebhookPayloadError,
 } from "../../services/interfaces/kyc-service.js";
 import { progressIndividualsAfterKycApproval } from "../../services/kyc/kyc-post-verification-progression.js";
+import { provisionConnectForIndividuals } from "../../services/kyc/provision-connect-after-kyc.js";
 
 type VeriffWebhookSurface = "decision" | "event" | "watchlist";
 
@@ -61,8 +62,14 @@ function webhookErrorResponse(
   return null;
 }
 
-async function runKycProgression(container: Container, userId: string): Promise<void> {
-  await progressIndividualsAfterKycApproval(container.db, container.domainEventPublisher, userId);
+async function runKycProgression(container: Container, userId: string): Promise<string[]> {
+  return (
+    (await progressIndividualsAfterKycApproval(
+      container.db,
+      container.domainEventPublisher,
+      userId,
+    )) ?? []
+  );
 }
 
 /** Best-effort pull of watchlist screening after IDV approval (webhook may have failed). */
@@ -105,8 +112,11 @@ export function createVeriffWebhookRoutes(container: Container) {
       const { verification: updated, shouldProgressIndividuals } = result;
       const progressionUserId = shouldProgressIndividuals && updated ? updated.userId : null;
       if (progressionUserId) {
-        await runKycProgression(container, progressionUserId);
+        const advancedEntityIds = await runKycProgression(container, progressionUserId);
         await reconcileWatchlistAfterApproval(container, updated?.providerSessionId);
+        // Provision Connect accounts now so embedded onboarding is ready when the seller
+        // lands on the payout page (no render-time mutation, no first-paint spinner).
+        await provisionConnectForIndividuals(container.stripeConnectService, advancedEntityIds);
       }
       if (result.marketingEventToEnqueue) {
         await container.marketingEventService.enqueue(result.marketingEventToEnqueue);
