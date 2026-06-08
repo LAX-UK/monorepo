@@ -51,6 +51,10 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     searchParams.get("session_expired") === "1"
       ? "Your session expired or could not be restored. Please sign in again."
       : null;
+  const twofaRequired =
+    searchParams.get("twofa_required") === "1"
+      ? "Your account uses two-factor authentication. Sign in with your password and authenticator app."
+      : null;
 
   // Strip transient banner params from the URL after render so refresh / back-nav
   // doesn't re-show "session expired" once the user has acknowledged it.
@@ -58,7 +62,14 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     let mutated = false;
-    for (const key of ["session_expired", "auth", "social_error", "reason", "verify_pending"]) {
+    for (const key of [
+      "session_expired",
+      "auth",
+      "social_error",
+      "reason",
+      "verify_pending",
+      "twofa_required",
+    ]) {
       if (params.has(key)) {
         params.delete(key);
         mutated = true;
@@ -216,6 +227,14 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           aria-live="polite"
         >
           {sessionExpired}
+        </output>
+      ) : null}
+      {twofaRequired ? (
+        <output
+          className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"
+          aria-live="polite"
+        >
+          {twofaRequired}
         </output>
       ) : null}
       <FormBanner message={bannerError ?? socialError} />

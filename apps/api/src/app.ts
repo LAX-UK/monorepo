@@ -16,7 +16,10 @@ import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { trustedWebOrigins } from "./lib/trusted-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
 import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
-import { createAuthRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
+import {
+  createAuthRateLimitMiddleware,
+  createMagicLinkRateLimitMiddleware,
+} from "./middleware/auth-rate-limit.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
@@ -180,6 +183,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   });
 
   app.use("/api/auth/*", createAuthRateLimitMiddleware(container.redis));
+  app.use("/api/auth/*", createMagicLinkRateLimitMiddleware(container.redis));
   app.all("/api/auth/*", async (c) => {
     return runSignInTurnstileGate({
       incoming: c.req.raw,

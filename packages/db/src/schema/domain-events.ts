@@ -1,4 +1,15 @@
-import { bigint, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  bigint,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 
 export const domainEvent = pgTable(
@@ -24,6 +35,11 @@ export const domainEvent = pgTable(
     index("domain_events_aggregate_idx").on(table.aggregateType, table.aggregateId),
     index("domain_events_occurred_at_idx").on(table.occurredAt),
     index("domain_events_acting_legal_entity_idx").on(table.actingLegalEntityId, table.occurredAt),
+    // Hard idempotency guard: at most one `user.email_verified` per user. The magic-link
+    // verify hook fires on every passwordless sign-in, so this collapses concurrent inserts.
+    uniqueIndex("domain_events_user_email_verified_uid")
+      .on(table.aggregateType, table.aggregateId)
+      .where(sql`${table.eventType} = 'user.email_verified'`),
   ],
 );
 

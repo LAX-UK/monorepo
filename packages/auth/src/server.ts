@@ -267,6 +267,8 @@ export function createAuth(env: AuthEnv): Auth {
       webOrigin: env.webOrigin,
       jwtAudience,
       envelope,
+      email: env.email,
+      onEmailVerified: env.onEmailVerified,
     }),
     advanced: {
       useSecureCookies: env.allowInsecureCookies ? false : undefined,
@@ -291,6 +293,7 @@ export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 export {
   runSignInTurnstileGate,
   isSignInEmailPost,
+  isSignInMagicLinkPost,
   type SignInGateRedis,
 } from "./sign-in-turnstile-gate.js";
 export { verifyTurnstileResponse } from "./turnstile-siteverify.js";

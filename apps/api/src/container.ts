@@ -514,6 +514,15 @@ export function createContainer(env: Env): Container {
         email: authUser.email,
       });
     },
+    onEmailVerified: async (authUser) => {
+      const { publishUserEmailVerified } = await import(
+        "./services/publish-user-email-verified.js"
+      );
+      await publishUserEmailVerified(db, {
+        userId: authUser.id,
+        email: authUser.email,
+      });
+    },
     enableNewDeviceLoginEmail: env.NODE_ENV === "production",
   });
 
