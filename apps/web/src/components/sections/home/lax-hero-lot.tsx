@@ -26,13 +26,12 @@ export function LaxHeroLot({ lot }: Props) {
 
   return (
     <section className="relative w-full overflow-hidden bg-brand-900">
-      <div
-        className={cn(
-          "relative mx-auto w-full max-w-[var(--container-max,1440px)]",
-          HOME_HERO_MIN_H,
-        )}
-      >
-        <RevealOnMount className="absolute inset-0" innerClassName="absolute inset-0">
+      <div className={cn("relative w-full", HOME_HERO_MIN_H)}>
+        <RevealOnMount
+          variant="fadeUp"
+          className="absolute inset-0"
+          innerClassName="absolute inset-0"
+        >
           <HeroAdaptiveShell
             cover={heroLotCoverSources(lot)}
             alt={lot.imageAlt}
@@ -49,7 +48,7 @@ export function LaxHeroLot({ lot }: Props) {
           >
             <div
               className={cn(
-                "relative flex flex-col px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-16",
+                "relative mx-auto flex w-full max-w-[var(--container-max,1440px)] flex-col px-6 pb-[max(4rem,env(safe-area-inset-bottom))] md:px-10 md:pb-[max(5rem,env(safe-area-inset-bottom))] lg:px-16",
                 HOME_HERO_MIN_H,
                 HOME_HERO_CONTENT_PT,
               )}
