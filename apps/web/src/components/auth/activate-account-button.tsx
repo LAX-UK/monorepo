@@ -1,0 +1,15 @@
+"use client";
+
+import { buildMagicLinkVerifyUrl } from "@/lib/auth/magic-link-verify-url";
+import { Button } from "@auction/ui/components/button";
+
+export function ActivateAccountButton({ token }: { token: string }) {
+  const webOrigin = typeof window !== "undefined" ? window.location.origin : "";
+  const href = buildMagicLinkVerifyUrl(token, webOrigin);
+
+  return (
+    <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
+      <a href={href}>Activate account</a>
+    </Button>
+  );
+}

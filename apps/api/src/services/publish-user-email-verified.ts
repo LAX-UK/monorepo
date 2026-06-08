@@ -38,7 +38,7 @@ export async function publishUserEmailVerified(
       aggregateType: "user",
       aggregateId: input.userId,
       eventType: "user.email_verified",
-      producer: "apps/auth",
+      producer: "apps/api",
       payload: {
         userId: input.userId,
         email: input.email,

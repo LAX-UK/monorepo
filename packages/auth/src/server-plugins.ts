@@ -12,13 +12,14 @@ import {
 import type { IEmailService } from "@auction/email";
 import type { BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { twoFactor } from "better-auth/plugins";
+import { magicLink, twoFactor } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { oidcProvider } from "better-auth/plugins/oidc-provider";
 import { wrapAuthDatabaseAdapter } from "./adapter-at-rest.js";
 import { AUTH_TIMINGS } from "./auth-timings.js";
 import type { EnvelopeCrypto } from "./crypto/envelope.js";
 import { createJwksAdapter } from "./jwks.js";
+import { buildMagicLinkVerifyPlugin } from "./magic-link-verify-hooks.js";
 
 type RevokeSessions = (userId: string) => Promise<number>;
 
@@ -50,9 +51,14 @@ export function buildJwtAndOidcPlugins(options: {
   webOrigin?: string | undefined;
   jwtAudience: string;
   envelope?: EnvelopeCrypto | undefined;
+  email?: IEmailService | undefined;
+  onEmailVerified?:
+    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
+    | undefined;
 }): BetterAuthPlugin[] {
   const jwksAdapter = createJwksAdapter(options.db, options.envelope);
-  const { issuer, webOrigin, jwtAudience } = options;
+  const { issuer, webOrigin, jwtAudience, email, onEmailVerified } = options;
+  const webBase = (webOrigin ?? "https://lax.bid").replace(/\/$/, "");
   return [
     jwt({
       jwks: {
@@ -101,6 +107,37 @@ export function buildJwtAndOidcPlugins(options: {
       }),
     }),
     twoFactor({ issuer: "LAX" }),
+    magicLink({
+      disableSignUp: true,
+      storeToken: "hashed",
+      expiresIn: AUTH_TIMINGS.magicLinkExpiresSec,
+      sendMagicLink: async ({ email: recipientEmail, token }, ctx) => {
+        if (!ctx) return;
+        const found = await ctx.context.internalAdapter.findUserByEmail(recipientEmail);
+        const authUser = found?.user;
+        if (!authUser) return;
+        const activationUrl = `${webBase}/auth/activate?token=${encodeURIComponent(token)}`;
+        email
+          ?.enqueue({
+            template: "account-activation",
+            to: recipientEmail,
+            userId: authUser.id,
+            category: "auth",
+            vars: {
+              activationUrl,
+              userName: authUser.name,
+              expirationMinutes: Math.round(AUTH_TIMINGS.magicLinkExpiresSec / 60),
+            },
+          })
+          .catch((err: unknown) => {
+            console.error("[auth] enqueue account-activation failed", {
+              userId: authUser.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
+      },
+    }),
+    buildMagicLinkVerifyPlugin({ webOrigin, onEmailVerified }),
   ];
 }
 
