@@ -84,7 +84,7 @@ The cookie banner is **not the only entry point**. There is a **"Cookie preferen
 
 ### What the consent choice persists
 
-The choice is stored as a cookie called `lax_consent`, valid for **365 days**, on `.lax.bid` (so it applies across subdomains). The cookie contains the version, timestamp, and the two booleans. It is read by:
+The choice is stored as a cookie called `lax_consent`, valid for **180 days**, on `.lax.bid` (so it applies across subdomains). The cookie contains the version, timestamp, and the two booleans. It is read by:
 
 - The browser, before loading GTM
 - The browser, before firing any conversion event in the dataLayer
@@ -350,27 +350,15 @@ Server-side `Purchase`, `CompleteRegistration`, `Lead`, etc. are independent fro
 
 ---
 
-## 12. Pre-launch testing toggle (TEMPORARY)
+## 12. Go-live verification (consent + GTM)
 
-Before public launch, marketing and engineering can bypass the cookie banner on **test/staging** so GA4, GTM, and Meta CAPI validation does not require clicking "Accept all" on every session.
+Before public launch, run the checklist in [`docs/runbooks/consent-gtm-go-live-verification.md`](../runbooks/consent-gtm-go-live-verification.md). It covers:
 
-| GitHub repo variable | Value |
-|---|---|
-| `NEXT_PUBLIC_DISABLE_CONSENT_BANNER` | `true` on test; **`false` or unset on prod** |
-
-When `"true"`:
-
-- The banner does not render.
-- Analytics and marketing consent are treated as granted from the first page load.
-- Browser dataLayer events and server-side CAPI/GA4 events flow end-to-end (consent headers are also granted).
-
-**This must be turned off before go-live.** Leaving it enabled in production violates UK GDPR/PECR consent requirements. Pre-launch checklist:
-
-- [ ] Set `NEXT_PUBLIC_DISABLE_CONSENT_BANNER=false` in prod GitHub vars and re-apply Terraform (ephemeral).
-- [ ] Verify in an incognito window on prod that the banner appears again.
-- [ ] Remove all `TEMPORARY` code paths and the env var from Terraform (follow-up issue).
-
-Re-apply test/prod ephemeral Terraform after changing the variable (`Terraform apply test` / `Terraform apply prod` workflows).
+- Banner visible in incognito; no `gtm.js` / no `gtm.lax.bid` before a choice
+- **Accept all** loads GTM and sends hits to `gtm.lax.bid`
+- **Reject all** keeps GTM silent
+- GTM container `transport_url` and tag consent requirements
+- Privacy / cookie policy alignment
 
 ---
 

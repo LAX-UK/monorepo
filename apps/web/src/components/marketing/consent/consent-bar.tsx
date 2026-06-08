@@ -38,7 +38,6 @@ export function ConsentBar() {
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <Button
               type="button"
-              variant="outline"
               className="w-full sm:w-auto sm:min-w-[8.5rem]"
               onClick={() => void rejectAll()}
             >

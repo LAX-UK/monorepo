@@ -15,7 +15,7 @@ import { PushBootstrap } from "@/components/pwa/push-bootstrap";
 import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { Toaster } from "@/components/ui/toaster";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
-import { readEffectiveConsentFromCookies } from "@/lib/analytics/consent/server";
+import { readConsentFromCookies } from "@/lib/analytics/consent/server";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import { AuthSessionProvider } from "@/lib/auth/auth-session-provider";
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
@@ -97,9 +97,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const profileTheme = user?.uiPreferences?.theme ?? DEFAULT_THEME_PREFERENCE;
   const themePref =
     existingTheme ?? (await resolveEffectiveThemePreference(user ? profileTheme : undefined));
-  // NOTE: `readEffectiveConsentFromCookies` honours the TEMPORARY pre-launch toggle
-  // `NEXT_PUBLIC_DISABLE_CONSENT_BANNER=true` (marketing test only — see disable-banner.ts).
-  const consentSnapshot = readEffectiveConsentFromCookies(cookieStore);
+  const consentSnapshot = readConsentFromCookies(cookieStore);
   const consentProviderKey =
     consentSnapshot === null ? "consent:none" : JSON.stringify(consentSnapshot);
   const isDark = isSsrDarkClass(themePref, hdrs.get("sec-ch-prefers-color-scheme"));
