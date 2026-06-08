@@ -34,7 +34,7 @@ export default function CookiesPage() {
       <LegalPage
         title="Cookie policy"
         toc={[...toc]}
-        lastUpdated="21 April 2026"
+        lastUpdated="8 June 2026"
         kicker={null}
         dividerUnderDate
         embedded
@@ -81,9 +81,10 @@ export default function CookiesPage() {
         </LegalH2>
         <p>
           When you consent to analytics, your browser may connect to Google domains (including{" "}
-          <code>googletagmanager.com</code> and Google Analytics endpoints) subject to Google&apos;s
-          terms and privacy policy. We use <strong>Google Consent Mode</strong> so that optional
-          tags respect your choices before they run.
+          <code>googletagmanager.com</code> and Google Analytics endpoints) and our first-party
+          tagging server at <code>https://gtm.lax.bid</code>, subject to Google&apos;s terms and
+          privacy policy. We use <strong>Google Consent Mode</strong> so that optional tags respect
+          your choices before they run.
         </p>
 
         <LegalH2 id="manage" className="scroll-mt-28">

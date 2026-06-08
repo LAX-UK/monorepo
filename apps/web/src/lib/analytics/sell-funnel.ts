@@ -1,12 +1,10 @@
 "use client";
 
 import { readConsentFromDocument } from "./consent-headers";
-import { isConsentBannerDisabled } from "./consent/disable-banner";
 import { isAnalyticsEnabled } from "./is-enabled";
 
 function guardAnalytics(): boolean {
   if (!isAnalyticsEnabled()) return false;
-  if (isConsentBannerDisabled()) return true;
   const c = readConsentFromDocument();
   return c?.analytics === true;
 }
