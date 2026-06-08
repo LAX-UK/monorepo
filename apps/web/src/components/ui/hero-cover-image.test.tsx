@@ -1,7 +1,7 @@
 import { AdaptiveMediaFrame } from "@/components/ui/adaptive-media-frame";
 import { HeroCoverImage } from "@/components/ui/hero-cover-image";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 describe("HeroCoverImage", () => {
@@ -81,5 +81,72 @@ describe("HeroCoverImage", () => {
       </AdaptiveMediaFrame>,
     );
     expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("shows shimmer placeholder and fades in non-priority images on load", () => {
+    const { container } = render(
+      <AdaptiveMediaFrame
+        src="https://cdn.example.com/wide.jpg"
+        objectFit="cover"
+        slots={HERO_IMMERSIVE_SLOTS}
+      >
+        <HeroCoverImage
+          cover={{ desktopUrl: "https://cdn.example.com/wide.jpg" }}
+          alt="Auction cover"
+        />
+      </AdaptiveMediaFrame>,
+    );
+
+    expect(container.querySelector(".shimmer-sweep")).toBeInTheDocument();
+    const image = screen.getByRole("img", { name: "Auction cover" });
+    expect(image).toHaveClass("opacity-0");
+
+    fireEvent.load(image);
+
+    expect(container.querySelector(".shimmer-sweep")).not.toBeInTheDocument();
+    expect(image).toHaveClass("opacity-100");
+  });
+
+  it("skips fade-in for priority images (LCP guard)", () => {
+    const { container } = render(
+      <AdaptiveMediaFrame
+        src="https://cdn.example.com/wide.jpg"
+        objectFit="cover"
+        slots={HERO_IMMERSIVE_SLOTS}
+      >
+        <HeroCoverImage
+          cover={{ desktopUrl: "https://cdn.example.com/wide.jpg" }}
+          alt="Auction cover"
+          priority
+        />
+      </AdaptiveMediaFrame>,
+    );
+
+    const image = screen.getByRole("img", { name: "Auction cover" });
+    expect(image).not.toHaveClass("opacity-0");
+    expect(container.querySelector(".shimmer-sweep")).toBeInTheDocument();
+
+    fireEvent.load(image);
+
+    expect(image).not.toHaveClass("opacity-100");
+    expect(container.querySelector(".shimmer-sweep")).not.toBeInTheDocument();
+  });
+
+  it("omits placeholder when showPlaceholder is false", () => {
+    const { container } = render(
+      <AdaptiveMediaFrame
+        src="https://cdn.example.com/wide.jpg"
+        objectFit="cover"
+        slots={HERO_IMMERSIVE_SLOTS}
+      >
+        <HeroCoverImage
+          cover={{ desktopUrl: "https://cdn.example.com/wide.jpg" }}
+          alt="Auction cover"
+          showPlaceholder={false}
+        />
+      </AdaptiveMediaFrame>,
+    );
+
+    expect(container.querySelector(".shimmer-sweep")).not.toBeInTheDocument();
   });
 });
