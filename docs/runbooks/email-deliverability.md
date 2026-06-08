@@ -37,6 +37,7 @@ Team inboxes (`support@`, `settlements@`, etc.) use **Zoho Mail** on the apex. A
 | Record | Type | Purpose |
 |--------|------|---------|
 | `@` | TXT | Domain verify (`zoho_mail_verify`) |
+| `@` | TXT | Google Postmaster / Search Console verify (`google_site_verify`) |
 | `@` | MX | `mx.zoho.eu` (10), `mx2.zoho.eu` (20), `mx3.zoho.eu` (50) |
 | `@` | TXT | SPF `v=spf1 include:zohomail.eu ~all` (`zoho_spf`) |
 | `zmail._domainkey` | TXT | Zoho DKIM (`zoho_dkim`) |
