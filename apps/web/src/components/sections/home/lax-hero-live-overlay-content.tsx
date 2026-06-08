@@ -21,7 +21,7 @@ export function LaxHeroLiveOverlayContent({
   return (
     <div
       className={cn(
-        "relative z-[2] flex flex-col px-6 pb-16 md:px-10 md:pb-20 lg:px-10",
+        "relative z-[2] mx-auto flex w-full max-w-[var(--container-max,1440px)] flex-col px-6 pb-16 md:px-10 md:pb-20 lg:px-10",
         HOME_HERO_MIN_H,
         HOME_HERO_CONTENT_PT,
       )}

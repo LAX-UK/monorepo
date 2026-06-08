@@ -69,6 +69,7 @@ function LaxHeroLiveSplitEmbed({ vm }: Props) {
       >
         <div className="relative aspect-video w-full shrink-0 bg-black">
           <RevealOnMount
+            variant="fadeUp"
             className="absolute inset-0 overflow-hidden"
             innerClassName="absolute inset-0"
           >
@@ -134,12 +135,7 @@ export function LaxHeroLiveStream({ vm }: Props) {
 
   return (
     <section className="relative w-full bg-hero-cream dark:bg-surface-container-low">
-      <div
-        className={cn(
-          "relative mx-auto w-full max-w-[var(--container-max,1440px)]",
-          HOME_HERO_MIN_H,
-        )}
-      >
+      <div className={cn("relative w-full", HOME_HERO_MIN_H)}>
         <HeroAdaptiveShell
           cover={resolveHeroCoverSources({
             desktopUrl: poster,
@@ -149,11 +145,14 @@ export function LaxHeroLiveStream({ vm }: Props) {
           })}
           alt={`${vm.saleTitle} — saleroom cover`}
           priority
+          fadeInOnLoad={false}
+          showPlaceholder={false}
           imgClassName="opacity-0 motion-reduce:opacity-100"
           backdropScrim={
             <>
               <div className="pointer-events-none absolute inset-0 z-[1] block motion-reduce:hidden">
                 <RevealOnMount
+                  variant="fadeUp"
                   className="absolute inset-0 overflow-hidden"
                   innerClassName="absolute inset-0"
                 >
