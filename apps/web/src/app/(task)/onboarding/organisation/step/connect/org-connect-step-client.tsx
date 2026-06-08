@@ -67,8 +67,8 @@ export function OrgConnectStepClient({
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">Payout setup</h2>
         <p className="text-sm text-on-surface-variant">
-          Connect your organisation to receive payouts. Complete Stripe Express verification below —
-          no redirect required.
+          Connect your organisation to receive payouts. Complete payout verification in the secure
+          form below — no redirect required.
         </p>
       </div>
 

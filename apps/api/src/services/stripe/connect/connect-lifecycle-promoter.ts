@@ -1,7 +1,7 @@
 import { isStripeAccountConfigured } from "@auction/connect";
 import type { Database } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import type { DomainEventPublisher } from "../../domain-event.publisher.js";
 
@@ -39,17 +39,30 @@ export class ConnectLifecyclePromoter {
       }
     }
 
-    await db
+    const flagUpdate = {
+      stripeConnectChargesEnabled: chargesEnabled,
+      stripeConnectPayoutsEnabled: payoutsEnabled,
+      stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
+      stripeConnectDisabledReason: disabledReason,
+      updatedAt: new Date(),
+    };
+
+    if (nextStatus === row.status) {
+      await db.update(legalEntity).set(flagUpdate).where(eq(legalEntity.id, row.id));
+      return;
+    }
+
+    const [updated] = await db
       .update(legalEntity)
       .set({
-        stripeConnectChargesEnabled: chargesEnabled,
-        stripeConnectPayoutsEnabled: payoutsEnabled,
-        stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
-        stripeConnectDisabledReason: disabledReason,
-        ...(nextStatus !== row.status ? { status: nextStatus, statusChangedAt: new Date() } : {}),
-        updatedAt: new Date(),
+        ...flagUpdate,
+        status: nextStatus,
+        statusChangedAt: new Date(),
       })
-      .where(eq(legalEntity.id, row.id));
+      .where(and(eq(legalEntity.id, row.id), eq(legalEntity.status, row.status)))
+      .returning();
+
+    if (!updated) return;
 
     if (
       this.domainEventPublisher &&

@@ -1,6 +1,6 @@
 import { statusFromLegalEntityRow } from "@auction/connect";
 import type { Database } from "@auction/db";
-import { legalEntity, user } from "@auction/db/schema";
+import { legalEntity } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
@@ -11,12 +11,19 @@ import { type AppLogger, createBaseLogger } from "../../../lib/logger.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
 import type { ConnectAccountStatus, CreateAccountResult } from "../../interfaces/stripe-connect.js";
+import { loadConnectAccountCreationContext } from "./connect-account-context.loader.js";
+import {
+  type ConnectAccountController,
+  buildIndividualConnectAccountParams,
+  buildOrganisationConnectAccountParams,
+} from "./connect-account-prefill.js";
+import { resolveConnectAccountCountry } from "./connect-country-resolver.js";
 import type { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 import { ConnectServiceError, throwConnectError } from "./connect-service-errors.js";
 import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
 
 /** Bump when account-create params change or Stripe cached a 4xx under the prior key (24h TTL). */
-const CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION = "v3";
+const CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION = "v4";
 
 export class ConnectAccountService {
   private readonly logger: AppLogger;
@@ -40,25 +47,6 @@ export class ConnectAccountService {
     if (!allowed) throwConnectError("stripe_rate_limited", 429);
   }
 
-  private async loadLegalEntityWithOwner(legalEntityId: string) {
-    const rows = await this.db
-      .select({
-        entity: legalEntity,
-        ownerEmail: user.email,
-        ownerFirstName: user.firstName,
-        ownerLastName: user.lastName,
-        ownerDisplayName: user.name,
-        ownerKycStatus: user.kycStatus,
-      })
-      .from(legalEntity)
-      .innerJoin(user, eq(user.id, legalEntity.createdByUserId))
-      .where(eq(legalEntity.id, legalEntityId))
-      .limit(1);
-    const row = rows[0];
-    if (!row) throwConnectError("legal_entity_not_found", 404);
-    return row;
-  }
-
   statusFromRow(row: typeof legalEntity.$inferSelect, syncDegraded = false): ConnectAccountStatus {
     const base = statusFromLegalEntityRow(row);
     return {
@@ -67,73 +55,61 @@ export class ConnectAccountService {
     };
   }
 
-  async ensureAccount(legalEntityId: string, country: string): Promise<CreateAccountResult> {
+  async ensureAccount(legalEntityId: string): Promise<CreateAccountResult> {
     await this.assertMutationRateLimit("account", legalEntityId);
     const stripe = requireConnectStripe(this.stripeFactory);
-    const {
-      entity: row,
-      ownerEmail,
-      ownerFirstName,
-      ownerLastName,
-      ownerDisplayName,
-      ownerKycStatus,
-    } = await this.loadLegalEntityWithOwner(legalEntityId);
+    const context = await loadConnectAccountCreationContext(this.db, legalEntityId);
+    const row = context.entity;
+
     if (row.stripeConnectAccountId) {
       return {
         stripeAccountId: row.stripeConnectAccountId,
         legalEntity: legalEntityRowToDomain(row),
       };
     }
-    if (row.kind === "individual" && ownerKycStatus !== "approved") {
+    if (row.kind === "individual" && context.ownerKycStatus !== "approved") {
       throwConnectError("kyc_not_approved", 403);
     }
 
+    const country = resolveConnectAccountCountry({
+      entityAddress: context.entityAddress,
+      userAddress: context.userAddress,
+      kycIdCountry: context.kyc?.verifiedIdCountry ?? null,
+    });
+
     // Custom embedded: platform fees + losses + KYC collection; no Stripe Dashboard access.
-    const controller = {
-      fees: { payer: "application" as const },
-      losses: { payments: "application" as const },
-      requirement_collection: "application" as const,
-      stripe_dashboard: { type: "none" as const },
+    const controller: ConnectAccountController = {
+      fees: { payer: "application" },
+      losses: { payments: "application" },
+      requirement_collection: "application",
+      stripe_dashboard: { type: "none" },
     };
 
     const accountCreateParams: Stripe.AccountCreateParams =
       row.kind === "organisation"
-        ? {
+        ? buildOrganisationConnectAccountParams({
             country,
+            legalEntityId,
+            row,
+            entityAddress: context.entityAddress,
             controller,
-            capabilities: { transfers: { requested: true } },
-            business_type: row.subkind === "charity" ? "non_profit" : "company",
-            metadata: { legalEntityId, subkind: row.subkind },
-            ...(row.legalName ? { business_profile: { name: row.legalName } } : {}),
-          }
-        : (() => {
-            const display = ownerDisplayName?.trim() || "";
-            const parts = display.split(/\s+/).filter(Boolean);
-            const fromDisplay = parts.length > 0 ? parts[0] : undefined;
-            const fromEmail = ownerEmail.split("@")[0];
-            const first =
-              ownerFirstName?.trim() ||
-              fromDisplay ||
-              (fromEmail !== "" ? fromEmail : undefined) ||
-              "Seller";
-            const last =
-              ownerLastName?.trim() ||
-              (parts.length > 1 ? parts.slice(1).join(" ") : "") ||
-              first ||
-              "Individual";
-            return {
-              country,
-              controller,
-              capabilities: { transfers: { requested: true } },
-              business_type: "individual" as const,
-              individual: {
-                first_name: first.slice(0, 100),
-                last_name: last.slice(0, 100),
-                email: ownerEmail,
-              },
-              metadata: { legalEntityId, subkind: row.subkind },
-            };
-          })();
+          })
+        : buildIndividualConnectAccountParams({
+            country,
+            legalEntityId,
+            subkind: row.subkind,
+            owner: {
+              email: context.ownerEmail,
+              firstName: context.ownerFirstName,
+              lastName: context.ownerLastName,
+              displayName: context.ownerDisplayName,
+              mobile: context.ownerMobile,
+            },
+            kyc: context.kyc,
+            entityAddress: context.entityAddress,
+            userAddress: context.userAddress,
+            controller,
+          });
 
     const account = await stripe.accounts.create(accountCreateParams, {
       idempotencyKey: `connect:account:${CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION}:${legalEntityId}`,
