@@ -23,6 +23,7 @@ locals {
     brevo_dkim_2         = { name = "brevo2._domainkey.news", type = "CNAME", value = "b2.news-lax-bid.dkim.brevo.com", proxied = false, comment = "Brevo DKIM 2 for news.lax.bid" }
     brevo_dmarc          = { name = "_dmarc.news", type = "TXT", value = "v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com", proxied = false, comment = "DMARC for news.lax.bid (Brevo marketing)" }
     zoho_mail_verify     = { name = "@", type = "TXT", value = "zoho-verification=zb23174584.zmverify.zoho.eu", proxied = false, comment = "Zoho Mail domain verification (EU)" }
+    google_site_verify   = { name = "@", type = "TXT", value = "google-site-verification=TU6GCBZ7hGtNmOS-1ZtUfb1-Dv4VTs5xH0reI88oy20", proxied = false, comment = "Google Postmaster Tools / Search Console domain verification" }
     zoho_mx_primary      = { name = "@", type = "MX", value = "mx.zoho.eu", priority = 10, proxied = false, comment = "Zoho Mail EU inbound" }
     zoho_mx_secondary    = { name = "@", type = "MX", value = "mx2.zoho.eu", priority = 20, proxied = false, comment = "Zoho Mail EU inbound" }
     zoho_mx_tertiary     = { name = "@", type = "MX", value = "mx3.zoho.eu", priority = 50, proxied = false, comment = "Zoho Mail EU inbound" }
