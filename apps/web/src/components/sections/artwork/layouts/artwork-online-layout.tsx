@@ -118,7 +118,7 @@ export function ArtworkOnlineLayout({
           className={cn(
             "mt-6 grid grid-cols-1 gap-8 lg:mt-8 lg:items-start lg:gap-6 xl:gap-8",
             showQueue
-              ? "lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,440px)]"
+              ? "lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,400px)]"
               : "lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]",
           )}
         >

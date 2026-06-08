@@ -3,7 +3,16 @@
 import { useGalleryContext } from "@/components/gallery/context/gallery-context";
 import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gallery-media-placeholder";
 import { MediaImage } from "@/components/ui/media-image";
-import { Carousel, type CarouselApi, CarouselContent, CarouselItem } from "@auction/ui";
+import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -18,6 +27,9 @@ type Props = {
   setCarouselApi: (api: CarouselApi) => void;
   className?: string;
 };
+
+const frostedNavArrowClasses =
+  "pointer-events-auto top-1/2 hidden size-10 -translate-y-1/2 rounded-full border-[color:var(--overlay-border)] bg-[color:var(--overlay-bg)] text-[color:var(--overlay-fg)] opacity-0 shadow-md backdrop-blur-sm transition-opacity hover:opacity-100 group-hover:opacity-100 motion-reduce:transition-none md:flex disabled:pointer-events-none disabled:opacity-0";
 
 /** Full-bleed Embla hero with expand control. */
 export function GalleryHero({ setCarouselApi, className }: Props) {
@@ -67,20 +79,14 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
               </CarouselItem>
             ))}
           </CarouselContent>
+          <HeroCarouselArrows />
         </Carousel>
         <div className="pointer-events-none absolute inset-0 bg-black/5 opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none" />
-        <HeroExpandButton onExpand={openLightbox} />
-        {images.length >= 6 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="pointer-events-auto absolute bottom-6 right-28 hidden font-label text-xs font-bold uppercase tracking-wide text-on-surface underline-offset-2 hover:underline sm:inline-flex"
-            onClick={openViewAll}
-          >
-            All {images.length} images
-          </Button>
-        ) : null}
+        <HeroControlsCluster
+          imageCount={images.length}
+          onExpand={openLightbox}
+          onViewAll={openViewAll}
+        />
       </div>
     </TooltipProvider>
   );
@@ -107,29 +113,77 @@ function SingleHero({
           sizes="(min-width: 1024px) 58vw, 100vw"
           onClick={onExpand}
         />
-        <HeroExpandButton onExpand={onExpand} />
+        <HeroControlsCluster imageCount={1} onExpand={onExpand} />
       </div>
     </TooltipProvider>
   );
 }
 
-function HeroExpandButton({ onExpand }: { onExpand: () => void }) {
+function HeroCarouselArrows() {
+  const tone = useOverlayTone("bottomRight");
+
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
+    <>
+      <CarouselPrevious
+        variant="ghost"
+        className={cn(frostedNavArrowClasses, "!left-4")}
+        {...overlayToneProps(tone)}
+      />
+      <CarouselNext
+        variant="ghost"
+        className={cn(frostedNavArrowClasses, "!right-4")}
+        {...overlayToneProps(tone)}
+      />
+    </>
+  );
+}
+
+function HeroControlsCluster({
+  imageCount,
+  onExpand,
+  onViewAll,
+}: {
+  imageCount: number;
+  onExpand: () => void;
+  onViewAll?: () => void;
+}) {
+  const tone = useOverlayTone("bottomRight");
+  const pillBase = cn(
+    overlayPillClasses(tone),
+    "pointer-events-auto inline-flex h-auto items-center gap-1.5 rounded-full px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-wide shadow-md transition-opacity hover:opacity-90 motion-reduce:transition-none",
+  );
+
+  return (
+    <div className="pointer-events-none absolute right-4 bottom-4 z-10 flex items-center gap-2">
+      {imageCount >= 6 && onViewAll ? (
         <Button
           type="button"
-          variant="secondary"
+          variant="ghost"
           size="sm"
-          data-lightbox-opener="true"
-          onClick={onExpand}
-          className="pointer-events-auto absolute bottom-6 right-6 h-auto rounded-md bg-surface-container-lowest/90 px-3 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface shadow-md backdrop-blur-sm hover:bg-primary hover:text-on-primary"
+          className={cn(pillBase, "hidden md:inline-flex")}
+          {...overlayToneProps(tone)}
+          onClick={onViewAll}
         >
-          <Maximize2 className="size-4" aria-hidden />
-          Expand
+          All {imageCount} images
         </Button>
-      </TooltipTrigger>
-      <TooltipContent>Open fullscreen view</TooltipContent>
-    </Tooltip>
+      ) : null}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-lightbox-opener="true"
+            className={pillBase}
+            {...overlayToneProps(tone)}
+            onClick={onExpand}
+          >
+            <Maximize2 className="size-3.5" aria-hidden />
+            Expand
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Open fullscreen view</TooltipContent>
+      </Tooltip>
+    </div>
   );
 }

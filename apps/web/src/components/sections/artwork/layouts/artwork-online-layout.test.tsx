@@ -121,7 +121,7 @@ describe("ArtworkOnlineLayout", () => {
     });
 
     const grid = container.querySelector(
-      ".lg\\:grid-cols-\\[minmax\\(0\\,320px\\)_minmax\\(0\\,1fr\\)_minmax\\(0\\,440px\\)\\]",
+      ".lg\\:grid-cols-\\[minmax\\(0\\,280px\\)_minmax\\(0\\,1fr\\)_minmax\\(0\\,400px\\)\\]",
     );
     expect(grid).toBeTruthy();
     expect(screen.getByRole("complementary")).toBeInTheDocument();
