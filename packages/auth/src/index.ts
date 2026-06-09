@@ -20,3 +20,8 @@ export {
   type RefreshReplayStore,
   type RefreshReplayResult,
 } from "./refresh-replay.js";
+export {
+  buildMagicLinkExpiredCallbackUrl,
+  buildMagicLinkSetPasswordCallbackUrl,
+  isSafeMagicLinkNextPath,
+} from "./magic-link-callback.js";

@@ -52,12 +52,20 @@ vi.mock("@/lib/auth/use-auth-submit", () => ({
   }),
 }));
 
+const requestMagicLinkService = vi.fn();
+
+vi.mock("@/lib/auth/services/request-magic-link.service", () => ({
+  requestMagicLinkService: (...args: unknown[]) => requestMagicLinkService(...args),
+}));
+
 describe("useSignInController", () => {
   beforeEach(() => {
     push.mockClear();
     refresh.mockClear();
     run.mockReset();
     fetchSessionUserWithRetry.mockReset();
+    requestMagicLinkService.mockReset();
+    requestMagicLinkService.mockResolvedValue({ ok: true });
   });
 
   it("redirects to two-factor when required", async () => {
@@ -108,5 +116,50 @@ describe("useSignInController", () => {
 
     expect(push).toHaveBeenCalledWith(expect.stringContaining("/dashboard"));
     expect(result.current.bannerError).toBeNull();
+  });
+
+  it("advances to credentials step on valid email (email-first)", () => {
+    const { result } = renderHook(() =>
+      useSignInController("/dashboard", { emailFirst: true, initialStep: "email" }),
+    );
+
+    act(() => {
+      result.current.form.setValue("email", "ada@example.com");
+      result.current.goToCredentials();
+    });
+
+    expect(result.current.step).toBe("credentials");
+  });
+
+  it("requestMagicLink calls service, sets linkSent, and threads safe next", async () => {
+    const { result } = renderHook(() =>
+      useSignInController("/dashboard", { emailFirst: true, initialStep: "credentials" }),
+    );
+
+    await act(async () => {
+      result.current.form.setValue("email", "ada@example.com");
+      await result.current.requestMagicLink();
+    });
+
+    expect(requestMagicLinkService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "ada@example.com",
+        next: "/dashboard",
+      }),
+    );
+    expect(result.current.linkSent).toBe(true);
+  });
+
+  it("changeEmail returns to email step", () => {
+    const { result } = renderHook(() =>
+      useSignInController("/dashboard", { emailFirst: true, initialStep: "credentials" }),
+    );
+
+    act(() => {
+      result.current.changeEmail();
+    });
+
+    expect(result.current.step).toBe("email");
+    expect(result.current.linkSent).toBe(false);
   });
 });

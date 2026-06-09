@@ -1,0 +1,193 @@
+"use client";
+
+import { RHFPasswordField } from "@/components/auth/primitives/password-field";
+import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import type { SignInFormValues } from "@/lib/auth/schemas";
+import { Button } from "@auction/ui/components/button";
+import Link from "next/link";
+import { useEffect } from "react";
+import type { Control } from "react-hook-form";
+
+type SignInCredentialsStepProps = {
+  control: Control<SignInFormValues>;
+  email: string;
+  forgotPasswordHref: string;
+  loading: boolean;
+  showCaptcha: boolean;
+  turnstileSiteKey: string | null;
+  onTurnstileToken: (token: string) => void;
+  onTurnstileExpire: () => void;
+  onChangeEmail: () => void;
+  linkSent: boolean;
+  linkCooldown: number;
+  magicLinkLoading: boolean;
+  magicLinkError: string | null;
+  magicLinkTurnstileReady: boolean;
+  onMagicLinkTurnstileToken: (token: string) => void;
+  onMagicLinkTurnstileExpire: () => void;
+  onRequestMagicLink: () => void;
+  onResendMagicLink: () => void;
+  sellIntent?: boolean;
+  sellRegisterHref?: string;
+};
+
+export function SignInCredentialsStep({
+  control,
+  email,
+  forgotPasswordHref,
+  loading,
+  showCaptcha,
+  turnstileSiteKey,
+  onTurnstileToken,
+  onTurnstileExpire,
+  onChangeEmail,
+  linkSent,
+  linkCooldown,
+  magicLinkLoading,
+  magicLinkError,
+  magicLinkTurnstileReady,
+  onMagicLinkTurnstileToken,
+  onMagicLinkTurnstileExpire,
+  onRequestMagicLink,
+  onResendMagicLink,
+  sellIntent = false,
+  sellRegisterHref,
+}: SignInCredentialsStepProps) {
+  useEffect(() => {
+    const el = document.querySelector<HTMLInputElement>('input[autocomplete="current-password"]');
+    el?.focus();
+  }, []);
+
+  if (linkSent) {
+    return (
+      <div className="flex w-full flex-col gap-8">
+        {magicLinkError ? (
+          <output className="block font-footer-links text-sm text-error" aria-live="polite">
+            {magicLinkError}
+          </output>
+        ) : null}
+        <output
+          className="block font-footer-links text-sm leading-relaxed text-on-surface"
+          aria-live="polite"
+        >
+          If we find an account for <span className="font-medium">{email}</span>, we&apos;ll email a
+          secure sign-in link. Links expire in 15 minutes.
+        </output>
+        {turnstileSiteKey ? (
+          <TurnstileWidget
+            siteKey={turnstileSiteKey}
+            onToken={onMagicLinkTurnstileToken}
+            onClear={onMagicLinkTurnstileExpire}
+          />
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-primary/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => void onResendMagicLink()}
+          disabled={linkCooldown > 0 || magicLinkLoading || !magicLinkTurnstileReady}
+        >
+          {linkCooldown > 0 ? `Resend available in ${linkCooldown}s` : "Resend sign-in link"}
+        </Button>
+        <button
+          type="button"
+          className="font-footer-links text-sm text-primary underline-offset-2 hover:underline"
+          onClick={onChangeEmail}
+        >
+          Use a different email
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+          Email
+        </span>
+        <div className="flex items-center justify-between gap-4">
+          <span className="font-footer-links text-sm text-on-surface">{email}</span>
+          <button
+            type="button"
+            className="shrink-0 font-footer-links text-sm font-medium text-primary underline-offset-2 hover:underline"
+            onClick={onChangeEmail}
+          >
+            Change
+          </button>
+        </div>
+      </div>
+      <RHFPasswordField
+        control={control}
+        name="password"
+        label="Password"
+        autoComplete="current-password"
+      />
+      {showCaptcha && turnstileSiteKey ? (
+        <div className="flex flex-col gap-2">
+          <p className="font-footer-links text-sm text-on-surface-variant">
+            For your security, complete the check below and try again.
+          </p>
+          <TurnstileWidget
+            siteKey={turnstileSiteKey}
+            onToken={onTurnstileToken}
+            onClear={onTurnstileExpire}
+          />
+        </div>
+      ) : null}
+      <div className="flex justify-end">
+        <Link
+          href={forgotPasswordHref}
+          className="min-h-[44px] content-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
+        >
+          Forgot password?
+        </Link>
+      </div>
+      {turnstileSiteKey ? (
+        <TurnstileWidget
+          siteKey={turnstileSiteKey}
+          onToken={onMagicLinkTurnstileToken}
+          onClear={onMagicLinkTurnstileExpire}
+        />
+      ) : null}
+      {magicLinkError ? (
+        <output className="block font-footer-links text-sm text-error" aria-live="polite">
+          {magicLinkError}
+        </output>
+      ) : null}
+      <div className="flex flex-col gap-4">
+        {sellIntent ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <AuthSubmitButton loading={loading} loadingLabel="Signing in…" className="flex-1">
+              Sign In
+            </AuthSubmitButton>
+            {sellRegisterHref ? (
+              <Button
+                asChild
+                variant="cta"
+                size="lg"
+                className="min-h-[44px] flex-1 font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+              >
+                <Link href={sellRegisterHref}>Create an account</Link>
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
+            Sign In
+          </AuthSubmitButton>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-primary/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => void onRequestMagicLink()}
+          disabled={magicLinkLoading || !magicLinkTurnstileReady}
+        >
+          {magicLinkLoading ? "Sending…" : "Email me a sign-in link instead"}
+        </Button>
+      </div>
+    </>
+  );
+}
