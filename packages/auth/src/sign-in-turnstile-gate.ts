@@ -11,15 +11,26 @@ export type SignInGateRedis = {
   del(key: string): Promise<number>;
 };
 
+function authPathname(req: Request): string | null {
+  try {
+    return new URL(req.url).pathname;
+  } catch {
+    return null;
+  }
+}
+
 export function isSignInEmailPost(req: Request): boolean {
   if (req.method !== "POST") return false;
-  let pathname: string;
-  try {
-    pathname = new URL(req.url).pathname;
-  } catch {
-    return false;
-  }
+  const pathname = authPathname(req);
+  if (!pathname) return false;
   return pathname.endsWith("/sign-in/email") || pathname.includes("/sign-in/email");
+}
+
+export function isSignInMagicLinkPost(req: Request): boolean {
+  if (req.method !== "POST") return false;
+  const pathname = authPathname(req);
+  if (!pathname) return false;
+  return pathname.endsWith("/sign-in/magic-link") || pathname.includes("/sign-in/magic-link");
 }
 
 function failureKeyForEmail(email: string): string {
@@ -59,7 +70,9 @@ export async function runSignInTurnstileGate(opts: {
 }): Promise<Response> {
   const { incoming, redis, turnstileSecret, authHandler, onEmailPasswordSignInSuccess } = opts;
 
-  if (!isSignInEmailPost(incoming)) {
+  const isEmailSignIn = isSignInEmailPost(incoming);
+  const isMagicLinkSignIn = isSignInMagicLinkPost(incoming);
+  if (!isEmailSignIn && !isMagicLinkSignIn) {
     return authHandler(incoming);
   }
 
@@ -90,10 +103,18 @@ export async function runSignInTurnstileGate(opts: {
     duplex: "half",
   } as RequestInit & { duplex: "half" });
 
-  if (emailForKey && secret) {
-    const key = failureKeyForEmail(emailForKey);
-    const n = Number.parseInt((await redis.get(key)) ?? "0", 10);
-    if (n >= FAIL_THRESHOLD) {
+  const requireTurnstileNow =
+    Boolean(secret) && (isMagicLinkSignIn || (isEmailSignIn && emailForKey));
+
+  if (requireTurnstileNow && secret) {
+    const progressiveOnly = isEmailSignIn && !isMagicLinkSignIn;
+    let needsCaptcha = !progressiveOnly;
+    if (progressiveOnly && emailForKey) {
+      const key = failureKeyForEmail(emailForKey);
+      const n = Number.parseInt((await redis.get(key)) ?? "0", 10);
+      needsCaptcha = n >= FAIL_THRESHOLD;
+    }
+    if (needsCaptcha) {
       if (!turnstileToken) {
         return jsonResponse(
           400,
@@ -118,7 +139,7 @@ export async function runSignInTurnstileGate(opts: {
 
   const res = await authHandler(forwardReq);
 
-  if (emailForKey) {
+  if (emailForKey && isEmailSignIn) {
     const key = failureKeyForEmail(emailForKey);
     if (res.status === 401) {
       const count = await redis.incr(key);

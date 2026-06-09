@@ -6,6 +6,9 @@ import TwoFactorDisabledEmail, {
 import TwoFactorEnabledEmail, {
   subject as twoFactorEnabledSubject,
 } from "./templates/2fa-enabled.js";
+import AccountActivation, {
+  subject as accountActivationSubject,
+} from "./templates/account-activation.js";
 import AccountSuspendedEmail, {
   subject as accountSuspendedSubject,
 } from "./templates/account-suspended.js";
@@ -86,6 +89,7 @@ import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
+import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
 import SubmissionApprovedEmail, {
   subject as submissionApprovedSubject,
 } from "./templates/submission-approved.js";
@@ -114,6 +118,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   },
   welcome: { subject: welcomeSubject, component: (vars) => <WelcomeEmail {...vars} /> },
   "verify-email": { subject: verifyEmailSubject, component: (vars) => <VerifyEmail {...vars} /> },
+  "account-activation": {
+    subject: accountActivationSubject,
+    component: (vars) => <AccountActivation {...vars} />,
+  },
+  "sign-in-link": {
+    subject: signInLinkSubject,
+    component: (vars) => <SignInLink {...vars} />,
+  },
   "reset-password": {
     subject: resetPasswordSubject,
     component: (vars) => <ResetPassword {...vars} />,

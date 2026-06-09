@@ -256,6 +256,9 @@ importers:
       '@auction/api':
         specifier: workspace:*
         version: link:../api
+      '@auction/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding

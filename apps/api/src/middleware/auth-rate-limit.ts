@@ -20,6 +20,10 @@ export const RATE_LIMIT_CONFIG = {
   totpLockoutSec: 30 * 60,
   confirmEmailChangeWindowSec: 60,
   confirmEmailChangeMax: 10,
+  magicLinkIpWindowSec: 60,
+  magicLinkIpMax: 5,
+  magicLinkEmailWindowSec: 60 * 60,
+  magicLinkEmailMax: 3,
 } as const;
 
 async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
@@ -124,6 +128,49 @@ export function createConfirmEmailChangeRateLimitMiddleware(redis: Redis) {
     const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.confirmEmailChangeWindowSec);
     if (n > RATE_LIMIT_CONFIG.confirmEmailChangeMax) {
       return c.json({ error: "Too many requests" }, 429);
+    }
+    await next();
+  });
+}
+
+/** Rate-limit `POST /api/auth/sign-in/magic-link` (Better Auth handler). */
+export function createMagicLinkRateLimitMiddleware(redis: Redis) {
+  return createMiddleware(async (c, next) => {
+    if (c.req.method !== "POST" || !c.req.path.endsWith("/sign-in/magic-link")) {
+      await next();
+      return;
+    }
+
+    const ip =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const ipKey = `rl:auth:magic-link-ip:${ip}`;
+    const ipCount = await slidingIncrement(redis, ipKey, RATE_LIMIT_CONFIG.magicLinkIpWindowSec);
+    if (ipCount > RATE_LIMIT_CONFIG.magicLinkIpMax) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+
+    let body: { email?: unknown } = {};
+    try {
+      body = (await c.req.raw.clone().json()) as { email?: unknown };
+    } catch {
+      await next();
+      return;
+    }
+    if (typeof body.email === "string") {
+      const normalised = body.email.trim().toLowerCase();
+      if (normalised.length > 0 && normalised.length <= 254) {
+        const emailKey = `rl:auth:magic-link-email:${normalised}`;
+        const emailCount = await slidingIncrement(
+          redis,
+          emailKey,
+          RATE_LIMIT_CONFIG.magicLinkEmailWindowSec,
+        );
+        if (emailCount > RATE_LIMIT_CONFIG.magicLinkEmailMax) {
+          return c.json({ error: "Too many requests" }, 429);
+        }
+      }
     }
     await next();
   });

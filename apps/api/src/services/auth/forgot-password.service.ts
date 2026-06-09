@@ -3,6 +3,7 @@ import { account, user } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import type { Container } from "../../container.js";
 import type { AuthAuditPublisher } from "../auth-audit.publisher.js";
+import { requestMagicLinkForEmail } from "./request-magic-link.service.js";
 
 const SUPPORTED_SOCIAL_PROVIDERS = new Set(["google", "apple"]);
 
@@ -65,5 +66,14 @@ export async function runForgotPasswordSideEffects(args: {
         userName: found.name,
       },
     });
+    return;
   }
+
+  const issuerBaseUrl = container.env.OIDC_ISSUER_URL ?? container.env.API_PUBLIC_URL;
+  await requestMagicLinkForEmail({
+    auth: container.auth as never,
+    issuerBaseUrl,
+    email: found.email,
+    webOrigin,
+  });
 }

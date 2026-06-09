@@ -12,13 +12,16 @@ import {
 import type { IEmailService } from "@auction/email";
 import type { BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { twoFactor } from "better-auth/plugins";
+import { magicLink, twoFactor } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { oidcProvider } from "better-auth/plugins/oidc-provider";
+import { and, eq } from "drizzle-orm";
 import { wrapAuthDatabaseAdapter } from "./adapter-at-rest.js";
 import { AUTH_TIMINGS } from "./auth-timings.js";
 import type { EnvelopeCrypto } from "./crypto/envelope.js";
 import { createJwksAdapter } from "./jwks.js";
+import { pickMagicLinkTemplate } from "./magic-link-email.js";
+import { buildMagicLinkVerifyPlugin } from "./magic-link-verify-hooks.js";
 
 type RevokeSessions = (userId: string) => Promise<number>;
 
@@ -50,9 +53,14 @@ export function buildJwtAndOidcPlugins(options: {
   webOrigin?: string | undefined;
   jwtAudience: string;
   envelope?: EnvelopeCrypto | undefined;
+  email?: IEmailService | undefined;
+  onEmailVerified?:
+    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
+    | undefined;
 }): BetterAuthPlugin[] {
   const jwksAdapter = createJwksAdapter(options.db, options.envelope);
-  const { issuer, webOrigin, jwtAudience } = options;
+  const { db, issuer, webOrigin, jwtAudience, email, onEmailVerified } = options;
+  const webBase = (webOrigin ?? "https://lax.bid").replace(/\/$/, "");
   return [
     jwt({
       jwks: {
@@ -101,6 +109,60 @@ export function buildJwtAndOidcPlugins(options: {
       }),
     }),
     twoFactor({ issuer: "LAX" }),
+    magicLink({
+      disableSignUp: true,
+      storeToken: "hashed",
+      expiresIn: AUTH_TIMINGS.magicLinkExpiresSec,
+      sendMagicLink: async ({ email: recipientEmail, token }, ctx) => {
+        if (!ctx) return;
+        const found = await ctx.context.internalAdapter.findUserByEmail(recipientEmail);
+        const authUser = found?.user;
+        if (!authUser) return;
+        const [cred] = await db
+          .select({ id: account.id })
+          .from(account)
+          .where(and(eq(account.userId, authUser.id), eq(account.providerId, "credential")))
+          .limit(1);
+        const hasPassword = Boolean(cred);
+        const template = pickMagicLinkTemplate(hasPassword);
+        const linkUrl = `${webBase}/auth/activate?token=${encodeURIComponent(token)}`;
+        const expirationMinutes = Math.round(AUTH_TIMINGS.magicLinkExpiresSec / 60);
+        const baseEnqueue = {
+          to: recipientEmail,
+          userId: authUser.id,
+          category: "auth" as const,
+        };
+        email
+          ?.enqueue(
+            template === "sign-in-link"
+              ? {
+                  ...baseEnqueue,
+                  template: "sign-in-link",
+                  vars: {
+                    signInUrl: linkUrl,
+                    userName: authUser.name,
+                    expirationMinutes,
+                  },
+                }
+              : {
+                  ...baseEnqueue,
+                  template: "account-activation",
+                  vars: {
+                    activationUrl: linkUrl,
+                    userName: authUser.name,
+                    expirationMinutes,
+                  },
+                },
+          )
+          .catch((err: unknown) => {
+            console.error(`[auth] enqueue ${template} failed`, {
+              userId: authUser.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
+      },
+    }),
+    buildMagicLinkVerifyPlugin({ webOrigin, onEmailVerified }),
   ];
 }
 

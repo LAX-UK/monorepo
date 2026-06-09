@@ -12,6 +12,7 @@ export const AUTH_ERROR_CODES = [
   "registration_validation",
   "registration_failed",
   "forgot_password_failed",
+  "magic_link_request_failed",
   "reset_password_failed",
   "totp_invalid",
   "two_factor_session_expired",
@@ -58,6 +59,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   registration_validation: "Please check the highlighted fields and try again.",
   registration_failed: "We could not complete registration. Please try again.",
   forgot_password_failed: "Something went wrong. Please try again.",
+  magic_link_request_failed: "We could not send an activation link. Please try again.",
   reset_password_failed: "We could not reset your password. Please request a new link.",
   totp_invalid: "That code is not valid. Try again.",
   two_factor_session_expired:
