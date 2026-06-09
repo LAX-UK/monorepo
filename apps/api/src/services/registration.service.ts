@@ -7,7 +7,7 @@ import type {
   IWelcomeNotifier,
   RegistrationInput,
 } from "./interfaces/registration.js";
-import type { IInvitationConsumption } from "./invitation-consumption.service.js";
+import type { InvitationService } from "./invitation.service.js";
 
 export class RegistrationService implements IRegistrationService {
   constructor(
@@ -15,7 +15,7 @@ export class RegistrationService implements IRegistrationService {
     private readonly emailSignup: IEmailSignupPersister,
     private readonly userProfile: IUserProfilePersister,
     private readonly welcome: IWelcomeNotifier,
-    private readonly invitations: IInvitationConsumption,
+    private readonly invitations: InvitationService,
     private readonly compensator: IRegistrationCompensator,
   ) {}
 
@@ -24,9 +24,8 @@ export class RegistrationService implements IRegistrationService {
     if (!v.ok) {
       return { ok: false as const, message: v.message, status: 400 };
     }
-    let validatedInvite: Awaited<
-      ReturnType<IInvitationConsumption["validateForRegistration"]>
-    > | null = null;
+    let validatedInvite: Awaited<ReturnType<InvitationService["validateForRegistration"]>> | null =
+      null;
     if (input.inviteToken) {
       validatedInvite = await this.invitations.validateForRegistration(
         input.inviteToken,
