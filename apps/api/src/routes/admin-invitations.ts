@@ -40,12 +40,15 @@ export function attachAdminInvitationRoutes(
     requireInvitationsAccess,
     zValidator("query", adminInvitationsListQuerySchema),
     async (c) => {
-      const { limit, offset } = c.req.valid("query");
-      const { rows, total, pendingTotal } = await invitations.listInvitationsForActor(
-        c.get("userId") as string,
+      const { limit, offset, status, q } = c.req.valid("query");
+      const { rows, total, pendingTotal, acceptedTotal } = await invitations.listInvitations(
+        {
+          ...(status !== undefined ? { status } : {}),
+          ...(q !== undefined ? { q } : {}),
+        },
         { limit, offset },
       );
-      return c.json({ data: rows, total, pendingTotal });
+      return c.json({ data: rows, total, pendingTotal, acceptedTotal });
     },
   );
 

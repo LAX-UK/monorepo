@@ -43,8 +43,8 @@ function makeDeps() {
     findPendingByTokenHash: vi.fn().mockResolvedValue(null),
     findPendingPlatformByEmail: vi.fn().mockResolvedValue(null),
     consumeForNewUser: vi.fn(),
-    listAdminCreatedBy: vi.fn().mockResolvedValue([]),
-    countsForActor: vi.fn().mockResolvedValue({ total: 0, pending: 0 }),
+    listAdmin: vi.fn().mockResolvedValue([]),
+    counts: vi.fn().mockResolvedValue({ total: 0, pending: 0, accepted: 0 }),
     updateStatus: vi.fn().mockResolvedValue(undefined),
     markOpenedFirstTouch: vi.fn().mockResolvedValue(undefined),
   } satisfies IUserInvitationRepository;
@@ -208,5 +208,54 @@ describe("InvitationService.revoke/resend (H2: not creator-scoped)", () => {
       expect.objectContaining({ tokenHash: expect.any(String) }),
     );
     expect(deps.email.enqueue).toHaveBeenCalled();
+  });
+
+  it("resend succeeds for expired invitations and resets status to pending", async () => {
+    vi.mocked(deps.invites.findById).mockResolvedValue(
+      makeInviteRow({ status: "expired", openedAt: new Date() }),
+    );
+    const res = await deps.svc.resend({ actorUserId: "actor-1", invitationId: "inv-1" });
+    expect(res.isOk()).toBe(true);
+    expect(deps.invites.updateStatus).toHaveBeenCalledWith(
+      "inv-1",
+      expect.objectContaining({
+        status: "pending",
+        openedAt: null,
+        tokenHash: expect.any(String),
+      }),
+    );
+    expect(deps.email.enqueue).toHaveBeenCalled();
+  });
+
+  it("resend returns 400 for accepted invitations", async () => {
+    vi.mocked(deps.invites.findById).mockResolvedValue(makeInviteRow({ status: "accepted" }));
+    const res = await deps.svc.resend({ actorUserId: "actor-1", invitationId: "inv-1" });
+    expect(res.isErr() && res.error.status).toBe(400);
+  });
+
+  it("resend returns 400 for revoked invitations", async () => {
+    vi.mocked(deps.invites.findById).mockResolvedValue(makeInviteRow({ status: "revoked" }));
+    const res = await deps.svc.resend({ actorUserId: "actor-1", invitationId: "inv-1" });
+    expect(res.isErr() && res.error.status).toBe(400);
+  });
+});
+
+describe("InvitationService.listInvitations", () => {
+  let deps: ReturnType<typeof makeDeps>;
+  beforeEach(() => {
+    deps = makeDeps();
+  });
+
+  it("returns rows and global pending/accepted totals", async () => {
+    vi.mocked(deps.invites.listAdmin).mockResolvedValue([]);
+    vi.mocked(deps.invites.counts).mockResolvedValue({ total: 5, pending: 2, accepted: 3 });
+    const res = await deps.svc.listInvitations({ status: "pending" }, { limit: 10, offset: 0 });
+    expect(res.total).toBe(5);
+    expect(res.pendingTotal).toBe(2);
+    expect(res.acceptedTotal).toBe(3);
+    expect(deps.invites.listAdmin).toHaveBeenCalledWith(
+      { status: "pending" },
+      { limit: 10, offset: 0 },
+    );
   });
 });
