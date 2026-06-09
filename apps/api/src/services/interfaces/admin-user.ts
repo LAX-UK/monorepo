@@ -114,6 +114,31 @@ export type AdminActivityEntry = {
   ipAddress: string | null;
 };
 
+export type AdminUserBidRow = {
+  id: string;
+  lotId: string;
+  lotTitle: string;
+  saleId: string | null;
+  saleTitle: string | null;
+  amount: string;
+  isWinning: boolean;
+  isAutoBid: boolean;
+  placedVia: string | null;
+  createdAt: Date;
+};
+
+export type AdminUserBidListResult = {
+  rows: AdminUserBidRow[];
+  total: number;
+};
+
+export interface IAdminUserBidsReader {
+  listForUser(
+    userId: string,
+    page: { limit: number; offset: number },
+  ): Promise<AdminUserBidListResult>;
+}
+
 export interface IAdminUserReader {
   list(filter: AdminUserListFilter): Promise<AdminUserListResult>;
   getById(id: string): Promise<AdminUserDetail | null>;

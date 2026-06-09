@@ -278,6 +278,12 @@ export interface IAdminUserApplicationService {
     userId: string,
     limit?: number,
   ): Promise<import("./admin-user.js").AdminKycSession[]>;
+  bidsFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    page: { limit: number; offset: number },
+  ): Promise<import("./admin-user.js").AdminUserBidListResult>;
   bulkSuspendOrUnsuspend(input: {
     actorRole: string;
     actorStaffRole: string | null | undefined;

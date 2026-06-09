@@ -1577,6 +1577,47 @@ export type AdminUserActivityEntry = {
   ipAddress: string | null;
 };
 
+export type AdminUserBidRow = {
+  id: string;
+  lotId: string;
+  lotTitle: string;
+  saleId: string | null;
+  saleTitle: string | null;
+  amount: string;
+  isWinning: boolean;
+  isAutoBid: boolean;
+  placedVia: string | null;
+  createdAt: Date;
+};
+
+export async function getAdminUserBids(
+  userId: string,
+  params: { limit?: number; offset?: number } = {},
+): Promise<{ rows: AdminUserBidRow[]; total: number }> {
+  const qs = new URLSearchParams();
+  qs.set("limit", String(params.limit ?? 25));
+  qs.set("offset", String(params.offset ?? 0));
+  const res = await authedServerFetch(
+    `/admin/users/${encodeURIComponent(userId)}/bids?${qs.toString()}`,
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to load user bids: ${res.status}`);
+  }
+  const body = (await res.json()) as {
+    data: {
+      rows: Array<Omit<AdminUserBidRow, "createdAt"> & { createdAt: string }>;
+      total: number;
+    };
+  };
+  return {
+    total: body.data.total,
+    rows: body.data.rows.map((row) => ({
+      ...row,
+      createdAt: new Date(row.createdAt),
+    })),
+  };
+}
+
 export async function getAdminUserActivity(
   userId: string,
   limit = 20,

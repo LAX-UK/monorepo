@@ -1,4 +1,7 @@
 import {
+  CLIENT_ACTIVITY_ACCESS,
+  CLIENT_BIDS_ACCESS,
+  CLIENT_KYC_ACCESS,
   type CapabilityRequirement,
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
@@ -14,6 +17,7 @@ import type {
   AdminKycSession,
   AdminUserListFilter,
   IAdminUserActivityReader,
+  IAdminUserBidsReader,
   IAdminUserKycReader,
   IAdminUserReader,
   IAdminUserRoleManager,
@@ -38,6 +42,7 @@ export class AdminUserService {
     private readonly roles: IAdminUserRoleManager,
     private readonly suspender: IAdminUserSuspender,
     private readonly activity: IAdminUserActivityReader,
+    private readonly bids: IAdminUserBidsReader,
     private readonly kyc?: IAdminUserKycReader,
   ) {}
 
@@ -132,7 +137,7 @@ export class AdminUserService {
     userId: string,
     limit: number,
   ) {
-    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
+    assertAdminAccess(actorRole, actorStaffRole, CLIENT_ACTIVITY_ACCESS);
     return this.activity.getRecentSessions(userId, limit);
   }
 
@@ -142,8 +147,18 @@ export class AdminUserService {
     userId: string,
     limit?: number,
   ): Promise<AdminKycSession[]> {
-    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
+    assertAdminAccess(actorRole, actorStaffRole, CLIENT_KYC_ACCESS);
     if (!this.kyc) return Promise.resolve([]);
     return this.kyc.listSessionsForUser(userId, limit);
+  }
+
+  bidsFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    page: { limit: number; offset: number },
+  ) {
+    assertAdminAccess(actorRole, actorStaffRole, CLIENT_BIDS_ACCESS);
+    return this.bids.listForUser(userId, page);
   }
 }
