@@ -13,6 +13,21 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("Confirm this email address");
   });
 
+  it("renders sign-in-link for returning users with a password", async () => {
+    const signInUrl = "https://lax.bid/auth/activate?token=abc";
+    const rendered = await renderEmail("sign-in-link", {
+      signInUrl,
+      userName: "Ada",
+      expirationMinutes: 15,
+    });
+
+    expect(rendered.subject).toBe("Your London Art Exchange sign-in link");
+    expect(rendered.html).toContain("Sign in to your account");
+    expect(rendered.html).toContain("Sign in");
+    expect(rendered.text).toContain(signInUrl);
+    expect(rendered.text).not.toContain("activate your account");
+  });
+
   it("renders payment-invoice with bill-to block", async () => {
     const rendered = await renderEmail("payment-invoice", {
       userName: "Ada",
