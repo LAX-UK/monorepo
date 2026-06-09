@@ -89,6 +89,7 @@ import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
+import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
 import SubmissionApprovedEmail, {
   subject as submissionApprovedSubject,
 } from "./templates/submission-approved.js";
@@ -120,6 +121,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "account-activation": {
     subject: accountActivationSubject,
     component: (vars) => <AccountActivation {...vars} />,
+  },
+  "sign-in-link": {
+    subject: signInLinkSubject,
+    component: (vars) => <SignInLink {...vars} />,
   },
   "reset-password": {
     subject: resetPasswordSubject,
