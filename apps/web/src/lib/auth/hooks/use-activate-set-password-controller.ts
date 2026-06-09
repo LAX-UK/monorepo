@@ -9,7 +9,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
-export function useActivateSetPasswordController() {
+type UseActivateSetPasswordControllerOptions = {
+  /** When true, the server already gated on password status, so don't block render on the client fetch. */
+  serverConfirmedNoPassword?: boolean;
+};
+
+export function useActivateSetPasswordController(
+  options: UseActivateSetPasswordControllerOptions = {},
+) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedNext = searchParams.get("next");
@@ -41,19 +48,13 @@ export function useActivateSetPasswordController() {
     router.replace(destination);
   }, [router, destination]);
 
-  // Users who already have a password (e.g. re-using an activation link) should not
-  // be asked to set one again — send them straight into the auction once we know.
+  // Client fallback: server should redirect password users before this page renders.
   useEffect(() => {
     if (accountsLoading) return;
     if (state.hasPassword) {
       finish();
-      return;
     }
-    // Repeat login via magic link with a destination: skip optional set-password.
-    if (safeNext) {
-      finish();
-    }
-  }, [accountsLoading, state.hasPassword, safeNext, finish]);
+  }, [accountsLoading, state.hasPassword, finish]);
 
   const onSkip = useCallback(() => {
     finish();
@@ -83,8 +84,6 @@ export function useActivateSetPasswordController() {
     bannerError,
     userEmail: user?.email ?? null,
     /** True while we determine whether the user already has a password. */
-    initializing: accountsLoading,
-    /** When true, user arrived with a post-login destination and was auto-routed. */
-    skippedForNext: Boolean(safeNext && !state.hasPassword && !accountsLoading),
+    initializing: accountsLoading && !options.serverConfirmedNoPassword,
   };
 }

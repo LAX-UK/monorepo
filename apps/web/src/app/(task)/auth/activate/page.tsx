@@ -21,10 +21,10 @@ export default async function ActivateAccountPage({
     <main id="main-content">
       <AuthLayout
         chrome="task"
-        title={token ? "Activate your account" : "Request activation link"}
+        title={token ? "Continue to sign in" : "Request activation link"}
         description={
           token
-            ? "Click below to activate your account. This link expires in 15 minutes and works once."
+            ? "Click below to continue. This link expires in 15 minutes and works once."
             : "Enter your email and we will send a secure sign-in link if your account exists."
         }
       >

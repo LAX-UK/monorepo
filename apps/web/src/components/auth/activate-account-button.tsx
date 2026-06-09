@@ -9,7 +9,7 @@ export function ActivateAccountButton({ token }: { token: string }) {
 
   return (
     <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-      <a href={href}>Activate account</a>
+      <a href={href}>Continue</a>
     </Button>
   );
 }
