@@ -1,12 +1,13 @@
 import type {
   IEmailSignupPersister,
+  IRegistrationCompensator,
   IRegistrationService,
   IRegistrationValidator,
   IUserProfilePersister,
   IWelcomeNotifier,
   RegistrationInput,
 } from "./interfaces/registration.js";
-import type { InvitationService } from "./invitation.service.js";
+import type { IInvitationConsumption } from "./invitation-consumption.service.js";
 
 export class RegistrationService implements IRegistrationService {
   constructor(
@@ -14,7 +15,8 @@ export class RegistrationService implements IRegistrationService {
     private readonly emailSignup: IEmailSignupPersister,
     private readonly userProfile: IUserProfilePersister,
     private readonly welcome: IWelcomeNotifier,
-    private readonly invitations: InvitationService,
+    private readonly invitations: IInvitationConsumption,
+    private readonly compensator: IRegistrationCompensator,
   ) {}
 
   async register(input: RegistrationInput) {
@@ -22,8 +24,9 @@ export class RegistrationService implements IRegistrationService {
     if (!v.ok) {
       return { ok: false as const, message: v.message, status: 400 };
     }
-    let validatedInvite: Awaited<ReturnType<InvitationService["validateForRegistration"]>> | null =
-      null;
+    let validatedInvite: Awaited<
+      ReturnType<IInvitationConsumption["validateForRegistration"]>
+    > | null = null;
     if (input.inviteToken) {
       validatedInvite = await this.invitations.validateForRegistration(
         input.inviteToken,
@@ -48,7 +51,7 @@ export class RegistrationService implements IRegistrationService {
     if (!signup.ok) {
       return { ok: false as const, message: signup.message, status: signup.status ?? 400 };
     }
-    const profile = await this.userProfile.setRegistrationProfile({
+    const profileInput = {
       userId: signup.userId,
       firstName: input.firstName,
       lastName: input.lastName,
@@ -59,12 +62,24 @@ export class RegistrationService implements IRegistrationService {
             ...(input.mobileCountry !== undefined ? { mobileCountry: input.mobileCountry } : {}),
           }
         : {}),
-    });
+    };
+    let profile = await this.userProfile.setRegistrationProfile(profileInput);
+    if (!profile.ok) {
+      // One retry: a transient DB blip is the realistic cause and avoids the compensating delete.
+      profile = await this.userProfile.setRegistrationProfile(profileInput);
+    }
     if (!profile.ok) {
       console.error("[registration] profile columns not persisted after signup", {
         userId: signup.userId,
         message: profile.message,
       });
+      // Compensate so the email is reusable instead of orphaned ("already registered").
+      const compensated = await this.compensator.deleteOrphanedUser(signup.userId);
+      if (!compensated.ok) {
+        console.error("[registration] orphaned auth user left behind after failed compensation", {
+          userId: signup.userId,
+        });
+      }
       return {
         ok: false as const,
         message: "Registration could not be completed. Please try again.",

@@ -48,6 +48,7 @@ export function SignUpForm({
     loading,
     bannerError,
     turnstileSiteKey,
+    turnstileReady,
     onTurnstileToken,
     onTurnstileExpire,
   } = useSignUpController(controllerOpts);
@@ -126,7 +127,11 @@ export function SignUpForm({
           </div>
 
           <div className="flex flex-col gap-6">
-            <AuthSubmitButton loading={loading} loadingLabel="Signing up…">
+            <AuthSubmitButton
+              loading={loading}
+              loadingLabel="Signing up…"
+              disabled={!turnstileReady}
+            >
               Sign Up
             </AuthSubmitButton>
             <AuthFooterLink prefix="Already have an account?" linkText="Log in" href={loginHref} />

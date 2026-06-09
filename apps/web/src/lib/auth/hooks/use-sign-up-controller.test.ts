@@ -22,8 +22,9 @@ vi.mock("@/lib/analytics/events", () => ({
   trackSignUp: vi.fn(),
 }));
 
+let mockSiteKey: string | undefined;
 vi.mock("@/lib/auth/turnstile-site-key", () => ({
-  turnstileSiteKey: () => undefined,
+  turnstileSiteKey: () => mockSiteKey,
 }));
 
 describe("useSignUpController", () => {
@@ -43,5 +44,27 @@ describe("useSignUpController", () => {
     expect(push).toHaveBeenCalledWith(
       expect.stringMatching(/\/register\/verify-pending\?.*email=ada%40example\.com/),
     );
+  });
+
+  it("turnstileReady is true when no site key is configured", () => {
+    mockSiteKey = undefined;
+    const { result } = renderHook(() => useSignUpController());
+    expect(result.current.turnstileReady).toBe(true);
+  });
+
+  it("turnstileReady is false until the widget yields a token, then true", () => {
+    mockSiteKey = "site-key";
+    const { result } = renderHook(() => useSignUpController());
+    expect(result.current.turnstileReady).toBe(false);
+
+    act(() => {
+      result.current.onTurnstileToken("ts-token");
+    });
+    expect(result.current.turnstileReady).toBe(true);
+
+    act(() => {
+      result.current.onTurnstileExpire();
+    });
+    expect(result.current.turnstileReady).toBe(false);
   });
 });
