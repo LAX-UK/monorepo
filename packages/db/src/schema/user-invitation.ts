@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { user, userStaffRoleEnum } from "./auth.js";
 import { emailOutbox } from "./email.js";
 import { legalEntity } from "./legal-entities.js";
@@ -44,6 +44,10 @@ export const userInvitation = pgTable(
     index("user_invitation_email_idx").on(table.email),
     index("user_invitation_created_by_idx").on(table.createdByUserId),
     index("user_invitation_target_legal_entity_idx").on(table.targetLegalEntityId),
+    // At most one pending *platform* invitation per email (entity invites excluded).
+    uniqueIndex("user_invitation_pending_platform_email_uidx")
+      .on(sql`lower(${table.email})`)
+      .where(sql`status = 'pending' AND target_legal_entity_id IS NULL`),
   ],
 );
 

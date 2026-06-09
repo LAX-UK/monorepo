@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { IUserRepository } from "../services/interfaces/repositories.js";
 
 export class DrizzleUserRepository implements IUserRepository {
@@ -8,6 +8,26 @@ export class DrizzleUserRepository implements IUserRepository {
 
   async findById(id: string) {
     const rows = await this.db.select().from(user).where(eq(user.id, id)).limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      role: row.role,
+      staffRole: row.staffRole ?? null,
+      image: row.image ?? null,
+      hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
+    };
+  }
+
+  async findByEmail(email: string) {
+    const normalized = email.trim().toLowerCase();
+    const rows = await this.db
+      .select()
+      .from(user)
+      .where(sql`lower(${user.email}) = ${normalized}`)
+      .limit(1);
     const row = rows[0];
     if (!row) return null;
     return {

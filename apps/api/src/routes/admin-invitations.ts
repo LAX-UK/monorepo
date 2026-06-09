@@ -1,6 +1,7 @@
 import {
   adminBulkInvitationsBodySchema,
   adminCreateInvitationBodySchema,
+  adminInvitationsListQuerySchema,
   invitationIdUuidParamSchema,
   invitationPreviewQuerySchema,
 } from "@auction/validators";
@@ -34,10 +35,19 @@ export function attachAdminInvitationRoutes(
     },
   );
 
-  r.get("/invitations", requireInvitationsAccess, async (c) => {
-    const data = await invitations.listInvitationsForActor(c.get("userId") as string);
-    return c.json({ data });
-  });
+  r.get(
+    "/invitations",
+    requireInvitationsAccess,
+    zValidator("query", adminInvitationsListQuerySchema),
+    async (c) => {
+      const { limit, offset } = c.req.valid("query");
+      const { rows, total, pendingTotal } = await invitations.listInvitationsForActor(
+        c.get("userId") as string,
+        { limit, offset },
+      );
+      return c.json({ data: rows, total, pendingTotal });
+    },
+  );
 
   r.post(
     "/invitations/bulk",
