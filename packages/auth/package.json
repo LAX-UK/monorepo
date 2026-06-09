@@ -35,6 +35,7 @@
     "@auction/db": "workspace:*",
     "@auction/email": "workspace:^",
     "@auction/types": "workspace:*",
+    "@better-auth/utils": "0.4.0",
     "better-auth": "^1.6.9",
     "drizzle-orm": "^0.41.0",
     "jose": "^6.2.3",

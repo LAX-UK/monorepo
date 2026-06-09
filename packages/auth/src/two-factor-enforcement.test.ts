@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildTwoFactorChallengeUrl,
   buildTwoFactorEnforcementAfterHook,
   enforceTwoFactorOnNewSession,
+  extractNextFromCallbackUrl,
   isTwoFactorExemptPath,
 } from "./two-factor-enforcement.js";
 
@@ -34,6 +36,42 @@ describe("isTwoFactorExemptPath", () => {
   });
 });
 
+describe("extractNextFromCallbackUrl", () => {
+  it("extracts a safe relative next from an absolute callback URL", () => {
+    expect(
+      extractNextFromCallbackUrl("https://lax.bid/auth/activate/set-password?next=%2Flots%2Fabc"),
+    ).toBe("/lots/abc");
+  });
+
+  it("extracts from a relative callback URL", () => {
+    expect(extractNextFromCallbackUrl("/auth/activate/set-password?next=%2Fdashboard")).toBe(
+      "/dashboard",
+    );
+  });
+
+  it("rejects unsafe next values", () => {
+    expect(extractNextFromCallbackUrl("https://lax.bid/cb?next=https%3A%2F%2Fevil.com")).toBeNull();
+    expect(extractNextFromCallbackUrl("https://lax.bid/cb?next=%2F%2Fevil.com")).toBeNull();
+  });
+
+  it("returns null without a callback or next", () => {
+    expect(extractNextFromCallbackUrl(null)).toBeNull();
+    expect(extractNextFromCallbackUrl("https://lax.bid/auth/activate/set-password")).toBeNull();
+  });
+});
+
+describe("buildTwoFactorChallengeUrl", () => {
+  it("builds the bare challenge URL", () => {
+    expect(buildTwoFactorChallengeUrl("https://lax.bid")).toBe("https://lax.bid/login/two-factor");
+  });
+
+  it("preserves a safe next from the callback URL", () => {
+    expect(
+      buildTwoFactorChallengeUrl("https://lax.bid/", "https://lax.bid/cb?next=%2Flots%2F1"),
+    ).toBe("https://lax.bid/login/two-factor?next=%2Flots%2F1");
+  });
+});
+
 describe("buildTwoFactorEnforcementAfterHook", () => {
   it("matches non-exempt paths only", () => {
     const hook = buildTwoFactorEnforcementAfterHook({ webOrigin: "https://lax.bid" });
@@ -53,9 +91,11 @@ function baseDeps(overrides: Partial<Parameters<typeof enforceTwoFactorOnNewSess
   return {
     user: { id: "u1", email: "a@b.com", name: "A", twoFactorEnabled: false },
     sessionToken: "tok",
-    loginUrl: "https://lax.bid/login?twofa_required=1",
+    challengeUrl: "https://lax.bid/login/two-factor",
+    isTrustedDevice: vi.fn().mockResolvedValue(false),
     deleteSession: vi.fn().mockResolvedValue(undefined),
     deleteCookie: vi.fn(),
+    createPendingChallenge: vi.fn().mockResolvedValue(undefined),
     redirect,
     ...overrides,
   };
@@ -67,6 +107,7 @@ describe("enforceTwoFactorOnNewSession", () => {
     await enforceTwoFactorOnNewSession(deps);
     expect(deps.deleteSession).not.toHaveBeenCalled();
     expect(deps.deleteCookie).not.toHaveBeenCalled();
+    expect(deps.createPendingChallenge).not.toHaveBeenCalled();
   });
 
   it("non-2FA user: keeps the session, no redirect", async () => {
@@ -77,15 +118,27 @@ describe("enforceTwoFactorOnNewSession", () => {
     expect(deps.redirect).not.toHaveBeenCalled();
   });
 
-  it("2FA user: revokes session, clears cookie, redirects", async () => {
+  it("2FA user on a trusted device: keeps the session, no challenge", async () => {
+    const deps = baseDeps({
+      user: { id: "u1", email: "a@b.com", name: "A", twoFactorEnabled: true },
+      isTrustedDevice: vi.fn().mockResolvedValue(true),
+    });
+    await enforceTwoFactorOnNewSession(deps);
+    expect(deps.deleteSession).not.toHaveBeenCalled();
+    expect(deps.createPendingChallenge).not.toHaveBeenCalled();
+    expect(deps.redirect).not.toHaveBeenCalled();
+  });
+
+  it("2FA user: revokes session, creates pending challenge, redirects to the TOTP page", async () => {
     const deps = baseDeps({
       user: { id: "u1", email: "a@b.com", name: "A", twoFactorEnabled: true },
     });
     await expect(enforceTwoFactorOnNewSession(deps)).rejects.toThrow(
-      "redirect:https://lax.bid/login?twofa_required=1",
+      "redirect:https://lax.bid/login/two-factor",
     );
     expect(deps.deleteSession).toHaveBeenCalledWith("tok");
     expect(deps.deleteCookie).toHaveBeenCalledTimes(1);
+    expect(deps.createPendingChallenge).toHaveBeenCalledTimes(1);
   });
 
   it("2FA user: retries revoke once on failure but still redirects", async () => {
@@ -100,5 +153,16 @@ describe("enforceTwoFactorOnNewSession", () => {
     await expect(enforceTwoFactorOnNewSession(deps)).rejects.toThrow("redirect:");
     expect(deleteSession).toHaveBeenCalledTimes(2);
     expect(deps.deleteCookie).toHaveBeenCalledTimes(1);
+  });
+
+  it("still redirects when pending challenge creation fails (degrades to /login bounce)", async () => {
+    const deps = baseDeps({
+      user: { id: "u1", email: "a@b.com", name: "A", twoFactorEnabled: true },
+      createPendingChallenge: vi.fn().mockRejectedValue(new Error("db down")),
+    });
+    await expect(enforceTwoFactorOnNewSession(deps)).rejects.toThrow(
+      "redirect:https://lax.bid/login/two-factor",
+    );
+    expect(deps.deleteSession).toHaveBeenCalledWith("tok");
   });
 });
