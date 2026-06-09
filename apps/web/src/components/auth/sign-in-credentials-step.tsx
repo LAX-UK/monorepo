@@ -2,6 +2,7 @@
 
 import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
+import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import type { SignInFormValues } from "@/lib/auth/schemas";
 import { Button } from "@auction/ui/components/button";
@@ -12,6 +13,7 @@ import type { Control } from "react-hook-form";
 type SignInCredentialsStepProps = {
   control: Control<SignInFormValues>;
   email: string;
+  next: string;
   forgotPasswordHref: string;
   loading: boolean;
   showCaptcha: boolean;
@@ -35,6 +37,7 @@ type SignInCredentialsStepProps = {
 export function SignInCredentialsStep({
   control,
   email,
+  next,
   forgotPasswordHref,
   loading,
   showCaptcha,
@@ -103,6 +106,16 @@ export function SignInCredentialsStep({
 
   return (
     <>
+      <div className="flex flex-col gap-6">
+        <SocialSignInButtons next={next} />
+        <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
+          <span className="h-px flex-1 bg-outline-variant/40" />
+          <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+            or
+          </span>
+          <span className="h-px flex-1 bg-outline-variant/40" />
+        </div>
+      </div>
       <div className="flex flex-col gap-2">
         <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           Email

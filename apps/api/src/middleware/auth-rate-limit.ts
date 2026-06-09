@@ -24,6 +24,18 @@ export const RATE_LIMIT_CONFIG = {
   magicLinkIpMax: 5,
   magicLinkEmailWindowSec: 60 * 60,
   magicLinkEmailMax: 3,
+  inviteWindowSec: 60 * 60,
+  inviteMax: 30,
+  invitePreviewWindowSec: 60,
+  invitePreviewMax: 20,
+  registerIpWindowSec: 60 * 60,
+  registerIpMax: 10,
+  registerEmailWindowSec: 60 * 60,
+  registerEmailMax: 3,
+  sendVerificationIpWindowSec: 60,
+  sendVerificationIpMax: 5,
+  sendVerificationEmailWindowSec: 60 * 60,
+  sendVerificationEmailMax: 3,
 } as const;
 
 async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
@@ -170,6 +182,129 @@ export function createMagicLinkRateLimitMiddleware(redis: Redis) {
         if (emailCount > RATE_LIMIT_CONFIG.magicLinkEmailMax) {
           return c.json({ error: "Too many requests" }, 429);
         }
+      }
+    }
+    await next();
+  });
+}
+
+/**
+ * Rate-limit invitation creation/resend per acting admin (falls back to IP).
+ * Prevents an over-eager or compromised admin from email-bombing via invites.
+ */
+export function createInviteRateLimitMiddleware(redis: Redis) {
+  return createMiddleware<{
+    Variables: { userId?: string };
+  }>(async (c, next) => {
+    const actorId = c.get("userId");
+    const ip =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const identity = actorId ? `u:${actorId}` : `ip:${ip}`;
+    const key = `rl:invite:${identity}`;
+    const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.inviteWindowSec);
+    if (n > RATE_LIMIT_CONFIG.inviteMax) {
+      return c.json({ error: "Too many invitations. Try again later." }, 429);
+    }
+    await next();
+  });
+}
+
+/**
+ * Rate-limit the public invitation `/preview` endpoint per IP. Tokens are 256-bit
+ * (enumeration is already infeasible); this throttles probing/scraping attempts.
+ */
+export function createInvitePreviewRateLimitMiddleware(redis: Redis) {
+  return createMiddleware(async (c, next) => {
+    const ip =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const key = `rl:invite-preview:${ip}`;
+    const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.invitePreviewWindowSec);
+    if (n > RATE_LIMIT_CONFIG.invitePreviewMax) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+    await next();
+  });
+}
+
+async function emailFromJsonBody(req: Request): Promise<string | null> {
+  let body: { email?: unknown } = {};
+  try {
+    body = (await req.clone().json()) as { email?: unknown };
+  } catch {
+    return null;
+  }
+  if (typeof body.email !== "string") return null;
+  const normalised = body.email.trim().toLowerCase();
+  if (normalised.length === 0 || normalised.length > 254) return null;
+  return normalised;
+}
+
+/** Rate-limit `POST /users/register` — per IP and per target email. */
+export function createRegisterRateLimitMiddleware(redis: Redis) {
+  return createMiddleware(async (c, next) => {
+    if (c.req.method !== "POST") {
+      await next();
+      return;
+    }
+    const ip =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const ipKey = `rl:register:ip:${ip}`;
+    const ipCount = await slidingIncrement(redis, ipKey, RATE_LIMIT_CONFIG.registerIpWindowSec);
+    if (ipCount > RATE_LIMIT_CONFIG.registerIpMax) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+    const email = await emailFromJsonBody(c.req.raw);
+    if (email) {
+      const emailKey = `rl:register:email:${email}`;
+      const emailCount = await slidingIncrement(
+        redis,
+        emailKey,
+        RATE_LIMIT_CONFIG.registerEmailWindowSec,
+      );
+      if (emailCount > RATE_LIMIT_CONFIG.registerEmailMax) {
+        return c.json({ error: "Too many requests" }, 429);
+      }
+    }
+    await next();
+  });
+}
+
+/** Rate-limit `POST /api/auth/send-verification-email` (Better Auth handler) — per IP and per email. */
+export function createSendVerificationRateLimitMiddleware(redis: Redis) {
+  return createMiddleware(async (c, next) => {
+    if (c.req.method !== "POST" || !c.req.path.endsWith("/send-verification-email")) {
+      await next();
+      return;
+    }
+    const ip =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const ipKey = `rl:auth:send-verification-ip:${ip}`;
+    const ipCount = await slidingIncrement(
+      redis,
+      ipKey,
+      RATE_LIMIT_CONFIG.sendVerificationIpWindowSec,
+    );
+    if (ipCount > RATE_LIMIT_CONFIG.sendVerificationIpMax) {
+      return c.json({ error: "Too many requests" }, 429);
+    }
+    const email = await emailFromJsonBody(c.req.raw);
+    if (email) {
+      const emailKey = `rl:auth:send-verification-email:${email}`;
+      const emailCount = await slidingIncrement(
+        redis,
+        emailKey,
+        RATE_LIMIT_CONFIG.sendVerificationEmailWindowSec,
+      );
+      if (emailCount > RATE_LIMIT_CONFIG.sendVerificationEmailMax) {
+        return c.json({ error: "Too many requests" }, 429);
       }
     }
     await next();

@@ -84,6 +84,7 @@ export function useSignUpController(opts?: {
     bannerError,
     lastErrorCode,
     turnstileSiteKey: siteKey,
+    turnstileReady: !needsTurnstile || Boolean(turnstileToken),
     onTurnstileToken,
     onTurnstileExpire,
   };

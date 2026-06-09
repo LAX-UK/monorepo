@@ -359,6 +359,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
         <SignInCredentialsStep
           control={form.control}
           email={emailValue}
+          next={next}
           forgotPasswordHref={forgotPasswordHref}
           loading={loading}
           showCaptcha={showCaptcha}
@@ -410,6 +411,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           <SignInCredentialsStep
             control={form.control}
             email={emailValue}
+            next={next}
             forgotPasswordHref={forgotPasswordHref}
             loading={loading}
             showCaptcha={showCaptcha}
