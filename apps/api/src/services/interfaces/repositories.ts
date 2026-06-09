@@ -235,6 +235,8 @@ export type UserProfileRow = {
 
 export interface IUserRepository {
   findById(id: string): Promise<UserProfileRow | null>;
+  /** Case-insensitive email lookup (invitation duplicate checks). */
+  findByEmail(email: string): Promise<UserProfileRow | null>;
   listIdsByRole(role: string): Promise<string[]>;
   /** Staff user ids that should receive new-item-submission notifications (appraisal / catalogue / auction). */
   listStaffIdsForSubmissionNotifications(): Promise<string[]>;

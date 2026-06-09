@@ -17,8 +17,11 @@ export class AdminInvitationApplicationService implements IAdminInvitationApplic
     return this.invitations.create(input);
   }
 
-  listInvitationsForActor(actorUserId: string): Promise<InvitationAdminListRow[]> {
-    return this.invitations.listInvitationsForActor(actorUserId);
+  listInvitationsForActor(
+    actorUserId: string,
+    page: { limit: number; offset: number },
+  ): Promise<{ rows: InvitationAdminListRow[]; total: number; pendingTotal: number }> {
+    return this.invitations.listInvitationsForActor(actorUserId, page);
   }
 
   revoke(input: { actorUserId: string; invitationId: string }): Promise<
