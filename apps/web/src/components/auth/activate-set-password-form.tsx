@@ -6,9 +6,16 @@ import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { useActivateSetPasswordController } from "@/lib/auth/hooks/use-activate-set-password-controller";
 import { Button } from "@auction/ui/components/button";
 
-export function ActivateSetPasswordForm() {
+type ActivateSetPasswordFormProps = {
+  /** Server already confirmed the user has no password, so skip the client loading gate. */
+  serverConfirmedNoPassword?: boolean;
+};
+
+export function ActivateSetPasswordForm({
+  serverConfirmedNoPassword = false,
+}: ActivateSetPasswordFormProps = {}) {
   const { form, onSubmit, onSkip, loading, bannerError, userEmail, initializing } =
-    useActivateSetPasswordController();
+    useActivateSetPasswordController({ serverConfirmedNoPassword });
 
   if (initializing) {
     return (
