@@ -12,9 +12,9 @@ import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination
 import { InvitationsMobileCards } from "@/components/admin/people/invitations-mobile-cards";
 import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { invitationsListController } from "@/lib/admin/admin-list-controllers";
-import { getAdminInvitationsPendingCount } from "@/lib/data/http/invitations.server";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminInvitationsPendingCount } from "@/lib/data/http/invitations.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
