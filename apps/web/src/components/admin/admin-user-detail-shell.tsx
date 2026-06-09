@@ -37,6 +37,8 @@ type Props = {
   attentionItems?: readonly UserAttentionItem[];
   railContext?: UserDetailRailContext;
   showContextRail?: boolean;
+  showAccountControls?: boolean;
+  showDangerZone?: boolean;
 };
 
 export function AdminUserDetailShell({
@@ -50,6 +52,8 @@ export function AdminUserDetailShell({
   attentionItems = [],
   railContext,
   showContextRail = true,
+  showAccountControls = true,
+  showDangerZone = true,
 }: Props) {
   const isStaff = user.role === "staff";
   const detailHeaderSticky = false;
@@ -79,13 +83,17 @@ export function AdminUserDetailShell({
               {...(railContext ? { context: railContext } : {})}
             />
           ) : null}
-          <AdminUserAccountControls
-            userId={user.id}
-            role={user.role as UserRole}
-            staffRole={(user.staffRole as UserStaffRole | null) ?? null}
-            isStaff={isStaff}
-          />
-          <AdminUserDangerZone userId={user.id} suspendedAt={user.suspendedAt} />
+          {showAccountControls ? (
+            <AdminUserAccountControls
+              userId={user.id}
+              role={user.role as UserRole}
+              staffRole={(user.staffRole as UserStaffRole | null) ?? null}
+              isStaff={isStaff}
+            />
+          ) : null}
+          {showDangerZone ? (
+            <AdminUserDangerZone userId={user.id} suspendedAt={user.suspendedAt} />
+          ) : null}
         </div>
       }
       railSticky={false}

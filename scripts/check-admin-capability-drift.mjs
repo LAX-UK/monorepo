@@ -18,13 +18,14 @@ const WEB_SCAN_ROOTS = [
 ];
 
 const INLINE_CAPABILITY =
-  /"(?:platform\.admin\.full|finance\.read|payout\.(?:read|process|reverse)|user\.invite|artist\.(?:read|review|merge|delete)|catalogue\.write|auction\.manage|specialist\.appraise|operations\.fulfilment|content\.write|support\.respond|legal_entity\.read|audit\.read_pii)"/g;
+  /"(?:platform\.admin\.full|finance\.read|payout\.(?:read|process|reverse)|user\.invite|artist\.(?:read|review|merge|delete)|catalogue\.write|auction\.manage|specialist\.appraise|operations\.fulfilment|content\.write|support\.respond|legal_entity\.read|client\.read|bids\.read|audit\.read_pii)"/g;
 
 const SKIP_SUFFIX = [".test.ts", ".test.tsx"];
 
 const WEB_ALLOWLIST = new Set([
   "lib/navigation/staff-nav-access.ts",
   "lib/admin/staff-capabilities.ts",
+  "lib/admin/capability-presenter.ts",
 ]);
 
 function isSkipped(file) {

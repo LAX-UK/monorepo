@@ -4,7 +4,7 @@ import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { sumCapturedPayments } from "@/lib/admin/admin-user-metrics";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
-import type { AdminPaymentRow } from "@/lib/data/http/admin.server";
+import type { AdminPaymentRow, AdminUserBidRow } from "@/lib/data/http/admin.server";
 import { formatMoney } from "@/lib/format-currency";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, Lot } from "@auction/types";
@@ -67,6 +67,49 @@ export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow
                   >
                     Invoice
                   </a>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function AdminUserBidsPanel({ bids }: { bids: AdminUserBidRow[] }) {
+  return (
+    <div className="space-y-3">
+      <PanelHeader title="Bids" {...(bids.length > 0 ? { summary: String(bids.length) } : {})} />
+      {bids.length === 0 ? (
+        <AdminEmptyState title="No bids" description="This client has not placed any bids yet." />
+      ) : (
+        <ul className="divide-y divide-outline-variant/15 rounded-md border border-border-hairline">
+          {bids.map((bid) => (
+            <li
+              key={bid.id}
+              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+            >
+              <div className="min-w-0">
+                <Link
+                  href={`/admin/lots/${bid.lotId}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {bid.lotTitle}
+                </Link>
+                {bid.saleTitle ? (
+                  <p className="truncate text-xs text-on-surface-variant">{bid.saleTitle}</p>
+                ) : null}
+                <p className="text-xs text-on-surface-variant">
+                  {formatAdminUserDate(bid.createdAt.toISOString())}
+                  {bid.placedVia ? ` · ${bid.placedVia}` : ""}
+                  {bid.isAutoBid ? " · auto" : ""}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className="font-medium">{formatMoney(bid.amount)}</span>
+                {bid.isWinning ? (
+                  <AdminStatusBadge domain="lot" status="active" label="Winning" size="sm" />
                 ) : null}
               </div>
             </li>

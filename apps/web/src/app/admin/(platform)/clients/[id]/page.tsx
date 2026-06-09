@@ -29,6 +29,8 @@ export default async function AdminClientDetailPage({ params }: Props) {
       railContext={bundle.railContext}
       summaryMetrics={bundle.summaryMetrics}
       legalEntitiesForActions={bundle.legalEntitiesForActions}
+      showAccountControls={bundle.canManageRoles}
+      showDangerZone={bundle.canModerate}
       tabs={buildAdminClientDetailTabs(bundle)}
     />
   );

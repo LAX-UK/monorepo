@@ -145,6 +145,16 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
     description: "Respond to clients and moderate user accounts.",
     group: "people",
   },
+  "client.read": {
+    label: "View clients",
+    description: "Browse the client directory and read-only client detail.",
+    group: "people",
+  },
+  "bids.read": {
+    label: "View bid history",
+    description: "See per-client bid transactions in admin.",
+    group: "people",
+  },
   "aml.review": {
     label: "AML screening review",
     description: "First-line triage on sanctions and watchlist matches.",

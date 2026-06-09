@@ -53,6 +53,12 @@ describe("role policy (staff | client)", () => {
     expect(roleHasCapability("staff", "legal_entity.read", "staff_viewer")).toBe(true);
     expect(roleHasCapability("staff", "artist.read", "staff_viewer")).toBe(true);
     expect(roleHasCapability("staff", "finance.read", "staff_viewer")).toBe(false);
+    expect(roleHasCapability("staff", "client.read", "client_advisor")).toBe(true);
+    expect(roleHasCapability("staff", "bids.read", "client_advisor")).toBe(true);
+    expect(roleHasCapability("staff", "catalogue.write", "operations")).toBe(true);
+    expect(roleHasCapability("staff", "client.read", "operations")).toBe(true);
+    expect(roleHasCapability("staff", "bids.read", "operations")).toBe(false);
+    expect(roleHasCapability("staff", "aml.review", "compliance_officer")).toBe(true);
   });
 
   it("staffRoleDefaultDestination", () => {
@@ -64,6 +70,8 @@ describe("role policy (staff | client)", () => {
     expect(staffRoleDefaultDestination("staff", "staff_viewer")).toBe("/admin/legal-entities");
     expect(staffRoleDefaultDestination("staff", "content_marketing")).toBe("/admin/artists");
     expect(staffRoleDefaultDestination("staff", "support_concierge")).toBe("/admin/legal-entities");
+    expect(staffRoleDefaultDestination("staff", "client_advisor")).toBe("/admin/clients");
+    expect(staffRoleDefaultDestination("staff", "operations")).toBe("/admin/sales");
     expect(staffRoleDefaultDestination("staff", null)).toBe("/admin");
     expect(staffRoleDefaultDestination("client", null)).toBe("/dashboard");
   });
@@ -79,6 +87,9 @@ describe("role policy (staff | client)", () => {
       "content_marketing",
       "support_concierge",
       "staff_viewer",
+      "client_advisor",
+      "operations",
+      "compliance_officer",
       null,
     ];
     for (const sr of staffRoles) {
@@ -96,6 +107,9 @@ describe("role policy (staff | client)", () => {
       "content_marketing",
       "support_concierge",
       "staff_viewer",
+      "client_advisor",
+      "operations",
+      "compliance_officer",
     ];
     const caps = [
       "platform.admin.full",
@@ -108,6 +122,8 @@ describe("role policy (staff | client)", () => {
       "support.respond",
       "legal_entity.read",
       "artist.read",
+      "client.read",
+      "bids.read",
     ] as const;
     for (const sr of staffRoles) {
       for (const cap of caps) {
