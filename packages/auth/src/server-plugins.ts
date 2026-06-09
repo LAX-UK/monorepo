@@ -22,6 +22,7 @@ import type { EnvelopeCrypto } from "./crypto/envelope.js";
 import { createJwksAdapter } from "./jwks.js";
 import { pickMagicLinkTemplate } from "./magic-link-email.js";
 import { buildMagicLinkVerifyPlugin } from "./magic-link-verify-hooks.js";
+import { buildTwoFactorEnforcementPlugin } from "./two-factor-enforcement.js";
 
 type RevokeSessions = (userId: string) => Promise<number>;
 
@@ -162,7 +163,8 @@ export function buildJwtAndOidcPlugins(options: {
           });
       },
     }),
-    buildMagicLinkVerifyPlugin({ webOrigin, onEmailVerified }),
+    buildMagicLinkVerifyPlugin({ onEmailVerified }),
+    buildTwoFactorEnforcementPlugin({ webOrigin }),
   ];
 }
 
