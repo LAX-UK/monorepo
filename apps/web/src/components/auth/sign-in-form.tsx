@@ -6,10 +6,12 @@ import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { RHFInput } from "@/components/auth/primitives/rhf-input";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SellAuthIntentBanner } from "@/components/auth/sell-auth-intent-banner";
+import { SignInCredentialsStep } from "@/components/auth/sign-in-credentials-step";
+import { SignInEmailStep } from "@/components/auth/sign-in-email-step";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { LogoutButton } from "@/components/layout/logout-button";
-import { buildAuthHref } from "@/lib/auth/auth-route-links";
+import { buildAuthHref, parseAuthEmailParam } from "@/lib/auth/auth-route-links";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { socialErrorMessage } from "@/lib/auth/social-error-message";
@@ -29,6 +31,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
   const sellIntent = searchParams.get("intent") === "sell";
+  const prefillEmail = parseAuthEmailParam(searchParams.get("email"));
   const {
     form,
     onSubmit,
@@ -38,7 +41,24 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     turnstileSiteKey,
     onTurnstileToken,
     onTurnstileExpire,
-  } = useSignInController(next, { sellIntent });
+    emailFirst,
+    step,
+    goToCredentials,
+    changeEmail,
+    requestMagicLink,
+    resendMagicLink,
+    linkSent,
+    linkCooldown,
+    magicLinkLoading,
+    magicLinkError,
+    magicLinkTurnstileReady,
+    onMagicLinkTurnstileToken,
+    onMagicLinkTurnstileExpire,
+  } = useSignInController(next, {
+    sellIntent,
+    ...(prefillEmail ? { prefillEmail } : {}),
+    ...(prefillEmail ? { initialStep: "credentials" as const } : {}),
+  });
   const socialError =
     searchParams.get("social_error") === "1"
       ? socialErrorMessage(searchParams.get("reason"))
@@ -56,8 +76,6 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
       ? "Your account uses two-factor authentication. Sign in with your password and authenticator app."
       : null;
 
-  // Strip transient banner params from the URL after render so refresh / back-nav
-  // doesn't re-show "session expired" once the user has acknowledged it.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -95,6 +113,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
     ...(emailValue ? { email: emailValue } : {}),
   });
+
   if (switchAccount) {
     if (pending) {
       return (
@@ -188,8 +207,8 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     );
   }
 
-  return (
-    <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
+  const banners = (
+    <>
       {searchParams.get("registered") === "1" ? (
         <output
           className="block rounded-sm border border-primary/30 bg-primary-container/15 px-4 py-3 font-footer-links text-sm text-on-surface dark:border-outline-variant dark:bg-surface-container"
@@ -243,82 +262,182 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           Signed up with Google or Apple? Use the button above.
         </p>
       ) : null}
-      <div className="flex flex-col gap-6">
-        <SocialSignInButtons next={next} />
-        <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
-          <span className="h-px flex-1 bg-outline-variant/40" />
-          <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
-            or
-          </span>
-          <span className="h-px flex-1 bg-outline-variant/40" />
-        </div>
-      </div>
-      <div className="flex flex-col gap-10">
-        <RHFInput
-          control={form.control}
-          name="email"
-          label="Email Address"
-          type="email"
-          autoComplete="username"
-        />
-        <div className="flex flex-col gap-2">
-          <RHFPasswordField
-            control={form.control}
-            name="password"
-            label="Password"
-            autoComplete="current-password"
-          />
-          {showCaptcha && turnstileSiteKey ? (
-            <div className="flex flex-col gap-2">
-              <p className="font-footer-links text-sm text-on-surface-variant">
-                For your security, complete the check below and try again.
-              </p>
-              <TurnstileWidget
-                siteKey={turnstileSiteKey}
-                onToken={onTurnstileToken}
-                onClear={onTurnstileExpire}
-              />
-            </div>
-          ) : null}
-          <div className="flex justify-end">
-            <Link
-              href={forgotPasswordHref}
-              className="min-h-[44px] content-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-            >
-              Forgot password?
-            </Link>
+    </>
+  );
+
+  if (!emailFirst) {
+    return (
+      <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
+        {banners}
+        <div className="flex flex-col gap-6">
+          <SocialSignInButtons next={next} />
+          <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
+            <span className="h-px flex-1 bg-outline-variant/40" />
+            <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+              or
+            </span>
+            <span className="h-px flex-1 bg-outline-variant/40" />
           </div>
         </div>
-      </div>
-
-      <div className="flex flex-col gap-6">
-        {sellIntent ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-            <AuthSubmitButton loading={loading} loadingLabel="Signing in…" className="flex-1">
+        <div className="flex flex-col gap-10">
+          <RHFInput
+            control={form.control}
+            name="email"
+            label="Email Address"
+            type="email"
+            autoComplete="username"
+          />
+          <div className="flex flex-col gap-2">
+            <RHFPasswordField
+              control={form.control}
+              name="password"
+              label="Password"
+              autoComplete="current-password"
+            />
+            {showCaptcha && turnstileSiteKey ? (
+              <div className="flex flex-col gap-2">
+                <p className="font-footer-links text-sm text-on-surface-variant">
+                  For your security, complete the check below and try again.
+                </p>
+                <TurnstileWidget
+                  siteKey={turnstileSiteKey}
+                  onToken={onTurnstileToken}
+                  onClear={onTurnstileExpire}
+                />
+              </div>
+            ) : null}
+            <div className="flex justify-end">
+              <Link
+                href={forgotPasswordHref}
+                className="min-h-[44px] content-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-6">
+          {sellIntent ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+              <AuthSubmitButton loading={loading} loadingLabel="Signing in…" className="flex-1">
+                Sign In
+              </AuthSubmitButton>
+              <Button
+                asChild
+                variant="cta"
+                size="lg"
+                className="min-h-[44px] flex-1 font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+              >
+                <Link href={sellRegisterHref}>Create an account</Link>
+              </Button>
+            </div>
+          ) : (
+            <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
               Sign In
             </AuthSubmitButton>
-            <Button
-              asChild
-              variant="cta"
-              size="lg"
-              className="min-h-[44px] flex-1 font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-            >
-              <Link href={sellRegisterHref}>Create an account</Link>
-            </Button>
-          </div>
-        ) : (
-          <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
-            Sign In
-          </AuthSubmitButton>
-        )}
-        {sellIntent ? (
-          <p className="text-center font-footer-links text-sm text-on-surface-variant">
-            New to LAX? Create an account to start your submission in about 3 minutes.
-          </p>
-        ) : (
-          <AuthFooterLink prefix="Don't have an account?" linkText="Sign up" href={registerHref} />
-        )}
+          )}
+          {sellIntent ? (
+            <p className="text-center font-footer-links text-sm text-on-surface-variant">
+              New to LAX? Create an account to start your submission in about 3 minutes.
+            </p>
+          ) : (
+            <AuthFooterLink
+              prefix="Don't have an account?"
+              linkText="Sign up"
+              href={registerHref}
+            />
+          )}
+        </div>
+      </form>
+    );
+  }
+
+  if (linkSent) {
+    return (
+      <div className="flex w-full flex-col gap-10">
+        {banners}
+        <SignInCredentialsStep
+          control={form.control}
+          email={emailValue}
+          forgotPasswordHref={forgotPasswordHref}
+          loading={loading}
+          showCaptcha={showCaptcha}
+          turnstileSiteKey={turnstileSiteKey}
+          onTurnstileToken={onTurnstileToken}
+          onTurnstileExpire={onTurnstileExpire}
+          onChangeEmail={changeEmail}
+          linkSent={linkSent}
+          linkCooldown={linkCooldown}
+          magicLinkLoading={magicLinkLoading}
+          magicLinkError={magicLinkError}
+          magicLinkTurnstileReady={magicLinkTurnstileReady}
+          onMagicLinkTurnstileToken={onMagicLinkTurnstileToken}
+          onMagicLinkTurnstileExpire={onMagicLinkTurnstileExpire}
+          onRequestMagicLink={() => void requestMagicLink()}
+          onResendMagicLink={() => void resendMagicLink()}
+        />
       </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
+      {banners}
+      {step === "email" ? (
+        <>
+          <SignInEmailStep control={form.control} onContinue={goToCredentials} next={next} />
+          {!sellIntent ? (
+            <AuthFooterLink
+              prefix="Don't have an account?"
+              linkText="Sign up"
+              href={registerHref}
+            />
+          ) : (
+            <p className="text-center font-footer-links text-sm text-on-surface-variant">
+              New to LAX?{" "}
+              <Link
+                href={sellRegisterHref}
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                Create an account
+              </Link>{" "}
+              to start your submission in about 3 minutes.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <SignInCredentialsStep
+            control={form.control}
+            email={emailValue}
+            forgotPasswordHref={forgotPasswordHref}
+            loading={loading}
+            showCaptcha={showCaptcha}
+            turnstileSiteKey={turnstileSiteKey}
+            onTurnstileToken={onTurnstileToken}
+            onTurnstileExpire={onTurnstileExpire}
+            onChangeEmail={changeEmail}
+            linkSent={linkSent}
+            linkCooldown={linkCooldown}
+            magicLinkLoading={magicLinkLoading}
+            magicLinkError={magicLinkError}
+            magicLinkTurnstileReady={magicLinkTurnstileReady}
+            onMagicLinkTurnstileToken={onMagicLinkTurnstileToken}
+            onMagicLinkTurnstileExpire={onMagicLinkTurnstileExpire}
+            onRequestMagicLink={() => void requestMagicLink()}
+            onResendMagicLink={() => void resendMagicLink()}
+            sellIntent={sellIntent}
+            sellRegisterHref={sellRegisterHref}
+          />
+          {!sellIntent ? (
+            <AuthFooterLink
+              prefix="Don't have an account?"
+              linkText="Sign up"
+              href={registerHref}
+            />
+          ) : null}
+        </>
+      )}
     </form>
   );
 }

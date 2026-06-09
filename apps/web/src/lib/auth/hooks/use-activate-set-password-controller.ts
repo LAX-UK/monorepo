@@ -1,16 +1,19 @@
 "use client";
 
 import { useConnectedAccounts } from "@/lib/auth/hooks/use-connected-accounts";
-import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { type ResetPasswordFormValues, resetPasswordFormSchema } from "@/lib/auth/schemas";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export function useActivateSetPasswordController() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedNext = searchParams.get("next");
+  const safeNext = isSafeNextPath(requestedNext) ? requestedNext : undefined;
   const { user } = useAppSession();
   const { state, loading: accountsLoading, setupPassword } = useConnectedAccounts();
   const [loading, setLoading] = useState(false);
@@ -23,13 +26,14 @@ export function useActivateSetPasswordController() {
   });
 
   const destination =
-    user != null
+    safeNext ??
+    (user != null
       ? resolvePostAuthDestination({
           user,
           context: "sign-in",
           requireEmailVerification: false,
         })
-      : "/dashboard";
+      : "/dashboard");
 
   const finish = useCallback(() => {
     if (navigatedRef.current) return;
@@ -40,8 +44,16 @@ export function useActivateSetPasswordController() {
   // Users who already have a password (e.g. re-using an activation link) should not
   // be asked to set one again — send them straight into the auction once we know.
   useEffect(() => {
-    if (!accountsLoading && state.hasPassword) finish();
-  }, [accountsLoading, state.hasPassword, finish]);
+    if (accountsLoading) return;
+    if (state.hasPassword) {
+      finish();
+      return;
+    }
+    // Repeat login via magic link with a destination: skip optional set-password.
+    if (safeNext) {
+      finish();
+    }
+  }, [accountsLoading, state.hasPassword, safeNext, finish]);
 
   const onSkip = useCallback(() => {
     finish();
@@ -72,5 +84,7 @@ export function useActivateSetPasswordController() {
     userEmail: user?.email ?? null,
     /** True while we determine whether the user already has a password. */
     initializing: accountsLoading,
+    /** When true, user arrived with a post-login destination and was auto-routed. */
+    skippedForNext: Boolean(safeNext && !state.hasPassword && !accountsLoading),
   };
 }
