@@ -13,6 +13,7 @@ export const STAFF_OVERVIEW_ACCESS: CapabilityRequirement = {
     "platform.admin.full",
     "legal_entity.read",
     "artist.read",
+    "client.read",
     "aml.review",
   ],
 };
@@ -114,11 +115,36 @@ export const PLATFORM_ADMIN_ACCESS: CapabilityRequirement = "platform.admin.full
 /** Redacted domain-event audit feeds (PII still gated per-request). */
 export const AUDIT_DOMAIN_EVENTS_ACCESS: CapabilityRequirement = ADMIN_DASHBOARD_ACCESS;
 
-/** Email outbox, events, and suppression management. */
+/** Email outbox, events, and suppression management (mutations). */
 export const EMAIL_ADMIN_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 
+/** Read-only email outbox, events, and suppression list (no mutations). */
+export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "content.write"],
+};
+
 /** Client/staff directory list and detail reads. */
-export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
+export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "client.read"],
+};
+
+/** Per-client bid transaction history in admin. */
+export const CLIENT_BIDS_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "bids.read"],
+};
+
+/**
+ * KYC verification sessions expose identity PII (name, DOB, ID number, nationality).
+ * Deliberately decoupled from {@link USERS_DIRECTORY_ACCESS} so relaxing directory
+ * reads (e.g. for client_advisor) never leaks PII. Platform admin only.
+ */
+export const CLIENT_KYC_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
+
+/**
+ * Session / IP activity history. Decoupled from {@link USERS_DIRECTORY_ACCESS}
+ * for the same least-privilege reason as {@link CLIENT_KYC_ACCESS}. Platform admin only.
+ */
+export const CLIENT_ACTIVITY_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 
 export const ANALYTICS_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 

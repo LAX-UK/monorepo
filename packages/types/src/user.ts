@@ -14,6 +14,8 @@ export const userStaffRoles = [
   "support_concierge",
   "staff_viewer",
   "compliance_officer",
+  "client_advisor",
+  "operations",
 ] as const;
 export type UserStaffRole = (typeof userStaffRoles)[number];
 

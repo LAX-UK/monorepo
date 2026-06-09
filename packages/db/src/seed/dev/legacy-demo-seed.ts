@@ -47,6 +47,8 @@ const U = {
   staffContentMarketing: "90000000-0000-4000-8000-000000000024",
   staffSupportConcierge: "90000000-0000-4000-8000-000000000025",
   staffStaffViewer: "90000000-0000-4000-8000-000000000026",
+  staffClientAdvisor: "90000000-0000-4000-8000-000000000027",
+  staffOperations: "90000000-0000-4000-8000-000000000028",
 } as const;
 
 const ADMIN_ID = U.admin;
@@ -75,6 +77,8 @@ const STAFF_OPS_FULFILMENT_ID = U.staffOpsFulfilment;
 const STAFF_CONTENT_MARKETING_ID = U.staffContentMarketing;
 const STAFF_SUPPORT_CONCIERGE_ID = U.staffSupportConcierge;
 const STAFF_VIEWER_PLATFORM_ID = U.staffStaffViewer;
+const STAFF_CLIENT_ADVISOR_ID = U.staffClientAdvisor;
+const STAFF_OPERATIONS_ID = U.staffOperations;
 
 // ─── Original personal legal-entity IDs ──────────────────────────────────────
 const LE = {
@@ -117,6 +121,8 @@ const LEX = {
   staffContentMarketing: "10000000-0000-4000-8000-000000000026",
   staffSupportConcierge: "10000000-0000-4000-8000-000000000027",
   staffStaffViewer: "10000000-0000-4000-8000-000000000028",
+  staffClientAdvisor: "10000000-0000-4000-8000-000000000029",
+  staffOperations: "10000000-0000-4000-8000-000000000030",
 } as const;
 
 // ─── Organisation legal-entity IDs — all subkinds × all statuses ─────────────
@@ -293,6 +299,10 @@ const legalEntityIdForUser = (userId: string): string => {
       return LEX.staffSupportConcierge;
     case STAFF_VIEWER_PLATFORM_ID:
       return LEX.staffStaffViewer;
+    case STAFF_CLIENT_ADVISOR_ID:
+      return LEX.staffClientAdvisor;
+    case STAFF_OPERATIONS_ID:
+      return LEX.staffOperations;
     default:
       throw new Error(`Missing seeded legal entity for user ${userId}`);
   }
@@ -601,6 +611,34 @@ export async function runLegacyDemoSeed() {
       createdAt: new Date(now - 128 * day),
       updatedAt: stamp,
     },
+    {
+      id: STAFF_CLIENT_ADVISOR_ID,
+      name: "Hannah Price",
+      firstName: "Hannah",
+      lastName: "Price",
+      email: "staff-advisor@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "client_advisor",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 126 * day),
+      updatedAt: stamp,
+    },
+    {
+      id: STAFF_OPERATIONS_ID,
+      name: "Ian Brooks",
+      firstName: "Ian",
+      lastName: "Brooks",
+      email: "staff-operations@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "staff",
+      staffRole: "operations",
+      kycStatus: "unverified",
+      createdAt: new Date(now - 124 * day),
+      updatedAt: stamp,
+    },
 
     // ── Fully-verified clients ────────────────────────────────────────────────
     {
@@ -898,6 +936,8 @@ export async function runLegacyDemoSeed() {
       credentialAccount(STAFF_CONTENT_MARKETING_ID),
       credentialAccount(STAFF_SUPPORT_CONCIERGE_ID),
       credentialAccount(STAFF_VIEWER_PLATFORM_ID),
+      credentialAccount(STAFF_CLIENT_ADVISOR_ID),
+      credentialAccount(STAFF_OPERATIONS_ID),
       credentialAccount(USER1_ID),
       credentialAccount(USER2_ID),
       credentialAccount(GOOGLE_TEST_ID),
@@ -1380,6 +1420,34 @@ export async function runLegacyDemoSeed() {
       createdAt: stamp,
       updatedAt: stamp,
     },
+    {
+      id: LEX.staffClientAdvisor,
+      displayName: "Hannah Price",
+      legalName: "Hannah Price",
+      slug: "hannah-price-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_CLIENT_ADVISOR_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: LEX.staffOperations,
+      displayName: "Ian Brooks",
+      legalName: "Ian Brooks",
+      slug: "ian-brooks-platform-staff",
+      kind: "individual",
+      subkind: "private_collector",
+      createdByUserId: STAFF_OPERATIONS_ID,
+      status: "approved",
+      statusChangedAt: stamp,
+      statusChangedByUserId: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
   ]);
 
   // ── Legal entities — organisations (all subkinds + all remaining statuses) ──
@@ -1588,6 +1656,20 @@ export async function runLegacyDemoSeed() {
     {
       legalEntityId: LEX.staffStaffViewer,
       userId: STAFF_VIEWER_PLATFORM_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffClientAdvisor,
+      userId: STAFF_CLIENT_ADVISOR_ID,
+      role: "owner",
+      isPrimaryAdmin: true,
+      acceptedAt: stamp,
+    },
+    {
+      legalEntityId: LEX.staffOperations,
+      userId: STAFF_OPERATIONS_ID,
       role: "owner",
       isPrimaryAdmin: true,
       acceptedAt: stamp,
@@ -4190,6 +4272,10 @@ export async function runLegacyDemoSeed() {
     "  │  staff-support@lax.bid       │  Fiona Nguyen        │  staff · support_concierge │",
   );
   console.log("  │  staff-readonly@lax.bid      │  Graham Holt         │  staff · staff_viewer │");
+  console.log(
+    "  │  staff-advisor@lax.bid       │  Hannah Price        │  staff · client_advisor │",
+  );
+  console.log("  │  staff-operations@lax.bid    │  Ian Brooks          │  staff · operations │");
   console.log(
     "  │  user1@lax.bid               │  Robert Thorne       │  client, KYC ✓, demo owner_user_id │",
   );

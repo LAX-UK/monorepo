@@ -26,6 +26,8 @@ const ALL_STAFF_CAPABILITIES: RoleCapability[] = [
   "operations.fulfilment",
   "content.write",
   "support.respond",
+  "client.read",
+  "bids.read",
   "aml.review",
   "compliance.mlro",
 ];
