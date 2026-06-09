@@ -1,5 +1,6 @@
 import type {
   IEmailSignupPersister,
+  IRegistrationCompensator,
   IRegistrationService,
   IRegistrationValidator,
   IUserProfilePersister,
@@ -15,6 +16,7 @@ export class RegistrationService implements IRegistrationService {
     private readonly userProfile: IUserProfilePersister,
     private readonly welcome: IWelcomeNotifier,
     private readonly invitations: InvitationService,
+    private readonly compensator: IRegistrationCompensator,
   ) {}
 
   async register(input: RegistrationInput) {
@@ -48,7 +50,7 @@ export class RegistrationService implements IRegistrationService {
     if (!signup.ok) {
       return { ok: false as const, message: signup.message, status: signup.status ?? 400 };
     }
-    const profile = await this.userProfile.setRegistrationProfile({
+    const profileInput = {
       userId: signup.userId,
       firstName: input.firstName,
       lastName: input.lastName,
@@ -59,12 +61,24 @@ export class RegistrationService implements IRegistrationService {
             ...(input.mobileCountry !== undefined ? { mobileCountry: input.mobileCountry } : {}),
           }
         : {}),
-    });
+    };
+    let profile = await this.userProfile.setRegistrationProfile(profileInput);
+    if (!profile.ok) {
+      // One retry: a transient DB blip is the realistic cause and avoids the compensating delete.
+      profile = await this.userProfile.setRegistrationProfile(profileInput);
+    }
     if (!profile.ok) {
       console.error("[registration] profile columns not persisted after signup", {
         userId: signup.userId,
         message: profile.message,
       });
+      // Compensate so the email is reusable instead of orphaned ("already registered").
+      const compensated = await this.compensator.deleteOrphanedUser(signup.userId);
+      if (!compensated.ok) {
+        console.error("[registration] orphaned auth user left behind after failed compensation", {
+          userId: signup.userId,
+        });
+      }
       return {
         ok: false as const,
         message: "Registration could not be completed. Please try again.",

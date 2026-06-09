@@ -39,6 +39,7 @@ import { CompositeAuthenticator } from "./infrastructure/composite-authenticator
 import { CompositeErrorClassifier } from "./infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DrizzleMarketingEventOutboxRepository } from "./infrastructure/drizzle-marketing-event-outbox.repository.js";
+import { DrizzleRegistrationCompensator } from "./infrastructure/drizzle-registration.compensator.js";
 import { EmailNotificationChannel } from "./infrastructure/email-notification.channel.js";
 import { EventMarketingConsentGate } from "./infrastructure/header-marketing-consent.gate.js";
 import { InAppNotificationChannel } from "./infrastructure/in-app-notification.channel.js";
@@ -1319,6 +1320,7 @@ export function createContainer(env: Env): Container {
     new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),
     invitationService,
+    new DrizzleRegistrationCompensator(authDb),
   );
 
   const lotMetrics = new DrizzleLotMetricsReader(db);
