@@ -1,8 +1,9 @@
 import type { Database } from "@auction/db";
-import { emailOutbox, userInvitation } from "@auction/db/schema";
+import { emailOutbox, user, userInvitation, type userStaffRoleEnum } from "@auction/db/schema";
 import type { UserRole, UserStaffRole } from "@auction/types";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type {
+  ConsumeInviteResult,
   IUserInvitationRepository,
   InvitationAdminListRow,
   InvitationInsert,
@@ -105,7 +106,87 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
     return row ? mapRow(row) : null;
   }
 
-  async listAdminCreatedBy(userId: string): Promise<InvitationAdminListRow[]> {
+  async findPendingPlatformByEmail(email: string): Promise<InvitationRow | null> {
+    const normalized = email.trim().toLowerCase();
+    const [row] = await this.db
+      .select()
+      .from(userInvitation)
+      .where(
+        and(
+          sql`lower(${userInvitation.email}) = ${normalized}`,
+          eq(userInvitation.status, "pending"),
+          isNull(userInvitation.targetLegalEntityId),
+        ),
+      )
+      .limit(1);
+    return row ? mapRow(row) : null;
+  }
+
+  async consumeForNewUser(
+    tokenHash: string,
+    newUserId: string,
+    email: string,
+  ): Promise<ConsumeInviteResult> {
+    return this.db.transaction(async (tx) => {
+      // Row lock serializes concurrent redemptions of the same token: the loser
+      // blocks here and then sees status != 'pending'.
+      const [row] = await tx
+        .select()
+        .from(userInvitation)
+        .where(eq(userInvitation.tokenHash, tokenHash))
+        .limit(1)
+        .for("update");
+      if (!row || row.status !== "pending") return { outcome: "invalid" };
+      if (row.expiresAt.getTime() <= Date.now()) {
+        await tx
+          .update(userInvitation)
+          .set({ status: "expired", updatedAt: new Date() })
+          .where(eq(userInvitation.id, row.id));
+        return { outcome: "expired" };
+      }
+      if (row.email.toLowerCase() !== email.trim().toLowerCase()) {
+        return { outcome: "email_mismatch" };
+      }
+
+      const targetRole = row.targetRole as UserRole;
+      const targetStaff =
+        targetRole === "staff"
+          ? (row.targetStaffRole as (typeof userStaffRoleEnum.enumValues)[number])
+          : null;
+
+      await tx
+        .update(userInvitation)
+        .set({
+          status: "accepted",
+          acceptedAt: new Date(),
+          acceptedUserId: newUserId,
+          updatedAt: new Date(),
+        })
+        .where(eq(userInvitation.id, row.id));
+      await tx
+        .update(user)
+        .set({ role: targetRole, staffRole: targetStaff, updatedAt: new Date() })
+        .where(eq(user.id, newUserId));
+
+      return { outcome: "ok", targetRole };
+    });
+  }
+
+  async countsForActor(userId: string): Promise<{ total: number; pending: number }> {
+    const [row] = await this.db
+      .select({
+        total: sql<number>`count(*)::int`,
+        pending: sql<number>`count(*) filter (where ${userInvitation.status} = 'pending')::int`,
+      })
+      .from(userInvitation)
+      .where(eq(userInvitation.createdByUserId, userId));
+    return { total: row?.total ?? 0, pending: row?.pending ?? 0 };
+  }
+
+  async listAdminCreatedBy(
+    userId: string,
+    page: { limit: number; offset: number },
+  ): Promise<InvitationAdminListRow[]> {
     const inviteEmailLastStatus = emailOutbox.status;
     const rows = await this.db
       .select({
@@ -128,7 +209,9 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
       .from(userInvitation)
       .leftJoin(emailOutbox, eq(userInvitation.lastEmailOutboxId, emailOutbox.id))
       .where(eq(userInvitation.createdByUserId, userId))
-      .orderBy(desc(userInvitation.createdAt));
+      .orderBy(desc(userInvitation.createdAt))
+      .limit(page.limit)
+      .offset(page.offset);
     return rows.map((r) => ({
       ...mapInvitationSummary(r),
       inviteEmailLastStatus: r.inviteEmailLastStatus ?? null,

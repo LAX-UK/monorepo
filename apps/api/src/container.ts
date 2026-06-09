@@ -222,6 +222,7 @@ import type { ITransactionalMailer } from "./services/interfaces/transactional-m
 import type { IUiPreferenceRepository } from "./services/interfaces/ui-preference.js";
 import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
 import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
+import { InvitationConsumptionService } from "./services/invitation-consumption.service.js";
 import { InvitationLifecycleService } from "./services/invitation-lifecycle.service.js";
 import { InvitationService } from "./services/invitation.service.js";
 import { InvoiceAddressingService } from "./services/invoice-addressing.js";
@@ -1307,19 +1308,19 @@ export function createContainer(env: Env): Container {
 
   const invitationRepository = new DrizzleUserInvitationRepository(db);
   const invitationService = new InvitationService(
-    db,
     invitationRepository,
     userRepo,
     emailService,
     env.WEB_ORIGIN,
   );
+  const invitationConsumptionService = new InvitationConsumptionService(invitationRepository);
 
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
     new BetterAuthEmailSignupPersister(auth, env.WEB_ORIGIN),
     new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),
-    invitationService,
+    invitationConsumptionService,
     new DrizzleRegistrationCompensator(authDb),
   );
 

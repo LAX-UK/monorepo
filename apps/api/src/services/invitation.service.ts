@@ -1,33 +1,16 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import type { Database } from "@auction/db";
-import { user, userInvitation, type userStaffRoleEnum } from "@auction/db/schema";
 import {
   type UserRole,
   type UserStaffRole,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
-import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import type { IEmailService } from "./interfaces/email.js";
-import type {
-  IUserInvitationRepository,
-  InvitationAdminListRow,
-  InvitationRow,
-} from "./interfaces/invitation.js";
+import type { IUserInvitationRepository, InvitationAdminListRow } from "./interfaces/invitation.js";
 import type { IUserRepository } from "./interfaces/repositories.js";
 
 export type InvitationError = { message: string; status: number };
-
-class InvitationHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "InvitationHttpError";
-  }
-}
 
 export type CreateInvitationInput = {
   actorUserId: string;
@@ -46,9 +29,16 @@ function addDays(d: Date, days: number): Date {
   return x;
 }
 
+function isUniqueViolation(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: unknown }).code === "23505";
+}
+
+/**
+ * Admin lifecycle of platform invitations (create / list / revoke / resend / preview).
+ * Registration-time validation and consumption live in InvitationConsumptionService.
+ */
 export class InvitationService {
   constructor(
-    private readonly db: Database,
     private readonly invites: IUserInvitationRepository,
     private readonly users: IUserRepository,
     private readonly email: IEmailService,
@@ -60,57 +50,120 @@ export class InvitationService {
     return `${base}/register?invite=${encodeURIComponent(token)}`;
   }
 
-  async create(
-    input: CreateInvitationInput,
-  ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>> {
-    const actor = await this.users.findById(input.actorUserId);
+  private async requireInviteCapability(
+    actorUserId: string,
+  ): Promise<Result<{ name: string | null }, InvitationError>> {
+    const actor = await this.users.findById(actorUserId);
     const actorRole = (actor?.role ?? "client") as UserRole;
     const actorStaff = normalizeUserStaffRole(actor?.staffRole ?? undefined);
     if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
       return err({ message: "Forbidden", status: 403 });
     }
+    return ok({ name: actor?.name ?? null });
+  }
 
-    const id = randomUUID();
-    const token = randomBytes(32).toString("base64url");
-    const tokenHash = hashToken(token);
-    const expiresAt = addDays(new Date(), 7);
+  /** Best-effort invite email: a queue outage must not lose the created invitation
+   * (admins can resend), so enqueue failures are logged and swallowed. */
+  private async enqueueInviteEmail(args: {
+    invitationId: string;
+    token: string;
+    email: string;
+    inviterName: string | null;
+    targetRole: UserRole;
+    targetStaffRole: UserStaffRole | null;
+    expiresAt: Date;
+  }): Promise<void> {
+    try {
+      const { outboxId } = await this.email.enqueue({
+        template: "invite",
+        to: args.email,
+        category: "transactional",
+        vars: {
+          inviteUrl: this.inviteLink(args.token),
+          inviterName: args.inviterName,
+          inviteeEmail: args.email,
+          role: args.targetRole,
+          staffRole: args.targetStaffRole,
+          expiresAt: args.expiresAt.toISOString(),
+        },
+      });
+      await this.invites.updateStatus(args.invitationId, { lastEmailOutboxId: outboxId });
+    } catch (e) {
+      console.error("[invitations] invite email enqueue failed (invite kept, resend available)", {
+        invitationId: args.invitationId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
 
-    const targetStaff =
-      input.targetRole === "staff"
-        ? (input.targetStaffRole ?? null)
-        : (null as UserStaffRole | null);
+  async create(
+    input: CreateInvitationInput,
+  ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>> {
+    const actor = await this.requireInviteCapability(input.actorUserId);
+    if (actor.isErr()) return err(actor.error);
+
+    if (input.targetRole !== "staff" && input.targetStaffRole != null) {
+      return err({
+        message: "targetStaffRole is only valid for staff invitations",
+        status: 400,
+      });
+    }
+    const targetStaff = input.targetRole === "staff" ? (input.targetStaffRole ?? null) : null;
     if (input.targetRole === "staff" && targetStaff == null) {
       return err({ message: "targetStaffRole is required for staff invitations", status: 400 });
     }
 
-    await this.invites.insert({
-      id,
-      email: input.email.trim().toLowerCase(),
+    const email = input.email.trim().toLowerCase();
+
+    const existingUser = await this.users.findByEmail(email);
+    if (existingUser) {
+      return err({ message: "A user with this email already exists", status: 409 });
+    }
+    const existingInvite = await this.invites.findPendingPlatformByEmail(email);
+    if (existingInvite) {
+      return err({
+        message: "A pending invitation already exists for this email",
+        status: 409,
+      });
+    }
+
+    const id = randomUUID();
+    const token = randomBytes(32).toString("base64url");
+    const expiresAt = addDays(new Date(), 7);
+
+    try {
+      await this.invites.insert({
+        id,
+        email,
+        targetRole: input.targetRole,
+        targetStaffRole: targetStaff,
+        tokenHash: hashToken(token),
+        status: "pending",
+        expiresAt,
+        acceptedAt: null,
+        acceptedUserId: null,
+        createdByUserId: input.actorUserId,
+      });
+    } catch (e) {
+      // Partial unique index race: another admin created the invite concurrently.
+      if (isUniqueViolation(e)) {
+        return err({
+          message: "A pending invitation already exists for this email",
+          status: 409,
+        });
+      }
+      throw e;
+    }
+
+    await this.enqueueInviteEmail({
+      invitationId: id,
+      token,
+      email,
+      inviterName: actor.value.name,
       targetRole: input.targetRole,
       targetStaffRole: targetStaff,
-      tokenHash,
-      status: "pending",
       expiresAt,
-      acceptedAt: null,
-      acceptedUserId: null,
-      createdByUserId: input.actorUserId,
     });
-
-    const { outboxId } = await this.email.enqueue({
-      template: "invite",
-      to: input.email.trim(),
-      category: "transactional",
-      vars: {
-        inviteUrl: this.inviteLink(token),
-        inviterName: actor?.name ?? null,
-        inviteeEmail: input.email.trim(),
-        role: input.targetRole,
-        staffRole: input.targetStaffRole ?? null,
-        expiresAt: expiresAt.toISOString(),
-      },
-    });
-
-    await this.invites.updateStatus(id, { lastEmailOutboxId: outboxId });
 
     return ok({ id, expiresAt });
   }
@@ -143,108 +196,26 @@ export class InvitationService {
     });
   }
 
-  /** Validates an invite for a registration attempt and returns the invitation row snapshot.
-   * Consumption happens in {@link consumeInviteForNewUser} after the auth user is created.
-   */
-  async validateForRegistration(
-    token: string,
-    email: string,
-  ): Promise<Result<InvitationRow, InvitationError>> {
-    const row = await this.invites.findPendingByTokenHash(hashToken(token));
-    if (!row) return err({ message: "Invalid invitation", status: 400 });
-    if (row.expiresAt.getTime() <= Date.now()) {
-      await this.invites.updateStatus(row.id, { status: "expired" });
-      return err({ message: "Invitation expired", status: 400 });
-    }
-    if (row.email !== email.trim().toLowerCase()) {
-      return err({ message: "Email does not match invitation", status: 400 });
-    }
-    return ok(row);
+  async listInvitationsForActor(
+    actorUserId: string,
+    page: { limit: number; offset: number },
+  ): Promise<{ rows: InvitationAdminListRow[]; total: number; pendingTotal: number }> {
+    const [rows, counts] = await Promise.all([
+      this.invites.listAdminCreatedBy(actorUserId, page),
+      this.invites.countsForActor(actorUserId),
+    ]);
+    return { rows, total: counts.total, pendingTotal: counts.pending };
   }
 
-  /** Read-only invite classification for registration (no state mutation). */
-  async peekForRegistration(
-    token: string,
-    email: string,
-  ): Promise<Result<{ kind: "platform" | "entity" }, InvitationError>> {
-    const validated = await this.validateForRegistration(token, email);
-    if (validated.isErr()) return err(validated.error);
-    const kind = validated.value.targetLegalEntityId == null ? "platform" : "entity";
-    return ok({ kind });
-  }
-
-  async consumeInviteForNewUser(
-    token: string,
-    newUserId: string,
-    email: string,
-  ): Promise<Result<UserRole, InvitationError>> {
-    try {
-      const targetRole = await this.db.transaction(async (tx) => {
-        const [row] = await tx
-          .select()
-          .from(userInvitation)
-          .where(eq(userInvitation.tokenHash, hashToken(token)))
-          .limit(1);
-        if (!row || row.status !== "pending") {
-          throw new InvitationHttpError("Invalid invitation", 400);
-        }
-        if (row.expiresAt.getTime() <= Date.now()) {
-          await tx
-            .update(userInvitation)
-            .set({ status: "expired", updatedAt: new Date() })
-            .where(eq(userInvitation.id, row.id));
-          throw new InvitationHttpError("Invitation expired", 400);
-        }
-        if (row.email !== email.trim().toLowerCase()) {
-          throw new InvitationHttpError("Email does not match invitation", 400);
-        }
-
-        const nextRole = row.targetRole as UserRole;
-        const nextStaff =
-          nextRole === "staff"
-            ? (row.targetStaffRole as (typeof userStaffRoleEnum.enumValues)[number])
-            : null;
-
-        await tx
-          .update(userInvitation)
-          .set({
-            status: "accepted",
-            acceptedAt: new Date(),
-            acceptedUserId: newUserId,
-            updatedAt: new Date(),
-          })
-          .where(eq(userInvitation.id, row.id));
-
-        await tx
-          .update(user)
-          .set({ role: nextRole, staffRole: nextStaff, updatedAt: new Date() })
-          .where(eq(user.id, newUserId));
-        return nextRole;
-      });
-      return ok(targetRole);
-    } catch (e) {
-      if (e instanceof InvitationHttpError) {
-        return err({ message: e.message, status: e.status });
-      }
-      throw e;
-    }
-  }
-
-  async listInvitationsForActor(actorUserId: string): Promise<InvitationAdminListRow[]> {
-    return this.invites.listAdminCreatedBy(actorUserId);
-  }
-
+  /** Any admin with `user.invite` may revoke, not just the creator (the creating
+   * admin may be unavailable or offboarded). */
   async revoke(input: { actorUserId: string; invitationId: string }): Promise<
     Result<void, InvitationError>
   > {
-    const actor = await this.users.findById(input.actorUserId);
-    const actorRole = (actor?.role ?? "client") as UserRole;
-    const actorStaff = normalizeUserStaffRole(actor?.staffRole ?? undefined);
-    if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
-      return err({ message: "Forbidden", status: 403 });
-    }
+    const actor = await this.requireInviteCapability(input.actorUserId);
+    if (actor.isErr()) return err(actor.error);
     const row = await this.invites.findById(input.invitationId);
-    if (!row || row.createdByUserId !== input.actorUserId) {
+    if (!row) {
       return err({ message: "Not found", status: 404 });
     }
     if (row.status !== "pending") {
@@ -254,18 +225,15 @@ export class InvitationService {
     return ok(undefined);
   }
 
+  /** Any admin with `user.invite` may resend; the token is rotated so old links die. */
   async resend(input: {
     actorUserId: string;
     invitationId: string;
   }): Promise<Result<{ expiresAt: Date }, InvitationError>> {
-    const actor = await this.users.findById(input.actorUserId);
-    const actorRole = (actor?.role ?? "client") as UserRole;
-    const actorStaff = normalizeUserStaffRole(actor?.staffRole ?? undefined);
-    if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
-      return err({ message: "Forbidden", status: 403 });
-    }
+    const actor = await this.requireInviteCapability(input.actorUserId);
+    if (actor.isErr()) return err(actor.error);
     const row = await this.invites.findById(input.invitationId);
-    if (!row || row.createdByUserId !== input.actorUserId) {
+    if (!row) {
       return err({ message: "Not found", status: 404 });
     }
     if (row.status !== "pending") {
@@ -273,25 +241,18 @@ export class InvitationService {
     }
 
     const token = randomBytes(32).toString("base64url");
-    const tokenHash = hashToken(token);
     const expiresAt = addDays(new Date(), 7);
-    await this.invites.updateStatus(row.id, { tokenHash, expiresAt });
+    await this.invites.updateStatus(row.id, { tokenHash: hashToken(token), expiresAt });
 
-    const { outboxId } = await this.email.enqueue({
-      template: "invite",
-      to: row.email,
-      category: "transactional",
-      vars: {
-        inviteUrl: this.inviteLink(token),
-        inviterName: actor?.name ?? null,
-        inviteeEmail: row.email,
-        role: row.targetRole,
-        staffRole: row.targetStaffRole ?? null,
-        expiresAt: expiresAt.toISOString(),
-      },
+    await this.enqueueInviteEmail({
+      invitationId: row.id,
+      token,
+      email: row.email,
+      inviterName: actor.value.name,
+      targetRole: row.targetRole,
+      targetStaffRole: row.targetStaffRole,
+      expiresAt,
     });
-
-    await this.invites.updateStatus(row.id, { lastEmailOutboxId: outboxId });
 
     return ok({ expiresAt });
   }

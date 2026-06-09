@@ -323,7 +323,10 @@ export interface IAdminInvitationApplicationService {
   create(
     input: CreateInvitationInput,
   ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>>;
-  listInvitationsForActor(actorUserId: string): Promise<InvitationAdminListRow[]>;
+  listInvitationsForActor(
+    actorUserId: string,
+    page: { limit: number; offset: number },
+  ): Promise<{ rows: InvitationAdminListRow[]; total: number; pendingTotal: number }>;
   revoke(input: { actorUserId: string; invitationId: string }): Promise<
     Result<void, InvitationError>
   >;

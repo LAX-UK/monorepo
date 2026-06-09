@@ -750,6 +750,13 @@
       "when": 1786300000000,
       "tag": "0107_domain_events_email_verified_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1786400000000,
+      "tag": "0108_user_invitation_pending_platform_unique",
+      "breakpoints": true
     }
   ]
 }

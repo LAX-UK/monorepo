@@ -24,7 +24,7 @@ import {
   getAdminAmlScreeningsPending,
   getAdminSourceOfFundsPending,
 } from "@/lib/data/http/compliance.server";
-import { getAdminInvitations } from "@/lib/data/http/invitations.server";
+import { getAdminInvitationsPendingCount } from "@/lib/data/http/invitations.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
 import { cache } from "react";
 
@@ -107,8 +107,7 @@ const defaultFetchers: AdminNavCountFetchers = {
     }).length;
   },
   getInvitationsPending: async () => {
-    const rows = await getAdminInvitations();
-    return rows.filter((i) => i.status === "pending").length;
+    return getAdminInvitationsPendingCount();
   },
   getDraftSalesNeedingSetup: async () => {
     const rows = await getAdminSalesList({ status: "draft", needsSetup: true, limit: 100 });
