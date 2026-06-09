@@ -1,15 +1,31 @@
 import type { Database } from "@auction/db";
 import { emailOutbox, user, userInvitation, type userStaffRoleEnum } from "@auction/db/schema";
 import type { UserRole, UserStaffRole } from "@auction/types";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { type SQL, and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import type {
   ConsumeInviteResult,
   IUserInvitationRepository,
+  InvitationAdminListFilters,
   InvitationAdminListRow,
   InvitationInsert,
   InvitationRow,
   InvitationSummary,
 } from "../services/interfaces/invitation.js";
+
+const inviter = user;
+
+function buildAdminListWhere(filters: InvitationAdminListFilters): SQL | undefined {
+  const clauses: SQL[] = [];
+  if (filters.status) {
+    clauses.push(eq(userInvitation.status, filters.status));
+  }
+  const q = filters.q?.trim();
+  if (q) {
+    clauses.push(ilike(userInvitation.email, `%${q}%`));
+  }
+  if (clauses.length === 0) return undefined;
+  return and(...clauses);
+}
 
 function mapRow(r: typeof userInvitation.$inferSelect): InvitationRow {
   return {
@@ -172,22 +188,38 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
     });
   }
 
-  async countsForActor(userId: string): Promise<{ total: number; pending: number }> {
-    const [row] = await this.db
-      .select({
-        total: sql<number>`count(*)::int`,
-        pending: sql<number>`count(*) filter (where ${userInvitation.status} = 'pending')::int`,
-      })
-      .from(userInvitation)
-      .where(eq(userInvitation.createdByUserId, userId));
-    return { total: row?.total ?? 0, pending: row?.pending ?? 0 };
+  async counts(
+    filters: InvitationAdminListFilters,
+  ): Promise<{ total: number; pending: number; accepted: number }> {
+    const filteredWhere = buildAdminListWhere(filters);
+    const [filteredRow, globalRow] = await Promise.all([
+      this.db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(userInvitation)
+        .where(filteredWhere)
+        .then((rows) => rows[0]),
+      this.db
+        .select({
+          pending: sql<number>`count(*) filter (where ${userInvitation.status} = 'pending')::int`,
+          accepted: sql<number>`count(*) filter (where ${userInvitation.status} = 'accepted')::int`,
+        })
+        .from(userInvitation)
+        .then((rows) => rows[0]),
+    ]);
+    return {
+      total: filteredRow?.total ?? 0,
+      pending: globalRow?.pending ?? 0,
+      accepted: globalRow?.accepted ?? 0,
+    };
   }
 
-  async listAdminCreatedBy(
-    userId: string,
+  async listAdmin(
+    filters: InvitationAdminListFilters,
     page: { limit: number; offset: number },
   ): Promise<InvitationAdminListRow[]> {
     const inviteEmailLastStatus = emailOutbox.status;
+    const invitedByName = sql<string | null>`coalesce(${inviter.name}, ${inviter.email})`;
+    const where = buildAdminListWhere(filters);
     const rows = await this.db
       .select({
         id: userInvitation.id,
@@ -205,16 +237,19 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         createdAt: userInvitation.createdAt,
         updatedAt: userInvitation.updatedAt,
         inviteEmailLastStatus,
+        invitedByName,
       })
       .from(userInvitation)
       .leftJoin(emailOutbox, eq(userInvitation.lastEmailOutboxId, emailOutbox.id))
-      .where(eq(userInvitation.createdByUserId, userId))
+      .leftJoin(inviter, eq(userInvitation.createdByUserId, inviter.id))
+      .where(where)
       .orderBy(desc(userInvitation.createdAt))
       .limit(page.limit)
       .offset(page.offset);
     return rows.map((r) => ({
       ...mapInvitationSummary(r),
       inviteEmailLastStatus: r.inviteEmailLastStatus ?? null,
+      invitedByName: r.invitedByName ?? null,
     }));
   }
 

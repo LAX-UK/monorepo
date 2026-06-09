@@ -3,21 +3,12 @@
 import { useAdminBulkSelectionBulk } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
-import { InvitationRevokeButton } from "@/components/admin/invitation-revoke-button";
-import { adminResendInvitationAction } from "@/lib/actions/admin";
-import {
-  invitationCanResendOrRevoke,
-  invitationLifecycleDisplay,
-} from "@/lib/admin/invite-lifecycle";
+import { InvitationRowActions } from "@/components/admin/invitation-row-actions";
+import { invitationRoleLabel } from "@/lib/admin/invitation-role-label";
+import { invitationLifecycleDisplay } from "@/lib/admin/invite-lifecycle";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
-import type { UserRole } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
 import { Checkbox } from "@auction/ui/components/checkbox";
-
-function roleLabel(r: UserRole): string {
-  if (r === "staff") return "Staff";
-  return "Client";
-}
 
 function coerceDate(d: Date | string): Date {
   return d instanceof Date ? d : new Date(d);
@@ -35,13 +26,8 @@ export function InvitationsMobileCards({ rows }: Props) {
       {rows.map((r) => {
         const expiresAt = coerceDate(r.expiresAt);
         const openedAt = r.openedAt ? coerceDate(r.openedAt) : null;
+        const createdAt = coerceDate(r.createdAt);
         const display = invitationLifecycleDisplay({
-          status: r.status,
-          expiresAt,
-          openedAt,
-          inviteEmailLastStatus: r.inviteEmailLastStatus,
-        });
-        const canMutate = invitationCanResendOrRevoke({
           status: r.status,
           expiresAt,
           openedAt,
@@ -51,7 +37,15 @@ export function InvitationsMobileCards({ rows }: Props) {
         const card = (
           <div className="min-w-0 flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4">
             <p className="truncate font-medium text-on-surface">{r.email}</p>
-            <p className="mt-1 text-xs text-on-surface-variant">{roleLabel(r.targetRole)}</p>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              {invitationRoleLabel(r.targetRole, r.targetStaffRole)}
+            </p>
+            {r.invitedByName ? (
+              <p className="mt-1 text-xs text-on-surface-variant">Invited by {r.invitedByName}</p>
+            ) : null}
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Sent {formatRelativeTime(createdAt)} · {formatDateTime(createdAt)}
+            </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {display.kind === "revoked" ? (
                 <AdminStatusBadge domain="invitation" status="revoked" />
@@ -63,20 +57,16 @@ export function InvitationsMobileCards({ rows }: Props) {
                 active={r.status === "pending" && expiresAt.getTime() > Date.now()}
               />
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <form action={adminResendInvitationAction}>
-                <input type="hidden" name="invitationId" value={r.id} />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="sm"
-                  disabled={!canMutate}
-                  className="font-label text-[10px] uppercase"
-                >
-                  Resend
-                </Button>
-              </form>
-              <InvitationRevokeButton invitationId={r.id} disabled={!canMutate} />
+            <div className="mt-3">
+              <InvitationRowActions
+                invitationId={r.id}
+                lifecycle={{
+                  status: r.status,
+                  expiresAt,
+                  openedAt,
+                  inviteEmailLastStatus: r.inviteEmailLastStatus,
+                }}
+              />
             </div>
           </div>
         );
