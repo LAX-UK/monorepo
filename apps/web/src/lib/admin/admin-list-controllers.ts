@@ -37,7 +37,7 @@ import {
 } from "@/lib/data/http/compliance.server";
 import {
   type AdminInvitationSummary,
-  getAdminInvitations,
+  getAdminInvitationsPage,
 } from "@/lib/data/http/invitations.server";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 import {
@@ -490,9 +490,8 @@ export const invitationsListController: IAdminListController<
     return { ...base, limit: Math.min(200, base.limit) };
   },
   async fetch(q) {
-    const all = await getAdminInvitations();
-    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
-    return { rows, offset: q.offset, limit: q.limit, total, rowsForSummary: all };
+    const { rows, total } = await getAdminInvitationsPage({ offset: q.offset, limit: q.limit });
+    return { rows, offset: q.offset, limit: q.limit, total };
   },
 };
 
