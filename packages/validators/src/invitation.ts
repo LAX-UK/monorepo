@@ -38,3 +38,8 @@ export const adminBulkInvitationsBodySchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(50),
   op: z.enum(["revoke", "resend"]),
 });
+
+export const adminInvitationsListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional().default(200),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});

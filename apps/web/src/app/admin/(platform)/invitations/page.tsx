@@ -14,6 +14,7 @@ import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { invitationsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminInvitationsPendingCount } from "@/lib/data/http/invitations.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
@@ -37,12 +38,13 @@ export default async function AdminInvitationsPage({
   let pendingTotal = 0;
   let loadError: string | null = null;
   try {
-    const result = await invitationsListController.fetch(query);
+    const [result, pending] = await Promise.all([
+      invitationsListController.fetch(query),
+      getAdminInvitationsPendingCount(),
+    ]);
     rows = result.rows;
     total = result.total ?? 0;
-    pendingTotal = (result.rowsForSummary ?? result.rows).filter(
-      (r) => r.status === "pending",
-    ).length;
+    pendingTotal = pending;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load invitations.";
   }

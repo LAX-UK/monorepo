@@ -44,11 +44,35 @@ export type InvitationAdminListRow = InvitationSummary & {
   inviteEmailLastStatus: string | null;
 };
 
+/** Outcome of the atomic single-use consume transaction. */
+export type ConsumeInviteResult =
+  | { outcome: "ok"; targetRole: UserRole }
+  | { outcome: "invalid" }
+  | { outcome: "expired" }
+  | { outcome: "email_mismatch" };
+
 export interface IUserInvitationRepository {
   insert(row: InvitationInsert): Promise<void>;
   findById(id: string): Promise<InvitationRow | null>;
   findPendingByTokenHash(tokenHash: string): Promise<InvitationRow | null>;
-  listAdminCreatedBy(userId: string): Promise<InvitationAdminListRow[]>;
+  /** Pending platform invite (entity invites excluded) for an email, case-insensitive. */
+  findPendingPlatformByEmail(email: string): Promise<InvitationRow | null>;
+  /**
+   * Atomically consumes a pending invite for a freshly registered user: marks it
+   * accepted and applies the target role to the user row, in one transaction with
+   * a row lock so a token can never be redeemed twice.
+   */
+  consumeForNewUser(
+    tokenHash: string,
+    newUserId: string,
+    email: string,
+  ): Promise<ConsumeInviteResult>;
+  listAdminCreatedBy(
+    userId: string,
+    page: { limit: number; offset: number },
+  ): Promise<InvitationAdminListRow[]>;
+  /** Exact list totals for the actor's invitations (pagination + pending badge). */
+  countsForActor(userId: string): Promise<{ total: number; pending: number }>;
   updateStatus(
     id: string,
     patch: Partial<
