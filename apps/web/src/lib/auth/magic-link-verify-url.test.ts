@@ -14,4 +14,15 @@ describe("buildMagicLinkVerifyUrl", () => {
     expect(url.searchParams.get("callbackURL")).toBe("https://lax.bid/auth/activate/set-password");
     expect(url.searchParams.get("errorCallbackURL")).toBe("https://lax.bid/auth/activate/expired");
   });
+
+  it("uses getSiteUrl when webOrigin is empty (SSR)", () => {
+    vi.stubGlobal("window", undefined);
+    vi.stubEnv("NEXT_PUBLIC_WEB_ORIGIN", "https://test.lax.bid");
+    const url = new URL(buildMagicLinkVerifyUrl("tok123", ""));
+    expect(url.searchParams.get("callbackURL")).toBe(
+      "https://test.lax.bid/auth/activate/set-password",
+    );
+    expect(url.searchParams.get("errorCallbackURL")).toBe("https://test.lax.bid/auth/activate/expired");
+    expect(url.searchParams.get("callbackURL")).not.toMatch(/^\//);
+  });
 });
