@@ -23,10 +23,12 @@ export const AUTH_FULL_TABLES = [
 // to honour suppression at enqueue time. Auth must NOT be able to update the outbox
 // (that's the worker's job) or write to the suppression table (that's apps/api via the
 // Postmark webhook and the unsubscribe route).
-const AUTH_INSERT_SELECT_TABLES = ["email_outbox"];
+/** Tables `auth_app` may INSERT and SELECT (no UPDATE/DELETE).
+ * - `email_outbox`: enqueue transactional mail from Better Auth hooks.
+ * - `domain_events`: append `user.registered` (INSERT) and `user.email_verified`
+ *   (`publishUserEmailVerified` SELECT pre-check + INSERT; see apps/auth). */
+export const AUTH_INSERT_SELECT_TABLES = ["email_outbox", "domain_events"] as const;
 const AUTH_SELECT_TABLES = ["email_suppression"];
-/** Auth emits `user.registered` into the domain-events outbox after signup (see apps/auth). */
-export const AUTH_INSERT_TABLES = ["domain_events"] as const;
 const API_DENY_TABLES = [
   "session",
   "account",
@@ -250,9 +252,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     for (const tableName of AUTH_SELECT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "SELECT");
-    }
-    for (const tableName of AUTH_INSERT_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "INSERT");
     }
     for (const tableName of tables) {
       if (API_DENY_TABLES.includes(tableName)) {
