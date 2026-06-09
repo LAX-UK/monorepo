@@ -9,8 +9,8 @@ function makeRepo() {
     findPendingByTokenHash: vi.fn(),
     findPendingPlatformByEmail: vi.fn(),
     consumeForNewUser: vi.fn(),
-    listAdminCreatedBy: vi.fn(),
-    countsForActor: vi.fn(),
+    listAdmin: vi.fn(),
+    counts: vi.fn(),
     updateStatus: vi.fn(),
     markOpenedFirstTouch: vi.fn(),
   } satisfies IUserInvitationRepository;

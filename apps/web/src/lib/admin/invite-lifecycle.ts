@@ -42,7 +42,35 @@ export function invitationLifecycleDisplay(
   return { kind: "lifecycle", pill: "expired" };
 }
 
+/** @deprecated Use invitationCanResend / invitationCanRevoke */
 export function invitationCanResendOrRevoke(row: InvitationLifecycleInput): boolean {
+  return invitationCanRevoke(row);
+}
+
+export function invitationCanResend(row: InvitationLifecycleInput): boolean {
+  if (row.status === "revoked" || row.status === "accepted") return false;
+  if (row.status === "expired") return true;
+  return row.status === "pending";
+}
+
+export function invitationCanRevoke(row: InvitationLifecycleInput): boolean {
   if (row.status !== "pending") return false;
   return row.expiresAt.getTime() > Date.now();
+}
+
+export function invitationResendDisabledReason(row: InvitationLifecycleInput): string | null {
+  if (invitationCanResend(row)) return null;
+  if (row.status === "accepted") return "Already accepted";
+  if (row.status === "revoked") return "Invitation revoked";
+  return "Cannot resend this invitation";
+}
+
+export function invitationRevokeDisabledReason(row: InvitationLifecycleInput): string | null {
+  if (invitationCanRevoke(row)) return null;
+  if (row.status === "accepted") return "Already accepted";
+  if (row.status === "revoked") return "Already revoked";
+  if (row.status === "expired" || row.expiresAt.getTime() <= Date.now()) {
+    return "Expired — resend to issue a new link";
+  }
+  return "Cannot revoke this invitation";
 }

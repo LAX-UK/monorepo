@@ -42,6 +42,12 @@ export type InvitationSummary = Omit<InvitationRow, "tokenHash" | "lastEmailOutb
 /** Admin list projection including invite-email delivery snapshot from linked outbox row. */
 export type InvitationAdminListRow = InvitationSummary & {
   inviteEmailLastStatus: string | null;
+  invitedByName: string | null;
+};
+
+export type InvitationAdminListFilters = {
+  status?: InvitationRow["status"];
+  q?: string;
 };
 
 /** Outcome of the atomic single-use consume transaction. */
@@ -67,12 +73,16 @@ export interface IUserInvitationRepository {
     newUserId: string,
     email: string,
   ): Promise<ConsumeInviteResult>;
-  listAdminCreatedBy(
-    userId: string,
+  listAdmin(
+    filters: InvitationAdminListFilters,
     page: { limit: number; offset: number },
   ): Promise<InvitationAdminListRow[]>;
-  /** Exact list totals for the actor's invitations (pagination + pending badge). */
-  countsForActor(userId: string): Promise<{ total: number; pending: number }>;
+  /** Exact list totals (pagination + KPI badges). `total` respects filters; pending/accepted are global. */
+  counts(filters: InvitationAdminListFilters): Promise<{
+    total: number;
+    pending: number;
+    accepted: number;
+  }>;
   updateStatus(
     id: string,
     patch: Partial<

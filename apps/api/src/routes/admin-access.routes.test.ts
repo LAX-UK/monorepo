@@ -219,7 +219,7 @@ describe("admin access middleware", () => {
 describe("admin invitation routes", () => {
   it("GET /invitations returns 403 for specialist without user.invite", async () => {
     const invitations = {
-      listInvitationsForActor: vi.fn(),
+      listInvitations: vi.fn(),
       create: vi.fn(),
       revoke: vi.fn(),
       resend: vi.fn(),
@@ -237,12 +237,17 @@ describe("admin invitation routes", () => {
     attachAdminInvitationRoutes(app, invitations as never);
     const res = await app.request("http://test/invitations");
     expect(res.status).toBe(403);
-    expect(invitations.listInvitationsForActor).not.toHaveBeenCalled();
+    expect(invitations.listInvitations).not.toHaveBeenCalled();
   });
 
   it("GET /invitations allows super_admin", async () => {
     const invitations = {
-      listInvitationsForActor: vi.fn().mockResolvedValue([]),
+      listInvitations: vi.fn().mockResolvedValue({
+        rows: [],
+        total: 0,
+        pendingTotal: 0,
+        acceptedTotal: 0,
+      }),
       create: vi.fn(),
       revoke: vi.fn(),
       resend: vi.fn(),
@@ -260,6 +265,6 @@ describe("admin invitation routes", () => {
     attachAdminInvitationRoutes(app, invitations as never);
     const res = await app.request("http://test/invitations");
     expect(res.status).toBe(200);
-    expect(invitations.listInvitationsForActor).toHaveBeenCalledOnce();
+    expect(invitations.listInvitations).toHaveBeenCalledOnce();
   });
 });

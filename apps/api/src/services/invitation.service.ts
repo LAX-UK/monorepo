@@ -7,7 +7,11 @@ import {
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { IEmailService } from "./interfaces/email.js";
-import type { IUserInvitationRepository, InvitationAdminListRow } from "./interfaces/invitation.js";
+import type {
+  IUserInvitationRepository,
+  InvitationAdminListFilters,
+  InvitationAdminListRow,
+} from "./interfaces/invitation.js";
 import type { IUserRepository } from "./interfaces/repositories.js";
 
 export type InvitationError = { message: string; status: number };
@@ -196,15 +200,25 @@ export class InvitationService {
     });
   }
 
-  async listInvitationsForActor(
-    actorUserId: string,
+  async listInvitations(
+    filters: InvitationAdminListFilters,
     page: { limit: number; offset: number },
-  ): Promise<{ rows: InvitationAdminListRow[]; total: number; pendingTotal: number }> {
+  ): Promise<{
+    rows: InvitationAdminListRow[];
+    total: number;
+    pendingTotal: number;
+    acceptedTotal: number;
+  }> {
     const [rows, counts] = await Promise.all([
-      this.invites.listAdminCreatedBy(actorUserId, page),
-      this.invites.countsForActor(actorUserId),
+      this.invites.listAdmin(filters, page),
+      this.invites.counts(filters),
     ]);
-    return { rows, total: counts.total, pendingTotal: counts.pending };
+    return {
+      rows,
+      total: counts.total,
+      pendingTotal: counts.pending,
+      acceptedTotal: counts.accepted,
+    };
   }
 
   /** Any admin with `user.invite` may revoke, not just the creator (the creating
@@ -236,13 +250,21 @@ export class InvitationService {
     if (!row) {
       return err({ message: "Not found", status: 404 });
     }
-    if (row.status !== "pending") {
+    if (row.status !== "pending" && row.status !== "expired") {
       return err({ message: "Invitation cannot be resent", status: 400 });
     }
 
     const token = randomBytes(32).toString("base64url");
     const expiresAt = addDays(new Date(), 7);
-    await this.invites.updateStatus(row.id, { tokenHash: hashToken(token), expiresAt });
+    const patch: Parameters<IUserInvitationRepository["updateStatus"]>[1] = {
+      tokenHash: hashToken(token),
+      expiresAt,
+    };
+    if (row.status === "expired") {
+      patch.status = "pending";
+      patch.openedAt = null;
+    }
+    await this.invites.updateStatus(row.id, patch);
 
     await this.enqueueInviteEmail({
       invitationId: row.id,
