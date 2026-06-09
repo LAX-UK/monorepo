@@ -88,6 +88,7 @@ import {
   createSubmissionsLegalEntityContext,
 } from "./middleware/require-legal-entity-context.js";
 import { DrizzleAddressRepository } from "./repositories/drizzle-address.repository.js";
+import { DrizzleAdminUserBidsReader } from "./repositories/drizzle-admin-user-bids.reader.js";
 import { DrizzleAdminUserKycReader } from "./repositories/drizzle-admin-user-kyc.reader.js";
 import {
   DrizzleAdminUserActivityReader,
@@ -1345,11 +1346,13 @@ export function createContainer(env: Env): Container {
     accountSuspendedSupportEmail: env.EMAIL_REPLY_TO?.trim() || "support@lax.bid",
   });
   const adminActivityReader = new DrizzleAdminUserActivityReader(db);
+  const adminUserBidsReader = new DrizzleAdminUserBidsReader(db);
   const adminUserService = new AdminUserService(
     adminUserReader,
     adminRoleManager,
     adminSuspender,
     adminActivityReader,
+    adminUserBidsReader,
     adminUserKycReader,
   );
   const attentionFeedReader = new DrizzleAttentionFeedReader(db);

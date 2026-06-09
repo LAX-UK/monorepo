@@ -86,7 +86,11 @@ import {
   requireAuditDomainEvents,
   requireCatalogueWrite,
   requireCategoriesAccess,
+  requireClientActivity,
+  requireClientBids,
+  requireClientKyc,
   requireEmailAdmin,
+  requireEmailObservability,
   requireFinanceAccess,
   requireLegalEntityBrowse,
   requireLotsAccess,
@@ -115,6 +119,11 @@ import { attachXeroAdminRoutes } from "./xero-admin.js";
 
 const activityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+
+const userBidsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(25),
+  offset: z.coerce.number().int().min(0).optional().default(0),
 });
 
 const impersonationStartBodySchema = z.object({
@@ -1274,7 +1283,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/email/outbox",
-    requireEmailAdmin,
+    requireEmailObservability,
     zValidator("query", adminListOutboxQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -1289,7 +1298,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/email/events",
-    requireEmailAdmin,
+    requireEmailObservability,
     zValidator("query", adminListEventsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -1300,7 +1309,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/email/suppressions",
-    requireEmailAdmin,
+    requireEmailObservability,
     zValidator("query", adminListSuppressionsQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -1396,7 +1405,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/users/:userId/kyc-sessions",
-    requireUsersDirectory,
+    requireClientKyc,
     zValidator("param", userIdParamSchema),
     async (c) => {
       const { userId } = c.req.valid("param");
@@ -1701,7 +1710,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   platform.get(
     "/users/:userId/activity",
-    requireUsersDirectory,
+    requireClientActivity,
     zValidator("param", userIdParamSchema),
     zValidator("query", activityQuerySchema),
     async (c) => {
@@ -1710,6 +1719,24 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const actorRole = c.get("userRole") ?? "client";
       const actorStaff = c.get("userStaffRole") as string | null | undefined;
       const data = await container.admin.users.activityFor(actorRole, actorStaff, userId, limit);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/users/:userId/bids",
+    requireClientBids,
+    zValidator("param", userIdParamSchema),
+    zValidator("query", userBidsQuerySchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const { limit, offset } = c.req.valid("query");
+      const actorRole = c.get("userRole") ?? "client";
+      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const data = await container.admin.users.bidsFor(actorRole, actorStaff, userId, {
+        limit,
+        offset,
+      });
       return c.json({ data });
     },
   );

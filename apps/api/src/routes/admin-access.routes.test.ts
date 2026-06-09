@@ -6,7 +6,11 @@ import {
   requireArtistsAccess,
   requireAuditDomainEvents,
   requireCategoriesAccess,
+  requireClientActivity,
+  requireClientBids,
+  requireClientKyc,
   requireEmailAdmin,
+  requireEmailObservability,
   requireLotsAccess,
   requirePlatformAdminFull,
   requireQrCodesAccess,
@@ -39,6 +43,12 @@ describe("admin access middleware", () => {
 
   it("requireUsersDirectory allows super_admin", async () => {
     const app = createAccessTestApp(requireUsersDirectory, "super_admin");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(200);
+  });
+
+  it("requireUsersDirectory allows client_advisor", async () => {
+    const app = createAccessTestApp(requireUsersDirectory, "client_advisor");
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
@@ -147,6 +157,54 @@ describe("admin access middleware", () => {
 
   it("requireEmailAdmin allows super_admin", async () => {
     const app = createAccessTestApp(requireEmailAdmin, "super_admin");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(200);
+  });
+
+  it("requireEmailObservability allows content_marketing", async () => {
+    const app = createAccessTestApp(requireEmailObservability, "content_marketing");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(200);
+  });
+
+  it("requireEmailObservability returns 403 for catalogue_manager", async () => {
+    const app = createAccessTestApp(requireEmailObservability, "catalogue_manager");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(403);
+  });
+
+  it("requireClientBids allows client_advisor", async () => {
+    const app = createAccessTestApp(requireClientBids, "client_advisor");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(200);
+  });
+
+  it("requireClientBids returns 403 for operations", async () => {
+    const app = createAccessTestApp(requireClientBids, "operations");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(403);
+  });
+
+  it("requireClientKyc returns 403 for client_advisor (PII stays platform-admin only)", async () => {
+    const app = createAccessTestApp(requireClientKyc, "client_advisor");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(403);
+  });
+
+  it("requireClientKyc allows super_admin", async () => {
+    const app = createAccessTestApp(requireClientKyc, "super_admin");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(200);
+  });
+
+  it("requireClientActivity returns 403 for client_advisor", async () => {
+    const app = createAccessTestApp(requireClientActivity, "client_advisor");
+    const res = await app.request("http://test/test");
+    expect(res.status).toBe(403);
+  });
+
+  it("requireClientActivity allows super_admin", async () => {
+    const app = createAccessTestApp(requireClientActivity, "super_admin");
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });

@@ -30,6 +30,10 @@ export type RoleCapability =
   | "operations.fulfilment"
   | "content.write"
   | "support.respond"
+  /** Read client/staff directory and profile detail (no moderation or role changes). */
+  | "client.read"
+  /** Read per-client bid transaction history in admin. */
+  | "bids.read"
   /** Review and disposition AML/sanctions watchlist screenings. */
   | "aml.review"
   /** MLRO authority: lift/confirm AML holds and approve Source-of-Funds. */
@@ -62,6 +66,8 @@ const ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT: RoleCapability[] = [
   "operations.fulfilment",
   "content.write",
   "support.respond",
+  "client.read",
+  "bids.read",
   "aml.review",
   "compliance.mlro",
 ];
@@ -101,6 +107,15 @@ const STAFF_MATRIX: Record<Exclude<UserStaffRole, "super_admin">, Set<RoleCapabi
     "compliance.mlro",
     "legal_entity.read",
     "audit.read_pii",
+  ]),
+  client_advisor: new Set(["client.read", "bids.read", "legal_entity.read", "artist.read"]),
+  operations: new Set([
+    "catalogue.write",
+    "auction.manage",
+    "operations.fulfilment",
+    "legal_entity.read",
+    "artist.read",
+    "client.read",
   ]),
 };
 
@@ -244,6 +259,7 @@ export function staffRoleDefaultDestination(
     { path: "/admin/lots", requirement: "catalogue.write" },
     { path: "/admin/submissions", requirement: "specialist.appraise" },
     { path: "/admin/lot-fulfilment", requirement: "operations.fulfilment" },
+    { path: "/admin/clients", requirement: "client.read" },
     { path: "/admin/compliance/aml", requirement: { anyOf: ["aml.review", "compliance.mlro"] } },
     { path: "/admin/legal-entities", requirement: "legal_entity.read" },
     { path: "/admin/artists", requirement: "artist.read" },

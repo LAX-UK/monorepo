@@ -31,6 +31,8 @@ export const userStaffRoleEnum = pgEnum("user_staff_role", [
   "support_concierge",
   "staff_viewer",
   "compliance_officer",
+  "client_advisor",
+  "operations",
 ]);
 
 /**

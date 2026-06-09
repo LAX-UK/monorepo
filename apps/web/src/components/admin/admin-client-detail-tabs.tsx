@@ -5,6 +5,7 @@ import {
 } from "@/components/admin/admin-detail-tab-badges";
 import { AdminUserAmlPanel } from "@/components/admin/admin-user-aml-panel";
 import {
+  AdminUserBidsPanel,
   AdminUserLegalEntitiesPanel,
   AdminUserPaymentsPanel,
   AdminUserWonLotsPanel,
@@ -34,6 +35,7 @@ function buildOverviewSections(bundle: AdminClientDetailBundle): AdminUserOvervi
     kycSessions,
     amlScreenings,
     canViewAml,
+    canViewKyc,
     amlScreeningBySessionId,
     readinessSnapshot,
   } = bundle;
@@ -49,17 +51,21 @@ function buildOverviewSections(bundle: AdminClientDetailBundle): AdminUserOvervi
       label: "Profile",
       content: <AdminUserProfilePanel user={user} />,
     },
-    {
-      id: "kyc-history",
-      label: "KYC",
-      content: (
-        <AdminUserKycHistoryPanel
-          sessions={kycSessions}
-          currentKycSessionId={user.currentKycSessionId}
-          amlScreeningBySessionId={amlScreeningBySessionId}
-        />
-      ),
-    },
+    ...(canViewKyc
+      ? [
+          {
+            id: "kyc-history",
+            label: "KYC",
+            content: (
+              <AdminUserKycHistoryPanel
+                sessions={kycSessions}
+                currentKycSessionId={user.currentKycSessionId}
+                amlScreeningBySessionId={amlScreeningBySessionId}
+              />
+            ),
+          } satisfies AdminUserOverviewSection,
+        ]
+      : []),
     ...(canViewAml
       ? [
           {
@@ -92,10 +98,10 @@ function buildOverviewSections(bundle: AdminClientDetailBundle): AdminUserOvervi
 export function buildAdminClientDetailTabs(
   bundle: AdminClientDetailBundle,
 ): AdminClientDetailTab[] {
-  const { payments, wonLots, attentionItems } = bundle;
+  const { payments, wonLots, bids, attentionItems, canViewFinance, canViewBids } = bundle;
   const overviewSections = buildOverviewSections(bundle);
 
-  return [
+  const tabs: AdminClientDetailTab[] = [
     {
       id: "overview",
       label: "Overview",
@@ -108,11 +114,25 @@ export function buildAdminClientDetailTabs(
       badge: <AdminDetailTabCountBadge count={wonLots.length} />,
       content: <AdminUserWonLotsPanel wonLots={wonLots} />,
     },
-    {
+  ];
+
+  if (canViewBids) {
+    tabs.push({
+      id: "bids",
+      label: "Bids",
+      badge: <AdminDetailTabCountBadge count={bids.length} />,
+      content: <AdminUserBidsPanel bids={bids} />,
+    });
+  }
+
+  if (canViewFinance) {
+    tabs.push({
       id: "payments",
       label: "Payments",
       badge: <AdminDetailTabCountBadge count={payments.length} />,
       content: <AdminUserPaymentsPanel payments={payments} />,
-    },
-  ];
+    });
+  }
+
+  return tabs;
 }

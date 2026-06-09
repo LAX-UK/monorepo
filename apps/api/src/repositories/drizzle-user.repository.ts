@@ -52,6 +52,7 @@ export class DrizzleUserRepository implements IUserRepository {
       "auction_manager",
       "catalogue_manager",
       "specialist",
+      "operations",
     ] as const;
     const rows = await this.db
       .select({ id: user.id })
