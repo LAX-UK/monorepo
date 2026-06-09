@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   API_COLUMN_UPDATE_GRANTS,
   AUTH_FULL_TABLES,
-  AUTH_INSERT_TABLES,
+  AUTH_INSERT_SELECT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_FULL_TABLES,
   WORKER_PROVISIONING_TABLES,
@@ -325,8 +325,8 @@ describe("migrate-roles invariants", () => {
     expect([...AUTH_FULL_TABLES]).toContain("two_factor");
   });
 
-  it("AUTH_INSERT_TABLES includes domain_events (auth emits user.registered)", () => {
-    expect([...AUTH_INSERT_TABLES]).toContain("domain_events");
+  it("AUTH_INSERT_SELECT_TABLES includes domain_events (auth emits user.registered + user.email_verified)", () => {
+    expect([...AUTH_INSERT_SELECT_TABLES]).toContain("domain_events");
   });
 
   it("WORKER_PROVISIONING_TABLES includes legal_entity tables", () => {
