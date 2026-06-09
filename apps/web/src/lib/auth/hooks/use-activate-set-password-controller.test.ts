@@ -10,13 +10,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 const setupPassword = vi.fn();
+const useConnectedAccounts = vi.fn();
 
 vi.mock("@/lib/auth/hooks/use-connected-accounts", () => ({
-  useConnectedAccounts: () => ({
-    state: { hasPassword: false },
-    loading: false,
-    setupPassword,
-  }),
+  useConnectedAccounts: () => useConnectedAccounts(),
 }));
 
 vi.mock("@/lib/auth/use-app-session", () => ({
@@ -34,11 +31,25 @@ describe("useActivateSetPasswordController", () => {
   beforeEach(() => {
     replace.mockClear();
     setupPassword.mockReset();
+    useConnectedAccounts.mockReturnValue({
+      state: { hasPassword: false },
+      loading: false,
+      setupPassword,
+    });
   });
 
-  it("skips set-password when safe next is present (repeat magic-link login)", () => {
+  it("does not skip set-password when only safe next is present", () => {
     renderHook(() => useActivateSetPasswordController());
+    expect(replace).not.toHaveBeenCalled();
+  });
 
+  it("redirects when client detects an existing password (fallback)", () => {
+    useConnectedAccounts.mockReturnValue({
+      state: { hasPassword: true },
+      loading: false,
+      setupPassword,
+    });
+    renderHook(() => useActivateSetPasswordController());
     expect(replace).toHaveBeenCalledWith("/dashboard");
   });
 });
