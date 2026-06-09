@@ -4,6 +4,8 @@ export const AUTH_TIMINGS = {
   emailVerificationExpiresSec: 60 * 60 * 24,
   /** Password reset link validity (must match template copy / UX) */
   resetPasswordExpiresSec: 60 * 60,
+  /** Magic-link activation / passwordless sign-in token validity */
+  magicLinkExpiresSec: 15 * 60,
   /** OIDC refresh token lifetime (seconds). Rotation + reuse detection are enforced by Better Auth OIDC plugin (single-use refresh). */
   oidcRefreshTokenExpiresSec: 60 * 60 * 24 * 30,
   /** DB-backed Better Auth session cookie lifetime */

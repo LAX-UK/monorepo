@@ -11,6 +11,10 @@ const RL = {
   totpWindowSec: 15 * 60,
   totpMax: 5,
   totpLockoutSec: 30 * 60,
+  magicLinkIpWindowSec: 60,
+  magicLinkIpMax: 5,
+  magicLinkEmailWindowSec: 60 * 60,
+  magicLinkEmailMax: 3,
 } as const;
 
 async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
@@ -35,6 +39,40 @@ async function slidingIncrement(redis: Redis, key: string, windowSec: number): P
  * infra).  Without its own rate limit it is vulnerable to distributed brute-
  * force that bypasses the API gateway.
  */
+export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis) {
+  return createMiddleware(async (c, next) => {
+    if (c.req.method !== "POST" || !c.req.path.endsWith("/sign-in/magic-link")) {
+      await next();
+      return;
+    }
+
+    const ip =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const ipKey = `rl:auth-issuer:magic-link-ip:${ip}`;
+    const ipCount = await slidingIncrement(redis, ipKey, RL.magicLinkIpWindowSec);
+    if (ipCount > RL.magicLinkIpMax) return c.json({ error: "Too many requests" }, 429);
+
+    let body: { email?: unknown } = {};
+    try {
+      body = (await c.req.raw.clone().json()) as { email?: unknown };
+    } catch {
+      await next();
+      return;
+    }
+    if (typeof body.email === "string") {
+      const normalised = body.email.trim().toLowerCase();
+      if (normalised.length > 0 && normalised.length <= 254) {
+        const emailKey = `rl:auth-issuer:magic-link-email:${normalised}`;
+        const emailCount = await slidingIncrement(redis, emailKey, RL.magicLinkEmailWindowSec);
+        if (emailCount > RL.magicLinkEmailMax) return c.json({ error: "Too many requests" }, 429);
+      }
+    }
+    await next();
+  });
+}
+
 export function createAuthIssuerRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
     const ip =

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@auction/api": "workspace:*",
+    "@auction/auth": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/domain": "workspace:*",

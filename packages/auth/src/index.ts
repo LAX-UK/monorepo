@@ -10,6 +10,7 @@ export * from "./permissions.js";
 export {
   runSignInTurnstileGate,
   isSignInEmailPost,
+  isSignInMagicLinkPost,
   type SignInGateRedis,
 } from "./sign-in-turnstile-gate.js";
 export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";
@@ -19,3 +20,8 @@ export {
   type RefreshReplayStore,
   type RefreshReplayResult,
 } from "./refresh-replay.js";
+export {
+  buildMagicLinkExpiredCallbackUrl,
+  buildMagicLinkSetPasswordCallbackUrl,
+  isSafeMagicLinkNextPath,
+} from "./magic-link-callback.js";

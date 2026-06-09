@@ -1,9 +1,11 @@
+import { account } from "@auction/db/schema";
 import {
   forgotPasswordBodySchema,
   reauthBodySchema,
   requestEmailChangeSchema,
   setupPasswordBodySchema,
 } from "@auction/validators";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
@@ -265,6 +267,17 @@ export function createAuthRoutes(container: Container) {
       );
     }
     return c.json({ error: "Invalid or expired token", code: "email_change_token_invalid" }, 400);
+  });
+
+  r.get("/password-status", requireAuth, async (c) => {
+    const userId = c.get("userId");
+    if (!userId) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
+    const [cred] = await container.authDb
+      .select({ id: account.id })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
+      .limit(1);
+    return c.json({ data: { hasPassword: Boolean(cred) } });
   });
 
   return r;

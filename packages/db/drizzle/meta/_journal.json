@@ -743,6 +743,13 @@
       "when": 1786200000000,
       "tag": "0102_notification_submission_id",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1786300000000,
+      "tag": "0107_domain_events_email_verified_unique",
+      "breakpoints": true
     }
   ]
 }

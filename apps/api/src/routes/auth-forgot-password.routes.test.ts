@@ -67,11 +67,17 @@ function mountAuth(opts: {
   authDb: object;
   emailEnqueue?: ReturnType<typeof vi.fn>;
   requestPasswordReset?: ReturnType<typeof vi.fn>;
+  authHandler?: ReturnType<typeof vi.fn>;
 }) {
   const enqueue = opts.emailEnqueue ?? vi.fn(async () => ({ outboxId: "out-1" }));
   const requestPasswordReset = opts.requestPasswordReset ?? vi.fn(async () => ({ status: true }));
+  const authHandler = opts.authHandler ?? vi.fn(async () => new Response(null, { status: 200 }));
   const container = {
-    env: { BETTER_AUTH_SECRET: "test", WEB_ORIGIN: "http://localhost:3000" },
+    env: {
+      BETTER_AUTH_SECRET: "test",
+      WEB_ORIGIN: "http://localhost:3000",
+      API_PUBLIC_URL: "http://localhost:4000",
+    },
     db: opts.db,
     authDb: opts.authDb,
     redis: buildFakeRedis(),
@@ -80,13 +86,14 @@ function mountAuth(opts: {
         getSession: vi.fn(async () => null),
         requestPasswordReset,
       },
+      handler: authHandler,
     },
     userService: {},
     emailService: { enqueue },
     authAuditPublisher: { publish: vi.fn(async () => {}) },
   };
   const app = new Hono().route("/auth", createAuthRoutes(container as never));
-  return { app, enqueue, requestPasswordReset };
+  return { app, enqueue, requestPasswordReset, authHandler };
 }
 
 async function callForgotPassword(app: Hono, email: string) {
@@ -152,6 +159,28 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
       },
     });
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("returns {ok:true} for a passwordless user and triggers magic-link sign-in", async () => {
+    const { db, authDb } = buildForgotPasswordDbPair({
+      userResult: [{ id: "u3", email: "seeded@example.com", name: "Seeded" }],
+      accountResult: [],
+    });
+    const authHandler = vi.fn(async (_request: Request) => new Response(null, { status: 200 }));
+    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb, authHandler });
+
+    const res = await callForgotPassword(app, "seeded@example.com");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('{"ok":true}');
+    await flushSideEffects();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(authHandler).toHaveBeenCalledTimes(1);
+    const req = authHandler.mock.calls[0]?.[0] as Request;
+    expect(req.url).toContain("/api/auth/sign-in/magic-link");
+    const body = (await req.json()) as { email: string; callbackURL: string };
+    expect(body.email).toBe("seeded@example.com");
+    expect(body.callbackURL).toBe("http://localhost:3000/auth/activate/set-password");
   });
 
   it("returns {ok:true} for an oauth-only user and enqueues a tailored email exactly once", async () => {
