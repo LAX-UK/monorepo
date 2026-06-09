@@ -6,6 +6,20 @@ import type { NextConfig } from "next";
 
 const workspaceRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
+// Turnstile config-drift guard: when captcha is declared required for this deployment,
+// a missing site key would render no widget while the API rejects every signup. Fail
+// the build instead of shipping a silently broken registration flow.
+if (
+  process.env.NEXT_PUBLIC_TURNSTILE_REQUIRED === "1" &&
+  !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()
+) {
+  throw new Error(
+    "NEXT_PUBLIC_TURNSTILE_REQUIRED=1 but NEXT_PUBLIC_TURNSTILE_SITE_KEY is unset — " +
+      "captcha widgets cannot render and the API will reject all sign-ups. " +
+      "Set the site key (or unset NEXT_PUBLIC_TURNSTILE_REQUIRED).",
+  );
+}
+
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,

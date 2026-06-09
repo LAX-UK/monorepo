@@ -46,6 +46,12 @@ export interface IWelcomeNotifier {
   notifyWelcome(userId: string, email: string): Promise<void>;
 }
 
+/** Compensating action: removes a just-created auth user when post-signup steps fail,
+ * so the email is not orphaned ("already registered" with no usable account). */
+export interface IRegistrationCompensator {
+  deleteOrphanedUser(userId: string): Promise<{ ok: boolean }>;
+}
+
 export interface IRegistrationService {
   register(
     input: RegistrationInput,

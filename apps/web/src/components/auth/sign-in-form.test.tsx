@@ -49,7 +49,7 @@ vi.mock("@/lib/auth/hooks/use-sign-in-controller", () => ({
 }));
 
 vi.mock("@/components/auth/social-sign-in-buttons", () => ({
-  SocialSignInButtons: () => null,
+  SocialSignInButtons: () => <div data-testid="social-buttons" />,
 }));
 
 vi.mock("@/components/auth/primitives/rhf-input", () => ({
@@ -89,6 +89,19 @@ describe("SignInForm", () => {
       "href",
       "/forgot-password?next=%2Fdashboard&email=user%40example.com",
     );
+  });
+
+  it("credentials step keeps social sign-in available (social-only users)", () => {
+    mockStep = "credentials";
+    render(<SignInForm />);
+    expect(screen.getByTestId("social-buttons")).toBeInTheDocument();
+  });
+
+  it("link-sent state hides social sign-in buttons", () => {
+    mockStep = "credentials";
+    mockLinkSent = true;
+    render(<SignInForm />);
+    expect(screen.queryByTestId("social-buttons")).not.toBeInTheDocument();
   });
 
   it("forgot password link carries next and email query params (legacy single-step)", () => {

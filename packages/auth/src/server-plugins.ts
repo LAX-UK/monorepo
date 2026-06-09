@@ -15,7 +15,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink, twoFactor } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { oidcProvider } from "better-auth/plugins/oidc-provider";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { wrapAuthDatabaseAdapter } from "./adapter-at-rest.js";
 import { AUTH_TIMINGS } from "./auth-timings.js";
 import type { EnvelopeCrypto } from "./crypto/envelope.js";
@@ -119,13 +119,14 @@ export function buildJwtAndOidcPlugins(options: {
         const found = await ctx.context.internalAdapter.findUserByEmail(recipientEmail);
         const authUser = found?.user;
         if (!authUser) return;
-        const [cred] = await db
+        // Any linked account (credential or social) means an established user —
+        // only truly account-less users (seeded passwordless) get activation copy.
+        const [linked] = await db
           .select({ id: account.id })
           .from(account)
-          .where(and(eq(account.userId, authUser.id), eq(account.providerId, "credential")))
+          .where(eq(account.userId, authUser.id))
           .limit(1);
-        const hasPassword = Boolean(cred);
-        const template = pickMagicLinkTemplate(hasPassword);
+        const template = pickMagicLinkTemplate(Boolean(linked));
         const linkUrl = `${webBase}/auth/activate?token=${encodeURIComponent(token)}`;
         const expirationMinutes = Math.round(AUTH_TIMINGS.magicLinkExpiresSec / 60);
         const baseEnqueue = {
