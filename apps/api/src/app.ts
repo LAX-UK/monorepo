@@ -19,6 +19,8 @@ import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js"
 import {
   createAuthRateLimitMiddleware,
   createMagicLinkRateLimitMiddleware,
+  createRegisterRateLimitMiddleware,
+  createSendVerificationRateLimitMiddleware,
 } from "./middleware/auth-rate-limit.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
@@ -184,6 +186,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
 
   app.use("/api/auth/*", createAuthRateLimitMiddleware(container.redis));
   app.use("/api/auth/*", createMagicLinkRateLimitMiddleware(container.redis));
+  app.use("/api/auth/*", createSendVerificationRateLimitMiddleware(container.redis));
+  app.use("/users/register", createRegisterRateLimitMiddleware(container.redis));
   app.all("/api/auth/*", async (c) => {
     return runSignInTurnstileGate({
       incoming: c.req.raw,
@@ -197,7 +201,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
 
   const routed = app
     .route("/internal/jobs", createInternalCronRoutes(container, env))
-    .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
+    .route(
+      "/invitations",
+      createPublicInvitationRoutes(container.admin.invitations, container.redis),
+    )
     .route("/lots", createLotRoutes(container, authenticator))
     .route("/lots", createLotDocumentRoutes(container, authenticator))
     .route("/events", createOnsiteEventRoutes(container))
