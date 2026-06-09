@@ -19,6 +19,10 @@
     "./permissions": {
       "types": "./dist/permissions.d.ts",
       "default": "./dist/permissions.js"
+    },
+    "./magic-link-callback": {
+      "types": "./dist/magic-link-callback.d.ts",
+      "default": "./dist/magic-link-callback.js"
     }
   },
   "scripts": {

@@ -15,6 +15,13 @@ describe("buildMagicLinkVerifyUrl", () => {
     expect(url.searchParams.get("errorCallbackURL")).toBe("https://lax.bid/auth/activate/expired");
   });
 
+  it("threads safe next into set-password callback", () => {
+    const url = new URL(buildMagicLinkVerifyUrl("tok123", "https://lax.bid", "/dashboard"));
+    expect(url.searchParams.get("callbackURL")).toBe(
+      "https://lax.bid/auth/activate/set-password?next=%2Fdashboard",
+    );
+  });
+
   it("uses getSiteUrl when webOrigin is empty (SSR)", () => {
     vi.stubGlobal("window", undefined);
     vi.stubEnv("NEXT_PUBLIC_WEB_ORIGIN", "https://test.lax.bid");
