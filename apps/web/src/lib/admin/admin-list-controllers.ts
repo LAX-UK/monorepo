@@ -480,17 +480,38 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
     },
   };
 
+export type InvitationsListQuery = AdminListQueryBase & {
+  status?: "pending" | "accepted" | "revoked" | "expired";
+};
+
 export const invitationsListController: IAdminListController<
   AdminInvitationSummary,
-  AdminListQueryBase
+  InvitationsListQuery
 > = {
   id: "invitations",
   parseQuery(sp) {
     const base = parseListSearchParams(sp);
-    return { ...base, limit: Math.min(200, base.limit) };
+    const statusRaw = firstString(sp.status);
+    const status =
+      statusRaw === "pending" ||
+      statusRaw === "accepted" ||
+      statusRaw === "revoked" ||
+      statusRaw === "expired"
+        ? statusRaw
+        : undefined;
+    return {
+      ...base,
+      limit: Math.min(200, base.limit),
+      ...(status ? { status } : {}),
+    };
   },
   async fetch(q) {
-    const { rows, total } = await getAdminInvitationsPage({ offset: q.offset, limit: q.limit });
+    const { rows, total } = await getAdminInvitationsPage({
+      offset: q.offset,
+      limit: q.limit,
+      ...(q.status ? { status: q.status } : {}),
+      ...(q.q ? { q: q.q } : {}),
+    });
     return { rows, offset: q.offset, limit: q.limit, total };
   },
 };

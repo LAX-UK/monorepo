@@ -1,7 +1,10 @@
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { IAdminInvitationApplicationService } from "../interfaces/admin-routes.js";
-import type { InvitationAdminListRow } from "../interfaces/invitation.js";
+import type {
+  InvitationAdminListFilters,
+  InvitationAdminListRow,
+} from "../interfaces/invitation.js";
 import type {
   CreateInvitationInput,
   InvitationError,
@@ -17,11 +20,16 @@ export class AdminInvitationApplicationService implements IAdminInvitationApplic
     return this.invitations.create(input);
   }
 
-  listInvitationsForActor(
-    actorUserId: string,
+  listInvitations(
+    filters: InvitationAdminListFilters,
     page: { limit: number; offset: number },
-  ): Promise<{ rows: InvitationAdminListRow[]; total: number; pendingTotal: number }> {
-    return this.invitations.listInvitationsForActor(actorUserId, page);
+  ): Promise<{
+    rows: InvitationAdminListRow[];
+    total: number;
+    pendingTotal: number;
+    acceptedTotal: number;
+  }> {
+    return this.invitations.listInvitations(filters, page);
   }
 
   revoke(input: { actorUserId: string; invitationId: string }): Promise<

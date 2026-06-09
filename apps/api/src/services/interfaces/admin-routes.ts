@@ -46,7 +46,7 @@ import type { ArtistSearchHit } from "./artist-registry.js";
 import type { AttentionItem } from "./attention-feed.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.js";
 import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "./email-observability.js";
-import type { InvitationAdminListRow } from "./invitation.js";
+import type { InvitationAdminListFilters, InvitationAdminListRow } from "./invitation.js";
 import type { ListSubmissionsFilter } from "./repositories.js";
 
 export type AdminImpersonationLookupResult =
@@ -329,10 +329,15 @@ export interface IAdminInvitationApplicationService {
   create(
     input: CreateInvitationInput,
   ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>>;
-  listInvitationsForActor(
-    actorUserId: string,
+  listInvitations(
+    filters: InvitationAdminListFilters,
     page: { limit: number; offset: number },
-  ): Promise<{ rows: InvitationAdminListRow[]; total: number; pendingTotal: number }>;
+  ): Promise<{
+    rows: InvitationAdminListRow[];
+    total: number;
+    pendingTotal: number;
+    acceptedTotal: number;
+  }>;
   revoke(input: { actorUserId: string; invitationId: string }): Promise<
     Result<void, InvitationError>
   >;
