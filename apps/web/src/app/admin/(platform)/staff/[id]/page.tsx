@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function AdminStaffDetailPage({ params }: Props) {
   const { id } = await params;
-  const { user } = await loadAdminStaffDetail(id);
+  const { user, canManageRoles, canModerate } = await loadAdminStaffDetail(id);
 
   return (
     <AdminUserDetailShell
@@ -30,6 +30,8 @@ export default async function AdminStaffDetailPage({ params }: Props) {
       listHref="/admin/staff"
       listLabel="Staff"
       showContextRail={false}
+      showAccountControls={canManageRoles}
+      showDangerZone={canModerate}
       tabs={[
         {
           id: "overview",

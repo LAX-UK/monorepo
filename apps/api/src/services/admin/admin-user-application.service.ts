@@ -4,6 +4,7 @@ import type { IAdminUserApplicationService } from "../interfaces/admin-routes.js
 import type {
   AdminActivityEntry,
   AdminKycSession,
+  AdminUserBidListResult,
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
@@ -116,6 +117,15 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
     limit?: number,
   ): Promise<AdminKycSession[]> {
     return this.adminUsers.kycSessionsFor(actorRole, actorStaffRole, userId, limit);
+  }
+
+  bidsFor(
+    actorRole: string,
+    actorStaffRole: string | null | undefined,
+    userId: string,
+    page: { limit: number; offset: number },
+  ): Promise<AdminUserBidListResult> {
+    return this.adminUsers.bidsFor(actorRole, actorStaffRole, userId, page);
   }
 
   async bulkSuspendOrUnsuspend(input: {

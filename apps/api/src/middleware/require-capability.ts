@@ -7,8 +7,12 @@ import {
   ARTIST_WRITE_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
   CATEGORIES_ACCESS,
+  CLIENT_ACTIVITY_ACCESS,
+  CLIENT_BIDS_ACCESS,
+  CLIENT_KYC_ACCESS,
   type CapabilityRequirement,
   EMAIL_ADMIN_ACCESS,
+  EMAIL_OBSERVABILITY_ACCESS,
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
@@ -113,6 +117,10 @@ export const requireArtistReviewAccess = createRequireAccess(ARTIST_REVIEW_ACCES
 export const requireLotsAccess = createRequireAccess(LOTS_ACCESS);
 export const requireAuditDomainEvents = createRequireAccess(AUDIT_DOMAIN_EVENTS_ACCESS);
 export const requireEmailAdmin = createRequireAccess(EMAIL_ADMIN_ACCESS);
+export const requireEmailObservability = createRequireAccess(EMAIL_OBSERVABILITY_ACCESS);
+export const requireClientBids = createRequireAccess(CLIENT_BIDS_ACCESS);
+export const requireClientKyc = createRequireAccess(CLIENT_KYC_ACCESS);
+export const requireClientActivity = createRequireAccess(CLIENT_ACTIVITY_ACCESS);
 /** AML / sanctions watchlist queue + first-line analyst triage; SoF list/triage. */
 export const requireAmlReview = createRequireAccess(AML_REVIEW_ACCESS);
 /** Binding MLRO decision (checker) on a flagged screening / SoF case. */

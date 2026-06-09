@@ -7,7 +7,11 @@ import {
   ARTIST_REVIEW_ACCESS,
   ARTIST_WRITE_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
+  CLIENT_ACTIVITY_ACCESS,
+  CLIENT_BIDS_ACCESS,
+  CLIENT_KYC_ACCESS,
   EMAIL_ADMIN_ACCESS,
+  EMAIL_OBSERVABILITY_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
@@ -31,11 +35,38 @@ function has(
 }
 
 describe("admin-access requirements", () => {
-  it("USERS_DIRECTORY_ACCESS allows super_admin only among sample roles", () => {
+  it("USERS_DIRECTORY_ACCESS allows super_admin and client_advisor", () => {
     expect(has("super_admin", USERS_DIRECTORY_ACCESS)).toBe(true);
+    expect(has("client_advisor", USERS_DIRECTORY_ACCESS)).toBe(true);
+    expect(has("operations", USERS_DIRECTORY_ACCESS)).toBe(true);
     expect(has("specialist", USERS_DIRECTORY_ACCESS)).toBe(false);
     expect(has("staff_viewer", USERS_DIRECTORY_ACCESS)).toBe(false);
     expect(has("finance_ops", USERS_DIRECTORY_ACCESS)).toBe(false);
+  });
+
+  it("CLIENT_BIDS_ACCESS allows client_advisor only among sample roles", () => {
+    expect(has("client_advisor", CLIENT_BIDS_ACCESS)).toBe(true);
+    expect(has("super_admin", CLIENT_BIDS_ACCESS)).toBe(true);
+    expect(has("operations", CLIENT_BIDS_ACCESS)).toBe(false);
+    expect(has("staff_viewer", CLIENT_BIDS_ACCESS)).toBe(false);
+  });
+
+  it("CLIENT_KYC_ACCESS stays platform-admin only (advisors excluded)", () => {
+    expect(has("super_admin", CLIENT_KYC_ACCESS)).toBe(true);
+    expect(has("client_advisor", CLIENT_KYC_ACCESS)).toBe(false);
+    expect(has("operations", CLIENT_KYC_ACCESS)).toBe(false);
+  });
+
+  it("CLIENT_ACTIVITY_ACCESS stays platform-admin only (advisors excluded)", () => {
+    expect(has("super_admin", CLIENT_ACTIVITY_ACCESS)).toBe(true);
+    expect(has("client_advisor", CLIENT_ACTIVITY_ACCESS)).toBe(false);
+    expect(has("operations", CLIENT_ACTIVITY_ACCESS)).toBe(false);
+  });
+
+  it("EMAIL_OBSERVABILITY_ACCESS allows content_marketing", () => {
+    expect(has("content_marketing", EMAIL_OBSERVABILITY_ACCESS)).toBe(true);
+    expect(has("super_admin", EMAIL_OBSERVABILITY_ACCESS)).toBe(true);
+    expect(has("catalogue_manager", EMAIL_OBSERVABILITY_ACCESS)).toBe(false);
   });
 
   it("LEGAL_ENTITY_BROWSE_ACCESS allows staff_viewer and specialist", () => {
@@ -147,6 +178,8 @@ describe("admin-access requirements", () => {
       allowed: "catalogue_manager",
       denied: "content_marketing",
     },
+    { name: "EMAIL_OBSERVABILITY_ACCESS", allowed: "content_marketing", denied: "staff_viewer" },
+    { name: "CLIENT_BIDS_ACCESS", allowed: "client_advisor", denied: "operations" },
   ];
 
   it.each(ACCESS_MATRIX)(
