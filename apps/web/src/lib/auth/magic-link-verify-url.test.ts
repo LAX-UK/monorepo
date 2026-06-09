@@ -22,7 +22,9 @@ describe("buildMagicLinkVerifyUrl", () => {
     expect(url.searchParams.get("callbackURL")).toBe(
       "https://test.lax.bid/auth/activate/set-password",
     );
-    expect(url.searchParams.get("errorCallbackURL")).toBe("https://test.lax.bid/auth/activate/expired");
+    expect(url.searchParams.get("errorCallbackURL")).toBe(
+      "https://test.lax.bid/auth/activate/expired",
+    );
     expect(url.searchParams.get("callbackURL")).not.toMatch(/^\//);
   });
 });
