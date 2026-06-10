@@ -5,6 +5,7 @@ import {
   postOrgOnboardingStepCompleteAction,
 } from "@/app/(task)/onboarding/organisation/onboarding-actions";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
+import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import {
   checkOrgNameAction,
   createOrganizationAction,
@@ -101,11 +102,13 @@ export function OrgDetailsStepClient({
     return () => clearTimeout(handle);
   }, [displayName, entityId]);
 
-  const buildQuery = (id: string) => {
-    const qs = new URLSearchParams({ entityId: id });
-    if (fresh) qs.set("fresh", "1");
-    return qs.toString();
+  const queryOpts = {
+    ...(entityId ? { entityId } : {}),
+    ...(fresh ? { fresh: true } : {}),
+    ...(!entityId && subkind ? { subkind } : {}),
   };
+
+  const backHref = orgOnboardingStepHref("type", queryOpts);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +143,9 @@ export function OrgDetailsStepClient({
           setError(done.error ?? "Could not mark details complete.");
           return;
         }
-        router.push(`/onboarding/organisation/step/documents?${buildQuery(entityId)}`);
+        router.push(
+          orgOnboardingStepHref("documents", { entityId, ...(fresh ? { fresh: true } : {}) }),
+        );
         return;
       }
 
@@ -168,10 +173,14 @@ export function OrgDetailsStepClient({
         step = await postOrgOnboardingStepCompleteAction(id, "details");
       }
       if (!step.ok) {
-        router.push(`/onboarding/organisation/step/documents?${buildQuery(id)}`);
+        router.push(
+          orgOnboardingStepHref("documents", { entityId: id, ...(fresh ? { fresh: true } : {}) }),
+        );
         return;
       }
-      router.push(`/onboarding/organisation/step/documents?${buildQuery(id)}`);
+      router.push(
+        orgOnboardingStepHref("documents", { entityId: id, ...(fresh ? { fresh: true } : {}) }),
+      );
     });
   };
 
@@ -292,11 +301,11 @@ export function OrgDetailsStepClient({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3">
+        <Button type="button" variant="outline" asChild>
+          <Link href={backHref}>{WIZARD_COPY.back}</Link>
+        </Button>
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Continue"}
-        </Button>
-        <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </form>

@@ -5,6 +5,7 @@ import { ConnectWorkspace } from "@/components/connect/connect-workspace";
 import { humanizeOrgConnectStepError } from "@/lib/connect/org-onboarding-connect-errors";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
+import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,8 +45,6 @@ export function OrgConnectStepClient({
     }
   }, [status?.ready]);
 
-  const identityStepQuery = fresh ? `entityId=${entityId}&fresh=1` : `entityId=${entityId}`;
-
   const advanceWizard = useCallback(() => {
     setError(null);
     startTransition(async () => {
@@ -54,13 +53,17 @@ export function OrgConnectStepClient({
         setError(humanizeOrgConnectStepError(res.error));
         return;
       }
-      router.push(`/onboarding/organisation/step/identity?${identityStepQuery}`);
+      router.push(
+        orgOnboardingStepHref("identity", { entityId, ...(fresh ? { fresh: true } : {}) }),
+      );
     });
-  }, [entityId, identityStepQuery, router]);
+  }, [entityId, fresh, router]);
 
   const onConnectReady = useCallback(() => {
     setConnectReady(true);
   }, []);
+
+  const queryOpts = { entityId, ...(fresh ? { fresh: true } : {}) };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4">
@@ -101,11 +104,11 @@ export function OrgConnectStepClient({
       ) : null}
 
       <div className="flex flex-wrap gap-3">
+        <Button type="button" variant="outline" asChild>
+          <Link href={orgOnboardingStepHref("documents", queryOpts)}>{WIZARD_COPY.back}</Link>
+        </Button>
         <Button type="button" disabled={pending || !connectReady} onClick={advanceWizard}>
           Continue to identity verification
-        </Button>
-        <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </div>

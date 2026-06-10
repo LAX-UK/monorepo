@@ -16,6 +16,7 @@ import {
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
+import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -54,6 +55,8 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
   const returnUrl = normalizeKycReturnUrl(
     `/onboarding/organisation/step/identity?entityId=${encodeURIComponent(entityId)}&kyc=complete`,
   );
+
+  const queryOpts = { entityId };
 
   const onSubmit = () => {
     setError(null);
@@ -102,7 +105,15 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
           {error}
         </p>
       ) : null}
+      {!kycApproved ? (
+        <p className="text-sm text-on-surface-variant">
+          Complete identity verification above to unlock submission.
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-3">
+        <Button type="button" variant="outline" asChild>
+          <Link href={orgOnboardingStepHref("connect", queryOpts)}>{WIZARD_COPY.back}</Link>
+        </Button>
         <Button
           type="button"
           variant="secondary"
@@ -110,9 +121,6 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
           onClick={onSubmit}
         >
           Submit organisation for review
-        </Button>
-        <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </div>

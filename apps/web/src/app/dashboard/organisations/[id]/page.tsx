@@ -12,10 +12,12 @@ import { resumeOnboardingStepKey } from "@/components/organisations/org-onboardi
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
+import { getOrgOnboardingResumeHrefForEntity } from "@/lib/data/http/org-onboarding.server";
 import {
   type ILegalEntityMemberListGateway,
   createLegalEntityMemberListGateway,
 } from "@/lib/legal-entity/member-list.gateway.server";
+import { ORG_ONBOARDING_TIMELINE_STAGES } from "@/lib/legal-entity/org-onboarding-steps";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { getConnectGapState } from "@auction/connect";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
@@ -26,14 +28,6 @@ import { Surface } from "@auction/ui/components/surface";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
-const ONBOARD_TIMELINE = [
-  { id: "type", label: "Type" },
-  { id: "details", label: "Details" },
-  { id: "documents", label: "Documents" },
-  { id: "connect", label: "Connect" },
-  { id: "identity", label: "Identity" },
-] as const;
 
 const REVIEW_TIMELINE = [
   { id: "submitted", label: "Submitted" },
@@ -74,11 +68,17 @@ export default async function OrganisationOverviewPage({
 
   const { member, entity } = ctx;
   const status = entity?.status ?? member.status;
+  const apiResumeHref = await getOrgOnboardingResumeHrefForEntity(id);
   const resumeStep = resumeOnboardingStepKey(status);
+  const continueSetupHref =
+    apiResumeHref ??
+    (resumeStep
+      ? `/onboarding/organisation/step/${resumeStep}?entityId=${encodeURIComponent(id)}`
+      : null);
   const timelineIndex = resumeStep
     ? Math.max(
         0,
-        ONBOARD_TIMELINE.findIndex((s) => s.id === resumeStep),
+        ORG_ONBOARDING_TIMELINE_STAGES.findIndex((s) => s.id === resumeStep),
       )
     : -1;
 
@@ -168,15 +168,14 @@ export default async function OrganisationOverviewPage({
               Pick up where you left off — progress is saved to your account.
             </p>
           </div>
-          <TimelineStages stages={ONBOARD_TIMELINE} activeIndex={timelineIndex} />
-          <Button asChild variant="cta" size="sm">
-            <Link
-              href={`/onboarding/organisation/step/${resumeStep}?entityId=${encodeURIComponent(id)}`}
-              prefetch
-            >
-              Continue setup
-            </Link>
-          </Button>
+          <TimelineStages stages={ORG_ONBOARDING_TIMELINE_STAGES} activeIndex={timelineIndex} />
+          {continueSetupHref ? (
+            <Button asChild variant="cta" size="sm">
+              <Link href={continueSetupHref} prefetch>
+                Continue setup
+              </Link>
+            </Button>
+          ) : null}
         </Surface>
       ) : reviewIndex >= 0 ? (
         <Surface variant="section" padding="md" className="space-y-4">
@@ -204,7 +203,10 @@ export default async function OrganisationOverviewPage({
           </div>
           <Button asChild variant="outline" size="sm">
             <Link
-              href={`/onboarding/organisation/step/type?entityId=${encodeURIComponent(id)}`}
+              href={
+                continueSetupHref ??
+                `/onboarding/organisation/step/type?entityId=${encodeURIComponent(id)}`
+              }
               prefetch
             >
               Open onboarding

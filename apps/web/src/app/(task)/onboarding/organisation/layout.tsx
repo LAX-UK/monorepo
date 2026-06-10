@@ -1,7 +1,8 @@
-import { OrgOnboardingShell } from "@/app/(task)/onboarding/organisation/org-onboarding-shell";
+import { OrgOnboardingShellServer } from "@/app/(task)/onboarding/organisation/org-onboarding-shell.server";
 import { OrgOnboardingLoadingSkeleton } from "@/components/onboarding/org-onboarding-loading-skeleton";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import { resolveOrgOnboardingLoginNext } from "@/lib/legal-entity/org-onboarding-request-path.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -19,25 +20,27 @@ export default async function OrganisationOnboardingLayout({ children }: { child
     redirect("/dashboard/organisations");
   }
 
+  const loginNext = await resolveOrgOnboardingLoginNext();
+
   await requireAuthenticatedUser({
     shell: "client",
-    loginNext: "/onboarding/organisation",
+    loginNext,
   });
 
   return (
     <main id="main-content" className="min-h-screen bg-surface">
-      <div className="hidden border-b border-border-hairline bg-surface-container-low/40 py-6 lg:block">
+      <div className="border-b border-border-hairline bg-surface-container-low/40 py-4 lg:py-6">
         <div className="container mx-auto max-w-6xl px-4">
-          <h1 className="text-3xl font-semibold text-on-surface">Submit to LAX</h1>
+          <h1 className="text-2xl font-semibold text-on-surface lg:text-3xl">Submit to LAX</h1>
           <p className="mt-2 max-w-2xl text-sm text-on-surface-variant">
             Set up your gallery, dealer, or estate. Progress is saved — use{" "}
-            <strong className="text-on-surface">Finish later</strong> in the steps below to return
-            to your <span className="text-on-surface">Organisations</span> hub any time.
+            <strong className="text-on-surface">Finish later</strong> to return to your{" "}
+            <span className="text-on-surface">Organisations</span> hub any time.
           </p>
         </div>
       </div>
       <Suspense fallback={<OrgOnboardingLoadingSkeleton />}>
-        <OrgOnboardingShell>{children}</OrgOnboardingShell>
+        <OrgOnboardingShellServer>{children}</OrgOnboardingShellServer>
       </Suspense>
     </main>
   );

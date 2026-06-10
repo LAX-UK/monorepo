@@ -15,10 +15,10 @@ describe("TaskRouteHeaderTitle", () => {
     expect(screen.getByText("Forgot password")).toBeInTheDocument();
   });
 
-  it("shows onboarding step label", () => {
+  it("shows onboarding label for organisation wizard", () => {
     vi.mocked(usePathname).mockReturnValue("/onboarding/organisation/step/details");
     render(<TaskRouteHeaderTitle />);
-    expect(screen.getByText("Organisation details")).toBeInTheDocument();
+    expect(screen.getByText("Organisation onboarding")).toBeInTheDocument();
   });
 
   it("renders nothing on unknown routes", () => {
