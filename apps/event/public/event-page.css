@@ -4,7 +4,28 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Brand logos — scale to invitation card width, not viewport */
+/*
+ * Brand logos — sizes are % of the invitation card (max 600px), never viewport.
+ * Custom properties inherit inside .event-card so iPhone Safari matches deployed layout.
+ */
+.event-card {
+  --brand-pad-x: 24px;
+  --brand-header-pct: 54%;
+  --brand-header-max: 196px;
+  --brand-footer-wordmark-pct: 66%;
+  --brand-footer-wordmark-max: 248px;
+  --brand-venue-stamp-pct: 44%;
+  --brand-venue-stamp-max: 160px;
+  --brand-divider-stylized-pct: 20%;
+  --brand-divider-stylized-max: 84px;
+  --brand-footer-stamp-pct: 40%;
+  --brand-footer-stamp-max: 132px;
+  --brand-footer-stylized-pct: 16%;
+  --brand-footer-stylized-max: 68px;
+  --brand-footer-marks-gap: 36px;
+  --brand-footer-marks-pad-y: 20px;
+}
+
 .brand-logo {
   display: block;
   width: 100%;
@@ -14,59 +35,43 @@ html {
   outline: none;
 }
 
-.brand-header__link,
-.brand-footer__link,
-.brand-logo-wrap {
-  display: block;
+/* Centred frame: inline-block + text-align avoids flex quirks on iOS Safari */
+.brand-zone {
+  width: 100%;
+  text-align: center;
   box-sizing: border-box;
-  max-width: 100%;
-  margin-inline: auto;
 }
 
-.brand-header__link,
-.brand-footer__link {
+.brand-zone__frame {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  line-height: 0;
+  box-sizing: border-box;
+}
+
+.brand-header {
+  padding: 36px var(--brand-pad-x) 20px;
+}
+
+.brand-header__link {
+  display: inline-block;
+  width: var(--brand-header-pct);
+  max-width: var(--brand-header-max);
   border: 0;
   text-decoration: none;
   line-height: 0;
   font-size: 0;
-}
-
-.brand-header {
-  text-align: center;
-}
-
-.brand-header__link {
-  width: 78%;
-  max-width: 240px;
-}
-
-.brand-footer__link {
-  width: 82%;
-  max-width: 260px;
-}
-
-.brand-logo-wrap--stamp {
-  width: 62%;
-  max-width: 168px;
-}
-
-.brand-logo-wrap--footer-stamp {
-  width: 58%;
-  max-width: 140px;
-}
-
-.brand-logo-wrap--stylized {
-  width: 28%;
-  max-width: 100px;
-}
-
-.brand-logo-wrap--footer-stylized {
-  width: 24%;
-  max-width: 80px;
+  vertical-align: top;
 }
 
 .brand-divider {
-  text-align: center;
+  padding: 8px var(--brand-pad-x) 28px;
+}
+
+.brand-divider .brand-zone__frame {
+  width: var(--brand-divider-stylized-pct);
+  max-width: var(--brand-divider-stylized-max);
 }
 
 .brand-divider .brand-logo--stylized {
@@ -74,10 +79,13 @@ html {
 }
 
 .venue-brand {
-  display: flex;
-  justify-content: center;
-  padding: 0 24px 14px;
+  padding: 8px var(--brand-pad-x) 18px;
   background-color: #000;
+}
+
+.venue-brand .brand-zone__frame {
+  width: var(--brand-venue-stamp-pct);
+  max-width: var(--brand-venue-stamp-max);
 }
 
 .venue-brand .brand-logo--stamp {
@@ -85,7 +93,20 @@ html {
 }
 
 .brand-footer {
+  padding: 16px var(--brand-pad-x) 28px !important;
   text-align: center;
+}
+
+.brand-footer__link {
+  display: inline-block;
+  width: var(--brand-footer-wordmark-pct);
+  max-width: var(--brand-footer-wordmark-max);
+  margin-bottom: 6px;
+  border: 0;
+  text-decoration: none;
+  line-height: 0;
+  font-size: 0;
+  vertical-align: top;
 }
 
 .brand-footer__marks {
@@ -93,10 +114,27 @@ html {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  margin-top: 14px;
-  padding-top: 14px;
+  gap: var(--brand-footer-marks-gap);
+  width: 100%;
+  margin-top: 18px;
+  padding: var(--brand-footer-marks-pad-y) 0 6px;
   border-top: 1px solid rgba(26, 26, 26, 0.1);
+  box-sizing: border-box;
+}
+
+.brand-footer__marks .brand-zone__frame {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.brand-footer__marks .brand-zone__frame--stamp {
+  width: var(--brand-footer-stamp-pct);
+  max-width: var(--brand-footer-stamp-max);
+}
+
+.brand-footer__marks .brand-zone__frame--stylized {
+  width: var(--brand-footer-stylized-pct);
+  max-width: var(--brand-footer-stylized-max);
 }
 
 .brand-footer__marks .brand-logo--stamp {
@@ -105,6 +143,44 @@ html {
 
 .brand-footer__marks .brand-logo--stylized {
   opacity: 0.65;
+}
+
+@media only screen and (max-width: 600px) {
+  .event-card {
+    --brand-pad-x: 20px;
+    --brand-header-pct: 52%;
+    --brand-header-max: 180px;
+    --brand-footer-wordmark-pct: 72%;
+    --brand-footer-wordmark-max: 228px;
+    --brand-venue-stamp-pct: 48%;
+    --brand-venue-stamp-max: 148px;
+    --brand-divider-stylized-pct: 22%;
+    --brand-divider-stylized-max: 76px;
+    --brand-footer-stamp-pct: 44%;
+    --brand-footer-stamp-max: 120px;
+    --brand-footer-stylized-pct: 18%;
+    --brand-footer-stylized-max: 60px;
+    --brand-footer-marks-gap: 28px;
+    --brand-footer-marks-pad-y: 16px;
+  }
+
+  .brand-header {
+    padding-top: 32px;
+    padding-bottom: 18px;
+  }
+
+  .brand-footer {
+    padding-bottom: 24px !important;
+  }
+}
+
+@media only screen and (max-width: 390px) {
+  .event-card {
+    --brand-header-max: 168px;
+    --brand-footer-wordmark-max: 210px;
+    --brand-venue-stamp-max: 136px;
+    --brand-footer-marks-gap: 24px;
+  }
 }
 
 /* Light invitation card — default dark text on paper bands */
