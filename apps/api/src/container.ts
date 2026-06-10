@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { createJwksAdapter } from "@auction/auth";
 import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/server";
 import { createDb } from "@auction/db";
+import { user } from "@auction/db/schema";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import {
   CompositeMarketingEventPublisher,
@@ -27,6 +28,7 @@ import {
 } from "@auction/queues";
 import type { DataExportJobPayload, QrCodeScanJobPayload } from "@auction/queues";
 import { Queue } from "bullmq";
+import { and, eq, isNull } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { Env } from "./env.js";
 import { createExportProviderDeps } from "./exports/deps.js";
@@ -69,6 +71,7 @@ import { ZodRegistrationValidator } from "./infrastructure/zod-registration.vali
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
+import { enqueueOrgSubmittedAdminNotice } from "./lib/org-lifecycle-notifications.js";
 import { type OrgModuleGate, createOrgModuleGate } from "./lib/org-module-gate.js";
 import {
   type PlatformCatalogLegalEntityIdProvider,
@@ -161,6 +164,7 @@ import { AdminSaleOperationsSnapshotService } from "./services/admin-sale-operat
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
+import { LegalEntityDocumentAdminService } from "./services/admin/legal-entity-document-admin.service.js";
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
 import { BullMQQueueInspector } from "./services/admin/queue-inspector.service.js";
 import { BullMQQueueMutator } from "./services/admin/queue-mutator.service.js";
@@ -387,6 +391,8 @@ export type Container = {
   authAuditPublisher: AuthAuditPublisher;
   /** admin KYB status transitions + domain events. */
   legalEntityLifecycleAdminService: LegalEntityLifecycleAdminService;
+  /** admin KYB document list/review. */
+  legalEntityDocumentAdminService: LegalEntityDocumentAdminService;
   /** timeout audit + shared legal-entity middleware (impersonation cookie). */
   impersonationAuditService: ImpersonationAuditService;
   impersonationSessionService: ImpersonationSessionService;
@@ -613,6 +619,27 @@ export function createContainer(env: Env): Container {
     organizationOnboardingService,
     domainEventPublisher,
     stripeConnectService,
+    {
+      onSubmittedForReview: async ({ legalEntityId, displayName }) => {
+        const staffRows = await db
+          .select({ email: user.email })
+          .from(user)
+          .where(and(eq(user.role, "staff"), isNull(user.suspendedAt)));
+        const adminRecipients = staffRows.map((r) => r.email).filter(Boolean);
+        if (adminRecipients.length === 0) return;
+        const webOrigin = env.WEB_ORIGIN.replace(/\/$/, "");
+        await enqueueOrgSubmittedAdminNotice({
+          db,
+          emailService,
+          legalEntityId,
+          entityDisplayName: displayName,
+          adminRecipients,
+          adminOnboardingUrl: `${webOrigin}/admin/onboarding-issues`,
+          supportContactEmail: env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
+          eventId: Date.now(),
+        });
+      },
+    },
   );
   const legalEntityLifecycleAdminService = new LegalEntityLifecycleAdminService(
     db,
@@ -630,6 +657,9 @@ export function createContainer(env: Env): Container {
           await stripeConnectService.syncAccountFromStripe(legalEntityId);
         }
       },
+      emailService,
+      webOrigin: env.WEB_ORIGIN,
+      supportContactEmail: env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
     },
   );
 
@@ -845,6 +875,11 @@ export function createContainer(env: Env): Container {
     objectStorage,
     env.STORAGE_READ_MODE,
     env.SIGNED_GET_TTL_SEC,
+  );
+  const legalEntityDocumentAdminService = new LegalEntityDocumentAdminService(
+    db,
+    objectStorage,
+    mediaUrlResolver,
   );
   const imageCleanupService = new ImageCleanupService(objectStorage, imageCleanupQueue);
   const uploadService = new UploadService(
@@ -1495,6 +1530,7 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
     authAuditPublisher,
     legalEntityLifecycleAdminService,
+    legalEntityDocumentAdminService,
     impersonationAuditService,
     impersonationSessionService,
     legalEntityAccessService,

@@ -107,6 +107,30 @@ export function createOrganizationOnboardingRoutes(
     },
   );
 
+  r.delete(
+    "/documents/:documentId",
+    zValidator("param", entityIdParamSchema.extend({ documentId: z.string().uuid() })),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { entityId, documentId } = c.req.valid("param");
+      const res = await container.organizationOnboardingFlowService.detachDocument(
+        userId,
+        entityId,
+        documentId,
+      );
+      if (!res.ok) {
+        const status =
+          res.code === "forbidden"
+            ? 403
+            : res.code === "not_found" || res.code === "document_not_found"
+              ? 404
+              : 409;
+        return c.json({ error: res.code }, status);
+      }
+      return c.body(null, 204);
+    },
+  );
+
   r.post("/steps/:stepKey/complete", zValidator("param", stepParamSchema), async (c) => {
     const userId = c.get("userId") as string;
     const { entityId, stepKey } = c.req.valid("param");

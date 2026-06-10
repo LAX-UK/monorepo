@@ -1,57 +1,55 @@
 # Organisation module launch
 
-The organisation module (register org, invitations, onboarding, org buyer profiles) is **hidden on production web** (`lax.bid`, `www.lax.bid`) until launch. It remains fully functional on `test.lax.bid`, `localhost`, and all other hosts.
+> **Status: LAUNCHED.** As of June 2026 the organisation module (register org, invitations, onboarding, org buyer profiles) is **live on all hosts**, including production web (`lax.bid`, `www.lax.bid`). The host-based gate has been removed; an emergency kill switch remains (see below).
 
-When disabled:
+## Emergency kill switch
 
-- UI shows a friendly **coming soon** page and hides nav / sign-up entry points.
-- Mutations are blocked at the API layer with `403` and code `ORG_MODULE_DISABLED`.
+The flag plumbing was kept so the module can be hidden again without a code change beyond setting env vars and redeploying:
 
-## Implementation commits
+| Tier | Env var | Effect |
+|------|---------|--------|
+| Web | `NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` | Hides nav / sign-up entry points, shows coming-soon page, middleware redirects org deep links |
+| API | `FORCE_ORG_MODULE=hidden` | Org mutations return `403` with code `ORG_MODULE_DISABLED` |
+
+To disable the module in an emergency:
+
+1. Set **both** env vars (`NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` on web, `FORCE_ORG_MODULE=hidden` on API).
+2. Redeploy **web + API together** (API guards must match web UI or users see hidden UI but the API still accepts actions, or vice versa).
+3. Unset both vars and redeploy to re-enable.
+
+## How the flag works
+
+Two small helpers, both defaulting to **enabled**:
+
+| Tier | File | Kill switch input |
+|------|------|-------------------|
+| Web | [`apps/web/src/lib/legal-entity/org-module-enabled.ts`](../../apps/web/src/lib/legal-entity/org-module-enabled.ts) | `NEXT_PUBLIC_FORCE_ORG_MODULE` |
+| API | [`apps/api/src/lib/org-module-enabled.ts`](../../apps/api/src/lib/org-module-enabled.ts) | `FORCE_ORG_MODULE` |
+
+Web resolves the flag per request via [`org-module-host.server.ts`](../../apps/web/src/lib/legal-entity/org-module-host.server.ts) and threads it down as the `orgModuleEnabled` prop. The API exposes it through [`org-module-gate.ts`](../../apps/api/src/lib/org-module-gate.ts) on the container.
+
+> Note: `isProductionWebHost` / `normalizeHostname` in the web helper are still used by SEO indexing logic (`apps/web/src/lib/seo/is-indexing-allowed.ts`) — do not remove them.
+
+## History
+
+The module was hidden on production web until launch (June 2026) via a host-based gate (`lax.bid` / `www.lax.bid` in a `PRODUCTION_HOSTS` set).
+
+Implementation commits:
 
 - [`79d4b67a`](https://github.com/LAX-UK/monorepo/commit/79d4b67a) — `feat: hide organisation module on production domain until launch`
 - [`4b5773ef`](https://github.com/LAX-UK/monorepo/commit/4b5773ef) — `fix(api): route org module gate through container for DIP lint`
 
-## How the toggle works
+## Post-launch verification checklist
 
-Two small helpers share the same production host list:
+Verify on `lax.bid` after deploying:
 
-| Tier | File | Input |
-|------|------|-------|
-| Web | [`apps/web/src/lib/legal-entity/org-module-enabled.ts`](../../apps/web/src/lib/legal-entity/org-module-enabled.ts) | Request hostname |
-| API | [`apps/api/src/lib/org-module-enabled.ts`](../../apps/api/src/lib/org-module-enabled.ts) | `WEB_ORIGIN` env var |
+- [ ] Nav shows **Organisations** and **Invitations**
+- [ ] `/dashboard/organisations` loads the hub (not coming-soon)
+- [ ] Sign-up shows **Representing a gallery, dealer, or estate** persona option
+- [ ] `POST /organizations` succeeds (not `ORG_MODULE_DISABLED`)
+- [ ] `NEXT_PUBLIC_FORCE_ORG_MODULE` / `FORCE_ORG_MODULE` are **not** set in any production env
 
-```typescript
-// Both files — edit this to enable on prod:
-const PRODUCTION_HOSTS = new Set(["lax.bid", "www.lax.bid"]);
-// isOrgModuleEnabled → return !PRODUCTION_HOSTS.has(host)
-```
-
-Web resolves the flag via [`org-module-host.server.ts`](../../apps/web/src/lib/legal-entity/org-module-host.server.ts) (`host` / `x-forwarded-host` headers).
-
-### Local testing overrides (web only)
-
-```bash
-NEXT_PUBLIC_FORCE_ORG_MODULE=hidden   # simulate prod UI locally
-NEXT_PUBLIC_FORCE_ORG_MODULE=visible  # force visible even on lax.bid (web UI only)
-```
-
-These do **not** affect API guards. To test API behaviour locally, use a non-production `WEB_ORIGIN` or hit the API on `test.lax.bid`.
-
-## Launch checklist
-
-1. Edit **both** `org-module-enabled.ts` files — remove `lax.bid` / `www.lax.bid` from `PRODUCTION_HOSTS`, or change `isOrgModuleEnabled` to always return `true`.
-2. Deploy **web + API together** (API guards must match web UI or users see enabled UI but get 403 on actions).
-3. Verify on `lax.bid`:
-   - [ ] Nav shows **Organisations** and **Invitations**
-   - [ ] `/dashboard/organisations` loads the hub (not coming-soon)
-   - [ ] Sign-up shows **Representing a gallery, dealer, or estate** persona option
-   - [ ] `POST /organizations` succeeds (not `ORG_MODULE_DISABLED`)
-4. Remove `NEXT_PUBLIC_FORCE_ORG_MODULE` from any env if set.
-
-Optional post-launch cleanup (not required): remove [`OrgModuleComingSoon`](../../apps/web/src/components/organisations/org-module-coming-soon.tsx) and the `orgModuleEnabled` prop threading. The flag can stay as a permanent toggle if preferred.
-
-## What is hidden when disabled
+## What the kill switch hides
 
 - **Nav / switcher** — Organisations, Invitations, register-org links
 - **Pages** — org hub → coming-soon; invitations / onboarding / deep org URLs → redirect
@@ -64,9 +62,9 @@ Optional post-launch cleanup (not required): remove [`OrgModuleComingSoon`](../.
 
 ```mermaid
 flowchart TD
-  request[IncomingRequest] --> hostCheck{isOrgModuleEnabled}
-  hostCheck -->|lax.bid| hidden[HideUI + BlockMutations]
-  hostCheck -->|test/local| enabled[FullOrgModule]
+  request[IncomingRequest] --> flagCheck{isOrgModuleEnabled}
+  flagCheck -->|"default (launched)"| enabled[FullOrgModule]
+  flagCheck -->|"FORCE_ORG_MODULE=hidden"| hidden[HideUI + BlockMutations]
   hidden --> middleware[MiddlewareRedirects]
   hidden --> pages[ComingSoonPages]
   hidden --> api403[API403ORG_MODULE_DISABLED]
@@ -75,24 +73,24 @@ flowchart TD
 
 ## File inventory
 
-### Core flag helpers (edit these to launch)
+### Core flag helpers
 
 - `apps/web/src/lib/legal-entity/org-module-enabled.ts`
 - `apps/web/src/lib/legal-entity/org-module-host.server.ts`
 - `apps/api/src/lib/org-module-enabled.ts`
 - `apps/api/src/lib/org-module-gate.ts`
 
-### Coming-soon UI
+### Coming-soon UI (shown only when kill switch is on)
 
 - `apps/web/src/components/organisations/org-module-coming-soon.tsx`
 - `apps/web/src/lib/dashboard/dashboard-copy.ts` (`orgModuleComingSoon` copy)
 
 ### Middleware + acting-context hardening
 
-- `apps/web/src/middleware.ts` — redirects org deep links on prod
-- `apps/web/src/lib/legal-entity/derive-acting-context.ts` — neutralises stale org acting cookie on prod
+- `apps/web/src/middleware.ts` — redirects org deep links when hidden
+- `apps/web/src/lib/legal-entity/derive-acting-context.ts` — neutralises stale org acting cookie when hidden
 
-### Web pages (early return / redirect)
+### Web pages (early return / redirect when hidden)
 
 - `apps/web/src/app/dashboard/organisations/page.tsx`
 - `apps/web/src/app/dashboard/organisations/[id]/layout.tsx`
@@ -151,3 +149,4 @@ flowchart TD
 - `apps/web/src/lib/auth/post-verify-destination.test.ts`
 - `apps/web/src/components/layout/app-shell-nav.test.ts`
 - `apps/web/src/components/auth/sign-up-fields.test.tsx`
+- `apps/api/src/routes/users.register.routes.test.ts`

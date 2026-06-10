@@ -35,6 +35,29 @@ const ONBOARD_TIMELINE = [
   { id: "identity", label: "Identity" },
 ] as const;
 
+const REVIEW_TIMELINE = [
+  { id: "submitted", label: "Submitted" },
+  { id: "review", label: "Under review" },
+  { id: "connect", label: "Payout setup" },
+  { id: "approved", label: "Approved" },
+] as const;
+
+function reviewTimelineIndex(status: string): number {
+  switch (status) {
+    case "docs_received":
+      return 0;
+    case "under_review":
+      return 1;
+    case "connect_pending":
+      return 2;
+    case "approved":
+    case "restricted":
+      return 3;
+    default:
+      return -1;
+  }
+}
+
 export default async function OrganisationOverviewPage({
   params,
 }: {
@@ -69,6 +92,8 @@ export default async function OrganisationOverviewPage({
 
   const reqDue = entity?.stripeConnectRequirementsCurrentlyDue?.length ?? 0;
   const gap = entity ? getConnectGapState(entity) : null;
+
+  const reviewIndex = reviewTimelineIndex(status);
 
   return (
     <div className="space-y-8">
@@ -152,6 +177,19 @@ export default async function OrganisationOverviewPage({
               Continue setup
             </Link>
           </Button>
+        </Surface>
+      ) : reviewIndex >= 0 ? (
+        <Surface variant="section" padding="md" className="space-y-4">
+          <div className="space-y-1">
+            <LabelCaps>Review progress</LabelCaps>
+            <h3 className="font-headline text-xl font-semibold tracking-tight text-on-surface">
+              Application status
+            </h3>
+            <p className="font-body text-sm text-on-surface-variant">
+              Track where your organisation is in the verification process.
+            </p>
+          </div>
+          <TimelineStages stages={REVIEW_TIMELINE} activeIndex={reviewIndex} />
         </Surface>
       ) : (
         <Surface variant="section" padding="md" className="space-y-4">

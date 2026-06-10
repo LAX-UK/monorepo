@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
+import type { IEmailService } from "@auction/email";
 import type { LegalEntityStatus } from "@auction/types";
 import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
@@ -7,6 +8,7 @@ import {
   type LifecycleAdminOp,
   nextStatusForLifecycleOp,
 } from "../lib/legal-entity-lifecycle-transitions.js";
+import { enqueueOrgLifecycleMemberEmails } from "../lib/org-lifecycle-notifications.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 /** Distinct `domain_events.event_type` per admin lifecycle operation.
@@ -45,6 +47,9 @@ export type LegalEntityLifecycleAdminOptions = {
   enqueueArchiveCascade?: (legalEntityId: string) => Promise<void>;
   /** after approve when entity lands in `connect_pending`, refresh Stripe Connect state. */
   onApproveToConnectPending?: (legalEntityId: string) => Promise<void>;
+  emailService?: IEmailService;
+  webOrigin?: string;
+  supportContactEmail?: string;
 };
 
 export class LegalEntityLifecycleAdminService {
@@ -125,6 +130,14 @@ export class LegalEntityLifecycleAdminService {
           status: navLocked.next,
           statusChangedAt: new Date(),
           statusChangedByUserId: actorUserId,
+          statusReason:
+            navLocked.requiresReason && reason?.trim()
+              ? reason.trim()
+              : op === "request_docs" && reason?.trim()
+                ? reason.trim()
+                : op === "reject"
+                  ? (reason?.trim() ?? null)
+                  : null,
           updatedAt: new Date(),
         })
         .where(eq(legalEntity.id, entityId));
@@ -157,6 +170,52 @@ export class LegalEntityLifecycleAdminService {
       this.options.onApproveToConnectPending
     ) {
       await this.options.onApproveToConnectPending(entityId);
+    }
+
+    if (result.isOk() && this.options.emailService) {
+      const webOrigin = this.options.webOrigin?.replace(/\/$/, "") ?? "";
+      const supportContactEmail = this.options.supportContactEmail ?? "";
+      if (op === "approve") {
+        await enqueueOrgLifecycleMemberEmails({
+          db: this.db,
+          emailService: this.options.emailService,
+          legalEntityId: entityId,
+          template: "legal-entity-approved-notice",
+          vars: {
+            dashboardUrl: `${webOrigin}/dashboard`,
+            connectUrl: `${webOrigin}/dashboard/organisations/${entityId}/connect`,
+            supportContactEmail,
+          },
+          idempotencyPrefix: `legal-entity-approved:${entityId}`,
+        });
+      }
+      if (op === "reject") {
+        await enqueueOrgLifecycleMemberEmails({
+          db: this.db,
+          emailService: this.options.emailService,
+          legalEntityId: entityId,
+          template: "legal-entity-rejected-notice",
+          vars: {
+            rejectionReason: reason?.trim() ?? null,
+            dashboardUrl: `${webOrigin}/dashboard/organisations`,
+            supportContactEmail,
+          },
+          idempotencyPrefix: `legal-entity-rejected:${entityId}`,
+        });
+      }
+      if (op === "request_docs") {
+        await enqueueOrgLifecycleMemberEmails({
+          db: this.db,
+          emailService: this.options.emailService,
+          legalEntityId: entityId,
+          template: "legal-entity-docs-requested-notice",
+          vars: {
+            docsUrl: `${webOrigin}/dashboard/organisations/${entityId}/documents`,
+            supportContactEmail,
+          },
+          idempotencyPrefix: `legal-entity-docs-requested:${entityId}`,
+        });
+      }
     }
 
     return result;

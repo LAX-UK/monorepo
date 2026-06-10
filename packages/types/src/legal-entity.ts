@@ -60,6 +60,7 @@ export type LegalEntity = {
   status: LegalEntityStatus;
   statusChangedAt: Date | null;
   statusChangedByUserId: string | null;
+  statusReason?: string | null;
   stripeConnectAccountId: string | null;
   stripeCustomerId: string | null;
   stripeConnectChargesEnabled: boolean;
@@ -82,6 +83,7 @@ export type LegalEntitySummary = {
   kind: LegalEntityKind;
   subkind: LegalEntitySubkind;
   status: LegalEntityStatus;
+  statusReason?: string | null;
   role: LegalEntityMemberRole;
   isPrimaryAdmin: boolean;
   /** synthetic acting row when a platform admin impersonates. */

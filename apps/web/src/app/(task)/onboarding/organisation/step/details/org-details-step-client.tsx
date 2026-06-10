@@ -162,9 +162,13 @@ export function OrgDetailsStepClient({
         return;
       }
       const id = res.entity.id;
-      const step = await postOrgOnboardingStepCompleteAction(id, "details");
+      let step = await postOrgOnboardingStepCompleteAction(id, "details");
+      for (let attempt = 0; !step.ok && attempt < 3; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        step = await postOrgOnboardingStepCompleteAction(id, "details");
+      }
       if (!step.ok) {
-        setError(step.error ?? "Could not record progress.");
+        router.push(`/onboarding/organisation/step/documents?${buildQuery(id)}`);
         return;
       }
       router.push(`/onboarding/organisation/step/documents?${buildQuery(id)}`);

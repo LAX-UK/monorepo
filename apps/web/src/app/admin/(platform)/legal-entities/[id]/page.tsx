@@ -1,7 +1,11 @@
 import { LegalEntityDetailShell } from "@/components/admin/legal-entities/legal-entity-detail-shell";
 import { statusLabel } from "@/lib/admin/legal-entity-list-presenter";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminLegalEntityById, getAdminUserById } from "@/lib/data/http/admin.server";
+import {
+  getAdminLegalEntityById,
+  getAdminLegalEntityDocuments,
+  getAdminUserById,
+} from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -32,7 +36,8 @@ export default async function AdminLegalEntityDetailPage({
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
   const success = safeDecodeAdminErrorParam(sp.success);
-  const activeTab = sp.tab === "stripe" || sp.tab === "lifecycle" ? sp.tab : "overview";
+  const activeTab =
+    sp.tab === "stripe" || sp.tab === "lifecycle" || sp.tab === "documents" ? sp.tab : "overview";
 
   let entity: Awaited<ReturnType<typeof getAdminLegalEntityById>> = null;
   try {
@@ -45,6 +50,7 @@ export default async function AdminLegalEntityDetailPage({
   }
 
   const creatorUser = await getAdminUserById(entity.createdByUserId).catch(() => null);
+  const documents = await getAdminLegalEntityDocuments(id).catch(() => []);
   const creator = creatorUser
     ? { id: creatorUser.id, name: creatorUser.name, email: creatorUser.email }
     : null;
@@ -54,6 +60,7 @@ export default async function AdminLegalEntityDetailPage({
       entity={entity}
       creator={creator}
       activeTab={activeTab}
+      documents={documents}
       error={error}
       success={success}
     />

@@ -19,6 +19,7 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     status: row.status,
     statusChangedAt: row.statusChangedAt ?? null,
     statusChangedByUserId: row.statusChangedByUserId ?? null,
+    statusReason: row.statusReason ?? null,
     stripeConnectAccountId: row.stripeConnectAccountId ?? null,
     stripeCustomerId: row.stripeCustomerId ?? null,
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
@@ -53,6 +54,7 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
         kind: legalEntity.kind,
         subkind: legalEntity.subkind,
         status: legalEntity.status,
+        statusReason: legalEntity.statusReason,
         role: legalEntityMember.role,
         isPrimaryAdmin: legalEntityMember.isPrimaryAdmin,
       })
@@ -63,7 +65,7 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
           eq(legalEntityMember.userId, userId),
           isNull(legalEntityMember.removedAt),
           isNotNull(legalEntityMember.acceptedAt),
-          notInArray(legalEntity.status, ["rejected", "archived"]),
+          notInArray(legalEntity.status, ["archived"]),
         ),
       );
     return rows.map((r) => ({
@@ -72,6 +74,7 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
       kind: r.kind,
       subkind: r.subkind,
       status: r.status,
+      statusReason: r.statusReason ?? null,
       role: r.role,
       isPrimaryAdmin: r.isPrimaryAdmin,
     }));
@@ -191,7 +194,7 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
           eq(legalEntityMember.legalEntityId, legalEntityId),
           isNull(legalEntityMember.removedAt),
           isNotNull(legalEntityMember.acceptedAt),
-          notInArray(legalEntity.status, ["rejected", "archived"]),
+          notInArray(legalEntity.status, ["archived"]),
         ),
       )
       .limit(1);
