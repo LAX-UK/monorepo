@@ -32,7 +32,7 @@ function OrgSubmittedAlertInner() {
     >
       <AlertTitle>Organisation submitted</AlertTitle>
       <AlertDescription className="text-on-surface">
-        Your organisation is being reviewed. We&apos;ll notify you when approved.
+        Your organisation is being reviewed. Check back here for status updates.
       </AlertDescription>
     </Alert>
   );

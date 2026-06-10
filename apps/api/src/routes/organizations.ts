@@ -45,9 +45,24 @@ export function createOrganizationRoutes(container: Container, authenticator: IA
       return c.json(body, 403);
     }
     const userId = c.get("userId") as string;
+    const rlKey = `org-create:${userId}`;
+    const n = await container.redis.incr(rlKey);
+    if (n === 1) {
+      await container.redis.expire(rlKey, 3600);
+    }
+    if (n > 5) {
+      return c.json({ error: "rate_limit_exceeded" }, 429);
+    }
     const body = c.req.valid("json");
-    const result = await container.organizationOnboardingService.createOrganization(userId, body);
-    return c.json({ data: result }, 201);
+    try {
+      const result = await container.organizationOnboardingService.createOrganization(userId, body);
+      return c.json({ data: result }, 201);
+    } catch (e) {
+      if (e instanceof Error && e.message === "organization_limit_reached") {
+        return c.json({ error: "organization_limit_reached" }, 429);
+      }
+      throw e;
+    }
   });
 
   r.route("/:entityId/onboarding", createOrganizationOnboardingRoutes(container, authenticator));

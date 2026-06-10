@@ -1,9 +1,9 @@
 "use server";
 
-import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-
+import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -156,4 +156,52 @@ export async function legalEntityArchiveAction(formData: FormData): Promise<void
     },
     { formData },
   );
+}
+
+export async function reviewLegalEntityDocumentAction(input: {
+  legalEntityId: string;
+  documentId: string;
+  reviewStatus: "approved" | "rejected";
+  reviewNotes?: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  return instrumentServerAction("reviewLegalEntityDocumentAction", async () => {
+    const res = await authedServerFetch(
+      `/admin/legal-entities/${encodeURIComponent(input.legalEntityId)}/documents/${encodeURIComponent(input.documentId)}/review`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          reviewStatus: input.reviewStatus,
+          reviewNotes: input.reviewNotes,
+        }),
+      },
+    );
+    if (!res.ok) {
+      let msg = `Request failed (${res.status})`;
+      try {
+        const j = (await res.json()) as { error?: string };
+        msg = j.error ?? msg;
+      } catch {
+        // ignore
+      }
+      return { ok: false, error: msg };
+    }
+    revalidatePath(`/admin/legal-entities/${input.legalEntityId}`);
+    return { ok: true };
+  });
+}
+
+export async function getAdminLegalEntityDocumentsAction(
+  legalEntityId: string,
+): Promise<{ ok: true; documents: AdminLegalEntityDocument[] } | { ok: false; error: string }> {
+  return instrumentServerAction("getAdminLegalEntityDocumentsAction", async () => {
+    const res = await authedServerFetch(
+      `/admin/legal-entities/${encodeURIComponent(legalEntityId)}/documents`,
+    );
+    if (!res.ok) {
+      return { ok: false, error: `Request failed (${res.status})` };
+    }
+    const j = (await res.json()) as { data: AdminLegalEntityDocument[] };
+    return { ok: true, documents: j.data };
+  });
 }

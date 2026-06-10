@@ -24,19 +24,16 @@ describe("isOrgModuleEnabled", () => {
     vi.unstubAllEnvs();
   });
 
-  it("is disabled on lax.bid", () => {
-    expect(isOrgModuleEnabled("lax.bid")).toBe(false);
-  });
-
-  it("is enabled on test.lax.bid and localhost", () => {
+  it("is enabled on all hosts including lax.bid (launched)", () => {
+    expect(isOrgModuleEnabled("lax.bid")).toBe(true);
+    expect(isOrgModuleEnabled("www.lax.bid")).toBe(true);
     expect(isOrgModuleEnabled("test.lax.bid")).toBe(true);
     expect(isOrgModuleEnabled("localhost:3000")).toBe(true);
   });
 
-  it("respects NEXT_PUBLIC_FORCE_ORG_MODULE override", () => {
+  it("respects NEXT_PUBLIC_FORCE_ORG_MODULE=hidden kill switch", () => {
     vi.stubEnv("NEXT_PUBLIC_FORCE_ORG_MODULE", "hidden");
     expect(isOrgModuleEnabled("test.lax.bid")).toBe(false);
-    vi.stubEnv("NEXT_PUBLIC_FORCE_ORG_MODULE", "visible");
-    expect(isOrgModuleEnabled("lax.bid")).toBe(true);
+    expect(isOrgModuleEnabled("lax.bid")).toBe(false);
   });
 });

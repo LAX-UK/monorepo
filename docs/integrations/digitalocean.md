@@ -76,9 +76,11 @@ that operators sometimes need to revisit:
 - Allowed CORS methods: `PUT`, `GET`, `HEAD`.
 - Allowed CORS origins: the production and test web hosts plus
   `http://localhost:3000`.
-- Lifecycle: `uploads/pending/` expires after 1 day; `uploads/active/` is
-  retained indefinitely (the runtime `gc-pending-uploads` worker is the
-  primary cleanup; the lifecycle rule is the second line of defence).
+- **No bucket lifecycle rule is configured in Terraform.** Validated uploads remain
+  under `uploads/pending/...` indefinitely. Do **not** add a blanket
+  `uploads/pending/` expiry rule — it would delete live media and KYB documents.
+  Orphan cleanup is handled by the `gc-pending-uploads` worker (rows still in
+  `pending` status after presign expiry).
 
 Generate Spaces access keys with the Spaces role only. Store the key pair in
 1Password and as the App Platform encrypted env vars

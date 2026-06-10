@@ -1,3 +1,4 @@
+import { reviewLegalEntityDocumentSchema } from "@auction/validators";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { asHttpStatus } from "../lib/http-status.js";
@@ -7,6 +8,7 @@ import {
   createRequireCapability,
   requireLegalEntityBrowse,
 } from "../middleware/require-capability.js";
+import type { LegalEntityDocumentAdminService } from "../services/admin/legal-entity-document-admin.service.js";
 import type { IAdminLegalEntityLifecycleApplicationService } from "../services/interfaces/admin-routes.js";
 
 const legalEntityIdParamSchema = z.object({
@@ -23,6 +25,10 @@ const rejectBodySchema = reasonBodySchema.extend({
 
 const archiveBodySchema = reasonBodySchema.extend({
   confirmationPhrase: z.string().min(1).max(500),
+});
+
+const documentIdParamSchema = legalEntityIdParamSchema.extend({
+  documentId: z.string().uuid(),
 });
 
 const requireLegalEntityWrite = createRequireCapability("legal_entity.write");
@@ -53,6 +59,7 @@ async function runLifecycle(
 export function attachAdminLegalEntityLifecycleRoutes(
   platform: Hono<{ Variables: { userId?: string; userRole?: string } }>,
   legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService,
+  legalEntityDocuments: LegalEntityDocumentAdminService,
 ) {
   platform.get(
     "/legal-entities/:id",
@@ -65,6 +72,36 @@ export function attachAdminLegalEntityLifecycleRoutes(
         return c.json({ error: "Not found" }, 404);
       }
       return c.json({ data: entity });
+    },
+  );
+
+  platform.get(
+    "/legal-entities/:id/documents",
+    requireLegalEntityBrowse,
+    zValidator("param", legalEntityIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const docs = await legalEntityDocuments.listDocuments(id);
+      if (docs === null) return c.json({ error: "not_found" }, 404);
+      return c.json({ data: docs });
+    },
+  );
+
+  platform.post(
+    "/legal-entities/:id/documents/:documentId/review",
+    requireLegalEntityWrite,
+    zValidator("param", documentIdParamSchema),
+    zValidator("json", reviewLegalEntityDocumentSchema),
+    async (c) => {
+      const userId = c.get("userId");
+      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      const { id, documentId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const result = await legalEntityDocuments.reviewDocument(id, documentId, userId, body);
+      if (!result.ok) {
+        return c.json({ error: result.code }, result.code === "not_found" ? 404 : 404);
+      }
+      return c.json({ data: { reviewed: true } });
     },
   );
 
