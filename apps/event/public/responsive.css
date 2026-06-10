@@ -113,16 +113,6 @@ table.email-container {
   max-width: 100%;
 }
 
-.site-logo {
-  width: 180px;
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-.site-logo--footer {
-  width: 140px;
-}
-
 .content-pad {
   padding-left: 32px !important;
   padding-right: 32px !important;
@@ -183,6 +173,51 @@ table.email-container {
   .intro-copy.reveal {
     font-size: 14px !important;
     line-height: 22px !important;
+  }
+
+  .brand-logo--primary {
+    width: min(200px, 68vw);
+  }
+
+  .brand-logo--wordmark {
+    width: min(220px, 68vw);
+  }
+
+  .brand-logo--stamp {
+    width: min(148px, 46vw);
+  }
+
+  .brand-logo--stylized,
+  .brand-divider .brand-logo--stylized {
+    width: min(88px, 28vw);
+  }
+
+  .venue-brand .brand-logo--stamp {
+    width: min(148px, 50vw);
+  }
+
+  .brand-footer__marks .brand-logo--stamp {
+    width: min(124px, 40vw);
+  }
+
+  .brand-footer__marks .brand-logo--stylized {
+    width: min(72px, 24vw);
+  }
+
+  .rsvp-band__logo {
+    width: min(210px, 62vw);
+    margin-bottom: 14px;
+  }
+
+  .hero-bid-strip__logo {
+    width: min(220px, 66vw);
+    margin-bottom: 14px;
+  }
+
+  .brand-footer__marks {
+    gap: 16px;
+    margin-top: 12px;
+    padding-top: 12px;
   }
 
   .hero-bid-strip {
