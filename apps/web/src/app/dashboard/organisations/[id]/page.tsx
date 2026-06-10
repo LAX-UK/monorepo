@@ -1,12 +1,6 @@
 import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
-import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
-import {
-  roleLabel,
-  statusBadgeVariant,
-  statusLabel,
-  subkindLabel,
-} from "@/components/organisations/labels";
+import { statusLabel } from "@/components/organisations/labels";
 import { MembersAvatarStack } from "@/components/organisations/members-avatar-stack";
 import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
@@ -104,57 +98,40 @@ export default async function OrganisationOverviewPage({
         />
       </OrgTabSectionHeader>
 
-      <SplitDetailLayout
-        mediaSlot={
-          <Surface
-            variant="section"
-            padding="lg"
-            className="flex min-h-[200px] flex-col justify-end bg-gradient-to-br from-primary/20 via-lot-orange/10 to-surface-container-high"
-          >
-            <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-              {entity?.displayName ? "Organisation" : "Member"}
-            </p>
-            <h2 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
-              {entity?.displayName ?? member.displayName ?? "Organisation"}
-            </h2>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <StatusBadge variant={statusBadgeVariant(status)}>{statusLabel(status)}</StatusBadge>
-              <StatusBadge variant="neutral">{roleLabel(member.role)}</StatusBadge>
-              {entity?.subkind ? (
-                <StatusBadge variant="neutral">{subkindLabel(entity.subkind)}</StatusBadge>
-              ) : null}
-            </div>
-          </Surface>
-        }
-        metaSlot={
-          <KpiRow
-            columns={4}
-            className="xl:grid-cols-2 [&_section]:shadow-none"
-            tiles={[
-              {
-                id: "status",
-                label: "Status",
-                value: statusLabel(status),
-                semanticTone: "emphasis",
-                emphasize: true,
-              },
-              { id: "members", label: "Members", value: String(memberCount) },
-              {
-                id: "connect",
-                label: "Payout setup",
-                value: gap ? connectGapStageLabel(gap.stage) : "—",
-                semanticTone:
-                  gap?.stage === "ready" ? "emphasis" : reqDue > 0 ? "warning" : "default",
-              },
-              {
-                id: "reqs",
-                label: "Requirements",
-                value: String(reqDue),
-                semanticTone: reqDue > 0 ? "warning" : "default",
-              },
-            ]}
-          />
-        }
+      <KpiRow
+        embedded
+        columns={4}
+        aria-label="Organisation summary"
+        className="rounded-xl border border-border-hairline bg-surface-container-lowest p-4 sm:p-5"
+        tiles={[
+          {
+            id: "status",
+            label: "Status",
+            value: statusLabel(status),
+            semanticTone: "emphasis",
+            emphasize: true,
+          },
+          {
+            id: "members",
+            label: "Members",
+            value: String(memberCount),
+            href: `/dashboard/organisations/${id}/members`,
+          },
+          {
+            id: "connect",
+            label: "Payout setup",
+            value: gap ? connectGapStageLabel(gap.stage) : "—",
+            semanticTone: gap?.stage === "ready" ? "emphasis" : reqDue > 0 ? "warning" : "default",
+            href: `/dashboard/organisations/${id}/connect`,
+          },
+          {
+            id: "reqs",
+            label: "Requirements due",
+            value: String(reqDue),
+            semanticTone: reqDue > 0 ? "warning" : "default",
+            ...(reqDue > 0 ? { href: `/dashboard/organisations/${id}/connect` } : {}),
+          },
+        ]}
       />
 
       {resumeStep ? (
