@@ -593,13 +593,19 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
-  const adminTelephoneRoutes = createAdminTelephoneBookingRoutes(container);
-  adminTelephoneRoutes.use("*", requireAuctionManage);
-  platform.route("/", adminTelephoneRoutes);
+  // Hono merges a sub-app's handlers into the parent router, so `subApp.use("*", mw)`
+  // registered after the sub-app's routes never guards them and instead gates every
+  // platform route registered after the mount. Guards must be path-scoped and
+  // registered before the routes they protect.
+  platform.use("/telephone-bookings", requireAuctionManage);
+  platform.use("/telephone-bookings/*", requireAuctionManage);
+  platform.use("/sales/:saleId/telephone-bookings", requireAuctionManage);
+  platform.use("/sales/:saleId/telephone-bookings/*", requireAuctionManage);
+  platform.route("/", createAdminTelephoneBookingRoutes(container));
 
-  const adminOnsiteEventRoutes = createAdminOnsiteEventRoutes(container);
-  adminOnsiteEventRoutes.use("*", requireAuctionManage);
-  platform.route("/onsite-events", adminOnsiteEventRoutes);
+  platform.use("/onsite-events", requireAuctionManage);
+  platform.use("/onsite-events/*", requireAuctionManage);
+  platform.route("/onsite-events", createAdminOnsiteEventRoutes(container));
 
   platform.get(
     "/sales/:saleId/saleroom/session",
@@ -1839,10 +1845,15 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   attachAdminQueuesRoutes(platform, container);
 
+  // Finance-shell routes must stay reachable for finance_ops, who fails
+  // `requirePlatformShell`. Guards are path-scoped (not `use("*")`) so they don't
+  // leak onto platform paths once this sub-app is merged into the parent router.
   const finance = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>();
-  finance.use("*", requireFinanceAccess);
+  finance.use("/finance/*", requireFinanceAccess);
+  finance.use("/payments/:id/xero-sync", requireFinanceAccess);
+  finance.use("/integrations/xero/*", requireFinanceAccess);
 
   /** GET /admin/finance/dispute-domain-events — `payment.dispute*` only (finance-shell-safe). */
   finance.get(
@@ -1902,8 +1913,10 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   attachXeroAdminRoutes(finance, container.admin);
 
-  r.route("/", platform);
+  // Mount finance first: its routes terminate the chain before platform's
+  // `use("*", requirePlatformShell)` wildcard can 403 finance_ops.
   r.route("/", finance);
+  r.route("/", platform);
 
   return r;
 }
