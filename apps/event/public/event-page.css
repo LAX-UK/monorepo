@@ -4,18 +4,27 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Brand logos — black/ on light bands, white/ on dark bands */
+/* Brand logos — scale to invitation card width, not viewport */
 .brand-logo {
   display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
   border: 0;
   outline: none;
-  height: auto;
+}
+
+.brand-header__link,
+.brand-footer__link,
+.brand-logo-wrap {
+  display: block;
+  box-sizing: border-box;
   max-width: 100%;
+  margin-inline: auto;
 }
 
 .brand-header__link,
 .brand-footer__link {
-  display: inline-block;
   border: 0;
   text-decoration: none;
   line-height: 0;
@@ -26,23 +35,34 @@ html {
   text-align: center;
 }
 
-.brand-logo--primary {
-  width: min(240px, 72vw);
-  margin-inline: auto;
+.brand-header__link {
+  width: 78%;
+  max-width: 240px;
 }
 
-.brand-logo--wordmark {
-  width: min(260px, 72vw);
-  margin-inline: auto;
+.brand-footer__link {
+  width: 82%;
+  max-width: 260px;
 }
 
-.brand-logo--stamp {
-  width: min(168px, 48vw);
+.brand-logo-wrap--stamp {
+  width: 62%;
+  max-width: 168px;
 }
 
-.brand-logo--stylized {
-  width: min(100px, 30vw);
-  opacity: 0.88;
+.brand-logo-wrap--footer-stamp {
+  width: 58%;
+  max-width: 140px;
+}
+
+.brand-logo-wrap--stylized {
+  width: 28%;
+  max-width: 100px;
+}
+
+.brand-logo-wrap--footer-stylized {
+  width: 24%;
+  max-width: 80px;
 }
 
 .brand-divider {
@@ -50,15 +70,7 @@ html {
 }
 
 .brand-divider .brand-logo--stylized {
-  width: min(100px, 28vw);
-  margin-inline: auto;
   opacity: 0.55;
-}
-
-.hero-bid-strip__logo {
-  width: min(260px, 68vw);
-  margin: 0 auto 18px;
-  opacity: 0.92;
 }
 
 .venue-brand {
@@ -69,14 +81,7 @@ html {
 }
 
 .venue-brand .brand-logo--stamp {
-  width: min(168px, 52vw);
   opacity: 0.7;
-}
-
-.rsvp-band__logo {
-  width: min(240px, 64vw);
-  margin: 0 auto 16px;
-  opacity: 0.9;
 }
 
 .brand-footer {
@@ -95,12 +100,10 @@ html {
 }
 
 .brand-footer__marks .brand-logo--stamp {
-  width: min(140px, 42vw);
   opacity: 0.75;
 }
 
 .brand-footer__marks .brand-logo--stylized {
-  width: min(80px, 26vw);
   opacity: 0.65;
 }
 

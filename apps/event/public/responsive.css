@@ -175,43 +175,34 @@ table.email-container {
     line-height: 22px !important;
   }
 
-  .brand-logo--primary {
-    width: min(200px, 68vw);
+  .brand-header__link {
+    width: 84%;
+    max-width: 220px;
   }
 
-  .brand-logo--wordmark {
-    width: min(220px, 68vw);
+  .brand-footer__link {
+    width: 88%;
+    max-width: 240px;
   }
 
-  .brand-logo--stamp {
-    width: min(148px, 46vw);
+  .brand-logo-wrap--stamp {
+    width: 72%;
+    max-width: 148px;
   }
 
-  .brand-logo--stylized,
-  .brand-divider .brand-logo--stylized {
-    width: min(88px, 28vw);
+  .brand-logo-wrap--footer-stamp {
+    width: 68%;
+    max-width: 124px;
   }
 
-  .venue-brand .brand-logo--stamp {
-    width: min(148px, 50vw);
+  .brand-logo-wrap--stylized {
+    width: 32%;
+    max-width: 88px;
   }
 
-  .brand-footer__marks .brand-logo--stamp {
-    width: min(124px, 40vw);
-  }
-
-  .brand-footer__marks .brand-logo--stylized {
-    width: min(72px, 24vw);
-  }
-
-  .rsvp-band__logo {
-    width: min(210px, 62vw);
-    margin-bottom: 14px;
-  }
-
-  .hero-bid-strip__logo {
-    width: min(220px, 66vw);
-    margin-bottom: 14px;
+  .brand-logo-wrap--footer-stylized {
+    width: 28%;
+    max-width: 72px;
   }
 
   .brand-footer__marks {
