@@ -1,0 +1,18 @@
+"use client";
+
+import DashboardRouteError from "@/components/dashboard/dashboard-route-error";
+
+type Props = {
+  error: Error & { digest?: string };
+  reset: () => void;
+};
+
+export default function OrgOnboardingDocumentsError({ error, reset }: Props) {
+  return (
+    <DashboardRouteError
+      error={error}
+      reset={reset}
+      title="Could not load organisation documents step"
+    />
+  );
+}

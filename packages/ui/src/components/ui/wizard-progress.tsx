@@ -1,7 +1,7 @@
 "use client";
 
 import { List } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { cn } from "../../lib/utils.js";
 import {
   BottomSheet,
@@ -26,6 +26,8 @@ export type WizardProgressProps = {
   currentIndex: number;
   /** Highest step the user may jump to. Defaults to last step (all reachable). */
   maxReachableIndex?: number;
+  /** When set, marks steps complete by id (overrides index-based done state). */
+  completedStepIds?: readonly string[];
   /** When provided, steps become clickable (subject to `maxReachableIndex`). */
   onStepClick?: (index: number) => void;
   /** Disable all step navigation interactions (e.g. while validating a jump). */
@@ -33,6 +35,8 @@ export type WizardProgressProps = {
   variant?: WizardProgressVariant;
   /** "bar" only: render a mobile bottom-sheet step list trigger. */
   enableMobileSheet?: boolean;
+  /** "bar" only: optional content below step chips inside the mobile sheet. */
+  sidebarContent?: ReactNode;
   /** "bar" only: show "Up next: {label}" hint. */
   showUpNext?: boolean;
   className?: string;
@@ -60,6 +64,7 @@ function WizardStepChips({
   steps,
   currentIndex,
   maxReachableIndex,
+  completedStepIds,
   onStepClick,
   stepNavigationDisabled,
   onSelectStep,
@@ -68,6 +73,7 @@ function WizardStepChips({
   steps: readonly WizardProgressStep[];
   currentIndex: number;
   maxReachableIndex: number;
+  completedStepIds?: readonly string[] | undefined;
   onStepClick?: ((index: number) => void) | undefined;
   stepNavigationDisabled?: boolean | undefined;
   onSelectStep?: (() => void) | undefined;
@@ -78,7 +84,7 @@ function WizardStepChips({
       {steps.map((step, index) => {
         const reachable = index <= maxReachableIndex;
         const active = index === currentIndex;
-        const done = index < currentIndex;
+        const done = completedStepIds ? completedStepIds.includes(step.id) : index < currentIndex;
         const content = (
           <>
             <span
@@ -153,10 +159,12 @@ export function WizardProgress({
   steps,
   currentIndex,
   maxReachableIndex,
+  completedStepIds,
   onStepClick,
   stepNavigationDisabled = false,
   variant = "bar",
   enableMobileSheet = false,
+  sidebarContent,
   showUpNext = false,
   className,
 }: WizardProgressProps) {
@@ -175,6 +183,7 @@ export function WizardProgress({
             steps={steps}
             currentIndex={currentIndex}
             maxReachableIndex={reachableMax}
+            completedStepIds={completedStepIds}
             onStepClick={onStepClick}
             stepNavigationDisabled={stepNavigationDisabled}
           />
@@ -225,11 +234,17 @@ export function WizardProgress({
                   steps={steps}
                   currentIndex={currentIndex}
                   maxReachableIndex={reachableMax}
+                  completedStepIds={completedStepIds}
                   onStepClick={onStepClick}
                   stepNavigationDisabled={stepNavigationDisabled}
                   onSelectStep={() => setStepsOpen(false)}
                   fullWidth
                 />
+                {sidebarContent ? (
+                  <div className="mt-4 border-t border-outline-variant/30 pt-4">
+                    {sidebarContent}
+                  </div>
+                ) : null}
               </div>
             </BottomSheetContent>
           </BottomSheet>

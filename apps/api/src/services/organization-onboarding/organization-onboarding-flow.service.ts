@@ -84,6 +84,7 @@ export type OrganizationOnboardingGetResult = {
   entity: LegalEntity;
   completedSteps: OrgOnboardingStepKey[];
   documents: OrganizationOnboardingDocumentDto[];
+  primaryAddress: OrganizationOnboardingProfileInput["primaryAddress"] | null;
 };
 
 export type SubmitForReviewResult =
@@ -167,10 +168,43 @@ export class OrganizationOnboardingFlowService {
       .from(legalEntityDocument)
       .where(eq(legalEntityDocument.legalEntityId, entityId));
 
+    const addressRows = await this.db
+      .select({
+        addressType: legalEntityAddress.addressType,
+        line1: legalEntityAddress.line1,
+        line2: legalEntityAddress.line2,
+        city: legalEntityAddress.city,
+        state: legalEntityAddress.state,
+        postalCode: legalEntityAddress.postalCode,
+        country: legalEntityAddress.country,
+        isDefault: legalEntityAddress.isDefault,
+      })
+      .from(legalEntityAddress)
+      .where(
+        and(
+          eq(legalEntityAddress.legalEntityId, entityId),
+          eq(legalEntityAddress.addressType, "registered_office"),
+        ),
+      )
+      .limit(1);
+    const addr = addressRows[0];
+
     return {
       entity: rowToEntity(row),
       completedSteps,
       documents: docRows,
+      primaryAddress: addr
+        ? {
+            addressType: "registered_office",
+            line1: addr.line1,
+            line2: addr.line2 ?? null,
+            city: addr.city,
+            state: addr.state ?? null,
+            postalCode: addr.postalCode,
+            country: addr.country,
+            isDefault: addr.isDefault ?? true,
+          }
+        : null,
     };
   }
 

@@ -3,6 +3,8 @@ import {
   OrgDocumentsStepClient,
 } from "@/app/(task)/onboarding/organisation/step/documents/org-documents-step-client";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { redirectIfOrgOnboardingStepBlocked } from "@/lib/data/http/org-onboarding-step-guard.server";
+import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import type { PublicOrganisationSubkind } from "@auction/validators";
 import { redirect } from "next/navigation";
 
@@ -43,15 +45,9 @@ export default async function OrgOnboardingDocumentsStepPage({
     redirect("/onboarding/organisation/step/type");
   }
 
-  const onb = await authedServerFetch(`/organizations/${entityId}/onboarding`, {
-    cache: "no-store",
-  });
-  if (!onb.ok) redirect("/onboarding/organisation/step/type");
-  const body = (await onb.json()) as {
-    data?: { entity?: { subkind?: PublicOrganisationSubkind } };
-  };
-  const subkind = body.data?.entity?.subkind;
-  if (!subkind) redirect("/onboarding/organisation/step/type");
+  const state = await redirectIfOrgOnboardingStepBlocked(entityId, "documents");
+  const subkind = state.subkind;
+  if (!subkind) redirect(orgOnboardingStepHref("type", { entityId }));
 
   let slots = slotsForSubkind(subkind);
   if (slots.length === 0) {
@@ -67,5 +63,13 @@ export default async function OrgOnboardingDocumentsStepPage({
     }));
   }
 
-  return <OrgDocumentsStepClient entityId={entityId} fresh={fresh} slots={slots} />;
+  return (
+    <OrgDocumentsStepClient
+      entityId={entityId}
+      fresh={fresh}
+      slots={slots}
+      subkind={subkind}
+      uploadedDocuments={state.documents}
+    />
+  );
 }

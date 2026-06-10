@@ -10,18 +10,8 @@ const ROUTE_LABELS: Record<string, string> = {
   "/register/verify-pending": "Verify email",
 };
 
-const ONBOARDING_STEP_LABELS: Record<string, string> = {
-  type: "Organisation type",
-  details: "Organisation details",
-  documents: "Documents",
-  connect: "Connect payouts",
-  identity: "Identity verification",
-};
-
 function resolveTaskRouteLabel(pathname: string): string | null {
   if (pathname.startsWith("/onboarding/organisation")) {
-    const step = pathname.match(/\/step\/([^/]+)/)?.[1];
-    if (step && ONBOARDING_STEP_LABELS[step]) return ONBOARDING_STEP_LABELS[step];
     return "Organisation onboarding";
   }
 

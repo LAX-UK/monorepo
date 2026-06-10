@@ -11,6 +11,7 @@ import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { postServerKycSession } from "@/lib/data/http/kyc.server";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
+import type { OrgOnboardingStepKey } from "@auction/types";
 import type { OrganizationOnboardingProfileInput } from "@auction/validators";
 
 function entityHeaders(entityId: string): HeadersInit {
@@ -179,5 +180,22 @@ export async function getOrganisationOnboardingDisplayNameAction(
     const displayName = body.data?.displayName?.trim();
     if (!displayName) return { ok: false };
     return { ok: true, displayName };
+  });
+}
+
+/** Completed steps for wizard progress when resuming an existing draft. */
+export async function getOrgOnboardingProgressAction(
+  entityId: string,
+): Promise<{ ok: true; completedSteps: OrgOnboardingStepKey[] } | { ok: false }> {
+  return instrumentServerAction("getOrgOnboardingProgressAction", async () => {
+    const res = await authedServerFetch(`/organizations/${entityId}/onboarding`, {
+      headers: entityHeaders(entityId),
+      cache: "no-store",
+    });
+    if (!res.ok) return { ok: false };
+    const body = (await res.json().catch(() => ({}))) as {
+      data?: { completedSteps?: OrgOnboardingStepKey[] };
+    };
+    return { ok: true, completedSteps: body.data?.completedSteps ?? [] };
   });
 }
