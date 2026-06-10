@@ -33,6 +33,7 @@ type Props = {
   activityEvents?: readonly AdminDomainEventRow[];
   deleteEligibility?: ArtistDeleteEligibility | null;
   canManageDelete?: boolean;
+  canEdit?: boolean;
   children: ReactNode;
 };
 
@@ -45,6 +46,7 @@ export function ArtistDetailShell({
   activityEvents = [],
   deleteEligibility = null,
   canManageDelete = false,
+  canEdit = false,
   children,
 }: Props) {
   const lifeRaw = formatArtistLifespan({
@@ -55,12 +57,16 @@ export function ArtistDetailShell({
   const registryStatus: ArtistStatus = artist.status ?? "pending";
 
   const artistMobileActions: CatalogMobileAction[] = [
-    {
-      id: "edit-artist",
-      label: "Edit",
-      href: `/admin/artists/${artist.id}/edit`,
-      variant: "primary",
-    },
+    ...(canEdit
+      ? [
+          {
+            id: "edit-artist",
+            label: "Edit",
+            href: `/admin/artists/${artist.id}/edit`,
+            variant: "primary" as const,
+          },
+        ]
+      : []),
     {
       id: "public-profile",
       label: "Public profile",
@@ -119,9 +125,11 @@ export function ArtistDetailShell({
         actions={
           <div className="flex flex-wrap gap-2">
             <AdminPinPageButton label={artist.displayName} />
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/admin/artists/${artist.id}/edit`}>Edit</Link>
-            </Button>
+            {canEdit ? (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/admin/artists/${artist.id}/edit`}>Edit</Link>
+              </Button>
+            ) : null}
             <Button variant="outline" size="sm" asChild>
               <Link href={publicHref} target="_blank" rel="noopener noreferrer">
                 Public profile
@@ -160,6 +168,7 @@ export function ArtistDetailShell({
             activityEvents={activityEvents}
             deleteEligibility={deleteEligibility}
             canManageDelete={canManageDelete}
+            canEdit={canEdit}
           />
         }
         stickySubnav={

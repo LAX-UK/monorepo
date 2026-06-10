@@ -23,6 +23,7 @@ type Props = {
   activityEvents?: readonly AdminDomainEventRow[];
   deleteEligibility?: ArtistDeleteEligibility | null;
   canManageDelete?: boolean;
+  canEdit?: boolean;
 };
 
 export function ArtistContextRail({
@@ -35,6 +36,7 @@ export function ArtistContextRail({
   activityEvents = [],
   deleteEligibility = null,
   canManageDelete = false,
+  canEdit = false,
 }: Props) {
   const related = [
     ...(artist.status === "merged_into" && artist.mergedIntoArtistId
@@ -87,12 +89,16 @@ export function ArtistContextRail({
         />
         <QuickActionsRail
           actions={[
-            {
-              id: "edit",
-              label: "Edit artist",
-              href: `/admin/artists/${artistId}/edit`,
-              variant: "default",
-            },
+            ...(canEdit
+              ? [
+                  {
+                    id: "edit",
+                    label: "Edit artist",
+                    href: `/admin/artists/${artistId}/edit`,
+                    variant: "default" as const,
+                  },
+                ]
+              : []),
             {
               id: "public",
               label: "Public profile",

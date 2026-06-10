@@ -12,7 +12,13 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export function ArtistActionMenu({ row }: { row: AdminArtistListRow }) {
+export function ArtistActionMenu({
+  row,
+  canEdit = false,
+}: {
+  row: AdminArtistListRow;
+  canEdit?: boolean;
+}) {
   const router = useRouter();
   return (
     <InlineActionMenu
@@ -23,11 +29,15 @@ export function ArtistActionMenu({ row }: { row: AdminArtistListRow }) {
           label: "View",
           onSelect: () => router.push(`/admin/artists/${row.id}`),
         },
-        {
-          type: "item",
-          label: "Edit",
-          onSelect: () => router.push(`/admin/artists/${row.id}/edit`),
-        },
+        ...(canEdit
+          ? [
+              {
+                type: "item" as const,
+                label: "Edit",
+                onSelect: () => router.push(`/admin/artists/${row.id}/edit`),
+              },
+            ]
+          : []),
         {
           type: "item",
           label: "Copy ID",
@@ -38,7 +48,7 @@ export function ArtistActionMenu({ row }: { row: AdminArtistListRow }) {
   );
 }
 
-export function artistColumns(): ColumnDef<AdminArtistListRow>[] {
+export function artistColumns(canEdit = false): ColumnDef<AdminArtistListRow>[] {
   return [
     {
       accessorKey: "displayName",
@@ -140,7 +150,7 @@ export function artistColumns(): ColumnDef<AdminArtistListRow>[] {
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => <ArtistActionMenu row={row.original} />,
+      cell: ({ row }) => <ArtistActionMenu row={row.original} canEdit={canEdit} />,
       enableSorting: false,
     },
   ];
