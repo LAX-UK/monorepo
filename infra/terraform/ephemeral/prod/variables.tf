@@ -207,6 +207,13 @@ variable "enable_whatsapp_channel" {
     error_message = "enable_whatsapp_channel must be the string \"true\" or \"false\"."
   }
 }
+
+variable "org_module_hidden" {
+  type        = bool
+  default     = true
+  description = "When true, hides the organisation module on production web and API (NEXT_PUBLIC_FORCE_ORG_MODULE / FORCE_ORG_MODULE kill switches). Set false to launch."
+}
+
 variable "zoho_campaigns_api_key" {
   type        = string
   default     = ""
