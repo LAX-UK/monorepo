@@ -15,10 +15,13 @@ export function SignUpFields({
   control,
   orgModuleEnabled = true,
   phoneDefaultCountry = "GB",
+  lockedEmail,
 }: {
   control: Control<SignUpFormValues>;
   orgModuleEnabled?: boolean;
   phoneDefaultCountry?: string;
+  /** Invitation signups: email is fixed to the invited address. */
+  lockedEmail?: string;
 }) {
   const pwdHintId = useId();
   const pwdMeterId = useId();
@@ -106,25 +109,39 @@ export function SignUpFields({
       ) : null}
       <RHFInput control={control} name="firstName" label="First Name" autoComplete="given-name" />
       <RHFInput control={control} name="lastName" label="Last Name" autoComplete="family-name" />
-      <div>
-        <RHFInput
-          control={control}
-          name="email"
-          label="Email Address"
-          type="email"
-          autoComplete="email"
-        />
-        {showWorkEmailNudge ? (
-          <p
-            id={personaNudgeId}
-            role="note"
-            aria-live="polite"
-            className="mt-2 font-footer-links text-xs text-on-surface-variant"
-          >
-            Tip: use your work email to make organisation verification simpler later.
+      {lockedEmail ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+            Email Address
+          </span>
+          <p className="rounded-md border border-outline-variant/40 bg-surface-container-low px-3 py-2.5 font-body text-sm text-on-surface">
+            {lockedEmail}
           </p>
-        ) : null}
-      </div>
+          <p className="font-footer-links text-xs text-on-surface-variant">
+            Your invitation is tied to this email address.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <RHFInput
+            control={control}
+            name="email"
+            label="Email Address"
+            type="email"
+            autoComplete="email"
+          />
+          {showWorkEmailNudge ? (
+            <p
+              id={personaNudgeId}
+              role="note"
+              aria-live="polite"
+              className="mt-2 font-footer-links text-xs text-on-surface-variant"
+            >
+              Tip: use your work email to make organisation verification simpler later.
+            </p>
+          ) : null}
+        </div>
+      )}
       <Controller
         control={control}
         name="phone"
