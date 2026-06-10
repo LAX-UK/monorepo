@@ -2,10 +2,25 @@ import "server-only";
 
 import type { OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import { ORG_ONBOARDING_STEPS, type OrgOnboardingStepKey } from "@auction/types";
+import { fetchOrgOnboardingState } from "@/lib/data/http/org-onboarding-step-guard.server";
+import {
+  earliestIncompleteOrgOnboardingStep,
+  orgOnboardingResumeHref,
+} from "@/lib/legal-entity/org-onboarding-resume";
 import { cache } from "react";
 
 export type { OrgOnboardingResumeVm };
+
+/** Resume href for a single organisation draft from API completed steps. */
+export async function getOrgOnboardingResumeHrefForEntity(
+  entityId: string,
+): Promise<string | null> {
+  const state = await fetchOrgOnboardingState(entityId);
+  if (!state) return null;
+  const missing = earliestIncompleteOrgOnboardingStep(state.completedSteps);
+  if (!missing) return null;
+  return orgOnboardingResumeHref(entityId, state.completedSteps);
+}
 
 /** First organisation membership (lead) with incomplete onboarding steps, if any. */
 export const getServerOrgOnboardingResume = cache(
@@ -18,19 +33,12 @@ export const getServerOrgOnboardingResume = cache(
     const memberships = body.data ?? [];
     const leads = memberships.filter((m) => m.kind === "organisation" && m.status === "lead");
     for (const org of leads) {
-      const o = await authedServerFetch(`/organizations/${org.id}/onboarding`, {
-        cache: "no-store",
-      });
-      if (!o.ok) continue;
-      const ob = (await o.json()) as { data?: { completedSteps?: OrgOnboardingStepKey[] } };
-      const done = new Set(ob.data?.completedSteps ?? []);
-      const missing = ORG_ONBOARDING_STEPS.find((s) => !done.has(s));
-      if (missing) {
-        const qs = new URLSearchParams({ entityId: org.id });
+      const resumeHref = await getOrgOnboardingResumeHrefForEntity(org.id);
+      if (resumeHref) {
         return {
           entityId: org.id,
           displayName: org.displayName,
-          resumeHref: `/onboarding/organisation/step/${missing}?${qs.toString()}`,
+          resumeHref,
         };
       }
     }

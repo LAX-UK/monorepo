@@ -4,12 +4,17 @@ import {
   postOrgOnboardingDocumentAction,
   postOrgOnboardingStepCompleteAction,
 } from "@/app/(task)/onboarding/organisation/onboarding-actions";
-import { apiBaseUrl } from "@/lib/auth/api-base";
+import { uploadObjectFile } from "@/hooks/use-upload-object-lifecycle";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
+import { orgDocumentsStepIntro } from "@/lib/legal-entity/org-onboarding-documents-copy";
+import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import { Button } from "@auction/ui/components/button";
 import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import type { PublicOrganisationSubkind } from "@auction/validators";
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -21,96 +26,49 @@ export type DocumentSlot = {
   title: string;
 };
 
-type PresignResponse = {
-  data: {
-    uploadId: string;
-    uploadUrl: string;
-    requiredHeaders: Record<string, string>;
-  };
+type UploadedDocument = {
+  id: string;
+  kind: string;
+  label: string | null;
+  reviewStatus: string;
 };
-
-async function errorFromResponse(response: Response, fallback: string): Promise<string> {
-  const body = await response.json().catch(() => null);
-  if (body && typeof body === "object" && typeof (body as { error?: unknown }).error === "string") {
-    return (body as { error: string }).error;
-  }
-  return fallback;
-}
 
 const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
 
-async function waitForActiveUpload(uploadId: string): Promise<void> {
-  const base = apiBaseUrl();
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    const res = await fetch(`${base}/uploads/${uploadId}`, { credentials: "include" });
-    if (res.ok) {
-      const body = (await res.json()) as { data?: { status?: string } };
-      if (body.data?.status === "active") return;
-      if (body.data?.status === "rejected") {
-        throw new Error("Upload failed validation. Try a different file.");
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
+function findUploadedForSlot(
+  slot: DocumentSlot,
+  uploadedDocuments: UploadedDocument[],
+): UploadedDocument | undefined {
+  if (slot.kind === "other" && slot.label) {
+    return uploadedDocuments.find((doc) => doc.kind === "other" && doc.label === slot.label);
   }
-  throw new Error("Upload is still processing. Try again in a moment.");
-}
-
-async function uploadLegalEntityDocument(file: File): Promise<string> {
-  if (file.size > MAX_DOCUMENT_BYTES) {
-    throw new Error("File is too large. Maximum size is 15MB.");
-  }
-  const base = apiBaseUrl();
-  const presign = await fetch(`${base}/uploads/presign`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      kind: "legal_entity_document",
-      contentType: file.type,
-      byteSize: file.size,
-    }),
-  });
-  if (!presign.ok) throw new Error(await errorFromResponse(presign, "Could not prepare upload"));
-  const presignBody = (await presign.json()) as PresignResponse;
-  const headers = new Headers(presignBody.data.requiredHeaders);
-  const put = await fetch(presignBody.data.uploadUrl, {
-    method: "PUT",
-    headers,
-    body: file,
-  });
-  if (!put.ok) throw new Error("Object storage rejected the upload");
-
-  const confirm = await fetch(`${base}/uploads/confirm`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ uploadId: presignBody.data.uploadId }),
-  });
-  if (!confirm.ok) throw new Error(await errorFromResponse(confirm, "Could not confirm upload"));
-  await waitForActiveUpload(presignBody.data.uploadId);
-  return presignBody.data.uploadId;
+  return uploadedDocuments.find((doc) => doc.kind === slot.kind);
 }
 
 type Props = {
   entityId: string;
   fresh: boolean;
+  subkind: PublicOrganisationSubkind;
   slots: DocumentSlot[];
+  uploadedDocuments: UploadedDocument[];
 };
 
-export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
+export function OrgDocumentsStepClient({
+  entityId,
+  fresh,
+  subkind,
+  slots,
+  uploadedDocuments,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [otherLabel, setOtherLabel] = useState("");
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
-  const slotKey = (slot: DocumentSlot) => `${slot.kind}-${slot.label ?? slot.title}`;
+  const queryOpts = { entityId, ...(fresh ? { fresh: true } : {}) };
 
-  const buildQuery = () => {
-    const qs = new URLSearchParams({ entityId });
-    if (fresh) qs.set("fresh", "1");
-    return qs.toString();
-  };
+  const slotKey = (slot: DocumentSlot) => `${slot.kind}-${slot.label ?? slot.title}`;
 
   const onUpload = (slot: DocumentSlot, file: File | null) => {
     if (!file) return;
@@ -119,7 +77,10 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
     setUploadingKey(key);
     startTransition(async () => {
       try {
-        const uploadId = await uploadLegalEntityDocument(file);
+        if (file.size > MAX_DOCUMENT_BYTES) {
+          throw new Error("File is too large. Maximum size is 15MB.");
+        }
+        const upload = await uploadObjectFile(file, "legal_entity_document");
         const effectiveLabel =
           slot.kind === "other" ? slot.label?.trim() || otherLabel.trim() : undefined;
         if (slot.kind === "other" && !effectiveLabel) {
@@ -130,12 +91,12 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
           slot.kind === "other"
             ? await postOrgOnboardingDocumentAction(entityId, {
                 kind: "other",
-                uploadObjectId: uploadId,
+                uploadObjectId: upload.uploadObjectId,
                 label: effectiveLabel as string,
               })
             : await postOrgOnboardingDocumentAction(entityId, {
                 kind: slot.kind,
-                uploadObjectId: uploadId,
+                uploadObjectId: upload.uploadObjectId,
               });
         if (!attach.ok) {
           setError(attach.error ?? "Could not attach document.");
@@ -158,7 +119,7 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
         setError(res.error ?? "Upload all required documents first.");
         return;
       }
-      router.push(`/onboarding/organisation/step/connect?${buildQuery()}`);
+      router.push(orgOnboardingStepHref("connect", queryOpts));
     });
   };
 
@@ -166,11 +127,10 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
 
   return (
     <div className="space-y-6 px-4">
-      <h2 className="text-xl font-semibold">Documents</h2>
-      <p className="text-sm text-on-surface-variant">
-        Upload PDF or images (max 15MB). Estate organisations use the three labelled
-        &quot;other&quot; slots.
-      </p>
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold">Documents</h2>
+        <p className="text-sm text-on-surface-variant">{orgDocumentsStepIntro(subkind)}</p>
+      </div>
       {showFreeformLabel ? (
         <div className="space-y-2">
           <Label htmlFor="otherLabel">
@@ -188,13 +148,27 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
         {slots.map((slot) => {
           const key = slotKey(slot);
           const isUploading = uploadingKey === key;
+          const uploaded = findUploadedForSlot(slot, uploadedDocuments);
           return (
             <li key={key} className="rounded-lg border border-outline-variant/30 p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-medium">{slot.title}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{slot.title}</p>
+                    {uploaded ? (
+                      <StatusBadge variant="success" size="sm">
+                        <CheckCircle2 className="mr-1 size-3" aria-hidden />
+                        Uploaded
+                      </StatusBadge>
+                    ) : null}
+                  </div>
                   {slot.label ? (
                     <p className="text-xs text-on-surface-variant">Label: {slot.label}</p>
+                  ) : null}
+                  {uploaded ? (
+                    <p className="mt-1 text-xs text-on-surface-variant">
+                      Status: {uploaded.reviewStatus.replaceAll("_", " ")}
+                    </p>
                   ) : null}
                   {isUploading ? (
                     <p className="mt-1 text-xs text-primary" aria-live="polite">
@@ -207,7 +181,9 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
                   busy={isUploading}
                   accept="application/pdf,image/jpeg,image/png,image/webp"
                   onFilesSelected={(files) => onUpload(slot, files[0] ?? null)}
-                />
+                >
+                  {uploaded ? "Replace" : undefined}
+                </FileUploadTrigger>
               </div>
             </li>
           );
@@ -219,11 +195,11 @@ export function OrgDocumentsStepClient({ entityId, fresh, slots }: Props) {
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3">
+        <Button type="button" variant="outline" asChild>
+          <Link href={orgOnboardingStepHref("details", queryOpts)}>{WIZARD_COPY.back}</Link>
+        </Button>
         <Button type="button" disabled={pending} onClick={onContinue}>
           {pending ? "Saving…" : "Continue"}
-        </Button>
-        <Button type="button" variant="outline" asChild>
-          <Link href="/dashboard">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
     </div>

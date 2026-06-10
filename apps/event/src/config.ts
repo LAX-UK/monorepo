@@ -38,11 +38,21 @@ export function eventAssetPath(filename: string): string {
   return `/events/lax001/${filename}`;
 }
 
+/** Static SVG brand marks in public/black and public/white. */
+export const BRAND = {
+  laxPrimary: "/black/lax-primary.svg",
+  laxPrimaryWhite: "/white/lax-primary.svg",
+  laxWordmark: "/black/lax-wordmark.svg",
+  laxWordmarkWhite: "/white/lax-wordmark.svg",
+  londonStamp: "/black/london-stamp.svg",
+  londonStampWhite: "/white/london-stamp.svg",
+  laxStylized: "/black/lax-stylized.svg",
+  laxStylizedWhite: "/white/lax-stylized.svg",
+} as const;
+
 export const ASSETS = {
-  logoHeader: eventAssetPath("logo-header.png"),
   hero: eventAssetPath("hero.jpg"),
   highlightLot: eventAssetPath("highlight-lot.jpg"),
-  logoFooter: eventAssetPath("logo-footer.png"),
 } as const;
 
 export const EVENT_DETAILS = {

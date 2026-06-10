@@ -1,6 +1,9 @@
 import type { LegalEntityStatus, OrgOnboardingStepKey } from "@auction/types";
 
-/** Maps KYB status to the onboarding step users should resume (when still in setup). */
+/**
+ * Fallback resume step from KYB status when onboarding API progress is unavailable.
+ * Prefer {@link getOrgOnboardingResumeHrefForEntity} when entity id is known.
+ */
 export function resumeOnboardingStepKey(status: LegalEntityStatus): OrgOnboardingStepKey | null {
   if (
     status === "approved" ||

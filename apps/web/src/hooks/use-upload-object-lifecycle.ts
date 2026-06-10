@@ -127,36 +127,36 @@ export function uploadValidationErrorMessage(outcome: UploadValidationOutcome): 
   }
 }
 
+export async function uploadObjectFile(
+  file: File,
+  kind: string,
+  options?: UploadFileOptions,
+): Promise<ConfirmedUpload> {
+  const base = apiBaseUrl();
+  const presign = await fetch(`${base}/uploads/presign`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ kind, contentType: file.type, byteSize: file.size }),
+  });
+  if (!presign.ok) throw new Error(await errorFromResponse(presign, "Could not prepare upload"));
+  const presignBody = (await presign.json()) as PresignResponse;
+  const headers = new Headers(presignBody.data.requiredHeaders);
+  await putFileWithProgress(presignBody.data.uploadUrl, file, headers, options?.onProgress);
+
+  const confirm = await fetch(`${base}/uploads/confirm`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ uploadId: presignBody.data.uploadId }),
+  });
+  if (!confirm.ok) throw new Error(await errorFromResponse(confirm, "Could not confirm upload"));
+
+  const outcome = await waitForActiveUpload(base, presignBody.data.uploadId);
+  if (outcome.kind === "active") return outcome.upload;
+  throw new Error(uploadValidationErrorMessage(outcome));
+}
+
 export function useUploadObjectLifecycle() {
-  async function uploadFile(
-    file: File,
-    kind: string,
-    options?: UploadFileOptions,
-  ): Promise<ConfirmedUpload> {
-    const base = apiBaseUrl();
-    const presign = await fetch(`${base}/uploads/presign`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ kind, contentType: file.type, byteSize: file.size }),
-    });
-    if (!presign.ok) throw new Error(await errorFromResponse(presign, "Could not prepare upload"));
-    const presignBody = (await presign.json()) as PresignResponse;
-    const headers = new Headers(presignBody.data.requiredHeaders);
-    await putFileWithProgress(presignBody.data.uploadUrl, file, headers, options?.onProgress);
-
-    const confirm = await fetch(`${base}/uploads/confirm`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ uploadId: presignBody.data.uploadId }),
-    });
-    if (!confirm.ok) throw new Error(await errorFromResponse(confirm, "Could not confirm upload"));
-
-    const outcome = await waitForActiveUpload(base, presignBody.data.uploadId);
-    if (outcome.kind === "active") return outcome.upload;
-    throw new Error(uploadValidationErrorMessage(outcome));
-  }
-
-  return { uploadFile };
+  return { uploadFile: uploadObjectFile };
 }

@@ -4,6 +4,106 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Brand logos — black/ on light bands, white/ on dark bands */
+.brand-logo {
+  display: block;
+  border: 0;
+  outline: none;
+  height: auto;
+  max-width: 100%;
+}
+
+.brand-header__link,
+.brand-footer__link {
+  display: inline-block;
+  border: 0;
+  text-decoration: none;
+  line-height: 0;
+  font-size: 0;
+}
+
+.brand-header {
+  text-align: center;
+}
+
+.brand-logo--primary {
+  width: min(240px, 72vw);
+  margin-inline: auto;
+}
+
+.brand-logo--wordmark {
+  width: min(260px, 72vw);
+  margin-inline: auto;
+}
+
+.brand-logo--stamp {
+  width: min(168px, 48vw);
+}
+
+.brand-logo--stylized {
+  width: min(100px, 30vw);
+  opacity: 0.88;
+}
+
+.brand-divider {
+  text-align: center;
+}
+
+.brand-divider .brand-logo--stylized {
+  width: min(100px, 28vw);
+  margin-inline: auto;
+  opacity: 0.55;
+}
+
+.hero-bid-strip__logo {
+  width: min(260px, 68vw);
+  margin: 0 auto 18px;
+  opacity: 0.92;
+}
+
+.venue-brand {
+  display: flex;
+  justify-content: center;
+  padding: 0 24px 14px;
+  background-color: #000;
+}
+
+.venue-brand .brand-logo--stamp {
+  width: min(168px, 52vw);
+  opacity: 0.7;
+}
+
+.rsvp-band__logo {
+  width: min(240px, 64vw);
+  margin: 0 auto 16px;
+  opacity: 0.9;
+}
+
+.brand-footer {
+  text-align: center;
+}
+
+.brand-footer__marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(26, 26, 26, 0.1);
+}
+
+.brand-footer__marks .brand-logo--stamp {
+  width: min(140px, 42vw);
+  opacity: 0.75;
+}
+
+.brand-footer__marks .brand-logo--stylized {
+  width: min(80px, 26vw);
+  opacity: 0.65;
+}
+
 /* Light invitation card — default dark text on paper bands */
 .event-card .email-container {
   color: #1a1a1a;

@@ -37,5 +37,5 @@ export interface IOrganizationOnboardingService {
   checkNameAvailability(displayName: string): Promise<CheckNameResult>;
   getRequirements(subkind: PublicOrganisationSubkind): OrgRequirements;
   /** List public-facing subkinds for the dropdown. */
-  listSubkinds(): { value: PublicOrganisationSubkind; label: string }[];
+  listSubkinds(): { value: PublicOrganisationSubkind; label: string; description: string }[];
 }

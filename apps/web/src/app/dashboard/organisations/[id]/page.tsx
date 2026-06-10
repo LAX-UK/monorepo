@@ -1,21 +1,17 @@
 import { DashboardSection } from "@/components/dashboard/primitives/dashboard-section";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
-import { SplitDetailLayout } from "@/components/dashboard/primitives/split-detail-layout";
-import {
-  roleLabel,
-  statusBadgeVariant,
-  statusLabel,
-  subkindLabel,
-} from "@/components/organisations/labels";
+import { statusLabel } from "@/components/organisations/labels";
 import { MembersAvatarStack } from "@/components/organisations/members-avatar-stack";
 import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
+import { getOrgOnboardingResumeHrefForEntity } from "@/lib/data/http/org-onboarding.server";
 import {
   type ILegalEntityMemberListGateway,
   createLegalEntityMemberListGateway,
 } from "@/lib/legal-entity/member-list.gateway.server";
+import { ORG_ONBOARDING_TIMELINE_STAGES } from "@/lib/legal-entity/org-onboarding-steps";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { getConnectGapState } from "@auction/connect";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
@@ -26,14 +22,6 @@ import { Surface } from "@auction/ui/components/surface";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
-const ONBOARD_TIMELINE = [
-  { id: "type", label: "Type" },
-  { id: "details", label: "Details" },
-  { id: "documents", label: "Documents" },
-  { id: "connect", label: "Connect" },
-  { id: "identity", label: "Identity" },
-] as const;
 
 const REVIEW_TIMELINE = [
   { id: "submitted", label: "Submitted" },
@@ -74,11 +62,17 @@ export default async function OrganisationOverviewPage({
 
   const { member, entity } = ctx;
   const status = entity?.status ?? member.status;
+  const apiResumeHref = await getOrgOnboardingResumeHrefForEntity(id);
   const resumeStep = resumeOnboardingStepKey(status);
+  const continueSetupHref =
+    apiResumeHref ??
+    (resumeStep
+      ? `/onboarding/organisation/step/${resumeStep}?entityId=${encodeURIComponent(id)}`
+      : null);
   const timelineIndex = resumeStep
     ? Math.max(
         0,
-        ONBOARD_TIMELINE.findIndex((s) => s.id === resumeStep),
+        ORG_ONBOARDING_TIMELINE_STAGES.findIndex((s) => s.id === resumeStep),
       )
     : -1;
 
@@ -104,57 +98,40 @@ export default async function OrganisationOverviewPage({
         />
       </OrgTabSectionHeader>
 
-      <SplitDetailLayout
-        mediaSlot={
-          <Surface
-            variant="section"
-            padding="lg"
-            className="flex min-h-[200px] flex-col justify-end bg-gradient-to-br from-primary/20 via-lot-orange/10 to-surface-container-high"
-          >
-            <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-              {entity?.displayName ? "Organisation" : "Member"}
-            </p>
-            <h2 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
-              {entity?.displayName ?? member.displayName ?? "Organisation"}
-            </h2>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <StatusBadge variant={statusBadgeVariant(status)}>{statusLabel(status)}</StatusBadge>
-              <StatusBadge variant="neutral">{roleLabel(member.role)}</StatusBadge>
-              {entity?.subkind ? (
-                <StatusBadge variant="neutral">{subkindLabel(entity.subkind)}</StatusBadge>
-              ) : null}
-            </div>
-          </Surface>
-        }
-        metaSlot={
-          <KpiRow
-            columns={4}
-            className="xl:grid-cols-2 [&_section]:shadow-none"
-            tiles={[
-              {
-                id: "status",
-                label: "Status",
-                value: statusLabel(status),
-                semanticTone: "emphasis",
-                emphasize: true,
-              },
-              { id: "members", label: "Members", value: String(memberCount) },
-              {
-                id: "connect",
-                label: "Payout setup",
-                value: gap ? connectGapStageLabel(gap.stage) : "—",
-                semanticTone:
-                  gap?.stage === "ready" ? "emphasis" : reqDue > 0 ? "warning" : "default",
-              },
-              {
-                id: "reqs",
-                label: "Requirements",
-                value: String(reqDue),
-                semanticTone: reqDue > 0 ? "warning" : "default",
-              },
-            ]}
-          />
-        }
+      <KpiRow
+        embedded
+        columns={4}
+        aria-label="Organisation summary"
+        className="rounded-xl border border-border-hairline bg-surface-container-lowest p-4 sm:p-5"
+        tiles={[
+          {
+            id: "status",
+            label: "Status",
+            value: statusLabel(status),
+            semanticTone: "emphasis",
+            emphasize: true,
+          },
+          {
+            id: "members",
+            label: "Members",
+            value: String(memberCount),
+            href: `/dashboard/organisations/${id}/members`,
+          },
+          {
+            id: "connect",
+            label: "Payout setup",
+            value: gap ? connectGapStageLabel(gap.stage) : "—",
+            semanticTone: gap?.stage === "ready" ? "emphasis" : reqDue > 0 ? "warning" : "default",
+            href: `/dashboard/organisations/${id}/connect`,
+          },
+          {
+            id: "reqs",
+            label: "Requirements due",
+            value: String(reqDue),
+            semanticTone: reqDue > 0 ? "warning" : "default",
+            ...(reqDue > 0 ? { href: `/dashboard/organisations/${id}/connect` } : {}),
+          },
+        ]}
       />
 
       {resumeStep ? (
@@ -168,15 +145,14 @@ export default async function OrganisationOverviewPage({
               Pick up where you left off — progress is saved to your account.
             </p>
           </div>
-          <TimelineStages stages={ONBOARD_TIMELINE} activeIndex={timelineIndex} />
-          <Button asChild variant="cta" size="sm">
-            <Link
-              href={`/onboarding/organisation/step/${resumeStep}?entityId=${encodeURIComponent(id)}`}
-              prefetch
-            >
-              Continue setup
-            </Link>
-          </Button>
+          <TimelineStages stages={ORG_ONBOARDING_TIMELINE_STAGES} activeIndex={timelineIndex} />
+          {continueSetupHref ? (
+            <Button asChild variant="cta" size="sm">
+              <Link href={continueSetupHref} prefetch>
+                Continue setup
+              </Link>
+            </Button>
+          ) : null}
         </Surface>
       ) : reviewIndex >= 0 ? (
         <Surface variant="section" padding="md" className="space-y-4">
@@ -204,7 +180,10 @@ export default async function OrganisationOverviewPage({
           </div>
           <Button asChild variant="outline" size="sm">
             <Link
-              href={`/onboarding/organisation/step/type?entityId=${encodeURIComponent(id)}`}
+              href={
+                continueSetupHref ??
+                `/onboarding/organisation/step/type?entityId=${encodeURIComponent(id)}`
+              }
               prefetch
             >
               Open onboarding
