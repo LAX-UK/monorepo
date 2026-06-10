@@ -182,31 +182,37 @@ export function AdminInviteForm() {
 
       <Form {...form}>
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-          <FormItem className="grid gap-1.5">
-            <FormLabel htmlFor={recipientsId} className={labelCls} id={`${recipientsId}-label`}>
-              Recipients
-            </FormLabel>
-            <InviteEmailChipInput
-              id={recipientsId}
-              emails={recipientEmails}
-              onChange={(next) => {
-                setRecipientEmails(next);
-                setRecipientError(null);
-              }}
-              disabled={submitting}
-              aria-describedby={recipientsHintId}
-              aria-invalid={recipientError != null}
-            />
-            <FormDescription id={recipientsHintId}>
-              Paste from a spreadsheet column or separate addresses with commas. Up to{" "}
-              {MAX_INVITE_BATCH} per batch.
-            </FormDescription>
-            {recipientError ? (
-              <p className="font-body text-sm text-error" role="alert">
-                {recipientError}
-              </p>
-            ) : null}
-          </FormItem>
+          <FormField
+            control={form.control}
+            name="email"
+            render={() => (
+              <FormItem className="grid gap-1.5">
+                <FormLabel htmlFor={recipientsId} className={labelCls} id={`${recipientsId}-label`}>
+                  Recipients
+                </FormLabel>
+                <InviteEmailChipInput
+                  id={recipientsId}
+                  emails={recipientEmails}
+                  onChange={(next) => {
+                    setRecipientEmails(next);
+                    setRecipientError(null);
+                  }}
+                  disabled={submitting}
+                  aria-describedby={recipientsHintId}
+                  aria-invalid={recipientError != null}
+                />
+                <FormDescription id={recipientsHintId}>
+                  Paste from a spreadsheet column or separate addresses with commas. Up to{" "}
+                  {MAX_INVITE_BATCH} per batch.
+                </FormDescription>
+                {recipientError ? (
+                  <p className="font-body text-sm text-error" role="alert">
+                    {recipientError}
+                  </p>
+                ) : null}
+              </FormItem>
+            )}
+          />
 
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
             <FormField
