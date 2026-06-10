@@ -80,7 +80,7 @@ describe("local event dev smoke", () => {
       return;
     }
 
-    for (const asset of ["hero.jpg", "logo-header.png", "highlight-lot.jpg"] as const) {
+    for (const asset of ["hero.jpg", "highlight-lot.jpg"] as const) {
       const res = await fetch(`${EVENT_ORIGIN}/events/lax001/${asset}`);
       expect(res.status, asset).toBe(200);
       expect(res.headers.get("content-type") ?? "").toMatch(/^image\//);

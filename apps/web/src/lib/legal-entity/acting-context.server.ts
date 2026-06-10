@@ -2,6 +2,7 @@ import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import {
   type LegalEntitySummary,
   canAccessPlatformAdminRoutes,
@@ -177,7 +178,12 @@ export async function resolveActingContext(
 
   const matchedByCookie = decoded ? memberships.find((m) => m.id === decoded.e) : undefined;
 
-  if (decoded?.e && !matchedByCookie) {
+  // Kill switch: a stale org cookie must not leak org acting into SSR fetch
+  // headers or capability wiring — reset to the personal entity.
+  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  const orgGatedByKillSwitch = !orgModuleEnabled && matchedByCookie?.kind === "organisation";
+
+  if (decoded?.e && (!matchedByCookie || orgGatedByKillSwitch)) {
     await clearActingLegalEntityCookie();
     await setPersonalActingLegalEntityCookie(memberships);
   }
@@ -187,7 +193,7 @@ export async function resolveActingContext(
     return { acting: null, memberships: [], impersonation: null, bootstrapFailed };
   }
   const fallback = memberships.find((m) => m.kind === "individual") ?? firstMembership;
-  const acting = matchedByCookie ?? fallback;
+  const acting = (orgGatedByKillSwitch ? undefined : matchedByCookie) ?? fallback;
   return { acting, memberships, impersonation: null, bootstrapFailed: false };
 }
 

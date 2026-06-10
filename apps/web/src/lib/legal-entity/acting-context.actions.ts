@@ -4,6 +4,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { decodeActingContextCookie } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -94,6 +95,14 @@ export async function switchActingLegalEntity(legalEntityId: string | null): Pro
     if (res.status === 401) return { ok: false, error: "unauthenticated" };
     if (res.status === 403) return { ok: false, error: "not_a_member" };
     if (!res.ok) return { ok: false, error: "unknown" };
+
+    // Kill switch: never allow switching into an org context while the org
+    // module is disabled (the UI hides orgs, but guard the action too).
+    const body = (await res.json().catch(() => null)) as { data?: { kind?: string } } | null;
+    if (body?.data?.kind === "organisation") {
+      const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+      if (!orgModuleEnabled) return { ok: false, error: "not_a_member" };
+    }
 
     jar.set(ACTING_LEGAL_ENTITY_COOKIE, legalEntityId, {
       path: "/",

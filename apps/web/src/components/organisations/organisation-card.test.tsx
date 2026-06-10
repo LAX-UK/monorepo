@@ -25,6 +25,27 @@ describe("OrganisationCard", () => {
     expect(screen.getByRole("link", { name: /continue setup/i })).toBeInTheDocument();
   });
 
+  it("uses API resume href for connect_pending when provided", () => {
+    render(
+      <OrganisationCard
+        summary={{
+          id: "org-1",
+          displayName: "Test Gallery",
+          subkind: "gallery",
+          status: "connect_pending",
+          role: "owner",
+          isPrimaryAdmin: true,
+        }}
+        isActing={false}
+        resumeHref="/onboarding/organisation/step/connect?entityId=org-1"
+      />,
+    );
+    expect(screen.getByRole("link", { name: /finish payout setup/i })).toHaveAttribute(
+      "href",
+      "/onboarding/organisation/step/connect?entityId=org-1",
+    );
+  });
+
   it("shows Active badge when acting", () => {
     render(
       <OrganisationCard

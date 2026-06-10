@@ -1,75 +1,93 @@
 "use client";
 
-import { getOrganisationOnboardingDisplayNameAction } from "@/app/(task)/onboarding/organisation/onboarding-actions";
+import { OrgOnboardingSidebar } from "@/components/onboarding/org-onboarding-sidebar";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
+import {
+  lastCompletedOrgOnboardingStepIndex,
+  orgOnboardingStepHref,
+} from "@/lib/legal-entity/org-onboarding-resume";
+import {
+  ORG_ONBOARDING_STEP_META,
+  orgOnboardingStepIndex,
+  orgOnboardingStepKeyFromPathname,
+} from "@/lib/legal-entity/org-onboarding-steps";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import { LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@auction/ui/components/card";
 import { WizardProgress } from "@auction/ui/components/wizard-progress";
+import type { PublicOrganisationSubkind } from "@auction/validators";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-
-const STEPS: { key: OrgOnboardingStepKey; label: string }[] = [
-  { key: "type", label: "Type" },
-  { key: "details", label: "Details" },
-  { key: "documents", label: "Documents" },
-  { key: "connect", label: "Connect" },
-  { key: "identity", label: "Identity" },
-];
+import { useMemo } from "react";
 
 type Props = {
   children: ReactNode;
+  initialEntityId: string | null;
+  initialFresh: boolean;
+  initialDisplayName: string | null;
+  initialCompletedSteps: OrgOnboardingStepKey[];
+  initialSubkind: PublicOrganisationSubkind | null;
+  initialStepKey: OrgOnboardingStepKey | null;
 };
 
-function withQuery(path: string, querySuffix: string) {
-  return querySuffix ? `${path}?${querySuffix}` : path;
-}
-
-export function OrgOnboardingShell({ children }: Props) {
+export function OrgOnboardingShell({
+  children,
+  initialEntityId,
+  initialFresh,
+  initialDisplayName,
+  initialCompletedSteps,
+  initialSubkind,
+  initialStepKey,
+}: Props) {
   const searchParams = useSearchParams();
-  const fresh = searchParams.get("fresh") === "1";
-  const entityId = fresh ? null : searchParams.get("entityId");
-  const qs = new URLSearchParams();
-  if (entityId) qs.set("entityId", entityId);
-  if (fresh) qs.set("fresh", "1");
-  const querySuffix = qs.toString();
+  const fresh = searchParams.get("fresh") === "1" || initialFresh;
+  const entityId = fresh ? null : (searchParams.get("entityId") ?? initialEntityId);
+  const queryOpts = useMemo(
+    () => ({
+      ...(entityId ? { entityId } : {}),
+      ...(fresh ? { fresh: true } : {}),
+    }),
+    [entityId, fresh],
+  );
 
   const pathname = usePathname();
   const router = useRouter();
-  const stepMatch = pathname.match(/\/onboarding\/organisation\/step\/([^/]+)/);
-  const segment = stepMatch?.[1] ?? "";
-  const activeIndex = segment
-    ? Math.max(
-        0,
-        STEPS.findIndex((s) => s.key === segment),
-      )
-    : 0;
+  const stepKey =
+    orgOnboardingStepKeyFromPathname(pathname) ??
+    initialStepKey ??
+    ORG_ONBOARDING_STEP_META[0]?.key ??
+    "type";
+  const activeIndex = Math.max(0, orgOnboardingStepIndex(stepKey));
 
-  const [orgLabel, setOrgLabel] = useState<string | null>(null);
+  const completedSteps = entityId ? initialCompletedSteps : [];
+  const orgLabel = entityId ? initialDisplayName : null;
+  const subkind = entityId ? initialSubkind : null;
 
-  useEffect(() => {
-    if (!entityId) {
-      setOrgLabel(null);
-      return;
+  const maxReachableIndex = Math.max(
+    activeIndex,
+    lastCompletedOrgOnboardingStepIndex(completedSteps),
+  );
+
+  const wizardSteps = ORG_ONBOARDING_STEP_META.map((step) => ({
+    id: step.key,
+    label: step.label,
+    ...(step.estimatedMinutes != null ? { estimatedMinutes: step.estimatedMinutes } : {}),
+  }));
+
+  const onStepClick = (index: number) => {
+    const step = ORG_ONBOARDING_STEP_META[index];
+    if (!step) return;
+    router.push(orgOnboardingStepHref(step.key, queryOpts));
+  };
+
+  const focusStepHeading = (panel: HTMLDivElement | null) => {
+    const heading = panel?.querySelector("h2");
+    if (heading instanceof HTMLElement) {
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
     }
-    let cancelled = false;
-    void (async () => {
-      const r = await getOrganisationOnboardingDisplayNameAction(entityId);
-      if (!cancelled && r.ok) setOrgLabel(r.displayName);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [entityId]);
+  };
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-10">
@@ -87,17 +105,35 @@ export function OrgOnboardingShell({ children }: Props) {
               )}
             </p>
           </div>
-          <WizardProgress
-            steps={STEPS.map((s) => ({ id: s.key, label: s.label }))}
-            currentIndex={activeIndex}
-            maxReachableIndex={activeIndex}
-            variant="chips"
-            onStepClick={(index) => {
-              const step = STEPS[index];
-              if (!step) return;
-              router.push(withQuery(`/onboarding/organisation/step/${step.key}`, querySuffix));
-            }}
-          />
+          <div className="lg:hidden">
+            <WizardProgress
+              steps={wizardSteps}
+              currentIndex={activeIndex}
+              maxReachableIndex={maxReachableIndex}
+              completedStepIds={completedSteps}
+              variant="bar"
+              enableMobileSheet
+              onStepClick={onStepClick}
+              sidebarContent={
+                <OrgOnboardingSidebar
+                  activeStepKey={stepKey}
+                  subkind={subkind}
+                  completedSteps={completedSteps}
+                  className="border-0 bg-transparent shadow-none"
+                />
+              }
+            />
+          </div>
+          <div className="hidden lg:block">
+            <WizardProgress
+              steps={wizardSteps}
+              currentIndex={activeIndex}
+              maxReachableIndex={maxReachableIndex}
+              completedStepIds={completedSteps}
+              variant="chips"
+              onStepClick={onStepClick}
+            />
+          </div>
         </div>
         <Button asChild variant="ghost" size="sm" className="shrink-0 self-start sm:self-auto">
           <Link href="/dashboard/organisations">{WIZARD_COPY.finishLater}</Link>
@@ -105,35 +141,15 @@ export function OrgOnboardingShell({ children }: Props) {
       </div>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div>{children}</div>
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em]">
-              What you&apos;ll need
-            </CardTitle>
-            <CardDescription className="text-on-surface-variant">
-              Have these ready for a smoother setup.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-on-surface-variant">
-            <ul className="list-disc space-y-2 pl-4">
-              <li>Company or trading name and registered address</li>
-              <li>Proof of identity documents (varies by entity type)</li>
-              <li>Bank-ready details for Stripe Connect payouts</li>
-              <li>About 10–15 minutes — you can finish later any time</li>
-            </ul>
-            <p className="mt-4 text-xs leading-relaxed">
-              Progress is saved to your account. Continue from{" "}
-              <Link
-                href="/dashboard/organisations"
-                className="font-semibold text-primary hover:underline"
-              >
-                Organisations
-              </Link>{" "}
-              in the dashboard.
-            </p>
-          </CardContent>
-        </Card>
+        <OrgOnboardingSidebar
+          activeStepKey={stepKey}
+          subkind={subkind}
+          completedSteps={completedSteps}
+          className="order-first lg:order-none lg:col-start-2 lg:row-start-1 hidden lg:block"
+        />
+        <div key={stepKey} ref={focusStepHeading} className="lg:col-start-1 lg:row-start-1">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
+import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, LegalEntitySubkind } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -7,6 +8,7 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import Link from "next/link";
 import { initials } from "./initials";
 import { roleLabel, statusBadgeVariant, statusLabel, subkindLabel } from "./labels";
+import { resumeOnboardingStepKey } from "./org-onboarding-step-map";
 
 export type OrganisationCardProps = {
   summary: {
@@ -19,19 +21,23 @@ export type OrganisationCardProps = {
   };
   detail?: LegalEntity | null;
   isActing: boolean;
+  /** When set, overrides status-based resume step (from onboarding API). */
+  resumeHref?: string | null;
 };
 
-export function OrganisationCard({ summary, detail, isActing }: OrganisationCardProps) {
+export function OrganisationCard({
+  summary,
+  detail,
+  isActing,
+  resumeHref: resumeHrefProp,
+}: OrganisationCardProps) {
   const gap = detail ? getConnectGapState(detail) : null;
-  const resumeHref =
-    summary.status === "connect_pending"
-      ? `/dashboard/organisations/${summary.id}/connect`
-      : `/onboarding/organisation/step/type?entityId=${encodeURIComponent(summary.id)}`;
-  const showResume =
-    summary.status === "lead" ||
-    summary.status === "docs_requested" ||
-    summary.status === "docs_received" ||
-    summary.status === "connect_pending";
+  const fallbackStep = resumeOnboardingStepKey(summary.status);
+  const fallbackHref = fallbackStep
+    ? orgOnboardingStepHref(fallbackStep, { entityId: summary.id })
+    : null;
+  const resumeHref = resumeHrefProp ?? fallbackHref;
+  const showResume = fallbackStep !== null;
 
   return (
     <Card className="transition-shadow hover:ring-1 hover:ring-primary/20">
@@ -80,7 +86,7 @@ export function OrganisationCard({ summary, detail, isActing }: OrganisationCard
             Active
           </StatusBadge>
         )}
-        {showResume ? (
+        {showResume && resumeHref ? (
           <Button asChild size="sm" variant="outline">
             <Link href={resumeHref} prefetch>
               {summary.status === "connect_pending" ? "Finish payout setup" : "Continue setup"}

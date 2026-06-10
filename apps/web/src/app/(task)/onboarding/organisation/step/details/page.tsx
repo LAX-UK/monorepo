@@ -1,7 +1,9 @@
 import { OrgDetailsStepClient } from "@/app/(task)/onboarding/organisation/step/details/org-details-step-client";
-import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
-import type { PublicOrganisationSubkind } from "@auction/validators";
+import { redirectIfOrgOnboardingStepBlocked } from "@/lib/data/http/org-onboarding-step-guard.server";
+import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { redirect } from "next/navigation";
+
+type Address = NonNullable<CreateOrganizationInput["primaryAddress"]>;
 
 export default async function OrgOnboardingDetailsStepPage({
   searchParams,
@@ -21,26 +23,29 @@ export default async function OrgOnboardingDetailsStepPage({
   let initialDisplayName = "";
   let initialLegalName = "";
   let initialVat = "";
+  let initialAddress: Address | undefined;
+  let resolvedSubkind = subkind;
+
   if (entityId) {
-    const res = await authedServerFetch(`/legal-entities/${entityId}`, { cache: "no-store" });
-    if (res.ok) {
-      const body = (await res.json()) as {
-        data?: { displayName?: string; legalName?: string | null; vatNumber?: string | null };
-      };
-      initialDisplayName = body.data?.displayName ?? "";
-      initialLegalName = body.data?.legalName ?? "";
-      initialVat = body.data?.vatNumber ?? "";
+    const state = await redirectIfOrgOnboardingStepBlocked(entityId, "details");
+    initialDisplayName = state.displayName;
+    initialLegalName = state.legalName;
+    initialVat = state.vatNumber;
+    resolvedSubkind = state.subkind ?? resolvedSubkind;
+    if (state.primaryAddress) {
+      initialAddress = state.primaryAddress;
     }
   }
 
   return (
     <OrgDetailsStepClient
       {...(entityId ? { entityId } : {})}
-      {...(subkind ? { subkind } : {})}
+      {...(resolvedSubkind ? { subkind: resolvedSubkind } : {})}
       fresh={fresh}
       initialDisplayName={initialDisplayName}
       initialLegalName={initialLegalName}
       initialVat={initialVat}
+      {...(initialAddress ? { initialAddress } : {})}
     />
   );
 }
