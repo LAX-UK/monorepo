@@ -45,7 +45,6 @@ export default async function OrganisationLayout({
         <div className="mx-auto max-w-5xl space-y-6">
           <DashboardDetailHeader
             compactOnMobile
-            sticky
             backHref="/dashboard/organisations"
             backLabel="Organisations"
             eyebrow="Organisation"
@@ -66,7 +65,6 @@ export default async function OrganisationLayout({
       <div className="mx-auto max-w-5xl space-y-6">
         <DashboardDetailHeader
           compactOnMobile
-          sticky
           backHref="/dashboard/organisations"
           backLabel="Organisations"
           eyebrow="Organisation"
@@ -98,7 +96,7 @@ export default async function OrganisationLayout({
         {entity ? <EntityStatusBanner acting={{ ...member, status: entity.status }} /> : null}
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)] lg:items-start">
-          <OrgTabsNav orgId={id} className="lg:sticky lg:top-24" />
+          <OrgTabsNav orgId={id} className="lg:sticky lg:top-20" />
           <div className="min-w-0 space-y-6">{children}</div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { LegalEntitySwitcher } from "@/components/layout/legal-entity-switcher";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/hooks/use-hydrated", () => ({
   useHydrated: () => true,
