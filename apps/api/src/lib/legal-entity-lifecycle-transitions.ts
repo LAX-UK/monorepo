@@ -22,7 +22,9 @@ export function nextStatusForLifecycleOp(
 ): LifecycleTransitionResult | null {
   switch (op) {
     case "request_docs":
-      if (current !== "lead") return null;
+      if (current !== "lead" && current !== "docs_received" && current !== "under_review") {
+        return null;
+      }
       return { next: "docs_requested", requiresReason: false };
     case "start_review":
       if (current !== "docs_received") return null;

@@ -2,12 +2,20 @@ import { describe, expect, it } from "vitest";
 import { nextStatusForLifecycleOp } from "./legal-entity-lifecycle-transitions.js";
 
 describe("nextStatusForLifecycleOp", () => {
-  it("request_docs only from lead", () => {
+  it("request_docs from lead and post-submission review states", () => {
     expect(nextStatusForLifecycleOp("lead", "request_docs")).toEqual({
       next: "docs_requested",
       requiresReason: false,
     });
-    expect(nextStatusForLifecycleOp("docs_received", "request_docs")).toBeNull();
+    expect(nextStatusForLifecycleOp("docs_received", "request_docs")).toEqual({
+      next: "docs_requested",
+      requiresReason: false,
+    });
+    expect(nextStatusForLifecycleOp("under_review", "request_docs")).toEqual({
+      next: "docs_requested",
+      requiresReason: false,
+    });
+    expect(nextStatusForLifecycleOp("approved", "request_docs")).toBeNull();
   });
 
   it("approve only from under_review", () => {

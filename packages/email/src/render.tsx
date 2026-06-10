@@ -33,6 +33,16 @@ import KycResubmissionRequiredEmail, {
 import LegalEntityArchivedNoticeEmail, {
   subject as legalEntityArchivedNoticeSubject,
 } from "./templates/legal-entity-archived-notice.js";
+import {
+  LegalEntityApprovedNoticeEmail,
+  LegalEntityDocsRequestedNoticeEmail,
+  LegalEntityRejectedNoticeEmail,
+  LegalEntitySubmittedAdminNoticeEmail,
+  legalEntityApprovedSubject,
+  legalEntityDocsRequestedSubject,
+  legalEntityRejectedSubject,
+  legalEntitySubmittedAdminSubject,
+} from "./templates/legal-entity-lifecycle-notices.js";
 import LotEndedSellerEmail, {
   subject as lotEndedSellerSubject,
 } from "./templates/lot-ended-seller.js";
@@ -228,6 +238,22 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "legal-entity-archived-notice": {
     subject: legalEntityArchivedNoticeSubject,
     component: (vars) => <LegalEntityArchivedNoticeEmail {...vars} />,
+  },
+  "legal-entity-submitted-admin-notice": {
+    subject: legalEntitySubmittedAdminSubject,
+    component: (vars) => <LegalEntitySubmittedAdminNoticeEmail {...vars} />,
+  },
+  "legal-entity-approved-notice": {
+    subject: legalEntityApprovedSubject,
+    component: (vars) => <LegalEntityApprovedNoticeEmail {...vars} />,
+  },
+  "legal-entity-rejected-notice": {
+    subject: legalEntityRejectedSubject,
+    component: (vars) => <LegalEntityRejectedNoticeEmail {...vars} />,
+  },
+  "legal-entity-docs-requested-notice": {
+    subject: legalEntityDocsRequestedSubject,
+    component: (vars) => <LegalEntityDocsRequestedNoticeEmail {...vars} />,
   },
   "lot-voided-anti-shilling-admin": {
     subject: lotVoidedAntiShillingAdminSubject,

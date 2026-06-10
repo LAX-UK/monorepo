@@ -771,6 +771,13 @@
       "when": 1786600000000,
       "tag": "0110_lax001_gala_start_time",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1786700000000,
+      "tag": "0111_legal_entity_status_reason",
+      "breakpoints": true
     }
   ]
 }

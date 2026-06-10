@@ -7,7 +7,7 @@ export function nextStatusForSelfOp(
   current: LegalEntityStatus,
   op: LifecycleSelfOp,
 ): LegalEntityStatus | null {
-  if (op === "submit_for_review" && current === "lead") {
+  if (op === "submit_for_review" && (current === "lead" || current === "docs_requested")) {
     return "docs_received";
   }
   return null;

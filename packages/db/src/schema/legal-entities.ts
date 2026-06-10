@@ -61,6 +61,8 @@ export const legalEntity = pgTable(
     statusChangedByUserId: text("status_changed_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    /** Human-readable reason for the current status (reject, request docs, etc.). */
+    statusReason: text("status_reason"),
     stripeConnectAccountId: text("stripe_connect_account_id").unique(),
     /** Stripe Customer id (`cus_…`) for buyer bank-transfer Checkout on the platform account. */
     stripeCustomerId: text("stripe_customer_id"),

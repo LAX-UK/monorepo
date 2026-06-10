@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { legalEntity, legalEntityAddress, legalEntityMember } from "@auction/db/schema";
 import type { LegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   CheckNameResult,
@@ -90,6 +90,7 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     status: row.status,
     statusChangedAt: row.statusChangedAt ?? null,
     statusChangedByUserId: row.statusChangedByUserId ?? null,
+    statusReason: row.statusReason ?? null,
     stripeConnectAccountId: row.stripeConnectAccountId ?? null,
     stripeCustomerId: row.stripeCustomerId ?? null,
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
@@ -106,6 +107,18 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
   };
 }
 
+/** Maximum non-archived organisations a single user may create. */
+const MAX_ORGS_PER_USER = 3;
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "23505"
+  );
+}
+
 export class OrganizationOnboardingService implements IOrganizationOnboardingService {
   constructor(
     private readonly db: Database,
@@ -116,79 +129,114 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
     creatorUserId: string,
     input: CreateOrganizationInput,
   ): Promise<CreateOrganizationResult> {
+    const [countRow] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(legalEntity)
+      .where(
+        and(
+          eq(legalEntity.createdByUserId, creatorUserId),
+          eq(legalEntity.kind, "organisation"),
+          ne(legalEntity.status, "archived"),
+        ),
+      );
+    const count = countRow?.count ?? 0;
+    if (count >= MAX_ORGS_PER_USER) {
+      throw new Error("organization_limit_reached");
+    }
+
     const baseSlug = slugify(input.displayName);
+    let entity: typeof legalEntity.$inferSelect | undefined;
+    let slugAttempt = 1;
 
-    const entity = await this.db.transaction(async (tx) => {
+    while (!entity && slugAttempt <= 12) {
       let slug = baseSlug;
-      let attempt = 1;
-      while (slug.length > 0) {
-        const existing = await tx
-          .select({ id: legalEntity.id })
-          .from(legalEntity)
-          .where(eq(legalEntity.slug, slug))
-          .limit(1);
-        if (existing.length === 0) break;
-        attempt += 1;
-        slug = `${baseSlug}-${attempt}`;
+      if (slugAttempt > 1 && baseSlug.length > 0) {
+        slug = `${baseSlug}-${slugAttempt}`;
       }
+      try {
+        entity = await this.db.transaction(async (tx) => {
+          if (slug.length > 0) {
+            const existing = await tx
+              .select({ id: legalEntity.id })
+              .from(legalEntity)
+              .where(eq(legalEntity.slug, slug))
+              .limit(1);
+            if (existing.length > 0) {
+              throw new Error("slug_taken");
+            }
+          }
 
-      const [created] = await tx
-        .insert(legalEntity)
-        .values({
-          displayName: input.displayName,
-          legalName: input.legalName ?? null,
-          slug: slug.length > 0 ? slug : null,
-          kind: "organisation",
-          subkind: input.subkind,
-          createdByUserId: creatorUserId,
-          status: "lead",
-          vatNumber: input.vatNumber ?? null,
-        })
-        .returning();
-      if (!created) throw new Error("organization_create_failed");
+          const [created] = await tx
+            .insert(legalEntity)
+            .values({
+              displayName: input.displayName,
+              legalName: input.legalName ?? null,
+              slug: slug.length > 0 ? slug : null,
+              kind: "organisation",
+              subkind: input.subkind,
+              createdByUserId: creatorUserId,
+              status: "lead",
+              vatNumber: input.vatNumber ?? null,
+            })
+            .returning();
+          if (!created) throw new Error("organization_create_failed");
 
-      await tx.insert(legalEntityMember).values({
-        legalEntityId: created.id,
-        userId: creatorUserId,
-        role: "owner",
-        isPrimaryAdmin: true,
-        invitedByUserId: creatorUserId,
-        invitedAt: new Date(),
-        acceptedAt: new Date(),
-      });
+          await tx.insert(legalEntityMember).values({
+            legalEntityId: created.id,
+            userId: creatorUserId,
+            role: "owner",
+            isPrimaryAdmin: true,
+            invitedByUserId: creatorUserId,
+            invitedAt: new Date(),
+            acceptedAt: new Date(),
+          });
 
-      if (this.domainEventPublisher) {
-        await this.domainEventPublisher.publish(tx, {
-          aggregateType: "legal_entity",
-          aggregateId: created.id as string,
-          eventType: "legal_entity.created",
-          payload: {
-            kind: "organisation",
-            subkind: input.subkind,
-            display_name: input.displayName,
-            initial_status: "lead",
-          },
-          actorUserId: creatorUserId,
-          actingLegalEntityId: created.id as string,
+          if (this.domainEventPublisher) {
+            await this.domainEventPublisher.publish(tx, {
+              aggregateType: "legal_entity",
+              aggregateId: created.id as string,
+              eventType: "legal_entity.created",
+              payload: {
+                kind: "organisation",
+                subkind: input.subkind,
+                display_name: input.displayName,
+                initial_status: "lead",
+              },
+              actorUserId: creatorUserId,
+              actingLegalEntityId: created.id as string,
+            });
+          }
+
+          if (input.primaryAddress) {
+            await tx.insert(legalEntityAddress).values({
+              legalEntityId: created.id,
+              addressType: input.primaryAddress.addressType,
+              line1: input.primaryAddress.line1,
+              line2: input.primaryAddress.line2 ?? null,
+              city: input.primaryAddress.city,
+              state: input.primaryAddress.state ?? null,
+              postalCode: input.primaryAddress.postalCode,
+              country: input.primaryAddress.country,
+              isDefault: input.primaryAddress.isDefault ?? true,
+            });
+          }
+
+          return created;
         });
+      } catch (err) {
+        if (err instanceof Error && err.message === "slug_taken") {
+          slugAttempt += 1;
+          continue;
+        }
+        if (isUniqueViolation(err)) {
+          slugAttempt += 1;
+          continue;
+        }
+        throw err;
       }
+    }
 
-      if (input.primaryAddress) {
-        await tx.insert(legalEntityAddress).values({
-          legalEntityId: created.id,
-          addressType: input.primaryAddress.addressType,
-          line1: input.primaryAddress.line1,
-          line2: input.primaryAddress.line2 ?? null,
-          city: input.primaryAddress.city,
-          state: input.primaryAddress.state ?? null,
-          postalCode: input.primaryAddress.postalCode,
-          country: input.primaryAddress.country,
-          isDefault: input.primaryAddress.isDefault ?? true,
-        });
-      }
-
-      return created;
-    });
+    if (!entity) throw new Error("organization_create_failed");
 
     const requirements = this.getRequirements(input.subkind);
     const nextSteps: CreateOrganizationResult["nextSteps"] = ["kyc_individual", "kyb_documents"];
@@ -205,7 +253,7 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
     const exists = await this.db
       .select({ id: legalEntity.id })
       .from(legalEntity)
-      .where(and(eq(legalEntity.slug, slug), eq(legalEntity.kind, "organisation")))
+      .where(eq(legalEntity.slug, slug))
       .limit(1);
 
     if (exists.length === 0) return { available: true, suggestions: [] };

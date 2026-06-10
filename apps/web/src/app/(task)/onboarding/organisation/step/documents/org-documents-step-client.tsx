@@ -37,7 +37,28 @@ async function errorFromResponse(response: Response, fallback: string): Promise<
   return fallback;
 }
 
+const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
+
+async function waitForActiveUpload(uploadId: string): Promise<void> {
+  const base = apiBaseUrl();
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const res = await fetch(`${base}/uploads/${uploadId}`, { credentials: "include" });
+    if (res.ok) {
+      const body = (await res.json()) as { data?: { status?: string } };
+      if (body.data?.status === "active") return;
+      if (body.data?.status === "rejected") {
+        throw new Error("Upload failed validation. Try a different file.");
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("Upload is still processing. Try again in a moment.");
+}
+
 async function uploadLegalEntityDocument(file: File): Promise<string> {
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    throw new Error("File is too large. Maximum size is 15MB.");
+  }
   const base = apiBaseUrl();
   const presign = await fetch(`${base}/uploads/presign`, {
     method: "POST",
@@ -66,6 +87,7 @@ async function uploadLegalEntityDocument(file: File): Promise<string> {
     body: JSON.stringify({ uploadId: presignBody.data.uploadId }),
   });
   if (!confirm.ok) throw new Error(await errorFromResponse(confirm, "Could not confirm upload"));
+  await waitForActiveUpload(presignBody.data.uploadId);
   return presignBody.data.uploadId;
 }
 
