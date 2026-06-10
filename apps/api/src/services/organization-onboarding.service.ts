@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { legalEntity, legalEntityAddress, legalEntityMember } from "@auction/db/schema";
 import type { LegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
+import { PUBLIC_ORG_SUBKIND_META } from "@auction/validators";
 import { and, eq, ne, sql } from "drizzle-orm";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
@@ -10,16 +11,6 @@ import type {
   IOrganizationOnboardingService,
   OrgRequirements,
 } from "./interfaces/organization-onboarding.js";
-
-const SUBKIND_LABELS: Record<PublicOrganisationSubkind, string> = {
-  gallery: "Gallery",
-  dealer: "Dealer",
-  estate: "Estate",
-  company: "Company",
-  charity: "Charity",
-  institution: "Institution",
-  other: "Other",
-};
 
 const SUBKIND_REQUIREMENTS: Record<PublicOrganisationSubkind, OrgRequirements> = {
   gallery: {
@@ -276,10 +267,11 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
     return SUBKIND_REQUIREMENTS[subkind];
   }
 
-  listSubkinds(): { value: PublicOrganisationSubkind; label: string }[] {
-    return (Object.keys(SUBKIND_LABELS) as PublicOrganisationSubkind[]).map((value) => ({
+  listSubkinds(): { value: PublicOrganisationSubkind; label: string; description: string }[] {
+    return PUBLIC_ORG_SUBKIND_META.map(({ value, label, description }) => ({
       value,
-      label: SUBKIND_LABELS[value],
+      label,
+      description,
     }));
   }
 }

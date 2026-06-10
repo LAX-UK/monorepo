@@ -14,8 +14,10 @@ import {
   parseApiErrorCode,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { getOrgOnboardingResumeHrefForEntity } from "@/lib/data/http/org-onboarding.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import { isOrgOnboardingInProgress } from "@/lib/legal-entity/org-onboarding-in-progress";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
@@ -86,6 +88,9 @@ export default async function OrganisationsHubPage() {
         orgs.map(async (o) => ({
           summary: o,
           detail: await hubGw.getEntityDetail(o.id),
+          resumeHref: isOrgOnboardingInProgress(o.status)
+            ? await getOrgOnboardingResumeHrefForEntity(o.id)
+            : null,
         })),
       );
 
@@ -160,7 +165,7 @@ export default async function OrganisationsHubPage() {
             }
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            {details.map(({ summary, detail }) => (
+            {details.map(({ summary, detail, resumeHref }) => (
               <OrganisationCard
                 key={summary.id}
                 summary={{
@@ -173,6 +178,7 @@ export default async function OrganisationsHubPage() {
                 }}
                 detail={detail as LegalEntity | null}
                 isActing={acting?.id === summary.id}
+                resumeHref={resumeHref}
               />
             ))}
           </div>

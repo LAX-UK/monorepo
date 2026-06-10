@@ -37,4 +37,17 @@ describe("WizardProgress", () => {
     fireEvent.click(screen.getByText("Basics"));
     expect(onStepClick).toHaveBeenCalledWith(0);
   });
+
+  it("marks completed steps by id when navigating back", () => {
+    render(
+      <WizardProgress
+        steps={STEPS}
+        currentIndex={0}
+        completedStepIds={["b", "c"]}
+        variant="chips"
+      />,
+    );
+
+    expect(screen.getByText("Review").parentElement?.textContent).toContain("✓");
+  });
 });

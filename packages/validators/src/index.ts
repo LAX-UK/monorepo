@@ -44,6 +44,7 @@ export * from "./admin-lot.js";
 export * from "./admin-ops.js";
 /** Legal Entity Model validators */
 export * from "./legal-entity.js";
+export * from "./org-onboarding-subkind.js";
 export * from "./payout.js";
 export * from "./saleroom.js";
 export * from "./fulfilment.js";

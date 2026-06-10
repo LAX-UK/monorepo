@@ -72,6 +72,15 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
 
 const CSP_REPORT_ONLY = process.env.CSP_ENFORCE !== "1";
 
+/** Pass pathname + search to server components for org onboarding auth redirects. */
+function applyOrgOnboardingPathHeaders(request: NextRequest, reqHeaders: Headers): void {
+  const { pathname, search } = request.nextUrl;
+  if (pathname.startsWith("/onboarding/organisation")) {
+    reqHeaders.set("x-pathname", pathname);
+    reqHeaders.set("x-search", search);
+  }
+}
+
 /** True when the URL is the post-stale-session landing page; we purge the cookies as we render it. */
 function isStaleSessionLanding(url: URL): boolean {
   if (url.pathname !== "/login") return false;
@@ -89,8 +98,7 @@ export async function middleware(request: NextRequest) {
   let baseResponse: ReturnType<typeof NextResponse.next> | ReturnType<typeof NextResponse.redirect>;
 
   if (tagged) {
-    // `buildRequestWithAuthEdgeHeader` returns a NextResponse (already tagged).
-    // Clone it and patch in the nonce header.
+    applyOrgOnboardingPathHeaders(request, tagged.request.headers);
     const res = NextResponse.next(tagged);
     res.headers.set("x-nonce", nonce);
     baseResponse = res;
@@ -105,6 +113,7 @@ export async function middleware(request: NextRequest) {
 
     const reqHeaders = new Headers(request.headers);
     reqHeaders.set("x-nonce", nonce);
+    applyOrgOnboardingPathHeaders(request, reqHeaders);
     baseResponse = NextResponse.next({ request: { headers: reqHeaders } });
   }
 
