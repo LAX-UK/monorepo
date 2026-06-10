@@ -94,10 +94,10 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     }
     const body = c.req.valid("json");
     const { turnstileToken: _turnstile, ...reg } = body;
-    if (
-      !isOrgModuleEnabled(container.env.WEB_ORIGIN) &&
-      (reg.persona === "organisation" || reg.inviteToken)
-    ) {
+    const orgModuleEnabled = isOrgModuleEnabled(container.env.WEB_ORIGIN);
+    // Platform invites (staff/client role grants) must keep working when the org
+    // module is hidden; only organisation personas and entity-scoped invites are gated.
+    if (!orgModuleEnabled && reg.persona === "organisation") {
       const disabled = orgModuleDisabledResponse();
       return c.json(disabled, 403);
     }
@@ -108,6 +108,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       password: reg.password,
       persona: reg.persona,
       ...(reg.inviteToken !== undefined ? { inviteToken: reg.inviteToken } : {}),
+      allowEntityInvites: orgModuleEnabled,
       ...("mobile" in reg && reg.mobile !== undefined
         ? { mobile: reg.mobile, mobileCountry: reg.mobileCountry }
         : {}),

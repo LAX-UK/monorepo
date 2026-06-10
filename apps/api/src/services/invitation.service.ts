@@ -179,6 +179,7 @@ export class InvitationService {
         targetRole: UserRole;
         targetStaffRole: UserStaffRole | null;
         expiresAt: Date;
+        entityScoped: boolean;
       },
       InvitationError
     >
@@ -197,6 +198,7 @@ export class InvitationService {
       targetRole: row.targetRole,
       targetStaffRole: row.targetStaffRole,
       expiresAt: row.expiresAt,
+      entityScoped: row.targetLegalEntityId != null,
     });
   }
 

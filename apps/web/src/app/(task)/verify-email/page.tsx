@@ -6,6 +6,11 @@ import { tryConsumePendingInviteAfterVerify } from "@/lib/auth/post-verify-invit
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import {
+  type UserRole,
+  canAccessStaffAdminShell,
+  staffRoleDefaultDestination,
+} from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
@@ -39,12 +44,23 @@ export default async function VerifyEmailPage({
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const sessionUser = await getServerSessionUser();
 
-  const destination = resolvePostVerifyDestination({
-    requestedNext: queryNext,
-    queryPersona,
-    sessionPersona: sessionUser?.signupPersona ?? null,
-    orgModuleEnabled,
-  });
+  // Invited staff land straight in the admin shell instead of bouncing
+  // through the client dashboard redirect.
+  const destination =
+    sessionUser && canAccessStaffAdminShell(sessionUser.role as UserRole)
+      ? {
+          href: staffRoleDefaultDestination(
+            sessionUser.role as UserRole,
+            sessionUser.staffRole ?? null,
+          ),
+          label: "Continue to admin",
+        }
+      : resolvePostVerifyDestination({
+          requestedNext: queryNext,
+          queryPersona,
+          sessionPersona: sessionUser?.signupPersona ?? null,
+          orgModuleEnabled,
+        });
 
   if (error) {
     return (

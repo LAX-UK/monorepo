@@ -39,6 +39,13 @@ export class RegistrationService implements IRegistrationService {
           status: validatedInvite.error.status as 400,
         };
       }
+      if (validatedInvite.value.targetLegalEntityId != null && input.allowEntityInvites === false) {
+        return {
+          ok: false as const,
+          message: "Organisation invitations are not available yet",
+          status: 403,
+        };
+      }
     }
     const displayName = `${input.firstName} ${input.lastName}`.trim();
     const signup = await this.emailSignup.signUpEmail({

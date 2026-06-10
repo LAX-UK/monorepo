@@ -191,4 +191,58 @@ describe("RegistrationService", () => {
       "staff@example.com",
     );
   });
+
+  it("rejects entity invites when allowEntityInvites is false (org module hidden)", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.invitations.validateForRegistration).mockResolvedValue(
+      ok({
+        targetLegalEntityId: "le-1",
+      } as never),
+    );
+    const svc = makeService(deps);
+
+    const result = await svc.register({
+      firstName: "Org",
+      lastName: "Invitee",
+      email: "org@example.com",
+      password: "supersecret",
+      persona: "individual",
+      inviteToken: "tok",
+      allowEntityInvites: false,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Organisation invitations are not available yet",
+      status: 403,
+    });
+    expect(deps.emailSignup.signUpEmail).not.toHaveBeenCalled();
+  });
+
+  it("allows platform invites even when allowEntityInvites is false", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.invitations.validateForRegistration).mockResolvedValue(
+      ok({
+        targetLegalEntityId: null,
+      } as never),
+    );
+    const svc = makeService(deps);
+
+    const result = await svc.register({
+      firstName: "Staff",
+      lastName: "Invitee",
+      email: "staff2@example.com",
+      password: "supersecret",
+      persona: "individual",
+      inviteToken: "tok",
+      allowEntityInvites: false,
+    });
+
+    expect(result).toEqual({ ok: true, userId: "user-new" });
+    expect(deps.invitations.consumeInviteForNewUser).toHaveBeenCalledWith(
+      "tok",
+      "user-new",
+      "staff2@example.com",
+    );
+  });
 });
