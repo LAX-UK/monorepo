@@ -175,42 +175,6 @@ table.email-container {
     line-height: 22px !important;
   }
 
-  .brand-header__link {
-    width: 84%;
-    max-width: 220px;
-  }
-
-  .brand-footer__link {
-    width: 88%;
-    max-width: 240px;
-  }
-
-  .brand-logo-wrap--stamp {
-    width: 72%;
-    max-width: 148px;
-  }
-
-  .brand-logo-wrap--footer-stamp {
-    width: 68%;
-    max-width: 124px;
-  }
-
-  .brand-logo-wrap--stylized {
-    width: 32%;
-    max-width: 88px;
-  }
-
-  .brand-logo-wrap--footer-stylized {
-    width: 28%;
-    max-width: 72px;
-  }
-
-  .brand-footer__marks {
-    gap: 16px;
-    margin-top: 12px;
-    padding-top: 12px;
-  }
-
   .hero-bid-strip {
     padding: 24px 20px 20px;
   }
