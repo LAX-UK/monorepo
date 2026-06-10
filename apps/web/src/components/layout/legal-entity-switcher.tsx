@@ -1,6 +1,5 @@
 "use client";
 
-import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { initials } from "@/components/organisations/initials";
 import { PendingInvitationsBadge } from "@/components/organisations/invitation-card-list";
 import {
@@ -9,6 +8,7 @@ import {
   statusLabel,
   subkindLabel,
 } from "@/components/organisations/labels";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
 import { shouldUseCompactLegalEntitySwitcher } from "@/lib/navigation/mobile-header-context";
 import { notify } from "@/lib/ui/notify";
@@ -29,7 +29,7 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Check, ChevronRight, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ComponentPropsWithoutRef, forwardRef, useState, useTransition } from "react";
 
 type Props = {
   acting: LegalEntitySummary;
@@ -61,6 +61,7 @@ export function LegalEntitySwitcher({
   const router = useRouter();
   const pathname = usePathname();
   const compactTrigger = shouldUseCompactLegalEntitySwitcher(pathname);
+  const hydrated = useHydrated();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -70,75 +71,115 @@ export function LegalEntitySwitcher({
       return;
     }
     startTransition(async () => {
-      const r = await switchActingLegalEntity(id);
-      setOpen(false);
-      if (r.ok) {
-        router.refresh();
-        return;
+      try {
+        const r = await switchActingLegalEntity(id);
+        if (r.ok) {
+          router.refresh();
+          return;
+        }
+        notify.error(SWITCH_FAILURE_TITLES[r.error], {
+          description: SWITCH_FAILURE_DESCRIPTIONS[r.error],
+        });
+      } catch {
+        notify.error(SWITCH_FAILURE_TITLES.unknown, {
+          description: SWITCH_FAILURE_DESCRIPTIONS.unknown,
+        });
+      } finally {
+        setOpen(false);
       }
-      notify.error(SWITCH_FAILURE_TITLES[r.error], {
-        description: SWITCH_FAILURE_DESCRIPTIONS[r.error],
-      });
     });
   }
 
+  const triggerProps = {
+    acting,
+    compactTrigger,
+    pending,
+    pendingInvitesCount,
+  } as const;
+
+  if (!hydrated) {
+    return <LegalEntitySwitcherTrigger {...triggerProps} />;
+  }
+
   return (
-    <HydrationDeferred
-      fallback={
-        <LegalEntitySwitcherTrigger
-          acting={acting}
-          compactTrigger={compactTrigger}
-          pending={pending}
-          pendingInvitesCount={pendingInvitesCount}
-          hydrationPending
-        />
-      }
-    >
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <LegalEntitySwitcherTrigger
-            acting={acting}
-            compactTrigger={compactTrigger}
-            pending={pending}
-            pendingInvitesCount={pendingInvitesCount}
-          />
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] p-0">
-          <div className="border-b border-border-hairline p-3">
-            <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-              Current context
-            </p>
-            <div className="mt-2 flex min-h-11 items-center gap-2">
-              <Avatar size="sm">
-                <AvatarFallback className="bg-primary-container text-xs font-semibold text-on-primary-container">
-                  {initials(acting.displayName)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{acting.displayName}</p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                  <StatusBadge variant={statusBadgeVariant(acting.status)} size="sm">
-                    {statusLabel(acting.status)}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <LegalEntitySwitcherTrigger {...triggerProps} />
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] p-0">
+        <div className="border-b border-border-hairline p-3">
+          <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+            Current context
+          </p>
+          <div className="mt-2 flex min-h-11 items-center gap-2">
+            <Avatar size="sm">
+              <AvatarFallback className="bg-primary-container text-xs font-semibold text-on-primary-container">
+                {initials(acting.displayName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{acting.displayName}</p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                <StatusBadge variant={statusBadgeVariant(acting.status)} size="sm">
+                  {statusLabel(acting.status)}
+                </StatusBadge>
+                {acting.kind === "organisation" ? (
+                  <StatusBadge variant="neutral" size="sm">
+                    {roleLabel(acting.role)}
                   </StatusBadge>
-                  {acting.kind === "organisation" ? (
-                    <StatusBadge variant="neutral" size="sm">
-                      {roleLabel(acting.role)}
-                    </StatusBadge>
-                  ) : null}
-                </div>
+                ) : null}
               </div>
-              <Check className="size-4 shrink-0 text-primary" aria-hidden />
             </div>
+            <Check className="size-4 shrink-0 text-primary" aria-hidden />
           </div>
-          <Command
-            filter={(value, search) => (value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
-          >
-            <CommandInput placeholder="Search workspaces…" />
-            <CommandList>
-              <CommandEmpty>No matches.</CommandEmpty>
-              <CommandGroup heading="Personal">
+        </div>
+        <Command
+          filter={(value, search) => (value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
+        >
+          <CommandInput placeholder="Search workspaces…" />
+          <CommandList>
+            <CommandEmpty>No matches.</CommandEmpty>
+            <CommandGroup heading="Personal">
+              {memberships
+                .filter((m) => m.kind === "individual")
+                .map((m) => (
+                  <CommandItem
+                    key={m.id}
+                    value={`${m.displayName} ${m.subkind}`}
+                    onSelect={() => handleSelect(m.id)}
+                    className="min-h-11"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 size-4 shrink-0",
+                        m.id === acting.id ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <Avatar size="sm" className="mr-2">
+                      <AvatarFallback className="bg-surface-container-high text-xs font-semibold">
+                        {initials(m.displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{m.displayName}</span>
+                      <span className="text-on-surface-variant text-xs">
+                        {subkindLabel(m.subkind)}
+                      </span>
+                    </span>
+                    <StatusBadge
+                      variant={statusBadgeVariant(m.status)}
+                      size="sm"
+                      className="shrink-0"
+                    >
+                      {statusLabel(m.status)}
+                    </StatusBadge>
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+            {memberships.some((m) => m.kind === "organisation") && orgModuleEnabled ? (
+              <CommandGroup heading="Organisations">
                 {memberships
-                  .filter((m) => m.kind === "individual")
+                  .filter((m) => m.kind === "organisation")
                   .map((m) => (
                     <CommandItem
                       key={m.id}
@@ -153,14 +194,15 @@ export function LegalEntitySwitcher({
                         )}
                       />
                       <Avatar size="sm" className="mr-2">
-                        <AvatarFallback className="bg-surface-container-high text-xs font-semibold">
+                        <AvatarFallback className="bg-primary-container text-xs font-semibold text-on-primary-container">
                           {initials(m.displayName)}
                         </AvatarFallback>
                       </Avatar>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{m.displayName}</span>
                         <span className="text-on-surface-variant text-xs">
-                          {subkindLabel(m.subkind)}
+                          {subkindLabel(m.subkind)} · {roleLabel(m.role)}
+                          {m.isPrimaryAdmin ? " · Primary" : ""}
                         </span>
                       </span>
                       <StatusBadge
@@ -173,107 +215,69 @@ export function LegalEntitySwitcher({
                     </CommandItem>
                   ))}
               </CommandGroup>
-              {memberships.some((m) => m.kind === "organisation") && orgModuleEnabled ? (
-                <CommandGroup heading="Organisations">
-                  {memberships
-                    .filter((m) => m.kind === "organisation")
-                    .map((m) => (
-                      <CommandItem
-                        key={m.id}
-                        value={`${m.displayName} ${m.subkind}`}
-                        onSelect={() => handleSelect(m.id)}
-                        className="min-h-11"
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 size-4 shrink-0",
-                            m.id === acting.id ? "opacity-100" : "opacity-0",
-                          )}
-                        />
-                        <Avatar size="sm" className="mr-2">
-                          <AvatarFallback className="bg-primary-container text-xs font-semibold text-on-primary-container">
-                            {initials(m.displayName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">{m.displayName}</span>
-                          <span className="text-on-surface-variant text-xs">
-                            {subkindLabel(m.subkind)} · {roleLabel(m.role)}
-                            {m.isPrimaryAdmin ? " · Primary" : ""}
-                          </span>
-                        </span>
-                        <StatusBadge
-                          variant={statusBadgeVariant(m.status)}
-                          size="sm"
-                          className="shrink-0"
-                        >
-                          {statusLabel(m.status)}
-                        </StatusBadge>
-                      </CommandItem>
-                    ))}
-                </CommandGroup>
-              ) : null}
-            </CommandList>
-          </Command>
-          {orgModuleEnabled ? (
-            <div className="rounded-b-lg border-t border-border-hairline bg-surface-container-lowest/50 p-1">
-              {pendingInvitesCount > 0 ? (
-                <Link
-                  href="/dashboard/invitations"
-                  onClick={() => setOpen(false)}
-                  className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
-                >
-                  <span className="flex items-center gap-2">
-                    Pending invitations
-                    <StatusBadge variant="warning" size="sm">
-                      {pendingInvitesCount > 9 ? "9+" : pendingInvitesCount}
-                    </StatusBadge>
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-                </Link>
-              ) : null}
+            ) : null}
+          </CommandList>
+        </Command>
+        {orgModuleEnabled ? (
+          <div className="rounded-b-lg border-t border-border-hairline bg-surface-container-lowest/50 p-1">
+            {pendingInvitesCount > 0 ? (
               <Link
-                href="/dashboard/organisations"
-                onClick={() => setOpen(false)}
-                className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
-              >
-                Manage organisations
-                <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
-              </Link>
-              <Link
-                href="/onboarding/organisation?fresh=1"
+                href="/dashboard/invitations"
                 onClick={() => setOpen(false)}
                 className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
               >
                 <span className="flex items-center gap-2">
-                  <Plus className="size-4 text-primary" aria-hidden />
-                  Register organisation
+                  Pending invitations
+                  <StatusBadge variant="warning" size="sm">
+                    {pendingInvitesCount > 9 ? "9+" : pendingInvitesCount}
+                  </StatusBadge>
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
               </Link>
-            </div>
-          ) : null}
-        </PopoverContent>
-      </Popover>
-    </HydrationDeferred>
+            ) : null}
+            <Link
+              href="/dashboard/organisations"
+              onClick={() => setOpen(false)}
+              className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
+            >
+              Manage organisations
+              <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+            </Link>
+            <Link
+              href="/onboarding/organisation?fresh=1"
+              onClick={() => setOpen(false)}
+              className="flex min-h-11 items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low/80"
+            >
+              <span className="flex items-center gap-2">
+                <Plus className="size-4 text-primary" aria-hidden />
+                Register organisation
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
+            </Link>
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
 
-function LegalEntitySwitcherTrigger({
-  acting,
-  compactTrigger,
-  pending,
-  pendingInvitesCount,
-  hydrationPending,
-}: {
+type LegalEntitySwitcherTriggerProps = {
   acting: LegalEntitySummary;
   compactTrigger: boolean;
   pending: boolean;
   pendingInvitesCount: number;
-  hydrationPending?: boolean;
-}) {
+};
+
+const LegalEntitySwitcherTrigger = forwardRef<
+  HTMLButtonElement,
+  LegalEntitySwitcherTriggerProps & ComponentPropsWithoutRef<typeof Button>
+>(function LegalEntitySwitcherTrigger(
+  { acting, compactTrigger, pending, pendingInvitesCount, ...buttonProps },
+  ref,
+) {
   return (
     <Button
+      ref={ref}
       type="button"
       variant="secondary"
       size="sm"
@@ -281,13 +285,11 @@ function LegalEntitySwitcherTrigger({
       className="h-auto min-h-10 min-w-10 justify-center gap-0 p-1 lg:min-h-11 lg:min-w-0 lg:w-full lg:max-w-[min(22rem,calc(100vw-2rem))] lg:justify-between lg:gap-2 lg:py-2"
       data-testid="legal-entity-switcher"
       data-compact-trigger={compactTrigger ? "true" : "false"}
-      disabled={pending || hydrationPending}
-      {...(hydrationPending ? { "aria-busy": true as const } : {})}
+      disabled={pending}
+      {...buttonProps}
     >
       <span className="flex min-w-0 flex-1 items-center gap-2 lg:flex-1">
-        {pending && !hydrationPending ? (
-          <Loader2 className="size-4 shrink-0 animate-spin lg:block" />
-        ) : null}
+        {pending ? <Loader2 className="size-4 shrink-0 animate-spin lg:block" /> : null}
         <span className="relative shrink-0">
           <Avatar size="sm" className="size-9 shrink-0">
             <AvatarFallback className="bg-primary-container font-semibold text-on-primary-container">
@@ -333,4 +335,4 @@ function LegalEntitySwitcherTrigger({
       <ChevronsUpDown className="hidden size-4 shrink-0 opacity-60 lg:block" />
     </Button>
   );
-}
+});
