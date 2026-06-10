@@ -7,12 +7,15 @@ function formatIcsUtc(d: Date): string {
 }
 
 export function downloadOpeningEventCalendar(segment = "full_evening"): void {
-  const start = new Date("2026-06-18T17:00:00.000Z");
+  const start =
+    segment === "gala_only"
+      ? new Date("2026-06-18T19:00:00.000Z")
+      : new Date("2026-06-18T17:00:00.000Z");
   const end =
     segment === "gala_only"
       ? new Date("2026-06-18T23:30:00.000Z")
       : segment === "auction_only"
-        ? new Date("2026-06-18T20:00:00.000Z")
+        ? new Date("2026-06-18T19:00:00.000Z")
         : new Date("2026-06-19T00:30:00.000Z");
 
   const uid = "lax001-opening@lax.bid";
