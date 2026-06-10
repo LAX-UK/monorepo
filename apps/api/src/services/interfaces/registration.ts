@@ -11,6 +11,9 @@ export type RegistrationInput = {
   mobile?: string;
   mobileCountry?: string;
   inviteToken?: string | undefined;
+  /** When false (org module disabled), entity-scoped invites are rejected but
+   * platform invites (staff/client role grants) still register normally. */
+  allowEntityInvites?: boolean;
 };
 
 export interface IRegistrationValidator {

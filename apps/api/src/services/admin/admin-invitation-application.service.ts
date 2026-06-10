@@ -52,6 +52,7 @@ export class AdminInvitationApplicationService implements IAdminInvitationApplic
         targetRole: UserRole;
         targetStaffRole: UserStaffRole | null;
         expiresAt: Date;
+        entityScoped: boolean;
       },
       InvitationError
     >
