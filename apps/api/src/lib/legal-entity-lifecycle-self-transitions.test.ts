@@ -6,7 +6,11 @@ describe("nextStatusForSelfOp", () => {
     expect(nextStatusForSelfOp("lead", "submit_for_review")).toBe("docs_received");
   });
 
-  it("returns null when not lead", () => {
+  it("advances docs_requested to docs_received on submit_for_review", () => {
+    expect(nextStatusForSelfOp("docs_requested", "submit_for_review")).toBe("docs_received");
+  });
+
+  it("returns null when submit not allowed", () => {
     expect(nextStatusForSelfOp("docs_received", "submit_for_review")).toBeNull();
     expect(nextStatusForSelfOp("approved", "submit_for_review")).toBeNull();
   });

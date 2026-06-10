@@ -1831,7 +1831,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     return c.json({ ok: true });
   });
 
-  attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
+  attachAdminLegalEntityLifecycleRoutes(
+    platform,
+    container.admin.legalEntityLifecycle,
+    container.legalEntityDocumentAdminService,
+  );
 
   attachAdminStripeConnectRoutes(
     platform,

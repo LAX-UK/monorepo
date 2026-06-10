@@ -8,9 +8,11 @@ export function isProductionWebHost(hostname: string): boolean {
   return PRODUCTION_HOSTS.has(normalizeHostname(hostname));
 }
 
-/** Org module is hidden on production domain only. */
-export function isOrgModuleEnabled(hostname: string): boolean {
+/**
+ * Org module is live on all hosts (launched).
+ * `NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` remains as an emergency kill switch.
+ */
+export function isOrgModuleEnabled(_hostname: string): boolean {
   if (process.env.NEXT_PUBLIC_FORCE_ORG_MODULE === "hidden") return false;
-  if (process.env.NEXT_PUBLIC_FORCE_ORG_MODULE === "visible") return true;
-  return !isProductionWebHost(hostname);
+  return true;
 }

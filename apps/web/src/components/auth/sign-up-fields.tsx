@@ -166,7 +166,7 @@ export function SignUpFields({
           ariaDescribedByExtra={`${pwdHintId} ${pwdMeterId}`}
         />
         <p id={pwdHintId} className="mt-2 font-footer-links text-xs text-on-surface-variant">
-          At least 8 characters — mix letters, numbers, and symbols for a stronger password.
+          At least 12 characters — mix letters, numbers, and symbols for a stronger password.
         </p>
         <div className="mt-3">
           <div

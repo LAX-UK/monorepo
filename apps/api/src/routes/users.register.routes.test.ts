@@ -79,7 +79,7 @@ describe("POST /users/register", () => {
     expect(json.error).toBe("Email already registered");
   });
 
-  it("rejects organisation persona on production host (org module hidden)", async () => {
+  it("accepts organisation persona on production host (org module launched)", async () => {
     const { app, registrationService } = mountRegister({
       env: { WEB_ORIGIN: "https://lax.bid" },
     } as Partial<Container>);
@@ -95,11 +95,38 @@ describe("POST /users/register", () => {
         acceptTerms: true,
       }),
     });
-    expect(res.status).toBe(403);
-    expect(registrationService.register).not.toHaveBeenCalled();
+    expect(res.status).toBe(201);
+    expect(registrationService.register).toHaveBeenCalledWith(
+      expect.objectContaining({ persona: "organisation" }),
+    );
   });
 
-  it("still accepts invite tokens on production host (platform invites)", async () => {
+  it("rejects organisation persona when FORCE_ORG_MODULE=hidden (kill switch)", async () => {
+    vi.stubEnv("FORCE_ORG_MODULE", "hidden");
+    try {
+      const { app, registrationService } = mountRegister({
+        env: { WEB_ORIGIN: "https://lax.bid" },
+      } as Partial<Container>);
+      const res = await app.request("/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: "Org",
+          lastName: "Owner",
+          email: "org@example.com",
+          password: "supersecret12!",
+          persona: "organisation",
+          acceptTerms: true,
+        }),
+      });
+      expect(res.status).toBe(403);
+      expect(registrationService.register).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("accepts invite tokens on production host (entity invites allowed)", async () => {
     const { app, registrationService } = mountRegister({
       env: { WEB_ORIGIN: "https://lax.bid" },
     } as Partial<Container>);
@@ -120,9 +147,40 @@ describe("POST /users/register", () => {
     expect(registrationService.register).toHaveBeenCalledWith(
       expect.objectContaining({
         inviteToken: "platform-invite-token-123",
-        allowEntityInvites: false,
+        allowEntityInvites: true,
       }),
     );
+  });
+
+  it("blocks entity invites when FORCE_ORG_MODULE=hidden (kill switch)", async () => {
+    vi.stubEnv("FORCE_ORG_MODULE", "hidden");
+    try {
+      const { app, registrationService } = mountRegister({
+        env: { WEB_ORIGIN: "https://lax.bid" },
+      } as Partial<Container>);
+      const res = await app.request("/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: "Staff",
+          lastName: "Invitee",
+          email: "staff@example.com",
+          password: "supersecret12!",
+          persona: "individual",
+          inviteToken: "platform-invite-token-123",
+          acceptTerms: true,
+        }),
+      });
+      expect(res.status).toBe(201);
+      expect(registrationService.register).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inviteToken: "platform-invite-token-123",
+          allowEntityInvites: false,
+        }),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("allows entity invites on non-production hosts", async () => {

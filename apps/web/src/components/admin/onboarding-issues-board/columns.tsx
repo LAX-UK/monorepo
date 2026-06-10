@@ -125,8 +125,8 @@ export function docColumns(): ColumnDef<
       cell: () => <span className="text-xs text-on-surface-variant">Document upload</span>,
     },
     linkColumn(
-      (r) => `/admin/legal-entities/${r.legalEntityId}`,
-      () => "Entity",
+      (r) => `/admin/legal-entities/${r.legalEntityId}?tab=documents`,
+      () => "Review documents",
     ),
   ];
 }

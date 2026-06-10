@@ -42,7 +42,10 @@ function lifecycleApp(
     container.legalEntityRepository,
     container.legalEntityLifecycleAdminService,
   );
-  attachAdminLegalEntityLifecycleRoutes(app, legalEntityLifecycle);
+  attachAdminLegalEntityLifecycleRoutes(app, legalEntityLifecycle, {
+    listDocuments: vi.fn().mockResolvedValue([]),
+    reviewDocument: vi.fn(),
+  } as never);
   return app;
 }
 

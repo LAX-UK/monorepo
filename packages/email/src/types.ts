@@ -34,6 +34,10 @@ export const templateNames = [
   "lot-voided-notice",
   "payout-clawback-required-notice",
   "legal-entity-archived-notice",
+  "legal-entity-submitted-admin-notice",
+  "legal-entity-approved-notice",
+  "legal-entity-rejected-notice",
+  "legal-entity-docs-requested-notice",
   "lot-voided-anti-shilling-admin",
   "kyc-resubmission-required",
   "aml-compliance-review-notice",
@@ -256,6 +260,35 @@ export type TemplateVarsByName = {
     dashboardUrl: string;
     supportContactEmail: string;
   };
+  "legal-entity-submitted-admin-notice": {
+    entityName: string;
+    legalEntityId: string;
+    adminOnboardingUrl: string;
+    supportContactEmail: string;
+  };
+  "legal-entity-approved-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    legalEntityId: string;
+    dashboardUrl: string;
+    connectUrl: string;
+    supportContactEmail: string;
+  };
+  "legal-entity-rejected-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    legalEntityId: string;
+    rejectionReason?: string | null;
+    dashboardUrl: string;
+    supportContactEmail: string;
+  };
+  "legal-entity-docs-requested-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    legalEntityId: string;
+    docsUrl: string;
+    supportContactEmail: string;
+  };
   "lot-voided-anti-shilling-admin": {
     lotTitle: string;
     lotId: string;
@@ -348,6 +381,10 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "lot-voided-notice": "live",
   "payout-clawback-required-notice": "live",
   "legal-entity-archived-notice": "live",
+  "legal-entity-submitted-admin-notice": "live",
+  "legal-entity-approved-notice": "live",
+  "legal-entity-rejected-notice": "live",
+  "legal-entity-docs-requested-notice": "live",
   "lot-voided-anti-shilling-admin": "live",
   "kyc-resubmission-required": "live",
   "aml-compliance-review-notice": "live",
