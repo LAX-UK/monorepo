@@ -3,7 +3,7 @@ import {
   AdminBulkSelectionProvider,
 } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminInvitationsBoard } from "@/components/admin/admin-invitations-board";
-import { AdminInviteForm } from "@/components/admin/admin-invite-form";
+import { AdminInviteCard } from "@/components/admin/admin-invite-card";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
@@ -23,7 +23,6 @@ import {
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminInvitationsPage } from "@/lib/data/http/invitations.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -108,18 +107,9 @@ export default async function AdminInvitationsPage({
         bulkBar={<AdminBulkSelectionBar />}
         headerAfter={
           !loadError ? (
-            <div className="space-y-8">
-              <Surface variant="card" className="border-border-hairline">
-                <div className="space-y-1">
-                  <h2 className="font-headline text-lg text-on-surface">Send invite</h2>
-                  <p className="text-sm text-on-surface-variant">
-                    They&apos;ll receive an email with a secure signup link that expires in 7 days.
-                    Paste multiple emails separated by commas to invite a batch at once.
-                  </p>
-                </div>
-                <AdminInviteForm />
-              </Surface>
-              <div className="space-y-1">
+            <div className="space-y-6">
+              <AdminInviteCard />
+              <div className="space-y-1 pt-2">
                 <h2 className="font-headline text-lg text-on-surface">Sent invitations</h2>
                 <p className="text-sm text-on-surface-variant">
                   {total > 0
