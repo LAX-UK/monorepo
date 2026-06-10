@@ -352,6 +352,7 @@ export interface IAdminInvitationApplicationService {
         targetRole: UserRole;
         targetStaffRole: UserStaffRole | null;
         expiresAt: Date;
+        entityScoped: boolean;
       },
       InvitationError
     >

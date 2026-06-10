@@ -15,6 +15,8 @@ import { useForm } from "react-hook-form";
 
 export function useSignUpController(opts?: {
   inviteToken?: string;
+  /** Pre-resolved invite email (field is locked in the UI). */
+  defaultEmail?: string;
   next?: string;
   phoneDefaultCountry?: string;
   sellIntent?: boolean;
@@ -30,7 +32,7 @@ export function useSignUpController(opts?: {
     defaultValues: {
       firstName: "",
       lastName: "",
-      email: "",
+      email: opts?.defaultEmail ?? "",
       phone: {
         country: opts?.phoneDefaultCountry ?? "GB",
         number: "",
