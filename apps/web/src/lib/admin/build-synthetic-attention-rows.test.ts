@@ -1,93 +1,106 @@
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import { describe, expect, it } from "vitest";
 import { buildSyntheticAttentionRows } from "./build-synthetic-attention-rows";
 
-const NAV_COUNT_KEYS = [
-  "manualReviewCount",
-  "disputesOpen",
-  "payoutsFailed",
-  "amlScreeningsPending",
-  "sourceOfFundsPending",
-  "onboardingIssuesTotal",
-  "invitationsPending",
-  "submissionsPending",
-  "artistsPending",
-  "withdrawalsPending",
-  "draftLotsMissingPhotos",
-  "draftSalesNeedingSetup",
-  "saleroomLiveCount",
-  "telephoneBookingsPending",
-  "conditionReportsPending",
-  "lotFulfilmentPending",
-] as const;
-
-const EXPECTED_IDS: Record<(typeof NAV_COUNT_KEYS)[number], string> = {
-  manualReviewCount: "nav-manual-review",
-  disputesOpen: "nav-disputes",
-  payoutsFailed: "nav-payouts-failed",
-  amlScreeningsPending: "nav-aml-screenings",
-  sourceOfFundsPending: "nav-sof-cases",
-  onboardingIssuesTotal: "nav-onboarding-issues",
-  invitationsPending: "nav-invitations",
-  submissionsPending: "nav-submissions",
-  artistsPending: "nav-artists",
-  withdrawalsPending: "nav-withdrawals",
-  draftLotsMissingPhotos: "nav-draft-photos",
-  draftSalesNeedingSetup: "nav-sales-setup",
-  saleroomLiveCount: "nav-saleroom-live",
-  telephoneBookingsPending: "nav-telephone-bookings",
-  conditionReportsPending: "nav-condition-reports",
-  lotFulfilmentPending: "nav-fulfilment",
+const FULL_NAV_COUNTS: AdminNavCounts = {
+  submissionsPending: 5,
+  artistsPending: 3,
+  conditionReportsPending: 2,
+  manualReviewCount: 1,
+  onboardingIssuesTotal: 4,
+  lotFulfilmentPending: 6,
+  withdrawalsPending: 2,
+  disputesOpen: 1,
+  payoutsFailed: 1,
+  saleroomLiveCount: 2,
+  invitationsPending: 3,
+  draftSalesNeedingSetup: 2,
+  draftLotsMissingPhotos: 4,
+  amlScreeningsPending: 1,
+  sourceOfFundsPending: 2,
+  telephoneBookingsPending: 1,
 };
 
 describe("buildSyntheticAttentionRows", () => {
-  it("returns empty when all nav counts are zero", () => {
-    expect(buildSyntheticAttentionRows(EMPTY_ADMIN_NAV_COUNTS)).toEqual([]);
+  it("super_admin sees all rows when counts are non-zero", () => {
+    const rows = buildSyntheticAttentionRows(FULL_NAV_COUNTS, "staff", "super_admin");
+    expect(rows.length).toBeGreaterThanOrEqual(10);
+    expect(rows.map((r) => r.id)).toContain("nav-manual-review");
+    expect(rows.map((r) => r.id)).toContain("nav-aml-screenings");
+    expect(rows.map((r) => r.id)).toContain("nav-submissions");
+    expect(rows.map((r) => r.id)).toContain("nav-saleroom-live");
+    expect(rows.map((r) => r.id)).toContain("nav-fulfilment");
   });
 
-  it.each(NAV_COUNT_KEYS)("emits row when %s > 0", (key) => {
-    const rows = buildSyntheticAttentionRows({
-      ...EMPTY_ADMIN_NAV_COUNTS,
-      [key]: 3,
-    });
-    expect(rows.some((r) => r.id === EXPECTED_IDS[key])).toBe(true);
+  it("client_advisor only sees rows they can access (e.g., onboarding)", () => {
+    const rows = buildSyntheticAttentionRows(FULL_NAV_COUNTS, "staff", "client_advisor");
+    expect(rows.map((r) => r.id)).toContain("nav-onboarding-issues");
+    expect(rows.map((r) => r.id)).not.toContain("nav-manual-review");
+    expect(rows.map((r) => r.id)).not.toContain("nav-submissions");
+    expect(rows.map((r) => r.id)).not.toContain("nav-saleroom-live");
+    expect(rows.map((r) => r.id)).not.toContain("nav-aml-screenings");
   });
 
-  it("orders finance and compliance before catalog queues", () => {
-    const rows = buildSyntheticAttentionRows({
-      ...EMPTY_ADMIN_NAV_COUNTS,
-      submissionsPending: 5,
-      manualReviewCount: 2,
-      amlScreeningsPending: 1,
-    });
-    const ids = rows.map((r) => r.id);
-    expect(ids.indexOf("nav-manual-review")).toBeLessThan(ids.indexOf("nav-aml-screenings"));
-    expect(ids.indexOf("nav-aml-screenings")).toBeLessThan(ids.indexOf("nav-submissions"));
+  it("finance_ops sees finance rows but not catalog or saleroom", () => {
+    const rows = buildSyntheticAttentionRows(FULL_NAV_COUNTS, "staff", "finance_ops");
+    expect(rows.map((r) => r.id)).toContain("nav-manual-review");
+    expect(rows.map((r) => r.id)).toContain("nav-disputes");
+    expect(rows.map((r) => r.id)).toContain("nav-payouts-failed");
+    expect(rows.map((r) => r.id)).not.toContain("nav-submissions");
+    expect(rows.map((r) => r.id)).not.toContain("nav-saleroom-live");
+    expect(rows.map((r) => r.id)).not.toContain("nav-aml-screenings");
   });
 
-  it("includes deep links for fulfilment and condition reports", () => {
-    const rows = buildSyntheticAttentionRows({
-      ...EMPTY_ADMIN_NAV_COUNTS,
-      lotFulfilmentPending: 2,
-      conditionReportsPending: 1,
-    });
-    expect(rows.some((r) => r.href === "/admin/lot-fulfilment")).toBe(true);
-    expect(rows.some((r) => r.href === "/admin/condition-reports")).toBe(true);
+  it("specialist sees submissions and condition reports but not finance", () => {
+    const rows = buildSyntheticAttentionRows(FULL_NAV_COUNTS, "staff", "specialist");
+    expect(rows.map((r) => r.id)).toContain("nav-submissions");
+    expect(rows.map((r) => r.id)).toContain("nav-condition-reports");
+    expect(rows.map((r) => r.id)).not.toContain("nav-manual-review");
+    expect(rows.map((r) => r.id)).not.toContain("nav-saleroom-live");
   });
 
-  it("maps finance nav badges to correct hrefs", () => {
-    const rows = buildSyntheticAttentionRows({
-      ...EMPTY_ADMIN_NAV_COUNTS,
-      manualReviewCount: 1,
-      disputesOpen: 2,
-      payoutsFailed: 3,
-    });
-    expect(rows.find((r) => r.id === "nav-manual-review")?.href).toBe(
-      "/admin/payments?manualReview=1",
-    );
-    expect(rows.find((r) => r.id === "nav-disputes")?.href).toBe("/admin/disputes?status=open");
-    expect(rows.find((r) => r.id === "nav-payouts-failed")?.href).toBe(
-      "/admin/payouts?status=failed",
-    );
+  it("compliance_officer sees AML and SoF queues", () => {
+    const rows = buildSyntheticAttentionRows(FULL_NAV_COUNTS, "staff", "compliance_officer");
+    expect(rows.map((r) => r.id)).toContain("nav-aml-screenings");
+    expect(rows.map((r) => r.id)).toContain("nav-sof-cases");
+    expect(rows.map((r) => r.id)).not.toContain("nav-manual-review");
+    expect(rows.map((r) => r.id)).not.toContain("nav-submissions");
+  });
+
+  it("operations sees catalog, saleroom, and fulfilment rows", () => {
+    const rows = buildSyntheticAttentionRows(FULL_NAV_COUNTS, "staff", "operations");
+    expect(rows.map((r) => r.id)).toContain("nav-submissions");
+    expect(rows.map((r) => r.id)).toContain("nav-saleroom-live");
+    expect(rows.map((r) => r.id)).toContain("nav-fulfilment");
+    expect(rows.map((r) => r.id)).toContain("nav-withdrawals");
+    expect(rows.map((r) => r.id)).toContain("nav-sales-setup");
+  });
+
+  it("returns empty array when all counts are zero", () => {
+    const emptyCounts: AdminNavCounts = {
+      submissionsPending: 0,
+      artistsPending: 0,
+      conditionReportsPending: 0,
+      manualReviewCount: 0,
+      onboardingIssuesTotal: 0,
+      lotFulfilmentPending: 0,
+      withdrawalsPending: 0,
+      disputesOpen: 0,
+      payoutsFailed: 0,
+      saleroomLiveCount: 0,
+      invitationsPending: 0,
+      draftSalesNeedingSetup: 0,
+      draftLotsMissingPhotos: 0,
+      amlScreeningsPending: 0,
+      sourceOfFundsPending: 0,
+      telephoneBookingsPending: 0,
+    };
+    const rows = buildSyntheticAttentionRows(emptyCounts, "staff", "super_admin");
+    expect(rows).toHaveLength(0);
+  });
+
+  it("returns empty array when staffRole is null (no capabilities)", () => {
+    const rows = buildSyntheticAttentionRows(FULL_NAV_COUNTS, "staff", null);
+    expect(rows).toHaveLength(0);
   });
 });

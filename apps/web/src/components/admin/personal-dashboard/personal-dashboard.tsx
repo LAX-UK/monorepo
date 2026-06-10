@@ -1,4 +1,7 @@
-import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
+import {
+  type AdminHubQuickLink,
+  AdminHubQuickLinks,
+} from "@/components/admin/admin-hub-quick-links";
 import { AnomalyCalloutsWidget } from "@/components/admin/personal-dashboard/anomaly-callouts-widget";
 import { PersonalDashboardCustomizeSheet } from "@/components/admin/personal-dashboard/customize-sheet";
 import { GreetingWidget } from "@/components/admin/personal-dashboard/greeting-widget";
@@ -37,6 +40,7 @@ type Props = {
   onsiteRadarRows?: readonly OnsiteSalesRadarRow[];
   loadWarning?: string | null;
   staffRole?: UserStaffRole | null;
+  hubLinks?: readonly AdminHubQuickLink[];
 };
 
 export function PersonalDashboard({
@@ -53,6 +57,7 @@ export function PersonalDashboard({
   onsiteRadarRows = [],
   loadWarning = null,
   staffRole = null,
+  hubLinks = [],
 }: Props) {
   const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(widgets, id);
   const orderOf = (id: DashboardWidgetId) => widgets.find((w) => w.id === id)?.order ?? 999;
@@ -134,14 +139,9 @@ export function PersonalDashboard({
         </Alert>
       ) : null}
 
-      <AdminHubQuickLinks
-        ariaLabel="Staff hub shortcuts"
-        links={[
-          { href: "/admin/finance", label: "Finance" },
-          { href: "/admin/sales", label: "Catalog" },
-          { href: "/admin/compliance/aml", label: "Compliance" },
-        ]}
-      />
+      {hubLinks.length > 0 ? (
+        <AdminHubQuickLinks ariaLabel="Staff hub shortcuts" links={hubLinks} />
+      ) : null}
 
       {blocks.map((block) => (
         <div key={block.id}>{block.node}</div>

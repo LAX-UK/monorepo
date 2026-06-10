@@ -13,6 +13,20 @@ import {
 import { Brush, Package, Plus, ScrollText, UserPlus } from "lucide-react";
 import Link from "next/link";
 
+export type QuickCreateItem = {
+  id: string;
+  href: string;
+  label: string;
+  iconName: "Package" | "ScrollText" | "Brush" | "UserPlus";
+};
+
+const ICONS = {
+  Package,
+  ScrollText,
+  Brush,
+  UserPlus,
+} as const;
+
 const triggerClassName = "min-h-9 gap-1.5 font-label text-xs";
 
 function QuickCreateTrigger({ pending }: { pending?: boolean }) {
@@ -31,7 +45,13 @@ function QuickCreateTrigger({ pending }: { pending?: boolean }) {
   );
 }
 
-export function AdminQuickCreateMenu() {
+type Props = {
+  items: readonly QuickCreateItem[];
+};
+
+export function AdminQuickCreateMenu({ items }: Props) {
+  if (items.length === 0) return null;
+
   return (
     <HydrationDeferred fallback={<QuickCreateTrigger pending />}>
       <DropdownMenu>
@@ -43,30 +63,17 @@ export function AdminQuickCreateMenu() {
             Quick create
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/admin/lots/new">
-              <Package className="mr-2 size-4 opacity-70" aria-hidden />
-              New lot
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/admin/sales/new">
-              <ScrollText className="mr-2 size-4 opacity-70" aria-hidden />
-              New sale
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/admin/artists/new">
-              <Brush className="mr-2 size-4 opacity-70" aria-hidden />
-              New artist
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/admin/invitations">
-              <UserPlus className="mr-2 size-4 opacity-70" aria-hidden />
-              Invite user
-            </Link>
-          </DropdownMenuItem>
+          {items.map((item) => {
+            const Icon = ICONS[item.iconName];
+            return (
+              <DropdownMenuItem key={item.id} asChild>
+                <Link href={item.href}>
+                  <Icon className="mr-2 size-4 opacity-70" aria-hidden />
+                  {item.label}
+                </Link>
+              </DropdownMenuItem>
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </HydrationDeferred>

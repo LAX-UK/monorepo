@@ -15,14 +15,15 @@ import { useMemo } from "react";
 type Props = {
   artists: AdminArtistListRow[];
   searchQuery?: string | undefined;
+  canEdit?: boolean;
 };
 
-export function AdminArtistsBoard({ artists }: Props) {
+export function AdminArtistsBoard({ artists, canEdit = false }: Props) {
   const { density } = useTableDensity();
   const { rowSelection, setRowSelection, selectedIds, clear, selectAllOnPage } = useBulkSelection();
   const pageIds = useMemo(() => artists.map((a) => a.id), [artists]);
   const bulkOperations = useMemo(() => getArtistBulkOperations(), []);
-  const columns = useMemo(() => artistColumns(), []);
+  const columns = useMemo(() => artistColumns(canEdit), [canEdit]);
 
   if (artists.length === 0) {
     return null;
@@ -52,6 +53,7 @@ export function AdminArtistsBoard({ artists }: Props) {
             artists={artists}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
+            canEdit={canEdit}
           />
         }
       />

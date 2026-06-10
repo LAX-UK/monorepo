@@ -16,9 +16,15 @@ type Props = {
   artists: AdminArtistListRow[];
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  canEdit?: boolean;
 };
 
-export function ArtistsMobileCards({ artists, rowSelection, onRowSelectionChange }: Props) {
+export function ArtistsMobileCards({
+  artists,
+  rowSelection,
+  onRowSelectionChange,
+  canEdit = false,
+}: Props) {
   return (
     <CatalogVirtualizedList itemCount={artists.length}>
       {artists.map((a) => {
@@ -45,12 +51,14 @@ export function ArtistsMobileCards({ artists, rowSelection, onRowSelectionChange
                 : undefined
             }
             selectionLabel={`Select ${a.displayName}`}
-            trailing={<ArtistActionMenu row={a} />}
+            trailing={<ArtistActionMenu row={a} canEdit={canEdit} />}
             footer={
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" className="min-h-11 flex-1" asChild>
-                  <Link href={`/admin/artists/${a.id}/edit`}>Edit</Link>
-                </Button>
+                {canEdit ? (
+                  <Button variant="outline" size="sm" className="min-h-11 flex-1" asChild>
+                    <Link href={`/admin/artists/${a.id}/edit`}>Edit</Link>
+                  </Button>
+                ) : null}
                 <Button variant="secondary" size="sm" className="min-h-11 flex-1" asChild>
                   <Link href={`/admin/artists/${a.id}`}>Open</Link>
                 </Button>
