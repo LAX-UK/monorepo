@@ -25,6 +25,7 @@ import {
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
+import { createOrganizationCreateRateLimitMiddleware } from "./middleware/organization-rate-limit.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
@@ -215,7 +216,14 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/legal-entities", createLegalEntityMemberRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityRoutes(container, authenticator))
     .route("/kyc", createKycRoutes(container, authenticator))
-    .route("/organizations", createOrganizationRoutes(container, authenticator))
+    .route(
+      "/organizations",
+      createOrganizationRoutes(
+        container,
+        authenticator,
+        createOrganizationCreateRateLimitMiddleware(container.redis),
+      ),
+    )
     .route("/artists", createArtistRoutes(container, authenticator))
     .route("/stripe-connect", createStripeConnectRoutes(container, authenticator))
     .route("/payouts", createPayoutRoutes(container, authenticator))
