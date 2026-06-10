@@ -3,6 +3,7 @@ import {
   createOrganizationSchema,
   orgRequirementsParamsSchema,
 } from "@auction/validators";
+import type { MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -10,7 +11,11 @@ import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createOrganizationOnboardingRoutes } from "./organization-onboarding.js";
 
-export function createOrganizationRoutes(container: Container, authenticator: IAuthenticator) {
+export function createOrganizationRoutes(
+  container: Container,
+  authenticator: IAuthenticator,
+  orgCreateRateLimit: MiddlewareHandler,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -39,31 +44,32 @@ export function createOrganizationRoutes(container: Container, authenticator: IA
   });
 
   /** POST /organizations — create a new organisation. Auth required. */
-  r.post("/", requireAuth, zValidator("json", createOrganizationSchema), async (c) => {
-    if (!container.orgModuleGate.isEnabled()) {
-      const body = container.orgModuleGate.disabledResponse();
-      return c.json(body, 403);
-    }
-    const userId = c.get("userId") as string;
-    const rlKey = `org-create:${userId}`;
-    const n = await container.redis.incr(rlKey);
-    if (n === 1) {
-      await container.redis.expire(rlKey, 3600);
-    }
-    if (n > 5) {
-      return c.json({ error: "rate_limit_exceeded" }, 429);
-    }
-    const body = c.req.valid("json");
-    try {
-      const result = await container.organizationOnboardingService.createOrganization(userId, body);
-      return c.json({ data: result }, 201);
-    } catch (e) {
-      if (e instanceof Error && e.message === "organization_limit_reached") {
-        return c.json({ error: "organization_limit_reached" }, 429);
+  r.post(
+    "/",
+    requireAuth,
+    orgCreateRateLimit,
+    zValidator("json", createOrganizationSchema),
+    async (c) => {
+      if (!container.orgModuleGate.isEnabled()) {
+        const body = container.orgModuleGate.disabledResponse();
+        return c.json(body, 403);
       }
-      throw e;
-    }
-  });
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      try {
+        const result = await container.organizationOnboardingService.createOrganization(
+          userId,
+          body,
+        );
+        return c.json({ data: result }, 201);
+      } catch (e) {
+        if (e instanceof Error && e.message === "organization_limit_reached") {
+          return c.json({ error: "organization_limit_reached" }, 429);
+        }
+        throw e;
+      }
+    },
+  );
 
   r.route("/:entityId/onboarding", createOrganizationOnboardingRoutes(container, authenticator));
 
