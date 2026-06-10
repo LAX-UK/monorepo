@@ -7,6 +7,7 @@ import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
+import { canAccess, quickCreateItemsFor } from "@/lib/admin/dashboard-access";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -24,7 +25,9 @@ import {
 } from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import {
+  SUBMISSIONS_ACCESS,
   type UserRole,
+  type UserStaffRole,
   canAccessFinanceAdminRoutes,
   canAccessPlatformAdminRoutes,
   userHasAccessTo,
@@ -63,7 +66,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   let pendingSubmissionCount = 0;
   let pendingArtistCount = 0;
   let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  const staffRole = user.staffRole ?? null;
+  const staffRole = (user.staffRole ?? null) as UserStaffRole | null;
   const userRole = user.role as UserRole;
   if (canAccessPlatformAdminRoutes(userRole, staffRole)) {
     try {
@@ -108,14 +111,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       }
     : { kind: "self" };
 
+  const canSeeSubmissions = canAccess(userRole, staffRole, SUBMISSIONS_ACCESS);
+  const quickCreateItems = quickCreateItemsFor(userRole, staffRole);
+
   const headerRightSlot = (
     <AdminShellHeaderActions
       pendingSubmissionCount={pendingSubmissionCount}
       manualReviewCount={navCounts.manualReviewCount}
-      showPlatformLinks={canAccessPlatformAdminRoutes(
-        user.role as UserRole,
-        user.staffRole ?? null,
-      )}
+      canSeeSubmissions={canSeeSubmissions}
+      quickCreateItems={quickCreateItems}
     />
   );
 

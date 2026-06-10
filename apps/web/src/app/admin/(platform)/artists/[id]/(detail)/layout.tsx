@@ -7,7 +7,7 @@ import {
   getAdminLotList,
 } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { ARTIST_DELETE_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { ARTIST_DELETE_ACCESS, ARTIST_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { artistPath } from "@/lib/seo/url";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { notFound } from "next/navigation";
@@ -31,6 +31,9 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
   if (!artist) notFound();
 
   const user = await getServerSessionUser();
+  const canEdit =
+    user != null &&
+    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_WRITE_ACCESS);
   const canManageDelete =
     user != null &&
     userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_DELETE_ACCESS);
@@ -50,6 +53,7 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
       activityEvents={activityEvents}
       deleteEligibility={deleteEligibility}
       canManageDelete={canManageDelete}
+      canEdit={canEdit}
     >
       {children}
     </ArtistDetailShell>
