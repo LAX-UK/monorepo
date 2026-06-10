@@ -21,8 +21,10 @@ import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { ARTIST_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import type { CategoryNode } from "@auction/types";
+import { type CategoryNode, type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
@@ -61,6 +63,11 @@ export default async function AdminArtistsPage({
   const showDuplicates = sp.duplicates === "1";
   const skipIndexedList = showBackfill || showDuplicates;
   const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+
+  const user = await getServerSessionUser();
+  const canCreateArtist =
+    user != null &&
+    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_WRITE_ACCESS);
 
   const query = artistsListController.parseQuery(sp);
   const q = query.q;
@@ -215,7 +222,7 @@ export default async function AdminArtistsPage({
   ) : showDuplicates ? (
     <ArtistDuplicateReviewSection />
   ) : !loadError && artists.length > 0 ? (
-    <AdminArtistsBoard artists={artists} searchQuery={q} />
+    <AdminArtistsBoard artists={artists} searchQuery={q} canEdit={canCreateArtist} />
   ) : null;
 
   const empty = skipIndexedList ? null : !loadError && artists.length === 0 ? (
@@ -225,18 +232,20 @@ export default async function AdminArtistsPage({
         description={
           hasFilters
             ? "Try another lens or open More filters."
-            : "Create canonical profiles before assigning artist attribution to lots."
+            : canCreateArtist
+              ? "Create canonical profiles before assigning artist attribution to lots."
+              : "No artist profiles exist yet."
         }
         action={
           hasFilters ? (
             <Button variant="secondary" asChild>
               <Link href="/admin/artists">Clear filters</Link>
             </Button>
-          ) : (
+          ) : canCreateArtist ? (
             <CatalogPrimaryCta href="/admin/artists/new" icon={Plus}>
               New artist
             </CatalogPrimaryCta>
-          )
+          ) : null
         }
       />
     ) : (
@@ -288,9 +297,11 @@ export default async function AdminArtistsPage({
       description="Manage canonical public artist profiles, client ownership links, featured state, and attribution targets."
       meta={skipIndexedList ? null : <CatalogRelatedWork variant="artists" navCounts={navCounts} />}
       primaryAction={
-        <CatalogPrimaryCta href="/admin/artists/new" icon={Plus}>
-          New artist
-        </CatalogPrimaryCta>
+        canCreateArtist ? (
+          <CatalogPrimaryCta href="/admin/artists/new" icon={Plus}>
+            New artist
+          </CatalogPrimaryCta>
+        ) : null
       }
       empty={empty}
       filterBar={

@@ -9,10 +9,11 @@ import {
   CONDITION_REPORTS_ACCESS,
   CONVEYOR_ACCESS,
   FINANCE_ACCESS,
+  LOTS_ACCESS,
   LOT_FULFILMENT_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
   SALEROOM_ACCESS,
-  SALE_CATALOG_ACCESS,
+  SALES_ACCESS,
   SUBMISSIONS_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import {
@@ -66,7 +67,7 @@ const QUICK_ACTION_SPECS: QuickActionSpec[] = [
     href: "/admin/sales/new",
     label: "New sale",
     icon: ScrollText,
-    requirement: SALE_CATALOG_ACCESS,
+    requirement: SALES_ACCESS,
     platformOnly: true,
   },
   {
@@ -74,7 +75,7 @@ const QUICK_ACTION_SPECS: QuickActionSpec[] = [
     href: "/admin/lots/new",
     label: "New lot",
     icon: Package,
-    requirement: SALE_CATALOG_ACCESS,
+    requirement: LOTS_ACCESS,
     platformOnly: true,
   },
   {

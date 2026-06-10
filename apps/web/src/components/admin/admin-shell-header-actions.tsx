@@ -1,6 +1,9 @@
 "use client";
 
-import { AdminQuickCreateMenu } from "@/components/admin/admin-quick-create-menu";
+import {
+  AdminQuickCreateMenu,
+  type QuickCreateItem,
+} from "@/components/admin/admin-quick-create-menu";
 import {
   type StaffAttentionItem,
   StaffNotificationBell,
@@ -14,7 +17,8 @@ type Props = {
   pendingSubmissionCount?: number;
   manualReviewCount?: number;
   attentionItems?: StaffAttentionItem[];
-  showPlatformLinks?: boolean;
+  canSeeSubmissions?: boolean;
+  quickCreateItems?: readonly QuickCreateItem[];
 };
 
 /** Global admin header: quick-create menu and attention badges. */
@@ -22,10 +26,11 @@ export function AdminShellHeaderActions({
   pendingSubmissionCount = 0,
   manualReviewCount = 0,
   attentionItems,
-  showPlatformLinks = true,
+  canSeeSubmissions = false,
+  quickCreateItems = [],
 }: Props) {
   const bellItems: StaffAttentionItem[] = attentionItems ?? [
-    ...(pendingSubmissionCount > 0
+    ...(canSeeSubmissions && pendingSubmissionCount > 0
       ? [
           {
             id: "submissions",
@@ -50,7 +55,7 @@ export function AdminShellHeaderActions({
   return (
     <div className="flex items-center gap-1 sm:gap-2">
       <StaffNotificationBell items={bellItems} />
-      {showPlatformLinks && pendingSubmissionCount > 0 ? (
+      {canSeeSubmissions && pendingSubmissionCount > 0 ? (
         <Button variant="ghost" size="sm" asChild className="relative min-h-9 gap-1.5 px-2">
           <Link
             href="/admin/submissions"
@@ -64,7 +69,7 @@ export function AdminShellHeaderActions({
           </Link>
         </Button>
       ) : null}
-      {showPlatformLinks ? <AdminQuickCreateMenu /> : null}
+      <AdminQuickCreateMenu items={quickCreateItems} />
     </div>
   );
 }
