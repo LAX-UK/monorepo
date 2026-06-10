@@ -1,25 +1,28 @@
 "use client";
 
+import { InviteEmailChipInput } from "@/components/admin/invite-email-chip-input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { adminCreateInvitationResultAction } from "@/lib/actions/admin";
-import { partitionInviteEmails } from "@/lib/admin/parse-invite-email-list";
+import { invitationRoleLabel } from "@/lib/admin/invitation-role-label";
+import { MAX_INVITE_BATCH } from "@/lib/admin/parse-invite-email-list";
 import { staffRoleFilterOptions } from "@/lib/admin/staff-role-presenter";
 import { useActionForm } from "@/lib/forms/use-action-form";
+import { notify } from "@/lib/ui/notify";
 import { type UserRole, userRoles } from "@auction/types";
 import type { UserStaffRole } from "@auction/types";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
-  FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
 import { adminCreateInvitationBodySchema } from "@auction/validators";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useWatch } from "react-hook-form";
 
 function roleLabel(r: UserRole): string {
@@ -34,12 +37,23 @@ const staffRoleOptions = staffRoleFilterOptions.map((o) => ({
   label: o.label,
 }));
 
+const labelCls =
+  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
+
 type BatchFailure = { email: string; message: string };
+
+type BatchResult = {
+  sent: number;
+  failures: BatchFailure[];
+} | null;
 
 export function AdminInviteForm() {
   const router = useRouter();
-  const [batchSummary, setBatchSummary] = useState<string | null>(null);
-  const [batchFailures, setBatchFailures] = useState<BatchFailure[]>([]);
+  const recipientsId = useId();
+  const recipientsHintId = useId();
+  const [recipientEmails, setRecipientEmails] = useState<string[]>([]);
+  const [recipientError, setRecipientError] = useState<string | null>(null);
+  const [batchResult, setBatchResult] = useState<BatchResult>(null);
   const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
 
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
@@ -52,12 +66,16 @@ export function AdminInviteForm() {
     action: adminCreateInvitationResultAction,
     successToast: { title: "Invitation sent" },
     onSuccess: () => {
+      setRecipientEmails([]);
+      setBatchResult(null);
+      setRecipientError(null);
       form.reset({ email: "", targetRole: "client", targetStaffRole: undefined });
       router.refresh();
     },
   });
 
   const targetRole = useWatch({ control: form.control, name: "targetRole" });
+  const targetStaffRole = useWatch({ control: form.control, name: "targetStaffRole" });
 
   useEffect(() => {
     if (targetRole !== "staff") {
@@ -65,32 +83,29 @@ export function AdminInviteForm() {
     }
   }, [targetRole, form]);
 
-  async function handleBatchSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBatchSummary(null);
-    setBatchFailures([]);
+    setBatchResult(null);
+    setRecipientError(null);
+    form.clearErrors();
 
     const values = form.getValues();
-    const { valid, invalid } = partitionInviteEmails(values.email);
-    if (invalid.length > 0) {
-      form.setError("email", {
-        message: `Invalid email${invalid.length === 1 ? "" : "s"}: ${invalid.join(", ")}`,
-      });
+
+    if (recipientEmails.length === 0) {
+      setRecipientError("Enter at least one email address");
       return;
     }
-    if (valid.length === 0) {
-      form.setError("email", { message: "Enter at least one email address" });
+    if (recipientEmails.length > MAX_INVITE_BATCH) {
+      setRecipientError(`Maximum ${MAX_INVITE_BATCH} recipients per batch`);
       return;
     }
     if (values.targetRole === "staff" && values.targetStaffRole == null) {
-      form.setError("targetStaffRole", {
-        message: "Select a staff role",
-      });
+      form.setError("targetStaffRole", { message: "Select a staff role" });
       return;
     }
 
-    if (valid.length === 1) {
-      form.setValue("email", valid[0] ?? "");
+    if (recipientEmails.length === 1) {
+      form.setValue("email", recipientEmails[0] ?? "");
       await onSubmit(e);
       return;
     }
@@ -99,7 +114,7 @@ export function AdminInviteForm() {
     let sent = 0;
     const failures: BatchFailure[] = [];
 
-    for (const email of valid) {
+    for (const email of recipientEmails) {
       const result = await adminCreateInvitationResultAction({
         email,
         targetRole: values.targetRole,
@@ -113,8 +128,10 @@ export function AdminInviteForm() {
     }
 
     setIsBatchSubmitting(false);
+    setBatchResult({ sent, failures });
 
     if (sent > 0) {
+      setRecipientEmails([]);
       form.reset({
         email: "",
         targetRole: values.targetRole,
@@ -124,115 +141,129 @@ export function AdminInviteForm() {
     }
 
     if (failures.length === 0) {
-      setBatchSummary(`${sent} invitation${sent === 1 ? "" : "s"} sent`);
-      return;
+      notify.success(`${sent} invitation${sent === 1 ? "" : "s"} sent`);
     }
-
-    setBatchFailures(failures);
-    const failDetail = failures.map((f) => `${f.email}: ${f.message}`).join("; ");
-    setBatchSummary(`${sent} sent, ${failures.length} failed (${failDetail})`);
   }
 
   const submitting = isSubmitting || isBatchSubmitting;
+  const accessPreview =
+    targetRole === "staff" && targetStaffRole
+      ? invitationRoleLabel("staff", targetStaffRole)
+      : null;
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-5">
       {rootError ? (
-        <p
-          className="rounded-sm border border-error/40 bg-error-container/20 px-4 py-3 text-sm text-error"
-          role="alert"
-        >
-          {rootError}
-        </p>
+        <Alert variant="destructive">
+          <AlertTitle>Could not send invitation</AlertTitle>
+          <AlertDescription>{rootError}</AlertDescription>
+        </Alert>
       ) : null}
-      {batchSummary ? (
-        <output
-          className={`block rounded-sm border px-4 py-3 text-sm ${
-            batchFailures.length > 0
-              ? "border-warning/40 bg-warning-container/20 text-on-surface"
-              : "border-success/40 bg-success-container/20 text-on-surface"
-          }`}
-        >
-          {batchSummary}
-        </output>
+      {batchResult ? (
+        <Alert variant={batchResult.failures.length > 0 ? "warning" : "success"}>
+          <AlertTitle>
+            {batchResult.failures.length > 0
+              ? `${batchResult.sent} sent, ${batchResult.failures.length} failed`
+              : `${batchResult.sent} invitation${batchResult.sent === 1 ? "" : "s"} sent`}
+          </AlertTitle>
+          {batchResult.failures.length > 0 ? (
+            <AlertDescription>
+              <ul className="mt-2 list-inside list-disc space-y-1">
+                {batchResult.failures.map((f) => (
+                  <li key={f.email}>
+                    <span className="font-medium">{f.email}</span>: {f.message}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          ) : null}
+        </Alert>
       ) : null}
+
       <Form {...form}>
-        <form
-          onSubmit={handleBatchSubmit}
-          className="flex flex-col gap-4 sm:flex-row sm:items-end"
-          noValidate
-        >
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem className="grid min-w-0 flex-1 gap-1">
-                <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                  Email
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="text"
-                    autoComplete="email"
-                    placeholder="one@example.com or paste multiple"
-                    className="min-h-11 text-base md:text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="targetRole"
-            render={({ field }) => (
-              <FormItem className="grid min-w-0 gap-1 sm:w-56">
-                <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                  Role
-                </FormLabel>
-                <RhfSelect
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  onBlur={field.onBlur}
-                  options={roleOptions}
-                  triggerClassName="min-h-11 w-full font-body text-sm"
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {targetRole === "staff" ? (
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <FormItem className="grid gap-1.5">
+            <FormLabel htmlFor={recipientsId} className={labelCls} id={`${recipientsId}-label`}>
+              Recipients
+            </FormLabel>
+            <InviteEmailChipInput
+              id={recipientsId}
+              emails={recipientEmails}
+              onChange={(next) => {
+                setRecipientEmails(next);
+                setRecipientError(null);
+              }}
+              disabled={submitting}
+              aria-describedby={recipientsHintId}
+              aria-invalid={recipientError != null}
+            />
+            <FormDescription id={recipientsHintId}>
+              Paste from a spreadsheet column or separate addresses with commas. Up to{" "}
+              {MAX_INVITE_BATCH} per batch.
+            </FormDescription>
+            {recipientError ? (
+              <p className="font-body text-sm text-error" role="alert">
+                {recipientError}
+              </p>
+            ) : null}
+          </FormItem>
+
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
             <FormField
               control={form.control}
-              name="targetStaffRole"
+              name="targetRole"
               render={({ field }) => (
-                <FormItem className="grid min-w-0 gap-1 sm:w-64">
-                  <FormLabel className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                    Staff role
-                  </FormLabel>
+                <FormItem className="grid gap-1.5">
+                  <FormLabel className={labelCls}>Role</FormLabel>
                   <RhfSelect
-                    value={field.value ?? ""}
-                    onValueChange={(v) =>
-                      field.onChange(v === "" ? undefined : (v as UserStaffRole))
-                    }
+                    value={field.value}
+                    onValueChange={field.onChange}
                     onBlur={field.onBlur}
-                    options={staffRoleOptions}
-                    placeholder="Select staff role"
+                    options={roleOptions}
                     triggerClassName="min-h-11 w-full font-body text-sm"
                   />
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {targetRole === "staff" ? (
+              <FormField
+                control={form.control}
+                name="targetStaffRole"
+                render={({ field }) => (
+                  <FormItem className="grid gap-1.5">
+                    <FormLabel className={labelCls}>Staff role</FormLabel>
+                    <RhfSelect
+                      value={field.value ?? ""}
+                      onValueChange={(v) =>
+                        field.onChange(v === "" ? undefined : (v as UserStaffRole))
+                      }
+                      onBlur={field.onBlur}
+                      options={staffRoleOptions}
+                      placeholder="Select staff role"
+                      triggerClassName="min-h-11 w-full font-body text-sm"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <div className="hidden sm:block" aria-hidden />
+            )}
+            <Button
+              type="submit"
+              className="min-h-11 w-full font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] sm:w-auto"
+              disabled={submitting}
+            >
+              {submitting ? "Sending…" : "Send invite"}
+            </Button>
+          </div>
+
+          {accessPreview ? (
+            <p className="font-body text-sm text-on-surface-variant">
+              Inviting as <span className="font-medium text-on-surface">{accessPreview}</span>
+            </p>
           ) : null}
-          <Button
-            type="submit"
-            className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-            disabled={submitting}
-          >
-            {submitting ? "Sending…" : "Send"}
-          </Button>
         </form>
       </Form>
     </div>
