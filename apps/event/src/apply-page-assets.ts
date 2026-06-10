@@ -1,8 +1,6 @@
 import { ASSETS } from "./config.js";
 
 const PAGE_ASSETS: Record<string, string> = {
-  "logo-header": ASSETS.logoHeader,
-  "logo-footer": ASSETS.logoFooter,
   hero: ASSETS.hero,
   "highlight-lot": ASSETS.highlightLot,
 };

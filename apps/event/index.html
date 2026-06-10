@@ -95,8 +95,10 @@
         <table role="presentation" class="email-container" border="0" cellpadding="0" cellspacing="0" bgcolor="#EFEFEF" style="width:100%;background-color:#EFEFEF;">
 
           <tr>
-            <td align="center" valign="middle" bgcolor="#EFEFEF" style="background-color:#EFEFEF;padding:36px 24px 24px 24px;">
-              <a href="https://lax.bid" target="_blank" rel="noopener" style="display:inline-block;border:0;text-decoration:none;line-height:0;font-size:0;"><img class="site-logo" data-event-asset="logo-header" src="/events/lax001/logo-header.png" width="180" height="55" alt="LAX — London Auction Exchange" style="display:block;border:0;outline:none;text-decoration:none;height:auto;" /></a>
+            <td align="center" valign="middle" bgcolor="#EFEFEF" class="brand-header" style="background-color:#EFEFEF;padding:36px 24px 20px 24px;">
+              <a href="https://lax.bid" target="_blank" rel="noopener" class="brand-header__link">
+                <img class="brand-logo brand-logo--primary" src="/black/lax-primary.svg" width="240" height="61" alt="LAX — London Auction Exchange" />
+              </a>
             </td>
           </tr>
 
@@ -116,6 +118,7 @@
           <tr>
             <td bgcolor="#000000" style="background-color:#000000;padding:0;">
               <div class="hero-bid-strip reveal">
+                <img class="brand-logo brand-logo--wordmark brand-logo--on-dark hero-bid-strip__logo" src="/white/lax-wordmark.svg" width="260" height="59" alt="" aria-hidden="true" />
                 <p class="hero-bid-strip__eyebrow">LAX 001 · Opening night only</p>
                 <p class="hero-bid-strip__headline">Twenty lots. One unforgettable evening.<br /><strong>Opening bids from £1.</strong></p>
                 <a class="hero-bid-strip__link" href="#highlight-lot">See the highlight lot</a>
@@ -156,6 +159,9 @@
                   </td>
                 </tr>
               </table>
+              <div class="venue-brand" aria-hidden="true">
+                <img class="brand-logo brand-logo--stamp brand-logo--on-dark" src="/white/london-stamp.svg" width="168" height="22" alt="" />
+              </div>
               <div class="event-meta-actions">
                 <button type="button" id="add-to-calendar" class="event-meta-actions__btn">Add to calendar</button>
                 <button type="button" id="share-invite" class="event-meta-actions__btn">Share invite</button>
@@ -211,7 +217,11 @@
             <td align="left" valign="top" bgcolor="#EFEFEF" class="intro-copy content-pad reveal" style="background-color:#EFEFEF;padding-top:0;padding-bottom:0;font-family:Georgia, 'Times New Roman', Times, serif;font-size:15px;line-height:24px;color:#1a1a1a;"><strong>LAX 001: The First Hammer</strong> brings together twenty carefully curated lots spanning fine art, luxury timepieces, rare collectibles and cultural assets. An evening designed for serious collectors — with a headline lot you could open at just <strong>£1</strong>.</td>
           </tr>
 
-          <tr><td height="36" bgcolor="#EFEFEF" style="background-color:#EFEFEF;font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td align="center" valign="middle" bgcolor="#EFEFEF" class="brand-divider" style="background-color:#EFEFEF;padding:8px 24px 28px;">
+              <img class="brand-logo brand-logo--stylized" src="/black/lax-stylized.svg" width="100" height="23" alt="" aria-hidden="true" />
+            </td>
+          </tr>
 
           <tr>
             <td align="center" valign="top" bgcolor="#EFEFEF" style="background-color:#EFEFEF;padding:0;">
@@ -323,6 +333,7 @@
 
           <tr id="rsvp">
             <td bgcolor="#000000" class="rsvp-band reveal" style="background-color:#000000;text-align:center;">
+              <img class="brand-logo brand-logo--primary brand-logo--on-dark rsvp-band__logo" src="/white/lax-primary.svg" width="240" height="61" alt="" aria-hidden="true" />
               <p class="rsvp-band__eyebrow">Your invitation</p>
               <h2 class="rsvp-band__title">RSVP</h2>
               <p id="rsvp-urgency" class="rsvp-urgency" hidden></p>
@@ -374,8 +385,14 @@
           <tr><td height="36" bgcolor="#EFEFEF" style="background-color:#EFEFEF;font-size:0;line-height:0;">&nbsp;</td></tr>
 
           <tr>
-            <td align="center" valign="middle" bgcolor="#EFEFEF" class="content-pad" style="background-color:#EFEFEF;padding-top:8px;padding-bottom:16px;">
-              <a href="https://lax.bid" target="_blank" rel="noopener noreferrer"><img class="site-logo site-logo--footer" data-event-asset="logo-footer" src="/events/lax001/logo-footer.png" width="140" height="42" alt="LAX — London Auction Exchange" style="display:block;border:0;height:auto;margin:0 auto;" /></a>
+            <td align="center" valign="middle" bgcolor="#EFEFEF" class="content-pad brand-footer" style="background-color:#EFEFEF;padding-top:8px;padding-bottom:16px;">
+              <a href="https://lax.bid" target="_blank" rel="noopener noreferrer" class="brand-footer__link">
+                <img class="brand-logo brand-logo--wordmark" src="/black/lax-wordmark.svg" width="260" height="59" alt="LAX — London Auction Exchange" />
+              </a>
+              <div class="brand-footer__marks" aria-hidden="true">
+                <img class="brand-logo brand-logo--stamp" src="/black/london-stamp.svg" width="140" height="18" alt="" />
+                <img class="brand-logo brand-logo--stylized" src="/black/lax-stylized.svg" width="80" height="18" alt="" />
+              </div>
             </td>
           </tr>
 
