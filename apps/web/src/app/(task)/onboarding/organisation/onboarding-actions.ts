@@ -91,6 +91,30 @@ export async function postOrgOnboardingStepCompleteAction(
   });
 }
 
+export async function deleteOrgOnboardingDocumentAction(
+  entityId: string,
+  documentId: string,
+): Promise<{ ok: boolean; status: number; error?: string }> {
+  return instrumentServerAction("deleteOrgOnboardingDocumentAction", async () => {
+    const res = await authedServerFetch(
+      `/organizations/${entityId}/onboarding/documents/${documentId}`,
+      {
+        method: "DELETE",
+        headers: entityHeaders(entityId),
+      },
+    );
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+      return {
+        ok: false,
+        status: res.status,
+        error: normalizeApiErrorMessage(body.error, "request_failed"),
+      };
+    }
+    return { ok: true, status: res.status };
+  });
+}
+
 export async function postOrgSubmitForReviewAction(
   entityId: string,
 ): Promise<{ ok: boolean; status: number; error?: string; missingSteps?: string[] }> {

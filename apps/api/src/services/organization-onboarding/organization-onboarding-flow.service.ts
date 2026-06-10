@@ -30,6 +30,20 @@ import type { IConnectAccountSync, IConnectSessionProvider } from "../interfaces
 
 const ESTATE_CANONICAL_LABELS = ["Probate document", "Executor ID", "Beneficiary list"] as const;
 
+const EDITABLE_ORG_STATUSES = new Set<LegalEntityStatus>(["lead", "docs_requested"]);
+
+function isOwnerOrAdmin(role: string): boolean {
+  return role === "owner" || role === "admin";
+}
+
+export type OrganizationOnboardingFlowOptions = {
+  onSubmittedForReview?: (args: {
+    legalEntityId: string;
+    displayName: string;
+    actorUserId: string;
+  }) => Promise<void>;
+};
+
 function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
   return {
     id: row.id,
@@ -42,6 +56,7 @@ function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     status: row.status,
     statusChangedAt: row.statusChangedAt ?? null,
     statusChangedByUserId: row.statusChangedByUserId ?? null,
+    statusReason: row.statusReason ?? null,
     stripeConnectAccountId: row.stripeConnectAccountId ?? null,
     stripeCustomerId: row.stripeCustomerId ?? null,
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
@@ -82,7 +97,9 @@ export type SubmitForReviewResult =
   | { ok: false; code: "invalid_transition" }
   | { ok: false; code: "not_found" }
   | { ok: false; code: "forbidden" }
-  | { ok: false; code: "connect_sync_failed" };
+  | { ok: false; code: "connect_sync_failed" }
+  | { ok: false; code: "vat_required" }
+  | { ok: false; code: "entity_not_editable" };
 
 export type OrganizationOnboardingProfileInput = {
   displayName: string;
@@ -109,7 +126,12 @@ export class OrganizationOnboardingFlowService {
     private readonly stripeConnect:
       | (IConnectAccountSync & Pick<IConnectSessionProvider, "isConfigured">)
       | null = null,
+    private readonly options: OrganizationOnboardingFlowOptions = {},
   ) {}
+
+  private assertEditableStatus(status: LegalEntityStatus): boolean {
+    return EDITABLE_ORG_STATUSES.has(status);
+  }
 
   async getOnboarding(
     userId: string,
@@ -156,9 +178,12 @@ export class OrganizationOnboardingFlowService {
     userId: string,
     entityId: string,
     input: OrganizationOnboardingProfileInput,
-  ): Promise<{ ok: true } | { ok: false; code: "not_found" | "forbidden" }> {
+  ): Promise<
+    { ok: true } | { ok: false; code: "not_found" | "forbidden" | "entity_not_editable" }
+  > {
     const membership = await this.legalEntityRepository.findActiveMembership(userId, entityId);
     if (!membership) return { ok: false, code: "forbidden" };
+    if (!isOwnerOrAdmin(membership.role)) return { ok: false, code: "forbidden" };
 
     const rows = await this.db
       .select()
@@ -167,6 +192,9 @@ export class OrganizationOnboardingFlowService {
       .limit(1);
     const row = rows[0];
     if (!row || row.kind !== "organisation") return { ok: false, code: "not_found" };
+    if (!this.assertEditableStatus(row.status as LegalEntityStatus)) {
+      return { ok: false, code: "entity_not_editable" };
+    }
 
     await this.db.transaction(async (tx) => {
       await tx
@@ -234,12 +262,26 @@ export class OrganizationOnboardingFlowService {
           | "forbidden"
           | "upload_not_found"
           | "upload_not_ready"
+          | "upload_kind_mismatch"
           | "duplicate_upload"
-          | "other_document_label_required";
+          | "other_document_label_required"
+          | "entity_not_editable"
+          | "not_found";
       }
   > {
     const membership = await this.legalEntityRepository.findActiveMembership(userId, entityId);
     if (!membership) return { ok: false, code: "forbidden" };
+    if (!isOwnerOrAdmin(membership.role)) return { ok: false, code: "forbidden" };
+
+    const [entityRow] = await this.db
+      .select({ status: legalEntity.status, kind: legalEntity.kind })
+      .from(legalEntity)
+      .where(eq(legalEntity.id, entityId))
+      .limit(1);
+    if (!entityRow || entityRow.kind !== "organisation") return { ok: false, code: "not_found" };
+    if (!this.assertEditableStatus(entityRow.status as LegalEntityStatus)) {
+      return { ok: false, code: "entity_not_editable" };
+    }
 
     if (input.kind === "other") {
       const t = input.label?.trim() ?? "";
@@ -252,7 +294,10 @@ export class OrganizationOnboardingFlowService {
       .where(and(eq(uploadObject.id, input.uploadObjectId), eq(uploadObject.ownerUserId, userId)))
       .limit(1);
     if (!upl) return { ok: false, code: "upload_not_found" };
-    if (!["uploaded", "active"].includes(upl.status)) {
+    if (upl.kind !== "legal_entity_document") {
+      return { ok: false, code: "upload_kind_mismatch" };
+    }
+    if (upl.status !== "active") {
       return { ok: false, code: "upload_not_ready" };
     }
 
@@ -285,6 +330,44 @@ export class OrganizationOnboardingFlowService {
     return { ok: true, id: doc.id };
   }
 
+  async detachDocument(
+    userId: string,
+    entityId: string,
+    documentId: string,
+  ): Promise<
+    | { ok: true }
+    | { ok: false; code: "forbidden" | "not_found" | "document_not_found" | "entity_not_editable" }
+  > {
+    const membership = await this.legalEntityRepository.findActiveMembership(userId, entityId);
+    if (!membership) return { ok: false, code: "forbidden" };
+    if (!isOwnerOrAdmin(membership.role)) return { ok: false, code: "forbidden" };
+
+    const [entityRow] = await this.db
+      .select({ status: legalEntity.status, kind: legalEntity.kind })
+      .from(legalEntity)
+      .where(eq(legalEntity.id, entityId))
+      .limit(1);
+    if (!entityRow || entityRow.kind !== "organisation") return { ok: false, code: "not_found" };
+    if (!this.assertEditableStatus(entityRow.status as LegalEntityStatus)) {
+      return { ok: false, code: "entity_not_editable" };
+    }
+
+    const [doc] = await this.db
+      .select({ id: legalEntityDocument.id })
+      .from(legalEntityDocument)
+      .where(
+        and(
+          eq(legalEntityDocument.id, documentId),
+          eq(legalEntityDocument.legalEntityId, entityId),
+        ),
+      )
+      .limit(1);
+    if (!doc) return { ok: false, code: "document_not_found" };
+
+    await this.db.delete(legalEntityDocument).where(eq(legalEntityDocument.id, documentId));
+    return { ok: true };
+  }
+
   async completeStep(
     userId: string,
     entityId: string,
@@ -303,7 +386,8 @@ export class OrganizationOnboardingFlowService {
           | "connect_requirements_pending"
           | "connect_restricted"
           | "type_incomplete"
-          | "address_required";
+          | "address_required"
+          | "vat_required";
       }
   > {
     const membership = await this.legalEntityRepository.findActiveMembership(userId, entityId);
@@ -330,6 +414,10 @@ export class OrganizationOnboardingFlowService {
       if (!row.displayName?.trim()) return { ok: false, code: "address_required" };
       const addrOk = await this.assertRegisteredAddress(entityId);
       if (!addrOk) return { ok: false, code: "address_required" };
+      const reqs = this.organizationOnboardingService.getRequirements(subkind);
+      if (reqs.vatRequired && !row.vatNumber?.trim()) {
+        return { ok: false, code: "vat_required" };
+      }
     }
 
     if (step === "documents") {
@@ -410,7 +498,8 @@ export class OrganizationOnboardingFlowService {
           | "connect_sync_failed"
           | "connect_requirements_pending"
           | "connect_restricted"
-          | "address_required";
+          | "address_required"
+          | "vat_required";
       }
   > {
     const t = await this.completeStep(userId, entityId, "type");
@@ -421,6 +510,7 @@ export class OrganizationOnboardingFlowService {
   async submitForReview(userId: string, entityId: string): Promise<SubmitForReviewResult> {
     const membership = await this.legalEntityRepository.findActiveMembership(userId, entityId);
     if (!membership) return { ok: false, code: "forbidden" };
+    if (!isOwnerOrAdmin(membership.role)) return { ok: false, code: "forbidden" };
 
     const rows = await this.db
       .select()
@@ -430,7 +520,9 @@ export class OrganizationOnboardingFlowService {
     const row = rows[0];
     if (!row || row.kind !== "organisation") return { ok: false, code: "not_found" };
 
-    if ((row.status as LegalEntityStatus) !== "lead") {
+    const curStatus = row.status as LegalEntityStatus;
+    const nav = nextStatusForSelfOp(curStatus, "submit_for_review");
+    if (!nav) {
       return { ok: false, code: "invalid_transition" };
     }
 
@@ -506,6 +598,14 @@ export class OrganizationOnboardingFlowService {
 
     if (!txnResult || txnResult.ok === false) {
       return txnResult ?? { ok: false, code: "not_found" };
+    }
+
+    if (this.options.onSubmittedForReview) {
+      await this.options.onSubmittedForReview({
+        legalEntityId: entityId,
+        displayName: row.displayName,
+        actorUserId: userId,
+      });
     }
 
     return { ok: true, status: txnResult.status };

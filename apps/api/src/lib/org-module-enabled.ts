@@ -1,18 +1,10 @@
-const PRODUCTION_HOSTS = new Set(["lax.bid", "www.lax.bid"]);
-
-function hostnameFromWebOrigin(webOrigin: string): string | null {
-  try {
-    return new URL(webOrigin).hostname.toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-/** Org module is disabled when this API deployment serves the production web origin. */
-export function isOrgModuleEnabled(webOrigin: string): boolean {
-  const host = hostnameFromWebOrigin(webOrigin);
-  if (!host) return true;
-  return !PRODUCTION_HOSTS.has(host);
+/**
+ * Org module is live on all deployments (launched).
+ * Set `FORCE_ORG_MODULE=hidden` in the API environment as an emergency kill switch.
+ */
+export function isOrgModuleEnabled(_webOrigin: string): boolean {
+  if (process.env.FORCE_ORG_MODULE === "hidden") return false;
+  return true;
 }
 
 export function orgModuleDisabledResponse() {

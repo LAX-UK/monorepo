@@ -2,6 +2,7 @@ import { AdminEntityTabPanel } from "@/components/admin/admin-entity-tab-panel";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminStripeConnectActions } from "@/components/admin/admin-stripe-connect-actions";
 import { CopyUuidButton } from "@/components/admin/copy-uuid-button";
+import { LegalEntityDocumentsTab } from "@/components/admin/legal-entities/legal-entity-documents-tab";
 import {
   LegalEntityArchiveForm,
   LegalEntityRejectForm,
@@ -9,6 +10,7 @@ import {
 import { AdminDetailTabs } from "@/components/dashboard/primitives/admin-detail-tabs";
 import { legalEntityLifecycleSimpleAction } from "@/lib/admin/legal-entity-lifecycle.actions";
 import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-presenter";
+import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import { labelForRequirement } from "@auction/connect";
 import type { LegalEntity, LegalEntityStatus } from "@auction/types";
@@ -20,6 +22,9 @@ function simpleTransitionButtons(status: LegalEntityStatus): { op: string; label
   const out: { op: string; label: string }[] = [];
   if (status === "lead") {
     out.push({ op: "request_docs", label: "Request documents" });
+  }
+  if (status === "docs_received" || status === "under_review") {
+    out.push({ op: "request_docs", label: "Request more documents" });
   }
   if (status === "docs_received") {
     out.push({ op: "start_review", label: "Start review" });
@@ -43,12 +48,21 @@ type Props = {
   entity: LegalEntity;
   creator: CreatorInfo;
   activeTab: string;
+  documents?: AdminLegalEntityDocument[];
   error?: string | null;
   success?: string | null;
 };
 
-export function LegalEntityDetailTabs({ entity, creator, activeTab, error, success }: Props) {
+export function LegalEntityDetailTabs({
+  entity,
+  creator,
+  activeTab,
+  documents = [],
+  error,
+  success,
+}: Props) {
   const simple = simpleTransitionButtons(entity.status);
+  const pendingDocCount = documents.filter((d) => d.reviewStatus === "pending").length;
   const canReject = entity.status !== "rejected" && entity.status !== "archived";
   const canArchive = entity.status !== "archived";
   const stripeDueCount = entity.stripeConnectRequirementsCurrentlyDue.length;
@@ -127,6 +141,24 @@ export function LegalEntityDetailTabs({ entity, creator, activeTab, error, succe
                   </div>
                 </dl>
               </AdminEntityTabPanel>
+            ),
+          },
+          {
+            value: "documents",
+            label: "Documents",
+            badge:
+              pendingDocCount > 0 ? (
+                <Badge variant="secondary" className="ml-1.5 font-mono text-[10px]">
+                  {pendingDocCount}
+                </Badge>
+              ) : undefined,
+            content: (
+              <LegalEntityDocumentsTab
+                legalEntityId={entity.id}
+                documents={documents}
+                {...(error != null ? { error } : {})}
+                {...(success != null ? { success } : {})}
+              />
             ),
           },
           {

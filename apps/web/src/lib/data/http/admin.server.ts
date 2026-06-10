@@ -1664,6 +1664,7 @@ function parseLegalEntityFromAdminApi(raw: Record<string, unknown>): LegalEntity
     statusChangedAt: raw.statusChangedAt ? new Date(String(raw.statusChangedAt)) : null,
     statusChangedByUserId:
       raw.statusChangedByUserId == null ? null : String(raw.statusChangedByUserId),
+    statusReason: raw.statusReason == null ? null : String(raw.statusReason),
     stripeConnectAccountId:
       raw.stripeConnectAccountId == null ? null : String(raw.stripeConnectAccountId),
     stripeConnectChargesEnabled: Boolean(raw.stripeConnectChargesEnabled ?? false),
@@ -1688,6 +1689,42 @@ export async function getAdminLegalEntityById(id: string): Promise<LegalEntity |
   if (!res.ok) throw new Error(`Failed to load legal entity: ${res.status}`);
   const body = (await res.json()) as { data: Record<string, unknown> };
   return parseLegalEntityFromAdminApi(body.data);
+}
+
+export type AdminLegalEntityDocument = {
+  id: string;
+  kind: string;
+  label: string | null;
+  reviewStatus: string;
+  reviewNotes: string | null;
+  reviewedAt: Date | null;
+  uploadedAt: Date;
+  uploadedByUserId: string;
+  downloadUrl: string;
+  contentType: string | null;
+  byteSize: number | null;
+};
+
+export async function getAdminLegalEntityDocuments(
+  id: string,
+): Promise<AdminLegalEntityDocument[]> {
+  const res = await authedServerFetch(`/admin/legal-entities/${encodeURIComponent(id)}/documents`);
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error(`Failed to load legal entity documents: ${res.status}`);
+  const body = (await res.json()) as { data: Record<string, unknown>[] };
+  return body.data.map((raw) => ({
+    id: String(raw.id ?? ""),
+    kind: String(raw.kind ?? ""),
+    label: raw.label == null ? null : String(raw.label),
+    reviewStatus: String(raw.reviewStatus ?? "pending"),
+    reviewNotes: raw.reviewNotes == null ? null : String(raw.reviewNotes),
+    reviewedAt: raw.reviewedAt ? new Date(String(raw.reviewedAt)) : null,
+    uploadedAt: new Date(String(raw.uploadedAt ?? "")),
+    uploadedByUserId: String(raw.uploadedByUserId ?? ""),
+    downloadUrl: String(raw.downloadUrl ?? ""),
+    contentType: raw.contentType == null ? null : String(raw.contentType),
+    byteSize: raw.byteSize == null ? null : Number(raw.byteSize),
+  }));
 }
 
 export type LotArtistBackfillReviewTask = {

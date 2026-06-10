@@ -49,7 +49,7 @@ function copyForStatus(acting: LegalEntitySummary): {
     case "under_review":
       return {
         title: "Under review",
-        body: "Your account is under review. We'll notify you when it's approved.",
+        body: "Your account is under review. Check back here for status updates.",
       };
     case "connect_pending":
       return {
@@ -90,7 +90,10 @@ function copyForStatus(acting: LegalEntitySummary): {
         title: "Verification unsuccessful",
         body: (
           <>
-            Your account verification was unsuccessful.{" "}
+            Your account verification was unsuccessful.
+            {acting.statusReason ? (
+              <span className="mt-1 block text-on-surface-variant">{acting.statusReason}</span>
+            ) : null}{" "}
             <a
               className="font-medium underline underline-offset-2"
               href={supportMailto("Verification unsuccessful")}
