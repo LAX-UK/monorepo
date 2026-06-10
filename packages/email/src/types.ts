@@ -328,7 +328,8 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "password-changed-elsewhere": "live",
   "password-changed-sessions-not-revoked": "live",
   "change-email": "snapshot",
-  invite: "live",
+  /** Platform invites target addresses with no user row yet — worker must read `to_snapshot`. */
+  invite: "snapshot",
   "bid-outbid": "live",
   "lot-won": "live",
   "lot-ended-seller": "live",
