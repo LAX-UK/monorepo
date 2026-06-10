@@ -11,7 +11,19 @@ The flag plumbing was kept so the module can be hidden again without a code chan
 | Web | `NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` | Hides nav / sign-up entry points, shows coming-soon page, middleware redirects org deep links |
 | API | `FORCE_ORG_MODULE=hidden` | Org mutations return `403` with code `ORG_MODULE_DISABLED` |
 
-To disable the module in an emergency:
+### Production (Terraform + CI)
+
+On prod, both vars are wired in infrastructure when `org_module_hidden = true` (default):
+
+| Location | What |
+|----------|------|
+| `infra/terraform/ephemeral/prod/variables.tf` | `org_module_hidden` (default `true`) |
+| `infra/terraform/ephemeral/prod/main.tf` | Injects env on `web` + `api` components |
+| `infra/web-build/prod.env` | `NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` for prebuilt web images |
+
+To **launch** on prod: set `org_module_hidden = false` in Terraform, remove `NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` from `infra/web-build/prod.env`, `terraform apply`, rebuild web image, redeploy.
+
+To disable the module in an emergency (manual / droplet deploy):
 
 1. Set **both** env vars (`NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` on web, `FORCE_ORG_MODULE=hidden` on API).
 2. Redeploy **web + API together** (API guards must match web UI or users see hidden UI but the API still accepts actions, or vice versa).

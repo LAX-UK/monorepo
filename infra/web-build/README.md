@@ -9,6 +9,7 @@ the image — they cannot be supplied only at runtime.
 | Value | Source | Notes |
 |---|---|---|
 | Public URLs, `NEXT_PUBLIC_WEB_ORIGIN`, indexing flags | `<env>.env` in this directory | Must mirror `web_origin`, `api_public_url`, etc. in `infra/terraform/ephemeral/<env>/main.tf` |
+| Org module kill switch (prod only) | `NEXT_PUBLIC_FORCE_ORG_MODULE=hidden` in `prod.env` | Must mirror `org_module_hidden` in prod Terraform |
 | GTM, consent banner, CSP report URI, CSP enforce | GitHub **repository/environment variables** | Same names as Terraform `TF_VAR_*` inputs |
 | Turnstile site key | GitHub secret `TURNSTILE_SITE_KEY` (repo) | Public site key; secret key stays server-side only |
 | Sentry client DSN | GitHub secret `SENTRY_DSN_WEB` (per env) | Same DSN Terraform binds as `NEXT_PUBLIC_SENTRY_DSN_WEB`; required for client error reporting in prebuilt images |

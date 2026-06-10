@@ -73,6 +73,14 @@ locals {
     { key = "POSTMARK_BROADCAST_STREAM", value = var.postmark_broadcast_stream, type = "GENERAL", scope = "RUN_TIME" },
     { key = "POSTMARK_SERVER_TOKEN", value = var.postmark_server_token, type = "SECRET", scope = "RUN_TIME" },
   ]
+
+  # Organisation module kill switch — must stay in sync with infra/web-build/prod.env.
+  org_module_hidden_env_web = var.org_module_hidden ? [
+    { key = "NEXT_PUBLIC_FORCE_ORG_MODULE", value = "hidden", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+  ] : []
+  org_module_hidden_env_api = var.org_module_hidden ? [
+    { key = "FORCE_ORG_MODULE", value = "hidden", type = "GENERAL", scope = "RUN_TIME" },
+  ] : []
 }
 
 resource "random_password" "auth_app" {
@@ -151,7 +159,7 @@ locals {
       health_check_path = "/api/health"
       domain            = local.domain.web
       primary_domain    = true
-      env = concat(local.common_secret_env, local.sentry_env_for["web"], [
+      env = concat(local.common_secret_env, local.sentry_env_for["web"], local.org_module_hidden_env_web, [
         { key = "NEXT_PUBLIC_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_AUTH_URL", value = local.oidc_issuer_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_WS_URL", value = local.ws_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
@@ -177,7 +185,7 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.api
       primary_domain    = false
-      env = concat(local.common_secret_env, local.email_common_env, local.sentry_env_for["api"], [
+      env = concat(local.common_secret_env, local.email_common_env, local.sentry_env_for["api"], local.org_module_hidden_env_api, [
         { key = "DATABASE_URL", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_API", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
