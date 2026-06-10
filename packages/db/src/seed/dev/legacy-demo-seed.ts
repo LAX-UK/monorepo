@@ -343,6 +343,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     lot,
     saleCategories,
     sale,
+    venue,
     legalEntityMember,
     legalEntity,
     category,
@@ -388,6 +389,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(lot);
   await db.delete(saleCategories);
   await db.delete(sale);
+  await db.delete(venue);
   await db.delete(artistAlias);
   await db.delete(artistCategories);
   await db.delete(artistProfile);
