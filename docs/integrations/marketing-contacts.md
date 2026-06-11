@@ -39,7 +39,7 @@ Brevo webhook --> POST /webhooks/brevo (apps/api) --> email_suppression (+ user.
 
 | Domain event | Producer | Enqueue reason |
 |--------------|----------|----------------|
-| `user.registered` | `apps/auth` | `registered` |
+| `user.registered` | `apps/auth`, `apps/api` | `registered` |
 | `user.email_verified` | `apps/auth` | `email_verified` |
 | `user.deletion_requested` | `apps/api` (`POST /users/me/delete`) | `deletion_requested` |
 | `kyc.verified` | `apps/api` (aggregate id = user id) | `kyc_verified` |
@@ -218,7 +218,21 @@ processing on `mail.lax.bid` is unchanged.
 
 The live projector only syncs users when a qualifying **domain event** occurs after deploy (register,
 verify, KYC, deletion). Users who already existed before enablement are **not** replayed automatically.
-Load them via a separate ops process (e.g. Brevo UI import or a one-off job you run outside this repo).
+Load them via a separate ops process:
+
+```bash
+# Dry-run (lists eligible users missing user.registered)
+DATABASE_URL=... pnpm --filter @auction/db db:backfill-user-registered-events
+
+# Apply (inserts idempotent user.registered events; worker syncs on next tick)
+DATABASE_URL=... pnpm --filter @auction/db db:backfill-user-registered-events -- --apply
+
+# Include users already synced via email_verified/kyc but missing user.registered (broader)
+DATABASE_URL=... pnpm --filter @auction/db db:backfill-user-registered-events -- --all-missing-events
+```
+
+Run against production as `DATABASE_URL_OWNER` during a maintenance window. The worker's
+`marketing_contacts` projector enqueues Brevo sync jobs; legal-entity provisioning is idempotent.
 
 ## Rollout
 

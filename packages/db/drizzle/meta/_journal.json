@@ -778,6 +778,13 @@
       "when": 1786700000000,
       "tag": "0111_legal_entity_status_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1786800000000,
+      "tag": "0112_domain_events_user_registered_unique",
+      "breakpoints": true
     }
   ]
 }

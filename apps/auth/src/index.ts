@@ -9,7 +9,7 @@ import {
   stampLastPasswordAuthFromSignInResponse,
   startJwksRetirementSchedule,
 } from "@auction/auth";
-import { closeDb, createDb } from "@auction/db";
+import { closeDb, createDb, publishUserRegistered } from "@auction/db";
 import { session } from "@auction/db/schema";
 import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
 import { Sentry, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
@@ -31,7 +31,6 @@ import {
 } from "./middleware/auth-rate-limit.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { publishUserEmailVerified } from "./services/publish-user-email-verified.js";
-import { publishUserRegistered } from "./services/publish-user-registered.js";
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
@@ -99,11 +98,15 @@ const auth = createAuth({
     return rows.length;
   },
   onUserCreated: async (authUser) => {
-    await publishUserRegistered(db, {
-      userId: authUser.id,
-      name: authUser.name,
-      email: authUser.email,
-    });
+    await publishUserRegistered(
+      db,
+      {
+        userId: authUser.id,
+        name: authUser.name,
+        email: authUser.email,
+      },
+      { producer: "apps/auth" },
+    );
   },
   onEmailVerified: async (authUser) => {
     await publishUserEmailVerified(db, {
