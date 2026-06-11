@@ -7,3 +7,10 @@ export {
   type EnsurePersonalLegalEntityResult,
   type IEnsurePersonalLegalEntityService,
 } from "./services/ensure-personal-legal-entity.js";
+export {
+  publishUserRegistered,
+  type PublishUserRegisteredInput,
+  type PublishUserRegisteredOptions,
+  type PublishUserRegisteredResult,
+  type UserRegisteredSource,
+} from "./services/publish-user-registered.js";
