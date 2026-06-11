@@ -40,6 +40,10 @@ export const domainEvent = pgTable(
     uniqueIndex("domain_events_user_email_verified_uid")
       .on(table.aggregateType, table.aggregateId)
       .where(sql`${table.eventType} = 'user.email_verified'`),
+    // Hard idempotency guard: at most one `user.registered` per user (API + auth signup hooks).
+    uniqueIndex("domain_events_user_registered_uid")
+      .on(table.aggregateType, table.aggregateId)
+      .where(sql`${table.eventType} = 'user.registered'`),
   ],
 );
 
