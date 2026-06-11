@@ -29,6 +29,7 @@
     "db:backfill-auth-at-rest": "tsx scripts/backfill-auth-at-rest.ts",
     "db:backfill-lot-lifecycle-snapshot": "tsx src/scripts/backfill-lot-lifecycle-snapshot.ts",
     "db:backfill-user-mobile-e164": "tsx src/scripts/backfill-user-mobile-e164.ts",
+    "db:backfill-user-registered-events": "tsx src/scripts/backfill-user-registered-events.ts",
     "db:backfill-qr-code": "tsx src/scripts/backfill-qr-code.ts"
   },
   "dependencies": {
