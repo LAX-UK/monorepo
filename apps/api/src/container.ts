@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { createJwksAdapter } from "@auction/auth";
 import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/server";
-import { createDb } from "@auction/db";
+import { createDb, publishUserRegistered } from "@auction/db";
 import { user } from "@auction/db/schema";
 import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
 import {
@@ -522,6 +522,15 @@ export function createContainer(env: Env): Container {
         displayName: authUser.name,
         email: authUser.email,
       });
+      await publishUserRegistered(
+        db,
+        {
+          userId: authUser.id,
+          email: authUser.email,
+          name: authUser.name,
+        },
+        { producer: "apps/api", accountDb: authDb },
+      );
     },
     onEmailVerified: async (authUser) => {
       const { publishUserEmailVerified } = await import(
