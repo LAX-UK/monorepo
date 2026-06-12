@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { parseBid, parseItemSubmission } from "./parse";
+import { coerceToIsoString, parseBid, parseItemSubmission } from "./parse";
+
+describe("coerceToIsoString", () => {
+  it("returns ISO strings for valid dates", () => {
+    expect(coerceToIsoString("2026-06-01T12:00:00.000Z")).toBe("2026-06-01T12:00:00.000Z");
+    expect(coerceToIsoString(new Date("2026-06-01T12:00:00.000Z"))).toBe(
+      "2026-06-01T12:00:00.000Z",
+    );
+  });
+
+  it("returns undefined for invalid or missing values", () => {
+    expect(coerceToIsoString(null)).toBeUndefined();
+    expect(coerceToIsoString(undefined)).toBeUndefined();
+    expect(coerceToIsoString("not-a-date")).toBeUndefined();
+    expect(coerceToIsoString(new Date(Number.NaN))).toBeUndefined();
+  });
+});
 
 describe("parseBid", () => {
   it("maps placedByUserId and autoBidStepAmount from API rows", () => {

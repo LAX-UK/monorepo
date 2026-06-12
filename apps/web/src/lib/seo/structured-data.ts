@@ -6,6 +6,7 @@ import {
   SITE_TAGLINE,
   SITE_TELEPHONE_SCHEMA,
 } from "@/lib/brand";
+import { coerceToIsoString } from "@/lib/data/http/parse";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { type ArtistKind, getCreatorKindConfig } from "@auction/types";
@@ -29,6 +30,7 @@ export function lotProductJsonLd(
       : auction.status === "active"
         ? "https://schema.org/InStock"
         : "https://schema.org/PreOrder";
+  const priceValidUntil = coerceToIsoString(auction.endTime);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -42,7 +44,7 @@ export function lotProductJsonLd(
       priceCurrency: lotCurrency(auction),
       price: auction.currentPrice,
       availability,
-      priceValidUntil: auction.endTime.toISOString(),
+      ...(priceValidUntil ? { priceValidUntil } : {}),
       ...(opts.sellerName ? { seller: { "@type": "Organization", name: opts.sellerName } } : {}),
     },
   };
@@ -96,13 +98,15 @@ export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
       : sale.status === "ended"
         ? "https://schema.org/EventCompleted"
         : "https://schema.org/EventScheduled";
+  const startDate = coerceToIsoString(sale.startTime);
+  const endDate = coerceToIsoString(sale.endTime);
   return {
     "@context": "https://schema.org",
     "@type": "Event",
     name: sale.title,
     description: sale.description ?? undefined,
-    startDate: sale.startTime.toISOString(),
-    endDate: sale.endTime.toISOString(),
+    ...(startDate ? { startDate } : {}),
+    ...(endDate ? { endDate } : {}),
     eventStatus: status,
     eventAttendanceMode: location.attendanceMode,
     organizer: { "@type": "Organization", name: SITE_NAME, url: base },
@@ -130,10 +134,13 @@ export function webPageJsonLd(opts: {
 
 /** `ItemList` of `Event` entries for upcoming sales on the marketing home page. */
 export function homeUpcomingItemListJsonLd(sales: Sale[]): Record<string, unknown> {
+  const datedSales = sales.filter(
+    (sale) => coerceToIsoString(sale.startTime) && coerceToIsoString(sale.endTime),
+  );
   return {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    itemListElement: sales.map((sale, i) => ({
+    itemListElement: datedSales.map((sale, i) => ({
       "@type": "ListItem",
       position: i + 1,
       item: saleEventJsonLd(sale),

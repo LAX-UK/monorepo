@@ -15,6 +15,13 @@ export {
   shouldDropThirdPartyClientNoise,
 } from "./sentry-shared.js";
 export {
+  enrichSentryEventWithNextDigest,
+  isRedactedNextRscClientError,
+  readNextErrorDigest,
+  REDACTED_NEXT_RSC_CLIENT_ERROR_PREFIX,
+  shouldDropUnactionableRedactedRscClientError,
+} from "./next-error-digest.js";
+export {
   resolveSentryEnvironmentFromEnv,
   resolveSentryOrg,
   resolveSentryProjectSlug,
