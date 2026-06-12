@@ -23,6 +23,7 @@ import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { CATALOGUE_WRITE_CAPABILITIES, LotError } from "../lib/errors.js";
 import { respondMissingCapability, serviceErrorJsonBody } from "../lib/forbidden-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
+import { mapLotToSummary } from "../lib/mappers.js";
 import {
   presentLotImages,
   presentSaleImages,
@@ -53,30 +54,54 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/", optionalAuth, zValidator("query", listSalesQuerySchema), async (c) => {
     const query = c.req.valid("query");
+    const userId = c.get("userId");
     const role = c.get("userRole");
     const staff = normalizeUserStaffRole(c.get("userStaffRole") ?? undefined);
-    const { data: rows } = await container.saleService.listSalesForPublicApi(
-      {
-        status: query.statuses ? undefined : query.status,
-        statuses: query.statuses,
-        categoryId: query.categoryId,
-        categoryIds: query.categoryIds,
-        q: query.q,
-        deliveryMode: query.deliveryMode,
-        settlementStatus: query.settlementStatus,
-        needsSetup: query.needsSetup === "1",
-        limit: query.limit,
-        offset: query.offset,
-        sort: query.sort,
-      },
-      { role, staffRole: staff },
-    );
+    const listFilter = {
+      status: query.statuses ? undefined : query.status,
+      statuses: query.statuses,
+      categoryId: query.categoryId,
+      categoryIds: query.categoryIds,
+      q: query.q,
+      deliveryMode: query.deliveryMode,
+      settlementStatus: query.settlementStatus,
+      needsSetup: query.needsSetup === "1",
+      limit: query.limit,
+      offset: query.offset,
+      sort: query.sort,
+    };
     const canEnrichDelete =
       role != null && roleHasCapability(role as UserRole, "auction.manage", staff);
 
+    const buildPublicPayload = async () => {
+      const { data: rows } = await container.saleService.listSalesForPublicApi(listFilter, {
+        role,
+        staffRole: staff,
+      });
+      return {
+        data: rows.map(({ sale, lots }) => ({
+          sale,
+          lots: lots.map(mapLotToSummary),
+        })),
+      };
+    };
+
     if (!canEnrichDelete) {
-      return c.json({ data: rows });
+      if (userId == null) {
+        const key = container.cachedCatalogueListService.buildKey("sales", query);
+        const payload = await container.cachedCatalogueListService.getOrLoad(
+          key,
+          buildPublicPayload,
+        );
+        return c.json(payload);
+      }
+      return c.json(await buildPublicPayload());
     }
+
+    const { data: rows } = await container.saleService.listSalesForPublicApi(listFilter, {
+      role,
+      staffRole: staff,
+    });
 
     const data = await (async () => {
       const eligibilityBySale =
@@ -90,7 +115,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       });
     })();
 
-    return c.json({ data });
+    return c.json({
+      data: data.map(({ sale, lots, ...rest }) => ({
+        sale,
+        lots: lots.map(mapLotToSummary),
+        ...rest,
+      })),
+    });
   });
 
   r.post("/bulk", requireAuth, zValidator("json", bulkSalesBodySchema), async (c) => {

@@ -1,23 +1,64 @@
-# Xero accounting + Stripe platform (Account B)
+# Xero accounting + Stripe platform
 
-Buyer payments use the **self-created Stripe platform account (Account B)** for card checkout and seller Connect payouts. Xero is used for **Accounting API** only (invoices, contacts, payout bills) — **not** for OAuth-enrolling the platform Stripe account via Xero Payment services.
+Buyer payments use the **LAX self-created Stripe Connect platform account** for card checkout and seller Connect payouts. Xero is used for **Accounting API** only (invoices, contacts, payout bills) — not for enrolling the platform Stripe account.
+
+> **Historical note.** LAX previously had a separate Stripe account created via **Xero → Payment services**. That account was removed and must not be re-linked. All `STRIPE_*` secrets point at the self-created platform account only.
 
 ## Do not
 
 - OAuth the Connect **platform** account through **Xero → Payment services**. That enrolls Stripe under Xero’s Connected Account Agreement and **blocks Connect sub-account creation** (`this kind of account cannot create connect accounts`).
-- Point `STRIPE_SECRET_KEY` / webhooks at the Xero-created Stripe account (Account A).
 
-## Account mapping (finance)
+## Account mapping
 
-| Account | Role | Used for |
-|---------|------|----------|
-| **Account B** (self-created) | Connect **platform** | `STRIPE_*` env vars, seller Express onboarding, buyer Stripe Checkout, disputes/refunds webhooks, seller transfers |
-| **Account A** (Xero onboarding) | Ignore for LAX keys | Do not use for app secrets; disconnect in Xero Payment services if linked |
+| System | Role | Used for |
+|--------|------|----------|
+| **Stripe platform** (self-created) | Connect platform | `STRIPE_*` env vars, seller Express onboarding, buyer Stripe Checkout, disputes/refunds webhooks, seller transfers |
 | **Xero org** | Accounting | ACCREC invoices (bank transfer URL), OAuth admin, payout bills, invoice-paid webhooks |
+
+## Identifying the active **test** Stripe account
+
+If you have more than one Stripe account in **Test mode**, keep the one wired to **`test.lax.bid`** / **`test-api.lax.bid`**. The others are safe to delete once confirmed unused.
+
+### 1. Webhooks (fastest)
+
+In each candidate account: **Developers → Webhooks** (Test mode). The live test stack registers three destinations on **`test-api.lax.bid`**:
+
+| Destination | URL |
+|-------------|-----|
+| Connect | `https://test-api.lax.bid/webhooks/stripe/connect` |
+| Transfers | `https://test-api.lax.bid/webhooks/stripe/transfers` |
+| Payments | `https://test-api.lax.bid/webhooks/stripe/payments` |
+
+**Keep the account that has these endpoints.** Delete any other test account that does not.
+
+### 2. Publishable key match
+
+Canonical test keys live in (values are not readable back from GitHub/DO after set — use 1Password or your password manager):
+
+- GitHub → **Environments → test** → `STRIPE_PUBLISHABLE_KEY` / `STRIPE_SECRET_KEY`
+- DigitalOcean App Platform → **`lax-test-app`** → `STRIPE_*` on the `api` service
+- 1Password (see [secrets-management](../security/secrets-management.md))
+
+In each Stripe test account: **Developers → API keys**. The account whose **`pk_test_…`** matches 1Password is the one in use.
+
+### 3. Resolve platform account id from the secret key
+
+```bash
+curl -s -u "sk_test_YOUR_KEY:" https://api.stripe.com/v1/account \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['id'], d.get('email'))"
+```
+
+Compare the printed `acct_…` with the account switcher in the Stripe dashboard.
+
+### Before deleting the unused account
+
+- [ ] No webhooks pointing at `test-api.lax.bid`
+- [ ] `pk_test_…` does not match 1Password / the key used when Terraform test apply last ran
+- [ ] **Connect → Connected accounts** is empty or only contains stale sandboxes you no longer need
 
 ## Buyer pay-in (Stripe-only checkout)
 
-All buyer checkout URLs come from **Stripe Checkout** on Account B (tiered card / UK bank transfer). Xero provides ACCREC invoices and payment ledger sync only.
+All buyer checkout URLs come from **Stripe Checkout** on the platform account (tiered card / UK bank transfer). Xero provides ACCREC invoices and payment ledger sync only.
 
 1. **Card** (≤ `STRIPE_CARD_CHECKOUT_MAX`, default £100k) — Stripe card Checkout.
 2. **UK bank transfer** (above card max, below `STRIPE_MANUAL_REVIEW_MIN`) — Stripe `gb_bank_transfer` via Customer Balance.
@@ -41,7 +82,7 @@ Admin refunds optionally emit Xero ACCREC credit notes via `recordRefundCreditNo
 
 ## Verification
 
-1. Staging: `POST /stripe-connect/account` creates Express account on Account B test keys.
+1. Staging: `POST /stripe-connect/account` creates Express account on platform test keys.
 2. Staging: `POST /payments` returns Stripe Checkout URL; confirm `payment_external_ref` row has `xero_invoice_id` **before** buyer pays.
 3. Pay test card → `payment_intent.succeeded` → `payments.status=captured`, `stripeChargeId` set.
 4. Xero invoice shows paid (Accounting API sync via `XeroPaymentRecorder`).

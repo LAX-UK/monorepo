@@ -7,6 +7,7 @@ import type {
   LotAuctionType,
   LotMarketingDetails,
   LotStatus,
+  LotSummary,
   Payment,
   PaymentStatus,
   Sale,
@@ -77,6 +78,24 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
     deletedAt: row.deletedAt ?? null,
     deletedByUserId: row.deletedByUserId ?? null,
   } as Lot;
+}
+
+export function mapLotToSummary(lot: Lot): LotSummary {
+  return {
+    id: lot.id,
+    saleId: lot.saleId,
+    lotNumber: lot.lotNumber,
+    title: lot.title,
+    status: lot.status,
+    currentPrice: lot.currentPrice,
+    endTime: lot.endTime,
+    images: lot.images,
+    categoryIds: lot.categoryIds ?? (lot.categoryId ? [lot.categoryId] : []),
+  };
+}
+
+export function mapLotSummaryRow(row: LotRow, categoryIds: string[] = []): LotSummary {
+  return mapLotToSummary(mapLotRow(row, categoryIds));
 }
 
 export function mapBidRow(row: BidRow): Bid {

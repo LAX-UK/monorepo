@@ -33,6 +33,7 @@ import { listLotDocumentsPublic } from "../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
+import { mapLotToSummary } from "../lib/mappers.js";
 import { presentLotImages } from "../lib/media-presenters.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
@@ -80,6 +81,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
 
   r.get("/", optionalAuth, zValidator("query", listLotsQuerySchema), async (c) => {
     const query = c.req.valid("query");
+    const userId = c.get("userId");
     const role = c.get("userRole");
     const staffRole = c.get("userStaffRole");
     const viewerRole = normalizeUserRoleOrClient(role);
@@ -89,59 +91,71 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       return c.json({ error: "Forbidden" }, 403);
     }
 
-    const { data } = await container.lotService.listLotsForPublicApi(
-      {
-        status: query.statuses ? undefined : query.status,
-        statuses: query.statuses,
-        categoryId: query.categoryId,
-        categoryIds: query.categoryIds,
-        sellerLegalEntityId: query.sellerId,
-        winnerId: query.winnerId,
-        saleId: query.saleId,
-        artistId: query.artistId,
-        endYear: query.endYear,
-        search: query.q,
-        sort: query.sort,
-        limit: query.limit,
-        offset: query.offset,
-        ...(query.needsPhotos === "1" ? { needsPhotos: true } : {}),
-      },
-      role,
-      staffRole,
-    );
-    const canSeeLifecycle =
-      roleHasCapability(viewerRole, "catalogue.write", staff) ||
-      roleHasCapability(viewerRole, "auction.manage", staff);
-    let rows = data;
-    if (canSeeLifecycle && data.length > 0) {
-      const snapshots = await container.lotLifecycleQueryService.getSnapshotsForLots(
-        data.map((l) => l.id),
+    const buildPayload = async () => {
+      const { data } = await container.lotService.listLotsForPublicApi(
+        {
+          status: query.statuses ? undefined : query.status,
+          statuses: query.statuses,
+          categoryId: query.categoryId,
+          categoryIds: query.categoryIds,
+          sellerLegalEntityId: query.sellerId,
+          winnerId: query.winnerId,
+          saleId: query.saleId,
+          artistId: query.artistId,
+          endYear: query.endYear,
+          search: query.q,
+          sort: query.sort,
+          limit: query.limit,
+          offset: query.offset,
+          ...(query.needsPhotos === "1" ? { needsPhotos: true } : {}),
+        },
+        role,
+        staffRole,
       );
-      rows = data.map((lotRow) => {
-        const snap = snapshots.get(lotRow.id);
-        if (!snap) return lotRow;
-        return {
-          ...lotRow,
-          lifecycleSummary: {
-            lastEventType: snap.lastEventType,
-            lastEventAt: snap.lastEventAt.toISOString(),
-            returnCount: snap.returnCount,
-          },
-        };
-      });
+      const canSeeLifecycle =
+        roleHasCapability(viewerRole, "catalogue.write", staff) ||
+        roleHasCapability(viewerRole, "auction.manage", staff);
+      let rows = data;
+      if (canSeeLifecycle && data.length > 0) {
+        const snapshots = await container.lotLifecycleQueryService.getSnapshotsForLots(
+          data.map((l) => l.id),
+        );
+        rows = data.map((lotRow) => {
+          const snap = snapshots.get(lotRow.id);
+          if (!snap) return lotRow;
+          return {
+            ...lotRow,
+            lifecycleSummary: {
+              lastEventType: snap.lastEventType,
+              lastEventAt: snap.lastEventAt.toISOString(),
+              returnCount: snap.returnCount,
+            },
+          };
+        });
+      }
+      if (roleHasCapability(viewerRole, "auction.manage", staff) && rows.length > 0) {
+        const eligibilityByLot =
+          await container.lotSoftDeleteService.getDeleteEligibilityBatch(rows);
+        rows = rows.map((lotRow) => {
+          if (lotRow.status !== "draft" && lotRow.status !== "scheduled") {
+            return lotRow;
+          }
+          const deleteEligibility = eligibilityByLot.get(lotRow.id);
+          return deleteEligibility ? { ...lotRow, deleteEligibility } : lotRow;
+        });
+      }
+      const withPricing = await lotsWithCheckoutPricing(container, rows);
+      return { data: withPricing.map(mapLotToSummary) };
+    };
+
+    const canUseCache = userId == null && query.needsPhotos !== "1";
+    if (canUseCache) {
+      const key = container.cachedCatalogueListService.buildKey("lots", query);
+      const payload = await container.cachedCatalogueListService.getOrLoad(key, buildPayload);
+      return c.json(payload);
     }
-    if (roleHasCapability(viewerRole, "auction.manage", staff) && rows.length > 0) {
-      const eligibilityByLot = await container.lotSoftDeleteService.getDeleteEligibilityBatch(rows);
-      rows = rows.map((lotRow) => {
-        if (lotRow.status !== "draft" && lotRow.status !== "scheduled") {
-          return lotRow;
-        }
-        const deleteEligibility = eligibilityByLot.get(lotRow.id);
-        return deleteEligibility ? { ...lotRow, deleteEligibility } : lotRow;
-      });
-    }
-    const withPricing = await lotsWithCheckoutPricing(container, rows);
-    return c.json({ data: withPricing });
+
+    return c.json(await buildPayload());
   });
 
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {

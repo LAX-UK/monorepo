@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getServerMyWatchlist } from "@/lib/data/http/dashboard.server";
+import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { cache } from "react";
 
 /**
@@ -9,8 +9,10 @@ import { cache } from "react";
  */
 export const getServerWatchedLotIdSet = cache(async (): Promise<ReadonlySet<string>> => {
   try {
-    const rows = await getServerMyWatchlist();
-    return new Set(rows.map((r) => r.lotId));
+    const res = await authedServerFetch("/users/me/watchlist/ids");
+    if (!res.ok) return new Set<string>();
+    const json = (await res.json()) as { data?: { lotIds?: string[] } };
+    return new Set(json.data?.lotIds ?? []);
   } catch {
     return new Set<string>();
   }

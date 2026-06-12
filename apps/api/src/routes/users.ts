@@ -7,7 +7,6 @@ import {
   twoFactor,
   user as userTable,
 } from "@auction/db/schema";
-import type { Lot } from "@auction/types";
 import {
   addressIdParamSchema,
   artistWatchlistArtistIdParamSchema,
@@ -174,20 +173,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const rows = await container.dashboardQueryService.listBidsWithLotsForBidder(userId);
-    const presented = await Promise.all(
-      rows.map(async (row) => ({
-        ...row,
-        lot: row.lot ? (await presentLotsImages(container.mediaUrlResolver, [row.lot]))[0] : null,
-      })),
-    );
-    const lots = presented.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
-    const priced = await lotsWithCheckoutPricing(container, lots);
-    const byId = new Map(priced.map((l) => [l.id, l]));
-    const data = presented.map((row) => ({
-      ...row,
-      lot: row.lot ? (byId.get(row.lot.id) ?? row.lot) : null,
-    }));
+    const data = await container.userDashboardReadService.listBidsForUser(userId);
     return c.json({ data });
   });
 
@@ -215,27 +201,20 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data });
   });
 
+  r.get("/me/watchlist/ids", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const lotIds = await container.watchlistService.listIds(userId);
+    return c.json({ data: { lotIds } });
+  });
+
   r.get("/me/watchlist", requireAuth, zValidator("query", watchlistQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const query = c.req.valid("query");
-    const rows = await container.watchlistService.listWithLots(userId, {
+    const data = await container.userDashboardReadService.listWatchlistForUser(userId, {
       sort: query.sort,
       ...(query.status ? { status: query.status } : {}),
       ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
     });
-    const presented = await Promise.all(
-      rows.map(async (row) => ({
-        ...row,
-        lot: row.lot ? (await presentLotsImages(container.mediaUrlResolver, [row.lot]))[0] : null,
-      })),
-    );
-    const lots = presented.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
-    const priced = await lotsWithCheckoutPricing(container, lots);
-    const byId = new Map(priced.map((l) => [l.id, l]));
-    const data = presented.map((row) => ({
-      ...row,
-      lot: row.lot ? (byId.get(row.lot.id) ?? row.lot) : null,
-    }));
     return c.json({ data });
   });
 

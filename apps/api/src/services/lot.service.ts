@@ -115,6 +115,7 @@ export type LotServiceOptions = {
   db?: Database | null;
   domainEventPublisher?: DomainEventPublisher | null;
   mediaUrlResolver?: MediaUrlResolver;
+  catalogueMediaUrlResolver?: MediaUrlResolver;
   englishOnlyAuctions?: boolean;
   lotLifecycleRecording?: LotLifecycleRecording | null;
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
@@ -135,7 +136,7 @@ export class LotService {
   private readonly enforceIndividualConnectOnPublish: boolean;
   private readonly db: Database | null;
   private readonly domainEventPublisher: DomainEventPublisher | null;
-  private readonly mediaUrlResolver: MediaUrlResolver | undefined;
+  private readonly catalogueMediaUrlResolver: MediaUrlResolver | undefined;
   private readonly englishOnlyAuctions: boolean;
   private readonly lotLifecycleRecording: LotLifecycleRecording | null;
   private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
@@ -155,7 +156,7 @@ export class LotService {
     this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
     this.db = opts.db ?? null;
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
-    this.mediaUrlResolver = opts.mediaUrlResolver;
+    this.catalogueMediaUrlResolver = opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
@@ -714,7 +715,7 @@ export class LotService {
 
     const rows = await this.lotRepo.list(queryFilter);
 
-    const presented = await presentLotsImages(this.mediaUrlResolver, rows);
+    const presented = await presentLotsImages(this.catalogueMediaUrlResolver, rows);
     return {
       data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole, viewerStaffRole)),
     };

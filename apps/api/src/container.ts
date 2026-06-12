@@ -37,6 +37,7 @@ import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authentica
 import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
 import { BullmqMarketingEventQueue } from "./infrastructure/bullmq-marketing-event.queue.js";
 import { CachedClickIdStore } from "./infrastructure/cached-click-id.store.js";
+import { CachedUserSuspensionChecker } from "./infrastructure/cached-user-suspension.checker.js";
 import { CompositeAuthenticator } from "./infrastructure/composite-authenticator.js";
 import { CompositeErrorClassifier } from "./infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
@@ -59,6 +60,7 @@ import { PushNotificationChannel } from "./infrastructure/push-notification.chan
 import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisClickIdStore } from "./infrastructure/redis-click-id.store.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
+import { RedisLuaRateLimitStore } from "./infrastructure/redis-lua-rate-limit.store.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
@@ -163,6 +165,8 @@ import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminSaleOperationsSnapshotService } from "./services/admin-sale-operations-snapshot.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
+import { createAdminNavCountsDeps } from "./services/admin/admin-nav-counts.deps.js";
+import { AdminNavCountsService } from "./services/admin/admin-nav-counts.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
 import { LegalEntityDocumentAdminService } from "./services/admin/legal-entity-document-admin.service.js";
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
@@ -182,6 +186,7 @@ import { AutoBidService } from "./services/auto-bid.service.js";
 import { BidEligibilityService } from "./services/bid-eligibility.service.js";
 import { BidService } from "./services/bid.service.js";
 import { DEFAULT_BID_POLICY } from "./services/bid/bid-policy.js";
+import { CachedCatalogueListService } from "./services/cached-catalogue-list.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { ConditionReportService } from "./services/condition-report.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
@@ -220,12 +225,16 @@ import type { IPayoutService } from "./services/interfaces/payout.js";
 import type { IPendingInvitationsReader } from "./services/interfaces/pending-invitations-reader.js";
 import type { IPushSubscriptionRepository } from "./services/interfaces/push.js";
 import type { IPushSender } from "./services/interfaces/push.js";
+import type { IRateLimitStore } from "./services/interfaces/rate-limit-store.js";
 import type { IItemSubmissionRepository } from "./services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
 import type { IStripeConnectService } from "./services/interfaces/stripe-connect.js";
 import type { ITransactionalMailer } from "./services/interfaces/transactional-mail.js";
 import type { IUiPreferenceRepository } from "./services/interfaces/ui-preference.js";
-import type { IUserSuspensionChecker } from "./services/interfaces/user-suspension.js";
+import type {
+  IUserSuspensionCacheInvalidator,
+  IUserSuspensionChecker,
+} from "./services/interfaces/user-suspension.js";
 import type { IXeroWebhookEventRepository } from "./services/interfaces/xero-repositories.js";
 import { InvitationConsumptionService } from "./services/invitation-consumption.service.js";
 import { InvitationLifecycleService } from "./services/invitation-lifecycle.service.js";
@@ -288,6 +297,7 @@ import { SaleService } from "./services/sale.service.js";
 import { SaleroomService } from "./services/saleroom.service.js";
 import { SavedSearchService } from "./services/saved-search.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
+import { PerRequestSigningPolicy, StableSigningPolicy } from "./services/signed-url-policy.js";
 import { SourceOfFundsService } from "./services/source-of-funds/source-of-funds.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectFacade } from "./services/stripe/stripe-connect.facade.js";
@@ -297,6 +307,7 @@ import { TelephoneBidBookingService } from "./services/telephone-bid-booking.ser
 import { TelephoneBookingNotifier } from "./services/telephone-booking-notifier.js";
 import { UiPreferenceService } from "./services/ui-preference.service.js";
 import { UploadService } from "./services/upload.service.js";
+import { UserDashboardReadService } from "./services/user-dashboard-read.service.js";
 import { UserService } from "./services/user.service.js";
 import { VenueService } from "./services/venue.service.js";
 import { WatchlistService } from "./services/watchlist.service.js";
@@ -318,6 +329,7 @@ export type Container = {
   /** Revokes Better Auth sessions in `authDb` (password reset, email change, etc.). */
   sessionRevocation: SessionRevocationService;
   redis: Redis;
+  rateLimitStore: IRateLimitStore;
   /** Exposed for web push subscription (public key only). */
   vapidPublicKey: string | null;
   auth: Auth;
@@ -354,6 +366,8 @@ export type Container = {
   artistProfileService: ArtistProfileService;
   artistDeleteService: ArtistDeleteService;
   dashboardQueryService: DashboardQueryService;
+  userDashboardReadService: UserDashboardReadService;
+  cachedCatalogueListService: CachedCatalogueListService;
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
   qrCodeService: QrCodeService;
@@ -381,6 +395,7 @@ export type Container = {
   emailService: IEmailService;
   emailObservabilityRepository: IEmailObservabilityRepository;
   userSuspensionChecker: IUserSuspensionChecker;
+  userSuspensionCacheInvalidator: IUserSuspensionCacheInvalidator;
   registrationService: RegistrationService;
   invitationService: InvitationService;
   profileService: ProfileService;
@@ -400,6 +415,7 @@ export type Container = {
   requireLegalEntityContext: ReturnType<typeof createRequireLegalEntityContext>;
   requireSubmissionsLegalEntityContext: ReturnType<typeof createSubmissionsLegalEntityContext>;
   adminUserService: AdminUserService;
+  adminNavCountsService: AdminNavCountsService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
   httpErrorHandler: ErrorHandlerService;
@@ -704,6 +720,9 @@ export function createContainer(env: Env): Container {
   const userSuspensionChecker = new DrizzleUserSuspensionChecker(db);
 
   const cache = new RedisCacheProvider(redis);
+  const rateLimitStore = new RedisLuaRateLimitStore(redis);
+  const cachedUserSuspensionChecker = new CachedUserSuspensionChecker(userSuspensionChecker, cache);
+  const cachedCatalogueListService = new CachedCatalogueListService(cache, 20);
   const notifier = new RedisNotificationSender(redis);
   const userNotificationPublisher = new RedisUserNotificationPublisher(redis);
   const notificationService = new NotificationService(notifier, notifier);
@@ -883,7 +902,12 @@ export function createContainer(env: Env): Container {
   const mediaUrlResolver = new MediaUrlResolver(
     objectStorage,
     env.STORAGE_READ_MODE,
-    env.SIGNED_GET_TTL_SEC,
+    new PerRequestSigningPolicy(env.SIGNED_GET_TTL_SEC),
+  );
+  const catalogueMediaUrlResolver = new MediaUrlResolver(
+    objectStorage,
+    env.STORAGE_READ_MODE,
+    new StableSigningPolicy(Math.max(env.SIGNED_GET_TTL_SEC, 86_400)),
   );
   const legalEntityDocumentAdminService = new LegalEntityDocumentAdminService(
     db,
@@ -1009,6 +1033,7 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
     mediaUrlResolver,
+    catalogueMediaUrlResolver,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     lotLifecycleRecording,
     lotTransitionOrchestrator,
@@ -1039,6 +1064,7 @@ export function createContainer(env: Env): Container {
     imageCleanup: imageCleanupService,
     saleFollowReader: saleFollowService,
     mediaUrlResolver,
+    catalogueMediaUrlResolver,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     db,
     domainEventPublisher,
@@ -1339,6 +1365,12 @@ export function createContainer(env: Env): Container {
     },
   );
   const watchlistService = new WatchlistService(watchlistRepo, lotRepo);
+  const userDashboardReadService = new UserDashboardReadService(
+    dashboardQueryService,
+    watchlistService,
+    mediaUrlResolver,
+    saleService,
+  );
   const savedSearchService = new SavedSearchService(db);
   // Watchlist now references `artist_profile.id` (post-0046 migration), so the
   // existence check delegates to the artist registry instead of the user table.
@@ -1398,6 +1430,7 @@ export function createContainer(env: Env): Container {
     adminActivityReader,
     adminUserBidsReader,
     adminUserKycReader,
+    cachedUserSuspensionChecker,
   );
   const attentionFeedReader = new DrizzleAttentionFeedReader(db);
   const conveyorPipelineReader = new DrizzleConveyorPipelineReader(db);
@@ -1444,7 +1477,7 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
     impersonationSessionService,
     impersonationAuditService,
-    userSuspensionChecker,
+    userSuspensionChecker: cachedUserSuspensionChecker,
     legalEntityRepository,
     legalEntityLifecycleAdminService,
     categoryService,
@@ -1466,12 +1499,28 @@ export function createContainer(env: Env): Container {
     env,
   });
 
+  const adminNavCountsService = new AdminNavCountsService(
+    createAdminNavCountsDeps({
+      db,
+      admin,
+      repoFactory,
+      conditionReportService,
+      lotFulfilmentService,
+      saleService,
+      invitationService,
+      amlService,
+      sourceOfFundsService,
+      telephoneBidBookingService,
+    }),
+  );
+
   return {
     env,
     db,
     authDb,
     sessionRevocation,
     redis,
+    rateLimitStore,
     vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
     auth,
     getPublicJwks: jwksAdapter.getPublicJwks,
@@ -1507,6 +1556,8 @@ export function createContainer(env: Env): Container {
     artistProfileService,
     artistDeleteService,
     dashboardQueryService,
+    userDashboardReadService,
+    cachedCatalogueListService,
     notificationQueryService,
     paymentService,
     qrCodeService,
@@ -1530,7 +1581,8 @@ export function createContainer(env: Env): Container {
     notificationFactory,
     emailService,
     emailObservabilityRepository,
-    userSuspensionChecker,
+    userSuspensionChecker: cachedUserSuspensionChecker,
+    userSuspensionCacheInvalidator: cachedUserSuspensionChecker,
     registrationService,
     invitationService,
     profileService,
@@ -1546,6 +1598,7 @@ export function createContainer(env: Env): Container {
     requireLegalEntityContext,
     requireSubmissionsLegalEntityContext,
     adminUserService,
+    adminNavCountsService,
     adminMetricsService,
     attentionFeedReader,
     httpErrorHandler,

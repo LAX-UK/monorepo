@@ -9,6 +9,7 @@ import { createLotRoutes } from "./lots.js";
 
 const lotId = "11111111-1111-4111-8111-111111111111";
 const bidderId = "bidder-1";
+const SESSION_COOKIE = "better-auth.session_token=test-session-token-fixture";
 
 function mount(user: { id: string; role: string; staffRole?: string } | null) {
   const app = new Hono();
@@ -66,7 +67,9 @@ describe("lot bid history privacy", () => {
   });
 
   it("keeps bidder user id visible to the bidder", async () => {
-    const res = await mount({ id: bidderId, role: "client" }).app.request(`/lots/${lotId}/bids`);
+    const res = await mount({ id: bidderId, role: "client" }).app.request(`/lots/${lotId}/bids`, {
+      headers: { cookie: SESSION_COOKIE },
+    });
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
     expect(res.status).toBe(200);
@@ -76,6 +79,7 @@ describe("lot bid history privacy", () => {
   it("keeps bidder user id visible to administrators", async () => {
     const res = await mount({ id: "admin-1", role: "staff", staffRole: "super_admin" }).app.request(
       `/lots/${lotId}/bids`,
+      { headers: { cookie: SESSION_COOKIE } },
     );
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
