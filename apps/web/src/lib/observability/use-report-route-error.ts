@@ -1,5 +1,6 @@
 "use client";
 
+import { readNextErrorDigest } from "@auction/observability/next-error-digest";
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
@@ -8,6 +9,13 @@ export function useReportRouteError(error: (Error & { digest?: string }) | undef
   useEffect(() => {
     if (!error) return;
     console.error(error);
-    Sentry.captureException(error);
+    Sentry.withScope((scope) => {
+      const digest = readNextErrorDigest(error);
+      if (digest) {
+        scope.setTag("next.digest", digest);
+        scope.setTag("next.error_source", "client");
+      }
+      Sentry.captureException(error);
+    });
   }, [error]);
 }

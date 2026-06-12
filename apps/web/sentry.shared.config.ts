@@ -1,3 +1,7 @@
+import {
+  enrichSentryEventWithNextDigest,
+  shouldDropUnactionableRedactedRscClientError,
+} from "@auction/observability/next-error-digest";
 import { createSharedSentryInitOptions } from "@auction/observability/sentry-init-options";
 import {
   scrubSentryEvent,
@@ -16,9 +20,11 @@ export function createWebSentryOptions(dsn: string): Parameters<typeof Sentry.in
     beforeSend: (event, hint) => {
       const scrubbed = scrubSentryEvent(event, hint);
       if (scrubbed === null) return null;
-      if (shouldDropBrowserExtensionNoise(scrubbed)) return null;
-      if (shouldDropThirdPartyClientNoise(scrubbed)) return null;
-      return scrubbed;
+      const enriched = enrichSentryEventWithNextDigest(scrubbed, hint);
+      if (shouldDropBrowserExtensionNoise(enriched)) return null;
+      if (shouldDropThirdPartyClientNoise(enriched)) return null;
+      if (shouldDropUnactionableRedactedRscClientError(enriched)) return null;
+      return enriched;
     },
   };
 }
