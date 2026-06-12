@@ -92,6 +92,30 @@ Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins
 - **Developers → Webhooks:** delivery success rate &gt; 99%.
 - **Connect → Transfers:** failed transfers list empty after settlement window.
 
+## Production: Postgres connection slot exhaustion
+
+**Sentry issues:** `LAX-PROD-API-*`, `LAX-PROD-AUTH-*` (e.g. `remaining connection slots are reserved for SUPERUSER` during JWT / `getJwks`).
+
+**Symptom:** Auth or API requests fail with Postgres error `53300` / “remaining connection slots are reserved for roles with the SUPERUSER attribute”. The cluster `max_connections` is exhausted — often after a deploy that raised per-process pool sizes or scaled API replicas.
+
+**Connection budget (prod, `db-s-2vcpu-4gb`, ~97 `max_connections`):**
+
+| Component | Pools | Per pool (`DATABASE_POOL_MAX`) | Max connections |
+|-----------|-------|--------------------------------|-----------------|
+| API ×2    | `db` + `authDb` | 8 | 32 |
+| Auth ×2   | `authDb` | 8 | 16 |
+| Worker ×1 | `db` | 8 | 8 |
+| **Total** | | | **56** (headroom for admin/migrate) |
+
+Lot/sale lifecycle runs once via **worker → `POST /internal/jobs/lot-lifecycle-tick`** (not per-API `setInterval`) when `CRON_INTERNAL_SECRET` is set.
+
+**Mitigations:**
+
+1. Confirm `DATABASE_POOL_MAX=8` on api, auth, and worker in Terraform (`infra/terraform/ephemeral/prod/main.tf`).
+2. Restart api/auth/worker after changing pool env vars so idle connections drop.
+3. If exhaustion persists at higher replica counts, lower `DATABASE_POOL_MAX` further or add **PgBouncer** (transaction pooling) in front of Postgres — required before scaling past ~2 API instances on the current cluster size.
+4. Resolve Sentry issues after the fix is live and connection count is stable.
+
 ## Test environment: Postgres connection slot exhaustion
 
 **Sentry issues:** `LAX-TEST-API-*` (e.g. `remaining connection slots are reserved for SUPERUSER`).
@@ -100,7 +124,7 @@ Sentry receives errors, `console.error`/`warn`, transactions, and cron check-ins
 
 **Mitigations:**
 
-1. Lower per-app pool size in test env config (API, auth, worker) so total connections stay below `max_connections` minus the superuser reserve.
+1. Lower per-app pool size in test env config (`DATABASE_POOL_MAX=4` on API, auth, worker in `infra/terraform/ephemeral/test/main.tf`) so total connections stay below `max_connections` minus the superuser reserve.
 2. Ensure idle connections are released (restart test app pods/containers after heavy test runs).
 3. If needed, bump `max_connections` on the DigitalOcean test Postgres cluster.
 4. After infra is fixed, **resolve or ignore** these issues in Sentry — they should not recur.

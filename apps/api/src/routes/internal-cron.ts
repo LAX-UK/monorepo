@@ -12,6 +12,10 @@ import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-run
 export const BULK_PAYOUT_SETTLEMENT_LOCK_KEY = "payout:settlement:lock";
 const BULK_PAYOUT_SETTLEMENT_LOCK_TTL_SEC = 30 * 60;
 
+/** Redis key for lot/sale lifecycle sweep (worker cron → single API handler). */
+export const LOT_LIFECYCLE_TICK_LOCK_KEY = "lot:lifecycle:tick:lock";
+const LOT_LIFECYCLE_TICK_LOCK_TTL_SEC = 15;
+
 function timingSafeSecretMatches(actual: string | undefined, expected: string): boolean {
   if (!actual) return false;
   const actualBuf = Buffer.from(actual);
@@ -302,6 +306,36 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "reconcile_failed";
       return c.json({ error: message }, 502);
+    }
+  });
+
+  /** Lot scheduled→active / active→ended transitions + sale status reconciliation (worker cron). */
+  r.post("/lot-lifecycle-tick", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+
+    const lockOk = await container.redis.set(
+      LOT_LIFECYCLE_TICK_LOCK_KEY,
+      "1",
+      "EX",
+      LOT_LIFECYCLE_TICK_LOCK_TTL_SEC,
+      "NX",
+    );
+    if (lockOk !== "OK") {
+      return c.json({ reason: "lifecycle_tick_already_running" }, 409);
+    }
+
+    try {
+      await container.lotLifecycleService.runTransitions();
+      await container.saleLifecycleService.reconcileSaleStatuses();
+      return c.json({ data: { ok: true } });
+    } finally {
+      await container.redis.del(LOT_LIFECYCLE_TICK_LOCK_KEY);
     }
   });
 
