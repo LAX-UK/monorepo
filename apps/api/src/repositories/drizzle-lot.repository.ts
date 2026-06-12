@@ -177,6 +177,15 @@ export class DrizzleLotRepository implements ILotRepository {
     return mapLotRow(row, categories.get(row.id) ?? []);
   }
 
+  async findByIds(ids: string[]): Promise<Lot[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(lot)
+      .where(and(inArray(lot.id, ids), lotNotDeleted()));
+    return this.withCategoryIds(rows);
+  }
+
   async findByIdForUpdate(id: string) {
     const rows = await this.db
       .select()

@@ -46,6 +46,7 @@ export const bid = pgTable(
     index("bid_lot_id_amount_idx").on(table.lotId, table.amount),
     index("bid_lot_id_amount_created_at_idx").on(table.lotId, table.amount, table.createdAt),
     index("bid_bidder_id_idx").on(table.bidderId),
+    index("bid_bidder_id_created_at_idx").on(table.bidderId, table.createdAt),
     index("bid_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
     index("bid_lot_id_created_at_idx").on(table.lotId, table.createdAt),
     uniqueIndex("bid_one_winner_per_lot_uniq")

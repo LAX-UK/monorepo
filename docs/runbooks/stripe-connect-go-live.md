@@ -44,7 +44,7 @@ Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Conne
 | `STRIPE_ABSOLUTE_MAX` | Online payment cap (major GBP, default `999999.99`) |
 | `XERO_PAYMENT_BANK_ACCOUNT_CODE` | Xero chart account for Stripe capture payments (default `090`) |
 
-- [ ] Platform Stripe account is **self-created (Account B)**, not Xero Payment services OAuth — see [xero-stripe-payment-setup](./xero-stripe-payment-setup.md).
+- [ ] Platform Stripe account is **self-created** (not Xero Payment services OAuth) — see [xero-stripe-payment-setup](./xero-stripe-payment-setup.md).
 - [ ] Stripe + Veriff webhook secrets and keys set in production (Terraform / App Platform secrets).
 - [ ] Migrations **0072** (`payout_line_sale_payment_uidx`), **0073** (legacy Connect backfill), and **0074** (`payment_refund_reconcile`) applied before settlement scale-up.
 - [ ] `DISABLE_PAYOUT_SETTLEMENT` is **unset** or `false` when finance is ready to run settlement crons (keep `true` for first 24h after cutover if desired).

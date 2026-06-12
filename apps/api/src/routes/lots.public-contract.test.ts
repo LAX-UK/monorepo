@@ -6,6 +6,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const SESSION_COOKIE = "better-auth.session_token=test-session-token-fixture";
 
 function draftLot(): Lot {
   return {
@@ -45,13 +46,20 @@ function mount(user: { id: string; role: string; staffRole?: string } | null) {
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     lotService: { getById, listLotsForPublicApi },
-    saleService: { getById: vi.fn().mockResolvedValue(null) },
+    saleService: {
+      getById: vi.fn().mockResolvedValue(null),
+      findByIds: vi.fn().mockResolvedValue([]),
+    },
     mediaUrlResolver: {
       resolve: vi.fn(async (url: string) => url),
       resolveMany: vi.fn(async (urls: string[]) => urls),
     },
     lotSoftDeleteService: { getDeleteEligibility: vi.fn() },
     lotLifecycleQueryService: { getSnapshotsForLots: vi.fn().mockResolvedValue(new Map()) },
+    cachedCatalogueListService: {
+      buildKey: (_route: string, query: Record<string, unknown>) => JSON.stringify(query),
+      getOrLoad: async (_key: string, load: () => Promise<unknown>) => load(),
+    },
     redis: null,
     env: {},
     kycService: null,
@@ -89,7 +97,9 @@ describe("lots public contract", () => {
 
   it("returns 200 for draft lot detail when catalogue staff", async () => {
     const { app } = mount({ id: "staff-1", role: "staff", staffRole: "catalogue_manager" });
-    const res = await app.request(`http://t/lots/${lotId}`);
+    const res = await app.request(`http://t/lots/${lotId}`, {
+      headers: { cookie: SESSION_COOKIE },
+    });
     expect(res.status).toBe(200);
   });
 

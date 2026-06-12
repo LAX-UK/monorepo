@@ -18,6 +18,7 @@ export const watchlist = pgTable(
   (table) => [
     unique("watchlist_user_lot_uid").on(table.userId, table.lotId),
     index("watchlist_user_id_idx").on(table.userId),
+    index("watchlist_user_id_created_at_idx").on(table.userId, table.createdAt),
   ],
 );
 

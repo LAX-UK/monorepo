@@ -40,21 +40,24 @@ export class WatchlistService {
     return this.watchlist.exists(userId, lotId);
   }
 
+  listIds(userId: string): Promise<string[]> {
+    return this.watchlist.listIds(userId);
+  }
+
   async listWithLots(
     userId: string,
     options: WatchlistListOptions = {},
   ): Promise<WatchlistWithLot[]> {
     const rows = await this.watchlist.findByUser(userId);
-    const out: WatchlistWithLot[] = [];
-    for (const r of rows) {
-      const lot = await this.lots.findById(r.lotId);
-      out.push({
-        watchlistId: r.id,
-        lotId: r.lotId,
-        createdAt: r.createdAt,
-        lot,
-      });
-    }
+    const lotIds = [...new Set(rows.map((r) => r.lotId))];
+    const lotRows = await this.lots.findByIds(lotIds);
+    const lotMap = new Map(lotRows.map((l) => [l.id, l]));
+    const out: WatchlistWithLot[] = rows.map((r) => ({
+      watchlistId: r.id,
+      lotId: r.lotId,
+      createdAt: r.createdAt,
+      lot: lotMap.get(r.lotId) ?? null,
+    }));
     const filtered = out.filter((row) => {
       const lot = row.lot;
       if (!lot) return false;

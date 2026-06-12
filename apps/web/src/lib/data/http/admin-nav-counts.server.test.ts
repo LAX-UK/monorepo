@@ -1,51 +1,73 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { getAdminNavCounts } from "./admin-nav-counts.server";
+vi.mock("react", async () => {
+  const actual = await vi.importActual<typeof import("react")>("react");
+  return { ...actual, cache: <T>(fn: T) => fn };
+});
+
+const authedServerFetch = vi.fn();
+vi.mock("./authed-server-fetch", () => ({
+  authedServerFetch: (...args: unknown[]) => authedServerFetch(...args),
+}));
+
+import { getAdminNavCounts, getFinanceAdminNavCounts } from "./admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "./admin-nav-counts.types";
 
-function mockFetchers(overrides: Partial<Record<keyof typeof EMPTY_ADMIN_NAV_COUNTS, number>>) {
-  return {
-    getSubmissionsPending: vi.fn().mockResolvedValue(overrides.submissionsPending ?? 0),
-    getArtistsPending: vi.fn().mockResolvedValue(overrides.artistsPending ?? 0),
-    getConditionReportsPending: vi.fn().mockResolvedValue(overrides.conditionReportsPending ?? 0),
-    getManualReviewCount: vi.fn().mockResolvedValue(overrides.manualReviewCount ?? 0),
-    getOnboardingIssuesTotal: vi.fn().mockResolvedValue(overrides.onboardingIssuesTotal ?? 0),
-    getLotFulfilmentPending: vi.fn().mockResolvedValue(overrides.lotFulfilmentPending ?? 0),
-    getWithdrawalsPending: vi.fn().mockResolvedValue(overrides.withdrawalsPending ?? 0),
-    getDisputesOpen: vi.fn().mockResolvedValue(overrides.disputesOpen ?? 0),
-    getPayoutsFailed: vi.fn().mockResolvedValue(overrides.payoutsFailed ?? 0),
-    getSaleroomLiveCount: vi.fn().mockResolvedValue(overrides.saleroomLiveCount ?? 0),
-    getInvitationsPending: vi.fn().mockResolvedValue(overrides.invitationsPending ?? 0),
-    getDraftSalesNeedingSetup: vi.fn().mockResolvedValue(overrides.draftSalesNeedingSetup ?? 0),
-    getDraftLotsMissingPhotos: vi.fn().mockResolvedValue(overrides.draftLotsMissingPhotos ?? 0),
-    getAmlScreeningsPending: vi.fn().mockResolvedValue(overrides.amlScreeningsPending ?? 0),
-    getSourceOfFundsPending: vi.fn().mockResolvedValue(overrides.sourceOfFundsPending ?? 0),
-    getTelephoneBookingsPending: vi.fn().mockResolvedValue(overrides.telephoneBookingsPending ?? 0),
-  };
-}
-
 describe("getAdminNavCounts", () => {
-  it("loads counts from injected fetchers", async () => {
-    const fetchers = mockFetchers({ submissionsPending: 3, artistsPending: 2, payoutsFailed: 1 });
-    const counts = await getAdminNavCounts(fetchers);
+  beforeEach(() => {
+    authedServerFetch.mockReset();
+  });
+
+  it("returns counts from /admin/nav-counts", async () => {
+    authedServerFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: { ...EMPTY_ADMIN_NAV_COUNTS, submissionsPending: 3, artistsPending: 2 },
+      }),
+    });
+    const counts = await getAdminNavCounts();
     expect(counts.submissionsPending).toBe(3);
     expect(counts.artistsPending).toBe(2);
+    expect(authedServerFetch).toHaveBeenCalledWith("/admin/nav-counts");
+  });
+
+  it("falls back to empty when response is not ok", async () => {
+    authedServerFetch.mockResolvedValue({ ok: false });
+    const counts = await getAdminNavCounts();
+    expect(counts).toEqual(EMPTY_ADMIN_NAV_COUNTS);
+  });
+
+  it("falls back to empty when fetch throws", async () => {
+    authedServerFetch.mockRejectedValue(new Error("network"));
+    const counts = await getAdminNavCounts();
+    expect(counts).toEqual(EMPTY_ADMIN_NAV_COUNTS);
+  });
+});
+
+describe("getFinanceAdminNavCounts", () => {
+  beforeEach(() => {
+    authedServerFetch.mockReset();
+  });
+
+  it("returns finance subset from full nav counts", async () => {
+    authedServerFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          ...EMPTY_ADMIN_NAV_COUNTS,
+          manualReviewCount: 4,
+          disputesOpen: 2,
+          payoutsFailed: 1,
+          submissionsPending: 99,
+        },
+      }),
+    });
+    const counts = await getFinanceAdminNavCounts();
+    expect(counts.manualReviewCount).toBe(4);
+    expect(counts.disputesOpen).toBe(2);
     expect(counts.payoutsFailed).toBe(1);
-    expect(fetchers.getSubmissionsPending).toHaveBeenCalledOnce();
-  });
-
-  it("falls back to zero when a fetcher throws", async () => {
-    const fetchers = mockFetchers({ artistsPending: 5 });
-    fetchers.getSubmissionsPending = vi.fn().mockRejectedValue(new Error("network"));
-    const counts = await getAdminNavCounts(fetchers);
     expect(counts.submissionsPending).toBe(0);
-    expect(counts.artistsPending).toBe(5);
-  });
-
-  it("returns all keys from AdminNavCounts", async () => {
-    const counts = await getAdminNavCounts(mockFetchers({}));
-    expect(Object.keys(counts).sort()).toEqual(Object.keys(EMPTY_ADMIN_NAV_COUNTS).sort());
   });
 });
