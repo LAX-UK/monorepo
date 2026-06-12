@@ -190,6 +190,7 @@ locals {
         { key = "DATABASE_URL_API", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
+        { key = "DATABASE_POOL_MAX", value = "8", type = "GENERAL", scope = "RUN_TIME" },
         { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
         { key = "API_PUBLIC_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
@@ -268,6 +269,7 @@ locals {
         { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
         # Required: apps/auth uses Redis to push BullMQ jobs from the Better Auth send-verification /
         # send-reset-password / databaseHooks.user.create.after hooks via IEmailService.enqueue().
+        { key = "DATABASE_POOL_MAX", value = "8", type = "GENERAL", scope = "RUN_TIME" },
         { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
         { key = "API_PUBLIC_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_TIME" },
@@ -335,6 +337,7 @@ locals {
         { key = "DATABASE_URL", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_WORKER", value = local.database_url_worker, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },
+        { key = "DATABASE_POOL_MAX", value = "8", type = "GENERAL", scope = "RUN_TIME" },
         { key = "REDIS_URL", value = module.redis.uri, type = "SECRET", scope = "RUN_TIME" },
         { key = "LOG_LEVEL", value = "info", type = "GENERAL", scope = "RUN_TIME" },
         { key = "STORAGE_DRIVER", value = "s3", type = "GENERAL", scope = "RUN_TIME" },
