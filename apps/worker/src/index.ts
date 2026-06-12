@@ -56,6 +56,7 @@ import {
 import { cleanupImageJob } from "./jobs/image-cleanup.js";
 import { runImpersonationSweeperJob } from "./jobs/impersonation-sweeper.js";
 import { runLegalEntityArchiveCascadeJob } from "./jobs/legal-entity-archive-cascade.js";
+import { runLotLifecycleTickJob } from "./jobs/lot-lifecycle-tick.js";
 import {
   type MarketingContactSyncJobData,
   marketingContactSyncJob,
@@ -744,6 +745,39 @@ if (env.CRON_INTERNAL_SECRET) {
 }
 
 const STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME = "stale-submission-draft-reminders";
+const LOT_LIFECYCLE_TICK_QUEUE_NAME = "lot-lifecycle-tick";
+
+let lotLifecycleTickQueue: Queue | undefined;
+let lotLifecycleTickWorker: Worker | undefined;
+if (env.CRON_INTERNAL_SECRET) {
+  const cronSecret = env.CRON_INTERNAL_SECRET;
+  lotLifecycleTickQueue = new Queue(LOT_LIFECYCLE_TICK_QUEUE_NAME, bullConnection);
+  lotLifecycleTickWorker = new Worker(
+    LOT_LIFECYCLE_TICK_QUEUE_NAME,
+    async () => {
+      await runLotLifecycleTickJob({
+        apiBaseUrl: env.API_INTERNAL_BASE_URL,
+        cronSecret,
+        log,
+      });
+      await heartbeat("lot-lifecycle-tick");
+    },
+    bullConnection,
+  );
+  lotLifecycleTickWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(LOT_LIFECYCLE_TICK_QUEUE_NAME, job, err);
+  });
+  void lotLifecycleTickQueue.add(
+    "lot-lifecycle-tick",
+    {},
+    {
+      jobId: "lot-lifecycle-tick-10s",
+      repeat: { every: 10_000 },
+      removeOnComplete: 100,
+    },
+  );
+  log.info("lot-lifecycle-tick repeat registered (every 10s)");
+}
 
 let staleSubmissionDraftRemindersQueue: Queue | undefined;
 let staleSubmissionDraftRemindersWorker: Worker | undefined;
@@ -824,6 +858,9 @@ registerWorkerErrorHandlers([
         },
       ]
     : []),
+  ...(lotLifecycleTickWorker
+    ? [{ worker: lotLifecycleTickWorker, queue: LOT_LIFECYCLE_TICK_QUEUE_NAME }]
+    : []),
 ]);
 
 const deadLetterQueue = new Queue(DEAD_LETTER_QUEUE_NAME, queueOpts(DEAD_LETTER_QUEUE_NAME));
@@ -861,7 +898,11 @@ void Promise.all([
   heartbeat("impersonation-sweeper"),
   heartbeat("purge-expired-verifications"),
   ...(env.CRON_INTERNAL_SECRET
-    ? [heartbeat("payout-settlement"), heartbeat("stale-submission-draft-reminders")]
+    ? [
+        heartbeat("payout-settlement"),
+        heartbeat("stale-submission-draft-reminders"),
+        heartbeat("lot-lifecycle-tick"),
+      ]
     : []),
 ]);
 
@@ -1005,6 +1046,8 @@ function shutdown(signal: NodeJS.Signals) {
           ? [staleSubmissionDraftRemindersWorker.close()]
           : []),
         ...(staleSubmissionDraftRemindersQueue ? [staleSubmissionDraftRemindersQueue.close()] : []),
+        ...(lotLifecycleTickWorker ? [lotLifecycleTickWorker.close()] : []),
+        ...(lotLifecycleTickQueue ? [lotLifecycleTickQueue.close()] : []),
         deadLetterQueue.close(),
         projectorRunner.stop(),
       ]),

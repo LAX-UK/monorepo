@@ -57,21 +57,20 @@ lotWorker.on("failed", (job: { id?: string } | undefined, err: Error) => {
   reportBackground("lot-worker", err, { jobId: job?.id });
 });
 
-const LIFECYCLE_MS = 10_000;
-setInterval(() => {
-  void container.lotLifecycleService
-    .runTransitions()
-    .then(() => container.saleLifecycleService.reconcileSaleStatuses())
-    .catch((err) => {
-      reportBackground("lot-lifecycle", err);
-    });
-}, LIFECYCLE_MS);
-void container.lotLifecycleService
-  .runTransitions()
-  .then(() => container.saleLifecycleService.reconcileSaleStatuses())
-  .catch((err) => {
-    reportBackground("lot-lifecycle:initial", err);
-  });
+/** Local/dev only: when worker cron is not configured, run lifecycle in-process (single instance). */
+if (!env.CRON_INTERNAL_SECRET) {
+  const LIFECYCLE_MS = 10_000;
+  const runLifecycleSweep = () => {
+    void container.lotLifecycleService
+      .runTransitions()
+      .then(() => container.saleLifecycleService.reconcileSaleStatuses())
+      .catch((err) => {
+        reportBackground("lot-lifecycle", err);
+      });
+  };
+  setInterval(runLifecycleSweep, LIFECYCLE_MS);
+  runLifecycleSweep();
+}
 
 const server = serve(
   {
