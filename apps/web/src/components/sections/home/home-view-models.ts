@@ -1,3 +1,4 @@
+import { coerceToIsoString } from "@/lib/data/http/parse";
 import type { SaleListRow } from "@/lib/data/http/sales.server";
 import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-date";
 import { formatMoney } from "@/lib/format-currency";
@@ -230,6 +231,8 @@ export function heroLotCoverSources(
 
 export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
   const pres = getSaleTypePresentation(sale.deliveryMode);
+  const startIso = coerceToIsoString(sale.startTime);
+  const endIso = coerceToIsoString(sale.endTime);
   return {
     id: sale.id,
     href: salePath(sale),
@@ -242,8 +245,8 @@ export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
     modeBadge: pres.label,
     deliveryMode: sale.deliveryMode,
     status: sale.status,
-    startIso: new Date(sale.startTime).toISOString(),
-    endIso: new Date(sale.endTime).toISOString(),
+    ...(startIso ? { startIso } : {}),
+    ...(endIso ? { endIso } : {}),
   };
 }
 
@@ -275,9 +278,8 @@ export function toHeroLotVM(
   const artistName = artistLineFromLot(lot);
   const primary = lotPriceDisplay(lot);
   const saleId = options?.saleId?.trim();
-  const startTime =
-    lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
-  const endTime = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
+  const startTime = coerceToIsoString(lot.startTime) ?? String(lot.startTime);
+  const endTime = coerceToIsoString(lot.endTime) ?? String(lot.endTime);
   return {
     id: lot.id,
     href: lotPath(lot),
@@ -309,9 +311,8 @@ function priceEmphasisFromStatus(lot: Lot): LotPriceEmphasis {
 export function toLotCardVM(lot: Lot): LotCardVM {
   const artistName = artistLineFromLot(lot);
   const { label, value } = lotPriceDisplay(lot);
-  const startTime =
-    lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
-  const endTime = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
+  const startTime = coerceToIsoString(lot.startTime) ?? String(lot.startTime);
+  const endTime = coerceToIsoString(lot.endTime) ?? String(lot.endTime);
   return {
     id: lot.id,
     href: lotPath(lot),
@@ -371,8 +372,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
   const isLive = sale.status === "active";
   const startsSoon =
     !isLive && Number.isFinite(startMs) && startMs > now && startMs <= now + sevenDaysMs;
-  const countdownEndIso =
-    sale.status === "active" ? new Date(sale.endTime).toISOString() : undefined;
+  const countdownEndIso = sale.status === "active" ? coerceToIsoString(sale.endTime) : undefined;
   const locationLabel = saleMarketingLocationLabel(sale);
   return {
     id: sale.id,
