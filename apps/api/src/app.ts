@@ -7,7 +7,9 @@ import { lot } from "@auction/db/schema";
 import { BROWSER_API_CUSTOM_HEADERS } from "@auction/http-headers";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { cors } from "hono/cors";
+import { etag } from "hono/etag";
 import type { Container } from "./container.js";
 import type { Env } from "./env.js";
 import { assertBullBoardProductionSafety, mountBullBoard } from "./lib/bull-board.js";
@@ -26,6 +28,7 @@ import { createMarketingClientContextMiddleware } from "./middleware/marketing-c
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
 import { createOrganizationCreateRateLimitMiddleware } from "./middleware/organization-rate-limit.js";
+import { createPublicCacheControlMiddleware } from "./middleware/public-cache-control.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
@@ -122,33 +125,41 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/api/auth/*", createAuthNoStoreMiddleware());
   app.use("/auth/*", createAuthNoStoreMiddleware());
 
-  app.use("/lots/*", createRateLimitMiddleware(container.redis));
-  app.use("/sales/*", createRateLimitMiddleware(container.redis));
-  app.use("/bids/*", createRateLimitMiddleware(container.redis));
-  app.use("/users/*", createRateLimitMiddleware(container.redis));
-  app.use("/auth/*", createRateLimitMiddleware(container.redis));
-  app.use("/payments/*", createRateLimitMiddleware(container.redis));
-  app.use("/q/*", createRateLimitMiddleware(container.redis));
-  app.use("/categories/*", createRateLimitMiddleware(container.redis));
-  app.use("/venues/*", createRateLimitMiddleware(container.redis));
-  app.use("/submissions/*", createRateLimitMiddleware(container.redis));
-  app.use("/uploads/*", createRateLimitMiddleware(container.redis));
-  app.use("/admin/*", createRateLimitMiddleware(container.redis));
-  app.use("/legal-entities/*", createRateLimitMiddleware(container.redis));
-  app.use("/kyc/*", createRateLimitMiddleware(container.redis));
-  app.use("/organizations/*", createRateLimitMiddleware(container.redis));
-  app.use("/artists/*", createRateLimitMiddleware(container.redis));
-  app.use("/events/*", createRateLimitMiddleware(container.redis));
-  app.use("/stripe-connect/*", createRateLimitMiddleware(container.redis));
-  app.use("/payouts/*", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/postmark", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/postmark/*", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/shopify", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/shopify/*", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/wordpress", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/wordpress/*", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/xero", createRateLimitMiddleware(container.redis));
-  app.use("/webhooks/xero/*", createRateLimitMiddleware(container.redis));
+  app.use("/lots/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/sales/*", createRateLimitMiddleware(container.rateLimitStore));
+  const publicCatalogueCache = createPublicCacheControlMiddleware({
+    sMaxAge: 30,
+    staleWhileRevalidate: 60,
+  });
+  app.use("/lots", etag(), compress(), publicCatalogueCache);
+  app.use("/lots/*", etag(), compress(), publicCatalogueCache);
+  app.use("/sales", etag(), compress(), publicCatalogueCache);
+  app.use("/sales/*", etag(), compress(), publicCatalogueCache);
+  app.use("/bids/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/users/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/auth/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/payments/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/q/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/categories/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/venues/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/submissions/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/uploads/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/admin/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/legal-entities/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/kyc/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/organizations/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/artists/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/events/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/stripe-connect/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/payouts/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/postmark", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/postmark/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/shopify", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/shopify/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/wordpress", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/wordpress/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/xero", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/xero/*", createRateLimitMiddleware(container.rateLimitStore));
 
   app.get("/health/ready", async (c) => {
     try {

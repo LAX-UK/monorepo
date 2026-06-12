@@ -288,6 +288,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     return c.json({ data: { bidsPerMinute } });
   });
 
+  platform.get("/nav-counts", requireAdminDashboard, async (c) => {
+    const data = await container.adminNavCountsService.getCounts();
+    return c.json({ data });
+  });
+
   platform.get(
     "/qr-codes",
     requireQrCodesAccess,

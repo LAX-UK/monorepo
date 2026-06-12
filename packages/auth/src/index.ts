@@ -14,6 +14,7 @@ export {
   type SignInGateRedis,
 } from "./sign-in-turnstile-gate.js";
 export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";
+export { hasSessionCredential } from "./session-credential.js";
 export {
   checkAndRotateRefreshToken,
   RedisRefreshReplayStore,

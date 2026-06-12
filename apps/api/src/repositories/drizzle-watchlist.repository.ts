@@ -40,6 +40,14 @@ export class DrizzleWatchlistRepository implements IWatchlistRepository {
     return rows.map(mapRow);
   }
 
+  async listIds(userId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ lotId: watchlist.lotId })
+      .from(watchlist)
+      .where(eq(watchlist.userId, userId));
+    return rows.map((row) => row.lotId);
+  }
+
   async exists(userId: string, lotId: string): Promise<boolean> {
     const rows = await this.db
       .select({ id: watchlist.id })

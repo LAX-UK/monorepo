@@ -10,6 +10,7 @@ export type WatchlistRow = {
 export interface IWatchlistRepository {
   add(userId: string, lotId: string, conn?: Database): Promise<WatchlistRow>;
   remove(userId: string, lotId: string, conn?: Database): Promise<void>;
+  listIds(userId: string): Promise<string[]>;
   findByUser(userId: string): Promise<WatchlistRow[]>;
   exists(userId: string, lotId: string): Promise<boolean>;
   listUserIdsForLot(lotId: string): Promise<string[]>;
