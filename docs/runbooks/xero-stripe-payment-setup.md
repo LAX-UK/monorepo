@@ -44,9 +44,12 @@ In each Stripe test account: **Developers → API keys**. The account whose **`p
 ### 3. Resolve platform account id from the secret key
 
 ```bash
-curl -s -u "sk_test_YOUR_KEY:" https://api.stripe.com/v1/account \
+curl -s https://api.stripe.com/v1/account \
+  -H "Authorization: Bearer ${STRIPE_SECRET_KEY}" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['id'], d.get('email'))"
 ```
+
+Use the test secret from 1Password (see section 2 above); do not paste keys into shell history or docs.
 
 Compare the printed `acct_…` with the account switcher in the Stripe dashboard.
 
