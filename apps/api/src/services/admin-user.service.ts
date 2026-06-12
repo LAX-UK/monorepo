@@ -23,6 +23,7 @@ import type {
   IAdminUserRoleManager,
   IAdminUserSuspender,
 } from "./interfaces/admin-user.js";
+import type { IUserSuspensionCacheInvalidator } from "./interfaces/user-suspension.js";
 
 function assertAdminAccess(
   actorRole: string,
@@ -44,6 +45,7 @@ export class AdminUserService {
     private readonly activity: IAdminUserActivityReader,
     private readonly bids: IAdminUserBidsReader,
     private readonly kyc?: IAdminUserKycReader,
+    private readonly suspensionCacheInvalidator?: IUserSuspensionCacheInvalidator,
   ) {}
 
   list(actorRole: string, actorStaffRole: string | null | undefined, filter: AdminUserListFilter) {
@@ -116,19 +118,21 @@ export class AdminUserService {
     await this.roles.setRoleAndStaff(targetUserId, "staff", staffRole);
   }
 
-  suspend(
+  async suspend(
     actorRole: string,
     actorStaffRole: string | null | undefined,
     userId: string,
     reason: string | null,
   ) {
     assertAdminAccess(actorRole, actorStaffRole, USER_MODERATION_ACCESS);
-    return this.suspender.suspend(userId, reason);
+    await this.suspender.suspend(userId, reason);
+    await this.suspensionCacheInvalidator?.invalidate(userId);
   }
 
-  unsuspend(actorRole: string, actorStaffRole: string | null | undefined, userId: string) {
+  async unsuspend(actorRole: string, actorStaffRole: string | null | undefined, userId: string) {
     assertAdminAccess(actorRole, actorStaffRole, USER_MODERATION_ACCESS);
-    return this.suspender.unsuspend(userId);
+    await this.suspender.unsuspend(userId);
+    await this.suspensionCacheInvalidator?.invalidate(userId);
   }
 
   activityFor(

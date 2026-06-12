@@ -52,8 +52,13 @@ export class LocalDiskObjectStorage implements IObjectStorage {
     };
   }
 
-  async createPresignedGet(args: { key: string; expiresInSec: number }): Promise<{ url: string }> {
+  async createPresignedGet(args: {
+    key: string;
+    expiresInSec: number;
+    signingDate?: Date | undefined;
+  }): Promise<{ url: string }> {
     void args.expiresInSec;
+    void args.signingDate;
     return { url: this.getPublicUrl(args.key) };
   }
 

@@ -785,6 +785,13 @@
       "when": 1786800000000,
       "tag": "0112_domain_events_user_registered_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1786900000000,
+      "tag": "0113_catalogue_perf_indexes",
+      "breakpoints": true
     }
   ]
 }

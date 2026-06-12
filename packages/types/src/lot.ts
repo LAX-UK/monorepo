@@ -12,6 +12,19 @@ export const lotStatuses = [
 ] as const;
 export type LotStatus = (typeof lotStatuses)[number];
 
+/** Card/list projection of a lot — omits heavy catalogue fields. */
+export type LotSummary = {
+  id: string;
+  saleId: string | null;
+  lotNumber: number | null;
+  title: string;
+  status: LotStatus;
+  currentPrice: string;
+  endTime: Date;
+  images: string[];
+  categoryIds?: string[];
+};
+
 /** Optional marketing / catalog enrichment (stored as JSON on `lot`). */
 export type LotMarketingDetails = {
   estimate?: { low: string; high: string; currency: string };

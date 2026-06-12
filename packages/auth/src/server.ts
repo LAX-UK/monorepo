@@ -260,6 +260,10 @@ export function createAuth(env: AuthEnv): Auth {
     session: {
       expiresIn: AUTH_TIMINGS.sessionExpiresSec,
       updateAge: AUTH_TIMINGS.sessionUpdateAgeSec,
+      cookieCache: {
+        enabled: true,
+        maxAge: 300,
+      },
     },
     plugins: buildJwtAndOidcPlugins({
       db: env.db,

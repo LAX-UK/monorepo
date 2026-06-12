@@ -1,6 +1,6 @@
 # Buyer payment flow (Stripe Checkout tiers + Xero ledger)
 
-Buyers pay on the **LAX Stripe platform account (Account B)** via hosted **Stripe Checkout**. Xero is **ledger-only** (ACCREC invoice + payment sync) — not a buyer checkout rail.
+Buyers pay on the **LAX Stripe Connect platform account** via hosted **Stripe Checkout**. Xero is **ledger-only** (ACCREC invoice + payment sync) — not a buyer checkout rail.
 
 ## Tiered checkout
 
@@ -20,7 +20,7 @@ sequenceDiagram
   participant Buyer
   participant Web as apps_web
   participant API as apps_api
-  participant Stripe as Stripe_platform_Account_B
+  participant Stripe as Stripe_platform
   participant Xero
 
   Buyer->>Web: Wins lot, opens Collection

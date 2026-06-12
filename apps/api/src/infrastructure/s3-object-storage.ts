@@ -88,13 +88,20 @@ export class S3ObjectStorage implements IObjectStorage {
     };
   }
 
-  async createPresignedGet(args: { key: string; expiresInSec: number }): Promise<{ url: string }> {
+  async createPresignedGet(args: {
+    key: string;
+    expiresInSec: number;
+    signingDate?: Date | undefined;
+  }): Promise<{ url: string }> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: args.key,
     });
     return {
-      url: await getSignedUrl(this.client, command, { expiresIn: args.expiresInSec }),
+      url: await getSignedUrl(this.client, command, {
+        expiresIn: args.expiresInSec,
+        ...(args.signingDate ? { signingDate: args.signingDate } : {}),
+      }),
     };
   }
 
