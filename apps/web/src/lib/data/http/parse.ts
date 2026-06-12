@@ -22,6 +22,12 @@ export function coerceToDate(value: unknown): Date {
   return toDate(value);
 }
 
+/** ISO 8601 string when `value` is a valid date; otherwise `undefined`. */
+export function coerceToIsoString(value: unknown): string | undefined {
+  const d = toDate(value);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
 function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {
   const v = typeof raw === "string" ? raw : "";
   if (v === "online" || v === "onsite") return v;
