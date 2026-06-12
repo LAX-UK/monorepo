@@ -74,6 +74,8 @@ export type ArchiveEndedAggregateFilter = {
 
 export interface ILotRepository {
   findById(id: string): Promise<Lot | null>;
+  /** Batch load lots by id (avoids N+1). */
+  findByIds(ids: string[]): Promise<Lot[]>;
   /** Lock the lot row for the duration of the current transaction (SELECT FOR UPDATE). */
   findByIdForUpdate(id: string): Promise<Lot | null>;
   create(input: CreateLotInput): Promise<Lot>;

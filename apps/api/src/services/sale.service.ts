@@ -74,6 +74,7 @@ export type SaleServiceOptions = {
   imageCleanup?: ImageCleanupService;
   saleFollowReader?: SaleFollowReader | null;
   mediaUrlResolver?: MediaUrlResolver;
+  catalogueMediaUrlResolver?: MediaUrlResolver;
   englishOnlyAuctions?: boolean;
   db?: Database;
   domainEventPublisher?: DomainEventPublisher | null;
@@ -92,6 +93,7 @@ export class SaleService {
   private readonly imageCleanup: ImageCleanupService | undefined;
   private readonly saleFollowReader: SaleFollowReader | null;
   private readonly mediaUrlResolver: MediaUrlResolver | undefined;
+  private readonly catalogueMediaUrlResolver: MediaUrlResolver | undefined;
   private readonly englishOnlyAuctions: boolean;
   private readonly db: Database | undefined;
   private readonly domainEventPublisher: DomainEventPublisher | null;
@@ -109,6 +111,7 @@ export class SaleService {
     this.imageCleanup = opts.imageCleanup;
     this.saleFollowReader = opts.saleFollowReader ?? null;
     this.mediaUrlResolver = opts.mediaUrlResolver;
+    this.catalogueMediaUrlResolver = opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.db = opts.db;
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
@@ -352,7 +355,7 @@ export class SaleService {
           : {}),
     };
     const rows = await this.list(queryFilter);
-    const data = await presentSalesWithLotsImages(this.mediaUrlResolver, rows);
+    const data = await presentSalesWithLotsImages(this.catalogueMediaUrlResolver, rows);
     if (canPreview) return { data };
     return {
       data: data

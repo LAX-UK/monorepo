@@ -10,9 +10,9 @@ export type Database = NodePgDatabase<typeof schema>;
 
 function readPoolMax(): number {
   const raw = process.env.DATABASE_POOL_MAX;
-  if (raw === undefined || raw === "") return 10;
+  if (raw === undefined || raw === "") return 20;
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 20;
 }
 
 export function createDb(connectionString: string): Database {
