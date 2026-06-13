@@ -122,6 +122,8 @@ export interface ILotRepository {
   findBySaleId(saleId: string): Promise<Lot[]>;
   /** Batch lots for many sales (avoids N+1). */
   findBySaleIds(saleIds: string[]): Promise<Lot[]>;
+  /** UTC day counts for admin KPI trends (created_at >= rangeStart, non-deleted lots). */
+  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
   /** Lot counts per sale id for list endpoints. */
   countLotsBySaleIds(
     saleIds: string[],
@@ -162,6 +164,8 @@ export interface ISaleRepository {
   findWithStatuses(statuses: SaleStatus[]): Promise<Sale[]>;
   update(id: string, patch: Partial<CreateSaleInput>): Promise<Sale>;
   updateStatus(id: string, status: SaleStatus): Promise<void>;
+  /** UTC day counts for admin KPI trends (created_at >= rangeStart, non-deleted sales). */
+  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
 }
 
 export type CreateBidRow = {

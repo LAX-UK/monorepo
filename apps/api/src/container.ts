@@ -177,6 +177,10 @@ import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service
 import { AdminLotsKpiTrendService } from "./services/admin/admin-lots-kpi-trend.service.js";
 import { createAdminNavCountsDeps } from "./services/admin/admin-nav-counts.deps.js";
 import { AdminNavCountsService } from "./services/admin/admin-nav-counts.service.js";
+import { AdminPaymentListQueryService } from "./services/admin/admin-payment-list-query.service.js";
+import { AdminPaymentsKpiTrendService } from "./services/admin/admin-payments-kpi-trend.service.js";
+import { AdminPayoutsKpiTrendService } from "./services/admin/admin-payouts-kpi-trend.service.js";
+import { AdminSalesKpiTrendService } from "./services/admin/admin-sales-kpi-trend.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
 import { LegalEntityDocumentAdminService } from "./services/admin/legal-entity-document-admin.service.js";
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
@@ -430,6 +434,10 @@ export type Container = {
   adminUserService: AdminUserService;
   adminNavCountsService: AdminNavCountsService;
   adminLotsKpiTrendService: AdminLotsKpiTrendService;
+  adminPaymentsKpiTrendService: AdminPaymentsKpiTrendService;
+  adminSalesKpiTrendService: AdminSalesKpiTrendService;
+  adminPayoutsKpiTrendService: AdminPayoutsKpiTrendService;
+  adminPaymentListQueryService: AdminPaymentListQueryService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
   httpErrorHandler: ErrorHandlerService;
@@ -1542,7 +1550,11 @@ export function createContainer(env: Env): Container {
     cache,
     30,
   );
-  const adminLotsKpiTrendService = new AdminLotsKpiTrendService(db);
+  const adminLotsKpiTrendService = new AdminLotsKpiTrendService(lotRepo);
+  const adminPaymentsKpiTrendService = new AdminPaymentsKpiTrendService(paymentRepo);
+  const adminSalesKpiTrendService = new AdminSalesKpiTrendService(saleRepo);
+  const adminPayoutsKpiTrendService = new AdminPayoutsKpiTrendService(payoutRepository);
+  const adminPaymentListQueryService = new AdminPaymentListQueryService(paymentRepo);
 
   return {
     env,
@@ -1631,6 +1643,10 @@ export function createContainer(env: Env): Container {
     adminUserService,
     adminNavCountsService,
     adminLotsKpiTrendService,
+    adminPaymentsKpiTrendService,
+    adminSalesKpiTrendService,
+    adminPayoutsKpiTrendService,
+    adminPaymentListQueryService,
     adminMetricsService,
     attentionFeedReader,
     httpErrorHandler,
