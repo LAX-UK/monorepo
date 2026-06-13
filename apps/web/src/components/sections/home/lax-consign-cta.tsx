@@ -1,7 +1,7 @@
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
+import { MarketingSectionReveal } from "@/components/marketing/marketing-reveal";
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { CONSIGN_COPY } from "@/components/sections/home/home-copy";
-import { RevealInView } from "@/components/ui/reveal";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { LabelCaps } from "@auction/ui";
@@ -23,7 +23,7 @@ export function LaxConsignCTA() {
       )}
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col items-start gap-6 md:gap-8 lg:flex-row lg:items-center lg:gap-16">
-        <RevealInView variant="fadeUp" className="flex-1">
+        <MarketingSectionReveal index={0} className="flex-1">
           <MarketingPromoCta
             as="div"
             headingId="consign-heading"
@@ -37,8 +37,8 @@ export function LaxConsignCTA() {
               </p>
             }
           />
-        </RevealInView>
-        <RevealInView variant="fadeUp" delayMs={120} className="lg:shrink-0">
+        </MarketingSectionReveal>
+        <MarketingSectionReveal index={2} className="lg:shrink-0">
           <div className="flex flex-col items-start gap-3">
             <Button variant="cta" size="xl" className="min-h-[44px] w-fit" asChild>
               <SellCtaLink
@@ -54,7 +54,7 @@ export function LaxConsignCTA() {
               {CONSIGN_COPY.microcopy}
             </p>
           </div>
-        </RevealInView>
+        </MarketingSectionReveal>
       </div>
     </section>
   );

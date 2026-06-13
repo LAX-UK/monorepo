@@ -8,27 +8,19 @@ import type { LotCardVM } from "@/components/sections/home/home-view-models";
 
 type Props = {
   item: LotCardVM;
-  index: number;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath: string;
 };
 
 /** Figma B3 lot tile: fixed 340px art, glass live tag, dual price rows, bid row. */
-export function UrgencyLotCard({
-  item,
-  index,
-  isAuthenticated,
-  watchedLotIds,
-  loginNextPath,
-}: Props) {
+export function UrgencyLotCard({ item, isAuthenticated, watchedLotIds, loginNextPath }: Props) {
   const rows = item.endingSoonPriceRows;
   const initialWatching = watchedLotIds.includes(item.id);
 
   return (
     <MarketingLotTile
       lotId={item.id}
-      index={index}
       href={item.href}
       linkAriaLabel={`${item.title} — view artwork`}
       imageUrl={item.imageUrl}

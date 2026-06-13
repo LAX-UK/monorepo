@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import type { UrgencySectionVariant } from "@/components/sections/home/lax-urgency-section";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
@@ -61,14 +62,14 @@ export function LaxUrgencySectionBody({
   return (
     <div className="grid auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-4 lg:gap-8">
       {items.map((item, index) => (
-        <UrgencyLotCard
-          key={item.id}
-          item={{ ...item, href: urgencyLotHref(item, layoutView) }}
-          index={index}
-          isAuthenticated={isAuthenticated}
-          watchedLotIds={watchedLotIds}
-          loginNextPath={loginNextPath}
-        />
+        <MarketingCardReveal key={item.id} index={index} className="h-full min-w-0">
+          <UrgencyLotCard
+            item={{ ...item, href: urgencyLotHref(item, layoutView) }}
+            isAuthenticated={isAuthenticated}
+            watchedLotIds={watchedLotIds}
+            loginNextPath={loginNextPath}
+          />
+        </MarketingCardReveal>
       ))}
     </div>
   );
