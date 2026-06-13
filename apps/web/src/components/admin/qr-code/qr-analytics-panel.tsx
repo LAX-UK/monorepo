@@ -1,127 +1,39 @@
 "use client";
 
-import { ChartRenderer } from "@/components/charts/chart-renderer";
 import {
-  type AdminQrCodeAnalytics,
-  type AdminQrCodeBreakdownRow,
-  type AdminQrCodeRecentScan,
-  adminLoadQrCodeAnalyticsResultAction,
-} from "@/lib/actions/admin-qr-codes";
-import { customDateRangeToAnalyticsQuery } from "@/lib/admin/qr-analytics-range";
+  QR_ANALYTICS_PRESET_OPTIONS,
+  useQrAnalytics,
+} from "@/components/admin/qr-code/use-qr-analytics";
+import { ChartRenderer } from "@/components/charts/chart-renderer";
 import { formatDateTime } from "@/lib/ui/format";
 import { SegmentToggle } from "@auction/ui";
-import { DateRangePicker, type DateRangeValue } from "@auction/ui/components/date-range-picker";
+import { DateRangePicker } from "@auction/ui/components/date-range-picker";
 import { Skeleton } from "@auction/ui/components/skeleton";
-import {
-  AUCTION_ZONE_LABEL,
-  DEFAULT_AUCTION_ZONE,
-  toDateFormString,
-} from "@auction/ui/lib/datetime";
-import type { QrCodeAnalyticsRange } from "@auction/validators";
-import { TZDate } from "@date-fns/tz";
-import { addDays } from "date-fns";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { AUCTION_ZONE_LABEL } from "@auction/ui/lib/datetime";
+import type {
+  QrCodeAnalyticsBreakdownRow,
+  QrCodeAnalyticsRange,
+  QrCodeDetailedAnalytics,
+  QrCodeRecentScan,
+} from "@auction/validators";
 
 type Props = {
   qrCodeId: string;
-  initialAnalytics: AdminQrCodeAnalytics | null;
+  initialAnalytics: QrCodeDetailedAnalytics | null;
 };
 
-type RangeSelection =
-  | { kind: "preset"; value: QrCodeAnalyticsRange }
-  | { kind: "custom"; value: DateRangeValue };
-
-const PRESET_OPTIONS: { value: QrCodeAnalyticsRange; label: string }[] = [
-  { value: "24h", label: "24h" },
-  { value: "7d", label: "7d" },
-  { value: "30d", label: "30d" },
-  { value: "90d", label: "90d" },
-  { value: "all", label: "All" },
-];
-
-function rangeCacheKey(selection: RangeSelection): string {
-  if (selection.kind === "preset") return selection.value;
-  return `custom:${selection.value.from}:${selection.value.to}`;
-}
-
-function toAnalyticsQuery(selection: RangeSelection) {
-  if (selection.kind === "preset") return { range: selection.value };
-  return customDateRangeToAnalyticsQuery(selection.value);
-}
-
-function defaultCustomRange(): DateRangeValue {
-  const end = new TZDate(new Date(), DEFAULT_AUCTION_ZONE);
-  const start = addDays(new TZDate(new Date(end.getTime()), DEFAULT_AUCTION_ZONE), -29);
-  return {
-    from: toDateFormString(new Date(start.getTime()), DEFAULT_AUCTION_ZONE),
-    to: toDateFormString(new Date(end.getTime()), DEFAULT_AUCTION_ZONE),
-  };
-}
-
 export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
-  const [selection, setSelection] = useState<RangeSelection>({ kind: "preset", value: "30d" });
-  const [analytics, setAnalytics] = useState<AdminQrCodeAnalytics | null>(initialAnalytics);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const cacheRef = useRef(new Map<string, AdminQrCodeAnalytics>());
-  const requestSeqRef = useRef(0);
-
-  useEffect(() => {
-    if (initialAnalytics) {
-      cacheRef.current.set("30d", initialAnalytics);
-    }
-  }, [initialAnalytics]);
-
-  const fetchAnalytics = useCallback(
-    async (nextSelection: RangeSelection) => {
-      const key = rangeCacheKey(nextSelection);
-      const cached = cacheRef.current.get(key);
-      if (cached) {
-        setAnalytics(cached);
-        setError(null);
-        return;
-      }
-
-      const seq = ++requestSeqRef.current;
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await adminLoadQrCodeAnalyticsResultAction(
-          qrCodeId,
-          toAnalyticsQuery(nextSelection),
-        );
-        if (seq !== requestSeqRef.current) return;
-        if (!result.ok) {
-          setError(result.error);
-          return;
-        }
-        if (result.data) {
-          cacheRef.current.set(key, result.data);
-          setAnalytics(result.data);
-        }
-      } catch (err) {
-        if (seq !== requestSeqRef.current) return;
-        setError(err instanceof Error ? err.message : "Could not load analytics");
-      } finally {
-        if (seq === requestSeqRef.current) setLoading(false);
-      }
-    },
-    [qrCodeId],
-  );
-
-  useEffect(() => {
-    if (selection.kind === "preset" && selection.value === "30d" && initialAnalytics) {
-      setAnalytics(initialAnalytics);
-      return;
-    }
-    void fetchAnalytics(selection);
-  }, [fetchAnalytics, initialAnalytics, selection]);
-
-  const rangeLabel =
-    selection.kind === "preset"
-      ? (PRESET_OPTIONS.find((option) => option.value === selection.value)?.label ??
-        selection.value)
-      : "Custom";
+  const {
+    selection,
+    analytics,
+    loading,
+    error,
+    rangeLabel,
+    retry,
+    selectPreset,
+    selectCustom,
+    updateCustomRange,
+  } = useQrAnalytics(qrCodeId, initialAnalytics);
 
   return (
     <div className="space-y-4 rounded-lg bg-surface-container-high p-3 text-sm">
@@ -131,44 +43,64 @@ export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
           <p className="text-xs text-on-surface-variant">{rangeLabel}</p>
         </div>
         <div className="flex flex-col gap-2">
-          <SegmentToggle
-            aria-label="QR analytics range"
-            value={selection.kind === "preset" ? selection.value : "custom"}
-            options={[
-              ...PRESET_OPTIONS.map((option) => ({
-                value: option.value,
-                label: option.label,
-              })),
-              { value: "custom", label: "Custom" },
-            ]}
-            onValueChange={(next) => {
-              if (next === "custom") {
-                setSelection({ kind: "custom", value: defaultCustomRange() });
-                return;
-              }
-              setSelection({ kind: "preset", value: next as QrCodeAnalyticsRange });
-            }}
-          />
+          <div className="-mx-1 overflow-x-auto px-1 pb-1">
+            <SegmentToggle
+              aria-label="QR analytics range"
+              value={selection.kind === "preset" ? selection.value : "custom"}
+              options={[
+                ...QR_ANALYTICS_PRESET_OPTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                })),
+                { value: "custom", label: "Custom" },
+              ]}
+              onValueChange={(next) => {
+                if (next === "custom") {
+                  selectCustom();
+                  return;
+                }
+                selectPreset(next as QrCodeAnalyticsRange);
+              }}
+            />
+          </div>
           {selection.kind === "custom" ? (
             <div className="flex flex-col gap-1">
-              <DateRangePicker
-                value={selection.value}
-                onChange={(next) => setSelection({ kind: "custom", value: next })}
-              />
+              <DateRangePicker value={selection.value} onChange={updateCustomRange} />
               <p className="font-body text-xs text-on-surface-variant">{AUCTION_ZONE_LABEL}</p>
             </div>
           ) : null}
         </div>
       </div>
 
-      {loading ? <QrAnalyticsSkeleton /> : null}
-      {!loading && error ? <p className="text-on-surface-variant">{error}</p> : null}
-      {!loading && !error && analytics ? <QrAnalyticsContent analytics={analytics} /> : null}
+      {loading && !analytics ? <QrAnalyticsSkeleton /> : null}
+      {!loading && error ? (
+        <div className="rounded-md border border-error/30 bg-error-container/20 p-3 text-sm">
+          <p className="text-on-surface-variant">{error}</p>
+          <button
+            type="button"
+            className="mt-2 text-sm font-medium text-primary underline-offset-2 hover:underline"
+            onClick={retry}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+      {analytics && !error ? (
+        <div className={loading ? "pointer-events-none opacity-60" : undefined}>
+          <QrAnalyticsContent analytics={analytics} loading={loading} />
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function QrAnalyticsContent({ analytics }: { analytics: AdminQrCodeAnalytics }) {
+function QrAnalyticsContent({
+  analytics,
+  loading,
+}: {
+  analytics: QrCodeDetailedAnalytics;
+  loading: boolean;
+}) {
   const trendData = analytics.trend.map((row) => ({
     label: formatTrendLabel(row.bucket, analytics.granularity),
     value: row.scans,
@@ -176,6 +108,11 @@ function QrAnalyticsContent({ analytics }: { analytics: AdminQrCodeAnalytics }) 
 
   return (
     <div className="space-y-4">
+      {loading ? (
+        <p className="text-xs text-on-surface-variant" aria-live="polite">
+          Updating analytics…
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <QrStatCard label="Scans" value={String(analytics.totalScans)} />
         {analytics.uniqueIps != null ? (
@@ -254,7 +191,11 @@ function QrTrendChart({
       <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
         {granularity === "hour" ? "Hourly scans" : "Daily scans"}
       </p>
-      <ChartRenderer kind="bar" data={data} height={140} />
+      <div className="overflow-x-auto">
+        <div className={data.length > 12 ? "min-w-[480px]" : undefined}>
+          <ChartRenderer kind="bar" data={data} height={140} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -265,7 +206,7 @@ function QrBreakdownList({
   total,
 }: {
   title: string;
-  rows: AdminQrCodeBreakdownRow[];
+  rows: QrCodeAnalyticsBreakdownRow[];
   total: number;
 }) {
   if (rows.length === 0) return null;
@@ -297,13 +238,13 @@ function QrBreakdownList({
   );
 }
 
-function QrRecentScans({ rows }: { rows: AdminQrCodeRecentScan[] }) {
+function QrRecentScans({ rows }: { rows: QrCodeRecentScan[] }) {
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
         Recent scans
       </p>
-      <ul className="divide-y divide-border-hairline rounded-md border border-border-hairline bg-surface-container-lowest">
+      <ul className="max-h-48 divide-y divide-border-hairline overflow-y-auto rounded-md border border-border-hairline bg-surface-container-lowest overscroll-contain">
         {rows.map((row, index) => (
           <li key={`${row.scannedAt}-${index}`} className="space-y-0.5 px-2 py-2 text-xs">
             <p className="font-medium text-on-surface">{formatDateTime(row.scannedAt)}</p>
