@@ -6,8 +6,8 @@ Buyers pay on the **LAX Stripe Connect platform account** via hosted **Stripe Ch
 
 | Tier | Amount (default thresholds) | Rail |
 |------|------------------------------|------|
-| Card | ≤ £100,000 | Stripe card Checkout |
-| Bank transfer | > £100,000 and < £500,000 | Stripe `gb_bank_transfer` |
+| Card | ≤ £10,000 | Stripe card Checkout |
+| Bank transfer | > £10,000 and < £500,000 | Stripe `gb_bank_transfer` |
 | Manual review | ≥ £500,000 or archived seller | No URL until finance **Release for checkout** |
 | Blocked | > £999,999.99 | `400 payment_amount_exceeds_limit` |
 
