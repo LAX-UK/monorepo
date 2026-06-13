@@ -11,7 +11,7 @@ import {
 import type { QrCodeScanJobPayload } from "@auction/queues";
 import { lotPath, salePath } from "@auction/types";
 import type { Queue } from "bullmq";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type { AppLogger } from "../lib/logger.js";
 
@@ -31,13 +31,6 @@ export type QrCodeDto = {
   expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
-};
-
-export type QrCodeAnalyticsDto = {
-  totalScans: number;
-  daily: { day: string; scans: number }[];
-  byCountry: { country: string; scans: number }[];
-  byDevice: { deviceType: string; scans: number }[];
 };
 
 type ResolveResult =
@@ -251,38 +244,6 @@ export class QrCodeService {
         "qr_code scan enqueue failed",
       );
     }
-  }
-
-  async analytics(qrCodeId: string, days: number): Promise<QrCodeAnalyticsDto> {
-    const since = new Date();
-    since.setUTCDate(since.getUTCDate() - days);
-    since.setUTCHours(0, 0, 0, 0);
-    const rows = await this.db
-      .select({
-        day: qrCodeScanDaily.day,
-        country: qrCodeScanDaily.country,
-        deviceType: qrCodeScanDaily.deviceType,
-        scans: qrCodeScanDaily.scans,
-      })
-      .from(qrCodeScanDaily)
-      .where(and(eq(qrCodeScanDaily.qrCodeId, qrCodeId), gte(qrCodeScanDaily.day, since)));
-
-    const daily = new Map<string, number>();
-    const byCountry = new Map<string, number>();
-    const byDevice = new Map<string, number>();
-    for (const row of rows) {
-      const day = row.day.toISOString().slice(0, 10);
-      daily.set(day, (daily.get(day) ?? 0) + row.scans);
-      byCountry.set(row.country, (byCountry.get(row.country) ?? 0) + row.scans);
-      byDevice.set(row.deviceType, (byDevice.get(row.deviceType) ?? 0) + row.scans);
-    }
-    const totalScans = rows.reduce((sum, row) => sum + row.scans, 0);
-    return {
-      totalScans,
-      daily: toSortedPairs(daily, "day"),
-      byCountry: toSortedPairs(byCountry, "country"),
-      byDevice: toSortedPairs(byDevice, "deviceType"),
-    };
   }
 
   private async getDefault(
@@ -502,13 +463,4 @@ function parseUserAgent(userAgent: string): { deviceType: string; browser: strin
           ? "windows"
           : "unknown";
   return { deviceType, browser, os };
-}
-
-function toSortedPairs<K extends "day" | "country" | "deviceType">(
-  map: Map<string, number>,
-  key: K,
-): Array<Record<K, string> & { scans: number }> {
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([value, scans]) => ({ [key]: value, scans }) as Record<K, string> & { scans: number });
 }

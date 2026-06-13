@@ -1,4 +1,6 @@
-export type QrAnalyticsBreakdownRow = { key: string; scans: number };
+import type { QrCodeAnalyticsBreakdownRow } from "@auction/validators";
+
+export type QrAnalyticsBreakdownRow = QrCodeAnalyticsBreakdownRow;
 export type QrAnalyticsTrendRow = { bucket: string; scans: number };
 
 function utcDayStart(d: Date): Date {

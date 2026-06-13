@@ -2,7 +2,6 @@
 
 import { QrAnalyticsPanel } from "@/components/admin/qr-code/qr-analytics-panel";
 import {
-  type AdminQrCodeAnalytics as Analytics,
   type AdminQrCodeItem as QrCodeItem,
   adminLoadQrCodeDialogResultAction,
   adminRegenerateQrCodeResultAction,
@@ -18,6 +17,7 @@ import {
   DialogTrigger,
 } from "@auction/ui/components/dialog";
 import { Skeleton } from "@auction/ui/components/skeleton";
+import type { QrCodeDetailedAnalytics } from "@auction/validators";
 import { Download, Printer, QrCode, RotateCcw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useId, useState } from "react";
@@ -39,13 +39,18 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
   const [open, setOpen] = useState(false);
   const [confirmRegenerateOpen, setConfirmRegenerateOpen] = useState(false);
   const [item, setItem] = useState<QrCodeItem | null>(null);
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [analytics, setAnalytics] = useState<QrCodeDetailedAnalytics | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [renderingPng, setRenderingPng] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [analyticsSession, setAnalyticsSession] = useState(0);
   const qrId = useId().replace(/:/g, "");
+
+  useEffect(() => {
+    if (open) setAnalyticsSession((session) => session + 1);
+  }, [open]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -183,96 +188,102 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
           QR code
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[min(90vh,900px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 space-y-1.5 border-b border-border-hairline px-6 pt-6 pb-4 pr-12 text-left">
           <DialogTitle>Marketing QR code</DialogTitle>
           <DialogDescription>
             Dynamic QR link for printed gallery and campaign material.
           </DialogDescription>
         </DialogHeader>
-        {loading && !item ? <QrCodeDialogSkeleton /> : null}
-        {!loading && loadError && !item ? (
-          <div className="rounded-lg border border-error/30 bg-error-container/20 p-4 text-sm">
-            <p className="font-medium text-on-surface">Could not load QR code</p>
-            <p className="mt-1 text-on-surface-variant">{loadError}</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => void load()}
-            >
-              Try again
-            </Button>
-          </div>
-        ) : null}
-        {item ? (
-          <div className="space-y-5">
-            <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-5 dark:bg-surface-container-highest">
-              <QRCodeSVG id={qrId} value={item.shortUrl} size={224} level="M" includeMargin />
-            </div>
-            <div className="space-y-1 text-sm">
-              <p className="font-medium text-on-surface">Short URL</p>
-              <p className="break-all text-on-surface-variant">{item.shortUrl}</p>
-              <p className="break-all text-xs text-on-surface-variant">
-                Destination: {item.destinationUrl}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void copy()}
-                disabled={actionsDisabled}
-              >
-                Copy link
-              </Button>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+          {loading && !item ? <QrCodeDialogSkeleton /> : null}
+          {!loading && loadError && !item ? (
+            <div className="rounded-lg border border-error/30 bg-error-container/20 p-4 text-sm">
+              <p className="font-medium text-on-surface">Could not load QR code</p>
+              <p className="mt-1 text-on-surface-variant">{loadError}</p>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={downloadSvg}
-                disabled={actionsDisabled}
+                className="mt-3"
+                onClick={() => void load()}
               >
-                <Download className="size-4" aria-hidden />
-                SVG
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void downloadPng()}
-                disabled={actionsDisabled}
-                aria-busy={renderingPng || undefined}
-              >
-                <Download className="size-4" aria-hidden />
-                {renderingPng ? "Rendering..." : "PNG"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={print}
-                disabled={actionsDisabled}
-                aria-busy={printing || undefined}
-              >
-                <Printer className="size-4" aria-hidden />
-                {printing ? "Opening print..." : "Print"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmRegenerateOpen(true)}
-                disabled={actionsDisabled}
-              >
-                <RotateCcw className="size-4" aria-hidden />
-                {regenerating ? "Regenerating..." : "Regenerate"}
+                Try again
               </Button>
             </div>
-            <QrAnalyticsPanel qrCodeId={item.id} initialAnalytics={analytics} />
-          </div>
-        ) : null}
+          ) : null}
+          {item ? (
+            <div className="space-y-5">
+              <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-5 dark:bg-surface-container-highest">
+                <QRCodeSVG id={qrId} value={item.shortUrl} size={224} level="M" includeMargin />
+              </div>
+              <div className="space-y-1 text-sm">
+                <p className="font-medium text-on-surface">Short URL</p>
+                <p className="break-all text-on-surface-variant">{item.shortUrl}</p>
+                <p className="break-all text-xs text-on-surface-variant">
+                  Destination: {item.destinationUrl}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void copy()}
+                  disabled={actionsDisabled}
+                >
+                  Copy link
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadSvg}
+                  disabled={actionsDisabled}
+                >
+                  <Download className="size-4" aria-hidden />
+                  SVG
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void downloadPng()}
+                  disabled={actionsDisabled}
+                  aria-busy={renderingPng || undefined}
+                >
+                  <Download className="size-4" aria-hidden />
+                  {renderingPng ? "Rendering..." : "PNG"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={print}
+                  disabled={actionsDisabled}
+                  aria-busy={printing || undefined}
+                >
+                  <Printer className="size-4" aria-hidden />
+                  {printing ? "Opening print..." : "Print"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmRegenerateOpen(true)}
+                  disabled={actionsDisabled}
+                >
+                  <RotateCcw className="size-4" aria-hidden />
+                  {regenerating ? "Regenerating..." : "Regenerate"}
+                </Button>
+              </div>
+              <QrAnalyticsPanel
+                key={analyticsSession}
+                qrCodeId={item.id}
+                initialAnalytics={analytics}
+              />
+            </div>
+          ) : null}
+        </div>
       </DialogContent>
       <Dialog open={confirmRegenerateOpen} onOpenChange={setConfirmRegenerateOpen}>
         <DialogContent className="sm:max-w-md">
