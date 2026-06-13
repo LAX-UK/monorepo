@@ -7,7 +7,6 @@ import { Button } from "@auction/ui/components/button";
 
 type Props = {
   lot: EditorsPickLotCardVM;
-  index: number;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath?: string;
@@ -16,7 +15,6 @@ type Props = {
 /** Presentational tile for the home “Editor’s Picks” strip (Figma). */
 export function EditorsPickMarketingCard({
   lot,
-  index,
   isAuthenticated,
   watchedLotIds,
   loginNextPath = "/",
@@ -26,7 +24,6 @@ export function EditorsPickMarketingCard({
   return (
     <MarketingLotTile
       lotId={lot.id}
-      index={index}
       href={lot.href}
       linkAriaLabel={`${lot.title} — view artwork`}
       imageUrl={lot.imageUrl}

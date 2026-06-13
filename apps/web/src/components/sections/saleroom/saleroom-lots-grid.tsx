@@ -1,5 +1,5 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { RevealInView } from "@/components/ui/reveal";
+import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
@@ -46,9 +46,8 @@ export function SaleroomLotsGrid({
     >
       {lots.map((lot, index) => (
         <li key={lot.id} className="flex h-full min-w-0 flex-col">
-          <RevealInView
-            variant="fadeUp"
-            delayMs={index * 70}
+          <MarketingCardReveal
+            index={index}
             className="h-full w-full"
             innerClassName="flex h-full min-w-0 flex-col"
           >
@@ -57,7 +56,7 @@ export function SaleroomLotsGrid({
               cornerAction={renderCorner?.(lot)}
               actions={renderActions?.(lot)}
             />
-          </RevealInView>
+          </MarketingCardReveal>
         </li>
       ))}
     </ul>

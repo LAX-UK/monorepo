@@ -31,6 +31,29 @@ describe("inViewTrigger", () => {
     cleanup();
   });
 
+  it("calls onReveal synchronously when element is already in the viewport", () => {
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () =>
+      ({
+        top: 100,
+        bottom: 200,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 100,
+        x: 0,
+        y: 100,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+
+    const onReveal = vi.fn();
+    const t = inViewTrigger();
+    const cleanup = t.bind(el, onReveal);
+    expect(onReveal).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
   it("observes element and reveals on intersection, then disconnects on cleanup", () => {
     const observeSpy = vi.fn();
     const disconnectSpy = vi.fn();

@@ -8,14 +8,12 @@ import {
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
 import { MediaImage } from "@/components/ui/media-image";
-import { RevealInView } from "@/components/ui/reveal";
 import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
 import { cn } from "@auction/ui";
 import { Fragment, type ReactNode } from "react";
 
 export type MarketingLotTileProps = {
   lotId: string;
-  index: number;
   href: string;
   linkAriaLabel: string;
   imageUrl: string | null;
@@ -28,10 +26,9 @@ export type MarketingLotTileProps = {
   articleClassName?: string;
 };
 
-/** Shared 340px marketing hero shell for home lot tiles (Editor's Picks + Urgency). */
+/** Shared 340px marketing hero shell for home lot tiles (Editor's Picks + Urgency). Presentational — wrap in `MarketingCardReveal` at the grid. */
 export function MarketingLotTile({
   lotId,
-  index,
   href,
   linkAriaLabel,
   imageUrl,
@@ -43,8 +40,6 @@ export function MarketingLotTile({
   belowImage,
   articleClassName,
 }: MarketingLotTileProps) {
-  const revealDelay = `${Math.min(index * 80, 320)}ms`;
-
   const imageNode = adaptiveMedia ? (
     <AdaptiveFrameImage
       src={adaptiveMedia.src}
@@ -67,8 +62,7 @@ export function MarketingLotTile({
 
   const tile = (
     <article
-      className={cn("fade-up flex min-w-0 w-full flex-col gap-4", articleClassName)}
-      style={{ ["--reveal-delay" as string]: revealDelay }}
+      className={cn("flex min-w-0 w-full flex-col gap-4", articleClassName)}
       {...{ [LOT_TRANSITION_ROOT_ATTR]: lotId }}
     >
       <AdaptiveMediaFrameContainer
@@ -79,16 +73,10 @@ export function MarketingLotTile({
           key={`${lotId}-link`}
           lotId={lotId}
           href={href}
-          className="absolute inset-0 z-0 outline-offset-4 focus-visible:z-[5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          className="absolute inset-0 z-0 overflow-hidden outline-offset-4 focus-visible:z-[5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           aria-label={linkAriaLabel}
         >
-          <RevealInView
-            className="absolute inset-0 overflow-hidden"
-            innerClassName="absolute inset-0"
-            delayMs={Math.min(index * 70, 280)}
-          >
-            {imageNode}
-          </RevealInView>
+          {imageNode}
         </LotViewTransitionLink>
         {topOverlay ? <Fragment key={`${lotId}-top-overlay`}>{topOverlay}</Fragment> : null}
         {cornerAction ? <Fragment key={`${lotId}-corner-action`}>{cornerAction}</Fragment> : null}
