@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import type { ILotNotificationSender } from "./interfaces/notifications.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { LotLifecycleService } from "./lot-lifecycle.service.js";
@@ -281,5 +282,106 @@ describe("LotLifecycleService", () => {
       winnerBid.buyerLegalEntityId,
     );
     expect(guard.violatesAntiShilling).not.toHaveBeenCalled();
+  });
+
+  it("publishes lot_ended over realtime when reserve is met on timed close", async () => {
+    const winningBid = bid({ amount: "500.00", bidderId: "winner" });
+    const lot = baseLot({
+      reservePrice: "400.00",
+      currentPrice: "500.00",
+    });
+
+    const lots: ILotRepository = {
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([lot]),
+      findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
+      findByIdForUpdate: vi.fn().mockResolvedValue(lot),
+      updateStatus: vi.fn(),
+      setWinner: vi.fn(),
+      findActiveDutchLots: vi.fn().mockResolvedValue([]),
+      setDutchLastDecrementAt: vi.fn(),
+      updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
+      voidLotAntiShillingClose: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const bids: IBidRepository = {
+      listForLotSettlement: vi.fn().mockResolvedValue([winningBid]),
+      findEligibleBidsForLotClose: vi.fn(),
+      listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
+    } as unknown as IBidRepository;
+
+    const notifyLotEnded = vi.fn().mockResolvedValue(undefined);
+    const lotNotifications: ILotNotificationSender = {
+      notifyLotExtended: vi.fn(),
+      notifyLotEnded,
+      notifyProxyCancelled: vi.fn(),
+    };
+
+    const svc = new LotLifecycleService(
+      createFactory(lots, bids),
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+      null,
+      null,
+      null,
+      null,
+      lotNotifications,
+    );
+    await svc.runTransitions(new Date());
+
+    expect(notifyLotEnded).toHaveBeenCalledWith(lot, winningBid);
+  });
+
+  it("publishes lot_ended with null winning bid when reserve is not met on timed close", async () => {
+    const lot = baseLot({
+      reservePrice: "1000.00",
+      currentPrice: "500.00",
+    });
+
+    const lots: ILotRepository = {
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([lot]),
+      findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
+      findByIdForUpdate: vi.fn().mockResolvedValue(lot),
+      updateStatus: vi.fn(),
+      setWinner: vi.fn(),
+      findActiveDutchLots: vi.fn().mockResolvedValue([]),
+      setDutchLastDecrementAt: vi.fn(),
+      updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
+      voidLotAntiShillingClose: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const bids: IBidRepository = {
+      listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
+      findEligibleBidsForLotClose: vi.fn(),
+      listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+    } as unknown as IBidRepository;
+
+    const notifyLotEnded = vi.fn().mockResolvedValue(undefined);
+    const lotNotifications: ILotNotificationSender = {
+      notifyLotExtended: vi.fn(),
+      notifyLotEnded,
+      notifyProxyCancelled: vi.fn(),
+    };
+
+    const svc = new LotLifecycleService(
+      createFactory(lots, bids),
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+      null,
+      null,
+      null,
+      null,
+      lotNotifications,
+    );
+    await svc.runTransitions(new Date());
+
+    expect(notifyLotEnded).toHaveBeenCalledWith(lot, null);
   });
 });

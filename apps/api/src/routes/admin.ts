@@ -574,6 +574,37 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         placedVia: "telephone" as const,
         ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
       };
+      const idempotencyKey =
+        body.idempotencyKey ??
+        c.req.header("idempotency-key") ??
+        c.req.header("Idempotency-Key") ??
+        (body.telephoneBookingId
+          ? `telephone-booking:${body.telephoneBookingId}:${body.amount}`
+          : undefined);
+      const bidInput = {
+        placedByUserId: body.buyerUserId,
+        buyerLegalEntityId: body.buyerLegalEntityId,
+        lotId: body.lotId,
+        amount: body.amount,
+        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
+        placedVia: placement.placedVia,
+        ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+      };
+      if (idempotencyKey) {
+        const out = await container.bidService.placeBidWithIdempotency(bidInput);
+        if (out.type === "replay") {
+          return c.json(out.body, 201);
+        }
+        if (out.type === "err") {
+          const e = out.error;
+          return c.json(
+            e.code ? { error: e.message, code: e.code } : { error: e.message },
+            asHttpStatus(e.status),
+          );
+        }
+        return c.json(out.body, 201);
+      }
       const result = await container.bidService.placeBid({
         placedByUserId: body.buyerUserId,
         buyerLegalEntityId: body.buyerLegalEntityId,

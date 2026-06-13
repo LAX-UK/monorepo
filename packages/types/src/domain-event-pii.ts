@@ -114,6 +114,14 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "lot.withdrawal_requested": new Set(["sellerLegalEntityId"]),
   /** Pending payment cancelled by buyer or expired by cron. */
   "payment.cancelled": new Set(["lotId", "buyerUserId", "reason"]),
+  /** Hosted Checkout attempt failed; payment row stays open for retry. */
+  "payment.checkout_failed": new Set([
+    "paymentId",
+    "lotId",
+    "buyerUserId",
+    "stripePaymentIntentId",
+    "statusBefore",
+  ]),
   /** Payment refunded via Stripe webhook or admin action. */
   "payment.refunded": new Set([
     "stripeChargeId",

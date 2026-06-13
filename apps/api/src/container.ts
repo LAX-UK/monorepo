@@ -806,6 +806,7 @@ export function createContainer(env: Env): Container {
       await lotLifecycleHooks.onLotActivated?.(lotId);
     },
     lotLifecycleRecording,
+    notificationService,
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
@@ -1370,9 +1371,7 @@ export function createContainer(env: Env): Container {
     lotLifecycle: lotLifecycleService,
     saleRepo,
     lotRepo,
-    repos: repoFactory,
     lotJobs: lotJobScheduler,
-    notifications: notificationService,
     telephoneBidBookingService,
   });
   const userService = new UserService(userRepo);

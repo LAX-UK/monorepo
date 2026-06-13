@@ -17,3 +17,9 @@ export function addDecimal(a: string, b: string): string {
 export function gbpAmountToPence(amount: string): number {
   return Math.round(Number.parseFloat(amount) * 100);
 }
+
+/** Format integer pence as GBP major units (`numeric(18,2)`). */
+export function gbpPenceToMajorString(pence: number): string {
+  const safe = Number.isFinite(pence) ? pence : 0;
+  return (safe / 100).toFixed(2);
+}

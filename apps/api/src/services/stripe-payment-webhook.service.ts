@@ -212,6 +212,21 @@ export class StripePaymentWebhookService {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
       }
 
+      await this.domainEventPublisher.publish(tx, {
+        aggregateType: "payment",
+        aggregateId: paymentId,
+        eventType: "payment.checkout_failed",
+        payload: {
+          paymentId,
+          lotId: paymentRow.lotId,
+          buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
+          stripePaymentIntentId: paymentIntent.id,
+          statusBefore: paymentRow.status,
+        },
+        actorUserId: null,
+        actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
+      });
+
       recordMoneyPathEvent("payment_intent_failed");
       return { processed: true, action: "payment_intent_failed" };
     });
@@ -240,6 +255,22 @@ export class StripePaymentWebhookService {
       );
       if (!claimed) {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      if (paymentRow.status === "pending" || paymentRow.status === "authorized") {
+        await this.payments.updateStatus(paymentId, "cancelled");
+        await this.domainEventPublisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: paymentId,
+          eventType: "payment.cancelled",
+          payload: {
+            lotId: paymentRow.lotId,
+            buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
+            reason: "stripe_payment_intent_canceled",
+          },
+          actorUserId: null,
+          actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
+        });
       }
 
       recordMoneyPathEvent("payment_intent_canceled");
