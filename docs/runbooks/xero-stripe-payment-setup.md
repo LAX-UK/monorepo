@@ -63,7 +63,7 @@ Compare the printed `acct_…` with the account switcher in the Stripe dashboard
 
 All buyer checkout URLs come from **Stripe Checkout** on the platform account (tiered card / UK bank transfer). Xero provides ACCREC invoices and payment ledger sync only.
 
-1. **Card** (≤ `STRIPE_CARD_CHECKOUT_MAX`, default £100k) — Stripe card Checkout.
+1. **Card** (≤ `STRIPE_CARD_CHECKOUT_MAX`, default £10k) — Stripe card Checkout.
 2. **UK bank transfer** (above card max, below `STRIPE_MANUAL_REVIEW_MIN`) — Stripe `gb_bank_transfer` via Customer Balance.
 3. **Manual review** (≥ manual review min or archived seller) — finance **Release for checkout** before buyer gets a URL.
 
@@ -77,7 +77,7 @@ Admin refunds optionally emit Xero ACCREC credit notes via `recordRefundCreditNo
 
 | Variable | Purpose |
 |----------|---------|
-| `STRIPE_CARD_CHECKOUT_MAX` | Card Checkout ceiling (major GBP, default `100000`) |
+| `STRIPE_CARD_CHECKOUT_MAX` | Card Checkout ceiling (major GBP, default `10000`) |
 | `STRIPE_MANUAL_REVIEW_MIN` | Finance review floor (major GBP, default `500000`) |
 | `STRIPE_ABSOLUTE_MAX` | Hard online cap (major GBP, default `999999.99`) |
 | `XERO_PAYMENT_BANK_ACCOUNT_CODE` | Chart account for recording Stripe captures in Xero (default `090`) |
