@@ -2,7 +2,13 @@ import type { Database } from "@auction/db";
 import { mediaAsset } from "@auction/db";
 import type { GalleryImage } from "@auction/types";
 import { inArray } from "drizzle-orm";
+import { findPostgresError } from "../lib/pg-error.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
+
+/** Postgres `undefined_table` (42P01): schema not yet migrated for this table. */
+function isUndefinedTableError(error: unknown): boolean {
+  return findPostgresError(error)?.code === "42P01";
+}
 
 export type MediaAssetRecord = {
   key: string;
@@ -29,17 +35,22 @@ export class MediaAssetEnricher {
     const normalized = [...new Set(keys.map((key) => this.normalizeKey(key)).filter(Boolean))];
     if (normalized.length === 0) return new Map();
 
-    const rows = await this.db
-      .select({
-        key: mediaAsset.key,
-        width: mediaAsset.width,
-        height: mediaAsset.height,
-        blurDataURL: mediaAsset.blurDataURL,
-      })
-      .from(mediaAsset)
-      .where(inArray(mediaAsset.key, normalized));
+    try {
+      const rows = await this.db
+        .select({
+          key: mediaAsset.key,
+          width: mediaAsset.width,
+          height: mediaAsset.height,
+          blurDataURL: mediaAsset.blurDataURL,
+        })
+        .from(mediaAsset)
+        .where(inArray(mediaAsset.key, normalized));
 
-    return new Map(rows.map((row) => [row.key, row]));
+      return new Map(rows.map((row) => [row.key, row]));
+    } catch (error) {
+      if (isUndefinedTableError(error)) return new Map();
+      throw error;
+    }
   }
 
   async buildGalleryImages(
