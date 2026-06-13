@@ -41,6 +41,11 @@ const API_DENY_TABLES = [
 const API_READ_TABLES = ["user"];
 const WORKER_READ_TABLES = [
   "user",
+  /** Catalogue tables scanned by backfill-media-assets (read image key columns only). */
+  "sale",
+  "item_submission",
+  "category",
+  "artist_profile",
   /** Legal Entity Model - worker needs SELECT for projectors */
   "legal_entity",
   "legal_entity_member",
@@ -113,6 +118,8 @@ export const WORKER_FULL_TABLES = [
   "projector_state",
   "webhook_event",
   "upload_object",
+  /** process-image job upserts; image-cleanup deletes rows. */
+  "media_asset",
   "marketing_click_ids",
 ] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
