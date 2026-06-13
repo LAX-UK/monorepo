@@ -140,7 +140,12 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     const rows = await tx
       .update(payment)
       .set(patch)
-      .where(and(eq(payment.id, id), inArray(payment.status, ["pending", "authorized"])))
+      .where(
+        and(
+          eq(payment.id, id),
+          inArray(payment.status, ["pending", "authorized", "requires_manual_review"]),
+        ),
+      )
       .returning({ id: payment.id });
     return rows.length > 0;
   }

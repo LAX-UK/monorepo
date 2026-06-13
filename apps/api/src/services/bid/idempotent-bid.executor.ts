@@ -31,7 +31,7 @@ export class IdempotentBidExecutor {
     let idempotencyRedisKey: string | undefined;
 
     if (idempotencyKey && this.idempotencyStore) {
-      idempotencyRedisKey = `idempotency:bid:${placedByUserId}:${idempotencyKey}`;
+      idempotencyRedisKey = `idempotency:bid:${placedByUserId}:${lotId}:${idempotencyKey}`;
       const replay = await this.readIdempotencyReplay(idempotencyRedisKey);
       if (replay) return replay;
 

@@ -51,6 +51,7 @@ export class PaymentCaptureService implements IPaymentCaptureService {
 
     const buyerId = p.paidByUserId ?? p.buyerId ?? null;
     const buyer = buyerId ? await this.users.findById(buyerId) : null;
+    const captureFromManualReview = p.status === "requires_manual_review";
 
     const resolvedChargeId = await this.resolveStripeChargeId(p, input);
 
@@ -136,6 +137,9 @@ export class PaymentCaptureService implements IPaymentCaptureService {
     }
 
     recordMoneyPathEvent(`payment_capture_via_${input.via}`);
+    if (captureFromManualReview) {
+      recordMoneyPathEvent("payment_capture_from_manual_review_reconciliation");
+    }
 
     if (XERO_CAPTURE_VIAS.includes(input.via) && this.xeroPaymentRecorder) {
       const xeroResult = await this.xeroPaymentRecorder.recordStripeCapture(

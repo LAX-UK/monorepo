@@ -73,6 +73,7 @@ describe("CardCheckoutRail", () => {
         expires_at: Math.floor(Date.now() / 1000) + 3600,
       }),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
       updateStripePaymentIntentId: vi.fn().mockResolvedValue(undefined),
@@ -122,6 +123,7 @@ describe("CardCheckoutRail", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const rail = new CardCheckoutRail({ WEB_ORIGIN: "https://app.test" }, gateway, {
       updateStripePaymentIntentId: vi.fn(),
