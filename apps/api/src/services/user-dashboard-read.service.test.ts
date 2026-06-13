@@ -11,7 +11,11 @@ describe("UserDashboardReadService", () => {
       listBidsWithLotsForBidder: vi.fn().mockResolvedValue([{ bid: { id: "b1" } as Bid, lot }]),
     } as unknown as DashboardQueryService;
     const watchlistService = {} as WatchlistService;
-    const resolveMany = vi.fn().mockResolvedValue(["https://cdn/img.jpg"]);
+    const resolveManyUnique = vi.fn(async (keys: string[]) => {
+      const map = new Map<string, string>();
+      for (const key of keys) map.set(key, "https://cdn/img.jpg");
+      return map;
+    });
     const saleLookup = {
       findByIds: vi.fn().mockResolvedValue([{ id: "sale-1", buyerPremiumRate: "0.25" }]),
     };
@@ -19,12 +23,12 @@ describe("UserDashboardReadService", () => {
     const service = new UserDashboardReadService(
       dashboardQuery,
       watchlistService,
-      { resolveMany } as never,
+      { resolveManyUnique } as never,
       saleLookup,
     );
     const rows = await service.listBidsForUser("user-1");
 
-    expect(resolveMany).toHaveBeenCalledWith(["img-key"]);
+    expect(resolveManyUnique).toHaveBeenCalledWith(["img-key"]);
     expect(saleLookup.findByIds).toHaveBeenCalledWith(["sale-1"]);
     expect(rows[0]?.lot?.checkoutPricing).toBeDefined();
   });
