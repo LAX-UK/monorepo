@@ -3,7 +3,12 @@
 import { WatchlistHeart } from "@/components/marketing/watchlist-heart";
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
+import {
+  type OverlaySurface,
+  overlayIconButtonClasses,
+  overlayToneProps,
+  resolveOverlayChrome,
+} from "@/lib/ui/overlay-tone-classes";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -26,6 +31,8 @@ type Props = {
   loginNextPath: string;
   className?: string;
   layout?: LayoutMode;
+  /** Visual shell: `onImage` = frosted glass; `inline` = solid toolbar; `auto` = derive from layout/frame. */
+  surface?: OverlaySurface;
 };
 
 /** Wires `WatchlistHeart` to the watchlist API; logged-out users go to `/login?next=`. */
@@ -37,6 +44,7 @@ export function MarketingWatchlistHeart({
   loginNextPath,
   className,
   layout = "overlay",
+  surface = "auto",
 }: Props) {
   const router = useRouter();
   const { watching, busy, error, announce, toggle, loginHref } = useWatchlistToggle({
@@ -53,11 +61,11 @@ export function MarketingWatchlistHeart({
 
   const inFrame = useOverlayToneContext() != null;
   const overlayTone = useOverlayTone("topRight");
+  const useOverlayChrome = resolveOverlayChrome(surface, layout, inFrame);
   const imageAwareShell = overlayIconButtonClasses(
     overlayTone,
     "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)]",
   );
-  const useOverlayChrome = layout === "overlay" || inFrame;
   const shellClass = useOverlayChrome ? imageAwareShell : inlineHeartShellClass;
   const overlayProps = overlayToneProps(overlayTone);
 

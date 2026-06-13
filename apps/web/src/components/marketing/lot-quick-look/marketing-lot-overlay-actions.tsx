@@ -65,6 +65,7 @@ export function MarketingLotOverlayActions({
     <LotQuickLookTrigger
       vm={vm}
       layout="overlay"
+      surface="onImage"
       overlaySlot={quickLookSlot}
       options={quickLookOptions}
       className="pointer-events-auto"
@@ -84,6 +85,7 @@ export function MarketingLotOverlayActions({
           isAuthenticated={isAuthenticated}
           loginNextPath={loginNextPath}
           layout="inline"
+          surface="onImage"
           className="pointer-events-auto"
         />
       </div>

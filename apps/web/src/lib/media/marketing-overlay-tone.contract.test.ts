@@ -59,6 +59,60 @@ describe("marketing overlay tone contract", () => {
     const src = read("components/marketing/watchlist-heart-button.tsx");
     expect(src).toContain("useOverlayToneContext");
     expect(src).toContain("overlayIconButtonClasses");
+    expect(src).toContain('surface = "auto"');
+    expect(src).toContain("resolveOverlayChrome");
+  });
+
+  it("marketing lot overlay actions use onImage surface for heart and quick look", () => {
+    const src = read("components/marketing/lot-quick-look/marketing-lot-overlay-actions.tsx");
+    expect(src).toContain('surface="onImage"');
+  });
+
+  it("home editors pick tile uses adaptive media with shared icon pill tone policy", () => {
+    const tile = read("components/marketing/marketing-lot-tile.tsx");
+    const card = read(
+      "components/sections/home/editors-picks-marketing/editors-pick-marketing-card.tsx",
+    );
+    const picker = read("lib/media/pick-overlay-tone.ts");
+    expect(tile).toMatch(ADAPTIVE_FRAME);
+    expect(card).toContain("HOME_LOT_TILE_SLOTS");
+    expect(card).toContain("adaptiveMedia");
+    expect(picker).toContain('slotType === "pill"');
+  });
+
+  it("artist follow heart uses overlay tone icon shell", () => {
+    const src = read("components/marketing/artist-watch-heart.tsx");
+    expect(src).toContain("overlayIconButtonClasses");
+    expect(src).toContain("useOverlayTone");
+    expect(src).toContain("resolveOverlayChrome");
+  });
+
+  it("artist directory portrait uses adaptive media for follow heart tone", () => {
+    const card = read("components/sections/artists/artist-directory-card.tsx");
+    const frame = read("components/marketing/artist-portrait-frame.tsx");
+    expect(card).toContain("ArtistPortraitFrame");
+    expect(frame).toContain("ARTIST_PORTRAIT_SLOTS");
+    expect(frame).toMatch(ADAPTIVE_FRAME);
+  });
+
+  it("urgency list row mobile heart uses onImage surface with adaptive frame", () => {
+    const src = read("components/sections/home/urgency-lot-row.tsx");
+    expect(src).toMatch(ADAPTIVE_FRAME);
+    expect(src).toContain('surface="onImage"');
+    expect(src).toContain("HOME_LOT_TILE_SLOTS");
+  });
+
+  it("lot detail rail uses adaptive media and onImage quick look", () => {
+    const src = read("components/sections/artwork/redesign/lot-more-from-rail.tsx");
+    expect(src).toMatch(ADAPTIVE_FRAME);
+    expect(src).toContain('surface="onImage"');
+    expect(src).toContain("LOT_CARD_GRID_SLOTS");
+  });
+
+  it("catalog editorial calm heart uses onImage surface inside adaptive frame", () => {
+    const src = read("components/marketing/catalog-lot-views.tsx");
+    expect(src).toContain('surface="onImage"');
+    expect(src).toContain("EDITORIAL_CALM_SLOTS");
   });
 
   it("saleroom hero uses tone-aware scrim and overlay text", () => {

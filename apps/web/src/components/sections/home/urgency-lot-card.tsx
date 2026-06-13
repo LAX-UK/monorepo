@@ -5,6 +5,7 @@ import { LotViewTransitionLink } from "@/components/marketing/lot-view-transitio
 import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
+import { HOME_LOT_TILE_SLOTS } from "@/lib/media/overlay-slot-presets";
 
 type Props = {
   item: LotCardVM;
@@ -27,6 +28,14 @@ export function UrgencyLotCard({ item, isAuthenticated, watchedLotIds, loginNext
       imageAlt={item.imageAlt}
       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
       articleClassName="h-full"
+      adaptiveMedia={{
+        src: item.imageUrl,
+        objectFit: "cover",
+        slots: HOME_LOT_TILE_SLOTS,
+        alt: item.imageAlt,
+        sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw",
+        label: "Lot artwork",
+      }}
       topOverlay={
         <LotStatusTimer
           variant="endingSoon"
@@ -44,6 +53,7 @@ export function UrgencyLotCard({ item, isAuthenticated, watchedLotIds, loginNext
             isAuthenticated={isAuthenticated}
             loginNextPath={loginNextPath}
             layout="inline"
+            surface="onImage"
           />
         </div>
       }
@@ -105,6 +115,7 @@ export function UrgencyLotCard({ item, isAuthenticated, watchedLotIds, loginNext
               key="quick-look"
               vm={lotQuickLookFromLotCardVM(item)}
               layout="inline"
+              surface="inline"
               className="size-11 rounded border-0 bg-transparent px-2.5 text-on-surface hover:bg-on-surface/5"
               options={{
                 isAuthenticated,
