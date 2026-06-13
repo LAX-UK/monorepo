@@ -17,7 +17,7 @@ export function MarketingFilterSidebar({
   return (
     <aside
       aria-label={ariaLabel}
-      className={cn("space-y-6 border-border-hairline md:border-r md:pr-6", className)}
+      className={cn("space-y-6 border-border-hairline lg:border-r lg:pr-6", className)}
     >
       {children}
     </aside>

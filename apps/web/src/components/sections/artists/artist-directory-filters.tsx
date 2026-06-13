@@ -1,4 +1,5 @@
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { MARKETING_FILTER_GROUP_TITLE, marketingFilterRailLink } from "@/lib/marketing/filter-rail";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -36,12 +37,7 @@ export function ArtistDirectoryFilters({
   const linkClickProps = onLinkClick ? { onClick: onLinkClick } : {};
 
   return (
-    <div
-      className={cn(
-        "space-y-7 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto",
-        className,
-      )}
-    >
+    <div className={cn("space-y-7", className)}>
       {hasFilters && clearHref ? (
         <div>
           <Link
@@ -58,10 +54,7 @@ export function ArtistDirectoryFilters({
       ) : null}
       {groups.map((g) => (
         <section key={g.id} aria-labelledby={`filter-${g.id}`}>
-          <h3
-            id={`filter-${g.id}`}
-            className="mb-3 font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant"
-          >
+          <h3 id={`filter-${g.id}`} className={MARKETING_FILTER_GROUP_TITLE}>
             {g.title}
           </h3>
           <ul className="space-y-1">
@@ -71,13 +64,7 @@ export function ArtistDirectoryFilters({
                   href={link.href}
                   {...linkClickProps}
                   aria-current={link.active ? "page" : undefined}
-                  className={cn(
-                    "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm transition-colors",
-                    FOCUS_RING,
-                    link.active
-                      ? "bg-primary/10 text-primary"
-                      : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-                  )}
+                  className={cn(marketingFilterRailLink(link.active), "justify-between gap-2")}
                 >
                   <span>{link.label}</span>
                   {typeof link.count === "number" ? (
@@ -93,10 +80,7 @@ export function ArtistDirectoryFilters({
       ))}
       {nationalityLinks && nationalityLinks.length > 0 ? (
         <section aria-labelledby="filter-nationality">
-          <h3
-            id="filter-nationality"
-            className="mb-3 font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant"
-          >
+          <h3 id="filter-nationality" className={MARKETING_FILTER_GROUP_TITLE}>
             Top nationalities
           </h3>
           <ul className="space-y-1">
@@ -106,13 +90,7 @@ export function ArtistDirectoryFilters({
                   href={link.href}
                   {...linkClickProps}
                   aria-current={link.active ? "page" : undefined}
-                  className={cn(
-                    "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 font-body text-sm transition-colors",
-                    FOCUS_RING,
-                    link.active
-                      ? "bg-primary/10 text-primary"
-                      : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-                  )}
+                  className={cn(marketingFilterRailLink(link.active), "justify-between gap-2")}
                 >
                   <span>{link.label}</span>
                   {typeof link.count === "number" ? (
