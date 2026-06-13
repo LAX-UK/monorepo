@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { category, lotCategories, saleCategories, submissionCategories } from "@auction/db/schema";
 import type { AdminCategory, Category, CategoryUsage } from "@auction/types";
-import { asc, count, eq } from "drizzle-orm";
+import { asc, count, eq, inArray } from "drizzle-orm";
 import type {
   CreateCategoryInput,
   ICategoryRepository,
@@ -37,8 +37,8 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
 
   async findAllForAdmin(options: { includeArchived?: boolean } = {}): Promise<AdminCategory[]> {
     const rows = await this.findAll(options);
-    const usageRows = await Promise.all(rows.map((row) => this.usageFor(row.id)));
-    return rows.map((row, index) => ({ ...row, usage: usageRows[index] ?? emptyUsage() }));
+    const usageById = await this.usageForMany(rows.map((row) => row.id));
+    return rows.map((row) => ({ ...row, usage: usageById.get(row.id) ?? emptyUsage() }));
   }
 
   async findById(id: string): Promise<Category | null> {
@@ -101,24 +101,55 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
   }
 
   async usageFor(id: string): Promise<CategoryUsage> {
-    const [lots] = await this.db
-      .select({ value: count() })
-      .from(lotCategories)
-      .where(eq(lotCategories.categoryId, id));
-    const [sales] = await this.db
-      .select({ value: count() })
-      .from(saleCategories)
-      .where(eq(saleCategories.categoryId, id));
-    const [submissions] = await this.db
-      .select({ value: count() })
-      .from(submissionCategories)
-      .where(eq(submissionCategories.categoryId, id));
-    const usage = {
-      lots: lots?.value ?? 0,
-      sales: sales?.value ?? 0,
-      submissions: submissions?.value ?? 0,
-    };
-    return { ...usage, total: usage.lots + usage.sales + usage.submissions };
+    const map = await this.usageForMany([id]);
+    return map.get(id) ?? emptyUsage();
+  }
+
+  async usageForMany(ids: string[]): Promise<Map<string, CategoryUsage>> {
+    const result = new Map<string, CategoryUsage>();
+    if (ids.length === 0) return result;
+    for (const id of ids) {
+      result.set(id, emptyUsage());
+    }
+
+    const [lotRows, saleRows, submissionRows] = await Promise.all([
+      this.db
+        .select({ categoryId: lotCategories.categoryId, value: count() })
+        .from(lotCategories)
+        .where(inArray(lotCategories.categoryId, ids))
+        .groupBy(lotCategories.categoryId),
+      this.db
+        .select({ categoryId: saleCategories.categoryId, value: count() })
+        .from(saleCategories)
+        .where(inArray(saleCategories.categoryId, ids))
+        .groupBy(saleCategories.categoryId),
+      this.db
+        .select({ categoryId: submissionCategories.categoryId, value: count() })
+        .from(submissionCategories)
+        .where(inArray(submissionCategories.categoryId, ids))
+        .groupBy(submissionCategories.categoryId),
+    ]);
+
+    for (const row of lotRows) {
+      const current = result.get(row.categoryId) ?? emptyUsage();
+      current.lots = row.value;
+      current.total = current.lots + current.sales + current.submissions;
+      result.set(row.categoryId, current);
+    }
+    for (const row of saleRows) {
+      const current = result.get(row.categoryId) ?? emptyUsage();
+      current.sales = row.value;
+      current.total = current.lots + current.sales + current.submissions;
+      result.set(row.categoryId, current);
+    }
+    for (const row of submissionRows) {
+      const current = result.get(row.categoryId) ?? emptyUsage();
+      current.submissions = row.value;
+      current.total = current.lots + current.sales + current.submissions;
+      result.set(row.categoryId, current);
+    }
+
+    return result;
   }
 }
 

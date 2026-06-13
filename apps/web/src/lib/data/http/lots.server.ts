@@ -1,4 +1,5 @@
 import "server-only";
+import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import type {
   ArchiveEndedSummary,
@@ -6,10 +7,13 @@ import type {
   ListLotsParams,
   LotReader,
 } from "@/lib/data/contracts";
-import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
+import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
+import { createServerHc, getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseBid, parseLot } from "@/lib/data/http/parse";
+import { NO_STORE_FETCH_POLICY } from "@/lib/data/http/server-fetch-policy";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
 import type { Bid, Lot } from "@auction/types";
+import { cookies } from "next/headers";
 import { cache } from "react";
 
 export function buildLotListQuery(params: ListLotsParams): Record<string, string> {
@@ -27,6 +31,8 @@ export function buildLotListQuery(params: ListLotsParams): Record<string, string
   if (params.endYear !== undefined) q.endYear = String(params.endYear);
   if (params.sort) q.sort = params.sort;
   if (params.q?.trim()) q.q = params.q.trim();
+  if (params.endingWithinHours !== undefined)
+    q.endingWithinHours = String(params.endingWithinHours);
   if (params.needsPhotos) q.needsPhotos = "1";
   return q;
 }
@@ -49,6 +55,7 @@ export type LotCountParams = {
   q?: string;
   categoryId?: string;
   status?: string;
+  endingWithinHours?: number;
 };
 
 /** Exact count of catalogue lots matching the given filters (for numbered pagination). */
@@ -58,8 +65,17 @@ export const getServerLotCount = cache(async (params: LotCountParams): Promise<n
     if (params.q?.trim()) query.q = params.q.trim();
     if (params.categoryId) query.categoryId = params.categoryId;
     if (params.status) query.status = params.status;
-    const client = await getServerHc();
-    const res = await client.lots.count.$get({ query });
+    if (params.endingWithinHours !== undefined) {
+      query.endingWithinHours = String(params.endingWithinHours);
+    }
+    const cookieHeader = await cookieHeaderString();
+    const authed = hasAuthSessionCookie(cookieHeader);
+    const qs = new URLSearchParams(query);
+    const res = await catalogueFetch(
+      `${getServerApiBase()}/lots/count?${qs.toString()}`,
+      authed ? NO_STORE_FETCH_POLICY : CATALOGUE_FETCH_POLICIES.lots,
+      authed ? { headers: { Cookie: cookieHeader } } : undefined,
+    );
     if (!res.ok) return null;
     const body = (await res.json()) as { count?: number };
     return typeof body.count === "number" ? body.count : null;
@@ -118,10 +134,36 @@ export async function getServerArchiveMetricsReader(): Promise<ArchiveMetricsRea
   };
 }
 
+async function cookieHeaderString(): Promise<string> {
+  const jar = await cookies();
+  return jar
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+}
+
+async function listLotsViaCatalogueFetch(params: ListLotsParams): Promise<Lot[]> {
+  const qs = new URLSearchParams(buildLotListQuery(params));
+  const cookieHeader = await cookieHeaderString();
+  const authed = hasAuthSessionCookie(cookieHeader);
+  const res = await catalogueFetch(
+    `${getServerApiBase()}/lots?${qs.toString()}`,
+    authed ? NO_STORE_FETCH_POLICY : CATALOGUE_FETCH_POLICIES.lots,
+    authed ? { headers: { Cookie: cookieHeader } } : undefined,
+  );
+  await throwIfNotOk(res, "sellerLots");
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseLot);
+}
+
 export async function getServerLotReader(): Promise<LotReader> {
-  const client = await getServerHc();
+  const client = await createServerHc(NO_STORE_FETCH_POLICY);
   return {
     async list(params: ListLotsParams): Promise<Lot[]> {
+      const cookieHeader = await cookieHeaderString();
+      if (!hasAuthSessionCookie(cookieHeader)) {
+        return listLotsViaCatalogueFetch(params);
+      }
       const res = await client.lots.$get({ query: buildLotListQuery(params) });
       await throwIfNotOk(res, "sellerLots");
       const body = (await res.json()) as { data: unknown[] };

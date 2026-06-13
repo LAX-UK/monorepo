@@ -11,7 +11,7 @@ import {
 } from "@auction/auth";
 import { closeDb, createDb, publishUserRegistered } from "@auction/db";
 import { session } from "@auction/db/schema";
-import { ConsoleEmailService, PostmarkEmailService } from "@auction/email";
+import { ConsoleEmailService, PostmarkEmailService, bindEmailQueue } from "@auction/email";
 import { Sentry, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import { EMAIL_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
 import { serve } from "@hono/node-server";
@@ -64,8 +64,8 @@ const emailQueue = new Queue<{ outboxId: string }>(
 );
 const emailService =
   env.EMAIL_PROVIDER === "postmark"
-    ? new PostmarkEmailService(db, emailQueue)
-    : new ConsoleEmailService(db, emailQueue);
+    ? new PostmarkEmailService(db, bindEmailQueue(emailQueue))
+    : new ConsoleEmailService(db, bindEmailQueue(emailQueue));
 
 const webOrigins = trustedWebOrigins(env);
 const envelope =

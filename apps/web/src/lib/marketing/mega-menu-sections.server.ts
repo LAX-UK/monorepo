@@ -3,16 +3,19 @@ import "server-only";
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import type { ArtistProfile } from "@/lib/data/contracts";
 import { portraitForPublicArtist } from "@/lib/data/http/artist.server";
+import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getMarketingMegaMenuSections } from "@/lib/marketing/mega-menu-catalog";
+import { rewriteMegaMenuForGuest } from "@/lib/marketing/mega-menu-href-rewrite";
 import { artistPath } from "@/lib/seo/url";
+import { cache } from "react";
 
 async function fetchMenuArtists(): Promise<ArtistProfile[]> {
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
-  const res = await fetch(`${getServerApiBase()}/artists/public?limit=6&offset=0`, {
-    next: { revalidate: 300 },
-  });
+  const res = await catalogueFetch(
+    `${getServerApiBase()}/artists/public?limit=6&offset=0`,
+    CATALOGUE_FETCH_POLICIES.megaMenu,
+  );
   if (!res.ok) return [];
   const body = (await res.json()) as {
     data: {
@@ -49,40 +52,21 @@ function mergeArtistTeasersIntoSections(
   });
 }
 
-function rewriteDashboardHref(href: string): string {
-  if (!href.startsWith("/dashboard/")) return href;
-  return `/login?next=${encodeURIComponent(href)}`;
-}
+/** Session-free mega menu for cacheable marketing chrome (guest dashboard href rewrite). */
+export const loadCachedMegaMenuSections = cache(async (): Promise<MegaMenuSection[]> => {
+  const base = getMarketingMegaMenuSections();
+  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") {
+    return rewriteMegaMenuForGuest(base);
+  }
+  try {
+    const artists = await fetchMenuArtists();
+    return rewriteMegaMenuForGuest(mergeArtistTeasersIntoSections(base, artists));
+  } catch {
+    return rewriteMegaMenuForGuest(base);
+  }
+});
 
-/** Logged-out users should not land on dashboard routes from the marketing mega menu. */
-function rewriteMegaMenuForGuest(sections: MegaMenuSection[]): MegaMenuSection[] {
-  return sections.map((section) => ({
-    ...section,
-    href: rewriteDashboardHref(section.href),
-    items: section.items.map((item) => ({
-      ...item,
-      href: rewriteDashboardHref(item.href),
-    })),
-  }));
-}
-
+/** @deprecated Prefer {@link loadCachedMegaMenuSections} — kept for callers that need session-aware hrefs. */
 export async function loadMegaMenuSections(): Promise<MegaMenuSection[]> {
-  const [session, merged] = await Promise.all([
-    getServerSessionUser(),
-    (async (): Promise<MegaMenuSection[]> => {
-      const base = getMarketingMegaMenuSections();
-      if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") {
-        return base;
-      }
-      try {
-        const artists = await fetchMenuArtists();
-        return mergeArtistTeasersIntoSections(base, artists);
-      } catch {
-        return base;
-      }
-    })(),
-  ]);
-
-  if (!session) return rewriteMegaMenuForGuest(merged);
-  return merged;
+  return loadCachedMegaMenuSections();
 }

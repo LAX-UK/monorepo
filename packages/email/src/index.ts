@@ -1,5 +1,11 @@
 export { renderEmail } from "./render.js";
-export { ConsoleEmailService, PostmarkEmailService, emailHash } from "./outbox-service.js";
+export {
+  ConsoleEmailService,
+  PostmarkEmailService,
+  bindEmailQueue,
+  emailHash,
+} from "./outbox-service.js";
+export type { EmailQueue, EmailQueuePayload } from "./outbox-service.js";
 export type {
   EmailCategory,
   EmailEnqueueInput,

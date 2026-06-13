@@ -32,6 +32,7 @@ import {
   toPrivateSaleHighlightVMs,
 } from "@/components/sections/home/home-view-models";
 import type { ListLotsParams } from "@/lib/data/contracts";
+import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
@@ -90,9 +91,10 @@ function buildHomeSalesQuery(params: HomeSaleListQuery): Record<string, string> 
 
 async function fetchHomeLots(params: ListLotsParams): Promise<Lot[]> {
   const qs = new URLSearchParams(buildLotListQuery(params));
-  const res = await fetch(`${getServerApiBase()}/lots?${qs.toString()}`, {
-    next: { revalidate: 60 },
-  });
+  const res = await catalogueFetch(
+    `${getServerApiBase()}/lots?${qs.toString()}`,
+    CATALOGUE_FETCH_POLICIES.home,
+  );
   if (!res.ok) throw new Error(`Failed to list home lots: ${res.status}`);
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseLot);
@@ -100,9 +102,10 @@ async function fetchHomeLots(params: ListLotsParams): Promise<Lot[]> {
 
 async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<HomeSaleListRow[]> {
   const qs = new URLSearchParams(buildHomeSalesQuery(params));
-  const res = await fetch(`${getServerApiBase()}/sales?${qs.toString()}`, {
-    next: { revalidate: 60 },
-  });
+  const res = await catalogueFetch(
+    `${getServerApiBase()}/sales?${qs.toString()}`,
+    CATALOGUE_FETCH_POLICIES.home,
+  );
   if (!res.ok) throw new Error(`Failed to list home sales: ${res.status}`);
   const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
   return body.data.map((row) => ({

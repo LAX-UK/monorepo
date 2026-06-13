@@ -1,7 +1,16 @@
 import type { Database } from "@auction/db";
-import { watchlist } from "@auction/db/schema";
-import { and, count, eq } from "drizzle-orm";
-import type { IWatchlistRepository, WatchlistRow } from "../services/interfaces/watchlist.js";
+import { lot, watchlist } from "@auction/db/schema";
+import { and, asc, count, desc, eq } from "drizzle-orm";
+import type {
+  IWatchlistRepository,
+  WatchlistListPageInput,
+  WatchlistRow,
+} from "../services/interfaces/watchlist.js";
+
+export type {
+  WatchlistListPageInput,
+  WatchlistPageSort,
+} from "../services/interfaces/watchlist.js";
 
 function mapRow(row: typeof watchlist.$inferSelect): WatchlistRow {
   return {
@@ -71,5 +80,40 @@ export class DrizzleWatchlistRepository implements IWatchlistRepository {
       .from(watchlist)
       .where(eq(watchlist.lotId, lotId));
     return row?.value ?? 0;
+  }
+
+  async listPage(input: WatchlistListPageInput): Promise<{ rows: WatchlistRow[]; total: number }> {
+    const where = eq(watchlist.userId, input.userId);
+    const orderBy = (() => {
+      switch (input.sort ?? "addedDesc") {
+        case "endingSoon":
+          return asc(lot.endTime);
+        case "priceAsc":
+          return asc(lot.currentPrice);
+        case "priceDesc":
+          return desc(lot.currentPrice);
+        default:
+          return desc(watchlist.createdAt);
+      }
+    })();
+
+    const [countRow] = await this.db
+      .select({ value: count() })
+      .from(watchlist)
+      .innerJoin(lot, eq(watchlist.lotId, lot.id))
+      .where(where);
+    const rows = await this.db
+      .select({ watchlistRow: watchlist })
+      .from(watchlist)
+      .innerJoin(lot, eq(watchlist.lotId, lot.id))
+      .where(where)
+      .orderBy(orderBy)
+      .limit(input.limit)
+      .offset(input.offset);
+
+    return {
+      rows: rows.map((r) => mapRow(r.watchlistRow)),
+      total: countRow?.value ?? 0,
+    };
   }
 }
