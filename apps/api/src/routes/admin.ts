@@ -28,6 +28,7 @@ import {
   adminLotBrowseQuerySchema,
   adminLotFulfilmentListQuerySchema,
   adminLotFulfilmentLotIdParamSchema,
+  adminLotsKpiTrendQuerySchema,
   adminPatchStaffRoleBodySchema,
   adminQrCodeAnalyticsQuerySchema,
   adminQrCodeCreateSchema,
@@ -292,6 +293,17 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     const data = await container.adminNavCountsService.getCounts();
     return c.json({ data });
   });
+
+  platform.get(
+    "/kpi/lots-trend",
+    requireAdminDashboard,
+    zValidator("query", adminLotsKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.adminLotsKpiTrendService.getTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
 
   platform.get(
     "/qr-codes",

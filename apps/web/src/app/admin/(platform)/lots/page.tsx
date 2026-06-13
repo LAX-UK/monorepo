@@ -20,7 +20,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { buildLotsListPageModel } from "@/lib/admin/build-lots-list-page-model";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
 import { buildLotsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
-import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
+import { connectRequiredFromLots } from "@/lib/admin/connect-readiness";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { withdrawalsListController } from "@/lib/admin/withdrawals-list-controller";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -156,7 +156,7 @@ export default async function AdminLotsPage({
   const activeOnPage = lotTableRows.filter((r) => r.status === "active").length;
   const draftOnPage = lotTableRows.filter((r) => r.status === "draft").length;
   const connectRequiredByLotId =
-    pageRows.length > 0 ? await buildConnectRequiredByLotId(pageRows) : undefined;
+    pageRows.length > 0 ? connectRequiredFromLots(pageRows) : undefined;
 
   const pagination =
     !listError && (query.offset > 0 || hasNextPage) ? (

@@ -46,6 +46,13 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
     return rowToEntity(row);
   }
 
+  async findByIds(ids: readonly string[]): Promise<LegalEntity[]> {
+    const unique = [...new Set(ids.filter((id) => id.length > 0))];
+    if (unique.length === 0) return [];
+    const rows = await this.db.select().from(legalEntity).where(inArray(legalEntity.id, unique));
+    return rows.map(rowToEntity);
+  }
+
   async listActiveMembershipsForUser(userId: string): Promise<LegalEntitySummary[]> {
     const rows = await this.db
       .select({

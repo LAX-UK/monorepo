@@ -143,6 +143,10 @@ export class AmlService {
     return this.screeningReader.listByReviewStatus("pending", limit);
   }
 
+  async countPendingReviews(): Promise<number> {
+    return this.screeningReader.countByReviewStatus("pending");
+  }
+
   /** All screenings for a user (latest first), including cleared/no-match. */
   async listForUser(userId: string, limit = 20): Promise<WatchlistScreeningRecord[]> {
     return this.screeningReader.listForUser(userId, limit);
