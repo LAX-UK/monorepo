@@ -74,4 +74,18 @@ describe("NotificationDispatcher resilience", () => {
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
   });
+
+  it("throws from dispatchStrict when any attempted channel fails", async () => {
+    const dispatcher = new NotificationDispatcher([new FailingChannel()], enabledPrefs, {
+      isQuietTime: () => false,
+    });
+
+    await expect(
+      dispatcher.dispatchStrict("user_1", {
+        type: "outbid",
+        title: "Outbid",
+        message: "Another bidder is ahead",
+      }),
+    ).rejects.toThrow(/push/);
+  });
 });

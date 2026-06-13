@@ -22,6 +22,7 @@ export * from "./sale-document.js";
 export * from "./submission-document.js";
 export * from "./categories.js";
 export * from "./notifications.js";
+export * from "./notification-outbox.js";
 export * from "./notification-preferences.js";
 export * from "./user-ui-preferences.js";
 export * from "./saved-search.js";

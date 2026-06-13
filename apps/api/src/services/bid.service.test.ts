@@ -178,7 +178,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -213,7 +212,6 @@ describe("BidService.placeBid", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
       bidEligibility,
       legalEntityRepository: legalEntityRepository as never,
@@ -256,7 +254,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -283,7 +280,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -317,7 +313,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -355,7 +350,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
       antiShillingGuard,
     });
@@ -403,7 +397,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
       antiShillingGuard,
     });
@@ -477,7 +470,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
       antiShillingGuard,
       domainEventPublisher: { publish: domainPublish } as unknown as DomainEventPublisher,
@@ -560,7 +552,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
       antiShillingGuard: null,
     });
@@ -610,7 +601,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -658,7 +648,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: { rescheduleEnd: vi.fn(), cancelLotJobs },
     });
 
@@ -691,7 +680,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: {
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn().mockResolvedValue(undefined),
@@ -730,7 +718,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
       saleModeLookup,
     });
@@ -771,7 +758,6 @@ describe("BidService.placeBid", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
       saleModeLookup,
     });
@@ -799,6 +785,7 @@ describe("BidService.placeBid", () => {
     const bidRepo = baseBidRepo({
       create: vi.fn().mockResolvedValue(created),
       markWinningBid: vi.fn().mockResolvedValue(undefined),
+      listDistinctBidderIds: vi.fn().mockResolvedValue(["buyer-1", "buyer-2"]),
     });
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
     const notifyBidPlaced = vi.fn().mockResolvedValue(undefined);
@@ -808,13 +795,14 @@ describe("BidService.placeBid", () => {
       { notifyLotExtended: vi.fn(), notifyLotEnded, notifyProxyCancelled: vi.fn() },
     );
     const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
+    const stageDispatch = vi.fn().mockResolvedValue(undefined);
     const service = new BidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: { rescheduleEnd: vi.fn(), cancelLotJobs },
+      notificationOutbox: { stageDispatch },
     });
 
     const result = await service.placeBid(personalBid("buyer-1", "auc-1", 500));
@@ -823,6 +811,20 @@ describe("BidService.placeBid", () => {
     expect(lotRepo.updateStatus).toHaveBeenCalledWith("auc-1", "ended");
     expect(cancelLotJobs).toHaveBeenCalledWith("auc-1");
     expect(notifyLotEnded).toHaveBeenCalledOnce();
+    expect(stageDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "buyer-1",
+        idempotencyKey: "lot_won:auc-1:buyer-1",
+      }),
+      expect.anything(),
+    );
+    expect(stageDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "buyer-2",
+        idempotencyKey: "lot_lost:auc-1:buyer-2",
+      }),
+      expect.anything(),
+    );
   });
 
   it("extends lot end time and reschedules jobs when bid arrives in anti-sniping window", async () => {
@@ -849,7 +851,6 @@ describe("BidService.placeBid", () => {
         { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
         { notifyLotExtended, notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: { rescheduleEnd, cancelLotJobs: vi.fn() },
       bidPolicy: {
         antiSnipingWindowMs: 120_000,
@@ -886,7 +887,6 @@ describe("BidService.placeBid", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -922,7 +922,6 @@ describe("BidService.placeBid", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -938,7 +937,7 @@ describe("BidService.placeBid", () => {
     expect(bidRepo.create).toHaveBeenCalledOnce();
   });
 
-  it("dispatches outbid notification to previous winner", async () => {
+  it("stages outbid notification in outbox for previous winner", async () => {
     const active = lot({ currentPrice: "100.00" });
     const previousWinner = createBid({
       id: "bid-prev",
@@ -954,7 +953,7 @@ describe("BidService.placeBid", () => {
       findWinningBid: vi.fn().mockResolvedValue(previousWinner),
       markWinningBid: vi.fn(),
     });
-    const dispatch = vi.fn().mockResolvedValue(undefined);
+    const stageDispatch = vi.fn().mockResolvedValue(undefined);
     const service = new BidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
@@ -965,13 +964,19 @@ describe("BidService.placeBid", () => {
         },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: { dispatch } as never,
+      notificationOutbox: { stageDispatch },
       lotJobs: null,
     });
 
     const result = await service.placeBid(personalBid("bidder-new", "auc-1", 150));
     expect(result.isOk()).toBe(true);
-    expect(dispatch).toHaveBeenCalledWith("bidder-prev", expect.any(Object));
+    expect(stageDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "bidder-prev",
+        idempotencyKey: "outbid:auc-1:bid-new:bidder-prev",
+      }),
+      expect.anything(),
+    );
   });
 
   it("settles proxy in one step for large ceiling gap", async () => {
@@ -1021,7 +1026,6 @@ describe("BidService.placeBid", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
     });
 
@@ -1061,7 +1065,6 @@ describe("BidService.placeBidWithIdempotency", () => {
       strategyFactory,
       cache,
       notifications,
-      notificationDispatcher: null,
       lotJobs: null,
       idempotencyStore,
     });
@@ -1117,7 +1120,6 @@ describe("BidService.placeBidWithIdempotency", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
       idempotencyStore,
       legalEntityRepository: legalEntityRepository as never,
@@ -1165,7 +1167,6 @@ describe("BidService.placeBidWithIdempotency", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
       idempotencyStore,
       legalEntityRepository: legalEntityRepository as never,
@@ -1227,7 +1228,6 @@ describe("BidService.placeBidWithIdempotency", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
       idempotencyStore,
       legalEntityRepository: legalEntityRepository as never,
@@ -1274,7 +1274,6 @@ describe("BidService.placeBidWithIdempotency", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
       idempotencyStore,
       legalEntityRepository: legalEntityRepository as never,
@@ -1322,7 +1321,6 @@ describe("BidService.placeBidWithIdempotency", () => {
         { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
       idempotencyStore,
       legalEntityRepository: legalEntityRepository as never,
@@ -1362,7 +1360,6 @@ describe("BidService.placeBidWithIdempotency", () => {
         { notifyBidPlaced: vi.fn() },
         { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
       ),
-      notificationDispatcher: null,
       lotJobs: null,
       idempotencyStore,
       legalEntityRepository: legalEntityRepository as never,
