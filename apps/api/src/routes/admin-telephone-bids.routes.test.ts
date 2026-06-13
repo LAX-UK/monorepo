@@ -78,7 +78,7 @@ describe("POST /admin/saleroom/telephone-bids", () => {
         amount: 500,
         placedVia: "telephone",
         telephoneBookingId: BOOKING_ID,
-        idempotencyKey: `telephone-booking:${BOOKING_ID}:500`,
+        idempotencyKey: `telephone-booking:${LOT_ID}:${BOOKING_ID}:500`,
       }),
     );
     expect(placeBid).not.toHaveBeenCalled();

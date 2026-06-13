@@ -41,6 +41,11 @@ export interface IStripePaymentGateway {
   retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent>;
   retrieveCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session>;
   findChargeIdForPayment(paymentId: string): Promise<string | null>;
+  /** Expire open Checkout sessions and cancel a cancellable PaymentIntent for this payment. */
+  revokeOpenCheckoutForPayment(
+    paymentId: string,
+    paymentIntentId: string | null | undefined,
+  ): Promise<void>;
 }
 
 export class StripePaymentGateway implements IStripePaymentGateway {
@@ -234,6 +239,68 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       );
     }
     return executeWithStripeRetries(() => stripe.checkout.sessions.retrieve(sessionId));
+  }
+
+  async revokeOpenCheckoutForPayment(
+    paymentId: string,
+    paymentIntentId: string | null | undefined,
+  ): Promise<void> {
+    const stripe = this.stripe;
+    if (!stripe) return;
+
+    const expireOpenSessionsForIntent = async (piId: string) => {
+      const sessions = await executeWithStripeRetries(() =>
+        stripe.checkout.sessions.list({ payment_intent: piId, limit: 10 }),
+      );
+      for (const session of sessions.data) {
+        if (session.status !== "open") continue;
+        await executeWithStripeRetries(() => stripe.checkout.sessions.expire(session.id));
+      }
+    };
+
+    const cancelIntentIfOpen = async (piId: string) => {
+      try {
+        await executeWithStripeRetries(() =>
+          stripe.paymentIntents.cancel(piId, {}, { idempotencyKey: `cancel:${piId}` }),
+        );
+      } catch (err) {
+        if (
+          err instanceof Stripe.errors.StripeError &&
+          (err.code === "payment_intent_unexpected_state" || err.code === "resource_missing")
+        ) {
+          return;
+        }
+        throw err;
+      }
+    };
+
+    if (paymentIntentId) {
+      await expireOpenSessionsForIntent(paymentIntentId);
+      await cancelIntentIfOpen(paymentIntentId);
+      return;
+    }
+
+    try {
+      const intents = await executeWithStripeRetries(() =>
+        stripe.paymentIntents.search({
+          query: `metadata['paymentId']:'${paymentId}'`,
+          limit: 5,
+        }),
+      );
+      for (const pi of intents.data) {
+        if (
+          pi.status !== "requires_payment_method" &&
+          pi.status !== "requires_confirmation" &&
+          pi.status !== "requires_action"
+        ) {
+          continue;
+        }
+        await expireOpenSessionsForIntent(pi.id);
+        await cancelIntentIfOpen(pi.id);
+      }
+    } catch {
+      // Search API may be unavailable; best-effort only.
+    }
   }
 
   async findChargeIdForPayment(paymentId: string): Promise<string | null> {

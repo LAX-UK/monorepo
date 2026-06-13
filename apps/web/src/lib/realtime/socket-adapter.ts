@@ -101,6 +101,7 @@ export function createSocketLotRealtime(): LotRealtimePort {
 
       const onConnect = () => {
         if (hadConnected) {
+          socket.emit("joinLot", { lotId }, () => {});
           callbacks.onReconnect?.();
         }
         hadConnected = true;
