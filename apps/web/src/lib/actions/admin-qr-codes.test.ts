@@ -18,11 +18,26 @@ vi.mock("@/lib/data/http/authed-server-fetch", () => ({
 
 import {
   adminEnsureLotQrCodesForPrintResultAction,
+  adminLoadQrCodeAnalyticsResultAction,
   adminLoadQrCodeDialogResultAction,
   adminRegenerateQrCodeResultAction,
 } from "@/lib/actions/admin-qr-codes";
 
 const uuid = "11111111-1111-4111-8111-111111111111";
+const analyticsPayload = {
+  source: "daily" as const,
+  granularity: "day" as const,
+  rangeKey: "30d",
+  totalScans: 3,
+  uniqueIps: null,
+  trend: [],
+  byDevice: [],
+  byCountry: [],
+  byBrowser: null,
+  byOs: null,
+  byReferrer: null,
+  recentScans: null,
+};
 const qrItem = {
   id: "22222222-2222-4222-8222-222222222222",
   shortCode: "Abc12345",
@@ -51,9 +66,7 @@ describe("admin QR code actions", () => {
     authedServerFetch
       .mockResolvedValueOnce(jsonResponse({ data: { items: [] } }))
       .mockResolvedValueOnce(jsonResponse({ data: qrItem }, 201))
-      .mockResolvedValueOnce(
-        jsonResponse({ data: { totalScans: 3, daily: [], byCountry: [], byDevice: [] } }),
-      );
+      .mockResolvedValueOnce(jsonResponse({ data: analyticsPayload }));
 
     const result = await adminLoadQrCodeDialogResultAction("lot", uuid);
 
@@ -103,6 +116,18 @@ describe("admin QR code actions", () => {
         method: "POST",
         body: JSON.stringify({ entityType: "lot", entityId: uuid, placement: "gallery-label" }),
       }),
+    );
+  });
+
+  it("loads analytics for a selected range", async () => {
+    authedServerFetch.mockResolvedValue(jsonResponse({ data: analyticsPayload }));
+
+    const result = await adminLoadQrCodeAnalyticsResultAction(qrItem.id, { range: "24h" });
+
+    expect(result.ok).toBe(true);
+    expect(authedServerFetch).toHaveBeenCalledWith(
+      `/admin/qr-codes/${qrItem.id}/analytics?range=24h`,
+      expect.objectContaining({ skipActingLegalEntityHeader: true }),
     );
   });
 

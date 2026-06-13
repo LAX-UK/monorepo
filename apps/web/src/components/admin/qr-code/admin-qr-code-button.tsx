@@ -1,5 +1,6 @@
 "use client";
 
+import { QrAnalyticsPanel } from "@/components/admin/qr-code/qr-analytics-panel";
 import {
   type AdminQrCodeAnalytics as Analytics,
   type AdminQrCodeItem as QrCodeItem,
@@ -182,7 +183,7 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
           QR code
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Marketing QR code</DialogTitle>
           <DialogDescription>
@@ -269,7 +270,7 @@ export function AdminQrCodeButton({ entityType, entityId, title }: Props) {
                 {regenerating ? "Regenerating..." : "Regenerate"}
               </Button>
             </div>
-            <QrAnalyticsSummary analytics={analytics} />
+            <QrAnalyticsPanel qrCodeId={item.id} initialAnalytics={analytics} />
           </div>
         ) : null}
       </DialogContent>
@@ -332,43 +333,6 @@ function QrCodeDialogSkeleton() {
       </div>
     </div>
   );
-}
-
-function QrAnalyticsSummary({ analytics }: { analytics: Analytics | null }) {
-  const totalScans = analytics?.totalScans ?? 0;
-  const topDevice = analytics?.byDevice[0]?.deviceType ?? "None yet";
-  const topCountry = analytics?.byCountry[0]?.country ?? "None yet";
-
-  return (
-    <div className="space-y-2 rounded-lg bg-surface-container-high p-3 text-sm">
-      <div>
-        <p className="font-medium text-on-surface">Last 30 days</p>
-        {totalScans === 0 ? (
-          <p className="text-on-surface-variant">
-            No scans yet. Printed labels will appear here after scanning.
-          </p>
-        ) : null}
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <QrStatCard label="Scans" value={String(totalScans)} />
-        <QrStatCard label="Top device" value={formatStatValue(topDevice)} />
-        <QrStatCard label="Top country" value={formatStatValue(topCountry)} />
-      </div>
-    </div>
-  );
-}
-
-function QrStatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border-hairline bg-surface-container-lowest p-2">
-      <p className="text-[11px] uppercase tracking-wide text-on-surface-variant">{label}</p>
-      <p className="mt-1 truncate font-medium text-on-surface">{value}</p>
-    </div>
-  );
-}
-
-function formatStatValue(value: string): string {
-  return value === "unknown" ? "Unknown" : value;
 }
 
 function downloadBlob(blob: Blob, filename: string) {

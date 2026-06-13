@@ -1,6 +1,7 @@
 import { qrShortCodeParamSchema } from "@auction/validators";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
+import { readQrScanGeoFromHeaders } from "../lib/qr-scan-geo.js";
 import { zValidator } from "../lib/z-validator.js";
 
 const shortCodeSegment = ":shortCode{[0-9A-Za-z]{6,12}}";
@@ -20,6 +21,7 @@ export function createQrRoutes(container: Container) {
       );
     }
 
+    const geo = readQrScanGeoFromHeaders(c);
     void container.qrCodeService.enqueueScan({
       qrCodeId: resolved.qrCodeId,
       ip:
@@ -27,6 +29,9 @@ export function createQrRoutes(container: Container) {
       userAgent: c.req.header("user-agent") ?? null,
       referrer: c.req.header("referer") ?? c.req.header("referrer") ?? null,
       requestId: c.req.header("x-request-id") ?? null,
+      country: geo.country,
+      region: geo.region,
+      city: geo.city,
     });
 
     c.header("X-Robots-Tag", "noindex");
