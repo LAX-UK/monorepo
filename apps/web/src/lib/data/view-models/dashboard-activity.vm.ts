@@ -3,6 +3,7 @@ import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 import type { PortfolioRow, UserNotification } from "@auction/types";
+import { toRequiredIsoString } from "@auction/validators";
 
 export type ActivityTone = "neutral" | "positive" | "negative" | "warning" | "info";
 
@@ -108,7 +109,7 @@ export function buildDashboardActivityVm(input: {
       title: `Payment due: ${row.lot.title}`,
       description: label,
       href: dashboardCheckoutLotUrl(row.lot.id),
-      at: row.lot.endTime.toISOString(),
+      at: toRequiredIsoString(row.lot.endTime),
     });
   }
 

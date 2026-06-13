@@ -6,6 +6,7 @@ import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
+import { toLotCardTimingVM, toSaleCardTimingVM } from "@auction/validators";
 import {
   buildGoogleMapsEmbedUrl,
   formatPostalAddressLines,
@@ -142,9 +143,7 @@ export function mapSaleToHeroVM(
     title: sale.title,
     coverImage: sale.coverImages[0] ?? null,
     startEndLabel: formatSaleDateLabel(sale.startTime, sale.endTime),
-    status: sale.status,
-    startTime: sale.startTime.toISOString(),
-    endTime: sale.endTime.toISOString(),
+    ...toSaleCardTimingVM(sale),
     isLive,
     registrationClosesLabel:
       sale.status === "scheduled" ? formatLongDateTime(sale.startTime) : null,
@@ -206,9 +205,7 @@ export function mapLotToCardVM(
     viewerOwnsLot: opts.viewerUserId ? lot.sellerId === opts.viewerUserId : false,
     artistOrMedium: lotSubtitle(lot),
     viewerIsWatching: Boolean(opts.initialWatching),
-    status: lot.status,
-    startTime: lot.startTime.toISOString(),
-    endTime: lot.endTime.toISOString(),
+    ...toLotCardTimingVM(lot),
   };
 }
 

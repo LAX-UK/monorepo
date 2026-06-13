@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, LotStatus } from "@auction/types";
+import { toDisplayDate, toRequiredIsoString } from "@auction/validators";
 
 export type SellerLotStatusFilter = "live" | "scheduled" | "ended" | "all";
 
@@ -100,9 +101,9 @@ export function toInSaleDisplayRows(
       reserveMet: reserve.met,
       reserveLabel: reserve.label,
       currentPriceLabel: formatMoney(lot.currentPrice),
-      endTimeIso: lot.endTime.toISOString(),
-      endTimeLabel: formatDateTime(lot.endTime),
-      startTimeIso: lot.startTime.toISOString(),
+      endTimeIso: toRequiredIsoString(lot.endTime),
+      endTimeLabel: formatDateTime(toDisplayDate(lot.endTime)),
+      startTimeIso: toRequiredIsoString(lot.startTime),
       imageUrl: lot.images[0] ?? null,
     };
   });

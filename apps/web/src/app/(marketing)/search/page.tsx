@@ -22,6 +22,7 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotCount, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import {
@@ -179,6 +180,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     loadError = "We couldn’t load inventory right now. Please try again shortly.";
   }
   const filtered = auctions;
+  const catalogLots = toCatalogLotVMs(filtered);
   const hasPrev = offset > 0;
   const nextOffset = offset + PAGE_SIZE;
   const prevOffset = Math.max(0, offset - PAGE_SIZE);
@@ -399,7 +401,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               <div className="mt-8">
                 <CatalogLotViewClient
                   initialView={layoutView}
-                  lots={filtered}
+                  lots={catalogLots}
                   currentUserId={currentUserId}
                   isAuthenticated={isAuthenticated}
                   watchedLotIds={watchedLotIds}

@@ -11,6 +11,7 @@ import {
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
+import { normalizeAuctionTime, parseNormalizedIsoMs, toDisplayDate } from "@auction/validators";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -45,7 +46,7 @@ function formatStartsAriaLabel(ms: number): string {
 }
 
 function formatTargetDatetime(value: Date | string): string {
-  const d = value instanceof Date ? value : new Date(value);
+  const d = toDisplayDate(value);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 }
@@ -93,8 +94,8 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
   const reduced = useReducedMotion();
   const now = useClientClock(1000);
 
-  const startMs = new Date(sale.startTime).getTime();
-  const endMs = new Date(sale.endTime).getTime();
+  const startMs = parseNormalizedIsoMs(normalizeAuctionTime(sale.startTime)) ?? Number.NaN;
+  const endMs = parseNormalizedIsoMs(normalizeAuctionTime(sale.endTime)) ?? Number.NaN;
 
   const phase = useMemo((): Phase => {
     if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return "ended";
@@ -106,9 +107,9 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
 
   const targetIso =
     phase === "before"
-      ? new Date(sale.startTime).toISOString()
+      ? normalizeAuctionTime(sale.startTime)
       : phase === "during"
-        ? new Date(sale.endTime).toISOString()
+        ? normalizeAuctionTime(sale.endTime)
         : null;
 
   const msLeft = useMemo(() => {

@@ -1,21 +1,18 @@
 import type { LotTimerInputs } from "@/components/lot-timer/classify";
-import type { LotStatus } from "@auction/types";
-
-function toIsoTime(value: string | Date | null): string | null {
-  if (value == null) return null;
-  if (typeof value === "string") return value;
-  return value.toISOString();
-}
+import type { LotCardTimingVM, LotTimingSource } from "@auction/types";
+import { toLotCardTimingVM } from "@auction/validators";
 
 /** Normalizes lot timing fields for timer/badge components. */
-export function toLotTimerInputs(input: {
-  status: LotStatus;
-  startTime: string | Date | null;
-  endTime: string | Date | null;
-}): LotTimerInputs {
-  return {
-    status: input.status,
-    startTime: toIsoTime(input.startTime),
-    endTime: toIsoTime(input.endTime),
-  };
+export function toLotTimerInputs(source: LotTimingSource): LotTimerInputs {
+  return toLotCardTimingVM(source);
+}
+
+/** @deprecated Prefer `toLotCardTimingVM` at the VM boundary; use this only for raw lot records. */
+export function toLotTimerInputsFromLot(lot: LotTimingSource): LotTimerInputs {
+  return toLotCardTimingVM(lot);
+}
+
+/** Pass-through when timing is already normalized on a view model. */
+export function lotCardTimingToTimerInputs(timing: LotCardTimingVM): LotTimerInputs {
+  return timing;
 }

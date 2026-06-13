@@ -1,3 +1,5 @@
+import type { AuctionTimingValue } from "./auction-timing.js";
+
 /** Matches DB enum `auction_type` on `lot`. */
 export const lotAuctionTypes = ["english", "dutch", "sealed", "buy_it_now"] as const;
 export type LotAuctionType = (typeof lotAuctionTypes)[number];
@@ -114,6 +116,38 @@ export type Lot = {
   marketingDetails: LotMarketingDetails;
   deletedAt?: Date | null;
   deletedByUserId?: string | null;
+};
+
+/** Lot timing as received over the wire or after RSC serialization. */
+export type LotTimingValue = AuctionTimingValue;
+
+/** Raw lot fields consumed by timing normalizers. */
+export type LotTimingSource = {
+  status: LotStatus;
+  startTime: LotTimingValue;
+  endTime: LotTimingValue;
+};
+
+/** Normalized ISO timing for catalogue cards, badges, and timers. */
+export type LotCardTimingVM = {
+  status: LotStatus;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+/** Catalogue lot with timing normalized once at the VM boundary — safe for client render. */
+export type CatalogLotVM = Omit<Lot, "startTime" | "endTime"> & LotCardTimingVM;
+
+/** Wire/RSC lot payload — date fields may be ISO strings or null. */
+export type SerializedLot = Omit<
+  Lot,
+  "startTime" | "endTime" | "createdAt" | "updatedAt" | "dutchLastDecrementAt"
+> & {
+  startTime: LotTimingValue;
+  endTime: LotTimingValue;
+  createdAt: LotTimingValue;
+  updatedAt: LotTimingValue;
+  dutchLastDecrementAt: LotTimingValue;
 };
 
 export type CreateLotInput = {

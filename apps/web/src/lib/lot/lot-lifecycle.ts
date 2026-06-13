@@ -1,5 +1,6 @@
-import { type LotTimerInputs, classifyLotTimerState } from "@/components/lot-timer";
+import { classifyLotTimerState } from "@/components/lot-timer";
 import type { Lot, Sale } from "@auction/types";
+import { toLotCardTimingVM } from "@auction/validators";
 
 export type LotLifecycleKind =
   | "preLaunch"
@@ -33,12 +34,6 @@ type LotLifecycleLot = Pick<
 
 type LotLifecycleSale = Pick<Sale, "status" | "deliveryMode"> | null;
 
-function toTimerInputs(lot: LotLifecycleLot): LotTimerInputs {
-  const start = lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
-  const end = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
-  return { status: lot.status, startTime: start, endTime: end };
-}
-
 /**
  * Single source of truth for lot UX state (badges, banners, bid gating copy).
  * Online lots: pass parent sale when known so draft-sale catalogue shows as preLaunch.
@@ -69,7 +64,7 @@ export function classifyLotLifecycle(
     return { kind: "endedNoSale", msLeft: null };
   }
 
-  const timer = classifyLotTimerState(toTimerInputs(lot), nowMs);
+  const timer = classifyLotTimerState(toLotCardTimingVM(lot), nowMs);
 
   if (timer.kind === "opensSoon") {
     return { kind: "scheduled", msLeft: timer.msLeft };

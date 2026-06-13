@@ -26,6 +26,7 @@ import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { toRequiredIsoString } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download, Gavel, History } from "lucide-react";
 import Link from "next/link";
@@ -252,7 +253,7 @@ function exportRowsToCsv(rows: BidBoardRow[], artistNameById: Record<string, str
       r.statusLabel,
       r.bid.amount,
       a?.currentPrice ?? "",
-      a?.endTime.toISOString() ?? "",
+      toRequiredIsoString(a?.endTime),
     ].map((v) => csvCell(String(v)));
     lines.push(cells.join(","));
   }

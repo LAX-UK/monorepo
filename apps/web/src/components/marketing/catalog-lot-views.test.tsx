@@ -3,6 +3,7 @@ import {
   CatalogLotGridView,
   CatalogLotListView,
 } from "@/components/marketing/catalog-lot-views";
+import { toCatalogLotVM } from "@/lib/lot/to-catalog-lot-vm";
 import type { Lot } from "@auction/types";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -84,7 +85,10 @@ const minimalLot = (overrides: Partial<Lot> = {}): Lot => ({
 describe("CatalogLotGridView", () => {
   it("uses a 2-column grid on the default (mobile-first) breakpoint", () => {
     const { container } = render(
-      <CatalogLotGridView lots={[minimalLot(), minimalLot({ id: "lot-2" })]} {...viewProps} />,
+      <CatalogLotGridView
+        lots={[toCatalogLotVM(minimalLot()), toCatalogLotVM(minimalLot({ id: "lot-2" }))]}
+        {...viewProps}
+      />,
     );
     const ul = container.querySelector("ul");
     expect(ul?.className).toMatch(/grid-cols-2/);
@@ -93,7 +97,10 @@ describe("CatalogLotGridView", () => {
   it("renders a watchlist heart per lot with initial state from watchedLotIds", () => {
     render(
       <CatalogLotGridView
-        lots={[minimalLot(), minimalLot({ id: "lot-2", title: "Watched lot" })]}
+        lots={[
+          toCatalogLotVM(minimalLot()),
+          toCatalogLotVM(minimalLot({ id: "lot-2", title: "Watched lot" })),
+        ]}
         {...viewProps}
       />,
     );
@@ -108,14 +115,14 @@ describe("CatalogLotGridView", () => {
 
 describe("CatalogLotCardView", () => {
   it("renders watchlist hearts on editorial cards", () => {
-    render(<CatalogLotCardView lots={[minimalLot()]} {...viewProps} />);
+    render(<CatalogLotCardView lots={[toCatalogLotVM(minimalLot())]} {...viewProps} />);
     expect(screen.getByTestId("watchlist-lot-1")).toBeInTheDocument();
   });
 });
 
 describe("CatalogLotListView", () => {
   it("renders inline watchlist hearts in list rows", () => {
-    render(<CatalogLotListView lots={[minimalLot()]} {...viewProps} />);
+    render(<CatalogLotListView lots={[toCatalogLotVM(minimalLot())]} {...viewProps} />);
     const heart = screen.getByTestId("watchlist-lot-1");
     expect(heart).toHaveAttribute("data-layout", "inline");
   });
