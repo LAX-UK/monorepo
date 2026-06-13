@@ -17,7 +17,6 @@ import { SearchFilterFormDesktop } from "@/components/marketing/search-filter-fo
 import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
-import { lotsEndingSoon } from "@/components/sections/home/home-urgency-helpers";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotCount, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -142,19 +141,26 @@ export default async function SearchPage({ searchParams }: PageProps) {
     const listStatus = statusFilter ?? (endingWindow ? "active" : undefined);
 
     if (endingWindow === "24h") {
-      const batch = await reader.list({
-        limit: 200,
-        offset: 0,
-        ...(trimmed ? { q: trimmed } : {}),
-        sort: "endingAsc",
-        status: "active",
-        ...(categoryId ? { categoryId } : {}),
-      });
-      const endingSoon = lotsEndingSoon(batch);
-      exactTotal = endingSoon.length;
-      const slice = endingSoon.slice(offset, offset + PAGE_SIZE + 1);
-      hasNext = slice.length > PAGE_SIZE;
-      auctions = hasNext ? slice.slice(0, PAGE_SIZE) : slice;
+      const [list, count] = await Promise.all([
+        reader.list({
+          limit: fetchLimit,
+          offset,
+          ...(trimmed ? { q: trimmed } : {}),
+          sort: "endingAsc",
+          status: "active",
+          endingWithinHours: 24,
+          ...(categoryId ? { categoryId } : {}),
+        }),
+        getServerLotCount({
+          ...(trimmed ? { q: trimmed } : {}),
+          ...(categoryId ? { categoryId } : {}),
+          status: "active",
+          endingWithinHours: 24,
+        }),
+      ]);
+      exactTotal = count;
+      hasNext = list.length > PAGE_SIZE;
+      auctions = hasNext ? list.slice(0, PAGE_SIZE) : list;
     } else {
       const [list, count] = await Promise.all([
         reader.list({

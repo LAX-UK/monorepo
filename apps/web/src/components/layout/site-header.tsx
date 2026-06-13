@@ -3,14 +3,24 @@
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { useAppSession } from "@/lib/auth/use-app-session";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
+import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { type RefObject, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { HeaderAuthChip } from "./header-auth-chip";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
@@ -57,7 +67,11 @@ function SiteHeaderShell({
   chromeVariant,
   searchParams,
 }: SiteHeaderShellProps) {
-  const nav = navProp ?? emptyMegaMenuSections();
+  const { user } = useAppSession();
+  const nav = useMemo(() => {
+    const base = navProp ?? emptyMegaMenuSections();
+    return user ? restoreMegaMenuAuthedHrefs(base) : base;
+  }, [navProp, user]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [atTop, setAtTop] = useState(true);

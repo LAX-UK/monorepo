@@ -1,9 +1,13 @@
 import "server-only";
 
+import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
+import { NO_STORE_FETCH_POLICY } from "@/lib/data/http/server-fetch-policy";
 import type { Lot, Sale } from "@auction/types";
+import { cookies } from "next/headers";
 import { cache } from "react";
 
 export type ListSalesQuery = {
@@ -45,6 +49,34 @@ export type SaleViewerState = {
 };
 
 export type SaleWithLots = { sale: Sale; lots: Lot[]; viewer?: SaleViewerState };
+
+export type SaleShell = { sale: Sale; viewer?: SaleViewerState };
+
+export const getServerSaleShell = cache(async function getServerSaleShell(
+  id: string,
+): Promise<SaleShell | null> {
+  const jar = await cookies();
+  const cookieHeader = jar
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+  const authed = hasAuthSessionCookie(cookieHeader);
+  const base = getServerApiBase();
+  const res = await catalogueFetch(
+    `${base}/sales/${encodeURIComponent(id)}`,
+    authed ? NO_STORE_FETCH_POLICY : CATALOGUE_FETCH_POLICIES.sales,
+    authed && cookieHeader ? { headers: { Cookie: cookieHeader } } : undefined,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load sale: ${res.status}`);
+  const body = (await res.json()) as {
+    data: { sale: unknown; viewer?: { isFollowing?: boolean } };
+  };
+  const sale = parseSale(body.data.sale);
+  return body.data.viewer
+    ? { sale, viewer: { isFollowing: Boolean(body.data.viewer.isFollowing) } }
+    : { sale };
+});
 
 export const getServerSaleWithLots = cache(async function getServerSaleWithLots(
   id: string,

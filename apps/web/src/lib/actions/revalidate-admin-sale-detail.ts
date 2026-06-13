@@ -1,6 +1,8 @@
+import { revalidateCatalogueCache } from "@/lib/actions/revalidate-catalogue";
 import { revalidatePath } from "next/cache";
 
 export function revalidateAdminSaleDetail(saleId: string) {
+  revalidateCatalogueCache();
   revalidatePath("/admin/sales");
   revalidatePath(`/admin/sales/${saleId}`);
   revalidatePath(`/admin/sales/${saleId}/setup`);

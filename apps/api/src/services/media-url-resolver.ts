@@ -33,4 +33,16 @@ export class MediaUrlResolver {
       values.map((value) => this.resolve(value).then((resolved) => resolved ?? value)),
     );
   }
+
+  /** Deduped batch resolve — one presign per unique storage key. */
+  async resolveManyUnique(values: readonly string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(values.map((v) => v.trim()).filter(Boolean))];
+    if (unique.length === 0) return new Map();
+    const resolved = await Promise.all(unique.map((value) => this.resolve(value)));
+    const out = new Map<string, string>();
+    unique.forEach((key, index) => {
+      out.set(key, resolved[index] ?? key);
+    });
+    return out;
+  }
 }
