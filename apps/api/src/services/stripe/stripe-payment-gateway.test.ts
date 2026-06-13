@@ -203,4 +203,42 @@ describe("StripePaymentGateway", () => {
       { idempotencyKey: "refund:ch_1:100" },
     );
   });
+
+  it("revokeOpenCheckoutForPayment expires open sessions and cancels the payment intent", async () => {
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const sessionsExpire = vi.fn().mockResolvedValue({ id: "cs_1", status: "expired" });
+    const sessionsList = vi.fn().mockResolvedValue({
+      data: [{ id: "cs_1", status: "open" }],
+    });
+    const paymentIntentsCancel = vi.fn().mockResolvedValue({ id: "pi_1", status: "canceled" });
+    const mockStripe = {
+      paymentIntents: {
+        capture: vi.fn(),
+        retrieve: vi.fn(),
+        cancel: paymentIntentsCancel,
+        search: vi.fn(),
+      },
+      refunds: { create: vi.fn() },
+      checkout: {
+        sessions: {
+          create: vi.fn(),
+          retrieve: vi.fn(),
+          list: sessionsList,
+          expire: sessionsExpire,
+        },
+      },
+      charges: { search: vi.fn() },
+    };
+    injectStripeClient(gateway, mockStripe as unknown as Stripe);
+
+    await gateway.revokeOpenCheckoutForPayment("pay_1", "pi_1");
+
+    expect(sessionsList).toHaveBeenCalledWith({ payment_intent: "pi_1", limit: 10 });
+    expect(sessionsExpire).toHaveBeenCalledWith("cs_1");
+    expect(paymentIntentsCancel).toHaveBeenCalledWith(
+      "pi_1",
+      {},
+      { idempotencyKey: "cancel:pi_1" },
+    );
+  });
 });

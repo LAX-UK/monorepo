@@ -579,7 +579,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         c.req.header("idempotency-key") ??
         c.req.header("Idempotency-Key") ??
         (body.telephoneBookingId
-          ? `telephone-booking:${body.telephoneBookingId}:${body.amount}`
+          ? `telephone-booking:${body.lotId}:${body.telephoneBookingId}:${body.amount}`
           : undefined);
       const bidInput = {
         placedByUserId: body.buyerUserId,

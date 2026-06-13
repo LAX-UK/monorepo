@@ -220,9 +220,11 @@ export class PaymentService {
       return err(new LotError("Invalid payment amount", 400, "invalid_payment_amount"));
     }
 
-    const sellerEntity = this.legalEntityRepository
-      ? await this.legalEntityRepository.findById(lot.sellerLegalEntityId)
-      : null;
+    const sellerLegalEntityId = lot.sellerLegalEntityId;
+    const sellerEntity =
+      this.legalEntityRepository && sellerLegalEntityId
+        ? await this.legalEntityRepository.findById(sellerLegalEntityId)
+        : null;
     const sellerArchived = sellerEntity?.status === "archived";
 
     // CDD Sections 5 & 6: halt settlement on an AML/sanctions hold or when SoF is
@@ -525,6 +527,54 @@ export class PaymentService {
     return ok(undefined);
   }
 
+  private async revokeOpenStripeCheckoutForPayment(paymentId: string): Promise<void> {
+    if (!this.stripePayments?.isConfigured()) return;
+    const row = await this.payments.findById(paymentId);
+    if (!row) return;
+    try {
+      await this.stripePayments.revokeOpenCheckoutForPayment(paymentId, row.stripePaymentIntentId);
+      recordMoneyPathEvent("stripe_checkout_revoked_for_manual_review");
+    } catch (err) {
+      recordMoneyPathEvent("stripe_checkout_revoke_failed");
+      console.error(
+        JSON.stringify({
+          msg: "stripe_checkout_revoke_failed",
+          paymentId,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+  }
+
+  private async resolvePendingCheckoutManualReviewReason(
+    paymentId: string,
+    lot: Lot,
+    buyerId: string,
+    amount: string,
+  ): Promise<ManualReviewReason | null> {
+    const amountPence = gbpAmountToPence(amount);
+    if (this.settlementCompliance) {
+      const compliance = await this.settlementCompliance.evaluate({
+        buyerUserId: buyerId,
+        amountPence,
+        excludePaymentId: paymentId,
+      });
+      if (compliance.hold && compliance.reason) {
+        return compliance.reason;
+      }
+    }
+    const sellerLegalEntityId = lot.sellerLegalEntityId;
+    const sellerEntity =
+      this.legalEntityRepository && sellerLegalEntityId
+        ? await this.legalEntityRepository.findById(sellerLegalEntityId)
+        : null;
+    const sellerArchived = sellerEntity?.status === "archived";
+    if (sellerArchived) {
+      return this.paymentTierPolicy.resolveManualReviewReason(amountPence, sellerArchived);
+    }
+    return null;
+  }
+
   private async promotePendingToComplianceManualReview(
     paymentId: string,
     lot: Lot,
@@ -536,6 +586,7 @@ export class PaymentService {
     checkoutRail: null;
     manualReviewReason: ManualReviewReason;
   }> {
+    await this.revokeOpenStripeCheckoutForPayment(paymentId);
     await this.payments.updateStatus(paymentId, "requires_manual_review");
     if (this.db && this.domainEventPublisher) {
       await this.domainEventPublisher.publish(this.db, {
@@ -575,6 +626,24 @@ export class PaymentService {
       PaymentProviderError
     >
   > {
+    const manualReviewReason = await this.resolvePendingCheckoutManualReviewReason(
+      paymentId,
+      lot,
+      buyerId,
+      amount,
+    );
+    if (manualReviewReason) {
+      return ok(
+        await this.promotePendingToComplianceManualReview(
+          paymentId,
+          lot,
+          buyerId,
+          amount,
+          manualReviewReason,
+        ),
+      );
+    }
+
     const checkout = await this.issueCheckoutForPendingPayment(paymentId, lot, buyerId, amount);
     if (checkout.isOk()) {
       return ok({
