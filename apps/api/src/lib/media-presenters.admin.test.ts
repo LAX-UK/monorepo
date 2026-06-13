@@ -9,7 +9,11 @@ import {
 
 describe("media-presenters admin", () => {
   const resolver = {
-    resolveMany: vi.fn(async (keys: string[]) => keys.map((k) => `https://cdn.example/${k}`)),
+    resolveManyUnique: vi.fn(async (keys: string[]) => {
+      const map = new Map<string, string>();
+      for (const key of keys) map.set(key, `https://cdn.example/${key}`);
+      return map;
+    }),
   } as unknown as MediaUrlResolver;
 
   it("presentSaleImages resolves keys for public consumers", async () => {
