@@ -1,8 +1,7 @@
 import { type Database, qrCodeScan, qrCodeScanDaily } from "@auction/db";
-import type { ResolvedQrCodeAnalyticsQuery } from "@auction/validators";
+import type { QrCodeDetailedAnalytics, ResolvedQrCodeAnalyticsQuery } from "@auction/validators";
 import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import {
-  type QrAnalyticsBreakdownRow,
   dailyUpperExclusiveDay,
   fillTrendGaps,
   foldTopN,
@@ -11,29 +10,7 @@ import {
   normalizeBreakdownKey,
 } from "./qr-code-analytics.helpers.js";
 
-export type QrCodeRecentScanDto = {
-  scannedAt: string;
-  deviceType: string;
-  browser: string;
-  os: string;
-  country: string;
-  referrerHost: string | null;
-};
-
-export type QrCodeDetailedAnalyticsDto = {
-  source: "raw" | "daily";
-  granularity: "hour" | "day";
-  rangeKey: string;
-  totalScans: number;
-  uniqueIps: number | null;
-  trend: { bucket: string; scans: number }[];
-  byDevice: QrAnalyticsBreakdownRow[];
-  byCountry: QrAnalyticsBreakdownRow[];
-  byBrowser: QrAnalyticsBreakdownRow[] | null;
-  byOs: QrAnalyticsBreakdownRow[] | null;
-  byReferrer: QrAnalyticsBreakdownRow[] | null;
-  recentScans: QrCodeRecentScanDto[] | null;
-};
+export type { QrCodeDetailedAnalytics };
 
 const TOP_N = 5;
 
@@ -43,7 +20,7 @@ export class QrCodeAnalyticsService {
   async getDetailed(
     qrCodeId: string,
     query: ResolvedQrCodeAnalyticsQuery,
-  ): Promise<QrCodeDetailedAnalyticsDto> {
+  ): Promise<QrCodeDetailedAnalytics> {
     if (query.source === "raw") {
       return this.getFromRaw(qrCodeId, query);
     }
@@ -68,7 +45,7 @@ export class QrCodeAnalyticsService {
   private async getFromDaily(
     qrCodeId: string,
     query: ResolvedQrCodeAnalyticsQuery,
-  ): Promise<QrCodeDetailedAnalyticsDto> {
+  ): Promise<QrCodeDetailedAnalytics> {
     const where = this.dailyWhere(qrCodeId, query.from, query.to);
 
     const [totalRow, trendRows, deviceRows, countryRows] = await Promise.all([
@@ -145,7 +122,7 @@ export class QrCodeAnalyticsService {
   private async getFromRaw(
     qrCodeId: string,
     query: ResolvedQrCodeAnalyticsQuery,
-  ): Promise<QrCodeDetailedAnalyticsDto> {
+  ): Promise<QrCodeDetailedAnalytics> {
     const where = this.rawWhere(qrCodeId, query.from, query.to);
     const hourBucket = sql`date_trunc('hour', ${qrCodeScan.scannedAt} AT TIME ZONE 'UTC')`;
 
