@@ -89,7 +89,7 @@ export class QrCodeService {
     private readonly redis: Redis,
     private readonly webOrigin: string,
     private readonly logger?: AppLogger,
-    private readonly scanQueue?: Queue<QrCodeScanJobPayload>,
+    private readonly scanQueue?: Queue,
   ) {}
 
   /**

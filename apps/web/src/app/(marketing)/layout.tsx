@@ -5,11 +5,11 @@ import { AuthRequiredToast } from "@/components/marketing/auth-required-toast";
 import { MarketingLotQuickLookShell } from "@/components/marketing/lot-quick-look/marketing-lot-quick-look-shell";
 import { MarketingGlobalHotkeys } from "@/lib/hotkeys/marketing-global-hotkeys";
 import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-title-context";
-import { loadMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
+import { loadCachedMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import type { ReactNode } from "react";
 
 export default async function MarketingLayout({ children }: { children: ReactNode }) {
-  const nav = await loadMegaMenuSections();
+  const nav = await loadCachedMegaMenuSections();
 
   return (
     <>

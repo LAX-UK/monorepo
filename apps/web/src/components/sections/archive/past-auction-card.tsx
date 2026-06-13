@@ -1,5 +1,5 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
-import { MediaImage } from "@/components/ui/media-image";
+import { MediaImage } from "@/components/ui/media-image.server";
 import { formatMoney } from "@/lib/format-currency";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { Lot } from "@auction/types";
@@ -32,7 +32,7 @@ export function PastAuctionCard({
   const img = auction.images[0];
   return (
     <div className={`group ${gridOffsetClass}`}>
-      <Link href={href} className={cn("block rounded-sm", FOCUS_RING)}>
+      <Link href={href} prefetch={false} className={cn("block rounded-sm", FOCUS_RING)}>
         <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-surface-container-low md:mb-8">
           <MediaImage
             src={img}

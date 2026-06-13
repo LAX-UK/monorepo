@@ -12,7 +12,6 @@ import {
   mapLotToCardVM,
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
-  mapSaleToRelatedVM,
 } from "@/components/sections/saleroom/mappers";
 import { SaleroomCatalogLotsByView } from "@/components/sections/saleroom/saleroom-catalog-lots-by-view";
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
@@ -21,31 +20,23 @@ import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-her
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
-import { SaleroomRelatedAuctions } from "@/components/sections/saleroom/saleroom-related-auctions";
+import { SaleroomRelatedAuctionsSection } from "@/components/sections/saleroom/saleroom-related-auctions-section";
 import {
   isPublicCatalogSale,
   viewerCanSeeNonPublicCatalog,
 } from "@/lib/catalog/public-catalog-visibility";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
-import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http/saleroom.server";
 import {
   type SaleLotsPage,
-  getServerSaleLotsPage,
   getServerSaleMyRegistrations,
-  getServerSaleWithLots,
+  getServerSaleShell,
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
-import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import {
-  type SaleroomCatalogSort,
-  parseSaleroomCatalogSort,
-} from "@/lib/marketing/saleroom-catalog-sort";
+import { parseSaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
+import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.service";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
@@ -58,13 +49,14 @@ import {
 } from "@/lib/seo/structured-data";
 import { salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import type { Category, Sale } from "@auction/types";
+import type { Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { formatPostalAddressLines, resolveOnsiteMapUrl } from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
+import { Suspense } from "react";
 
-export const revalidate = 0;
+export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;
@@ -72,9 +64,6 @@ type PageProps = {
 };
 
 const CATALOG_PAGE_SIZE = 40;
-const CATALOG_LOAD_ALL_CAP = 200;
-/** Max page size accepted by the API `/sales/:id/lots` endpoint (listSaleLotsQuerySchema). */
-const CATALOG_LOAD_ALL_BATCH = 48;
 
 function firstString(v: string | string[] | undefined): string | undefined {
   if (v === undefined) return undefined;
@@ -104,57 +93,12 @@ function ensureCanonicalSaleSlug(slug: string, sale: Sale) {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id, slug } = await params;
-  const bundle = await getServerSaleWithLots(id).catch(() => null);
-  if (!bundle) {
+  const shell = await getServerSaleShell(id).catch(() => null);
+  if (!shell) {
     return metadataForNotFound("Sale not found");
   }
-  ensureCanonicalSaleSlug(slug, bundle.sale);
-  return metadataForSale(bundle.sale);
-}
-
-async function loadCatalogLotsPage(
-  id: string,
-  pageRaw: string | undefined,
-  sort: SaleroomCatalogSort,
-  loadAll: boolean,
-): Promise<SaleLotsPage> {
-  const isAll = loadAll || pageRaw === "all";
-  if (isAll) {
-    // The API caps each request at 48 lots, so fetch the catalogue in parallel
-    // batches up to CATALOG_LOAD_ALL_CAP. This keeps client-side search/status
-    // filtering accurate across the whole sale rather than just the first batch.
-    const first = await getServerSaleLotsPage({
-      id,
-      page: 1,
-      pageSize: CATALOG_LOAD_ALL_BATCH,
-      sort,
-    });
-    if (!first) throw new Error("notfound");
-    const cap = Math.min(CATALOG_LOAD_ALL_CAP, first.total);
-    const items = [...first.items];
-    const totalPages = Math.ceil(cap / CATALOG_LOAD_ALL_BATCH);
-    if (totalPages > 1) {
-      const rest = await Promise.all(
-        Array.from({ length: totalPages - 1 }, (_, i) =>
-          getServerSaleLotsPage({ id, page: i + 2, pageSize: CATALOG_LOAD_ALL_BATCH, sort }),
-        ),
-      );
-      for (const p of rest) {
-        if (p) items.push(...p.items);
-      }
-    }
-    return { ...first, items: items.slice(0, cap), limit: cap, offset: 0 };
-  }
-
-  const pageNum = parsePage(pageRaw);
-  const p = await getServerSaleLotsPage({
-    id,
-    page: pageNum,
-    pageSize: CATALOG_PAGE_SIZE,
-    sort,
-  });
-  if (!p) throw new Error("notfound");
-  return p;
+  ensureCanonicalSaleSlug(slug, shell.sale);
+  return metadataForSale(shell.sale);
 }
 
 export default async function SaleDetailPage({ params, searchParams }: PageProps) {
@@ -174,14 +118,19 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const isCatalogLoadAll = pageRaw === "all" || catalogSearch !== "" || statusFilter != null;
   const pageNum = isCatalogLoadAll ? 1 : parsePage(pageRaw);
 
-  const [bundle, session, categories] = await Promise.all([
-    getServerSaleWithLots(id).catch(() => null),
+  const [loaded, session] = await Promise.all([
+    saleroomPageDataService.loadShell({
+      saleId: id,
+      page: pageNum,
+      sort: catalogSort,
+      loadAll: isCatalogLoadAll,
+      pageSize: CATALOG_PAGE_SIZE,
+    }),
     getServerSessionUser(),
-    getServerCategoryReader()
-      .then((r) => r.list())
-      .catch((): Category[] => []),
   ]);
-  if (!bundle) notFound();
+  if (!loaded) notFound();
+  const { shell, lotsPage, categoryLabel } = loaded;
+  const bundle = shell;
   const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRole);
   if (!canPreviewCatalog && !isPublicCatalogSale(bundle.sale)) {
     notFound();
@@ -193,28 +142,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     redirect(canonicalSalePathWithQuery(bundle.sale, sp));
   }
 
-  const categoryId = bundle.sale.categoryId ?? null;
-  const categoryLabel =
-    categoryId && categories.length > 0
-      ? (categories.find((c) => c.id === categoryId)?.name ?? null)
-      : null;
-
-  const lotsPage = await loadCatalogLotsPage(id, pageRaw, catalogSort, isCatalogLoadAll).catch(
-    () => null,
-  );
-  if (!lotsPage) notFound();
-
-  const [follow, relatedSales, kycSummary, watchedLotIds, telephoneBooking] = await Promise.all([
-    session
-      ? getServerSaleFollowState(id).catch(() => ({ isFollowing: false }))
-      : Promise.resolve({ isFollowing: false }),
-    getServerRelatedSales({ id, categoryId, limit: 4 }).catch(() => []),
-    session ? getServerKycStatusSummary().catch(() => null) : Promise.resolve(null),
-    session ? getServerWatchedLotIdSet() : Promise.resolve(new Set<string>()),
-    session && bundle.sale.deliveryMode === "onsite"
-      ? getServerTelephoneBookingForSale(id).catch(() => null)
-      : Promise.resolve(null),
-  ]);
+  const secondary = await saleroomPageDataService.loadSecondary(id, bundle.sale, session);
+  const { follow, kycSummary, watchedLotIds, telephoneBooking } = secondary;
 
   const actingCtx = session
     ? await resolveActingContext(session.role, session.staffRole ?? null)
@@ -285,8 +214,6 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         catalogLinkParams: lotLinkParams,
       }),
     );
-
-  const relatedVMs = relatedSales.map((r) => mapSaleToRelatedVM(r.sale, r.lotCount));
 
   const crumbs = breadcrumbJsonLd([
     { name: "Home", path: "/" },
@@ -551,11 +478,9 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         />
       </section>
 
-      {relatedVMs.length > 0 ? (
-        <section className={cn(MARKETING_PAGE_SHELL, "mt-20")}>
-          <SaleroomRelatedAuctions related={relatedVMs} />
-        </section>
-      ) : null}
+      <Suspense fallback={null}>
+        <SaleroomRelatedAuctionsSection saleId={id} sale={bundle.sale} />
+      </Suspense>
     </MarketingDetailShell>
   );
 }

@@ -1,6 +1,11 @@
 import "server-only";
 import { CONSENT_COOKIE_NAME, parseConsentCookie } from "@/lib/analytics/consent/cookie";
 import { type RpcApp, hcAsRpcApp } from "@/lib/data/http/rpc-app";
+import {
+  NO_STORE_FETCH_POLICY,
+  type ServerFetchPolicy,
+  mergeFetchInitWithPolicy,
+} from "@/lib/data/http/server-fetch-policy";
 import { buildAuthedSsrHeaders } from "@/lib/data/http/server-request-headers";
 import { cookies } from "next/headers";
 
@@ -46,7 +51,9 @@ export function getServerApiBase(): string {
   return "http://127.0.0.1:3001";
 }
 
-export async function getServerHc(): Promise<RpcApp> {
+export async function createServerHc(
+  policy: ServerFetchPolicy = NO_STORE_FETCH_POLICY,
+): Promise<RpcApp> {
   const jar = await cookies();
   const consentRaw = jar.get(CONSENT_COOKIE_NAME)?.value;
   const consentSnapshot = consentRaw ? parseConsentCookie(consentRaw) : null;
@@ -62,11 +69,15 @@ export async function getServerHc(): Promise<RpcApp> {
       }
       const headers = await buildAuthedSsrHeaders(headerOpts);
       return fetch(input, {
-        ...init,
-        cache: init?.cache ?? "no-store",
+        ...mergeFetchInitWithPolicy(policy, init),
         headers,
         credentials: "include",
       });
     },
   });
+}
+
+/** Default server Hono client — always dynamic (`no-store`). */
+export async function getServerHc(): Promise<RpcApp> {
+  return createServerHc(NO_STORE_FETCH_POLICY);
 }

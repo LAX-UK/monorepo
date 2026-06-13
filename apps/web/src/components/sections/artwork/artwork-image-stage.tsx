@@ -1,6 +1,6 @@
 "use client";
 
-import { LotGallery } from "@/components/gallery/lot-gallery";
+import { LotGalleryLazy } from "@/components/gallery/lot-gallery-lazy";
 
 import type { GalleryImage } from "@auction/types";
 
@@ -15,7 +15,7 @@ type Props = {
 /** Lot detail image gallery (composition root delegates to {@link LotGallery}). */
 export function ArtworkImageStage({ title, images, imageAssets, imageAlts }: Props) {
   return (
-    <LotGallery
+    <LotGalleryLazy
       title={title}
       images={images}
       {...(imageAssets ? { imageAssets } : {})}

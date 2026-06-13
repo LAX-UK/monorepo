@@ -104,6 +104,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
           artistId: query.artistId,
           endYear: query.endYear,
           search: query.q,
+          endingWithinHours: query.endingWithinHours,
           sort: query.sort,
           limit: query.limit,
           offset: query.offset,
@@ -231,6 +232,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       ...(q.categoryId ? { categoryId: q.categoryId } : {}),
       ...(q.categoryIds ? { categoryIds: q.categoryIds } : {}),
       ...(q.q ? { search: q.q } : {}),
+      ...(q.endingWithinHours !== undefined ? { endingWithinHours: q.endingWithinHours } : {}),
       ...(q.endYear !== undefined ? { endYear: q.endYear } : {}),
       ...(canSeeNonPublic ? {} : { requirePublicParentSale: true }),
     });

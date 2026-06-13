@@ -1,17 +1,25 @@
 import crypto from "node:crypto";
 import type { Database } from "@auction/db";
 import { emailOutbox, emailSuppression } from "@auction/db/schema";
-import type { Queue } from "bullmq";
+import type { JobsOptions, Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import stringify from "safe-stable-stringify";
 import type { EmailEnqueueInput, IEmailService } from "./service.js";
 import { RECIPIENT_RESOLUTION } from "./types.js";
 
-type EmailQueuePayload = {
+export type EmailQueuePayload = {
   outboxId: string;
 };
 
-type EmailQueue = Queue<EmailQueuePayload>;
+/** Minimal queue contract for outbox dispatch (decoupled from BullMQ generic variance). */
+export interface EmailQueue {
+  add(name: string, data: EmailQueuePayload, opts?: JobsOptions | undefined): Promise<unknown>;
+}
+
+/** Adapts a BullMQ queue instance for {@link PostmarkEmailService}. */
+export function bindEmailQueue(queue: Queue): EmailQueue {
+  return queue as EmailQueue;
+}
 
 export function emailHash(email: string): string {
   return crypto.createHash("sha256").update(email.trim().toLowerCase()).digest("hex");

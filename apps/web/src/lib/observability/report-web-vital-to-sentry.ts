@@ -17,6 +17,7 @@ type SentryMetrics = {
 export function reportWebVitalToSentry(
   metric: WebVitalMetric,
   sentryMetrics: SentryMetrics | undefined,
+  pathname?: string,
 ): void {
   if (!sentryMetrics?.distribution) return;
   const unit = metric.name === "CLS" ? undefined : "millisecond";
@@ -25,6 +26,7 @@ export function reportWebVitalToSentry(
     attributes: {
       rating: metric.rating,
       navigationType: metric.navigationType,
+      ...(pathname ? { pathname } : {}),
     },
   });
 }

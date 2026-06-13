@@ -12,6 +12,7 @@ import {
   setIdempotentLotPublish,
 } from "@/lib/actions/idempotency-cache";
 import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
+import { revalidateCatalogueCache } from "@/lib/actions/revalidate-catalogue";
 import {
   type BulkLotsActionResult,
   bulkLotsFailureMessage,
@@ -90,6 +91,7 @@ function revalidateAdminUserDetailPaths(userId: string): void {
 }
 
 function revalidateAdminLotDetail(lotId: string): void {
+  revalidateCatalogueCache();
   revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${lotId}`);
   revalidatePath(`/admin/lots/${lotId}/images`);

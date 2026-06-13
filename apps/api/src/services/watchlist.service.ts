@@ -14,6 +14,8 @@ export type WatchlistListOptions = {
   sort?: "addedDesc" | "endingSoon" | "priceAsc" | "priceDesc";
   status?: "active" | "scheduled" | "ended";
   categoryIds?: string[];
+  limit?: number;
+  offset?: number;
 };
 
 export class WatchlistService {
@@ -48,7 +50,17 @@ export class WatchlistService {
     userId: string,
     options: WatchlistListOptions = {},
   ): Promise<WatchlistWithLot[]> {
-    const rows = await this.watchlist.findByUser(userId);
+    const rows =
+      options.limit !== undefined
+        ? (
+            await this.watchlist.listPage({
+              userId,
+              limit: options.limit,
+              offset: options.offset ?? 0,
+              ...(options.sort !== undefined ? { sort: options.sort } : {}),
+            })
+          ).rows
+        : await this.watchlist.findByUser(userId);
     const lotIds = [...new Set(rows.map((r) => r.lotId))];
     const lotRows = await this.lots.findByIds(lotIds);
     const lotMap = new Map(lotRows.map((l) => [l.id, l]));

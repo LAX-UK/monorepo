@@ -12,7 +12,7 @@
  */
 
 import { ConnectActionsBar } from "@/components/connect/connect-actions-bar";
-import { ConnectComponentsShell } from "@/components/connect/connect-components-shell";
+import { ConnectComponentsShellLazy } from "@/components/connect/connect-components-shell-lazy";
 import { ConnectErrorBoundary } from "@/components/connect/connect-error-boundary";
 import { ConnectInlineAlert } from "@/components/connect/connect-inline-alert";
 import { ConnectManagementPanel } from "@/components/connect/connect-management-panel";
@@ -289,7 +289,7 @@ export function ConnectWorkspace({
           resetKey={`${surface}-${boundaryResetKey}`}
           onReload={reloadEmbeddedSetup}
         >
-          <ConnectComponentsShell
+          <ConnectComponentsShellLazy
             publishableKey={publishableKey}
             fetchClientSecret={fetchClientSecret}
           >
@@ -324,7 +324,7 @@ export function ConnectWorkspace({
                 <ConnectManagementPanel />
               </Surface>
             ) : null}
-          </ConnectComponentsShell>
+          </ConnectComponentsShellLazy>
         </ConnectErrorBoundary>
       ) : showPreparingPanel ? (
         <ConnectPreparingPanel
