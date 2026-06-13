@@ -1129,8 +1129,69 @@ describe("BidService.placeBidWithIdempotency", () => {
       amount: 150,
     });
     expect(out.type).toBe("ok");
-    expect(idempotencyStore.tryClaim).toHaveBeenCalledOnce();
+    expect(idempotencyStore.tryClaim).toHaveBeenCalledWith(
+      "idempotency:bid:u1:auc-1:k-new",
+      expect.any(Number),
+    );
     expect(idempotencyStore.setWithExpiry).toHaveBeenCalledOnce();
+  });
+
+  it("scopes idempotency keys per lot so the same key on different lots does not replay", async () => {
+    const idempotencyStore: IIdempotencyStore = {
+      get: vi.fn().mockResolvedValue(null),
+      setWithExpiry: vi.fn(),
+      tryClaim: vi.fn().mockResolvedValue(true),
+      delete: vi.fn(),
+    };
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(lot({ currentPrice: "100.00" })),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi
+        .fn()
+        .mockResolvedValueOnce(createBid({ id: "bid-lot-a" }))
+        .mockResolvedValueOnce(createBid({ id: "bid-lot-b" })),
+      markWinningBid: vi.fn(),
+    });
+    const legalEntityRepository = {
+      ensurePersonalEntity: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
+      findById: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      notificationDispatcher: null,
+      lotJobs: null,
+      idempotencyStore,
+      legalEntityRepository: legalEntityRepository as never,
+    });
+
+    await service.placeBidWithIdempotency({
+      placedByUserId: "u1",
+      idempotencyKey: "shared-key",
+      lotId: "auc-1",
+      amount: 150,
+    });
+    await service.placeBidWithIdempotency({
+      placedByUserId: "u1",
+      idempotencyKey: "shared-key",
+      lotId: "auc-2",
+      amount: 160,
+    });
+
+    expect(idempotencyStore.tryClaim).toHaveBeenCalledWith(
+      "idempotency:bid:u1:auc-1:shared-key",
+      expect.any(Number),
+    );
+    expect(idempotencyStore.tryClaim).toHaveBeenCalledWith(
+      "idempotency:bid:u1:auc-2:shared-key",
+      expect.any(Number),
+    );
   });
 
   it("releases idempotency claim when placement fails", async () => {

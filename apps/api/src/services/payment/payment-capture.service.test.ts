@@ -100,14 +100,14 @@ describe("PaymentCaptureService", () => {
           lotId: "lot1",
           paidByUserId: "u1",
           amount: "100.00",
-          status: "requires_manual_review",
+          status: "authorized",
           stripeChargeId: "ch_1",
           stripePaymentIntentId: null,
           sellerLegalEntityId: "le_seller",
         })
         .mockResolvedValueOnce({
           id: "pay1",
-          status: "requires_manual_review",
+          status: "authorized",
         }),
       applyCapturedInTransaction: vi.fn().mockResolvedValue(false),
     };
@@ -117,6 +117,68 @@ describe("PaymentCaptureService", () => {
     await expect(
       svc.capture({ paymentId: "pay1", via: "stripe_checkout_webhook", requireApply: true }),
     ).rejects.toBeInstanceOf(PaymentCaptureNotAppliedError);
+  });
+
+  it("captures payment that was in manual review when Stripe succeeded", async () => {
+    const applyCapturedInTransaction = vi.fn().mockResolvedValue(true);
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const payments = {
+      findById: vi
+        .fn()
+        .mockResolvedValueOnce({
+          id: "pay1",
+          lotId: "lot1",
+          paidByUserId: "u1",
+          amount: "100.00",
+          status: "requires_manual_review",
+          stripeChargeId: null,
+          stripePaymentIntentId: "pi_1",
+          sellerLegalEntityId: "le_seller",
+        })
+        .mockResolvedValueOnce({
+          id: "pay1",
+          lotId: "lot1",
+          paidByUserId: "u1",
+          amount: "100.00",
+          status: "captured",
+          stripeChargeId: "ch_1",
+          stripePaymentIntentId: "pi_1",
+          sellerLegalEntityId: "le_seller",
+        }),
+      applyCapturedInTransaction,
+    };
+
+    const svc = new PaymentCaptureService(
+      { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+      payments as never,
+      { findById: vi.fn() } as never,
+      { findById: vi.fn().mockResolvedValue({ name: "Buyer", email: "b@test.com" }) } as never,
+      { publish } as never,
+      null,
+      { createPaymentReceived: vi.fn(), createSellerPaymentReceived: vi.fn() } as never,
+      null,
+      null,
+      null,
+      null,
+      null,
+    );
+
+    const result = await svc.capture({
+      paymentId: "pay1",
+      via: "stripe_checkout_webhook",
+      stripeChargeId: "ch_1",
+      stripePaymentIntentId: "pi_1",
+      requireApply: true,
+    });
+
+    expect(result).toEqual({ captured: true });
+    expect(applyCapturedInTransaction).toHaveBeenCalledWith({}, "pay1", {
+      stripeChargeId: "ch_1",
+    });
+    expect(publish).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ eventType: "payment.captured" }),
+    );
   });
 
   it("returns captured false without throwing when requireApply and payment already captured", async () => {
@@ -227,6 +289,7 @@ describe("PaymentCaptureService", () => {
         latest_charge: "ch_from_pi",
       }),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
 
     const svc = makeCaptureService({ payments, stripePayments });

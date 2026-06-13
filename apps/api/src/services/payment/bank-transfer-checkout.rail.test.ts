@@ -71,6 +71,7 @@ describe("BankTransferCheckoutRail", () => {
         expires_at: Math.floor(Date.now() / 1000) + 3600,
       }),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
       updateStripePaymentIntentId: vi.fn().mockResolvedValue(undefined),
