@@ -1,4 +1,4 @@
-import { MediaImage } from "@/components/ui/media-image";
+import { MediaImage } from "@/components/ui/media-image.server";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { RelatedSaleVM } from "./view-models";
@@ -43,7 +43,9 @@ export function SaleroomRelatedAuctionCard({ sale }: Props) {
             variant="outline"
             className="h-10 min-w-[125px] rounded-[4px] border border-brand-800 bg-transparent font-body text-base font-semibold tracking-[0.8px] text-brand-800 hover:bg-transparent dark:border-on-surface/80 dark:text-on-surface"
           >
-            <Link href={sale.href}>Explore</Link>
+            <Link href={sale.href} prefetch={false}>
+              Explore
+            </Link>
           </Button>
         </div>
       </div>

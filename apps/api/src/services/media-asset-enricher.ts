@@ -58,6 +58,14 @@ export class MediaAssetEnricher {
     resolvedUrls: readonly string[],
   ): Promise<GalleryImage[] | undefined> {
     const lookup = await this.lookupByKeys(keys);
+    return this.buildGalleryImagesWithLookup(keys, resolvedUrls, lookup);
+  }
+
+  buildGalleryImagesWithLookup(
+    keys: readonly string[],
+    resolvedUrls: readonly string[],
+    lookup: Map<string, MediaAssetRecord>,
+  ): GalleryImage[] | undefined {
     if (lookup.size === 0) return undefined;
 
     const assets = resolvedUrls.map((src, index) => {

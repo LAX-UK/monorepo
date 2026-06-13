@@ -64,6 +64,7 @@ export function SaleroomLotCard({
         <div className="relative size-24 shrink-0">
           <Link
             href={lot.href}
+            prefetch={false}
             className="relative block size-full overflow-hidden rounded-md bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:bg-surface-container-high"
             aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
           >
@@ -98,6 +99,7 @@ export function SaleroomLotCard({
             <div className="min-w-0">
               <Link
                 href={lot.href}
+                prefetch={false}
                 className="line-clamp-2 block text-base font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:text-on-surface"
               >
                 {lot.title}

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { ArtistProfile, ArtistReader } from "@/lib/data/contracts";
+import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { createMockArtistReader } from "@/lib/data/mock/artist";
 import type {
@@ -9,6 +10,8 @@ import type {
   PublicArtistDirectoryRow,
 } from "@auction/types";
 import { cache } from "react";
+
+/** Artist catalogue reads are public — always use tagged catalogueFetch (no auth gating). */
 
 export type PublicArtistBrowseParams = {
   limit?: number;
@@ -75,9 +78,10 @@ export async function fetchPublicArtistBrowse(
   if (params.hasUpcoming === true) sp.set("hasUpcoming", "true");
   if (params.sort) sp.set("sort", params.sort);
   try {
-    const res = await fetch(`${getServerApiBase()}/artists/browse?${sp.toString()}`, {
-      next: { revalidate: 120 },
-    });
+    const res = await catalogueFetch(
+      `${getServerApiBase()}/artists/browse?${sp.toString()}`,
+      CATALOGUE_FETCH_POLICIES.artists,
+    );
     if (!res.ok) {
       return { rows: [], total: 0, facets: emptyFacets() };
     }
@@ -110,9 +114,10 @@ export async function fetchRegistryArtistById(
 ): Promise<import("@auction/types").ArtistProfile | null> {
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return null;
   try {
-    const res = await fetch(`${getServerApiBase()}/artists/${encodeURIComponent(artistId)}`, {
-      next: { revalidate: 60 },
-    });
+    const res = await catalogueFetch(
+      `${getServerApiBase()}/artists/${encodeURIComponent(artistId)}`,
+      CATALOGUE_FETCH_POLICIES.artists,
+    );
     if (!res.ok) return null;
     const body = (await res.json()) as { data: import("@auction/types").ArtistProfile };
     return body.data ?? null;
@@ -125,9 +130,9 @@ export async function fetchRegistryArtistById(
 export async function fetchPublicArtistAliases(artistId: string): Promise<string[]> {
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
   try {
-    const res = await fetch(
+    const res = await catalogueFetch(
       `${getServerApiBase()}/artists/${encodeURIComponent(artistId)}/aliases-public`,
-      { next: { revalidate: 300 } },
+      CATALOGUE_FETCH_POLICIES.artists,
     );
     if (!res.ok) return [];
     const body = (await res.json()) as { data: string[] };
@@ -172,9 +177,10 @@ export type SitemapArtist = { id: string; name: string };
 export async function fetchArtistsForSitemap(limit = 1000): Promise<SitemapArtist[]> {
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
   try {
-    const res = await fetch(`${getServerApiBase()}/artists/public?limit=${limit}&offset=0`, {
-      next: { revalidate: 300 },
-    });
+    const res = await catalogueFetch(
+      `${getServerApiBase()}/artists/public?limit=${limit}&offset=0`,
+      CATALOGUE_FETCH_POLICIES.artists,
+    );
     if (!res.ok) return [];
     const body = (await res.json()) as {
       data: { id: string; displayName: string }[];
@@ -211,9 +217,10 @@ export async function getServerArtistReader(): Promise<ArtistReader> {
   return {
     async listFeatured() {
       try {
-        const res = await fetch(`${apiBase}/artists/public?limit=24&offset=0`, {
-          next: { revalidate: 60 },
-        });
+        const res = await catalogueFetch(
+          `${apiBase}/artists/public?limit=24&offset=0`,
+          CATALOGUE_FETCH_POLICIES.artists,
+        );
         if (!res.ok) return [];
         const body = (await res.json()) as {
           data: {

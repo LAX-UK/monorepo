@@ -37,6 +37,8 @@ export type ListLotsFilter = {
   artistId?: string | undefined;
   /** Restrict lots whose endTime falls in this calendar year (UTC). */
   endYear?: number | undefined;
+  /** Active lots ending within N hours from now (catalogue urgency filter). */
+  endingWithinHours?: number | undefined;
   /** Case-insensitive substring match on title (public catalogue search). */
   /** When true, only lots on public parent sales (standalone lots allowed). */
   requirePublicParentSale?: boolean | undefined;
@@ -118,6 +120,17 @@ export interface ILotRepository {
   findBySaleId(saleId: string): Promise<Lot[]>;
   /** Batch lots for many sales (avoids N+1). */
   findBySaleIds(saleIds: string[]): Promise<Lot[]>;
+  /** Lot counts per sale id for list endpoints. */
+  countLotsBySaleIds(
+    saleIds: string[],
+    options?: { publicOnly?: boolean | undefined },
+  ): Promise<Map<string, number>>;
+  /** Up to `limitPerSale` preview lots per sale (saleroom cards). */
+  findPreviewLotsBySaleIds(
+    saleIds: string[],
+    limitPerSale: number,
+    options?: { publicOnly?: boolean | undefined },
+  ): Promise<Lot[]>;
   /** Paginated lots for a sale catalog (saleroom); filter + sort + count in SQL. */
   listCatalogLotsBySalePage(input: ListCatalogLotsBySalePageInput): Promise<{
     items: Lot[];

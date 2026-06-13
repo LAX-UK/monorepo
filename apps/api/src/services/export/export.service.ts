@@ -11,7 +11,7 @@ import {
   formatCsvHeader,
   formatCsvRow,
 } from "@auction/exports";
-import { DATA_EXPORT_QUEUE_NAME, type DataExportJobPayload } from "@auction/queues";
+import { DATA_EXPORT_QUEUE_NAME } from "@auction/queues";
 import type { ExportPreviewBody } from "@auction/validators";
 import type { CreateExportBody } from "@auction/validators";
 import type { Queue } from "bullmq";
@@ -89,7 +89,7 @@ export class ExportService {
     private readonly db: Database,
     private readonly redis: Redis,
     private readonly objectStorage: IObjectStorage,
-    private readonly dataExportQueue: Queue<DataExportJobPayload>,
+    private readonly dataExportQueue: Queue,
     private readonly providers: Map<ExportEntityType, ExportProvider>,
     private readonly config: ExportServiceConfig,
     private readonly domainEventPublisher?: DomainEventPublisher,

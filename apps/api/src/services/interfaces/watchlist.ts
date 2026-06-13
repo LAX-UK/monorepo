@@ -7,6 +7,15 @@ export type WatchlistRow = {
   createdAt: Date;
 };
 
+export type WatchlistPageSort = "addedDesc" | "endingSoon" | "priceAsc" | "priceDesc";
+
+export type WatchlistListPageInput = {
+  userId: string;
+  limit: number;
+  offset: number;
+  sort?: WatchlistPageSort;
+};
+
 export interface IWatchlistRepository {
   add(userId: string, lotId: string, conn?: Database): Promise<WatchlistRow>;
   remove(userId: string, lotId: string, conn?: Database): Promise<void>;
@@ -16,4 +25,5 @@ export interface IWatchlistRepository {
   listUserIdsForLot(lotId: string): Promise<string[]>;
   /** Number of users watching a lot (social-proof counts without materialising ids). */
   countForLot(lotId: string): Promise<number>;
+  listPage(input: WatchlistListPageInput): Promise<{ rows: WatchlistRow[]; total: number }>;
 }
