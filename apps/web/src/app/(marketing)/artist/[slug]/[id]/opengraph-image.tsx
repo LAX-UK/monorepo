@@ -1,7 +1,6 @@
 import { SITE_NAME } from "@/lib/brand";
 import { OG_BRAND } from "@/lib/brand/og-colors";
-import { fetchRegistryArtistById, getServerArtistById } from "@/lib/data/http/artist.server";
-import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
+import { fetchRegistryArtistById } from "@/lib/data/http/artist.server";
 import { renderOgJpeg } from "@/lib/seo/og-image-response";
 
 export const runtime = "nodejs";
@@ -16,18 +15,8 @@ export async function generateImageMetadata({ params }: Props) {
   const { id } = await params;
   let alt = "Artist profile";
   try {
-    const [artist, registry] = await Promise.all([
-      getServerArtistById(id).catch(() => null),
-      fetchRegistryArtistById(id).catch(() => null),
-    ]);
+    const registry = await fetchRegistryArtistById(id).catch(() => null);
     if (registry?.displayName) alt = registry.displayName;
-    else if (artist?.name) alt = artist.name;
-    else {
-      const user = await getServerPublicUserReader()
-        .then((reader) => reader.getById(id))
-        .catch(() => null);
-      if (user?.name) alt = user.name;
-    }
   } catch {
     /* fall through */
   }
@@ -59,10 +48,7 @@ export default async function Image({ params }: Props) {
   let portrait: string | null = null;
   const chips: string[] = [];
   try {
-    const [artist, registry] = await Promise.all([
-      getServerArtistById(id).catch(() => null),
-      fetchRegistryArtistById(id).catch(() => null),
-    ]);
+    const registry = await fetchRegistryArtistById(id).catch(() => null);
     if (registry) {
       name = registry.displayName;
       portrait = registry.portraitUrl ?? null;
@@ -76,19 +62,6 @@ export default async function Image({ params }: Props) {
       if (registry.verified) chips.push("Verified");
       const kindLabel = KIND_LABEL[registry.kind ?? ""] ?? "";
       if (kindLabel) chips.push(kindLabel);
-    } else if (artist) {
-      name = artist.name;
-      tagline = artist.tagline ?? "";
-      portrait = artist.portraitUrl ?? null;
-    } else {
-      const user = await getServerPublicUserReader()
-        .then((reader) => reader.getById(id))
-        .catch(() => null);
-      if (user) {
-        name = user.name;
-        tagline = "Seller on LAX.BID by London Art Exchange.";
-        portrait = user.image ?? null;
-      }
     }
   } catch {
     /* fall through */
