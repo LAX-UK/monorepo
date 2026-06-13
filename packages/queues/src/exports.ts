@@ -14,6 +14,9 @@ export type QrCodeScanJobPayload = {
   userAgent?: string | null;
   referrer?: string | null;
   requestId?: string | null;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
 };
 
 export const LEGAL_ENTITY_ARCHIVE_JOB_NAME = "cascade" as const;
