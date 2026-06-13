@@ -32,6 +32,7 @@ import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { fetchRegistryArtistById } from "@/lib/data/http/artist.server";
 import { getServerAutoBid } from "@/lib/data/http/auto-bid.server";
 import { getServerConditionReportForLot } from "@/lib/data/http/condition-report.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
@@ -115,10 +116,10 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const [
     initialBids,
     seller,
+    catalogArtist,
     relatedRaw,
     watchlist,
     saleBundle,
-    artistForAccordion,
     kycSummary,
     lotDocuments,
     initialAutoBidSettings,
@@ -126,6 +127,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   ] = await Promise.all([
     getServerLotBids(id, 30).catch(() => []),
     sellerLookupId ? publicReader.getById(sellerLookupId).catch(() => null) : Promise.resolve(null),
+    auction.artistId
+      ? fetchRegistryArtistById(auction.artistId).catch(() => null)
+      : Promise.resolve(null),
     reader
       .list({
         ...(sellerLookupId ? { sellerId: sellerLookupId } : {}),
@@ -138,15 +142,18 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     auction.saleId
       ? getServerSaleWithLots(auction.saleId).catch(() => null)
       : Promise.resolve(null),
-    // Catalogue artist FK, then seller user id for rows without attribution.
-    publicReader
-      .getById(auction.artistId ?? sellerLookupId)
-      .catch(() => null),
     kycSummaryPromise,
     getServerLotDocuments(id).catch(() => []),
     initialAutoBidPromise,
     getServerLotWatchCount(id).catch(() => 0),
   ]);
+  const artistForAccordion = catalogArtist
+    ? {
+        id: catalogArtist.id,
+        name: catalogArtist.displayName,
+        image: catalogArtist.portraitUrl ?? null,
+      }
+    : null;
 
   if (!canPreviewCatalog && !isPublicCatalogLot(auction, saleBundle?.sale ?? null)) {
     notFound();
@@ -213,7 +220,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const sellerName = seller?.name ?? "Private seller";
   const shareUrl = `${getSiteUrl()}${lotPath(auction)}`;
 
-  const sellerHref = seller ? artistPath(seller) : `/artist/${auction.sellerId}`;
+  const sellerHref = catalogArtist
+    ? artistPath({ id: catalogArtist.id, name: catalogArtist.displayName })
+    : "";
   const summarySeed = mapLotToSummarySeed(auction, sellerName, sellerHref, seller?.image ?? null);
   const marketingBlocks = buildArtworkPageAccordionBlocks({
     lot: auction,
