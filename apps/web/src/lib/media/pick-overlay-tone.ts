@@ -84,10 +84,18 @@ export function pickOverlayToneFromRegion(
   const lightFrosted = frostedContrast("light", high, low);
   const darkFrosted = frostedContrast("dark", high, low);
 
-  if (lightFrosted >= threshold && lightFrosted >= darkFrosted) {
+  // Icon pills: prefer dark frosted glass (tone "light") for brand consistency; fall back to
+  // light frosted glass only when dark glass fails WCAG on bright artwork.
+  if (slotType === "pill") {
+    if (lightFrosted >= threshold) {
+      return { kind: "frosted", tone: "light", contrast: lightFrosted };
+    }
+    if (darkFrosted >= threshold) {
+      return { kind: "frosted", tone: "dark", contrast: darkFrosted };
+    }
+  } else if (lightFrosted >= threshold && lightFrosted >= darkFrosted) {
     return { kind: "frosted", tone: "light", contrast: lightFrosted };
-  }
-  if (darkFrosted >= threshold) {
+  } else if (darkFrosted >= threshold) {
     return { kind: "frosted", tone: "dark", contrast: darkFrosted };
   }
 

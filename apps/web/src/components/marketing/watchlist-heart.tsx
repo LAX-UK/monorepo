@@ -13,14 +13,17 @@ type WatchlistHeartProps = {
   lotTitle?: string;
   className?: string;
   disabled?: boolean;
-};
+} & Omit<
+  React.ComponentPropsWithoutRef<typeof Button>,
+  "onClick" | "type" | "variant" | "children"
+>;
 
 /** F4 — Watchlist heart toggle with bump animation on click.
  *
  * - Pure CSS-driven scale on press; respects `prefers-reduced-motion` via the
  *   global cascade. SSR-safe (renders an unpressed heart on the server).
  * - Caller wires `pressed`/`onChange` to a backend mutation; this component
- *   is a presentational toggle only (SRP).
+ *   is a presentational toggle only (SRP). Visual chrome comes from the caller.
  */
 export function WatchlistHeart({
   pressed,
@@ -28,6 +31,7 @@ export function WatchlistHeart({
   lotTitle,
   className,
   disabled = false,
+  ...rest
 }: WatchlistHeartProps) {
   const [animKey, setAnimKey] = React.useState<number>(0);
   const isPressed = Boolean(pressed);
@@ -53,10 +57,11 @@ export function WatchlistHeart({
       aria-pressed={isPressed}
       aria-label={label}
       className={cn(
-        "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] items-center justify-center rounded-full bg-white/30 text-white backdrop-blur-sm transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand motion-reduce:transition-none",
+        "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] items-center justify-center rounded-full transition-colors motion-reduce:transition-none",
         disabled && "cursor-wait opacity-60",
         className,
       )}
+      {...rest}
     >
       <span
         key={animKey}

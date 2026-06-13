@@ -30,7 +30,14 @@ describe("pickOverlayToneFromRegion", () => {
     expect(result.tone).toBe("light");
   });
 
-  it("picks dark frosted tone on bright background", () => {
+  it("prefers dark frosted glass on pill backgrounds when contrast passes", () => {
+    const pixels = solidPixels(120, 120, 120);
+    const result = pickOverlayToneFromRegion(pixels, "pill");
+    expect(result.kind).toBe("frosted");
+    expect(result.tone).toBe("light");
+  });
+
+  it("falls back to light frosted glass on very bright pills when dark glass fails contrast", () => {
     const pixels = solidPixels(240, 240, 240);
     const result = pickOverlayToneFromRegion(pixels, "pill");
     expect(result.kind).toBe("frosted");

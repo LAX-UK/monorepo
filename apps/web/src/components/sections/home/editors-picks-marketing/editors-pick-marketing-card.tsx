@@ -3,6 +3,7 @@ import { MarketingLotOverlayActions } from "@/components/marketing/lot-quick-loo
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
+import { HOME_LOT_TILE_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { Button } from "@auction/ui/components/button";
 
 type Props = {
@@ -30,6 +31,14 @@ export function EditorsPickMarketingCard({
       imageAlt={lot.imageAlt}
       sizes="280px"
       articleClassName="h-full"
+      adaptiveMedia={{
+        src: lot.imageUrl,
+        objectFit: "cover",
+        slots: HOME_LOT_TILE_SLOTS,
+        alt: lot.imageAlt,
+        sizes: "280px",
+        label: "Lot artwork",
+      }}
       cornerAction={
         <MarketingLotOverlayActions
           lotId={lot.id}

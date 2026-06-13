@@ -22,10 +22,12 @@ export function SaleroomLotListActions({ lot, isAuthenticated }: Props) {
         isAuthenticated={isAuthenticated}
         loginNextPath={lot.href}
         layout="inline"
+        surface="inline"
       />
       <LotQuickLookTrigger
         vm={vm}
         layout="inline"
+        surface="inline"
         options={{
           isAuthenticated,
           watchedLotIds: lot.viewerIsWatching ? [lot.id] : [],

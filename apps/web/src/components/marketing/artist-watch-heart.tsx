@@ -1,15 +1,28 @@
 "use client";
 
+import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import {
   type ArtistWatchlistClient,
   defaultArtistWatchlistClient,
 } from "@/lib/data/http/artist-watchlist.client";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import type { SlotName } from "@/lib/media/overlay-tone-types";
+import {
+  type OverlaySurface,
+  overlayIconButtonClasses,
+  overlayToneProps,
+  resolveOverlayChrome,
+} from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+
+const inlineShellClass = cn(
+  "inline-flex size-[var(--tap-target-min,44px)] min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 items-center justify-center rounded-full border border-outline-variant/40 bg-surface-container-high text-on-surface backdrop-blur-none transition-colors hover:bg-surface-container-highest motion-reduce:transition-none",
+  FOCUS_RING,
+);
 
 type Props = {
   artistId: string;
@@ -19,6 +32,10 @@ type Props = {
   isAuthenticated: boolean;
   /** Path to send unauthenticated users back to after they sign in. */
   loginNextPath: string;
+  /** Visual shell: `onImage` = frosted glass; `inline` = solid toolbar; `auto` = derive from frame context. */
+  surface?: OverlaySurface;
+  /** Adaptive tone slot when using overlay chrome (default bottomRight on portraits). */
+  overlaySlot?: SlotName;
   /** Injectable API transport (defaults to cookie-authenticated browser fetch). */
   client?: ArtistWatchlistClient;
   /** Called after a follow/unfollow attempt completes. */
@@ -33,12 +50,17 @@ export function ArtistWatchHeart({
   initialWatching,
   isAuthenticated,
   loginNextPath,
+  surface = "auto",
+  overlaySlot = "bottomRight",
   client = defaultArtistWatchlistClient,
   onWatchingChange,
 }: Props) {
   const router = useRouter();
   const [watching, setWatching] = useState(initialWatching);
   const [busy, setBusy] = useState(false);
+  const inFrame = useOverlayToneContext() != null;
+  const overlayTone = useOverlayTone(overlaySlot);
+  const useOverlayChrome = resolveOverlayChrome(surface, "inline", inFrame);
 
   const onClick = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -88,13 +110,17 @@ export function ArtistWatchHeart({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex size-[var(--tap-target-min,44px)] min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 rounded-full backdrop-blur-sm transition-colors [&_svg]:size-4",
-        FOCUS_RING,
-        watching
-          ? "bg-surface/90 text-error ring-1 ring-error/35 hover:bg-surface hover:text-error"
-          : "bg-surface/80 text-on-surface hover:bg-surface hover:text-on-surface",
+        useOverlayChrome
+          ? overlayIconButtonClasses(
+              overlayTone,
+              "size-[var(--tap-target-min,44px)] min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 [&_svg]:size-4",
+            )
+          : inlineShellClass,
+        useOverlayChrome ? FOCUS_RING : null,
+        watching && "ring-1 ring-error/35 text-error hover:text-error",
         busy && "opacity-60",
       )}
+      {...(useOverlayChrome ? overlayToneProps(overlayTone) : {})}
     >
       <Heart className={cn("size-4", watching && "fill-current")} aria-hidden strokeWidth={2} />
     </Button>
