@@ -719,11 +719,10 @@ export class LotService {
 
     const rows = await this.lotRepo.list(queryFilter);
 
-    const presented = await presentLotsImages(
-      this.catalogueMediaUrlResolver,
-      rows,
-      this.mediaAssetEnricher,
-    );
+    const resolveImages = filter.resolveImages !== false;
+    const presented = resolveImages
+      ? await presentLotsImages(this.catalogueMediaUrlResolver, rows, this.mediaAssetEnricher)
+      : rows;
     return {
       data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole, viewerStaffRole)),
     };

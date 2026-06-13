@@ -16,6 +16,9 @@ export interface ILegalEntityRepository {
   /** Find a single legal entity by id (full row). */
   findById(id: string): Promise<LegalEntity | null>;
 
+  /** Batch load legal entities by id (deduped). */
+  findByIds(ids: readonly string[]): Promise<LegalEntity[]>;
+
   /** List the active (`removed_at IS NULL` and `accepted_at IS NOT NULL`)
    * memberships for a user, joined with the legal entity for the
    * switcher / banner.

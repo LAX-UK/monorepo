@@ -34,6 +34,7 @@ export function buildLotListQuery(params: ListLotsParams): Record<string, string
   if (params.endingWithinHours !== undefined)
     q.endingWithinHours = String(params.endingWithinHours);
   if (params.needsPhotos) q.needsPhotos = "1";
+  if (params.resolveImages === false) q.resolveImages = "0";
   return q;
 }
 

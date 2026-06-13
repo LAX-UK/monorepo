@@ -174,6 +174,7 @@ import { AdminMetricsService } from "./services/admin-metrics.service.js";
 import { AdminSaleOperationsSnapshotService } from "./services/admin-sale-operations-snapshot.service.js";
 import { AdminUserService } from "./services/admin-user.service.js";
 import { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
+import { AdminLotsKpiTrendService } from "./services/admin/admin-lots-kpi-trend.service.js";
 import { createAdminNavCountsDeps } from "./services/admin/admin-nav-counts.deps.js";
 import { AdminNavCountsService } from "./services/admin/admin-nav-counts.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
@@ -428,6 +429,7 @@ export type Container = {
   requireSubmissionsLegalEntityContext: ReturnType<typeof createSubmissionsLegalEntityContext>;
   adminUserService: AdminUserService;
   adminNavCountsService: AdminNavCountsService;
+  adminLotsKpiTrendService: AdminLotsKpiTrendService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
   httpErrorHandler: ErrorHandlerService;
@@ -1537,7 +1539,10 @@ export function createContainer(env: Env): Container {
       sourceOfFundsService,
       telephoneBidBookingService,
     }),
+    cache,
+    30,
   );
+  const adminLotsKpiTrendService = new AdminLotsKpiTrendService(db);
 
   return {
     env,
@@ -1625,6 +1630,7 @@ export function createContainer(env: Env): Container {
     requireSubmissionsLegalEntityContext,
     adminUserService,
     adminNavCountsService,
+    adminLotsKpiTrendService,
     adminMetricsService,
     attentionFeedReader,
     httpErrorHandler,

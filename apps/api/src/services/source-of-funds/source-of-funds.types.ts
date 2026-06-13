@@ -63,6 +63,7 @@ export interface ISourceOfFundsRepository {
     limit: number,
     conn?: Database,
   ): Promise<SourceOfFundsCase[]>;
+  countByStatus(status: SourceOfFundsStatus, conn?: Database): Promise<number>;
   create(input: CreateSourceOfFundsCaseInput, conn?: Database): Promise<SourceOfFundsCase>;
   setTriage(input: SourceOfFundsTriageInput, conn?: Database): Promise<SourceOfFundsCase | null>;
   setReview(input: SourceOfFundsReviewInput, conn?: Database): Promise<SourceOfFundsCase | null>;

@@ -27,6 +27,8 @@ export type ListLotsParams = {
   endingWithinHours?: number;
   /** When true, only lots with zero images. */
   needsPhotos?: boolean;
+  /** When false, skip CDN URL resolution on staff list reads. */
+  resolveImages?: boolean;
   limit?: number;
   offset?: number;
   /** API sort: default createdDesc; endingAsc for live urgency; hammerDesc/endedDesc for archive. */
