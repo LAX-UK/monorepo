@@ -33,7 +33,6 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
         notifyProxyCancelled: async () => {},
       },
     ),
-    notificationDispatcher: null,
     lotJobs: null,
   });
 

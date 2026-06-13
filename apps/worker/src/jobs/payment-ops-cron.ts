@@ -41,3 +41,10 @@ export async function runRefreshXeroTokensJob(opts: JobOpts): Promise<void> {
     path: "refresh-xero-tokens",
   });
 }
+
+export async function runProcessNotificationOutboxJob(opts: JobOpts): Promise<void> {
+  await postInternalCronJob({
+    ...opts,
+    path: "process-notification-outbox",
+  });
+}

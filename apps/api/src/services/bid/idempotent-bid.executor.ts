@@ -1,5 +1,6 @@
 import type { Bid } from "@auction/types";
 import type { Result } from "neverthrow";
+import { Counter, Histogram } from "prom-client";
 import { BidError } from "../../lib/errors.js";
 import type { IIdempotencyStore } from "../interfaces/idempotency-store.js";
 import { IDEMPOTENCY_PENDING_VALUE } from "../interfaces/idempotency-store.js";
@@ -8,6 +9,19 @@ import type { IBidPlacer } from "../interfaces/place-bid.js";
 import type { PlaceBidWithIdempotencyOutcome } from "./place-bid-idempotency.js";
 
 const IDEMPOTENCY_TTL_SEC = 86_400;
+const IDEMPOTENCY_WAIT_MAX_POLLS = 100;
+const IDEMPOTENCY_WAIT_POLL_MS = 100;
+
+const bidIdempotencyWaitDurationMs = new Histogram({
+  name: "bid_idempotency_wait_duration_ms",
+  help: "Time spent waiting for an in-flight idempotent bid to finish",
+  buckets: [100, 250, 500, 1000, 2500, 5000, 7500, 10000],
+});
+
+const bidIdempotencyWaitTimeoutTotal = new Counter({
+  name: "bid_idempotency_wait_timeout_total",
+  help: "Idempotent bid requests that timed out waiting for an in-flight placement",
+});
 
 export class IdempotentBidExecutor {
   constructor(
@@ -122,11 +136,17 @@ export class IdempotentBidExecutor {
     key: string,
   ): Promise<PlaceBidWithIdempotencyOutcome | null> {
     if (!this.idempotencyStore) return null;
-    for (let i = 0; i < 50; i++) {
+    const waitStartedAt = Date.now();
+    for (let i = 0; i < IDEMPOTENCY_WAIT_MAX_POLLS; i++) {
       const replay = await this.readIdempotencyReplay(key);
-      if (replay) return replay;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (replay) {
+        bidIdempotencyWaitDurationMs.observe(Date.now() - waitStartedAt);
+        return replay;
+      }
+      await new Promise((resolve) => setTimeout(resolve, IDEMPOTENCY_WAIT_POLL_MS));
     }
+    bidIdempotencyWaitDurationMs.observe(Date.now() - waitStartedAt);
+    bidIdempotencyWaitTimeoutTotal.inc();
     return {
       type: "err",
       error: new BidError("Bid still processing; retry shortly", 409, "bid_in_flight"),

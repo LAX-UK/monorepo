@@ -75,6 +75,7 @@ import {
 } from "./jobs/marketing-event-processor.js";
 import {
   runExpireStalePaymentsJob,
+  runProcessNotificationOutboxJob,
   runRefreshXeroTokensJob,
   runRetryRefundReconcilesJob,
   runRetryXeroStripeCaptureSyncJob,
@@ -901,6 +902,14 @@ if (env.CRON_INTERNAL_SECRET) {
     sentrySlug: "refresh-xero-tokens",
     run: () => runRefreshXeroTokensJob(apiCronBase),
   });
+  registerPaymentOpsCron({
+    queueName: "process-notification-outbox",
+    jobName: "process-notification-outbox",
+    jobId: "process-notification-outbox-1m",
+    everyMs: 60 * 1000,
+    sentrySlug: "process-notification-outbox",
+    run: () => runProcessNotificationOutboxJob(apiCronBase),
+  });
 }
 
 let staleSubmissionDraftRemindersQueue: Queue | undefined;
@@ -1034,6 +1043,7 @@ void Promise.all([
         heartbeat("retry-xero-stripe-capture-sync"),
         heartbeat("retry-refund-reconciles"),
         heartbeat("refresh-xero-tokens"),
+        heartbeat("process-notification-outbox"),
       ]
     : []),
 ]);
