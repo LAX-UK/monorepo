@@ -9,4 +9,8 @@ describe("format-currency", () => {
   it("returns raw string for non-numeric input", () => {
     expect(formatMoney("TBC")).toBe("TBC");
   });
+
+  it("does not surface undefined coercions from bad wire values", () => {
+    expect(formatMoney("undefined")).toBe("—");
+  });
 });
