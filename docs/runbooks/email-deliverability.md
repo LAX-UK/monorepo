@@ -41,7 +41,7 @@ Team inboxes (`support@`, `settlements@`, etc.) use **Zoho Mail** on the apex. A
 | `@` | MX | `mx.zoho.eu` (10), `mx2.zoho.eu` (20), `mx3.zoho.eu` (50) |
 | `@` | TXT | SPF `v=spf1 include:zohomail.eu ~all` (`zoho_spf`) |
 | `zmail._domainkey` | TXT | Zoho DKIM (`zoho_dkim`) |
-| `_dmarc` | TXT | _Optional later_ — apex DMARC after `support@` is live |
+| `_dmarc` | TXT | Apex DMARC `v=DMARC1; p=none;` (`apex_dmarc`) — see Mailchimp section |
 
 Verify in shell:
 
@@ -53,6 +53,39 @@ dig +short TXT lax.bid | grep zoho-verification
 ```
 
 After apply, confirm green status in Zoho Mail → domain setup, then create `support@` and `settlements@` mailboxes.
+
+## Mailchimp (apex `lax.bid`)
+
+Mailchimp domain authentication for marketing sends from the apex domain. The DKIM CNAMEs
+point at Mailchimp-hosted keys (`mcsv.net`), so Mailchimp can rotate them without DNS changes.
+All records are DNS-only (`proxied = false`) and declared in
+`infra/terraform/persistent/prod/main.tf`.
+
+> **Note:** `mcsv.net` is **Mailchimp**, not Mailgun — confirm Mailchimp is the service being
+> onboarded. Keep these apart from the Postmark transactional setup on `mail.lax.bid`.
+
+| Record | Type | Cloudflare name | Purpose |
+|--------|------|-----------------|---------|
+| Apex DMARC | TXT | `_dmarc` | `v=DMARC1; p=none;` (`apex_dmarc`) — org-level policy for `lax.bid` |
+| DKIM (k2) | CNAME | `k2._domainkey` | `dkim2.mcsv.net` (`mailchimp_dkim_2`) |
+| DKIM (k3) | CNAME | `k3._domainkey` | `dkim3.mcsv.net` (`mailchimp_dkim_3`) |
+
+Both the DMARC TXT **and** the DKIM CNAMEs are required: the TXT only declares policy, while
+the CNAMEs are what actually let Mailchimp sign mail and pass authentication.
+
+The apex `_dmarc` is shared org-level policy (separate from `_dmarc.mail` and `_dmarc.news`).
+Currently `p=none` (monitor only); consider adding `rua=mailto:support@lax.bid` for visibility.
+
+Verify in shell:
+
+```bash
+dig +short TXT _dmarc.lax.bid
+dig +short CNAME k2._domainkey.lax.bid
+dig +short CNAME k3._domainkey.lax.bid
+```
+
+After apply, refresh Mailchimp → domain authentication until DKIM shows verified, then send a
+seed campaign and confirm **DKIM=pass** / **DMARC=pass** in the message headers.
 
 ## MX note (Postmark subdomain)
 
