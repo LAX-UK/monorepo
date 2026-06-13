@@ -5,6 +5,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/image", () => ({
+  getImageProps: ({ src }: { src: string }) => ({
+    props: { src, srcSet: src },
+  }),
   default: (props: { alt: string; crossOrigin?: string }) => (
     <img alt={props.alt} data-crossorigin={props.crossOrigin ?? ""} />
   ),
