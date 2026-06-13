@@ -5,7 +5,8 @@ import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
-import type { Lot } from "@auction/types";
+import type { CatalogLotVM } from "@auction/types";
+import { normalizeAuctionTime } from "@auction/validators";
 import type { LotQuickLookVM } from "./types";
 
 export function lotQuickLookFromLotCardVM(item: LotCardVM): LotQuickLookVM {
@@ -18,8 +19,8 @@ export function lotQuickLookFromLotCardVM(item: LotCardVM): LotQuickLookVM {
     imageUrl: item.imageUrl,
     imageAlt: item.imageAlt,
     status: item.status,
-    startTime: item.startTime,
-    endTime: item.endTime,
+    ...(item.startTime ? { startTime: item.startTime } : {}),
+    ...(item.endTime ? { endTime: item.endTime } : {}),
     lotLabel: item.lotLabel,
   };
   if (rows) {
@@ -53,6 +54,7 @@ export function lotQuickLookFromEditorsPick(item: EditorsPickLotCardVM): LotQuic
 }
 
 export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
+  const endTime = normalizeAuctionTime(card.endTime);
   return {
     id: card.id,
     href: card.href,
@@ -61,7 +63,7 @@ export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
     imageUrl: card.imageUrl,
     imageAlt: card.title,
     status: card.status,
-    endTime: card.endTime.toISOString(),
+    ...(endTime ? { endTime } : {}),
     lotLabel: card.lotNumber != null ? `LOT ${card.lotNumber}` : null,
     currentBidLabel: "Current bid",
     currentBidValue: card.currentPrice,
@@ -70,14 +72,11 @@ export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
 }
 
 export function lotQuickLookFromLot(
-  lot: Lot,
+  lot: CatalogLotVM,
   catalogLinkParams?: CatalogLinkParams,
 ): LotQuickLookVM {
   const price = lotPriceDisplay(lot);
   const est = lotEstimateLine(lot);
-  const startTime =
-    lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
-  const endTime = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
   const subtitle = lot.medium?.trim() || "Contemporary";
   return {
     id: lot.id,
@@ -87,8 +86,8 @@ export function lotQuickLookFromLot(
     imageUrl: lot.images[0] ?? null,
     imageAlt: lot.title,
     status: lot.status,
-    startTime,
-    endTime,
+    ...(lot.startTime ? { startTime: lot.startTime } : {}),
+    ...(lot.endTime ? { endTime: lot.endTime } : {}),
     medium: lot.medium,
     images: lot.images,
     ...(est
@@ -109,8 +108,8 @@ export function lotQuickLookFromSaleLotCard(lot: SaleLotCardVM): LotQuickLookVM 
     imageUrl: lot.imageUrl,
     imageAlt: lot.imageAlt,
     status: lot.status,
-    startTime: lot.startTime,
-    endTime: lot.endTime,
+    ...(lot.startTime ? { startTime: lot.startTime } : {}),
+    ...(lot.endTime ? { endTime: lot.endTime } : {}),
     lotLabel: lot.lotLabel,
     estimateLabel: "Estimate",
     ...(lot.estimateValue ? { estimateValue: lot.estimateValue } : {}),

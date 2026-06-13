@@ -178,24 +178,33 @@ export function SaleroomHeroAdaptive({
                 <OverlayToneText variant="muted">{hero.registrationClosesLabel}</OverlayToneText>
               ) : null}
             </div>
-            {hero.status === "active" || hero.status === "scheduled" ? (
-              <div className="fade-up-d2 mb-7 flex items-baseline gap-3">
-                <OverlayToneText
-                  as="span"
-                  variant="muted"
-                  className="font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.18em] opacity-70"
-                >
-                  {hero.status === "active" ? "Closes in" : "Opens in"}
-                </OverlayToneText>
-                <OverlayToneText as="span" variant="body">
-                  <Countdown
-                    end={new Date(hero.status === "active" ? hero.endTime : hero.startTime)}
-                    announce
-                    className="font-headline text-xl font-semibold tabular-nums md:text-2xl"
-                  />
-                </OverlayToneText>
-              </div>
-            ) : null}
+            {(() => {
+              const countdownEnd =
+                hero.status === "active"
+                  ? hero.endTime
+                  : hero.status === "scheduled"
+                    ? hero.startTime
+                    : null;
+              if (!countdownEnd) return null;
+              return (
+                <div className="fade-up-d2 mb-7 flex items-baseline gap-3">
+                  <OverlayToneText
+                    as="span"
+                    variant="muted"
+                    className="font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.18em] opacity-70"
+                  >
+                    {hero.status === "active" ? "Closes in" : "Opens in"}
+                  </OverlayToneText>
+                  <OverlayToneText as="span" variant="body">
+                    <Countdown
+                      end={new Date(countdownEnd)}
+                      announce
+                      className="font-headline text-xl font-semibold tabular-nums md:text-2xl"
+                    />
+                  </OverlayToneText>
+                </div>
+              );
+            })()}
             <div className="fade-up-d3 flex flex-wrap gap-3">
               <SaleroomHeroPrimaryCta
                 hero={hero}

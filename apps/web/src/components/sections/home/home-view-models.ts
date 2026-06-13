@@ -1,4 +1,3 @@
-import { coerceToIsoString } from "@/lib/data/http/parse";
 import type { SaleListRow } from "@/lib/data/http/sales.server";
 import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-date";
 import { formatMoney } from "@/lib/format-currency";
@@ -8,7 +7,8 @@ import { type HeroCoverSources, resolveHeroCoverSources } from "@/lib/media/hero
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { lotPath, salePath } from "@/lib/seo/url";
-import type { Lot, LotStatus, Sale } from "@auction/types";
+import type { Lot, LotCardTimingVM, Sale } from "@auction/types";
+import { toLotCardTimingVM, toOptionalIsoString, toSaleCountdownEndIso } from "@auction/validators";
 import type { StreamEmbedProvider } from "@auction/validators";
 import {
   HERO_PLACEHOLDER_ARTIST,
@@ -129,11 +129,6 @@ export type LotCardVM = {
   /** Alt text when `imageUrl` is set */
   imageAlt: string;
   sellerId: string;
-  status: LotStatus;
-  /** ISO 8601 — used by client lot timer */
-  startTime: string;
-  /** ISO 8601 — used by client lot timer */
-  endTime: string;
   /** Visual emphasis hint for marketing cards. The card always renders
    * `priceLabel` + `priceFormatted`; emphasis tells it which line to make
    * dominant. Defaults to `estimate` when omitted (current behaviour).
@@ -145,7 +140,7 @@ export type LotCardVM = {
   estimateRange?: LotEstimateRange;
   /** Home ending-soon section: dual price stack + layout skips generic card chrome. */
   endingSoonPriceRows?: EndingSoonPriceRowsVM;
-};
+} & LotCardTimingVM;
 
 /** Home marketing grid: horizontal auction tile (Figma “Upcoming Auctions”). */
 export type HomeUpcomingAuctionTileVM = {
@@ -231,8 +226,8 @@ export function heroLotCoverSources(
 
 export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
   const pres = getSaleTypePresentation(sale.deliveryMode);
-  const startIso = coerceToIsoString(sale.startTime);
-  const endIso = coerceToIsoString(sale.endTime);
+  const startIso = toOptionalIsoString(sale.startTime);
+  const endIso = toOptionalIsoString(sale.endTime);
   return {
     id: sale.id,
     href: salePath(sale),
@@ -278,8 +273,7 @@ export function toHeroLotVM(
   const artistName = artistLineFromLot(lot);
   const primary = lotPriceDisplay(lot);
   const saleId = options?.saleId?.trim();
-  const startTime = coerceToIsoString(lot.startTime) ?? String(lot.startTime);
-  const endTime = coerceToIsoString(lot.endTime) ?? String(lot.endTime);
+  const timing = toLotCardTimingVM(lot);
   return {
     id: lot.id,
     href: lotPath(lot),
@@ -297,8 +291,8 @@ export function toHeroLotVM(
     lotLabel: lotLabelFromLot(lot),
     isAuctionLive: lot.status === "active",
     ...(saleId ? { saleroomHref: salePath({ id: saleId, title: saleTitle ?? "sale" }) } : {}),
-    startTime,
-    endTime,
+    ...(timing.startTime ? { startTime: timing.startTime } : {}),
+    ...(timing.endTime ? { endTime: timing.endTime } : {}),
   };
 }
 
@@ -311,8 +305,7 @@ function priceEmphasisFromStatus(lot: Lot): LotPriceEmphasis {
 export function toLotCardVM(lot: Lot): LotCardVM {
   const artistName = artistLineFromLot(lot);
   const { label, value } = lotPriceDisplay(lot);
-  const startTime = coerceToIsoString(lot.startTime) ?? String(lot.startTime);
-  const endTime = coerceToIsoString(lot.endTime) ?? String(lot.endTime);
+  const timing = toLotCardTimingVM(lot);
   return {
     id: lot.id,
     href: lotPath(lot),
@@ -324,9 +317,7 @@ export function toLotCardVM(lot: Lot): LotCardVM {
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
     sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
-    status: lot.status,
-    startTime,
-    endTime,
+    ...timing,
     priceEmphasis: priceEmphasisFromStatus(lot),
   };
 }
@@ -372,7 +363,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
   const isLive = sale.status === "active";
   const startsSoon =
     !isLive && Number.isFinite(startMs) && startMs > now && startMs <= now + sevenDaysMs;
-  const countdownEndIso = sale.status === "active" ? coerceToIsoString(sale.endTime) : undefined;
+  const countdownEndIso = toSaleCountdownEndIso(sale);
   const locationLabel = saleMarketingLocationLabel(sale);
   return {
     id: sale.id,

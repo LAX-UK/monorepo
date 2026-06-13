@@ -24,6 +24,7 @@ import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mo
 import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import { toLotCardTimingVM } from "@auction/validators";
 import { Heart } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -46,9 +47,7 @@ function toWatchlistRows(rows: WatchlistWithLotRow[]): WatchlistBoardRow[] {
           estimate: lot.marketingDetails.estimate,
           fallback: lot.currentPrice,
         }),
-        status: lot.status,
-        startTime: lot.startTime.toISOString(),
-        endTime: lot.endTime.toISOString(),
+        ...toLotCardTimingVM(lot),
       },
     ];
   });

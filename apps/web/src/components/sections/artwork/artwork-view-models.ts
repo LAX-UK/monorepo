@@ -5,6 +5,7 @@ import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Bid, Lot, LotMarketingDetails, Sale } from "@auction/types";
+import { normalizeAuctionTime } from "@auction/validators";
 import type { ReactNode } from "react";
 import { lotMarketingSection } from "./lot-marketing-sections";
 
@@ -42,7 +43,7 @@ export type LotRailCardVM = {
   artistOrSellerName: string;
   estimateLine: string | null;
   currentPrice: string;
-  endTime: Date;
+  endTime: string | null;
   status: Lot["status"];
   sellerId: string;
   deliveryMode?: Sale["deliveryMode"] | null;
@@ -266,7 +267,7 @@ function lotToRailCard(
     artistOrSellerName: artistName,
     estimateLine: est ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}` : null,
     currentPrice: lot.currentPrice,
-    endTime: lot.endTime,
+    endTime: normalizeAuctionTime(lot.endTime),
     status: lot.status,
     sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
     deliveryMode: deliveryMode ?? null,

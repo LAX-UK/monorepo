@@ -3,10 +3,11 @@
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { formatMoney } from "@/lib/format-currency";
-import type { Lot } from "@auction/types";
+import { lotCardTimingToTimerInputs } from "@/lib/lot/to-lot-timer-inputs";
+import type { CatalogLotVM } from "@auction/types";
 
 type CatalogLotEditorialCalmCaptionProps = {
-  lot: Lot;
+  lot: CatalogLotVM;
   title: string;
   subtitle: string | null;
   estimate: string | null;
@@ -27,11 +28,7 @@ export function CatalogLotEditorialCalmCaption({
         </h2>
         {subtitle ? <p className="font-body text-sm text-on-surface-variant">{subtitle}</p> : null}
         {isPublicLotStatus(lot.status) ? (
-          <LotStatusBadge
-            status={lot.status}
-            startTime={lot.startTime.toISOString()}
-            endTime={lot.endTime.toISOString()}
-          />
+          <LotStatusBadge {...lotCardTimingToTimerInputs(lot)} />
         ) : null}
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-4 pt-2">

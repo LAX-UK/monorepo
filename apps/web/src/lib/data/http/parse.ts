@@ -10,6 +10,7 @@ import type {
   UserNotification,
 } from "@auction/types";
 import { itemSubmissionStatuses } from "@auction/types";
+import { toOptionalIsoString } from "@auction/validators";
 
 function toDate(value: unknown): Date {
   if (value instanceof Date) return value;
@@ -24,8 +25,7 @@ export function coerceToDate(value: unknown): Date {
 
 /** ISO 8601 string when `value` is a valid date; otherwise `undefined`. */
 export function coerceToIsoString(value: unknown): string | undefined {
-  const d = toDate(value);
-  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+  return toOptionalIsoString(value);
 }
 
 function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {

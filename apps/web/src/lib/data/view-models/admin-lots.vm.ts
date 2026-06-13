@@ -2,6 +2,7 @@ import type { AdminLotTableRow } from "@/components/admin/lots-board/types";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import type { LotDeleteEligibility, getAdminLotList } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
+import { toRequiredIsoString } from "@auction/validators";
 
 type AdminLotListRow = Awaited<ReturnType<typeof getAdminLotList>>[number];
 
@@ -14,7 +15,7 @@ export function toAdminLotTableRow(a: AdminLotListRow): AdminLotTableRow {
     title: a.title,
     auctionType: a.auctionType,
     status: a.status,
-    endTimeIso: a.endTime.toISOString(),
+    endTimeIso: toRequiredIsoString(a.endTime),
     endTimeLabel: formatDateTime(a.endTime),
     currentPrice: a.currentPrice,
     canDelete: deleteEligibility?.canDelete === true,

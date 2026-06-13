@@ -11,10 +11,15 @@ function toNum(amount: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+type LotPriceDisplaySource = Pick<
+  Lot,
+  "status" | "winnerId" | "currentPrice" | "auctionType" | "buyNowPrice" | "startingPrice"
+>;
+
 /** Human-readable price label + formatted value for marketing cards,
  * derived from lot status, auction type, and price fields (no separate estimate range on Lot).
  */
-export function lotPriceDisplay(lot: Lot): LotPriceDisplay {
+export function lotPriceDisplay(lot: LotPriceDisplaySource): LotPriceDisplay {
   if (lot.status === "cancelled") {
     return { label: "Withdrawn", value: "—" };
   }

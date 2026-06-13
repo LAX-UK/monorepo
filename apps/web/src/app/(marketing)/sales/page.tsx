@@ -22,6 +22,7 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { deriveHasMorePage } from "@/lib/marketing/pagination";
@@ -362,7 +363,7 @@ export default async function SalesListPage({
               itemIds={newLots.map((l) => l.id)}
             />
             <SalesNewLotsGrid
-              lots={newLots}
+              lots={toCatalogLotVMs(newLots)}
               {...(newLotsCatalogLinkParams ? { catalogLinkParams: newLotsCatalogLinkParams } : {})}
             />
             <SalesCalendarPagination
