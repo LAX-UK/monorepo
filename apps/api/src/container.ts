@@ -128,6 +128,7 @@ import { DrizzleLegalEntityRepository } from "./repositories/drizzle-legal-entit
 import { DrizzleLotDocumentRepository } from "./repositories/drizzle-lot-document.repository.js";
 import { DrizzleLotMetricsReader } from "./repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleLotSoftDeleteSideEffects } from "./repositories/drizzle-lot-soft-delete.side-effects.js";
+import { DrizzleNotificationOutboxRepository } from "./repositories/drizzle-notification-outbox.repository.js";
 import { DrizzleNotificationPreferenceRepository } from "./repositories/drizzle-notification-preference.repository.js";
 import { DrizzleNotificationReadRepository } from "./repositories/drizzle-notification-read.repository.js";
 import { DrizzleNotificationWriteRepository } from "./repositories/drizzle-notification-write.repository.js";
@@ -275,6 +276,8 @@ import { MediaAssetEnricher } from "./services/media-asset-enricher.js";
 import { MediaUrlResolver } from "./services/media-url-resolver.js";
 import { MemberManagementService } from "./services/member-management.service.js";
 import { EmailMembershipInviteNotifier } from "./services/membership-invite-notifier.js";
+import { NotificationOutboxProcessor } from "./services/notification-outbox.processor.js";
+import { NotificationOutboxService } from "./services/notification-outbox.service.js";
 import { NotificationQueryService } from "./services/notification-query.service.js";
 import { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import { NotificationFactory } from "./services/notification.factory.js";
@@ -408,6 +411,7 @@ export type Container = {
   uiPreferenceService: UiPreferenceService;
   pushSubscriptionRepository: IPushSubscriptionRepository;
   notificationDispatcher: NotificationDispatcher;
+  notificationOutboxProcessor: NotificationOutboxProcessor;
   notificationFactory: NotificationFactory;
   emailService: IEmailService;
   emailObservabilityRepository: IEmailObservabilityRepository;
@@ -770,6 +774,7 @@ export function createContainer(env: Env): Container {
   const inAppChannel = new InAppNotificationChannel(
     notificationWriteRepo,
     userNotificationPublisher,
+    cache,
   );
   const pushChannel = new PushNotificationChannel(pushSender, pushSubscriptionRepository);
   const emailChannel = new EmailNotificationChannel(
@@ -785,6 +790,12 @@ export function createContainer(env: Env): Container {
     channels,
     notificationPreferenceRepository,
     quietHoursChecker,
+  );
+  const notificationOutboxRepository = new DrizzleNotificationOutboxRepository(db);
+  const notificationOutboxService = new NotificationOutboxService(notificationOutboxRepository);
+  const notificationOutboxProcessor = new NotificationOutboxProcessor(
+    notificationOutboxRepository,
+    notificationDispatcher,
   );
 
   const publicUploadBase = `${env.API_PUBLIC_URL.replace(/\/$/, "")}/static/uploads`;
@@ -817,6 +828,7 @@ export function createContainer(env: Env): Container {
     },
     lotLifecycleRecording,
     notificationService,
+    notificationOutboxService,
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
@@ -1342,7 +1354,6 @@ export function createContainer(env: Env): Container {
     strategyFactory,
     cache,
     notifications: notificationService,
-    notificationDispatcher,
     lotJobs: lotJobScheduler,
     adminMetrics: adminMetricsService,
     saleModeLookup,
@@ -1359,6 +1370,8 @@ export function createContainer(env: Env): Container {
       antiSnipingExtensionMs: env.ANTI_SNIPING_EXTENSION_MS,
       maxProxyRounds: env.MAX_PROXY_ROUNDS,
     },
+    notificationOutbox: notificationOutboxService,
+    notificationFactory,
   });
   const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
@@ -1621,6 +1634,7 @@ export function createContainer(env: Env): Container {
     uiPreferenceService,
     pushSubscriptionRepository,
     notificationDispatcher,
+    notificationOutboxProcessor,
     notificationFactory,
     emailService,
     emailObservabilityRepository,

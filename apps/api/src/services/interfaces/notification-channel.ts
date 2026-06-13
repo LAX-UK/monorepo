@@ -12,6 +12,8 @@ export type NotificationPayload = {
     invoiceNumber?: string;
     /** Canonical lot title for deep links (push/email). */
     lotTitle?: string;
+    /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */
+    outboxIdempotencyKey?: string;
   };
 };
 
