@@ -29,6 +29,9 @@ locals {
     zoho_mx_tertiary     = { name = "@", type = "MX", value = "mx3.zoho.eu", priority = 50, proxied = false, comment = "Zoho Mail EU inbound" }
     zoho_spf             = { name = "@", type = "TXT", value = "v=spf1 include:zohomail.eu ~all", proxied = false, comment = "Zoho Mail SPF for @lax.bid" }
     zoho_dkim            = { name = "zmail._domainkey", type = "TXT", value = "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDA5/sNBc3Octb83NV7Dk2coky2nAWToQXeZZfKkbNMflcIMj5845FnqCDmGm4ArDzDT+sd/TEjO/uQ3+s0hWjkCsK6+frfzpHgbNMDpaxL6nLmslyc1bEN0DpIj2L2Ma0Pf8t7KRAlJDIuLeIR3GC6J8r58caQgx7yDNSBZP9HkwIDAQAB", proxied = false, comment = "Zoho Mail DKIM" }
+    apex_dmarc           = { name = "_dmarc", type = "TXT", value = "v=DMARC1; p=none;", proxied = false, comment = "Apex DMARC for lax.bid (Mailchimp/mcsv.net onboarding)" }
+    mailchimp_dkim_2     = { name = "k2._domainkey", type = "CNAME", value = "dkim2.mcsv.net", proxied = false, comment = "Mailchimp DKIM (k2) for lax.bid" }
+    mailchimp_dkim_3     = { name = "k3._domainkey", type = "CNAME", value = "dkim3.mcsv.net", proxied = false, comment = "Mailchimp DKIM (k3) for lax.bid" }
   }
 }
 
