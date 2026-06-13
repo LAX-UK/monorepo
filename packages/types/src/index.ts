@@ -1,3 +1,4 @@
+export * from "./auction-timing.js";
 export * from "./lot.js";
 export * from "./sale.js";
 export * from "./venue.js";

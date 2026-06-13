@@ -1,3 +1,4 @@
+import type { AuctionTimingValue } from "./auction-timing.js";
 import type { BuyerPremiumTier } from "./buyer-premium.js";
 
 export const saleStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
@@ -60,6 +61,35 @@ export type Sale = {
   updatedAt: Date;
   deletedAt?: Date | null;
   deletedByUserId?: string | null;
+};
+
+/** Sale timing as received over the wire or after RSC serialization. */
+export type SaleTimingValue = AuctionTimingValue;
+
+/** Raw sale fields consumed by timing normalizers. */
+export type SaleTimingSource = {
+  status: SaleStatus;
+  startTime: SaleTimingValue;
+  endTime: SaleTimingValue;
+};
+
+/** Normalized ISO timing for sale cards, heroes, and countdowns. */
+export type SaleCardTimingVM = {
+  status: SaleStatus;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+/** Wire/RSC sale payload — date fields may be ISO strings or null. */
+export type SerializedSale = Omit<
+  Sale,
+  "startTime" | "endTime" | "previewStartTime" | "createdAt" | "updatedAt"
+> & {
+  startTime: SaleTimingValue;
+  endTime: SaleTimingValue;
+  previewStartTime: SaleTimingValue;
+  createdAt: SaleTimingValue;
+  updatedAt: SaleTimingValue;
 };
 
 export type CreateSaleInput = {

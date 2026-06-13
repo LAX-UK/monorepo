@@ -8,17 +8,18 @@ import { MediaImage } from "@/components/ui/media-image";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
+import { lotCardTimingToTimerInputs } from "@/lib/lot/to-lot-timer-inputs";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
 import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotPath } from "@/lib/seo/url";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
-import type { Lot } from "@auction/types";
+import type { CatalogLotVM } from "@auction/types";
 import { cn } from "@auction/ui";
 
 export type CatalogLotViewsProps = {
-  lots: Lot[];
+  lots: CatalogLotVM[];
   currentUserId: string | null;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
@@ -27,11 +28,11 @@ export type CatalogLotViewsProps = {
   catalogLinkParams?: CatalogLinkParams;
 };
 
-function resolveLotHref(lot: Lot, catalogLinkParams?: CatalogLinkParams): string {
+function resolveLotHref(lot: CatalogLotVM, catalogLinkParams?: CatalogLinkParams): string {
   return catalogLinkParams ? lotCatalogHref(lot, catalogLinkParams) : lotPath(lot);
 }
 
-function lotSubtitle(lot: Lot): string | null {
+function lotSubtitle(lot: CatalogLotVM): string | null {
   return lot.medium?.trim() ? lot.medium.trim() : null;
 }
 
@@ -42,7 +43,7 @@ function LotWatchlistHeart({
   loginNextPath,
   layout = "overlay",
 }: {
-  lot: Lot;
+  lot: CatalogLotVM;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath: string;
@@ -60,15 +61,9 @@ function LotWatchlistHeart({
   );
 }
 
-function LotStatusOverlay({ lot }: { lot: Lot }) {
+function LotStatusOverlay({ lot }: { lot: CatalogLotVM }) {
   if (!isPublicLotStatus(lot.status)) return null;
-  return (
-    <LotStatusBadge
-      status={lot.status}
-      startTime={lot.startTime.toISOString()}
-      endTime={lot.endTime.toISOString()}
-    />
-  );
+  return <LotStatusBadge {...lotCardTimingToTimerInputs(lot)} />;
 }
 
 export function CatalogLotGridView({
@@ -278,11 +273,7 @@ export function CatalogLotListView({
                     </div>
                     {isPublicLotStatus(a.status) ? (
                       <div className="tabular-nums">
-                        <LotStatusBadge
-                          status={a.status}
-                          startTime={a.startTime.toISOString()}
-                          endTime={a.endTime.toISOString()}
-                        />
+                        <LotStatusBadge {...lotCardTimingToTimerInputs(a)} />
                       </div>
                     ) : null}
                   </div>

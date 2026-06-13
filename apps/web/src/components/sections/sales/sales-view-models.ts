@@ -4,6 +4,7 @@ import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
+import { toDisplayDate, toOptionalIsoString, toSaleCountdownEndIso } from "@auction/validators";
 
 export type { SaleCardCommon } from "@/components/sections/sales/card/types";
 
@@ -85,8 +86,8 @@ export function mapSaleToCalendarCardVM(
   lots: Lot[],
   listLocale = "en-GB",
 ): SaleCalendarCardVM {
-  const start = new Date(sale.startTime);
-  const end = new Date(sale.endTime);
+  const start = toDisplayDate(sale.startTime);
+  const end = toDisplayDate(sale.endTime);
   const dateRangeLabel = formatDateRangeLine(start, end, listLocale).toUpperCase();
   const timeLabel = formatTimeLine(start, listLocale).toUpperCase();
   const dateLabel = `${dateRangeLabel} | ${timeLabel}`;
@@ -99,8 +100,7 @@ export function mapSaleToCalendarCardVM(
   const resultsSummary = hammer ? { hammer, total: hammer } : undefined;
 
   const locationLabel = saleMarketingLocationLabel(sale);
-  const countdownEndIso =
-    sale.status === "active" ? new Date(sale.endTime).toISOString() : undefined;
+  const countdownEndIso = toSaleCountdownEndIso(sale);
 
   return {
     id: sale.id,
@@ -183,8 +183,8 @@ function buildRowScheduleParts(
   _lots: Lot[],
   listLocale = "en-GB",
 ): { lead: string; rest: string } {
-  const start = new Date(sale.startTime);
-  const end = new Date(sale.endTime);
+  const start = toDisplayDate(sale.startTime);
+  const end = toDisplayDate(sale.endTime);
   const datePart = formatDateRangeHyphenCase(start, end, listLocale);
   const timePart = formatTimeLineShort(start, listLocale);
   const type = mapDeliveryToAuctionTypeLabel(sale.deliveryMode);
@@ -258,16 +258,16 @@ export function mapSaleToAgendaItemVM(
   lots: Lot[],
   listLocale = "en-GB",
 ): SaleAgendaItemVM {
-  const start = new Date(sale.startTime);
+  const start = toDisplayDate(sale.startTime);
   const n = lots.length;
-  const countdownEndIso =
-    sale.status === "active" ? new Date(sale.endTime).toISOString() : undefined;
+  const countdownEndIso = toSaleCountdownEndIso(sale);
+  const startIso = toOptionalIsoString(sale.startTime) ?? "";
   return {
     id: sale.id,
     href: salePath(sale),
     title: sale.title,
     status: sale.status,
-    startIso: start.toISOString(),
+    startIso,
     dayLabel: String(start.getDate()),
     weekdayLabel: new Intl.DateTimeFormat(listLocale, { weekday: "short" })
       .format(start)
@@ -289,8 +289,7 @@ export function mapSaleToAuctionRowVM(
   const { lead, rest } = buildRowScheduleParts(sale, lots, listLocale);
   const n = lots.length;
   const itemsLabel = `${n} Item${n === 1 ? "" : "s"}`;
-  const countdownEndIso =
-    sale.status === "active" ? new Date(sale.endTime).toISOString() : undefined;
+  const countdownEndIso = toSaleCountdownEndIso(sale);
 
   return {
     id: sale.id,

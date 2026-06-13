@@ -1,3 +1,5 @@
+import type { LotCardTimingVM } from "@auction/types";
+
 /** View-models for the saleroom page (ISP).
  * These types are intentionally small and opinionated toward rendering; mappers in
  * `mappers.ts` are the only place raw `Sale` / `Lot` types are read (DIP).
@@ -16,9 +18,9 @@ export type SaleHeroVM = {
   startEndLabel: string;
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
   /** ISO 8601 start of bidding — drives the hero "Opens in" countdown. */
-  startTime: string;
+  startTime: string | null;
   /** ISO 8601 end of bidding — drives the hero "Closes in" countdown. */
-  endTime: string;
+  endTime: string | null;
   isLive: boolean;
   registrationClosesLabel: string | null;
   biddingStartsLabel: string | null;
@@ -81,13 +83,7 @@ export type SaleLotCardVM = {
   artistOrMedium: string | null;
   /** Initial watch state for the Follow control. */
   viewerIsWatching: boolean;
-  /** Lot status for the live card timer (drives the live/opens-in/closed pill). */
-  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
-  /** ISO 8601 start of bidding for opens-in countdowns. */
-  startTime: string;
-  /** ISO 8601 end of bidding for closing countdowns. */
-  endTime: string;
-};
+} & LotCardTimingVM;
 
 export type RelatedSaleVM = {
   id: string;

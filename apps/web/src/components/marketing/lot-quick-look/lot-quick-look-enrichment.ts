@@ -3,6 +3,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import type { Lot } from "@auction/types";
+import { toLotCardTimingVM } from "@auction/validators";
 import type { LotQuickLookEnrichment } from "./fetch-lot-quick-look-enrichment.client";
 
 function formatBuyerPremiumHint(rate: string): string | undefined {
@@ -17,17 +18,15 @@ function formatBuyerPremiumHint(rate: string): string | undefined {
 export function lotQuickLookEnrichmentFromLot(lot: Lot): LotQuickLookEnrichment {
   const est = lotEstimateLine(lot);
   const price = lotPriceDisplay(lot);
-  const startTime =
-    lot.startTime instanceof Date ? lot.startTime.toISOString() : String(lot.startTime);
-  const endTime = lot.endTime instanceof Date ? lot.endTime.toISOString() : String(lot.endTime);
+  const { startTime, endTime } = toLotCardTimingVM(lot);
   const premiumHint = formatBuyerPremiumHint(lot.buyerPremiumRate);
 
   const enrichment: LotQuickLookEnrichment = {
     medium: lot.medium,
     images: lot.images,
     status: lot.status,
-    startTime,
-    endTime,
+    ...(startTime ? { startTime } : {}),
+    ...(endTime ? { endTime } : {}),
     ...(lot.dimensions?.trim() ? { dimensions: lot.dimensions.trim() } : {}),
     ...(premiumHint ? { buyersPremiumHint: premiumHint } : {}),
   };
