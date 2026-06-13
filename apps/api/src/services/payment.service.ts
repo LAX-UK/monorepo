@@ -10,7 +10,7 @@ import {
 import { buildBuyerPremiumPolicy } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import Stripe from "stripe";
-import { gbpAmountToPence } from "../lib/decimal-money.js";
+import { gbpAmountToPence, gbpPenceToMajorString } from "../lib/decimal-money.js";
 import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
@@ -198,12 +198,14 @@ export class PaymentService {
       return err(new LotError("Payment for this lot has already been refunded", 409));
     }
 
-    const total = await this.totalDue(lot);
+    const amountPence = await this.totalDuePence(lot);
+    const amount = gbpPenceToMajorString(amountPence);
     const platformFee = this.platformFeePolicy
-      ? await this.platformFeePolicy.computePlatformFee(lot.sellerLegalEntityId, total)
-      : (total * 0.05).toFixed(2);
-    const amount = total.toFixed(2);
-    const amountPence = gbpAmountToPence(amount);
+      ? await this.platformFeePolicy.computePlatformFeeFromPence(
+          lot.sellerLegalEntityId,
+          amountPence,
+        )
+      : gbpPenceToMajorString(Math.round(amountPence * 0.05));
     const amountValidation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
     if (amountValidation === "blocked") {
       return err(
@@ -1097,9 +1099,8 @@ export class PaymentService {
    *     `buyerPremiumRate` is used (back-compat).
    *  3. Add the premium to hammer.
    */
-  private async totalDue(lot: Lot): Promise<number> {
-    const hammer = Number.parseFloat(lot.currentPrice);
-    const safeHammer = Number.isFinite(hammer) ? hammer : 0;
+  private async totalDuePence(lot: Lot): Promise<number> {
+    const hammerPence = gbpAmountToPence(lot.currentPrice);
     let sale: Sale | null = null;
     if (this.sales && lot.saleId) {
       sale = await this.sales.findById(lot.saleId).catch(() => null);
@@ -1108,8 +1109,7 @@ export class PaymentService {
       saleTiers: sale?.buyerPremiumTiers ?? null,
       lotRate: lot.buyerPremiumRate,
     });
-    const premiumMajor = Number.parseFloat(policy.computePremiumMajor(lot.currentPrice));
-    const safePremium = Number.isFinite(premiumMajor) ? premiumMajor : 0;
-    return safeHammer + safePremium;
+    const premiumPence = gbpAmountToPence(policy.computePremiumMajor(lot.currentPrice));
+    return hammerPence + premiumPence;
   }
 }

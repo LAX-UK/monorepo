@@ -253,6 +253,7 @@ export const adminTelephonePlaceBidBodySchema = z.object({
   amount: z.coerce.number().finite().positive().max(1e12),
   maxAutoBidAmount: z.coerce.number().finite().positive().max(1e12).optional(),
   telephoneBookingId: z.string().uuid().optional(),
+  idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
 export type AdminTelephonePlaceBidBody = z.infer<typeof adminTelephonePlaceBidBodySchema>;

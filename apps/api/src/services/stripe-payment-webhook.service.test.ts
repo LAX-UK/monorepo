@@ -614,16 +614,33 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     );
   });
 
-  it("records failed payment intent without capturing", async () => {
+  it("records failed payment intent without capturing or cancelling", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
     const capture = vi.fn();
+    const updateStatus = vi.fn();
+    const publish = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "pending",
       amount: "100.00",
     });
-    const { svc } = createWebhookService({ db, paymentCapture: { capture } });
+    const { svc, publisher } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+      publisher: { publish } as DomainEventPublisher,
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          buyerId: "buyer_1",
+          buyerLegalEntityId: "le_buyer",
+          amount: "100.00",
+          status: "pending",
+        }),
+        updateStatus,
+      },
+    });
     const event = { id: "evt_failed", type: "payment_intent.payment_failed" } as Stripe.Event;
     const pi = {
       id: "pi_fail",
@@ -635,18 +652,48 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
 
     expect(result).toEqual({ processed: true, action: "payment_intent_failed" });
     expect(capture).not.toHaveBeenCalled();
+    expect(updateStatus).not.toHaveBeenCalled();
+    expect(publisher.publish).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: "payment.checkout_failed",
+        payload: expect.objectContaining({
+          paymentId: "pay_1",
+          lotId: "lot_1",
+          stripePaymentIntentId: "pi_fail",
+          statusBefore: "pending",
+        }),
+      }),
+    );
   });
 
-  it("records canceled payment intent without capturing", async () => {
+  it("cancels pending payment when Stripe payment intent is canceled", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
     const capture = vi.fn();
+    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    const publish = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "pending",
       amount: "100.00",
     });
-    const { svc } = createWebhookService({ db, paymentCapture: { capture } });
+    const { svc, publisher } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+      publisher: { publish } as DomainEventPublisher,
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          buyerId: "buyer_1",
+          buyerLegalEntityId: "le_buyer",
+          amount: "100.00",
+          status: "pending",
+        }),
+        updateStatus,
+      },
+    });
     const event = { id: "evt_canceled", type: "payment_intent.canceled" } as Stripe.Event;
     const pi = {
       id: "pi_cancel",
@@ -658,5 +705,55 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
 
     expect(result).toEqual({ processed: true, action: "payment_intent_canceled" });
     expect(capture).not.toHaveBeenCalled();
+    expect(updateStatus).toHaveBeenCalledWith("pay_1", "cancelled");
+    expect(publisher.publish).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: "payment.cancelled",
+        payload: expect.objectContaining({
+          lotId: "lot_1",
+          reason: "stripe_payment_intent_canceled",
+        }),
+      }),
+    );
+  });
+
+  it("skips duplicate canceled payment intent deliveries", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: false });
+    const updateStatus = vi.fn();
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "pending",
+      amount: "100.00",
+    });
+    const { svc } = createWebhookService({
+      db,
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          buyerId: "buyer_1",
+          amount: "100.00",
+          status: "pending",
+        }),
+        updateStatus,
+      },
+    });
+    const event = { id: "evt_canceled_dup", type: "payment_intent.canceled" } as Stripe.Event;
+    const pi = {
+      id: "pi_cancel",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentCanceled(event, pi);
+
+    expect(result).toEqual({
+      processed: false,
+      action: "skipped",
+      reason: "duplicate_event",
+    });
+    expect(updateStatus).not.toHaveBeenCalled();
   });
 });
