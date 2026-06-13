@@ -102,6 +102,8 @@ export const listLotsQuerySchema = z.object({
   endingWithinHours: z.coerce.number().int().min(1).max(168).optional(),
   /** When `1`, only lots with zero images (staff attention lens). */
   needsPhotos: z.enum(["1"]).optional(),
+  /** When `0`, skip CDN URL resolution (staff lists that do not render thumbnails). */
+  resolveImages: z.enum(["0", "1"]).optional(),
   sort: listSort,
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),

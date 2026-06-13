@@ -45,6 +45,8 @@ export type ListLotsFilter = {
   search?: string | undefined;
   /** When true, only lots with no images (draft triage). */
   needsPhotos?: boolean | undefined;
+  /** When false, skip CDN URL resolution (staff list views). */
+  resolveImages?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListLotsSort | undefined;

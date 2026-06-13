@@ -97,6 +97,14 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
     return rows.map(rowToCase);
   }
 
+  async countByStatus(status: SourceOfFundsStatus, conn?: Database): Promise<number> {
+    const [row] = await this.conn(conn)
+      .select({ n: sql<number>`count(*)::int` })
+      .from(sourceOfFunds)
+      .where(eq(sourceOfFunds.status, status));
+    return row?.n ?? 0;
+  }
+
   async create(input: CreateSourceOfFundsCaseInput, conn?: Database): Promise<SourceOfFundsCase> {
     const [row] = await this.conn(conn)
       .insert(sourceOfFunds)

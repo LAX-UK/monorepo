@@ -263,12 +263,18 @@ function parseAdminPayoutRow(raw: unknown): AdminPayoutRow {
 /** Matches {@link listLotsQuerySchema} max on the API. */
 const ADMIN_LOT_LIST_MAX_LIMIT = 100;
 
-export async function getAdminLotList(
-  params: ListLotsParams = {},
-): Promise<Array<Lot & { lifecycleSummary?: AdminLotLifecycleSummary }>> {
+export async function getAdminLotList(params: ListLotsParams = {}): Promise<
+  Array<
+    Lot & {
+      lifecycleSummary?: AdminLotLifecycleSummary;
+      connectRequired?: boolean;
+    }
+  >
+> {
   const qs = new URLSearchParams(
     buildLotListQuery({
       ...params,
+      resolveImages: params.resolveImages ?? false,
       limit: Math.min(params.limit ?? ADMIN_LOT_LIST_MAX_LIMIT, ADMIN_LOT_LIST_MAX_LIMIT),
       offset: params.offset ?? 0,
     }),
@@ -292,6 +298,8 @@ export async function getAdminLotList(
     const lot = parseLot(raw);
     const ls = o.lifecycleSummary as Record<string, unknown> | undefined;
     const deleteEligibility = parseLotDeleteEligibility(o.deleteEligibility);
+    const connectRequired =
+      o.connectRequired === true ? true : o.connectRequired === false ? false : undefined;
     const lifecycleSummary =
       ls && typeof ls.lastEventType === "string" && typeof ls.lastEventAt === "string"
         ? {
@@ -304,6 +312,7 @@ export async function getAdminLotList(
       ...lot,
       ...(lifecycleSummary ? { lifecycleSummary } : {}),
       ...(deleteEligibility != null ? { deleteEligibility } : {}),
+      ...(connectRequired !== undefined ? { connectRequired } : {}),
     };
   });
 }

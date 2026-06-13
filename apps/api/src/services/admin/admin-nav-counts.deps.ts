@@ -35,19 +35,19 @@ function saleNeedsSetup(saleRow: Sale, lotCount: number): boolean {
   return false;
 }
 
-function sumOnboardingIssues(issues: {
-  entitiesPendingReview: unknown[];
-  artistsPendingApproval: unknown[];
-  staleKycSessions: unknown[];
-  documentsAwaitingReview: unknown[];
-  staleLeadOrganisations: unknown[];
+function sumOnboardingIssuesFromSnapshot(snapshot: {
+  entitiesPendingReviewCount: number;
+  artistsPendingApprovalCount: number;
+  staleKycSessionsCount: number;
+  documentsAwaitingReviewCount: number;
+  staleLeadOrganisationsCount: number;
 }): number {
   return (
-    issues.entitiesPendingReview.length +
-    issues.artistsPendingApproval.length +
-    issues.staleKycSessions.length +
-    issues.documentsAwaitingReview.length +
-    issues.staleLeadOrganisations.length
+    snapshot.entitiesPendingReviewCount +
+    snapshot.artistsPendingApprovalCount +
+    snapshot.staleKycSessionsCount +
+    snapshot.documentsAwaitingReviewCount +
+    snapshot.staleLeadOrganisationsCount
   );
 }
 
@@ -82,13 +82,10 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
       ]);
       return pending.total + inProgress.total;
     },
-    getManualReviewCount: async () => {
-      const rows = await input.admin.dashboard.listManualReviewPayments();
-      return rows.length;
-    },
+    getManualReviewCount: () => input.admin.dashboard.countManualReviewPayments(),
     getOnboardingIssuesTotal: async () => {
-      const issues = await input.admin.dashboard.getOnboardingIssues();
-      return sumOnboardingIssues(issues);
+      const snapshot = await input.admin.dashboard.getFinanceIssueSnapshot();
+      return sumOnboardingIssuesFromSnapshot(snapshot);
     },
     getLotFulfilmentPending: async () => {
       const loaded = await input.lotFulfilmentService.listForAdmin({ limit: 1, offset: 0 });
@@ -97,11 +94,8 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
         0,
       );
     },
-    getWithdrawalsPending: async () => {
-      const rows =
-        await input.admin.dashboard.listPendingAdminReviewTasks("lot_withdrawal_request");
-      return rows.length;
-    },
+    getWithdrawalsPending: () =>
+      input.admin.dashboard.countPendingAdminReviewTasks("lot_withdrawal_request"),
     getDisputesOpen: () => input.admin.disputeCases.countOpenCases(),
     getPayoutsFailed: async () => {
       const finance = await input.admin.dashboard.getFinanceIssueSnapshot();
@@ -139,14 +133,8 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
     },
     getDraftLotsMissingPhotos: () =>
       input.repoFactory.root.lot.countMatching({ status: "draft", needsPhotos: true }),
-    getAmlScreeningsPending: async () => {
-      const rows = await input.amlService.listPendingReviews(200);
-      return rows.length;
-    },
-    getSourceOfFundsPending: async () => {
-      const rows = await input.sourceOfFundsService.listPending(200);
-      return rows.length;
-    },
+    getAmlScreeningsPending: () => input.amlService.countPendingReviews(),
+    getSourceOfFundsPending: () => input.sourceOfFundsService.countPending(),
     getTelephoneBookingsPending: () => input.telephoneBidBookingService.countGlobalPending(),
   };
 }
