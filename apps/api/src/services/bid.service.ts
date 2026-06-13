@@ -1,4 +1,5 @@
-import type { Bid } from "@auction/types";
+import type { Database } from "@auction/db";
+import type { Bid, Lot } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
@@ -21,11 +22,14 @@ import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
+import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
 import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
+import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
-import type { NotificationDispatcher } from "./notification.dispatcher.js";
+import { notificationRowToPayload } from "./notification-payload.js";
+import { NotificationFactory } from "./notification.factory.js";
 import type { NotificationService } from "./notification.service.js";
 
 export type { PlaceBidWithIdempotencyOutcome } from "./bid/place-bid-idempotency.js";
@@ -36,7 +40,6 @@ export type BidServiceOptions = {
   strategyFactory: ILotStrategyFactory;
   cache: ICacheProvider;
   notifications: NotificationService;
-  notificationDispatcher: NotificationDispatcher | null;
   lotJobs: LotJobSchedulerPort | null;
   adminMetrics?: AdminMetricsService | null;
   saleModeLookup?: ISaleModeLookup | null;
@@ -48,6 +51,8 @@ export type BidServiceOptions = {
   englishOnlyAuctions?: boolean;
   lotLifecycleRecording?: LotLifecycleRecording | null;
   bidPolicy?: BidPolicyConfig;
+  notificationOutbox?: INotificationOutboxService | null;
+  notificationFactory?: NotificationFactory;
 };
 
 export class BidService implements IBidPlacer {
@@ -63,6 +68,8 @@ export class BidService implements IBidPlacer {
   private readonly englishOnlyAuctions: boolean;
   private readonly legalEntityRepository: ILegalEntityRepository | null;
   private readonly bidPolicy: BidPolicyConfig;
+  private readonly notificationOutbox: INotificationOutboxService | null;
+  private readonly notificationFactory: NotificationFactory;
 
   constructor(opts: BidServiceOptions) {
     this.repos = opts.repos;
@@ -73,11 +80,12 @@ export class BidService implements IBidPlacer {
     this.saleModeLookup = opts.saleModeLookup ?? null;
     this.antiShillingGuard = opts.antiShillingGuard ?? null;
     this.bidEligibility = opts.bidEligibility ?? null;
+    this.notificationOutbox = opts.notificationOutbox ?? null;
+    this.notificationFactory = opts.notificationFactory ?? new NotificationFactory();
 
     this.notificationCoordinator = new BidNotificationCoordinator(
       opts.cache,
       opts.notifications,
-      opts.notificationDispatcher,
       opts.lotJobs,
       opts.adminMetrics ?? null,
     );
@@ -274,6 +282,16 @@ export class BidService implements IBidPlacer {
           });
           const endedEarly = earlyClose != null;
 
+          await this.stageCriticalBidNotificationsInTransaction({
+            lotId,
+            lotRow,
+            created: lastBid,
+            prevWinnerId,
+            endedEarly,
+            bids,
+            tx,
+          });
+
           return { created: lastBid, lot: lotRow, nextEnd, endedEarly };
         },
       );
@@ -326,5 +344,74 @@ export class BidService implements IBidPlacer {
     input: Parameters<IdempotentBidExecutor["placeBidWithIdempotency"]>[0],
   ): Promise<PlaceBidWithIdempotencyOutcome> {
     return this.idempotentExecutor.placeBidWithIdempotency(input);
+  }
+
+  private async stageCriticalBidNotificationsInTransaction(params: {
+    lotId: string;
+    lotRow: Lot;
+    created: Bid;
+    prevWinnerId: string | null;
+    endedEarly: boolean;
+    bids: IBidRepository;
+    tx: Database;
+  }): Promise<void> {
+    if (!this.notificationOutbox) return;
+
+    const createdUserId = params.created.placedByUserId ?? params.created.bidderId ?? null;
+    if (!createdUserId) return;
+
+    const lotForNotify: Lot = params.endedEarly
+      ? {
+          ...params.lotRow,
+          status: "ended",
+          endTime: params.lotRow.endTime,
+          currentPrice: params.created.amount,
+          winnerId: createdUserId,
+          ...(params.created.buyerLegalEntityId
+            ? { buyerLegalEntityId: params.created.buyerLegalEntityId }
+            : {}),
+        }
+      : params.lotRow;
+
+    if (params.prevWinnerId && params.prevWinnerId !== createdUserId) {
+      await this.notificationOutbox.stageDispatch(
+        {
+          userId: params.prevWinnerId,
+          payload: notificationRowToPayload(
+            this.notificationFactory.createOutbid(lotForNotify, params.prevWinnerId),
+          ),
+          idempotencyKey: `outbid:${params.lotId}:${params.created.id}:${params.prevWinnerId}`,
+        },
+        params.tx,
+      );
+    }
+
+    if (params.endedEarly) {
+      await this.notificationOutbox.stageDispatch(
+        {
+          userId: createdUserId,
+          payload: notificationRowToPayload(
+            this.notificationFactory.createWon(lotForNotify, createdUserId),
+          ),
+          idempotencyKey: `lot_won:${params.lotId}:${createdUserId}`,
+        },
+        params.tx,
+      );
+
+      const bidderIds = await params.bids.listDistinctBidderIds(params.lotId);
+      for (const uid of bidderIds) {
+        if (uid === createdUserId) continue;
+        await this.notificationOutbox.stageDispatch(
+          {
+            userId: uid,
+            payload: notificationRowToPayload(
+              this.notificationFactory.createLost(lotForNotify, uid),
+            ),
+            idempotencyKey: `lot_lost:${params.lotId}:${uid}`,
+          },
+          params.tx,
+        );
+      }
+    }
   }
 }

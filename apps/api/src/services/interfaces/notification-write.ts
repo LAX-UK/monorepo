@@ -14,6 +14,7 @@ export type CreateNotificationRow = {
     invoiceUrl?: string | null;
     invoiceNumber?: string;
     lotTitle?: string;
+    outboxIdempotencyKey?: string;
   };
 };
 

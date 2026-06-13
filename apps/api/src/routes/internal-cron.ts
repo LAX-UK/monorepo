@@ -339,5 +339,18 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     }
   });
 
+  /** Drain critical bid/lot-close notification outbox rows (outbid, won, lost). */
+  r.post("/process-notification-outbox", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const data = await container.notificationOutboxProcessor.processBatch(50);
+    return c.json({ data });
+  });
+
   return r;
 }

@@ -48,6 +48,7 @@ When `CRON_INTERNAL_SECRET` is set, the worker registers:
 | `retry-xero-stripe-capture-sync` | 15 min | `POST /internal/jobs/retry-xero-stripe-capture-sync` |
 | `retry-refund-reconciles` | 15 min | `POST /internal/jobs/retry-refund-reconciles` |
 | `refresh-xero-tokens` | 6 h | `POST /internal/jobs/refresh-xero-tokens` |
+| `process-notification-outbox` | 1 min | `POST /internal/jobs/process-notification-outbox` |
 
 Manual replay remains available via the same endpoints (see `docs/runbooks/xero-stripe-payment-setup.md`, `docs/runbooks/monitoring-alerts.md`).
 
