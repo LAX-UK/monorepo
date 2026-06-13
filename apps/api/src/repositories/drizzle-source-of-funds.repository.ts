@@ -85,15 +85,18 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
   async listByStatus(
     status: SourceOfFundsStatus,
     limit: number,
+    offset = 0,
     conn?: Database,
   ): Promise<SourceOfFundsCase[]> {
     const cap = Math.min(200, Math.max(1, limit));
+    const skip = Math.max(0, offset);
     const rows = await this.conn(conn)
       .select()
       .from(sourceOfFunds)
       .where(eq(sourceOfFunds.status, status))
       .orderBy(desc(sourceOfFunds.createdAt))
-      .limit(cap);
+      .limit(cap)
+      .offset(skip);
     return rows.map(rowToCase);
   }
 

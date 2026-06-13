@@ -63,6 +63,8 @@ export interface IPayoutRepository {
   /** List payouts (admin or per-entity), newest first. */
   list(filter: ListPayoutsFilter): Promise<Payout[]>;
   countMatching(filter: Omit<ListPayoutsFilter, "limit" | "offset">): Promise<number>;
+  /** UTC day counts for admin KPI trends (created_at >= rangeStart). */
+  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
 
   /** Find a payout by id (any entity). */
   findById(payoutId: string): Promise<Payout | null>;

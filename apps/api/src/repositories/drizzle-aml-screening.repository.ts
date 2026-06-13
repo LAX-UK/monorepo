@@ -94,15 +94,18 @@ export class DrizzleAmlScreeningRepository
   async listByReviewStatus(
     reviewStatus: AmlReviewStatus,
     limit: number,
+    offset = 0,
     conn?: Database,
   ): Promise<WatchlistScreeningRecord[]> {
     const cap = Math.min(200, Math.max(1, limit));
+    const skip = Math.max(0, offset);
     const rows = await this.conn(conn)
       .select()
       .from(kycWatchlistScreening)
       .where(eq(kycWatchlistScreening.reviewStatus, reviewStatus))
       .orderBy(desc(kycWatchlistScreening.screenedAt))
-      .limit(cap);
+      .limit(cap)
+      .offset(skip);
     return rows.map(rowToRecord);
   }
 
