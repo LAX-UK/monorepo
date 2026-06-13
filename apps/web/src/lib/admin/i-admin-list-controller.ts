@@ -22,6 +22,15 @@ export type AdminListResult<TRow> = {
   hasNextPage?: boolean | undefined;
   /** Populated by finance dispute list (full-queue KPI strip). */
   summary?: AdminDisputeCaseSummary | undefined;
+  /** Populated by admin payments list (SQL aggregates for the active filter). */
+  paymentsSummary?:
+    | {
+        totalVolume: number;
+        captured: number;
+        pending: number;
+        refunded: number;
+      }
+    | undefined;
 };
 
 export interface IAdminListController<

@@ -1,13 +1,17 @@
 import type { Database } from "@auction/db";
-import { payment, paymentExternalRef } from "@auction/db/schema";
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { lot, lotFulfilment, payment, paymentExternalRef, user } from "@auction/db/schema";
+import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type {
+  AdminPaymentTableRowDto,
+  AdminPaymentsSummaryStats,
   CreatePaymentRow,
   IPaymentWriteRepository,
+  ListPaymentsAdminTableFilter,
   ListPaymentsExportFilter,
   PaymentRecord,
 } from "../services/interfaces/payment-write.js";
+import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type Row = InferSelectModel<typeof payment>;
 
@@ -17,6 +21,28 @@ function exportWhere(filter: ListPaymentsExportFilter) {
     conditions.push(eq(payment.status, "requires_manual_review"));
   } else if (filter.status) {
     conditions.push(eq(payment.status, filter.status));
+  }
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">) {
+  const conditions = [];
+  if (filter.status) {
+    conditions.push(eq(payment.status, filter.status));
+  }
+  const needle = filter.q?.trim();
+  if (needle) {
+    const pattern = `%${needle}%`;
+    conditions.push(
+      or(
+        ilike(payment.id, pattern),
+        ilike(payment.buyerId, pattern),
+        ilike(lot.title, pattern),
+        ilike(user.name, pattern),
+        ilike(user.email, pattern),
+        ilike(lotFulfilment.status, pattern),
+      ),
+    );
   }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
@@ -272,5 +298,91 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         ),
       );
     return row?.s ?? "0";
+  }
+
+  async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return queryCreatedAtDailyCounts(this.db, payment, payment.createdAt, rangeStart);
+  }
+
+  async listForAdminTable(
+    filter: ListPaymentsAdminTableFilter,
+  ): Promise<AdminPaymentTableRowDto[]> {
+    const where = adminTableWhere(filter);
+    const base = this.db
+      .select({
+        payment,
+        lotTitle: lot.title,
+        buyerName: user.name,
+        buyerEmail: user.email,
+        fulfilmentStatus: lotFulfilment.status,
+        refInvoiceNumber: paymentExternalRef.xeroInvoiceNumber,
+        refOnlineUrl: paymentExternalRef.onlineInvoiceUrl,
+        refSyncStatus: paymentExternalRef.syncStatus,
+        refLastError: paymentExternalRef.lastError,
+      })
+      .from(payment)
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId))
+      .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId));
+    const rows = await (where ? base.where(where) : base)
+      .orderBy(desc(payment.createdAt))
+      .limit(filter.limit)
+      .offset(filter.offset);
+    return rows.map((r) => {
+      const mapped = mapRow(r.payment, {
+        xeroInvoiceNumber: r.refInvoiceNumber ?? null,
+        xeroOnlineInvoiceUrl: r.refOnlineUrl ?? null,
+        xeroSyncStatus: r.refSyncStatus ?? null,
+        xeroLastError: r.refLastError ?? null,
+      });
+      const buyerLabel = r.buyerName?.trim() || r.buyerEmail?.trim() || null;
+      return {
+        ...mapped,
+        buyerId: r.payment.buyerId,
+        sellerId: r.payment.sellerLegalEntityId,
+        lotTitle: r.lotTitle,
+        buyerLabel,
+        fulfilmentStatus: r.fulfilmentStatus ?? null,
+      };
+    });
+  }
+
+  async countForAdminTable(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+  ): Promise<number> {
+    const where = adminTableWhere(filter);
+    const base = this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(payment)
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId));
+    const [row] = await (where ? base.where(where) : base);
+    return row?.n ?? 0;
+  }
+
+  async summarizeForAdminTable(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+  ): Promise<AdminPaymentsSummaryStats> {
+    const where = adminTableWhere(filter);
+    const base = this.db
+      .select({
+        totalVolume: sql<string>`coalesce(sum(${payment.amount}), 0)::text`,
+        captured: sql<string>`coalesce(sum(${payment.amount}) filter (where ${payment.status} = 'captured'), 0)::text`,
+        pending: sql<string>`coalesce(sum(${payment.amount}) filter (where ${payment.status} in ('pending', 'authorized')), 0)::text`,
+        refunded: sql<string>`coalesce(sum(${payment.amount}) filter (where ${payment.status} = 'refunded'), 0)::text`,
+      })
+      .from(payment)
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId));
+    const [row] = await (where ? base.where(where) : base);
+    return {
+      totalVolume: row?.totalVolume ?? "0",
+      captured: row?.captured ?? "0",
+      pending: row?.pending ?? "0",
+      refunded: row?.refunded ?? "0",
+    };
   }
 }

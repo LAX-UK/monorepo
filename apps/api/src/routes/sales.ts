@@ -28,6 +28,7 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
+import { buildConnectRequiredByLotId } from "../lib/seller-connect-readiness.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -224,12 +225,23 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const { id } = c.req.valid("param");
     const detail = await container.saleService.getSaleDetailForCatalogAdmin(id);
     if (!detail) return c.json({ error: "Not found" }, 404);
+    const connectEnforced = container.stripeConnectService.isConfigured();
+    const connectByLot = await buildConnectRequiredByLotId(
+      detail.data.lots,
+      container.legalEntityRepository,
+      connectEnforced,
+    );
+    const lotsWithConnect = detail.data.lots.map((lotRow) => ({
+      ...lotRow,
+      connectRequired: connectByLot.get(lotRow.id) ?? false,
+    }));
     const deleteEligibility = roleHasCapability(role, "auction.manage", staff)
       ? await container.saleSoftDeleteService.getDeleteEligibility(id)
       : null;
     return c.json({
       data: {
         ...detail.data,
+        lots: lotsWithConnect,
         ...(deleteEligibility ? { deleteEligibility } : {}),
       },
     });

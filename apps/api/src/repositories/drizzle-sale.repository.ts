@@ -5,6 +5,7 @@ import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
 import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { mapSaleRow } from "../lib/mappers.js";
 import type { ISaleRepository, ListSalesFilter } from "../services/interfaces/repositories.js";
+import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 /** Sold lot without captured/refunded buyer payment. */
 function soldLotMissingSettledPayment() {
@@ -267,5 +268,9 @@ export class DrizzleSaleRepository implements ISaleRepository {
 
   async updateStatus(id: string, status: Sale["status"]): Promise<void> {
     await this.db.update(sale).set({ status, updatedAt: new Date() }).where(eq(sale.id, id));
+  }
+
+  async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return queryCreatedAtDailyCounts(this.db, sale, sale.createdAt, rangeStart, saleNotDeleted());
   }
 }

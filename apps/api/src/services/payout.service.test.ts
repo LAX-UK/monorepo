@@ -28,6 +28,7 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
       }),
     list: vi.fn().mockResolvedValue([]),
     countMatching: vi.fn().mockResolvedValue(0),
+    countCreatedAtByDay: vi.fn().mockResolvedValue(new Map()),
     findById: vi.fn().mockResolvedValue(null),
     findByStripeTransferId: vi.fn().mockResolvedValue(null),
     listLines: vi.fn().mockResolvedValue([]),

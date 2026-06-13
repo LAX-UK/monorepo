@@ -61,6 +61,7 @@ export interface ISourceOfFundsRepository {
   listByStatus(
     status: SourceOfFundsStatus,
     limit: number,
+    offset?: number,
     conn?: Database,
   ): Promise<SourceOfFundsCase[]>;
   countByStatus(status: SourceOfFundsStatus, conn?: Database): Promise<number>;
