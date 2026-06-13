@@ -338,6 +338,10 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_FULL_TABLES]).toContain("marketing_click_ids");
   });
 
+  it("WORKER_FULL_TABLES includes media_asset (process-image + image-cleanup)", () => {
+    expect([...WORKER_FULL_TABLES]).toContain("media_asset");
+  });
+
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {
     expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain("qr_code_scan");
     expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain("qr_code_scan_daily");
