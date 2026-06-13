@@ -73,6 +73,13 @@ import {
   processMarketingEventJob,
   runMarketingEventOutboxPoller,
 } from "./jobs/marketing-event-processor.js";
+import {
+  runExpireStalePaymentsJob,
+  runRefreshXeroTokensJob,
+  runRetryRefundReconcilesJob,
+  runRetryXeroStripeCaptureSyncJob,
+  runRetryXeroWebhookFailuresJob,
+} from "./jobs/payment-ops-cron.js";
 import { processImageJob } from "./jobs/process-image.js";
 import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
@@ -810,6 +817,92 @@ if (env.CRON_INTERNAL_SECRET) {
   log.info("lot-lifecycle-tick repeat registered (every 10s)");
 }
 
+const paymentOpsCronWorkers: { worker: Worker; queue: string }[] = [];
+if (env.CRON_INTERNAL_SECRET) {
+  const cronSecret = env.CRON_INTERNAL_SECRET;
+  const apiCronBase = {
+    apiBaseUrl: env.API_INTERNAL_BASE_URL,
+    cronSecret,
+    log,
+  };
+
+  const registerPaymentOpsCron = (opts: {
+    queueName: string;
+    jobName: string;
+    jobId: string;
+    everyMs: number;
+    sentrySlug: string;
+    run: () => Promise<void>;
+  }) => {
+    const queue = new Queue(opts.queueName, bullConnection);
+    const worker = new Worker(
+      opts.queueName,
+      async () => {
+        await withSentryCronMonitor(opts.sentrySlug, sentryMonitorSlugs, async () => {
+          await opts.run();
+          await heartbeat(opts.queueName);
+        });
+      },
+      bullConnection,
+    );
+    worker.on("failed", (job, err) => {
+      reportWorkerJobFailure(opts.queueName, job, err);
+    });
+    void queue.add(
+      opts.jobName,
+      {},
+      {
+        jobId: opts.jobId,
+        repeat: { every: opts.everyMs },
+        removeOnComplete: 50,
+      },
+    );
+    paymentOpsCronWorkers.push({ worker, queue: opts.queueName });
+    log.info(`${opts.queueName} repeat registered (every ${opts.everyMs}ms)`);
+  };
+
+  registerPaymentOpsCron({
+    queueName: "expire-stale-payments",
+    jobName: "expire-stale-payments",
+    jobId: "expire-stale-payments-5m",
+    everyMs: 5 * 60 * 1000,
+    sentrySlug: "expire-stale-payments",
+    run: () => runExpireStalePaymentsJob(apiCronBase),
+  });
+  registerPaymentOpsCron({
+    queueName: "retry-xero-webhook-failures",
+    jobName: "retry-xero-webhook-failures",
+    jobId: "retry-xero-webhook-failures-15m",
+    everyMs: 15 * 60 * 1000,
+    sentrySlug: "retry-xero-webhook-failures",
+    run: () => runRetryXeroWebhookFailuresJob(apiCronBase),
+  });
+  registerPaymentOpsCron({
+    queueName: "retry-xero-stripe-capture-sync",
+    jobName: "retry-xero-stripe-capture-sync",
+    jobId: "retry-xero-stripe-capture-sync-15m",
+    everyMs: 15 * 60 * 1000,
+    sentrySlug: "retry-xero-stripe-capture-sync",
+    run: () => runRetryXeroStripeCaptureSyncJob(apiCronBase),
+  });
+  registerPaymentOpsCron({
+    queueName: "retry-refund-reconciles",
+    jobName: "retry-refund-reconciles",
+    jobId: "retry-refund-reconciles-15m",
+    everyMs: 15 * 60 * 1000,
+    sentrySlug: "retry-refund-reconciles",
+    run: () => runRetryRefundReconcilesJob(apiCronBase),
+  });
+  registerPaymentOpsCron({
+    queueName: "refresh-xero-tokens",
+    jobName: "refresh-xero-tokens",
+    jobId: "refresh-xero-tokens-6h",
+    everyMs: 6 * 60 * 60 * 1000,
+    sentrySlug: "refresh-xero-tokens",
+    run: () => runRefreshXeroTokensJob(apiCronBase),
+  });
+}
+
 let staleSubmissionDraftRemindersQueue: Queue | undefined;
 let staleSubmissionDraftRemindersWorker: Worker | undefined;
 if (env.CRON_INTERNAL_SECRET) {
@@ -893,6 +986,7 @@ registerWorkerErrorHandlers([
   ...(lotLifecycleTickWorker
     ? [{ worker: lotLifecycleTickWorker, queue: LOT_LIFECYCLE_TICK_QUEUE_NAME }]
     : []),
+  ...paymentOpsCronWorkers,
 ]);
 
 const deadLetterQueue = new Queue(DEAD_LETTER_QUEUE_NAME, queueOpts(DEAD_LETTER_QUEUE_NAME));
@@ -935,6 +1029,11 @@ void Promise.all([
         heartbeat("payout-settlement"),
         heartbeat("stale-submission-draft-reminders"),
         heartbeat("lot-lifecycle-tick"),
+        heartbeat("expire-stale-payments"),
+        heartbeat("retry-xero-webhook-failures"),
+        heartbeat("retry-xero-stripe-capture-sync"),
+        heartbeat("retry-refund-reconciles"),
+        heartbeat("refresh-xero-tokens"),
       ]
     : []),
 ]);

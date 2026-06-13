@@ -5,11 +5,9 @@ import type { Redis } from "ioredis";
 import { type Result, err, ok } from "neverthrow";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleroomService, SaleroomServiceError } from "./interfaces/saleroom-service.js";
 import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotLifecycleService } from "./lot-lifecycle.service.js";
-import type { NotificationService } from "./notification.service.js";
 
 export type { SaleroomServiceError } from "./interfaces/saleroom-service.js";
 
@@ -21,9 +19,7 @@ export type SaleroomServiceOptions = {
   lotLifecycle: LotLifecycleService;
   saleRepo: ISaleRepository;
   lotRepo: ILotRepository;
-  repos: IRepositoryFactory;
   lotJobs: ILotJobScheduler | null;
-  notifications: NotificationService;
   telephoneBidBookingService?: ITelephoneBidBookingService | null;
 };
 
@@ -33,9 +29,7 @@ export class SaleroomService implements ISaleroomService {
   private readonly lotLifecycle: LotLifecycleService;
   private readonly saleRepo: ISaleRepository;
   private readonly lotRepo: ILotRepository;
-  private readonly repos: IRepositoryFactory;
   private readonly lotJobs: ILotJobScheduler | null;
-  private readonly notifications: NotificationService;
   private readonly telephoneBidBookingService: ITelephoneBidBookingService | null;
 
   constructor(opts: SaleroomServiceOptions) {
@@ -44,9 +38,7 @@ export class SaleroomService implements ISaleroomService {
     this.lotLifecycle = opts.lotLifecycle;
     this.saleRepo = opts.saleRepo;
     this.lotRepo = opts.lotRepo;
-    this.repos = opts.repos;
     this.lotJobs = opts.lotJobs;
-    this.notifications = opts.notifications;
     this.telephoneBidBookingService = opts.telephoneBidBookingService ?? null;
   }
 
@@ -258,12 +250,6 @@ export class SaleroomService implements ISaleroomService {
 
     await this.lotJobs?.cancelLotJobs(lotId);
 
-    const updatedLot = await this.lotRepo.findById(lotId);
-    if (updatedLot && !outcome.voided) {
-      const winningBid = outcome.winnerId ? await this.repos.root.bid.findWinningBid(lotId) : null;
-      await this.notifications.notifyLotEnded(updatedLot, winningBid);
-    }
-
     await this.db
       .update(saleroomSession)
       .set({ currentLotId: null, updatedAt: new Date() })
@@ -299,10 +285,6 @@ export class SaleroomService implements ISaleroomService {
     }
 
     await this.lotJobs?.cancelLotJobs(lotId);
-    const updatedLot = await this.lotRepo.findById(lotId);
-    if (updatedLot) {
-      await this.notifications.notifyLotEnded(updatedLot, null);
-    }
 
     await this.db
       .update(saleroomSession)

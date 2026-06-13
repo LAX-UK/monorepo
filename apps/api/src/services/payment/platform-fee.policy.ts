@@ -1,3 +1,4 @@
+import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IPlatformFeePolicy } from "../interfaces/platform-fee.js";
 
@@ -8,6 +9,17 @@ export class PlatformFeePolicy implements IPlatformFeePolicy {
 
   async computePlatformFee(sellerLegalEntityId: string, totalDueMajor: number): Promise<string> {
     const safeTotal = Number.isFinite(totalDueMajor) ? totalDueMajor : 0;
+    return this.computePlatformFeeFromPence(
+      sellerLegalEntityId,
+      gbpAmountToPence(safeTotal.toFixed(2)),
+    );
+  }
+
+  async computePlatformFeeFromPence(
+    sellerLegalEntityId: string,
+    totalDuePence: number,
+  ): Promise<string> {
+    const safePence = Number.isFinite(totalDuePence) ? totalDuePence : 0;
     let bps = DEFAULT_PLATFORM_FEE_BPS;
     if (this.legalEntities) {
       const entity = await this.legalEntities.findById(sellerLegalEntityId);
@@ -15,6 +27,6 @@ export class PlatformFeePolicy implements IPlatformFeePolicy {
         bps = entity.platformFeeBps;
       }
     }
-    return ((safeTotal * bps) / 10_000).toFixed(2);
+    return gbpPenceToMajorString(Math.round((safePence * bps) / 10_000));
   }
 }
