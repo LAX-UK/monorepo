@@ -349,7 +349,7 @@ export function LotAutoBidPanel({
                     "rounded-md border px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-wider transition-colors",
                     selected
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-outline-variant/40 text-on-surface-variant hover:border-primary/40 hover:text-primary",
+                      : "border-outline-variant/40 text-on-surface-variant hover:border-link/40 hover:text-link",
                   )}
                 >
                   +{formatMoney(s.toFixed(2))}

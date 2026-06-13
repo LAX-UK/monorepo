@@ -46,7 +46,7 @@ export function SegmentNotFound({
       )}
     >
       {leading}
-      <p className="mb-4 font-label text-xs font-bold uppercase tracking-[0.4em] text-primary">
+      <p className="mb-4 font-label text-xs font-bold uppercase tracking-[0.4em] text-secondary">
         {kicker}
       </p>
       <h1 className="mb-6 font-headline text-4xl tracking-tight text-on-surface md:text-5xl">

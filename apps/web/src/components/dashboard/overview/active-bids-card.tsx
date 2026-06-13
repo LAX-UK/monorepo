@@ -78,7 +78,7 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                         <span className="mt-1 flex flex-wrap items-center gap-2">
                           <span
                             key={lot.currentPrice}
-                            className="tick-value font-label text-xs uppercase tracking-wider text-primary"
+                            className="tick-value font-label text-xs uppercase tracking-wider text-secondary"
                           >
                             {hint === "high" ? "My bid" : "Current"} {formatMoney(lot.currentPrice)}
                           </span>

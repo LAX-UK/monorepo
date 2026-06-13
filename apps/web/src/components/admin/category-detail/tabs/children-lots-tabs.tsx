@@ -50,7 +50,7 @@ export function CategoryChildrenTab({ categoryId, allCategories }: ChildrenProps
                 <div>
                   <Link
                     href={`/admin/categories/${c.id}`}
-                    className="font-headline text-base text-on-surface hover:text-primary"
+                    className="font-headline text-base text-on-surface hover:text-link"
                   >
                     {c.name}
                   </Link>
@@ -100,7 +100,7 @@ export function CategoryLotsTab({ lots, totalCount }: LotsProps) {
             <div>
               <Link
                 href={`/admin/lots/${lot.id}`}
-                className="font-medium text-on-surface hover:text-primary"
+                className="font-medium text-on-surface hover:text-link"
               >
                 {lot.title}
               </Link>
@@ -147,7 +147,7 @@ export function CategorySalesTab({ sales, totalCount }: SalesProps) {
             <div>
               <Link
                 href={`/admin/sales/${sale.id}`}
-                className="font-medium text-on-surface hover:text-primary"
+                className="font-medium text-on-surface hover:text-link"
               >
                 {sale.title}
               </Link>

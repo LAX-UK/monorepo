@@ -35,7 +35,7 @@ export function ArtistRelatedDirectorySection({
         </div>
         <Link
           href={browseHref}
-          className={`rounded-sm font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline ${FOCUS_RING}`}
+          className={`rounded-sm font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline ${FOCUS_RING}`}
         >
           Browse all artists
         </Link>

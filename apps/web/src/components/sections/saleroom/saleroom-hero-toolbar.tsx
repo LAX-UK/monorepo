@@ -20,13 +20,13 @@ export function SaleroomHeroToolbar({ shareUrl, shareTitle }: Props) {
   const tone = useOverlayTone("contentBlock");
   const toneProps = overlayToneProps(tone);
   const linkClass = cn(
-    "inline-flex h-10 items-center gap-1.5 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] transition-opacity hover:opacity-100",
+    "inline-flex h-10 items-center gap-1.5 font-label text-sm font-medium uppercase leading-[21px] transition-opacity hover:opacity-100",
     overlayTextMutedClasses(tone),
     "hover:text-[color:var(--overlay-fg)]",
   );
   const iconClass = cn("size-5 shrink-0 stroke-current", overlayTextMutedClasses(tone));
   const controlClass = cn(
-    "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] hover:bg-transparent hover:opacity-100",
+    "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-label text-sm font-medium uppercase leading-[21px] hover:bg-transparent hover:opacity-100",
     overlayTextMutedClasses(tone),
     "hover:text-[color:var(--overlay-fg)]",
   );

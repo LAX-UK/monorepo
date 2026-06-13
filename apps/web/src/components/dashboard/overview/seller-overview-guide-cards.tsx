@@ -4,7 +4,7 @@ import { FileStack, Layers, WalletCards } from "lucide-react";
 import Link from "next/link";
 
 const GUIDE_LINK_CLASS =
-  "mt-3 inline-flex font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline";
+  "mt-3 inline-flex font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline";
 
 /** Full-width shortcuts into submissions, in-sale, and payouts. */
 export function SellerOverviewGuideCards() {

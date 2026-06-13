@@ -34,7 +34,7 @@ export function AdminUserOverviewSections({ sections }: Props) {
                 className={cn(
                   "inline-flex min-h-8 items-center rounded-md border border-border-hairline/60 px-2.5 py-1",
                   "font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
-                  "text-on-surface-variant transition-colors hover:border-primary/30 hover:text-on-surface",
+                  "text-on-surface-variant transition-colors hover:border-link/30 hover:text-on-surface",
                 )}
               >
                 {section.label}

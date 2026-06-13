@@ -73,7 +73,7 @@ export function MarketingLotTile({
           key={`${lotId}-link`}
           lotId={lotId}
           href={href}
-          className="absolute inset-0 z-0 overflow-hidden outline-offset-4 focus-visible:z-[5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          className="absolute inset-0 z-0 overflow-hidden outline-offset-4 focus-visible:z-[5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
           aria-label={linkAriaLabel}
         >
           {imageNode}

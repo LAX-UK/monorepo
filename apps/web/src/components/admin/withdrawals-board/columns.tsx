@@ -26,7 +26,7 @@ export function withdrawalColumns(
         row.original.targetLotId ? (
           <Link
             href={`/admin/lots/${row.original.targetLotId}`}
-            className="text-sm font-medium text-primary hover:underline"
+            className="text-sm font-medium text-link hover:underline"
           >
             View lot
           </Link>

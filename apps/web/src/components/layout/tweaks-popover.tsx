@@ -34,7 +34,7 @@ export function TweaksPopover({ sections }: TweaksPopoverProps = {}) {
       type="button"
       variant="ghost"
       size="icon"
-      className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary"
+      className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-link"
       aria-label="Open display settings"
     >
       <SlidersHorizontal className="size-4" aria-hidden />
@@ -96,7 +96,7 @@ export function DensityTweakSection() {
           type="button"
           variant="outline"
           size="icon"
-          className="min-h-10 min-w-10 border-outline-variant/40 text-secondary hover:bg-surface-container-low hover:text-primary"
+          className="min-h-10 min-w-10 border-outline-variant/40 text-secondary hover:bg-surface-container-low hover:text-link"
           onClick={toggleDensity}
           aria-label={
             isCompact ? "Use comfortable dashboard density" : "Use compact dashboard density"

@@ -64,7 +64,7 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Your listing
           </span>
           <p className="mt-1">
@@ -85,7 +85,7 @@ export function LotBidPositionSummary({
           </p>
           <Link
             href={`/login?next=${next}`}
-            className="mt-3 inline-flex font-body text-sm font-semibold text-primary underline-offset-2 hover:underline"
+            className="mt-3 inline-flex font-body text-sm font-semibold text-link underline-offset-2 hover:underline"
           >
             Sign in
           </Link>
@@ -109,7 +109,7 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             <Gavel className="size-3.5 shrink-0" aria-hidden />
             You&apos;re winning
           </span>
@@ -124,7 +124,7 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             <Shield className="size-3.5 shrink-0" aria-hidden />
             Winning · auto-bid defending
           </span>
@@ -198,13 +198,13 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             You won
           </span>
           <p className="mt-1">{position.hammerLabel}</p>
           <Link
             href="/dashboard/payments"
-            className="mt-2 inline-flex font-body text-sm font-semibold text-primary underline-offset-2 hover:underline"
+            className="mt-2 inline-flex font-body text-sm font-semibold text-link underline-offset-2 hover:underline"
           >
             View invoices
           </Link>

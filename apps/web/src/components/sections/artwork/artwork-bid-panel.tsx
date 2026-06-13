@@ -615,7 +615,7 @@ export function ArtworkBidPanel({
                       {" "}
                       · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price
                       plus buyer&apos;s premium; see{" "}
-                      <a href="/shipping" className="text-primary underline">
+                      <a href="/shipping" className="text-link underline">
                         shipping
                       </a>
                       .

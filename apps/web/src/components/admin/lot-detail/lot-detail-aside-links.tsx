@@ -17,7 +17,7 @@ export function LotDetailAsideLinks({ context, compact = false }: Props) {
           </p>
           <Link
             href={`/admin/sales/${context.sale.id}`}
-            className="mt-1 inline-block text-primary underline-offset-4 hover:underline"
+            className="mt-1 inline-block text-link underline-offset-4 hover:underline"
           >
             {context.sale.title}
           </Link>
@@ -30,7 +30,7 @@ export function LotDetailAsideLinks({ context, compact = false }: Props) {
           </p>
           <Link
             href={`/admin/artists/${context.artist.id}`}
-            className="mt-1 inline-block text-primary underline-offset-4 hover:underline"
+            className="mt-1 inline-block text-link underline-offset-4 hover:underline"
           >
             {context.artist.displayName}
           </Link>
@@ -43,7 +43,7 @@ export function LotDetailAsideLinks({ context, compact = false }: Props) {
           </p>
           <Link
             href={`/admin/legal-entities/${context.seller.id}`}
-            className="mt-1 inline-block text-primary underline-offset-4 hover:underline"
+            className="mt-1 inline-block text-link underline-offset-4 hover:underline"
           >
             {context.seller.displayName}
           </Link>

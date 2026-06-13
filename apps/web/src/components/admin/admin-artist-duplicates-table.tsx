@@ -36,7 +36,7 @@ function columns(): ColumnDef<AdminArtistDuplicateHit>[] {
       cell: ({ row }) => (
         <Link
           href={`/admin/artists/${row.original.id}`}
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
         >
           View
         </Link>
@@ -63,7 +63,7 @@ export function AdminArtistDuplicatesTable({ rows }: { rows: AdminArtistDuplicat
           </div>
           <Link
             href={`/admin/artists/${row.id}`}
-            className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+            className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
           >
             View
           </Link>

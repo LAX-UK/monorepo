@@ -22,7 +22,7 @@ export function SofDrawerContent({ row, canTriage, canDecide, currentUserId }: P
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Buyer</dt>
           <dd>
-            <Link href={`/admin/clients/${row.userId}`} className="text-primary underline">
+            <Link href={`/admin/clients/${row.userId}`} className="text-link underline">
               View client profile
             </Link>
           </dd>

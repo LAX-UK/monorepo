@@ -72,7 +72,7 @@ export function PasswordReauthDialog({
         }}
       />
       <p className="font-body text-xs text-on-surface-variant">
-        <Link href="/forgot-password" className="text-primary underline-offset-2 hover:underline">
+        <Link href="/forgot-password" className="text-link underline-offset-2 hover:underline">
           Forgot your password?
         </Link>
       </p>

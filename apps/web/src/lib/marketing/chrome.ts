@@ -1,9 +1,16 @@
 /** Single focus ring for marketing chrome + link-cards (see `docs/marketing-design-language.md`). */
 export const FOCUS_RING =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
-/** Inline text link inside prose / legal / content pages (primary, underline-on-hover). */
-export const MARKETING_PROSE_LINK = `rounded-sm text-primary underline-offset-4 hover:underline ${FOCUS_RING}`;
+/** Inline text link inside prose / legal / content pages (midnight brand, underline-on-hover). */
+export const MARKETING_PROSE_LINK = `rounded-sm text-link underline-offset-4 hover:underline ${FOCUS_RING}`;
+
+/** Standard inline link — admin, dashboard, auth (midnight). */
+export const INLINE_LINK = `text-link underline-offset-4 hover:underline ${FOCUS_RING}`;
+
+/** Uppercase label-style action link (midnight secondary brand). */
+export const LABEL_LINK =
+  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:underline";
 
 /** Horizontal padding rhythm shared by all marketing shells. */
 const MARKETING_PAGE_GUTTER = "mx-auto w-full px-8 md:px-10 lg:px-14";

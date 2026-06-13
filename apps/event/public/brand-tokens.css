@@ -1,0 +1,14 @@
+/**
+ * Brand Identity v1.0 — shared CSS primitives for apps/event surfaces.
+ * Values mirror packages/branding/src/brand-identity.ts
+ */
+:root {
+  --brand-obsidian: #000000;
+  --brand-midnight: #091f5b;
+  --brand-light-gray: #b8b9c0;
+  --brand-light-cream: #f2f1df;
+  --brand-accent-gold: #d4af37;
+  --brand-ink: #191919;
+  --font-primary: Montserrat, Helvetica, Arial, sans-serif;
+  --font-secondary: Outfit, Montserrat, Helvetica, Arial, sans-serif;
+}

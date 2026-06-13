@@ -25,7 +25,7 @@ export function SaleroomPrintButton({ appearance = "default", className }: Props
         onClick={print}
         className={cn(
           className ??
-            "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface",
+            "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-label text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface",
           "hover:bg-transparent hover:text-inherit",
         )}
         aria-label="Print catalogue"
@@ -41,7 +41,7 @@ export function SaleroomPrintButton({ appearance = "default", className }: Props
       type="button"
       variant="outline"
       onClick={print}
-      className="h-auto min-h-11 rounded-full border-outline-variant/60 bg-transparent px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-primary hover:bg-transparent hover:text-primary"
+      className="h-auto min-h-11 rounded-full border-outline-variant/60 bg-transparent px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-link hover:bg-transparent hover:text-link"
       aria-label="Print catalogue"
     >
       <Printer className="text-base" aria-hidden />

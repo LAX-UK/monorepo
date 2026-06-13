@@ -209,7 +209,7 @@ export function ComplianceStatusStrip({
               : `${pill.label}: ${pill.value}`
           }
           className={cn(
-            "group inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+            "group inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
             TONE_CLASSES[pill.tone],
           )}
         >

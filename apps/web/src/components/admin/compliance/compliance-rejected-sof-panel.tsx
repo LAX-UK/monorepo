@@ -32,7 +32,7 @@ export function ComplianceRejectedSofPanel({ rows, canReopen }: Props) {
               <div className="flex min-w-0 flex-col gap-1 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
                 <Link
                   href={`/admin/clients/${row.userId}`}
-                  className="font-medium text-primary underline"
+                  className="font-medium text-link underline"
                 >
                   View client profile
                 </Link>

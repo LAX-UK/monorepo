@@ -31,7 +31,7 @@ export default async function NewAdminArtistPage({
       breadcrumbs={
         <Link
           href="/admin/artists"
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
         >
           ← Artists
         </Link>

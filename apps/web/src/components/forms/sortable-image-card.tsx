@@ -72,7 +72,7 @@ export function SortableImageCard({
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 size-9 rounded-full bg-surface-container-lowest/90 text-on-surface shadow-sm hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="absolute right-2 top-2 size-9 rounded-full bg-surface-container-lowest/90 text-on-surface shadow-sm hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0"
           aria-label={dragAriaLabel}
           {...attributes}
           {...listeners}

@@ -66,7 +66,7 @@ export function CatalogWorkQueueSection({
         {primaryAction ? (
           <Link
             href={primaryAction.href}
-            className="min-h-11 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+            className="min-h-11 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
           >
             {primaryAction.label}
           </Link>

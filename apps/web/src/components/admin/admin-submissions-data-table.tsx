@@ -30,7 +30,7 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
       cell: ({ row }) => (
         <Link
           href={`/admin/submissions/${row.original.id}`}
-          className="font-headline text-base text-on-surface hover:text-primary"
+          className="font-headline text-base text-on-surface hover:text-link"
         >
           {row.original.title}
         </Link>
@@ -65,7 +65,7 @@ function submissionColumns(): ColumnDef<AdminSubmissionTableRow>[] {
       cell: ({ row }) => (
         <Link
           href={`/admin/submissions/${row.original.id}`}
-          className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+          className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
         >
           Open
         </Link>

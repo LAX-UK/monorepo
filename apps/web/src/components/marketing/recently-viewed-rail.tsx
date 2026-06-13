@@ -35,7 +35,7 @@ export function RecentlyViewedRail({ className }: { className?: string }) {
               <Link
                 href={item.href}
                 className={cn(
-                  "inline-flex max-w-[14rem] truncate rounded-full border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 font-body text-xs text-on-surface transition-colors hover:border-primary hover:text-primary",
+                  "inline-flex max-w-[14rem] truncate rounded-full border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 font-body text-xs text-on-surface transition-colors hover:border-link hover:text-link",
                   FOCUS_RING,
                 )}
               >

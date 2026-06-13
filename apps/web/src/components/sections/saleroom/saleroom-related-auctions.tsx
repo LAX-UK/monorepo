@@ -26,7 +26,7 @@ export function SaleroomRelatedAuctions({
         </h2>
         <Link
           href={viewAllHref}
-          className="inline-flex min-h-6 items-center gap-2.5 text-center font-['DM_Sans',sans-serif] text-base font-semibold tracking-[0.8px] text-brand-900 underline underline-offset-4 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
+          className="inline-flex min-h-6 items-center gap-2.5 text-center font-body text-base font-semibold tracking-[0.8px] text-brand-900 underline underline-offset-4 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:text-on-surface"
         >
           View all
           <ChevronRight

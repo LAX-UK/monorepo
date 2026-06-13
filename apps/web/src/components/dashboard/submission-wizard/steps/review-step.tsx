@@ -117,7 +117,7 @@ export function ReviewStep({
       <Surface variant="quiet" padding="md" className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
           <p className="font-headline text-sm font-semibold text-on-surface">Submission quality</p>
-          <span className="font-label text-xs font-semibold uppercase tracking-wider text-primary">
+          <span className="font-label text-xs font-semibold uppercase tracking-wider text-secondary">
             {qualityPercent}%
           </span>
         </div>
@@ -201,7 +201,7 @@ export function ReviewStep({
         ) : null}
         <button
           type="button"
-          className="font-body text-sm text-on-surface-variant underline-offset-4 hover:text-primary hover:underline disabled:opacity-50"
+          className="font-body text-sm text-on-surface-variant underline-offset-4 hover:text-link hover:underline disabled:opacity-50"
           disabled={isSubmitting}
           onClick={onFinishLater}
           data-testid="wizard-finish-later-review"

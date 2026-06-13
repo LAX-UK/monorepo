@@ -162,7 +162,7 @@ function WorkspaceModeButton({
       aria-pressed={active}
       {...(disabled ? { "aria-busy": true as const } : {})}
       className={cn(
-        "h-auto min-h-9 flex-1 rounded-full px-3 font-label text-[10px] font-bold uppercase tracking-[0.12em] transition-colors hover:text-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0",
+        "h-auto min-h-9 flex-1 rounded-full px-3 font-label text-[10px] font-bold uppercase tracking-[0.12em] transition-colors hover:text-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0",
         active
           ? "bg-primary text-on-primary shadow-sm hover:bg-primary hover:text-on-primary"
           : "text-on-surface-variant hover:bg-surface-container-lowest/80 hover:text-on-surface",

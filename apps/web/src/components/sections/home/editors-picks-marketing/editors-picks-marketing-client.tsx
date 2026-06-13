@@ -97,7 +97,7 @@ function EditorsPicksCarousel({
           type="button"
           variant="ghost"
           onClick={scrollForward}
-          className="pointer-events-auto absolute right-0 top-[170px] z-[2] hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface shadow-sm outline-offset-2 hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex dark:bg-surface-container-low dark:hover:bg-surface-container"
+          className="pointer-events-auto absolute right-0 top-[170px] z-[2] hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface shadow-sm outline-offset-2 hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:flex dark:bg-surface-container-low dark:hover:bg-surface-container"
           aria-label="Scroll to see more editor's picks"
         >
           <ChevronRight className="size-5 shrink-0" aria-hidden />

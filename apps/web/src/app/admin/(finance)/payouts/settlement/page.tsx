@@ -41,7 +41,7 @@ export default async function PayoutSettlementPage({
       breadcrumbs={
         <Link
           href="/admin/finance"
-          className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+          className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
         >
           ← Finance
         </Link>
@@ -82,7 +82,7 @@ export default async function PayoutSettlementPage({
               </p>
               <p className="text-sm text-on-surface-variant">
                 Review existing payouts on{" "}
-                <Link href="/admin/payouts" className="text-primary underline">
+                <Link href="/admin/payouts" className="text-link underline">
                   Payouts
                 </Link>{" "}
                 before running settlement.

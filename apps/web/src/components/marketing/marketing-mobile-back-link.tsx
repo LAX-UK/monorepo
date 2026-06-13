@@ -19,7 +19,7 @@ export function MarketingMobileBackLink({ href, label, className, variant = "def
           "inline-flex min-h-11 items-center font-label text-[0.65rem] font-semibold uppercase tracking-[0.22em] underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
           variant === "overlay"
             ? "text-white/70 hover:text-white hover:underline focus-visible:outline-white"
-            : "text-on-surface-variant hover:text-primary hover:underline focus-visible:outline-primary",
+            : "text-on-surface-variant hover:text-link hover:underline focus-visible:outline-ring",
         )}
       >
         ← {label}

@@ -27,7 +27,7 @@ export function AdminLotConnectRequiredBanner({ sellerLegalEntityId, detail }: P
         {sellerLegalEntityId ? (
           <p>
             <Link
-              className="font-medium text-primary underline underline-offset-2"
+              className="font-medium text-link underline underline-offset-2"
               href={`/admin/legal-entities/${encodeURIComponent(sellerLegalEntityId)}`}
             >
               View seller legal entity (Connect status)

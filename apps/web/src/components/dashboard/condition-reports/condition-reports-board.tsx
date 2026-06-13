@@ -79,7 +79,7 @@ export function ConditionReportsBoard({ rows, className }: Props) {
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-outline-variant/20 last:border-0">
                   <td className="px-4 py-3">
-                    <Link href={row.lotHref} className="font-medium text-primary hover:underline">
+                    <Link href={row.lotHref} className="font-medium text-link hover:underline">
                       {row.lotTitle}
                     </Link>
                     {row.lotNumberLabel ? (
@@ -121,7 +121,7 @@ export function ConditionReportsBoard({ rows, className }: Props) {
             <Surface className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <Link href={row.lotHref} className="font-medium text-primary hover:underline">
+                  <Link href={row.lotHref} className="font-medium text-link hover:underline">
                     {row.lotTitle}
                   </Link>
                   {row.lotNumberLabel ? (

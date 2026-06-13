@@ -37,7 +37,7 @@ function SessionDetailGrid({
               href={`${VERIFF_STATION_BASE}/verifications/${s.providerSessionId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline"
+              className="text-link underline"
             >
               Open in Veriff
             </a>
@@ -51,7 +51,7 @@ function SessionDetailGrid({
             <dd>
               <Link
                 href={`/admin/compliance/aml?screening=${encodeURIComponent(amlScreening.id)}`}
-                className="text-primary underline"
+                className="text-link underline"
               >
                 {amlMatchStatusLabel[amlScreening.matchStatus] ??
                   amlScreening.matchStatus.replaceAll("_", " ")}
@@ -192,7 +192,7 @@ export function AdminUserKycSessionRow({
             href={`${VERIFF_STATION_BASE}/verifications/${session.providerSessionId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 font-label text-[10px] uppercase text-primary underline"
+            className="shrink-0 font-label text-[10px] uppercase text-link underline"
           >
             Open in Veriff
           </a>

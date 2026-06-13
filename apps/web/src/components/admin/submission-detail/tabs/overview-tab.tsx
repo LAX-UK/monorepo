@@ -55,7 +55,7 @@ function InnerMeta({
               <Link
                 key={category.id}
                 href={`/admin/categories/${category.id}`}
-                className="rounded-full border border-border-hairline bg-surface-container-low/50 px-2.5 py-1 text-xs text-on-surface hover:text-primary"
+                className="rounded-full border border-border-hairline bg-surface-container-low/50 px-2.5 py-1 text-xs text-on-surface hover:text-link"
               >
                 {category.name}
               </Link>
@@ -106,7 +106,7 @@ function InnerMeta({
         </dt>
         <dd className="break-all font-mono text-xs text-on-surface">
           {s.convertedLotId ? (
-            <Link href={`/admin/lots/${s.convertedLotId}`} className="text-primary underline">
+            <Link href={`/admin/lots/${s.convertedLotId}`} className="text-link underline">
               {s.convertedLotId}
             </Link>
           ) : (

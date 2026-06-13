@@ -14,7 +14,7 @@ export function WizardResumeBanner({ draft, onResume, onDiscard }: Props) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p className="font-label text-xs font-semibold uppercase tracking-wide text-primary">
+        <p className="font-label text-xs font-semibold uppercase tracking-wide text-secondary">
           Draft found
         </p>
         <p className="font-body text-sm text-on-surface-variant">

@@ -75,7 +75,7 @@ export function BidForm({
           variant="secondary"
           size="sm"
           onClick={onUseMinimum}
-          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary ring-1 ring-outline-variant/15 hover:bg-surface-container"
+          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
         >
           {auctionType === "dutch" ? `Accept ${formatMoney(minStr)}` : `Min ${formatMoney(minStr)}`}
         </Button>
@@ -102,7 +102,7 @@ export function BidForm({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-auto font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary"
+            className="h-auto font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-link"
             onClick={() => document.getElementById(amountInputId)?.focus()}
           >
             Enter custom
@@ -177,7 +177,7 @@ export function BidForm({
                 type="button"
                 variant="link"
                 size="link"
-                className="font-semibold text-primary underline-offset-2 hover:underline"
+                className="font-semibold text-link underline-offset-2 hover:underline"
                 onClick={activeAutoBidNote.onChangeAutoBid}
               >
                 Change auto-bid

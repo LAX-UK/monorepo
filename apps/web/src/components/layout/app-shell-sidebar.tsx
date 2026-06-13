@@ -234,7 +234,7 @@ export function AppShellSidebar({
                 <Link
                   href="/"
                   {...(onNavigate ? { onClick: onNavigate } : {})}
-                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   aria-label="Browse LAX.bid"
                 >
                   <Globe2 className="size-4" aria-hidden />
@@ -251,7 +251,7 @@ export function AppShellSidebar({
           <Link
             href="/"
             {...(onNavigate ? { onClick: onNavigate } : {})}
-            className="mb-2 flex min-h-10 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="mb-2 flex min-h-10 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             aria-label="Browse LAX.bid"
           >
             <Globe2 className="size-4 shrink-0" aria-hidden />

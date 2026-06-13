@@ -17,7 +17,7 @@ export function SaleroomHubMobileCards({ rows }: Props) {
           <div className="flex items-start justify-between gap-2">
             <Link
               href={`/admin/saleroom/${row.sale.id}`}
-              className="min-w-0 flex-1 font-medium text-primary hover:underline"
+              className="min-w-0 flex-1 font-medium text-link hover:underline"
             >
               {row.sale.title}
             </Link>
