@@ -1,6 +1,11 @@
 import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketing-catalog-toolbar-skeleton";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
+import {
+  MARKETING_CATALOG_FILTER_GRID,
+  MARKETING_CATALOG_FILTER_RAIL_SLOT,
+  MARKETING_CATALOG_MAIN_COLUMN,
+} from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { cn } from "@auction/ui";
 
@@ -68,16 +73,14 @@ export default async function SalesIndexLoading() {
     >
       <div className="flex flex-col gap-6 pb-8 sm:pb-10 lg:pb-10">
         <div className="pt-2 sm:pt-4">
-          <div className="flex flex-col gap-8 lg:flex-row lg:gap-0">
-            <div className="hidden lg:block lg:w-[min(100%,441px)] lg:max-w-[441px] lg:pr-8">
-              <div className="space-y-4">
-                <div className={cn(pulse, "h-4 w-40")} />
-                {(["s1", "s2"] as const).map((k) => (
-                  <div key={k} className={cn(pulse, "h-12 w-full")} />
-                ))}
-              </div>
+          <div className={MARKETING_CATALOG_FILTER_GRID}>
+            <div className={cn(MARKETING_CATALOG_FILTER_RAIL_SLOT, "space-y-4")}>
+              <div className={cn(pulse, "h-4 w-32")} />
+              {(["s1", "s2", "s3", "s4"] as const).map((k) => (
+                <div key={k} className={cn(pulse, "h-9 w-full")} />
+              ))}
             </div>
-            <div className="min-w-0 flex-1 lg:max-w-[989px] lg:pl-8">
+            <div className={MARKETING_CATALOG_MAIN_COLUMN}>
               {browseIsDenseList ? (
                 <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:gap-4 lg:gap-5">
                   {(["a", "b", "c", "d", "e"] as const).map((k) => (

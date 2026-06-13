@@ -22,7 +22,13 @@ import { artistDirectoryWithQuery, parseArtistDirectoryOffset } from "@/lib/arti
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { fetchPublicArtistBrowse } from "@/lib/data/http/artist.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import {
+  MARKETING_CATALOG_FILTER_GRID,
+  MARKETING_CATALOG_FILTER_RAIL_SLOT,
+  MARKETING_CATALOG_MAIN_COLUMN,
+} from "@/lib/marketing/chrome";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { MARKETING_FILTER_RAIL_STICKY } from "@/lib/marketing/filter-rail";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -433,9 +439,12 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
       <section className="py-8 sm:py-12 md:py-12">
         <link rel="canonical" href={canonicalUrl} />
 
-        <div className="grid gap-10 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
-          <div className="hidden lg:block">
-            <MarketingFilterSidebar aria-label="Artist directory filters">
+        <div className={MARKETING_CATALOG_FILTER_GRID}>
+          <div className={MARKETING_CATALOG_FILTER_RAIL_SLOT}>
+            <MarketingFilterSidebar
+              aria-label="Artist directory filters"
+              className={MARKETING_FILTER_RAIL_STICKY}
+            >
               <ArtistDirectoryFilters
                 groups={filterGroups}
                 {...(nationalityLinks !== undefined ? { nationalityLinks } : {})}
@@ -445,7 +454,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
             </MarketingFilterSidebar>
           </div>
 
-          <div className="min-w-0">
+          <div className={MARKETING_CATALOG_MAIN_COLUMN}>
             <MarketingListToolbar
               className="mb-6 rounded-none border-x-0"
               countLabel={countLabel}

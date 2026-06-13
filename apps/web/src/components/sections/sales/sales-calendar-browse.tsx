@@ -3,7 +3,13 @@
 import { SalesCalendarToolbar } from "@/components/sections/sales/sales-calendar-toolbar";
 import { SalesFilterSidebar } from "@/components/sections/sales/sales-filter-sidebar";
 import type { SalesBrowseView } from "@/components/sections/sales/sales-view-switcher";
+import {
+  MARKETING_CATALOG_FILTER_GRID,
+  MARKETING_CATALOG_FILTER_RAIL_SLOT,
+  MARKETING_CATALOG_MAIN_COLUMN,
+} from "@/lib/marketing/chrome";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
+import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 type Category = { id: string; name: string };
@@ -35,8 +41,8 @@ export function SalesCalendarBrowse({
         calendarView={calendarView}
       />
 
-      <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start lg:gap-0">
-        <div className="hidden shrink-0 lg:block lg:w-[min(100%,441px)] lg:max-w-[441px] lg:pr-8">
+      <div className={MARKETING_CATALOG_FILTER_GRID}>
+        <div className={MARKETING_CATALOG_FILTER_RAIL_SLOT}>
           <SalesFilterSidebar
             state={state}
             resultCount={resultCount}
@@ -44,7 +50,9 @@ export function SalesCalendarBrowse({
             years={years}
           />
         </div>
-        <div className="min-w-0 flex-1 pb-[var(--page-bottom-padding)] lg:max-w-[989px] lg:pb-0 lg:pl-8">
+        <div
+          className={cn(MARKETING_CATALOG_MAIN_COLUMN, "pb-[var(--page-bottom-padding)] lg:pb-0")}
+        >
           {children}
         </div>
       </div>

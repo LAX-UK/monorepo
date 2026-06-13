@@ -1,9 +1,14 @@
 import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketing-catalog-toolbar-skeleton";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import {
+  MARKETING_CATALOG_FILTER_GRID,
+  MARKETING_CATALOG_FILTER_RAIL_SLOT,
+  MARKETING_CATALOG_MAIN_COLUMN,
+  MARKETING_PAGE_SHELL,
+} from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
-import { Skeleton } from "@auction/ui";
+import { Skeleton, cn } from "@auction/ui";
 
 const CHIP_KEYS = ["chip-a", "chip-b", "chip-c", "chip-d", "chip-e"];
 const RAIL_KEYS = ["rail-a", "rail-b", "rail-c", "rail-d"];
@@ -32,14 +37,14 @@ export default async function PublicArtistsDirectoryLoading() {
       }
     >
       <section className="py-8 sm:py-12 md:py-12">
-        <div className="grid gap-10 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
-          <div className="hidden space-y-6 lg:block">
+        <div className={MARKETING_CATALOG_FILTER_GRID}>
+          <div className={cn(MARKETING_CATALOG_FILTER_RAIL_SLOT, "space-y-6")}>
             <Skeleton className="h-3 w-24" />
             {RAIL_KEYS.map((k) => (
               <Skeleton key={k} className="h-7 w-full" />
             ))}
           </div>
-          <div className="min-w-0">
+          <div className={MARKETING_CATALOG_MAIN_COLUMN}>
             <MarketingCatalogToolbarSkeleton showDesktopFilters={false} showDesktopSort />
             <MarketingListSkeleton
               view={view}
