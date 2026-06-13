@@ -6,6 +6,7 @@ export const DEAD_LETTER_QUEUE_NAME = "dead-letter" as const;
 export const LOT_LIFECYCLE_QUEUE_NAME = "lot-lifecycle" as const;
 export const EMAIL_QUEUE_NAME = "email" as const;
 export const VALIDATE_UPLOAD_QUEUE_NAME = "validate-upload" as const;
+export const PROCESS_IMAGE_QUEUE_NAME = "process-image" as const;
 export const IMAGE_CLEANUP_QUEUE_NAME = "image-cleanup" as const;
 export const MARKETING_SYNC_QUEUE_NAME = "marketing-sync" as const;
 export const MARKETING_EVENTS_QUEUE_NAME = "marketing-events" as const;
@@ -85,6 +86,24 @@ export const QUEUE_REGISTRY = {
       removeOnFail: 500,
     },
     description: "Upload validation after S3 confirm",
+  },
+  [PROCESS_IMAGE_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "process-image",
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: true,
+    repeatable: false,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+      removeOnComplete: 200,
+      removeOnFail: 500,
+    },
+    description: "Extract image dimensions and LQIP after upload validation",
   },
   [IMAGE_CLEANUP_QUEUE_NAME]: {
     producers: ["api"],

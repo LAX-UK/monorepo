@@ -20,13 +20,18 @@ export function toGalleryImages(
   urls: string[],
   alts?: (string | undefined)[],
   title?: string,
+  assets?: GalleryImage[],
 ): GalleryImage[] {
   return urls.map((src, i) => {
+    const asset = assets?.[i];
     const custom = alts?.[i]?.trim();
     const alt =
       custom || (urls.length > 1 && title ? `${title} — image ${i + 1} of ${urls.length}` : title);
     const image: GalleryImage = { src };
     if (alt) image.alt = alt;
+    if (asset?.width != null) image.width = asset.width;
+    if (asset?.height != null) image.height = asset.height;
+    if (asset?.blurDataURL) image.blurDataURL = asset.blurDataURL;
     return image;
   });
 }

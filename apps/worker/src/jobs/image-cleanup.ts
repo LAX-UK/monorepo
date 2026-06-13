@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
-import { itemSubmission, lot, sale, user } from "@auction/db";
+import { itemSubmission, lot, mediaAsset, sale, user } from "@auction/db";
+import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import type pino from "pino";
 import type { UploadStorage } from "../lib/upload-storage.js";
@@ -19,6 +20,22 @@ export async function cleanupImageJob(args: {
     return;
   }
 
+  const [asset] = await args.db
+    .select({ variants: mediaAsset.variants })
+    .from(mediaAsset)
+    .where(eq(mediaAsset.key, key))
+    .limit(1);
+
+  if (asset?.variants) {
+    const variants = asset.variants as Record<string, string>;
+    for (const variantKey of Object.values(variants)) {
+      if (typeof variantKey === "string" && variantKey && variantKey !== key) {
+        await args.storage.deleteObject(variantKey).catch(() => undefined);
+      }
+    }
+  }
+
+  await args.db.delete(mediaAsset).where(eq(mediaAsset.key, key));
   await args.storage.deleteObject(key);
   args.log.info({ key }, "deleted unreferenced image object");
 }

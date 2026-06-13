@@ -5,6 +5,7 @@ import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gall
 import { MediaImage } from "@/components/ui/media-image";
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
+import type { GalleryImage } from "@auction/types";
 import {
   Carousel,
   type CarouselApi,
@@ -30,6 +31,18 @@ type Props = {
 
 const frostedNavArrowClasses =
   "pointer-events-auto top-1/2 hidden size-10 -translate-y-1/2 rounded-full border-[color:var(--overlay-border)] bg-[color:var(--overlay-bg)] text-[color:var(--overlay-fg)] opacity-0 shadow-md backdrop-blur-sm transition-opacity hover:opacity-100 group-hover:opacity-100 motion-reduce:transition-none md:flex disabled:pointer-events-none disabled:opacity-0";
+
+function galleryImageMediaProps(img: GalleryImage, priority: boolean) {
+  const props: {
+    blurDataURL?: string;
+    width?: number;
+    height?: number;
+  } = {};
+  if (!priority && img.blurDataURL) props.blurDataURL = img.blurDataURL;
+  if (img.width != null) props.width = img.width;
+  if (img.height != null) props.height = img.height;
+  return props;
+}
 
 /** Full-bleed Embla hero with expand control. */
 export function GalleryHero({ setCarouselApi, className }: Props) {
@@ -72,6 +85,7 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
                   alt={img.alt ?? ""}
                   label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
                   priority={priorityIndices.has(i)}
+                  {...galleryImageMediaProps(img, priorityIndices.has(i))}
                   imgClassName="cursor-zoom-in bg-surface-container-low object-contain transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                   sizes="(min-width: 1024px) 58vw, 100vw"
                   onClick={openLightbox}
@@ -97,7 +111,7 @@ function SingleHero({
   onExpand,
   className,
 }: {
-  image: { src: string; alt?: string };
+  image: GalleryImage;
   onExpand: () => void;
   className?: string;
 }) {
@@ -109,6 +123,7 @@ function SingleHero({
           alt={image.alt ?? ""}
           label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
           priority
+          {...galleryImageMediaProps(image, true)}
           imgClassName="cursor-zoom-in bg-surface-container-low transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 lg:object-contain"
           sizes="(min-width: 1024px) 58vw, 100vw"
           onClick={onExpand}

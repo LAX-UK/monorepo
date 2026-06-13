@@ -64,11 +64,20 @@ export function GalleryLightbox({
   const slides = useMemo(
     () =>
       images.map((img) => {
+        // Full-resolution original for zoom — never route through `/_next/image`.
         const src = resolveMediaSrc(img.src) ?? img.src;
-        const slide: { src: string; alt?: string; title?: string } = { src };
+        const slide: {
+          src: string;
+          alt?: string;
+          title?: string;
+          placeholder?: string;
+        } = { src };
         if (img.alt) {
           slide.alt = img.alt;
           slide.title = img.alt;
+        }
+        if (img.blurDataURL) {
+          slide.placeholder = img.blurDataURL;
         }
         return slide;
       }),

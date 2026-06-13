@@ -91,6 +91,7 @@ export function CategoryOverviewTab({
                 <MediaImage
                   src={heroSrc}
                   alt={`${category.name} hero`}
+                  sizes="(max-width: 768px) 100vw, 28rem"
                   className="max-h-48 w-full max-w-md rounded-lg object-cover"
                 />
                 <Link

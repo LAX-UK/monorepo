@@ -27,6 +27,7 @@ export type ItemSubmission = {
   medium: string | null;
   dimensions: string | null;
   images: string[];
+  imageAssets?: import("./gallery.js").GalleryImage[];
   yearOfWork?: string | null;
   isSigned?: boolean;
   signatureNote?: string | null;

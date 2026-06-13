@@ -8,6 +8,7 @@ import { GalleryHero } from "@/components/gallery/parts/gallery-hero";
 import { GalleryLightboxSlot } from "@/components/gallery/parts/gallery-lightbox-slot";
 import { GalleryHeroOverlays } from "@/components/gallery/parts/gallery-overlays";
 import { ViewAllSheet } from "@/components/gallery/parts/view-all-sheet";
+import type { GalleryImage } from "@auction/types";
 import { toGalleryImages } from "@auction/types";
 import type { CarouselApi } from "@auction/ui";
 import { useState } from "react";
@@ -15,11 +16,13 @@ import { useState } from "react";
 type LotGalleryProps = {
   title: string;
   images: string[];
+  imageAssets?: GalleryImage[];
+  /** Optional per-index alt text (parallel to `images`) */
   imageAlts?: (string | undefined)[] | undefined;
 };
 
-function LotGalleryRoot({ title, images, imageAlts }: LotGalleryProps) {
-  const galleryImages = toGalleryImages(images, imageAlts, title);
+function LotGalleryRoot({ title, images, imageAssets, imageAlts }: LotGalleryProps) {
+  const galleryImages = toGalleryImages(images, imageAlts, title, imageAssets);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const carousel = useGalleryCarouselApi(carouselApi);
   const priorityIndices = useNeighborPreload(
