@@ -136,6 +136,7 @@ export function ArtistFollowCard({ artist, variant = "grid" }: Props) {
       initialWatching
       isAuthenticated
       loginNextPath={profileHref}
+      surface="inline"
       onWatchingChange={(watching, ok) => {
         if (!watching && ok) {
           setHidden(true);

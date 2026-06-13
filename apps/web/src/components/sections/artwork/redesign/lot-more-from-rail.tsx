@@ -9,10 +9,15 @@ import { MarketingLotOverlayActions } from "@/components/marketing/lot-quick-loo
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
-import { MediaImage } from "@/components/ui/media-image";
+import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
+import {
+  AdaptiveMediaFrame,
+  AdaptiveMediaFrameContainer,
+} from "@/components/ui/adaptive-media-frame";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -94,49 +99,30 @@ export function LotMoreFromRail({
                   )}
                 >
                   <div className="relative aspect-[4/5] w-full">
-                    <MediaImage
+                    <AdaptiveMediaFrame
                       src={c.imageUrl}
-                      alt=""
-                      label="Lot artwork"
-                      imgClassName="transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
-                      sizes="(max-width: 1023px) 100vw, 42vw"
-                    />
-                    {isCompact ? (
-                      <MarketingLotOverlayActions
-                        lotId={c.id}
-                        lotTitle={c.title}
-                        initialWatching={watchedLotIds.includes(c.id)}
-                        isAuthenticated={isAuthenticated}
-                        loginNextPath={c.href}
-                        vm={lotQuickLookFromRailCard(c)}
-                        quickLookOptions={{
-                          deck: quickLookDeck,
-                          deckIndex: cardIndex,
-                          deckSourceLabel: rail.heading,
-                          isAuthenticated,
-                          watchedLotIds,
-                          loginNextPath: c.href,
-                        }}
-                        inset="compact"
-                        topRightAddon={
-                          <OwnerBadge
-                            owned={Boolean(currentUserId && c.sellerId === currentUserId)}
-                            className="pointer-events-auto"
-                          />
-                        }
-                      />
-                    ) : null}
-                    {!isCompact ? (
-                      <>
-                        <OwnerBadge
-                          owned={Boolean(currentUserId && c.sellerId === currentUserId)}
-                          className="absolute right-2 top-2"
+                      objectFit="cover"
+                      slots={LOT_CARD_GRID_SLOTS}
+                    >
+                      <AdaptiveMediaFrameContainer className="absolute inset-0">
+                        <AdaptiveFrameImage
+                          src={c.imageUrl}
+                          alt=""
+                          objectFit="cover"
+                          label="Lot artwork"
+                          className="size-full"
+                          imgClassName="size-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
+                          sizes="(max-width: 1023px) 100vw, 42vw"
                         />
-                        <div className="pointer-events-auto absolute bottom-2 left-2 z-10">
-                          <LotQuickLookTrigger
+                        {isCompact ? (
+                          <MarketingLotOverlayActions
+                            lotId={c.id}
+                            lotTitle={c.title}
+                            initialWatching={watchedLotIds.includes(c.id)}
+                            isAuthenticated={isAuthenticated}
+                            loginNextPath={c.href}
                             vm={lotQuickLookFromRailCard(c)}
-                            layout="overlay"
-                            options={{
+                            quickLookOptions={{
                               deck: quickLookDeck,
                               deckIndex: cardIndex,
                               deckSourceLabel: rail.heading,
@@ -144,10 +130,40 @@ export function LotMoreFromRail({
                               watchedLotIds,
                               loginNextPath: c.href,
                             }}
+                            inset="compact"
+                            topRightAddon={
+                              <OwnerBadge
+                                owned={Boolean(currentUserId && c.sellerId === currentUserId)}
+                                className="pointer-events-auto"
+                              />
+                            }
                           />
-                        </div>
-                      </>
-                    ) : null}
+                        ) : null}
+                        {!isCompact ? (
+                          <>
+                            <OwnerBadge
+                              owned={Boolean(currentUserId && c.sellerId === currentUserId)}
+                              className="absolute right-2 top-2"
+                            />
+                            <div className="pointer-events-auto absolute bottom-2 left-2 z-10">
+                              <LotQuickLookTrigger
+                                vm={lotQuickLookFromRailCard(c)}
+                                layout="overlay"
+                                surface="onImage"
+                                options={{
+                                  deck: quickLookDeck,
+                                  deckIndex: cardIndex,
+                                  deckSourceLabel: rail.heading,
+                                  isAuthenticated,
+                                  watchedLotIds,
+                                  loginNextPath: c.href,
+                                }}
+                              />
+                            </div>
+                          </>
+                        ) : null}
+                      </AdaptiveMediaFrameContainer>
+                    </AdaptiveMediaFrame>
                   </div>
                 </Link>
                 {isCompact ? (

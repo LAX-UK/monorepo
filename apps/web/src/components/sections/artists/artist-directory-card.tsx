@@ -1,6 +1,6 @@
 import { ArtistCardGrid, type ArtistCardGridDensity } from "@/components/marketing/artist-card";
+import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
-import { MediaImage } from "@/components/ui/media-image";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
@@ -57,7 +57,7 @@ export function ArtistDirectoryCard({
         />
       }
       portrait={
-        <MediaImage
+        <ArtistPortraitFrame
           src={artist.portraitUrl ?? artist.heroImageUrl}
           alt={isBrand ? "" : altText}
           label={isBrand ? artist.displayName : "Artist portrait"}

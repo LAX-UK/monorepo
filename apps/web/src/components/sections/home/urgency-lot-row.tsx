@@ -4,7 +4,12 @@ import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { SALE_CARD_SHELL_CLASSNAME } from "@/components/sections/sales/card/sale-card-shell";
-import { MediaImage } from "@/components/ui/media-image";
+import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
+import {
+  AdaptiveMediaFrame,
+  AdaptiveMediaFrameContainer,
+} from "@/components/ui/adaptive-media-frame";
+import { HOME_LOT_TILE_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -54,30 +59,38 @@ export function UrgencyLotRow({
   return (
     <article className={cn(SALE_CARD_SHELL_CLASSNAME, "p-3 sm:p-4 lg:p-5")}>
       <div className="flex flex-col lg:flex-row lg:items-stretch lg:gap-6">
-        <div className="relative w-full shrink-0 lg:w-44">
-          <Link
-            href={item.href}
-            className="group relative block aspect-[4/3] w-full overflow-hidden rounded-md bg-surface-container-high outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring dark:bg-surface-container-high"
-            aria-label={`${item.title} — view artwork`}
-          >
-            <MediaImage
-              src={item.imageUrl}
-              alt={item.imageAlt}
-              label="Lot artwork"
-              className="size-full"
-              imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
-              sizes="(max-width: 1023px) 100vw, 176px"
-            />
-          </Link>
+        <AdaptiveMediaFrame
+          src={item.imageUrl}
+          objectFit="cover"
+          slots={HOME_LOT_TILE_SLOTS}
+          className="relative w-full shrink-0 lg:w-44"
+        >
+          <AdaptiveMediaFrameContainer className="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-surface-container-high dark:bg-surface-container-high">
+            <Link
+              href={item.href}
+              className="group absolute inset-0 z-0 overflow-hidden outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              aria-label={`${item.title} — view artwork`}
+            >
+              <AdaptiveFrameImage
+                src={item.imageUrl}
+                alt={item.imageAlt}
+                objectFit="cover"
+                label="Lot artwork"
+                className="size-full"
+                imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100"
+                sizes="(max-width: 1023px) 100vw, 176px"
+              />
+            </Link>
 
-          <div className="lg:hidden">
-            <LotStatusTimer variant="endingSoon" {...timerProps} />
-          </div>
+            <div className="lg:hidden">
+              <LotStatusTimer variant="endingSoon" {...timerProps} />
+            </div>
 
-          <div className="pointer-events-auto absolute right-3 top-3 z-10 lg:hidden">
-            <MarketingWatchlistHeart {...watchlistProps} layout="overlay" />
-          </div>
-        </div>
+            <div className="pointer-events-auto absolute right-3 top-3 z-10 lg:hidden">
+              <MarketingWatchlistHeart {...watchlistProps} layout="inline" surface="onImage" />
+            </div>
+          </AdaptiveMediaFrameContainer>
+        </AdaptiveMediaFrame>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4 pt-4 lg:flex-row lg:gap-6 lg:pt-0">
           <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -131,7 +144,7 @@ export function UrgencyLotRow({
 
           <div className="flex flex-row items-center justify-end gap-3 border-t border-border-hairline pt-3 lg:mt-0 lg:flex-col lg:items-end lg:justify-center lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
             <div className="hidden lg:block">
-              <MarketingWatchlistHeart {...watchlistProps} layout="inline" />
+              <MarketingWatchlistHeart {...watchlistProps} layout="inline" surface="inline" />
             </div>
             <Link
               href={item.href}
