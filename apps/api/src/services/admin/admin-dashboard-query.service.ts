@@ -301,6 +301,14 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
     return data;
   }
 
+  async countManualReviewPayments(): Promise<number> {
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(payment)
+      .where(sql`${payment.status} = 'requires_manual_review'`);
+    return row?.n ?? 0;
+  }
+
   async listPendingAdminReviewTasks(
     kind: "lot_artist_backfill" | "lot_withdrawal_request",
   ): Promise<AdminReviewTaskRow[]> {
@@ -312,5 +320,17 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
       .where(and(eq(adminReviewTask.kind, kindFilter), eq(adminReviewTask.status, "pending")))
       .orderBy(desc(adminReviewTask.createdAt))
       .limit(200);
+  }
+
+  async countPendingAdminReviewTasks(
+    kind: "lot_artist_backfill" | "lot_withdrawal_request",
+  ): Promise<number> {
+    const kindFilter =
+      kind === "lot_artist_backfill" ? "lot_artist_backfill" : "lot_withdrawal_request";
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(adminReviewTask)
+      .where(and(eq(adminReviewTask.kind, kindFilter), eq(adminReviewTask.status, "pending")));
+    return row?.n ?? 0;
   }
 }

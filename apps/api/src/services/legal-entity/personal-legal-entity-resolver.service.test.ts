@@ -22,6 +22,7 @@ const personalSummary = {
 function makeRepo(ensurePersonalEntity: ILegalEntityRepository["ensurePersonalEntity"]) {
   const stub: ILegalEntityRepository = {
     findById: vi.fn(),
+    findByIds: vi.fn().mockResolvedValue([]),
     listActiveMembershipsForUser: vi.fn(),
     findActiveMembership: vi.fn(),
     listImpersonationNoticeRecipientEmails: vi.fn().mockResolvedValue([]),

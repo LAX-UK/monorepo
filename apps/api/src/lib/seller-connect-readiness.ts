@@ -3,6 +3,7 @@ import {
   isSellerConnectReady as isSellerConnectReadyImpl,
   shouldSkipConnect,
 } from "@auction/connect";
+import type { LegalEntity } from "@auction/types";
 import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 
 export type SellerConnectFields = ConnectLegalEntityFields;
@@ -12,6 +13,41 @@ export function isSellerConnectReady(seller: SellerConnectFields): boolean {
 }
 
 export { shouldSkipConnect };
+
+function isConnectBlockedForSeller(seller: LegalEntity | null | undefined): boolean {
+  if (!seller) return true;
+  if (shouldSkipConnect(seller)) return false;
+  return !isSellerConnectReady(seller);
+}
+
+/** Batch connect gate per lot for staff catalogue lists (one seller lookup query). */
+export async function buildConnectRequiredByLotId(
+  lots: ReadonlyArray<{ id: string; sellerLegalEntityId?: string | null | undefined }>,
+  legalEntityRepository: ILegalEntityRepository,
+  connectEnforced: boolean,
+): Promise<Map<string, boolean>> {
+  const record = new Map<string, boolean>();
+  if (!connectEnforced) {
+    for (const lot of lots) record.set(lot.id, false);
+    return record;
+  }
+
+  const sellerIds = [
+    ...new Set(lots.map((l) => l.sellerLegalEntityId).filter((id): id is string => Boolean(id))),
+  ];
+  const sellers = sellerIds.length > 0 ? await legalEntityRepository.findByIds(sellerIds) : [];
+  const sellerById = new Map(sellers.map((s) => [s.id, s]));
+
+  for (const lot of lots) {
+    if (!lot.sellerLegalEntityId) {
+      record.set(lot.id, false);
+      continue;
+    }
+    const seller = sellerById.get(lot.sellerLegalEntityId);
+    record.set(lot.id, isConnectBlockedForSeller(seller));
+  }
+  return record;
+}
 
 export async function findLotsMissingSellerConnect(
   lots: ReadonlyArray<{

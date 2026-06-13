@@ -54,6 +54,9 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
     async listByStatus(status: SourceOfFundsStatus) {
       return state.cases.filter((c) => c.status === status);
     },
+    async countByStatus(status: SourceOfFundsStatus) {
+      return state.cases.filter((c) => c.status === status).length;
+    },
     async create(input: CreateSourceOfFundsCaseInput) {
       const created = makeCase({
         id: `sof_${state.cases.length + 1}`,

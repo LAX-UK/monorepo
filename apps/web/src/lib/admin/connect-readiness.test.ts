@@ -12,6 +12,7 @@ import type { LegalEntity, Lot } from "@auction/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildConnectRequiredByLotId,
+  connectRequiredFromLots,
   isSellerConnectReady,
   isStripeConnectEnforcedOnPublish,
 } from "./connect-readiness";
@@ -77,6 +78,17 @@ describe("isStripeConnectEnforcedOnPublish", () => {
   });
 });
 
+describe("connectRequiredFromLots", () => {
+  it("maps API-provided connectRequired flags", () => {
+    expect(
+      connectRequiredFromLots([
+        { id: "a", connectRequired: true },
+        { id: "b", connectRequired: false },
+      ]),
+    ).toEqual({ a: true, b: false });
+  });
+});
+
 describe("buildConnectRequiredByLotId", () => {
   beforeEach(() => {
     vi.mocked(getAdminLegalEntityById).mockReset();
@@ -88,6 +100,13 @@ describe("buildConnectRequiredByLotId", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("uses API-provided connectRequired without fetching sellers", async () => {
+    const flagged = lot({ connectRequired: true } as Lot & { connectRequired: boolean });
+    const record = await buildConnectRequiredByLotId([flagged]);
+    expect(record[flagged.id]).toBe(true);
+    expect(getAdminLegalEntityById).not.toHaveBeenCalled();
   });
 
   it("returns all false when enforcement is off", async () => {

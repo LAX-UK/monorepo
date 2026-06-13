@@ -33,8 +33,9 @@ import { listLotDocumentsPublic } from "../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
-import { mapLotToSummary } from "../lib/mappers.js";
+import { mapLotToStaffListRow, mapLotToSummary } from "../lib/mappers.js";
 import { presentLotImages } from "../lib/media-presenters.js";
+import { buildConnectRequiredByLotId } from "../lib/seller-connect-readiness.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -92,6 +93,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     }
 
     const buildPayload = async () => {
+      const resolveImages = query.resolveImages !== "0";
       const { data } = await container.lotService.listLotsForPublicApi(
         {
           status: query.statuses ? undefined : query.status,
@@ -109,6 +111,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
           limit: query.limit,
           offset: query.offset,
           ...(query.needsPhotos === "1" ? { needsPhotos: true } : {}),
+          resolveImages,
         },
         role,
         staffRole,
@@ -145,6 +148,21 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
           return deleteEligibility ? { ...lotRow, deleteEligibility } : lotRow;
         });
       }
+
+      if (canSeeLifecycle && rows.length > 0) {
+        const connectEnforced = container.stripeConnectService.isConfigured();
+        const connectByLot = await buildConnectRequiredByLotId(
+          rows,
+          container.legalEntityRepository,
+          connectEnforced,
+        );
+        rows = rows.map((lotRow) => ({
+          ...lotRow,
+          connectRequired: connectByLot.get(lotRow.id) ?? false,
+        }));
+        return { data: rows.map(mapLotToStaffListRow) };
+      }
+
       const withPricing = await lotsWithCheckoutPricing(container, rows);
       return { data: withPricing.map(mapLotToSummary) };
     };

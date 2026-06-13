@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { kycWatchlistScreening, user } from "@auction/db/schema";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type {
   AmlHoldReason,
   AmlHoldStatus,
@@ -104,6 +104,14 @@ export class DrizzleAmlScreeningRepository
       .orderBy(desc(kycWatchlistScreening.screenedAt))
       .limit(cap);
     return rows.map(rowToRecord);
+  }
+
+  async countByReviewStatus(reviewStatus: AmlReviewStatus, conn?: Database): Promise<number> {
+    const [row] = await this.conn(conn)
+      .select({ n: sql<number>`count(*)::int` })
+      .from(kycWatchlistScreening)
+      .where(eq(kycWatchlistScreening.reviewStatus, reviewStatus));
+    return row?.n ?? 0;
   }
 
   async listForUser(

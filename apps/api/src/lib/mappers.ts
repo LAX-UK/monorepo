@@ -94,6 +94,55 @@ export function mapLotToSummary(lot: Lot): LotSummary {
   };
 }
 
+export type LotStaffListExtras = {
+  lifecycleSummary?: {
+    lastEventType: string;
+    lastEventAt: string;
+    returnCount: number;
+  };
+  deleteEligibility?: {
+    canDelete: boolean;
+    confirmationPhrase: string | null;
+    blockers: string[];
+  };
+  connectRequired?: boolean;
+};
+
+/** Staff catalogue list row — table fields without checkout pricing or heavy catalogue payload. */
+export function mapLotToStaffListRow(lot: Lot & LotStaffListExtras) {
+  const {
+    checkoutPricing: _checkoutPricing,
+    imageAssets: _imageAssets,
+    description: _description,
+    marketingDetails: _marketingDetails,
+    ...base
+  } = lot as Lot &
+    LotStaffListExtras & {
+      checkoutPricing?: unknown;
+      imageAssets?: unknown;
+    };
+  return {
+    id: base.id,
+    saleId: base.saleId,
+    lotNumber: base.lotNumber,
+    title: base.title,
+    status: base.status,
+    auctionType: base.auctionType,
+    currentPrice: base.currentPrice,
+    endTime: base.endTime,
+    startTime: base.startTime,
+    images: base.images,
+    categoryIds: base.categoryIds ?? (base.categoryId ? [base.categoryId] : []),
+    categoryId: base.categoryId,
+    sellerLegalEntityId: base.sellerLegalEntityId,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
+    ...(lot.lifecycleSummary ? { lifecycleSummary: lot.lifecycleSummary } : {}),
+    ...(lot.deleteEligibility ? { deleteEligibility: lot.deleteEligibility } : {}),
+    ...(lot.connectRequired !== undefined ? { connectRequired: lot.connectRequired } : {}),
+  };
+}
+
 export function mapLotSummaryRow(row: LotRow, categoryIds: string[] = []): LotSummary {
   return mapLotToSummary(mapLotRow(row, categoryIds));
 }
