@@ -2,12 +2,12 @@ import "server-only";
 
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import {
-  getAdminLotList,
   getAdminPaymentList,
   getAdminPayoutList,
   getAdminSalesList,
   getAdminUserList,
 } from "@/lib/data/http/admin.server";
+import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 
 export type AdminKpiTrendBundle = {
   currentTotal: number;
@@ -109,7 +109,8 @@ export async function getAdminClientsKpiTrend(
       periodDays,
       total,
     );
-  } catch {
+  } catch (err) {
+    console.error("[getAdminClientsKpiTrend] Failed to load KPI trend:", err);
     return bundleFromRows([], periodDays, 0);
   }
 }
@@ -118,13 +119,20 @@ export async function getAdminLotsKpiTrend(
   periodDays: AdminKpiPeriodDays,
 ): Promise<AdminKpiTrendBundle> {
   try {
-    const lots = await getAdminLotList({ limit: 500, sort: "createdDesc" });
-    return bundleFromRows(
-      lots.map((l) => ({ createdAt: l.createdAt })),
-      periodDays,
-      lots.length,
-    );
-  } catch {
+    const qs = new URLSearchParams({ periodDays: String(periodDays) });
+    const res = await authedServerFetch(`/admin/kpi/lots-trend?${qs.toString()}`);
+    if (!res.ok) throw new Error(`Failed to load lots KPI trend: ${res.status}`);
+    const body = (await res.json()) as { data?: AdminKpiTrendBundle };
+    const data = body.data;
+    if (!data) throw new Error("Missing lots KPI trend payload");
+    return {
+      currentTotal: data.currentTotal,
+      priorTotal: data.priorTotal,
+      dailyCounts: [...data.dailyCounts],
+    };
+  } catch (err) {
+    // Log error for monitoring; return safe fallback for UX continuity
+    console.error("[getAdminLotsKpiTrend] Failed to load KPI trend:", err);
     return bundleFromRows([], periodDays, 0);
   }
 }
@@ -139,7 +147,8 @@ export async function getAdminSalesKpiTrend(
       periodDays,
       sales.length,
     );
-  } catch {
+  } catch (err) {
+    console.error("[getAdminSalesKpiTrend] Failed to load KPI trend:", err);
     return bundleFromRows([], periodDays, 0);
   }
 }
@@ -154,7 +163,8 @@ export async function getAdminPaymentsKpiTrend(
       periodDays,
       payments.length,
     );
-  } catch {
+  } catch (err) {
+    console.error("[getAdminPaymentsKpiTrend] Failed to load KPI trend:", err);
     return bundleFromRows([], periodDays, 0);
   }
 }
@@ -169,7 +179,8 @@ export async function getAdminPayoutsKpiTrend(
       periodDays,
       payouts.length,
     );
-  } catch {
+  } catch (err) {
+    console.error("[getAdminPayoutsKpiTrend] Failed to load KPI trend:", err);
     return bundleFromRows([], periodDays, 0);
   }
 }

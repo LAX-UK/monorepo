@@ -23,6 +23,7 @@ function repo(
   const findActiveMembership = vi.fn().mockResolvedValue(membership);
   const stub: ILegalEntityRepository = {
     findById: vi.fn(),
+    findByIds: vi.fn().mockResolvedValue([]),
     listActiveMembershipsForUser: vi.fn(),
     findActiveMembership,
     listImpersonationNoticeRecipientEmails: vi.fn().mockResolvedValue([]),

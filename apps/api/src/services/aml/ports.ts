@@ -71,6 +71,7 @@ export interface IWatchlistScreeningReader {
     limit: number,
     conn?: Database,
   ): Promise<WatchlistScreeningRecord[]>;
+  countByReviewStatus(reviewStatus: AmlReviewStatus, conn?: Database): Promise<number>;
   listForUser(userId: string, limit: number, conn?: Database): Promise<WatchlistScreeningRecord[]>;
 }
 

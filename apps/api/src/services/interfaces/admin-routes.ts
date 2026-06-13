@@ -156,9 +156,13 @@ export interface IAdminDashboardQueryService {
     }[]
   >;
   listManualReviewPayments(): Promise<AdminManualReviewPaymentRow[]>;
+  countManualReviewPayments(): Promise<number>;
   listPendingAdminReviewTasks(
     kind: "lot_artist_backfill" | "lot_withdrawal_request",
   ): Promise<AdminReviewTaskRow[]>;
+  countPendingAdminReviewTasks(
+    kind: "lot_artist_backfill" | "lot_withdrawal_request",
+  ): Promise<number>;
 }
 
 export interface IAdminCatalogApplicationService {
