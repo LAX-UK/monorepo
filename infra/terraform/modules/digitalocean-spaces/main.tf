@@ -93,5 +93,5 @@ resource "digitalocean_spaces_bucket_policy" "public_read" {
 # via NEXT_PUBLIC_MEDIA_BASE_URL instead.
 resource "digitalocean_cdn" "this" {
   origin = "${digitalocean_spaces_bucket.this.name}.${digitalocean_spaces_bucket.this.region}.digitaloceanspaces.com"
-  ttl    = 3600
+  ttl    = 86400
 }

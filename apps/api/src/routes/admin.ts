@@ -453,7 +453,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
           asHttpStatus(e.status),
         );
       }
-      const data = await presentLotImages(container.mediaUrlResolver, result.value);
+      const data = await presentLotImages(
+        container.mediaUrlResolver,
+        result.value,
+        container.mediaAssetEnricher,
+      );
       return c.json({ data });
     },
   );

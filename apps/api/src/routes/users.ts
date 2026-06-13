@@ -189,7 +189,11 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     for (const p of payments) {
       if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
     }
-    const presentedLots = await presentLotsImages(container.mediaUrlResolver, lots);
+    const presentedLots = await presentLotsImages(
+      container.mediaUrlResolver,
+      lots,
+      container.mediaAssetEnricher,
+    );
     const pricedLots = await lotsWithCheckoutPricing(container, presentedLots);
     const data = pricedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);

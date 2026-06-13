@@ -43,6 +43,7 @@ import type {
 } from "./interfaces/repositories.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
+import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { submissionToCreateLotInput } from "./submission-to-lot.mapper.js";
@@ -62,6 +63,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     private readonly legalEntityRepository: ILegalEntityRepository | null = null,
     private readonly domainEventPublisher: DomainEventPublisher | null = null,
     private readonly mediaUrlResolver: MediaUrlResolver | undefined = undefined,
+    private readonly mediaAssetEnricher: MediaAssetEnricher | undefined = undefined,
     private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
   ) {}
 
@@ -495,7 +497,11 @@ export class ItemSubmissionService implements IItemSubmissionService {
       this.listForSeller(legalEntityId, f),
       this.submissions.countForLegalEntity(legalEntityId, countFilter),
     ]);
-    const data = await presentSubmissionsImages(this.mediaUrlResolver, rows);
+    const data = await presentSubmissionsImages(
+      this.mediaUrlResolver,
+      rows,
+      this.mediaAssetEnricher,
+    );
     return { data, total };
   }
 
@@ -522,7 +528,11 @@ export class ItemSubmissionService implements IItemSubmissionService {
       this.listForAdmin(f),
       this.submissions.countAdmin(countFilter),
     ]);
-    const data = await presentSubmissionsImages(this.mediaUrlResolver, rows);
+    const data = await presentSubmissionsImages(
+      this.mediaUrlResolver,
+      rows,
+      this.mediaAssetEnricher,
+    );
     return { data, total };
   }
 
@@ -538,7 +548,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
       ? await this.getForAdmin(submissionId)
       : await this.getForSeller(sellerLegalEntityId, submissionId);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 
   async patchSubmissionFromRequestBody(input: {
@@ -570,7 +582,11 @@ export class ItemSubmissionService implements IItemSubmissionService {
       if (result.isErr()) return { kind: "err", error: result.error };
       return {
         kind: "ok",
-        data: await presentSubmissionImages(this.mediaUrlResolver, result.value),
+        data: await presentSubmissionImages(
+          this.mediaUrlResolver,
+          result.value,
+          this.mediaAssetEnricher,
+        ),
       };
     }
     const parsed = updateItemSubmissionSchema.safeParse(rawBody);
@@ -587,7 +603,11 @@ export class ItemSubmissionService implements IItemSubmissionService {
     if (result.isErr()) return { kind: "err", error: result.error };
     return {
       kind: "ok",
-      data: await presentSubmissionImages(this.mediaUrlResolver, result.value),
+      data: await presentSubmissionImages(
+        this.mediaUrlResolver,
+        result.value,
+        this.mediaAssetEnricher,
+      ),
     };
   }
 
@@ -635,7 +655,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const result = await this.createDraft(legalEntityId, input);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 
   async submitForReviewForSellerApi(
@@ -644,7 +666,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const result = await this.submitForReview(legalEntityId, id);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 
   async withdrawForSellerApi(
@@ -653,7 +677,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const result = await this.withdraw(legalEntityId, id);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 
   async startReviewForAdminApi(
@@ -662,7 +688,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const result = await this.startReview(adminId, id);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 
   async assignForAdminApi(
@@ -672,7 +700,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const result = await this.assignForAdmin(adminId, id, assignedToUserId);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 
   async countQualityGapsForAdminApi(): Promise<number> {
@@ -727,7 +757,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const result = await this.accept(adminId, id, body);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 
   async convertForAdminApi(
@@ -742,6 +774,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     const submission = await presentSubmissionImages(
       this.mediaUrlResolver,
       result.value.submission,
+      this.mediaAssetEnricher,
     );
     return ok({
       submission,
@@ -760,6 +793,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     const submission = await presentSubmissionImages(
       this.mediaUrlResolver,
       result.value.submission,
+      this.mediaAssetEnricher,
     );
     return ok({ submission, lot: result.value.lot });
   }
@@ -772,7 +806,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     const result = await this.reject(adminId, id, rejectionReason, reviewNotes);
     if (result.isErr()) return result;
-    return ok(await presentSubmissionImages(this.mediaUrlResolver, result.value));
+    return ok(
+      await presentSubmissionImages(this.mediaUrlResolver, result.value, this.mediaAssetEnricher),
+    );
   }
 }
 
