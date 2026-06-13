@@ -48,7 +48,7 @@ export function LotConditionReportRestoreLink({ onRestore }: { onRestore: () => 
       variant="link"
       size="link"
       onClick={onRestore}
-      className="font-body text-xs font-medium text-primary underline-offset-2 hover:underline"
+      className="font-body text-xs font-medium text-link underline-offset-2 hover:underline"
     >
       Show condition report
     </Button>

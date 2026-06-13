@@ -41,7 +41,7 @@ export function SaleroomRelatedAuctionCard({ sale }: Props) {
           <Button
             asChild
             variant="outline"
-            className="h-10 min-w-[125px] rounded-[4px] border border-brand-800 bg-transparent font-['DM_Sans',sans-serif] text-base font-semibold tracking-[0.8px] text-brand-800 hover:bg-transparent dark:border-on-surface/80 dark:text-on-surface"
+            className="h-10 min-w-[125px] rounded-[4px] border border-brand-800 bg-transparent font-body text-base font-semibold tracking-[0.8px] text-brand-800 hover:bg-transparent dark:border-on-surface/80 dark:text-on-surface"
           >
             <Link href={sale.href}>Explore</Link>
           </Button>

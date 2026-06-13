@@ -98,7 +98,7 @@ export function VenueDetailShell({ venueId, detail, children }: Props) {
               venue.status !== "archived" ? (
                 <Link
                   href={venueEditHref(venueId)}
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
                 >
                   Edit venue →
                 </Link>

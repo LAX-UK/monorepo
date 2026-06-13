@@ -38,7 +38,7 @@ export const SITE_BUYERS_PREMIUM_STANDARD = "15%";
 export const SITE_BUYERS_PREMIUM_THRESHOLD = "£500,000";
 export const SITE_BUYERS_PREMIUM_ABOVE_THRESHOLD = "10%";
 export const SITE_UK_VAT_RATE = "20%";
-export const SITE_THEME_COLOR_LIGHT = "#f1f1f3";
+export const SITE_THEME_COLOR_LIGHT = "#ffffff";
 export const SITE_THEME_COLOR_DARK = "#121414";
 
 /** Static mark in `apps/web/public/` */

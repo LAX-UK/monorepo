@@ -43,7 +43,7 @@ export function buildArtworkPageAccordionBlocks(args: {
                     href={d.downloadUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+                    className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
                   >
                     {d.label?.trim() || d.kind.replaceAll("_", " ")}
                     <span className="sr-only"> (opens in new tab)</span>
@@ -73,13 +73,13 @@ export function buildArtworkPageAccordionBlocks(args: {
         <div className="flex flex-wrap gap-4 pt-1">
           <Link
             href="/terms"
-            className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+            className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
           >
             Conditions of Business
           </Link>
           <Link
             href="/faq"
-            className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+            className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
           >
             FAQ
           </Link>

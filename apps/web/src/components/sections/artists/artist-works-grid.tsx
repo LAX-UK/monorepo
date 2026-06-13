@@ -103,7 +103,7 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
     <li className="group flex h-full min-w-0 flex-col">
       <Link
         href={lotPath(lot)}
-        className="flex h-full min-w-0 flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="flex h-full min-w-0 flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         <div className="relative aspect-[4/5] overflow-hidden bg-surface-container-low">
           <MediaImage

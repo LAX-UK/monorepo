@@ -78,7 +78,7 @@ export default async function AdminDisputesPage({
   const meta = (
     <p className="font-body text-sm text-on-surface-variant">
       For capture and refund actions use{" "}
-      <Link href="/admin/payments" className="text-primary underline">
+      <Link href="/admin/payments" className="text-link underline">
         Payments
       </Link>
       .

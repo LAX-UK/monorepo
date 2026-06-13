@@ -57,7 +57,7 @@ export function SalesViewSwitcher({
               onClick={() => navigate(m)}
               title={label}
               className={cn(
-                "flex size-9 items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50 md:size-8",
+                "flex size-9 items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 md:size-8",
                 selected
                   ? "bg-primary text-on-primary"
                   : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",

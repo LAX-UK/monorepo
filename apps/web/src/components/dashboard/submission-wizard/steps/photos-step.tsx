@@ -37,7 +37,7 @@ export function PhotosStep({ form }: StepProps) {
             <p className="mb-2 font-body text-xs text-on-surface-variant">
               First image is the primary catalog image when approved. Include overall, detail, and
               signature or markings where relevant.{" "}
-              <Link href="/sell#photos" className="text-primary underline-offset-4 hover:underline">
+              <Link href="/sell#photos" className="text-link underline-offset-4 hover:underline">
                 Photo tips
               </Link>
             </p>

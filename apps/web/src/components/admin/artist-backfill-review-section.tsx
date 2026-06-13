@@ -39,7 +39,7 @@ export async function ArtistBackfillReviewSection() {
                 Lot{" "}
                 <Link
                   href={`/admin/lots/${t.targetLotId}`}
-                  className="font-mono text-primary underline"
+                  className="font-mono text-link underline"
                 >
                   {t.targetLotId}
                 </Link>

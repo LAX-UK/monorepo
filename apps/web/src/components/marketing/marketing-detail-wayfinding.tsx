@@ -17,7 +17,7 @@ type Props = {
 };
 
 const backLinkClassName =
-  "inline-flex min-h-11 items-center font-label text-[0.65rem] font-semibold uppercase tracking-[0.22em] underline-offset-4 text-on-surface-variant hover:text-primary hover:underline md:min-h-0";
+  "inline-flex min-h-11 items-center font-label text-[0.65rem] font-semibold uppercase tracking-[0.22em] underline-offset-4 text-on-surface-variant hover:text-link hover:underline md:min-h-0";
 
 /** Back link + breadcrumb trail for marketing detail routes (artist profile, lot PDP, sale room, …). */
 export function MarketingDetailWayfinding({

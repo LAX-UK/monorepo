@@ -196,7 +196,7 @@ html {
 
 .stack-col.pad-bar a,
 .stack-col.pad-bar-tri a {
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
 }
 
 .section-band--alt .programme-item__time,
@@ -272,13 +272,13 @@ td.section-band--reply[style] {
   margin: 0;
   padding: 28px 32px 24px;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 55%, #000 100%);
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   text-align: center;
 }
 
 .hero-bid-strip__eyebrow {
   margin: 0 0 10px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 10px;
   letter-spacing: 4px;
   text-transform: uppercase;
@@ -287,7 +287,7 @@ td.section-band--reply[style] {
 
 .hero-bid-strip__headline {
   margin: 0 0 14px;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 22px;
   line-height: 30px;
   letter-spacing: 0.5px;
@@ -301,13 +301,13 @@ td.section-band--reply[style] {
 
 .hero-bid-strip__link {
   display: inline-block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 11px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   text-decoration: none;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--brand-light-cream, #f2f1df);
   padding-bottom: 2px;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
@@ -329,12 +329,12 @@ td.section-band--reply[style] {
   margin: 0 auto 16px;
   padding: 8px 14px;
   width: fit-content;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 10px;
   letter-spacing: 3px;
   text-transform: uppercase;
   background: #000;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
 }
 
 .highlight-lot__media {
@@ -371,7 +371,7 @@ td.section-band--reply[style] {
 
 .highlight-lot__bid-label {
   display: block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -381,7 +381,7 @@ td.section-band--reply[style] {
 
 .highlight-lot__bid-amount {
   display: block;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 36px;
   line-height: 1;
   color: #fff;
@@ -395,7 +395,7 @@ td.section-band--reply[style] {
 
 .highlight-lot__title {
   margin: 0 0 10px;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 24px;
   line-height: 30px;
   font-weight: normal;
@@ -404,7 +404,7 @@ td.section-band--reply[style] {
 
 .highlight-lot__copy {
   margin: 0 0 20px;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 14px;
   line-height: 22px;
   color: #444;
@@ -426,13 +426,13 @@ td.section-band--reply[style] {
 
 .highlight-stat--accent {
   background: #000;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   border-color: #000;
 }
 
 .highlight-stat__label {
   display: block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -442,7 +442,7 @@ td.section-band--reply[style] {
 
 .highlight-stat__value {
   display: block;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 18px;
   line-height: 24px;
 }
@@ -458,7 +458,7 @@ td.section-band--reply[style] {
   max-width: 320px;
   box-sizing: border-box;
   padding: 16px 24px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 12px;
   letter-spacing: 4px;
   text-transform: uppercase;
@@ -466,13 +466,13 @@ td.section-band--reply[style] {
   text-decoration: none;
   text-align: center;
   background: #000;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   border: 1px solid #000;
   transition: background 0.25s ease, color 0.25s ease, transform 0.2s ease;
 }
 
 .highlight-lot__cta:hover {
-  background: #efefef;
+  background: var(--brand-light-cream, #f2f1df);
   color: #000;
   transform: translateY(-2px);
 }
@@ -485,7 +485,7 @@ td.section-band--reply[style] {
 
 .event-countdown__label {
   margin: 0 0 12px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 9px;
   letter-spacing: 3px;
   text-transform: uppercase;
@@ -508,16 +508,16 @@ td.section-band--reply[style] {
 
 .event-countdown__value {
   display: block;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 26px;
   line-height: 1;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   margin-bottom: 6px;
 }
 
 .event-countdown__name {
   display: block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -542,32 +542,32 @@ td.section-band--reply[style] {
 .event-meta-actions__btn {
   display: inline-block;
   padding: 12px 18px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
   text-decoration: none;
   border: 1px solid rgba(239, 239, 239, 0.45);
   background: transparent;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   cursor: pointer;
   transition: background 0.25s ease, color 0.25s ease;
 }
 
 .event-meta-actions__btn:hover {
-  background: #efefef;
+  background: var(--brand-light-cream, #f2f1df);
   color: #000;
 }
 
 .event-meta-actions__btn--primary {
-  background: #efefef;
+  background: var(--brand-light-cream, #f2f1df);
   color: #000;
-  border-color: #efefef;
+  border-color: var(--brand-light-cream, #f2f1df);
 }
 
 .event-meta-actions__btn--primary:hover {
   background: transparent;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
 }
 
 .key-facts {
@@ -582,17 +582,17 @@ td.section-band--reply[style] {
 .key-fact {
   padding: 18px 12px;
   text-align: center;
-  background: #efefef;
+  background: var(--brand-light-cream, #f2f1df);
 }
 
 .key-fact--accent {
   background: #000;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
 }
 
 .key-fact__value {
   display: block;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 22px;
   line-height: 1.2;
   margin-bottom: 6px;
@@ -600,7 +600,7 @@ td.section-band--reply[style] {
 
 .key-fact__label {
   display: block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -649,14 +649,14 @@ td.section-band--reply[style] {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #efefef;
+  background: var(--brand-light-cream, #f2f1df);
   border: 1px solid #1a1a1a;
-  box-shadow: 0 0 0 3px #efefef;
+  box-shadow: 0 0 0 3px var(--brand-light-cream, #f2f1df);
 }
 
 .programme-item__time {
   display: block;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 15px;
   font-weight: bold;
   letter-spacing: 1px;
@@ -665,7 +665,7 @@ td.section-band--reply[style] {
 
 .programme-item__title {
   margin: 0 0 6px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 11px;
   line-height: 16px;
   letter-spacing: 2px;
@@ -675,7 +675,7 @@ td.section-band--reply[style] {
 
 .programme-item__detail {
   margin: 0;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 13px;
   line-height: 20px;
   color: #444;
@@ -688,7 +688,7 @@ td.section-band--reply[style] {
 
 .rsvp-band__eyebrow {
   margin: 0 0 8px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 10px;
   letter-spacing: 4px;
   text-transform: uppercase;
@@ -697,19 +697,19 @@ td.section-band--reply[style] {
 
 .rsvp-band__title {
   margin: 0 0 10px;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 32px;
   line-height: 36px;
   font-weight: normal;
   letter-spacing: 4px;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
 }
 
 .rsvp-band__copy {
   margin: 0;
   max-width: 420px;
   margin-inline: auto;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 14px;
   line-height: 22px;
   color: #d8d8d8;
@@ -725,14 +725,14 @@ td.section-band--reply[style] {
   bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 40;
   padding: 14px 28px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 11px;
   letter-spacing: 3px;
   text-transform: uppercase;
   font-weight: bold;
   text-decoration: none;
   background: #000;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   border: 1px solid rgba(201, 169, 98, 0.35);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
   opacity: 0;
@@ -800,14 +800,19 @@ td.section-band--reply[style] {
   content: "";
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #c9a962 0%, #efefef 42%, #1a1a1a 100%);
+  background: linear-gradient(
+    90deg,
+    #c9a962 0%,
+    var(--brand-light-cream, #f2f1df) 42%,
+    #1a1a1a 100%
+  );
 }
 
 .share-invite-feedback {
   margin: 0;
   padding: 0 24px 16px;
   text-align: center;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -833,7 +838,7 @@ td.section-band--reply[style] {
 }
 
 .invite-marquee__track span {
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 10px;
   letter-spacing: 3px;
   text-transform: uppercase;
@@ -857,7 +862,7 @@ td.section-band--reply[style] {
 
 .lot-carousel-section__title {
   margin: 0 0 8px;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 22px;
   line-height: 28px;
   font-weight: normal;
@@ -866,7 +871,7 @@ td.section-band--reply[style] {
 
 .lot-carousel-section__copy {
   margin: 0;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 14px;
   line-height: 22px;
   color: #444;
@@ -915,7 +920,7 @@ td.section-band--reply[style] {
   display: block;
   padding: 32px 24px 24px;
   text-align: center;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 14px;
   font-style: italic;
   color: #444;
@@ -969,7 +974,7 @@ td.section-band--reply[style] {
 .lot-card__media--text .lot-card__category {
   font-size: 11px;
   letter-spacing: 4px;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
 }
 
 .lot-card__body {
@@ -979,7 +984,7 @@ td.section-band--reply[style] {
 
 .lot-card__category {
   display: block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -989,7 +994,7 @@ td.section-band--reply[style] {
 
 .lot-card__title {
   margin: 0 0 12px;
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 16px;
   line-height: 22px;
   font-weight: normal;
@@ -1010,7 +1015,7 @@ td.section-band--reply[style] {
 }
 
 .lot-card__stat-label {
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -1018,7 +1023,7 @@ td.section-band--reply[style] {
 }
 
 .lot-card__stat-value {
-  font-family: Georgia, "Times New Roman", Times, serif;
+  font-family: var(--font-primary);
   font-size: 14px;
 }
 
@@ -1029,7 +1034,7 @@ td.section-band--reply[style] {
   width: 36px;
   height: 36px;
   border: 1px solid #1a1a1a;
-  background: #efefef;
+  background: var(--brand-light-cream, #f2f1df);
   color: #1a1a1a;
   font-size: 22px;
   line-height: 1;
@@ -1081,19 +1086,19 @@ td.section-band--reply[style] {
   max-width: 100%;
   box-sizing: border-box;
   padding: 14px 22px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 11px;
   letter-spacing: 3px;
   text-transform: uppercase;
   text-decoration: none;
-  color: #efefef;
+  color: var(--brand-light-cream, #f2f1df);
   background: #000;
   border: 1px solid #000;
   transition: background 0.25s ease, color 0.25s ease;
 }
 
 .catalogue-cta__link:hover {
-  background: #efefef;
+  background: var(--brand-light-cream, #f2f1df);
   color: #000;
 }
 
@@ -1101,13 +1106,13 @@ td.section-band--reply[style] {
   display: inline-block;
   margin: 0 0 12px;
   padding: 8px 14px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: #000;
-  background: #efefef;
-  border: 1px solid #efefef;
+  background: var(--brand-light-cream, #f2f1df);
+  border: 1px solid var(--brand-light-cream, #f2f1df);
   animation: urgency-pulse 2.4s ease-in-out infinite;
 }
 
@@ -1164,7 +1169,7 @@ td.section-band--reply[style] {
 
 .event-footer-socials__site {
   display: inline-block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 11px;
   letter-spacing: 2px;
   text-transform: uppercase;

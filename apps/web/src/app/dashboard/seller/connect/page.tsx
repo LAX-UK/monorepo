@@ -100,11 +100,11 @@ export default async function SellerStripeConnectPage() {
 
       <p className="font-body text-xs text-on-surface-variant">
         Questions?{" "}
-        <a href="mailto:support@lax.bid" className="text-primary underline">
+        <a href="mailto:support@lax.bid" className="text-link underline">
           support@lax.bid
         </a>
         {" · "}
-        <Link href={DASHBOARD_ROUTES.seller} className="text-primary underline">
+        <Link href={DASHBOARD_ROUTES.seller} className="text-link underline">
           Back to seller workspace
         </Link>
       </p>

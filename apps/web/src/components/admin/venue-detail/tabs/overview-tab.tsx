@@ -36,10 +36,7 @@ export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
             {salesUsingCount > 0 ? (
               <p className="font-body text-sm text-on-surface-variant">
                 Used by {salesUsingCount} sale{salesUsingCount !== 1 ? "s" : ""}.{" "}
-                <Link
-                  href="/admin/sales"
-                  className="text-primary underline-offset-2 hover:underline"
-                >
+                <Link href="/admin/sales" className="text-link underline-offset-2 hover:underline">
                   View sales
                 </Link>
               </p>
@@ -56,7 +53,7 @@ export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
             {legalEntityDisplayName ? (
               <Link
                 href={`/admin/legal-entities/${venue.legalEntityId}`}
-                className="font-medium text-primary hover:underline"
+                className="font-medium text-link hover:underline"
               >
                 {legalEntityDisplayName}
               </Link>
@@ -77,7 +74,7 @@ export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
               {venue.contactPhone ? <p>{venue.contactPhone}</p> : null}
               {venue.contactEmail ? (
                 <p>
-                  <a href={`mailto:${venue.contactEmail}`} className="text-primary hover:underline">
+                  <a href={`mailto:${venue.contactEmail}`} className="text-link hover:underline">
                     {venue.contactEmail}
                   </a>
                 </p>
@@ -88,7 +85,7 @@ export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
                     href={venue.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="text-link hover:underline"
                   >
                     {venue.website}
                   </a>
@@ -113,7 +110,7 @@ export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
                     href={venue.mapUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="text-link hover:underline"
                   >
                     View on map
                   </a>

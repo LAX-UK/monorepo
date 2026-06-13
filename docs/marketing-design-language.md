@@ -12,13 +12,53 @@ This document is the single source of truth for the marketing surface (`apps/web
 | **Rhythm** | One container width, one horizontal padding scale, one vertical section scale. |
 | **Consistency** | Same view mode = same component tree and tokens everywhere. |
 
+## Brand Identity (v1.0)
+
+Canonical brand primitives live in [`packages/branding/src/brand-identity.ts`](../packages/branding/src/brand-identity.ts) and map to CSS in [`apps/web/src/app/globals.css`](../apps/web/src/app/globals.css) `@theme`.
+
+### Color palette
+
+| Brand name | Hex | CSS primitive | Semantic aliases |
+|------------|-----|---------------|------------------|
+| Obsidian Nocturne | `#000000` | `--color-brand-obsidian` | `--color-ink`, `--color-brand-900`, `--color-cta-bg`, `--color-primary` |
+| Midnight Blue | `#091F5B` | `--color-brand-midnight` | `--color-link`, `--color-secondary`, `--color-ring` |
+| Light Gray | `#B8B9C0` | `--color-brand-light-gray` | `--color-brand-200`, borders, muted chrome |
+| Light Cream | `#F2F1DF` | `--color-brand-light-cream` | `--color-paper`, `--color-hero-cream`, `--color-cta-on` |
+
+**Page shell:** `--color-page-bg` and `--color-background` use `#ffffff` — neutral white, not cream. Reserve light cream for hero bands, email paper, and CTA label colour only.
+
+**Functional accents** (auction UX, not brand primary): `--color-accent-gold`, `--color-lot-orange`, `--color-live-red`. Use `--color-accent-buying` for bid/buy flows — never `--color-primary`.
+
+**Dark mode:** Brand doc is light-only. Dark tokens in `html.dark` invert primary CTAs (cream fill on obsidian text) and lighten midnight for links via `color-mix`.
+
+### Typography
+
+| Role | Typeface | CSS token |
+|------|----------|-----------|
+| Primary (headlines, body, labels) | Montserrat | `--font-headline`, `--font-body`, `--font-label` |
+| Secondary (footer links, supporting UI) | Outfit | `--font-supporting`, `--font-footer-links` |
+
+Load fonts in `apps/web/src/app/layout.tsx` via `next/font/google`. Components MUST use semantic `font-*` utilities — never hardcode font family strings.
+
+**Drift guardrail:** `packages/branding/tests/token-drift.test.ts` fails CI if legacy hex (`#775a19`, `#050505`, `#f1f1f3`) or font hardcodes (`DM_Sans`, `Poppins`) reappear in `apps/web/src`.
+
+**Email:** Transactional email uses `COLORS` + `FONT_STACK_*` from `@auction/branding` (Montserrat/Outfit with system fallbacks). Paper background uses light cream; web page shell uses white.
+
+**Event app:** `apps/event/public/brand-tokens.css` mirrors the same primitives for invitation/RSVP surfaces.
+
+### Token layers
+
+1. **Brand primitives** — immutable hex from Brand Identity v1.0
+2. **Semantic** — `ink`, `paper`, `link`, `cta-*` referencing primitives
+3. **UI / functional** — shadcn `primary`/`secondary`, status colors, auction accents
+
 ## Tokens (reference)
 
 - **Containers:** `--container-max` (1440px), `--container-inner` (1376px). No `max-w-[1920px]` in marketing toolbars.
 - **Vertical rhythm:** `--section-spacing`, `--section-spacing-tight`, `--section-spacing-loose`, `--section-pt`, `--header-height`.
 - **Display type:** `--text-display-lg`, `--text-display-md`, `--text-display-sm`, `--text-title-section`.
 - **Micro type (labels / chips / eyebrows):** `--text-label-1`, `--text-label-2`, `--text-label-3` (maps to Tailwind utilities in `globals.css`).
-- **Focus:** `FOCUS_RING` = `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary` (from `apps/web/src/lib/marketing/chrome.ts`; shared across chrome and cards).
+- **Focus:** `FOCUS_RING` = `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring` (midnight brand; from `apps/web/src/lib/marketing/chrome.ts`).
 - **Motion:** `--motion-duration-md`, `--motion-duration-sm`; always pair with `motion-reduce:transition-none` where transitions exist.
 
 ## Aspect ratio matrix (locked)

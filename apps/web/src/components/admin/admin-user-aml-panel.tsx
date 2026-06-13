@@ -24,7 +24,7 @@ export function AdminUserAmlPanel({ screenings }: { screenings: AdminAmlScreenin
     <Surface variant="quiet" padding="md" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <AdminSectionLabel>AML / watchlist screening</AdminSectionLabel>
-        <Link href={queueHref} className="text-xs text-primary underline">
+        <Link href={queueHref} className="text-xs text-link underline">
           {latest?.reviewStatus === "pending" ? "Review in queue" : "Open review queue"}
         </Link>
       </div>
@@ -83,7 +83,7 @@ export function AdminUserAmlPanel({ screenings }: { screenings: AdminAmlScreenin
                       href={`${VERIFF_STATION_BASE}/verifications/${latest.providerSessionId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary underline"
+                      className="text-link underline"
                     >
                       Open in Veriff
                     </a>

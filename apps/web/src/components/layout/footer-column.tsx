@@ -27,10 +27,7 @@ export function FooterColumn({ title, links, linkClassName, headingClassName }: 
             <li key={l.label}>
               <Link
                 href={l.href}
-                className={cn(
-                  linkClassName,
-                  current && "text-primary underline underline-offset-4",
-                )}
+                className={cn(linkClassName, current && "text-link underline underline-offset-4")}
                 aria-current={current ? "page" : undefined}
               >
                 {l.label}

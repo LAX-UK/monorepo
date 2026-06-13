@@ -21,7 +21,7 @@ export function CommandPaletteHint({ className }: { className?: string }) {
       onClick={openCommandPalette}
       aria-label="Open search"
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md font-body text-xs text-on-surface-variant transition-colors hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        "inline-flex items-center gap-1.5 rounded-md font-body text-xs text-on-surface-variant transition-colors hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         className,
       )}
     >

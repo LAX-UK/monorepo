@@ -67,7 +67,7 @@ export function CatalogSegmentNav({ items, activeId, "aria-label": ariaLabel, cl
             scroll={false}
             aria-current={selected ? "page" : undefined}
             className={cn(
-              "inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-1.5 font-label text-[11px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              "inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-1.5 font-label text-[11px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
               selected
                 ? "bg-primary text-on-primary"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",

@@ -47,7 +47,7 @@ export function AttentionList({
         <li key={item.id}>
           <Link
             href={item.href}
-            className="group flex min-h-12 items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-low/45 px-3 py-2 transition-colors hover:border-primary/25 hover:bg-surface-container-high/55"
+            className="group flex min-h-12 items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-container-low/45 px-3 py-2 transition-colors hover:border-link/25 hover:bg-surface-container-high/55"
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate font-headline text-sm text-on-surface">
@@ -57,7 +57,7 @@ export function AttentionList({
                 {item.hint}
               </span>
             </span>
-            <span className="inline-flex shrink-0 items-center gap-1 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+            <span className="inline-flex shrink-0 items-center gap-1 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               {item.ctaLabel ?? "Open"}
               <ChevronRight
                 className="size-4 transition-transform group-hover:translate-x-0.5"

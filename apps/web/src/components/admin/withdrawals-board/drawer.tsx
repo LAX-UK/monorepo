@@ -29,7 +29,7 @@ export function WithdrawalDrawerContent({ task }: { task: LotWithdrawalRequestTa
             {task.targetLotId ? (
               <Link
                 href={`/admin/lots/${task.targetLotId}`}
-                className="font-medium text-primary hover:underline"
+                className="font-medium text-link hover:underline"
               >
                 View lot
               </Link>

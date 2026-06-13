@@ -39,7 +39,7 @@ export function ArtistCardGrid({
   return (
     <li
       className={cn(
-        "group relative flex flex-col overflow-hidden border border-border-hairline bg-surface transition-colors motion-reduce:transition-none hover:border-primary/40",
+        "group relative flex flex-col overflow-hidden border border-border-hairline bg-surface transition-colors motion-reduce:transition-none hover:border-link/40",
         isCompact ? "rounded-lg" : "rounded-xl",
         className,
       )}

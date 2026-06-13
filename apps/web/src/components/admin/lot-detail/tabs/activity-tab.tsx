@@ -17,7 +17,7 @@ export function LotActivityTab({ lotId }: Props) {
       <ActivityContent lotId={lotId} />
       <p className="mt-6 font-body text-xs text-on-surface-variant">
         Bid-related events also appear here.{" "}
-        <Link href={lotDetailTabHref(lotId, "bids")} className="text-primary hover:underline">
+        <Link href={lotDetailTabHref(lotId, "bids")} className="text-link hover:underline">
           View bid history →
         </Link>
       </p>

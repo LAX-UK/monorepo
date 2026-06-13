@@ -163,7 +163,7 @@ export function LaxHeroLot({ lot }: Props) {
                 >
                   Lot
                 </OverlayToneText>
-                <OverlayToneText className="font-artists-serif text-[72px] font-light leading-none opacity-10">
+                <OverlayToneText className="font-headline text-[72px] font-light leading-none opacity-10">
                   {lotWatermark}
                 </OverlayToneText>
               </div>

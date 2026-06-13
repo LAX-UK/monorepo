@@ -147,7 +147,7 @@ export function LotSaleSellerStep({ form, sales }: Props) {
                     </p>
                     <Link
                       href={`/admin/sales/${selectedSale.id}`}
-                      className="font-body text-xs text-primary hover:underline"
+                      className="font-body text-xs text-link hover:underline"
                     >
                       View sale →
                     </Link>
@@ -174,7 +174,7 @@ export function LotSaleSellerStep({ form, sales }: Props) {
                 {pickerSales.length === 0 && !saleAssignmentLocked ? (
                   <p className="mt-2 font-body text-xs text-on-surface-variant">
                     No draft sales are available yet.{" "}
-                    <Link href="/admin/sales/new" className="text-primary hover:underline">
+                    <Link href="/admin/sales/new" className="text-link hover:underline">
                       Create a sale
                     </Link>{" "}
                     first, then return to assign this lot.
@@ -186,7 +186,7 @@ export function LotSaleSellerStep({ form, sales }: Props) {
                       <p>{draftSaleLotPublishBanner()}</p>
                       <Link
                         href={`/admin/sales/${selectedSale.id}/setup?step=review`}
-                        className="text-primary hover:underline"
+                        className="text-link hover:underline"
                       >
                         Open sale setup to publish →
                       </Link>

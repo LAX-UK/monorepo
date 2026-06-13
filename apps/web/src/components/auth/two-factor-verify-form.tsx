@@ -157,7 +157,7 @@ export function TwoFactorVerifyForm({ nextHref }: TwoFactorVerifyFormProps) {
         <Button
           type="button"
           variant="ghost"
-          className="min-h-11 rounded-none px-3 font-footer-links text-sm font-normal text-primary underline-offset-2 hover:bg-transparent hover:underline hover:text-primary"
+          className="min-h-11 rounded-none px-3 font-footer-links text-sm font-normal text-link underline-offset-2 hover:bg-transparent hover:underline hover:text-link"
           onClick={() => {
             setMode(mode === "totp" ? "backup" : "totp");
             totpForm.reset();

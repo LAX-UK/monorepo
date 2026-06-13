@@ -55,7 +55,7 @@ export function LotBidModeChooser({ mode, onModeChange, disabled = false, classN
                 "flex h-auto min-h-0 w-full min-w-0 flex-col items-start justify-start gap-2 whitespace-normal rounded-lg border p-4 text-left shadow-none transition-colors",
                 selected
                   ? "border-primary bg-primary/10 ring-2 ring-primary/30"
-                  : "border-outline-variant/40 bg-surface-container-lowest hover:border-primary/40 dark:bg-surface-container-low/40",
+                  : "border-outline-variant/40 bg-surface-container-lowest hover:border-link/40 dark:bg-surface-container-low/40",
                 disabled && "pointer-events-none opacity-60",
               )}
             >

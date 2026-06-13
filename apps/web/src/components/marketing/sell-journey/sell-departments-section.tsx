@@ -47,7 +47,7 @@ function DepartmentCard({ dept }: { dept: SellDepartment }) {
             ) : null}
           </div>
         </div>
-        <p className="mt-3 font-label text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
+        <p className="mt-3 font-label text-[10px] font-semibold uppercase tracking-[0.14em] text-secondary">
           {departmentAffordance()}
         </p>
       </SellCtaLink>

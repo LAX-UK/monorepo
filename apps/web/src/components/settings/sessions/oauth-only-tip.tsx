@@ -11,7 +11,7 @@ export function OauthOnlyTip() {
       <span className="font-medium text-on-surface">Tip:</span> Add a password under{" "}
       <Link
         href="/dashboard/settings?tab=security#password-setup"
-        className="text-primary underline-offset-2 hover:underline"
+        className="text-link underline-offset-2 hover:underline"
       >
         Connected accounts
       </Link>{" "}

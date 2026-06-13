@@ -26,7 +26,7 @@ export function KycThresholdCallout({ returnPath, feedback }: Props) {
       <p className="font-medium text-on-surface">{headline}</p>
       <p className="mt-2 text-pretty">{detail}</p>
       <p className="mt-3">
-        <Link className="font-semibold text-primary underline underline-offset-2" href={verifyHref}>
+        <Link className="font-semibold text-link underline underline-offset-2" href={verifyHref}>
           {ctaLabel}
         </Link>
       </p>

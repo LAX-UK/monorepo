@@ -16,7 +16,7 @@ export function RecentActivityWidget({ activity }: Props) {
         <h3 className="font-headline text-lg font-semibold text-on-surface">Recent activity</h3>
         <Link
           href="/admin/lots"
-          className="inline-flex min-h-9 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-primary hover:underline"
+          className="inline-flex min-h-9 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-link hover:underline"
         >
           View all
           <ChevronRight className="size-4" aria-hidden />

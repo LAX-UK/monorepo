@@ -115,7 +115,7 @@ export function SubmissionDetailShell({
             status === "submitted" || status === "under_review" ? (
               <a
                 href={submissionDetailTabHref(submissionId, "decision")}
-                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
               >
                 Open decision →
               </a>

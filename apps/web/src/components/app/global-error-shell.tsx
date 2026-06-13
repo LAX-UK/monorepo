@@ -20,7 +20,7 @@ export function GlobalErrorShell({ error, reset }: GlobalErrorShellProps) {
           className="mx-auto flex max-w-lg flex-col items-center text-center"
           role="alert"
         >
-          <p className="mb-4 font-label text-xs font-bold uppercase tracking-[0.4em] text-primary">
+          <p className="mb-4 font-label text-xs font-bold uppercase tracking-[0.4em] text-secondary">
             Error
           </p>
           <h1 className="mb-4 font-headline text-3xl tracking-tight">Something went wrong</h1>

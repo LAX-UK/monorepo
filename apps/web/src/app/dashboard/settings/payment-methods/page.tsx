@@ -69,7 +69,7 @@ export default async function PaymentMethodsSettingsPage() {
           threshold. We never see the full PAN. To remove a saved card, contact{" "}
           <a
             href={`mailto:${SITE_SUPPORT_EMAIL}`}
-            className="text-primary underline-offset-4 hover:underline"
+            className="text-link underline-offset-4 hover:underline"
           >
             {SITE_SUPPORT_EMAIL}
           </a>{" "}

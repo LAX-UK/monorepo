@@ -124,7 +124,7 @@ export default async function AdminComplianceSourceOfFundsPage({
             ) : null}
             <p className="font-body text-sm text-on-surface-variant">
               Related:{" "}
-              <Link href="/admin/compliance/aml" className="text-primary underline">
+              <Link href="/admin/compliance/aml" className="text-link underline">
                 AML screening queue
               </Link>
               .

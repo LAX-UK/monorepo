@@ -1,5 +1,6 @@
 "use client";
 
+import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
 import { confirmUnsubscribe } from "@/lib/email/unsubscribe.service";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -57,10 +58,7 @@ export function UnsubscribeForm({ token }: { token: string }) {
       >
         {pending ? "Updating…" : "Confirm unsubscribe"}
       </Button>
-      <Link
-        href="/login"
-        className="min-h-[44px] content-center text-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-      >
+      <Link href="/login" className={`text-center ${AUTH_FOOTER_LINK_ROW}`}>
         Sign in to manage preferences instead
       </Link>
     </div>

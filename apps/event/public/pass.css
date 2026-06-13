@@ -1,5 +1,5 @@
 body.pass-route {
-  background: #121212;
+  background: var(--brand-obsidian, #000000);
 }
 
 body.pass-route .event-page,
@@ -23,11 +23,11 @@ body.pass-route #pass-root {
   max-width: 600px;
   margin: 0 auto;
   padding: 32px 28px 28px;
-  background: #efefef;
-  color: #1a1a1a;
+  background: var(--brand-light-cream, #f2f1df);
+  color: var(--brand-ink, #191919);
   color-scheme: light;
-  font-family: Georgia, "Times New Roman", Times, serif;
-  border-top: 3px solid #1a1a1a;
+  font-family: var(--font-primary);
+  border-top: 3px solid var(--brand-obsidian, #000000);
 }
 
 .pass-card--loading,
@@ -37,7 +37,7 @@ body.pass-route #pass-root {
 
 .pass-eyebrow {
   margin: 0 0 8px;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -73,7 +73,7 @@ body.pass-route #pass-root {
 
 .pass-details dt {
   margin: 0;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-secondary);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -116,10 +116,10 @@ body.pass-route #pass-root {
 .pass-btn,
 .pass-link-btn {
   appearance: none;
-  border: 1px solid #1a1a1a;
+  border: 1px solid var(--brand-obsidian, #000000);
   background: transparent;
-  color: #1a1a1a;
-  font-family: Helvetica, Arial, sans-serif;
+  color: var(--brand-obsidian, #000000);
+  font-family: var(--font-secondary);
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -134,13 +134,13 @@ body.pass-route #pass-root {
 
 .pass-btn--primary,
 .pass-link-btn {
-  background: #1a1a1a;
-  color: #efefef;
+  background: var(--brand-obsidian, #000000);
+  color: var(--brand-light-cream, #f2f1df);
 }
 
 .pass-btn:focus-visible,
 .pass-link-btn:focus-visible {
-  outline: 2px solid #1a1a1a;
+  outline: 2px solid var(--brand-obsidian, #000000);
   outline-offset: 2px;
 }
 

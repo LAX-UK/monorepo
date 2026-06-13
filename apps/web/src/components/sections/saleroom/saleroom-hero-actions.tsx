@@ -65,7 +65,7 @@ export function SaleroomHeroActions({
           sale={sale}
           lotTitle={sale.title}
           locationLine={locationOneLine(sale)}
-          className="h-10 min-h-10 border-brand-400 font-['DM_Sans',sans-serif] text-base font-semibold"
+          className="h-10 min-h-10 border-brand-400 font-body text-base font-semibold"
         />
       ) : null}
       <SaleroomFollowToggle

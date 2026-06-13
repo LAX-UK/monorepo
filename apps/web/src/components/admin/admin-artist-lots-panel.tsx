@@ -46,7 +46,7 @@ export function AdminArtistLotsPanel({ artistId, lots }: Props) {
               <td className="px-4 py-3">
                 <Link
                   href={`/admin/lots/${lot.id}`}
-                  className="font-medium text-on-surface hover:text-primary"
+                  className="font-medium text-on-surface hover:text-link"
                 >
                   {lot.title}
                 </Link>
@@ -71,7 +71,7 @@ export function AdminArtistLotsPanel({ artistId, lots }: Props) {
               <td className="px-4 py-3 text-right">
                 <Link
                   href={`/admin/lots/${lot.id}/edit`}
-                  className="font-label text-xs uppercase tracking-wide text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-wide text-link hover:underline"
                 >
                   Edit
                 </Link>

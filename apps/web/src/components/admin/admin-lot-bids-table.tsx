@@ -60,7 +60,7 @@ function columns(bidderLabels: Readonly<Record<string, string>>): ColumnDef<Bid>
         return (
           <Link
             href={`/admin/clients/${bidderId}`}
-            className="font-mono text-xs text-primary hover:underline"
+            className="font-mono text-xs text-link hover:underline"
           >
             {bidderLabel(bidderId, bidderLabels)}
           </Link>
@@ -133,7 +133,7 @@ export function AdminLotBidsTable({ lotId, bids, capped = false, bidderLabels = 
           {bid.bidderId ? (
             <Link
               href={`/admin/clients/${bid.bidderId}`}
-              className="mt-2 inline-block font-mono text-xs text-primary hover:underline"
+              className="mt-2 inline-block font-mono text-xs text-link hover:underline"
             >
               {bidderLabel(bid.bidderId, bidderLabels)}
             </Link>
@@ -186,7 +186,7 @@ export function AdminLotBidsTable({ lotId, bids, capped = false, bidderLabels = 
           cards={cards}
         />
         <p className="font-body text-xs text-on-surface-variant">
-          <Link href={lotDetailTabHref(lotId, "activity")} className="text-primary hover:underline">
+          <Link href={lotDetailTabHref(lotId, "activity")} className="text-link hover:underline">
             View bid-related activity in the Activity tab →
           </Link>
         </p>

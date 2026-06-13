@@ -51,7 +51,7 @@ export function SplitFilterSheetFooter({
           type="button"
           variant="ghost"
           onClick={onReset}
-          className="min-h-11 rounded-none px-0 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-primary underline-offset-4 hover:bg-transparent hover:text-primary hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-11 rounded-none px-0 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-link underline-offset-4 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           {resetLabel}
         </Button>

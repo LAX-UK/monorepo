@@ -23,7 +23,7 @@ export function CatalogLotEditorialCalmCaption({
   return (
     <div className="space-y-2">
       <div className="space-y-2">
-        <h2 className="font-headline text-2xl font-light leading-tight text-on-surface group-hover:text-primary">
+        <h2 className="font-headline text-2xl font-light leading-tight text-on-surface group-hover:text-link">
           {title}
         </h2>
         {subtitle ? <p className="font-body text-sm text-on-surface-variant">{subtitle}</p> : null}
@@ -32,7 +32,7 @@ export function CatalogLotEditorialCalmCaption({
         ) : null}
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-4 pt-2">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           {formatMoney(lot.currentPrice)}
         </p>
         {estimate ? (

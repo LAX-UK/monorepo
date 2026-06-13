@@ -105,7 +105,7 @@ export function LegalEntityDetailTabs({
                       {creator ? (
                         <Link
                           href={`/admin/clients/${creator.id}`}
-                          className="text-primary underline-offset-2 hover:underline"
+                          className="text-link underline-offset-2 hover:underline"
                         >
                           {creator.name}
                         </Link>

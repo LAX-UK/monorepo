@@ -25,7 +25,7 @@ export function PolicyMobileToc({ items, className }: Props) {
               <Link
                 href={`#${item.id}`}
                 className={cn(
-                  "inline-block rounded-sm font-body text-sm text-on-surface-variant hover:text-primary",
+                  "inline-block rounded-sm font-body text-sm text-on-surface-variant hover:text-link",
                   FOCUS_RING,
                 )}
               >

@@ -47,7 +47,7 @@ export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow
               <div className="min-w-0">
                 <Link
                   href={`/admin/lots/${p.lotId}`}
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-link hover:underline"
                 >
                   Lot {p.lotId.slice(0, 8)}…
                 </Link>
@@ -63,7 +63,7 @@ export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow
                     href={p.xeroOnlineInvoiceUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[10px] text-primary hover:underline"
+                    className="text-[10px] text-link hover:underline"
                   >
                     Invoice
                   </a>
@@ -93,7 +93,7 @@ export function AdminUserBidsPanel({ bids }: { bids: AdminUserBidRow[] }) {
               <div className="min-w-0">
                 <Link
                   href={`/admin/lots/${bid.lotId}`}
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-link hover:underline"
                 >
                   {bid.lotTitle}
                 </Link>
@@ -138,7 +138,7 @@ export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
             >
               <Link
                 href={`/admin/lots/${lot.id}`}
-                className="min-w-0 truncate text-sm font-medium text-primary hover:underline"
+                className="min-w-0 truncate text-sm font-medium text-link hover:underline"
               >
                 {lot.title}
               </Link>
@@ -174,7 +174,7 @@ export function AdminUserLegalEntitiesPanel({ legalEntities }: { legalEntities: 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Link
                   href={`/admin/legal-entities/${entity.id}`}
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-link hover:underline"
                 >
                   {entity.displayName}
                 </Link>

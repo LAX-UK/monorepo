@@ -134,7 +134,7 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
       cell: ({ row }) => (
         <Link
           href={`/admin/clients/${row.original.buyerId}`}
-          className="block max-w-[12rem] truncate text-sm font-medium text-primary underline-offset-2 hover:underline"
+          className="block max-w-[12rem] truncate text-sm font-medium text-link underline-offset-2 hover:underline"
         >
           {row.original.buyerLabel?.trim() || "View buyer"}
         </Link>
@@ -164,7 +164,7 @@ function paymentColumns(): ColumnDef<AdminPaymentTableRow>[] {
             href={row.original.xeroOnlineInvoiceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-2 hover:underline"
           >
             Invoice
           </a>

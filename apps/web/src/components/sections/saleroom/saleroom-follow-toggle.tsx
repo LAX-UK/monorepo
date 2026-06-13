@@ -28,7 +28,7 @@ function apiBase(): string {
 }
 
 const outlinedBlockSizing =
-  "box-border h-10 min-w-[117px] px-8 font-['DM_Sans',sans-serif] text-base font-semibold leading-6 tracking-[0.8px]";
+  "box-border h-10 min-w-[117px] px-8 font-body text-base font-semibold leading-6 tracking-[0.8px]";
 
 const outlinedOnSurfaceClass = cn(
   outlinedBlockSizing,
@@ -92,7 +92,7 @@ export function SaleroomFollowToggle({
     return (
       <Link
         href={`/login?next=${encodeURIComponent(loginNextPath)}`}
-        className={`inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-surface-container-high font-label font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${sizeClasses}`}
+        className={`inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-surface-container-high font-label font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:border-link hover:text-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${sizeClasses}`}
       >
         <BellRing className="size-4" aria-hidden />
         {label ?? "Sign in to follow"}
@@ -131,7 +131,7 @@ export function SaleroomFollowToggle({
       className={`h-auto rounded-full font-label font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${sizeClasses} ${
         following
           ? "bg-primary-container text-on-primary-container hover:bg-primary-container hover:opacity-95"
-          : "border-outline-variant/60 bg-surface-container-high text-on-surface hover:border-primary hover:bg-surface-container-high hover:text-primary"
+          : "border-outline-variant/60 bg-surface-container-high text-on-surface hover:border-link hover:bg-surface-container-high hover:text-link"
       }`}
     >
       {following ? (

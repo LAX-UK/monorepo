@@ -48,7 +48,7 @@ export function SearchSortSheetGroup({ value, onSelect }: Props) {
               "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 font-body text-sm transition-colors",
               value === opt.value
                 ? "border-primary bg-primary/10 text-on-surface"
-                : "border-outline-variant/40 text-on-surface-variant hover:border-primary/30",
+                : "border-outline-variant/40 text-on-surface-variant hover:border-link/30",
             )}
           >
             <RadioGroupItem value={opt.value} id={`search-sort-${opt.value}`} />

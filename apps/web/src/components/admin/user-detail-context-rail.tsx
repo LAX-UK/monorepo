@@ -160,7 +160,7 @@ export function UserDetailContextRail({ email, legalEntities = [], context }: Pr
               Primary seller entity:{" "}
               <Link
                 href={`/admin/legal-entities/${context.primaryEntity.id}`}
-                className="text-primary hover:underline"
+                className="text-link hover:underline"
               >
                 {context.primaryEntity.displayName}
               </Link>
