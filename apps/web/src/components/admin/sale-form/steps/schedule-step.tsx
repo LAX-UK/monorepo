@@ -252,7 +252,7 @@ export function SaleScheduleStep({
                         No saved venues.{" "}
                         <a
                           href="/admin/venues?new=1"
-                          className="text-primary underline-offset-2 hover:underline"
+                          className="text-link underline-offset-2 hover:underline"
                         >
                           Create a venue
                         </a>{" "}
@@ -482,7 +482,7 @@ export function SaleScheduleStep({
                       href={customMapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-block font-body text-xs text-primary underline"
+                      className="mt-2 inline-block font-body text-xs text-link underline"
                     >
                       Open custom map URL
                     </a>
@@ -491,7 +491,7 @@ export function SaleScheduleStep({
                       href={previewMapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-block font-body text-xs text-primary underline"
+                      className="mt-2 inline-block font-body text-xs text-link underline"
                     >
                       Open in Google Maps
                     </a>

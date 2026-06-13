@@ -57,7 +57,7 @@ function PayoutRowCard({ payout, sellerEntityId }: PayoutRowProps) {
       footer={
         <a
           href={`/dashboard/legal-entities/${encodeURIComponent(sellerEntityId)}/payouts/${encodeURIComponent(payout.id)}/statement`}
-          className="text-xs font-semibold text-primary underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="text-xs font-semibold text-link underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           Statement PDF
         </a>
@@ -124,7 +124,7 @@ export function PayoutsDesktopList({ payouts, sellerEntityId }: Props) {
                 <div className="flex justify-end sm:justify-center">
                   <a
                     href={`/dashboard/legal-entities/${encodeURIComponent(sellerEntityId)}/payouts/${encodeURIComponent(p.id)}/statement`}
-                    className="text-xs font-semibold text-primary underline underline-offset-2"
+                    className="text-xs font-semibold text-link underline underline-offset-2"
                   >
                     Statement PDF
                   </a>

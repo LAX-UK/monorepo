@@ -55,7 +55,7 @@ export function CatalogDetailMobileMeta({
           <Link
             key={link.href}
             href={link.href}
-            className="truncate font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+            className="truncate font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
           >
             {link.label}
           </Link>
@@ -104,7 +104,7 @@ export function CatalogDetailMobileMeta({
                   href={publicHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+                  className="inline-flex items-center gap-1 text-link underline-offset-4 hover:underline"
                 >
                   {publicLabel}
                   <ExternalLink className="size-3" aria-hidden />

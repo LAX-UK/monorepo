@@ -52,7 +52,7 @@ export default async function AdminXeroIntegrationPage({
       breadcrumbs={
         <Link
           href="/admin/finance"
-          className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+          className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
         >
           ← Finance
         </Link>

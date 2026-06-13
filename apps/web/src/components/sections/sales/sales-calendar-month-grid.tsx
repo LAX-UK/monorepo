@@ -77,7 +77,7 @@ export function SalesCalendarMonthGrid({ items }: { items: readonly SaleAgendaIt
                           {item.auctionTypeLabel}
                         </span>
                       </div>
-                      <p className="truncate font-headline text-base font-semibold text-on-surface group-hover:text-primary">
+                      <p className="truncate font-headline text-base font-semibold text-on-surface group-hover:text-link">
                         {item.title}
                       </p>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-body text-xs text-on-surface-variant">
@@ -103,7 +103,7 @@ export function SalesCalendarMonthGrid({ items }: { items: readonly SaleAgendaIt
                         </span>
                       ) : null}
                       <ChevronRight
-                        className="size-4 text-on-surface-variant transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                        className="size-4 text-on-surface-variant transition-transform group-hover:translate-x-0.5 group-hover:text-link"
                         aria-hidden
                       />
                     </div>

@@ -36,7 +36,7 @@ export function RelatedEntitiesRail({
                 href={item.href}
                 className={cn(
                   "flex items-start gap-2 rounded-md border border-border-hairline/60 bg-surface-container-low/50 px-3 py-2",
-                  "transition-colors hover:border-primary/30 hover:bg-primary/5",
+                  "transition-colors hover:border-link/30 hover:bg-primary/5",
                 )}
               >
                 {item.icon ? (

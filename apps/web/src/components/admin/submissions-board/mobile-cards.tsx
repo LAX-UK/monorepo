@@ -78,7 +78,7 @@ export function SubmissionsMobileCards({
         >
           <button
             type="button"
-            className="text-left font-headline text-sm text-on-surface hover:text-primary"
+            className="text-left font-headline text-sm text-on-surface hover:text-link"
             onClick={() => onOpen(r)}
           >
             {r.title}

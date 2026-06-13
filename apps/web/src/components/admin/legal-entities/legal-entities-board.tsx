@@ -28,7 +28,7 @@ function legalEntityColumns(stripeLens: boolean): ColumnDef<AdminLegalEntityList
         <Button
           type="button"
           variant="link"
-          className="h-auto max-w-[16rem] truncate px-0 py-0 text-left font-medium text-primary underline-offset-2 hover:underline"
+          className="h-auto max-w-[16rem] truncate px-0 py-0 text-left font-medium text-link underline-offset-2 hover:underline"
           asChild
         >
           <Link href={`/admin/legal-entities/${row.original.id}`}>{row.original.displayName}</Link>

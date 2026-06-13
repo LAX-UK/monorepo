@@ -196,7 +196,7 @@ export function ComplianceDecideForm({
       action={action}
       className="space-y-3 rounded-lg border border-primary/30 bg-primary-container/10 p-4"
     >
-      <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+      <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Step 2 · MLRO decision (checker)
       </p>
       <input type="hidden" name={idField} value={entityId} />

@@ -95,7 +95,7 @@ export function SavedSearchesPanel() {
     return (
       <p className="font-body text-sm text-on-surface-variant">
         No saved searches yet. Use{" "}
-        <Link href="/search" className="font-medium text-primary underline">
+        <Link href="/search" className="font-medium text-link underline">
           catalogue search
         </Link>{" "}
         and tap &ldquo;Save this search&rdquo; when signed in.
@@ -113,7 +113,7 @@ export function SavedSearchesPanel() {
           <div className="min-w-0 space-y-1">
             <Link
               href={buildSearchHref(row.query)}
-              className="font-body text-sm font-medium text-on-surface hover:text-primary hover:underline"
+              className="font-body text-sm font-medium text-on-surface hover:text-link hover:underline"
             >
               {row.label}
             </Link>

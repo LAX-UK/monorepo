@@ -43,7 +43,7 @@ function PrimaryAction({ row }: { row: PaymentDisplayRow }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={action.ariaLabel}
-      className="inline-flex min-h-11 items-center text-xs font-semibold text-primary underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="inline-flex min-h-11 items-center text-xs font-semibold text-link underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       {action.label}
     </a>
@@ -72,7 +72,7 @@ export function PaymentsMobileList({ rows }: Props) {
             title={
               <Link
                 href={lotPath({ id: row.lotId, title: row.lotTitle })}
-                className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 {row.lotTitle}
               </Link>

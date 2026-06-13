@@ -59,7 +59,7 @@ export function OnboardingIssuesBoard({
               </div>
               <Link
                 href={`/admin/legal-entities/${r.id}`}
-                className="mt-2 inline-block text-sm text-primary underline"
+                className="mt-2 inline-block text-sm text-link underline"
               >
                 Open
               </Link>
@@ -86,7 +86,7 @@ export function OnboardingIssuesBoard({
               <p className="font-medium">{r.displayName}</p>
               <Link
                 href={`/admin/artists/${r.id}/edit`}
-                className="mt-2 inline-block text-sm text-primary underline"
+                className="mt-2 inline-block text-sm text-link underline"
               >
                 Review
               </Link>
@@ -118,7 +118,7 @@ export function OnboardingIssuesBoard({
               <p className="mt-1 text-xs text-on-surface-variant">{formatDateTime(r.createdAt)}</p>
               <Link
                 href={`/admin/clients/${encodeURIComponent(r.userId)}`}
-                className="mt-2 inline-block text-sm text-primary underline"
+                className="mt-2 inline-block text-sm text-link underline"
               >
                 Open client
               </Link>
@@ -148,7 +148,7 @@ export function OnboardingIssuesBoard({
               </p>
               <Link
                 href={`/admin/legal-entities/${r.id}`}
-                className="mt-2 inline-block text-sm text-primary underline"
+                className="mt-2 inline-block text-sm text-link underline"
               >
                 Open entity
               </Link>
@@ -176,7 +176,7 @@ export function OnboardingIssuesBoard({
               <p className="mt-1 text-xs text-on-surface-variant">Document awaiting review</p>
               <Link
                 href={`/admin/legal-entities/${r.legalEntityId}`}
-                className="mt-2 inline-block text-sm text-primary underline"
+                className="mt-2 inline-block text-sm text-link underline"
               >
                 Entity
               </Link>

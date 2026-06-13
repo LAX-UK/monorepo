@@ -35,7 +35,7 @@ export function SaleLotsTab({ saleId, sale, lots, canManageAuction = false }: Pr
           {canEdit ? (
             <Link
               href={saleSetupHref(saleId, "lots")}
-              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
             >
               Add lots in setup →
             </Link>

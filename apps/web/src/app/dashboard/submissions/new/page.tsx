@@ -79,7 +79,7 @@ export default async function NewSubmissionPage({
         actions={
           <Link
             href={DASHBOARD_ROUTES.submissions}
-            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-4 hover:underline"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
           >
             ← Submissions
           </Link>

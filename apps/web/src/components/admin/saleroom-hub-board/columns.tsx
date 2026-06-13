@@ -17,7 +17,7 @@ export function saleroomHubColumns(): ColumnDef<Row>[] {
       cell: ({ row }) => (
         <Link
           href={`/admin/saleroom/${row.original.sale.id}`}
-          className="font-medium text-primary hover:underline"
+          className="font-medium text-link hover:underline"
         >
           {row.original.sale.title}
         </Link>

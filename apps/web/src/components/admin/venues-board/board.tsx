@@ -103,7 +103,7 @@ export function AdminVenuesBoard({ venues }: Props) {
               {venue.legalEntityId ? (
                 <Link
                   href={`/admin/legal-entities/${venue.legalEntityId}`}
-                  className="mt-0.5 block font-label text-[10px] uppercase text-primary hover:underline"
+                  className="mt-0.5 block font-label text-[10px] uppercase text-link hover:underline"
                 >
                   {organisationLabel(venue)}
                 </Link>
@@ -167,7 +167,7 @@ export function AdminVenuesBoard({ venues }: Props) {
                     <td className="px-4 py-3 align-top text-on-surface-variant">
                       <Link
                         href={`/admin/legal-entities/${venue.legalEntityId}`}
-                        className="font-body text-sm text-primary hover:underline"
+                        className="font-body text-sm text-link hover:underline"
                       >
                         {organisationLabel(venue)}
                       </Link>

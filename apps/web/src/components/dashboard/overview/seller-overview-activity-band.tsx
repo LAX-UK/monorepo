@@ -47,7 +47,7 @@ export function SellerOverviewActivityBand({ upcomingSales, forecast }: Props) {
                 <div className="min-w-0">
                   <Link
                     href={DASHBOARD_ROUTES.sellerInSale}
-                    className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     {row.saleTitle}
                   </Link>

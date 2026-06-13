@@ -91,7 +91,7 @@ export function SaleOverviewTab({
             {readiness?.completeCount ?? 0} of {readiness?.totalCount ?? 0} checks complete — finish
             setup to publish.
           </p>
-          <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Continue setup →
           </span>
         </Link>
@@ -136,7 +136,7 @@ export function SaleOverviewTab({
             </p>
             <Link
               href={saleDetailTabHref(saleId, "lots")}
-              className="mt-2 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+              className="mt-2 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
             >
               Manage lots →
             </Link>
@@ -180,7 +180,7 @@ export function SaleOverviewTab({
             timezone.{" "}
             <Link
               href={saleDetailTabHref(saleId, "schedule")}
-              className="text-primary hover:underline"
+              className="text-link hover:underline"
             >
               Full schedule →
             </Link>
@@ -253,11 +253,11 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className="block rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-colors hover:border-primary/30 hover:bg-primary/5"
+      className="block rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-colors hover:border-link/30 hover:bg-primary/5"
     >
       <h3 className="font-headline text-base text-on-surface">{title}</h3>
       <p className="mt-2 font-body text-sm text-on-surface-variant">{description}</p>
-      <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+      <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         {cta}
       </span>
     </Link>

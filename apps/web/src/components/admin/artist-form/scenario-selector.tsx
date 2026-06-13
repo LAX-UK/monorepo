@@ -43,7 +43,7 @@ export function ScenarioSelector({ value, onChange, disabled = false }: Props) {
               className={`flex h-auto min-h-0 flex-col items-start gap-3 rounded-2xl border p-4 text-left shadow-none transition-colors ${
                 active
                   ? "border-primary bg-primary-container/30 ring-2 ring-primary/25"
-                  : "border-outline-variant/40 bg-surface-container-lowest hover:border-primary/40"
+                  : "border-outline-variant/40 bg-surface-container-lowest hover:border-link/40"
               } disabled:cursor-not-allowed disabled:opacity-60`}
             >
               <span className="flex size-11 items-center justify-center rounded-full bg-surface-container-high text-primary">

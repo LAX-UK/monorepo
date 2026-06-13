@@ -48,7 +48,7 @@ export function PastAuctionCard({
               Lot No. {lotNo(auction.id)} · {closingCaption(auction.endTime)}
             </span>
             <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-              <h3 className="font-headline line-clamp-2 text-base tracking-tight text-on-surface transition-colors group-hover:text-primary md:text-2xl">
+              <h3 className="font-headline line-clamp-2 text-base tracking-tight text-on-surface transition-colors group-hover:text-link md:text-2xl">
                 {auction.title}
               </h3>
               <OwnerBadge owned={isOwner} />

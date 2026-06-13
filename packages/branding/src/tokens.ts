@@ -3,14 +3,18 @@
  * (light theme). Kept in sync by `tests/tokens.test.ts`.
  *
  * Accessibility: gold `#d4af37` is low-contrast on white — use only for accents
- * (dots, rules), not body text. Links use navy. Body text uses textPrimary.
+ * (dots, rules), not body text. Links use midnight. Body text uses textPrimary.
  */
 
+import { BRAND_COLORS, BRAND_FONTS } from "./brand-identity.js";
+
 export const COLORS = {
-  /** `--color-brand-900` */
-  ink: "#050505",
-  /** `--color-page-bg` (light) */
-  paper: "#f1f1f3",
+  /** `--color-brand-900` / `--color-brand-obsidian` */
+  ink: BRAND_COLORS.obsidian,
+  /** `--color-page-bg` — neutral web shell (not brand cream) */
+  pageBg: "#ffffff",
+  /** `--color-paper` — warm brand paper for email */
+  paper: BRAND_COLORS.lightCream,
   /** `--color-surface-container-lowest` */
   surface: "#ffffff",
   /** `--color-brand-500` */
@@ -23,25 +27,30 @@ export const COLORS = {
   border: "#e6e8eb",
   /** `--color-footer-soft` */
   borderSoft: "#ededef",
-  /** Primary wordmark navy in `apps/web/public/logo.svg` (`.cls-2`) */
-  link: "#091f5b",
-  /** `--color-accent-gold` */
+  /** `--color-link` / `--color-brand-midnight` */
+  link: BRAND_COLORS.midnight,
+  /** `--color-accent-gold` — functional auction accent, not brand primary */
   gold: "#d4af37",
   /** `--color-live-red` */
   red: "#e83030",
   /** Same as textSecondary — category accent for account/admin */
   graphite: "#474747",
   /** `--color-cta-bg` */
-  ctaBg: "#050505",
+  ctaBg: BRAND_COLORS.obsidian,
   /** `--color-cta-on` */
-  ctaOn: "#f1f1f3",
+  ctaOn: BRAND_COLORS.lightCream,
 } as const;
 
 /** Mirrors `--radius-lg` (0.25rem) */
 export const EMAIL_RADIUS_PX = 4;
 
-export const FONT_STACK_BODY = 'Helvetica, Arial, "Helvetica Neue", sans-serif' as const;
-export const FONT_STACK_HEADING = 'Georgia, "Times New Roman", Times, serif' as const;
+/** Email-safe stacks — brand fonts with system fallbacks (clients rarely load webfonts). */
+export const FONT_STACK_BODY =
+  `"${BRAND_FONTS.primary}", "${BRAND_FONTS.secondary}", Helvetica, Arial, "Helvetica Neue", sans-serif` as const;
+export const FONT_STACK_HEADING =
+  `"${BRAND_FONTS.primary}", Georgia, "Times New Roman", Times, serif` as const;
+export const FONT_STACK_SUPPORTING =
+  `"${BRAND_FONTS.secondary}", "${BRAND_FONTS.primary}", Helvetica, Arial, sans-serif` as const;
 
 export type EmailCategory = "account" | "auction" | "finance" | "alert" | "admin";
 

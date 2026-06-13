@@ -141,7 +141,7 @@ function ClientIdentityCell({ u, onOpen }: { u: AdminUserRow; onOpen: () => void
         <Button
           type="button"
           variant="link"
-          className="block h-auto max-w-[14rem] truncate px-0 py-0 text-left text-sm font-medium text-primary underline-offset-2 hover:underline"
+          className="block h-auto max-w-[14rem] truncate px-0 py-0 text-left text-sm font-medium text-link underline-offset-2 hover:underline"
           onClick={onOpen}
         >
           {u.name}

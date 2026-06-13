@@ -12,7 +12,7 @@ export function SellerOverviewArtistCta() {
     >
       <Sparkles className="size-8 text-primary" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Artist profile
         </p>
         <p className="mt-1 font-body text-sm text-on-surface-variant dark:text-on-surface-variant">

@@ -221,7 +221,7 @@ export default async function SubmissionDetailPage({
                     View listing:{" "}
                     <Link
                       href={lotPath({ id: submission.convertedLotId, title: submission.title })}
-                      className="text-primary underline"
+                      className="text-link underline"
                     >
                       Open artwork page
                     </Link>

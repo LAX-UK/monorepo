@@ -79,7 +79,7 @@ export function CategoryOverviewTab({
             ) : (
               <p className="text-sm text-on-surface-variant">
                 No description.{" "}
-                <Link href={categoryEditHref(categoryId)} className="text-primary hover:underline">
+                <Link href={categoryEditHref(categoryId)} className="text-link hover:underline">
                   Add one →
                 </Link>
               </p>
@@ -96,7 +96,7 @@ export function CategoryOverviewTab({
                 />
                 <Link
                   href={categoryEditHref(categoryId)}
-                  className="font-label text-xs font-semibold uppercase tracking-wide text-primary hover:underline"
+                  className="font-label text-xs font-semibold uppercase tracking-wide text-link hover:underline"
                 >
                   Change hero →
                 </Link>
@@ -104,7 +104,7 @@ export function CategoryOverviewTab({
             ) : (
               <p className="text-sm text-on-surface-variant">
                 No hero image.{" "}
-                <Link href={categoryEditHref(categoryId)} className="text-primary hover:underline">
+                <Link href={categoryEditHref(categoryId)} className="text-link hover:underline">
                   Upload →
                 </Link>
               </p>
@@ -136,7 +136,7 @@ export function CategoryOverviewTab({
             </p>
             <Link
               href={categoryDetailTabHref(categoryId, "children")}
-              className="mt-2 inline-block text-sm text-primary hover:underline"
+              className="mt-2 inline-block text-sm text-link hover:underline"
             >
               View descendants →
             </Link>
@@ -151,7 +151,7 @@ export function CategoryOverviewTab({
                     {index > 0 ? <span aria-hidden>/</span> : null}
                     <Link
                       href={`/admin/categories/${ancestor.id}`}
-                      className="text-primary hover:underline"
+                      className="text-link hover:underline"
                     >
                       {ancestor.name}
                     </Link>
@@ -224,7 +224,7 @@ function PreviewList({
         <h4 className="font-headline text-sm font-semibold text-on-surface">{title}</h4>
         <Link
           href={viewAllHref}
-          className="font-label text-xs font-semibold uppercase tracking-wide text-primary hover:underline"
+          className="font-label text-xs font-semibold uppercase tracking-wide text-link hover:underline"
         >
           View all →
         </Link>
@@ -232,10 +232,7 @@ function PreviewList({
       <ul className="divide-y divide-outline-variant/15 rounded-lg border border-border-hairline">
         {items.map((item) => (
           <li key={item.id} className="px-3 py-2.5">
-            <Link
-              href={item.href}
-              className="font-medium text-sm text-on-surface hover:text-primary"
-            >
+            <Link href={item.href} className="font-medium text-sm text-on-surface hover:text-link">
               {item.label}
             </Link>
             <p className="text-xs capitalize text-on-surface-variant">{item.meta}</p>

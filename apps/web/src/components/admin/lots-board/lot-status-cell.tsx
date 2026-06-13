@@ -17,7 +17,7 @@ export function LotStatusCell({ lotId, status }: Props) {
       {status === "draft" ? (
         <Link
           href={`/admin/lots/${lotId}/edit`}
-          className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+          className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
         >
           Complete draft →
         </Link>

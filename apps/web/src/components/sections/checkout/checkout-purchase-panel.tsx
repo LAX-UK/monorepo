@@ -100,7 +100,7 @@ function addressesSettingsHref(lotId: string): string {
 function PaymentCompleteBlock() {
   return (
     <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10">
-      <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+      <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Payment recorded
       </p>
       <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
@@ -212,7 +212,7 @@ export function CheckoutPurchasePanel({
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28">
         <output className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10">
-          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Request received
           </p>
           <p className="font-headline text-2xl text-on-surface">Thank you, collector.</p>
@@ -232,7 +232,7 @@ export function CheckoutPurchasePanel({
           className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10"
           aria-live="polite"
         >
-          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Secure checkout
           </p>
           <p className="font-headline text-2xl text-on-surface">Opening Stripe checkout…</p>
@@ -331,7 +331,7 @@ export function CheckoutPurchasePanel({
             purchases may require finance review before checkout is issued.
           </p>
           <p className="font-body text-sm text-on-surface">
-            <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+            <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               Concierge
             </span>
             <br />
@@ -413,7 +413,7 @@ export function CheckoutPurchasePanel({
                             or choose “Billing & shipping” in{" "}
                             <Link
                               href={addressesSettingsHref(lotId)}
-                              className="text-primary underline"
+                              className="text-link underline"
                             >
                               addresses
                             </Link>
@@ -455,10 +455,10 @@ export function CheckoutPurchasePanel({
                               aria-checked={selected}
                               tabIndex={selected ? 0 : -1}
                               onClick={() => field.onChange(address.id)}
-                              className={`h-auto min-h-11 w-full min-w-0 justify-start whitespace-normal rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                              className={`h-auto min-h-11 w-full min-w-0 justify-start whitespace-normal rounded-lg border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                                 selected
                                   ? "border-primary bg-primary-container/10"
-                                  : "border-border-hairline bg-surface-container-low/30 hover:border-primary/50"
+                                  : "border-border-hairline bg-surface-container-low/30 hover:border-link/50"
                               }`}
                             >
                               <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
@@ -508,7 +508,7 @@ export function CheckoutPurchasePanel({
                       I agree to the{" "}
                       <Link
                         href="/terms"
-                        className="border-b border-primary/40 text-on-surface hover:border-primary"
+                        className="border-b border-primary/40 text-on-surface hover:border-link"
                       >
                         Conditions of Business
                       </Link>

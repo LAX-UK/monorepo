@@ -95,7 +95,7 @@ export function InSaleMobileList({ rows }: Props) {
                 <p className="mt-2">
                   <Link
                     href="/dashboard/submissions/new"
-                    className="font-body text-xs text-primary underline-offset-4 hover:underline"
+                    className="font-body text-xs text-link underline-offset-4 hover:underline"
                   >
                     Sell again
                   </Link>
@@ -132,7 +132,7 @@ function InSaleDesktopRowCard({ row }: { row: InSaleDisplayRow }) {
           <div className="min-w-0">
             <Link
               href={row.lotHref}
-              className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               {row.title}
             </Link>
@@ -141,7 +141,7 @@ function InSaleDesktopRowCard({ row }: { row: InSaleDisplayRow }) {
                 In{" "}
                 <Link
                   href={row.saleHref}
-                  className="underline underline-offset-2 hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="underline underline-offset-2 hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {row.saleTitle}
                 </Link>
@@ -167,7 +167,7 @@ function InSaleDesktopRowCard({ row }: { row: InSaleDisplayRow }) {
             {row.status === "ended" ? (
               <Link
                 href="/dashboard/submissions/new"
-                className="font-body text-xs text-primary underline-offset-4 hover:underline"
+                className="font-body text-xs text-link underline-offset-4 hover:underline"
               >
                 Sell again
               </Link>

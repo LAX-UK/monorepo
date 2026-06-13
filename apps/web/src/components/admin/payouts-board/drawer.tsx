@@ -33,7 +33,7 @@ export function PayoutDrawerContent({ payout }: { payout: AdminPayoutRow }) {
           <dd>
             <Link
               href={`/admin/legal-entities/${payout.legalEntityId}`}
-              className="font-medium text-primary underline"
+              className="font-medium text-link underline"
             >
               View legal entity
             </Link>

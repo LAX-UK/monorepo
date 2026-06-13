@@ -61,7 +61,7 @@ export function PrivateSaleHighlightsMarketing({
         >
           <Link
             href={featured.href}
-            className="group block outline-offset-4 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            className="group block outline-offset-4 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
           >
             <div className="relative aspect-[676/400] w-full overflow-hidden bg-page-bg">
               <MediaImage

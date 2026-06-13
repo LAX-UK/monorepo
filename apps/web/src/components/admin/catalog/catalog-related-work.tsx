@@ -67,7 +67,7 @@ export function CatalogRelatedWork({ variant, navCounts, extra }: Props) {
         <Link
           key={link.href + link.label}
           href={link.href}
-          className="min-h-9 text-primary underline-offset-4 hover:underline"
+          className="min-h-9 text-link underline-offset-4 hover:underline"
         >
           {link.label}
         </Link>

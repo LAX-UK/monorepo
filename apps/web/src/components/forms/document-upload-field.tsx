@@ -92,7 +92,7 @@ export function DocumentUploadField({
           onFilesSelected={(files) => void onPick(files)}
         >
           <span className="font-body text-sm text-on-surface">
-            Drop a file here or <span className="text-primary underline">browse</span>
+            Drop a file here or <span className="text-link underline">browse</span>
           </span>
         </FileUploadTrigger>
       ) : (

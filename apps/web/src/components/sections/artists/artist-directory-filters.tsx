@@ -48,7 +48,7 @@ export function ArtistDirectoryFilters({
             href={clearHref}
             {...linkClickProps}
             className={cn(
-              "inline-flex items-center rounded-sm font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline",
+              "inline-flex items-center rounded-sm font-label text-[11px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline",
               FOCUS_RING,
             )}
           >

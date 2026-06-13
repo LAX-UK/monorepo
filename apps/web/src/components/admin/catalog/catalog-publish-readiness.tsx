@@ -65,7 +65,7 @@ export function CatalogPublishReadiness({
         {readiness.firstFailing ? (
           <Link
             href={readiness.firstFailing.href ?? "#"}
-            className="block font-body text-xs text-primary hover:underline"
+            className="block font-body text-xs text-link hover:underline"
           >
             Fix: {readiness.firstFailing.label} →
           </Link>

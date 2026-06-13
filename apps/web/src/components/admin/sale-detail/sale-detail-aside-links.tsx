@@ -24,7 +24,7 @@ export function SaleDetailAsideLinks({
         </p>
         <Link
           href={saleDetailTabHref(saleId, "lots")}
-          className="mt-1 inline-block text-primary underline-offset-4 hover:underline"
+          className="mt-1 inline-block text-link underline-offset-4 hover:underline"
         >
           {lotCount} lot{lotCount === 1 ? "" : "s"}
         </Link>
@@ -36,7 +36,7 @@ export function SaleDetailAsideLinks({
           </p>
           <Link
             href={`/admin/saleroom/${saleId}`}
-            className="mt-1 inline-block text-primary underline-offset-4 hover:underline"
+            className="mt-1 inline-block text-link underline-offset-4 hover:underline"
           >
             Open saleroom
           </Link>

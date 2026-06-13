@@ -48,7 +48,7 @@ export function ActivitySnapshotRail({
       {viewAllHref ? (
         <Link
           href={viewAllHref}
-          className="inline-block font-label text-xs font-semibold uppercase tracking-wide text-primary hover:underline"
+          className="inline-block font-label text-xs font-semibold uppercase tracking-wide text-link hover:underline"
         >
           {viewAllLabel} →
         </Link>

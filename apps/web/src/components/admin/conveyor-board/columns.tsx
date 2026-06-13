@@ -15,7 +15,7 @@ export function conveyorColumns(): ColumnDef<AdminConveyorPipelineRow>[] {
       cell: ({ row }) => (
         <Link
           href={`/admin/submissions/${row.original.submissionId}`}
-          className="max-w-[14rem] truncate font-medium text-primary hover:underline"
+          className="max-w-[14rem] truncate font-medium text-link hover:underline"
         >
           {row.original.title}
         </Link>

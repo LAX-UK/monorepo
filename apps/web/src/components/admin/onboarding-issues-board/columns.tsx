@@ -14,7 +14,7 @@ function linkColumn<T extends { id: string }>(
     id: "link",
     header: "",
     cell: ({ row }) => (
-      <Link href={href(row.original)} className="text-sm font-medium text-primary underline">
+      <Link href={href(row.original)} className="text-sm font-medium text-link underline">
         {label(row.original)}
       </Link>
     ),

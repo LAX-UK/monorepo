@@ -69,7 +69,7 @@ export function ShareButton({ url, title, className, appearance = "default", lab
           onClick={() => void share()}
           className={cn(
             className ??
-              "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-['DM_Sans',sans-serif] text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface",
+              "inline-flex h-10 items-center gap-1.5 rounded-none px-0 font-label text-sm font-medium uppercase leading-[21px] text-nav-text hover:bg-transparent hover:opacity-80 dark:text-on-surface",
             "hover:bg-transparent hover:text-inherit",
           )}
         >

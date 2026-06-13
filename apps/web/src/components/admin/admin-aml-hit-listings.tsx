@@ -65,7 +65,7 @@ export function AdminAmlHitListings({ hits, compact = false }: Props) {
                             href={listing.sourceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary underline"
+                            className="text-xs text-link underline"
                           >
                             View source
                           </a>
