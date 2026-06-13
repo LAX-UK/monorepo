@@ -1,8 +1,10 @@
+import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
+import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
 import type { ILotNotificationSender } from "./interfaces/notifications.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
@@ -35,6 +37,7 @@ export class LotLifecycleService {
     private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
     /** Realtime lot channel (`lot:{id}:events` → WebSocket `lotEnded`). */
     private readonly lotNotifications: ILotNotificationSender | null = null,
+    private readonly notificationOutbox: INotificationOutboxService | null = null,
   ) {}
 
   async runDutchDecrements(now: Date = new Date()): Promise<void> {
@@ -150,7 +153,7 @@ export class LotLifecycleService {
     const lots = this.repos.root.lot;
     const a = await lots.findById(lotId);
     if (!a || a.status !== "active") return false;
-    const ok = await this.repos.runInTransaction(async ({ lot }, tx) => {
+    const ok = await this.repos.runInTransaction(async ({ lot, bid }, tx) => {
       const row = await lot.findByIdForUpdate(lotId);
       if (!row || row.status !== "active") return false;
       await lot.updateStatus(lotId, "ended");
@@ -165,6 +168,12 @@ export class LotLifecycleService {
           },
         });
       }
+      await this.stageLotCloseNotificationsInTransaction({
+        lot: row,
+        winnerId: null,
+        bid,
+        tx,
+      });
       return true;
     });
     if (!ok) return false;
@@ -256,9 +265,50 @@ export class LotLifecycleService {
             },
           });
         }
+        await this.stageLotCloseNotificationsInTransaction({
+          lot: row,
+          winnerId,
+          bid,
+          tx,
+        });
       }
       return { lotId: row.id, winnerId, voided, winningBid: chosen ?? null };
     });
+  }
+
+  private async stageLotCloseNotificationsInTransaction(params: {
+    lot: Lot;
+    winnerId: string | null;
+    bid: { listDistinctBidderIds(lotId: string): Promise<string[]> };
+    tx: Database;
+  }): Promise<void> {
+    if (!this.notificationOutbox) return;
+
+    if (params.winnerId) {
+      await this.notificationOutbox.stageDispatch(
+        {
+          userId: params.winnerId,
+          payload: notificationRowToPayload(
+            this.notificationFactory.createWon(params.lot, params.winnerId),
+          ),
+          idempotencyKey: `lot_won:${params.lot.id}:${params.winnerId}`,
+        },
+        params.tx,
+      );
+    }
+
+    const bidderIds = await params.bid.listDistinctBidderIds(params.lot.id);
+    for (const uid of bidderIds) {
+      if (uid === params.winnerId) continue;
+      await this.notificationOutbox.stageDispatch(
+        {
+          userId: uid,
+          payload: notificationRowToPayload(this.notificationFactory.createLost(params.lot, uid)),
+          idempotencyKey: `lot_lost:${params.lot.id}:${uid}`,
+        },
+        params.tx,
+      );
+    }
   }
 
   private async notifyBiddersAfterLotClose(a: Lot, outcome: LotCloseOutcome): Promise<void> {
@@ -268,23 +318,6 @@ export class LotLifecycleService {
       const lotNotifications = this.lotNotifications;
       await this.runBestEffort("notifyLotEnded", () =>
         lotNotifications.notifyLotEnded(a, outcome.winningBid),
-      );
-    }
-
-    if (!this.notificationDispatcher) return;
-    const bids = this.repos.root.bid;
-    const bidderIds = await bids.listDistinctBidderIds(outcome.lotId);
-    if (outcome.winnerId) {
-      await this.notificationDispatcher.dispatch(
-        outcome.winnerId,
-        notificationRowToPayload(this.notificationFactory.createWon(a, outcome.winnerId)),
-      );
-    }
-    for (const uid of bidderIds) {
-      if (uid === outcome.winnerId) continue;
-      await this.notificationDispatcher.dispatch(
-        uid,
-        notificationRowToPayload(this.notificationFactory.createLost(a, uid)),
       );
     }
   }
