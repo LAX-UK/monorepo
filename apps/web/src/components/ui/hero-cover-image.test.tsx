@@ -2,7 +2,13 @@ import { AdaptiveMediaFrame } from "@/components/ui/adaptive-media-frame";
 import { HeroCoverImage } from "@/components/ui/hero-cover-image";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/image", () => ({
+  getImageProps: ({ src }: { src: string }) => ({
+    props: { src, srcSet: src },
+  }),
+}));
 
 describe("HeroCoverImage", () => {
   it("renders picture with mobile source when mobile URL is distinct", () => {
