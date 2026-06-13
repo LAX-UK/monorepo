@@ -10,6 +10,7 @@ import {
   roleHasCapability,
 } from "@auction/types";
 import {
+  type ResolvedQrCodeAnalyticsQuery,
   adminAnalyticsQuerySchema,
   adminArtistListQuerySchema,
   adminBulkEmailSuppressionsBodySchema,
@@ -62,6 +63,7 @@ import {
   lotIdOnlyParamSchema,
   lotIdParamSchema,
   paymentIdParamSchema,
+  resolveQrCodeAnalyticsQuery,
   returnLotToInventoryBodySchema,
   saleroomAdvanceLotBodySchema,
   updateProfileNameFormSchema,
@@ -443,8 +445,14 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminQrCodeAnalyticsQuerySchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const { days } = c.req.valid("query");
-      const data = await container.qrCodeService.analytics(id, days);
+      const queryInput = c.req.valid("query");
+      let resolved: ResolvedQrCodeAnalyticsQuery;
+      try {
+        resolved = resolveQrCodeAnalyticsQuery(queryInput);
+      } catch {
+        return c.json({ error: "Invalid analytics range" }, 400);
+      }
+      const data = await container.qrCodeAnalytics.getDetailed(id, resolved);
       return c.json({ data });
     },
   );

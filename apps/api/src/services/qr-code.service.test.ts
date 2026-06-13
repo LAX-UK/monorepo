@@ -3,6 +3,7 @@ import {
   QrCodeService,
   decodeQrSequence,
   encodeQrSequence,
+  persistQrCodeScan,
   truncateIp,
 } from "./qr-code.service.js";
 
@@ -103,5 +104,53 @@ describe("QR code helpers", () => {
       expect.objectContaining({ isDefault: false, status: "disabled" }),
     );
     expect(redis.del).toHaveBeenCalledWith("qr:resolve:OLD12345");
+  });
+
+  it("persists provided country on scan rows and daily aggregates", async () => {
+    const scanReturning = vi.fn().mockResolvedValue([
+      {
+        qrCodeId: "qr_1",
+        scannedAt: new Date("2026-06-13T12:00:00.000Z"),
+        country: "GB",
+        deviceType: "mobile",
+      },
+    ]);
+    const scanValues = vi.fn().mockReturnValue({ returning: scanReturning });
+    const dailyValues = vi.fn().mockReturnValue({
+      onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+    });
+    const db = {
+      insert: vi
+        .fn()
+        .mockReturnValueOnce({ values: scanValues })
+        .mockReturnValueOnce({ values: dailyValues }),
+    };
+
+    await persistQrCodeScan(db as never, {
+      qrCodeId: "qr_1",
+      ip: "203.0.113.42",
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      country: "GB",
+      region: "England",
+      city: "London",
+    });
+
+    expect(scanValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        qrCodeId: "qr_1",
+        country: "GB",
+        region: "England",
+        city: "London",
+        deviceType: "mobile",
+      }),
+    );
+    expect(dailyValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        qrCodeId: "qr_1",
+        country: "GB",
+        deviceType: "mobile",
+        scans: 1,
+      }),
+    );
   });
 });
