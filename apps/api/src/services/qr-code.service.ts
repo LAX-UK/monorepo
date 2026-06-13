@@ -436,12 +436,17 @@ function normalizeScanInput(input: {
   userAgent?: string | null;
   referrer?: string | null;
   requestId?: string | null;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
 }): typeof qrCodeScan.$inferInsert {
   const ua = parseUserAgent(input.userAgent ?? "");
   return {
     qrCodeId: input.qrCodeId,
     ipPrefix: truncateIp(input.ip ?? ""),
-    country: "unknown",
+    country: input.country?.trim() || "unknown",
+    region: input.region?.trim() || null,
+    city: input.city?.trim() || null,
     deviceType: ua.deviceType,
     browser: ua.browser,
     os: ua.os,
