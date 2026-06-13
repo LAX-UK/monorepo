@@ -2,6 +2,10 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/auth/use-app-session", () => ({
+  useAppSession: () => ({ user: null, pending: false }),
+}));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),
