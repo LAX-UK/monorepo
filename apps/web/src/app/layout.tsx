@@ -34,27 +34,22 @@ import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import { cn } from "@auction/ui";
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Montserrat, Poppins } from "next/font/google";
+import { Montserrat, Outfit } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-});
-
 const montserrat = Montserrat({
   subsets: ["latin"],
   variable: "--font-montserrat",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const poppins = Poppins({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-poppins",
+  variable: "--font-outfit",
   weight: ["400", "500", "600"],
   display: "swap",
 });
@@ -105,7 +100,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html
       lang="en"
-      className={cn(dmSans.variable, montserrat.variable, poppins.variable, isDark && "dark")}
+      className={cn(montserrat.variable, outfit.variable, isDark && "dark")}
       suppressHydrationWarning
     >
       <head>

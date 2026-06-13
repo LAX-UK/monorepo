@@ -31,7 +31,7 @@ export function OnsiteSalesRadarWidget({ rows }: Props) {
         </div>
         <Link
           href="/admin/saleroom"
-          className="inline-flex min-h-9 shrink-0 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-primary hover:underline"
+          className="inline-flex min-h-9 shrink-0 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-link hover:underline"
         >
           Saleroom
           <ChevronRight className="size-4" aria-hidden />
@@ -49,7 +49,7 @@ export function OnsiteSalesRadarWidget({ rows }: Props) {
               <div className="min-w-0">
                 <Link
                   href={saleDetailTabHref(row.saleId, "operations")}
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-link hover:underline"
                 >
                   {row.title}
                 </Link>
@@ -60,7 +60,7 @@ export function OnsiteSalesRadarWidget({ rows }: Props) {
               </div>
               <Link
                 href={`/admin/saleroom/${row.saleId}`}
-                className="font-label text-xs font-semibold uppercase tracking-widest text-primary hover:underline"
+                className="font-label text-xs font-semibold uppercase tracking-widest text-link hover:underline"
               >
                 Console
               </Link>

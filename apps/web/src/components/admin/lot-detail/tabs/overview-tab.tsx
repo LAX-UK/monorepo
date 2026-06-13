@@ -44,7 +44,7 @@ export function LotOverviewTab({ lotId, auction, context, bidCount }: Props) {
             {readiness.completeCount} of {readiness.totalCount} publish checks complete — finish
             catalogue details before going live.
           </p>
-          <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+          <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
             Edit lot →
           </span>
         </Link>

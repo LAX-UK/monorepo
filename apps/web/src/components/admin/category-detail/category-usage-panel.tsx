@@ -49,7 +49,7 @@ function UsageCount({ row }: { row: UsageRow }) {
   );
   if (row.href) {
     return (
-      <Link href={row.href} className="hover:text-primary">
+      <Link href={row.href} className="hover:text-link">
         {value}
       </Link>
     );
@@ -107,7 +107,7 @@ export function CategoryUsagePanel({ categoryId, usage, compact = false }: Props
             {row.href ? (
               <Link
                 href={row.href}
-                className="mt-2 inline-block font-label text-xs font-semibold uppercase tracking-wide text-primary hover:underline"
+                className="mt-2 inline-block font-label text-xs font-semibold uppercase tracking-wide text-link hover:underline"
               >
                 View all →
               </Link>

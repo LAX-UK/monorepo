@@ -71,7 +71,7 @@ export function DisputeDrawerContent({
             <dd>
               <Link
                 href={`/admin/lots/${row.lotId}`}
-                className="text-primary hover:underline"
+                className="text-link hover:underline"
                 onClick={onClose}
               >
                 {row.lotTitle}
@@ -85,7 +85,7 @@ export function DisputeDrawerContent({
             <dd>
               <Link
                 href={`/admin/clients/${row.buyerId}`}
-                className="text-primary hover:underline"
+                className="text-link hover:underline"
                 onClick={onClose}
               >
                 {buyerLinkLabel}
@@ -98,7 +98,7 @@ export function DisputeDrawerContent({
           <dd>
             <Link
               href={`/admin/legal-entities/${row.sellerLegalEntityId}`}
-              className="text-primary hover:underline"
+              className="text-link hover:underline"
               onClick={onClose}
             >
               {row.sellerDisplayName ?? "View legal entity"}

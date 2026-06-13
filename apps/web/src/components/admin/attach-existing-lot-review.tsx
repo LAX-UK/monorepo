@@ -288,7 +288,7 @@ export function AttachExistingLotReview({
                 <p className="mt-1 font-body text-sm text-on-surface-variant">
                   <Link
                     href={`/admin/lots/${previewLot.id}/edit`}
-                    className="text-primary hover:underline"
+                    className="text-link hover:underline"
                   >
                     Edit full lot details
                   </Link>

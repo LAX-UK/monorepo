@@ -31,7 +31,7 @@ export default async function SecuritySettingsPage() {
         actions={
           <Link
             href="/dashboard/settings/profile"
-            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-2 hover:underline"
           >
             All settings
           </Link>

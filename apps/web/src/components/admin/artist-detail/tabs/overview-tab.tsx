@@ -34,7 +34,7 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
         This profile was merged. All catalogue work should happen on the surviving profile.{" "}
         <Link
           href={`/admin/artists/${artist.mergedIntoArtistId}`}
-          className="font-medium text-primary hover:underline"
+          className="font-medium text-link hover:underline"
         >
           View surviving artist →
         </Link>
@@ -52,7 +52,7 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
             This profile is awaiting staff review.{" "}
             <Link
               href={artistDetailTabHref(artistId, "review")}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-link hover:underline"
             >
               Open review tab →
             </Link>
@@ -94,7 +94,7 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
                     <br />
                     <Link
                       href={artist.websiteUrl}
-                      className="text-primary hover:underline"
+                      className="text-link hover:underline"
                       target="_blank"
                       rel="noreferrer"
                     >

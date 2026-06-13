@@ -52,7 +52,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
                 <div className="min-w-0 flex-1">
                   <Link
                     href={lotPath(row.lot)}
-                    className="block font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    className="block font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     {row.lot.title}
                   </Link>

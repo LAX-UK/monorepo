@@ -10,7 +10,7 @@ export const marketingFilterChipStrip = (active: boolean) =>
     FOCUS_RING,
     active
       ? "border-primary bg-primary/10 text-on-surface"
-      : "border-outline-variant/50 text-on-surface-variant hover:border-primary/40",
+      : "border-outline-variant/50 text-on-surface-variant hover:border-link/40",
   );
 
 /** Same filter family rendered as a full-width vertical list row (filter sheets). */
@@ -20,5 +20,5 @@ export const marketingFilterChipList = (active: boolean) =>
     FOCUS_RING,
     active
       ? "border-primary bg-primary/10 text-on-surface"
-      : "border-outline-variant/40 text-on-surface-variant hover:border-primary/30",
+      : "border-outline-variant/40 text-on-surface-variant hover:border-link/30",
   );

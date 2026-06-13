@@ -83,8 +83,8 @@ export function ArtistDirectoryCard({
         <h2
           className={
             isCompact
-              ? "font-headline line-clamp-2 text-sm text-on-surface group-hover:text-primary"
-              : "font-headline line-clamp-2 text-base text-on-surface group-hover:text-primary md:text-lg"
+              ? "font-headline line-clamp-2 text-sm text-on-surface group-hover:text-link"
+              : "font-headline line-clamp-2 text-base text-on-surface group-hover:text-link md:text-lg"
           }
         >
           {artist.displayName}
@@ -112,7 +112,7 @@ export function ArtistDirectoryCard({
         <>
           <Link
             href={`${href}#works`}
-            className={`rounded-sm font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline ${FOCUS_RING}`}
+            className={`rounded-sm font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline ${FOCUS_RING}`}
             aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
           >
             {lotsLabel}
@@ -120,7 +120,7 @@ export function ArtistDirectoryCard({
           {!isCompact ? (
             <Link
               href={href}
-              className={`hidden rounded-sm font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline sm:inline ${FOCUS_RING}`}
+              className={`hidden rounded-sm font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-link hover:underline sm:inline ${FOCUS_RING}`}
               aria-label={`View profile for ${artist.displayName}`}
             >
               View profile

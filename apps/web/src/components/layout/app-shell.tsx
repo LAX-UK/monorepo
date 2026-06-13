@@ -166,7 +166,7 @@ function AppShellFrame({ user, config, children }: Props) {
                   href="/"
                   prefetch
                   aria-label="View public LAX site"
-                  className="hidden min-h-11 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:inline-flex"
+                  className="hidden min-h-11 items-center gap-2 rounded-md px-3 font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:inline-flex"
                 >
                   <ExternalLink className="size-3.5" aria-hidden />
                   <span>View site</span>
@@ -184,7 +184,7 @@ function AppShellFrame({ user, config, children }: Props) {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-primary lg:hidden"
+                  className="min-h-[44px] min-w-[44px] text-secondary hover:bg-surface-container-low hover:text-link lg:hidden"
                   onClick={openCommandPalette}
                   aria-label="Open command palette"
                 >

@@ -123,11 +123,11 @@ export default async function AdminComplianceAmlPage({
             ) : null}
             <p className="font-body text-sm text-on-surface-variant">
               Also see{" "}
-              <Link href="/admin/compliance/source-of-funds" className="text-primary underline">
+              <Link href="/admin/compliance/source-of-funds" className="text-link underline">
                 Source of Funds queue
               </Link>{" "}
               and payments held for{" "}
-              <Link href="/admin/payments?manualReview=1" className="text-primary underline">
+              <Link href="/admin/payments?manualReview=1" className="text-link underline">
                 manual review
               </Link>
               .

@@ -107,7 +107,7 @@ export function ArtistBrowseCard({
         return (
           <li
             key={artist.id}
-            className="group relative list-none overflow-hidden rounded-xl border border-border-hairline bg-surface transition-[transform,border-color] duration-[var(--motion-duration-md)] motion-reduce:transition-none hover:-translate-y-px hover:border-primary/40"
+            className="group relative list-none overflow-hidden rounded-xl border border-border-hairline bg-surface transition-[transform,border-color] duration-[var(--motion-duration-md)] motion-reduce:transition-none hover:-translate-y-px hover:border-link/40"
           >
             <Link
               href={href}
@@ -142,7 +142,7 @@ export function ArtistBrowseCard({
                 </div>
               </div>
               <div className="space-y-2 p-5">
-                <h2 className="font-headline text-xl font-semibold leading-tight text-on-surface group-hover:text-primary">
+                <h2 className="font-headline text-xl font-semibold leading-tight text-on-surface group-hover:text-link">
                   {artist.displayName}
                 </h2>
                 <p className="text-sm text-on-surface-variant">
@@ -159,7 +159,7 @@ export function ArtistBrowseCard({
               <Link
                 href={`${href}#works`}
                 className={cn(
-                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline",
+                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline",
                   FOCUS_RING,
                 )}
                 aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
@@ -169,7 +169,7 @@ export function ArtistBrowseCard({
               <Link
                 href={href}
                 className={cn(
-                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-primary hover:underline",
+                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-link hover:underline",
                   FOCUS_RING,
                 )}
               >

@@ -21,7 +21,7 @@ export function PaymentsMobileCards({ rows, onOpen }: Props) {
             <Button
               type="button"
               variant="ghost"
-              className="h-auto min-h-11 min-w-0 flex-1 justify-start rounded-none px-0 py-0 text-left font-headline text-base text-on-surface hover:bg-transparent hover:text-primary"
+              className="h-auto min-h-11 min-w-0 flex-1 justify-start rounded-none px-0 py-0 text-left font-headline text-base text-on-surface hover:bg-transparent hover:text-link"
               onClick={() => onOpen(p)}
             >
               {p.lotTitle}

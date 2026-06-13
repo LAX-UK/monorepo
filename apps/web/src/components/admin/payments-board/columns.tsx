@@ -20,7 +20,7 @@ export function paymentColumns(
         <Button
           type="button"
           variant="link"
-          className="h-auto max-w-[14rem] truncate px-0 py-0 text-left font-medium text-primary underline-offset-2 hover:underline"
+          className="h-auto max-w-[14rem] truncate px-0 py-0 text-left font-medium text-link underline-offset-2 hover:underline"
           onClick={() => onOpen(row.original)}
         >
           {row.original.lotTitle}
@@ -33,7 +33,7 @@ export function paymentColumns(
       cell: ({ row }) => (
         <Link
           href={`/admin/clients/${row.original.buyerId}`}
-          className="block max-w-[12rem] truncate text-sm font-medium text-primary underline-offset-2 hover:underline"
+          className="block max-w-[12rem] truncate text-sm font-medium text-link underline-offset-2 hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
           {row.original.buyerLabel?.trim() || "View buyer"}
@@ -64,7 +64,7 @@ export function paymentColumns(
             href={row.original.xeroOnlineInvoiceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline"
+            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-2 hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
             Invoice

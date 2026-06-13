@@ -28,7 +28,7 @@ export function CatalogBreadcrumbs({ segments, className }: Props) {
           <Link
             href={segment.href}
             className={cn(
-              "text-primary hover:underline",
+              "text-link hover:underline",
               !isFirst && index < segments.length - 1 ? "max-w-[min(100%,14rem)] truncate" : "",
             )}
           >

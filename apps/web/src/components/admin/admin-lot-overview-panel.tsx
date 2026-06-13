@@ -57,7 +57,7 @@ export function AdminLotOverviewPanel({ lotId, auction, imageAlts, context, bidC
                 </span>
                 <Link
                   href={lotDetailTabHref(lotId, "images")}
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
                 >
                   Manage images →
                 </Link>
@@ -68,7 +68,7 @@ export function AdminLotOverviewPanel({ lotId, auction, imageAlts, context, bidC
               No images yet.{" "}
               <Link
                 href={lotDetailTabHref(lotId, "images")}
-                className="font-medium text-primary hover:underline"
+                className="font-medium text-link hover:underline"
               >
                 Add images →
               </Link>

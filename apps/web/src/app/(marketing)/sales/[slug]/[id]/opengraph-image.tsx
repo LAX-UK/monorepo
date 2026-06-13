@@ -1,4 +1,5 @@
 import { SITE_NAME } from "@/lib/brand";
+import { OG_BRAND } from "@/lib/brand/og-colors";
 import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { formatOgDateTime } from "@/lib/seo/og-date-format";
 import { renderOgJpeg } from "@/lib/seo/og-image-response";
@@ -46,8 +47,8 @@ export default async function Image({ params }: Props) {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        backgroundColor: "#15110b",
-        color: "#f3efe6",
+        backgroundColor: OG_BRAND.background,
+        color: OG_BRAND.foreground,
         padding: "72px",
         fontFamily: "Georgia, serif",
       }}
@@ -57,16 +58,21 @@ export default async function Image({ params }: Props) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div
-          style={{ fontSize: 28, color: "#c9c0ad", textTransform: "uppercase", letterSpacing: 4 }}
+          style={{
+            fontSize: 28,
+            color: OG_BRAND.muted,
+            textTransform: "uppercase",
+            letterSpacing: 4,
+          }}
         >
           Sale catalogue
         </div>
         <div style={{ fontSize: 76, lineHeight: 1.05, fontWeight: 600 }}>{title}</div>
         {dateLabel ? (
-          <div style={{ display: "flex", fontSize: 28, color: "#c9c0ad" }}>{dateLabel}</div>
+          <div style={{ display: "flex", fontSize: 28, color: OG_BRAND.muted }}>{dateLabel}</div>
         ) : null}
         {lots ? (
-          <div style={{ display: "flex", fontSize: 28, color: "#c9c0ad" }}>{lots}</div>
+          <div style={{ display: "flex", fontSize: 28, color: OG_BRAND.muted }}>{lots}</div>
         ) : null}
       </div>
     </div>,

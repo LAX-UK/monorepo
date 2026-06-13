@@ -253,7 +253,7 @@ function Chip({
       className={`h-auto min-h-0 rounded-full border px-3 py-1 font-label text-[11px] uppercase tracking-wide shadow-none transition-colors ${
         active
           ? "border-primary bg-primary text-on-primary"
-          : "border-outline-variant/60 bg-surface-container-lowest text-on-surface-variant hover:border-primary/50 hover:text-on-surface"
+          : "border-outline-variant/60 bg-surface-container-lowest text-on-surface-variant hover:border-link/50 hover:text-on-surface"
       } disabled:cursor-not-allowed disabled:opacity-60`}
     >
       {children}

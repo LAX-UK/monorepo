@@ -39,7 +39,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
       <div className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-low/50 p-4">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="font-headline text-base text-on-surface">Next steps</h3>
-          <span className="font-label text-xs font-semibold uppercase tracking-wider text-primary">
+          <span className="font-label text-xs font-semibold uppercase tracking-wider text-secondary">
             {percent}%
           </span>
         </div>
@@ -58,7 +58,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                     {" — "}
                     <Link
                       href="/dashboard/seller/connect"
-                      className="text-primary underline-offset-4 hover:underline"
+                      className="text-link underline-offset-4 hover:underline"
                     >
                       Complete Connect
                     </Link>
@@ -84,7 +84,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
     <div className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-low/50 p-4">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="font-headline text-base text-on-surface">Catalogue readiness</h3>
-        <span className="font-label text-xs font-semibold uppercase tracking-wider text-primary">
+        <span className="font-label text-xs font-semibold uppercase tracking-wider text-secondary">
           {readiness.percent}%
         </span>
       </div>
@@ -104,7 +104,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                   {check.id === "seller" ? (
                     <Link
                       href="/dashboard/seller/connect"
-                      className="text-primary underline-offset-4 hover:underline"
+                      className="text-link underline-offset-4 hover:underline"
                     >
                       Complete Connect
                     </Link>
@@ -115,14 +115,14 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                           id: submission.convertedLotId ?? "",
                           title: submission.title,
                         })}
-                        className="text-primary underline-offset-4 hover:underline"
+                        className="text-link underline-offset-4 hover:underline"
                       >
                         View listing
                       </Link>
                       {" · "}
                       <Link
                         href="/dashboard/seller/in-sale"
-                        className="text-primary underline-offset-4 hover:underline"
+                        className="text-link underline-offset-4 hover:underline"
                       >
                         In-sale dashboard
                       </Link>

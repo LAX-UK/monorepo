@@ -327,7 +327,7 @@ function EndedSoldBanner({
 
   return (
     <div className="mt-4 space-y-2 rounded-lg border border-primary/25 bg-primary-container/10 px-4 py-3 ring-1 ring-primary/15 dark:bg-primary/10">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-secondary">
         Sold
       </span>
       {youWon ? (
@@ -337,7 +337,7 @@ function EndedSoldBanner({
           </p>
           <Link
             href="/dashboard/payments"
-            className="inline-flex font-body text-sm font-semibold text-primary underline-offset-2 hover:underline"
+            className="inline-flex font-body text-sm font-semibold text-link underline-offset-2 hover:underline"
           >
             View invoices
           </Link>

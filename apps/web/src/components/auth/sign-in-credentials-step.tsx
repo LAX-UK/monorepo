@@ -4,6 +4,7 @@ import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
 import type { SignInFormValues } from "@/lib/auth/schemas";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -87,7 +88,7 @@ export function SignInCredentialsStep({
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-primary/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-link/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => void onResendMagicLink()}
           disabled={linkCooldown > 0 || magicLinkLoading || !magicLinkTurnstileReady}
         >
@@ -95,7 +96,7 @@ export function SignInCredentialsStep({
         </Button>
         <button
           type="button"
-          className="font-footer-links text-sm text-primary underline-offset-2 hover:underline"
+          className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
           onClick={onChangeEmail}
         >
           Use a different email
@@ -124,7 +125,7 @@ export function SignInCredentialsStep({
           <span className="font-footer-links text-sm text-on-surface">{email}</span>
           <button
             type="button"
-            className="shrink-0 font-footer-links text-sm font-medium text-primary underline-offset-2 hover:underline"
+            className="shrink-0 font-footer-links text-sm font-medium text-link underline-offset-2 hover:underline"
             onClick={onChangeEmail}
           >
             Change
@@ -150,10 +151,7 @@ export function SignInCredentialsStep({
         </div>
       ) : null}
       <div className="flex justify-end">
-        <Link
-          href={forgotPasswordHref}
-          className="min-h-[44px] content-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-        >
+        <Link href={forgotPasswordHref} className={AUTH_FOOTER_LINK_ROW}>
           Forgot password?
         </Link>
       </div>
@@ -194,7 +192,7 @@ export function SignInCredentialsStep({
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-primary/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-link/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => void onRequestMagicLink()}
           disabled={magicLinkLoading || !magicLinkTurnstileReady}
         >

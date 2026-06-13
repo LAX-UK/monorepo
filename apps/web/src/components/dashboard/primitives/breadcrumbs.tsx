@@ -20,7 +20,7 @@ export type BreadcrumbsProps = {
 };
 
 const linkClassName =
-  "inline-flex min-h-11 -mx-2 items-center rounded-md px-2 text-primary hover:underline md:min-h-0 md:py-1";
+  "inline-flex min-h-11 -mx-2 items-center rounded-md px-2 text-link hover:underline md:min-h-0 md:py-1";
 
 export function Breadcrumbs({
   items,

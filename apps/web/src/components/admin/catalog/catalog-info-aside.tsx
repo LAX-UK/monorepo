@@ -56,7 +56,7 @@ export function CatalogInfoAside({
           href={publicHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+          className="inline-flex items-center gap-1 text-link underline-offset-4 hover:underline"
         >
           {publicLabel}
           <ExternalLink className="size-3" aria-hidden />

@@ -1,5 +1,6 @@
 "use client";
 
+import { AUTH_INLINE_LINK } from "@/lib/auth/auth-link-classes";
 import { sendVerificationEmailFromBanner } from "@/lib/auth/services/send-verification-email.service";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notify } from "@/lib/ui/notify";
@@ -32,11 +33,7 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
       <BannerShell dismissKey={dismissKey} onDismiss={() => setDismissed(true)} tone="error">
         <p>
           We could not deliver email to your current address.{" "}
-          <Link
-            href="/dashboard/settings/account"
-            className="font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-            prefetch
-          >
+          <Link href="/dashboard/settings/account" className={AUTH_INLINE_LINK} prefetch>
             Update your email address
           </Link>
           .

@@ -13,7 +13,7 @@ export function ArtistWorksEmptyState() {
       description={
         <>
           This profile has no listed works right now. Browse{" "}
-          <Link href="/sales" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/sales" className="text-link underline-offset-4 hover:underline">
             live salerooms
           </Link>{" "}
           or check back later.

@@ -37,7 +37,7 @@ export function ConveyorKanbanBoard({ columns }: Props) {
                 >
                   <Link
                     href={`/admin/submissions/${item.submissionId}`}
-                    className="line-clamp-2 font-body text-sm font-medium text-primary hover:underline"
+                    className="line-clamp-2 font-body text-sm font-medium text-link hover:underline"
                   >
                     {item.title}
                   </Link>
@@ -49,7 +49,7 @@ export function ConveyorKanbanBoard({ columns }: Props) {
                   {item.lotId ? (
                     <Link
                       href={`/admin/lots/${item.lotId}`}
-                      className="mt-1 inline-block font-label text-[10px] uppercase tracking-wide text-secondary hover:text-primary"
+                      className="mt-1 inline-block font-label text-[10px] uppercase tracking-wide text-secondary hover:text-link"
                     >
                       Open lot
                     </Link>

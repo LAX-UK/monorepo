@@ -48,8 +48,8 @@ export const appShellRoleMeta: Record<AppShellRole, AppShellRoleMeta> = {
   client: {
     label: "Client",
     workspaceLabel: "Client",
-    dotClassName: "bg-[#e8c77c]",
-    pillClassName: "border-[#e8c77c]/40 bg-[#e8c77c]/15 text-[#775a19] dark:text-[#e8c77c]",
+    dotClassName: "bg-accent-gold",
+    pillClassName: "border-accent-gold/40 bg-accent-gold/15 text-secondary dark:text-accent-gold",
   },
   platform: {
     label: "Staff",

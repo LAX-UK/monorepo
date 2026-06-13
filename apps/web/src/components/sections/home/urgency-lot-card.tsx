@@ -97,7 +97,7 @@ export function UrgencyLotCard({ item, isAuthenticated, watchedLotIds, loginNext
               key="bid"
               lotId={item.id}
               href={item.href}
-              className="flex h-11 flex-1 items-center justify-center rounded border border-outline-variant bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface outline-offset-2 hover:bg-on-surface/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              className="flex h-11 flex-1 items-center justify-center rounded border border-outline-variant bg-transparent text-center text-base font-semibold leading-6 tracking-[0.05em] text-on-surface outline-offset-2 hover:bg-on-surface/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
             >
               Bid
             </LotViewTransitionLink>

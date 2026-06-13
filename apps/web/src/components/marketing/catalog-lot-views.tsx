@@ -114,7 +114,7 @@ export function CatalogLotGridView({
               }}
               title={
                 <>
-                  <h2 className="font-headline line-clamp-2 text-sm font-light text-on-surface group-hover:text-primary md:text-xl">
+                  <h2 className="font-headline line-clamp-2 text-sm font-light text-on-surface group-hover:text-link md:text-xl">
                     {a.title}
                   </h2>
                   {subtitle ? (
@@ -126,7 +126,7 @@ export function CatalogLotGridView({
               }
               meta={
                 <>
-                  <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary md:mt-2 md:text-xs">
+                  <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary md:mt-2 md:text-xs">
                     {formatMoney(a.currentPrice)}
                   </p>
                   {est ? (
@@ -262,7 +262,7 @@ export function CatalogLotListView({
                 footer={
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-label text-[length:var(--text-label-1)] uppercase tracking-wider text-primary">
+                      <p className="font-label text-[length:var(--text-label-1)] uppercase tracking-wider text-secondary">
                         {formatMoney(a.currentPrice)}
                       </p>
                       {est ? (

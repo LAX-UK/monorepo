@@ -14,7 +14,7 @@ type Props = {
 const stepBase =
   "inline-flex size-9 items-center justify-center rounded-full border transition-colors motion-reduce:transition-none";
 const stepEnabled =
-  "border-outline-variant/50 text-on-surface hover:border-primary/40 hover:text-primary";
+  "border-outline-variant/50 text-on-surface hover:border-link/40 hover:text-link";
 const stepDisabled = "cursor-not-allowed border-outline-variant/30 text-on-surface-variant/40";
 
 /** Prev/next pager that walks the sibling lots of the current sale on the lot PDP. */

@@ -1,5 +1,6 @@
 "use client";
 
+import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
 import { resendVerificationEmailFromPending } from "@/lib/auth/services/send-verification-email.service";
 import { Button } from "@auction/ui/components/button";
@@ -43,16 +44,10 @@ export function VerifyPendingActions({ email, next }: { email: string; next?: st
           {status}
         </output>
       ) : null}
-      <Link
-        href="/login"
-        className="font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-      >
+      <Link href="/login" className={AUTH_FOOTER_LINK_ROW}>
         Try a different email (return to sign in)
       </Link>
-      <Link
-        href="/register"
-        className="font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-      >
+      <Link href="/register" className={AUTH_FOOTER_LINK_ROW}>
         Wrong address? Sign up again
       </Link>
     </div>

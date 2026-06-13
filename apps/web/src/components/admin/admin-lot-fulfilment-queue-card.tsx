@@ -36,7 +36,7 @@ export function AdminLotFulfilmentQueueCard({ row, returnStatus, embedded = fals
     <Wrapper className="rounded-lg border border-outline-variant/30 p-4">
       <div className="font-body text-sm">
         <p className="font-medium">
-          <Link href={`/admin/lots/${row.lotId}`} className="text-primary hover:underline">
+          <Link href={`/admin/lots/${row.lotId}`} className="text-link hover:underline">
             {row.lotTitle ?? row.lotId}
           </Link>
         </p>

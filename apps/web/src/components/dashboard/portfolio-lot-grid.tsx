@@ -52,8 +52,8 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
               padding="none"
               className={
                 isStacked
-                  ? "group flex h-full flex-col overflow-hidden border border-border-hairline transition-colors hover:border-primary/25 hover:bg-surface-container-low/20"
-                  : "group grid h-full overflow-hidden border border-border-hairline transition-colors hover:border-primary/25 hover:bg-surface-container-low/20 sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]"
+                  ? "group flex h-full flex-col overflow-hidden border border-border-hairline transition-colors hover:border-link/25 hover:bg-surface-container-low/20"
+                  : "group grid h-full overflow-hidden border border-border-hairline transition-colors hover:border-link/25 hover:bg-surface-container-low/20 sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]"
               }
             >
               <Link href={row.checkoutHref} className="block">
@@ -237,7 +237,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                       href={active.conditionReportUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-primary underline-offset-4 hover:underline"
+                      className="text-link underline-offset-4 hover:underline"
                     >
                       Condition report (PDF)
                     </a>
@@ -248,7 +248,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                 <li>
                   <Link
                     href={active.checkoutHref}
-                    className="text-primary underline-offset-4 hover:underline"
+                    className="text-link underline-offset-4 hover:underline"
                   >
                     Invoice &amp; payment details
                   </Link>

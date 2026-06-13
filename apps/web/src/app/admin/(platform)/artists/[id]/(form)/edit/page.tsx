@@ -45,7 +45,7 @@ export default async function EditAdminArtistPage({
       {artist.mergedIntoArtistId ? (
         <Link
           href={`/admin/artists/${artist.mergedIntoArtistId}`}
-          className="mt-2 inline-flex items-center gap-1 font-medium text-primary hover:underline"
+          className="mt-2 inline-flex items-center gap-1 font-medium text-link hover:underline"
         >
           View merge target →
         </Link>

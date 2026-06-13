@@ -6,14 +6,26 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Figma LAX marketing palette (light) */
-  --color-brand-900: #050505;
+  /* Brand Identity v1.0 primitives — canonical hex; semantic tokens reference these */
+  --color-brand-obsidian: #000000;
+  --color-brand-midnight: #091f5b;
+  --color-brand-light-gray: #b8b9c0;
+  --color-brand-light-cream: #f2f1df;
+
+  /* Brand scale — anchored on obsidian + light gray */
+  --color-brand-900: var(--color-brand-obsidian);
   --color-brand-800: #0a0a0a;
   --color-brand-500: #191919;
   --color-brand-400: #474747;
   --color-brand-300: #757575;
-  --color-brand-200: #a3a3a3;
+  --color-brand-200: var(--color-brand-light-gray);
   --color-brand-100: #d1d1d1;
+
+  /* Semantic aliases (layer 2) */
+  --color-ink: var(--color-brand-obsidian);
+  --color-paper: var(--color-brand-light-cream);
+  --color-link: var(--color-brand-midnight);
+
   --color-accent-gold: #d4af37;
   /** Web accent: blue in light mode; the `.dark` root override maps brand accent to gold. */
   --color-accent-blue: #2b7fff;
@@ -22,30 +34,30 @@
   --color-live-red: #e83030;
   --color-success: #2ea043;
   --color-on-success: #ffffff;
-  --color-outline-soft: #d1c5b4;
+  --color-outline-soft: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
   --color-footer-soft: #ededef;
-  --color-page-bg: #f1f1f3;
+  --color-page-bg: #ffffff;
   --color-footer-bg: #ededef;
-  --color-divider: #c1c7cd;
+  --color-divider: var(--color-brand-light-gray);
   --color-nav-border: #e6e8eb;
-  --color-nav-text: #1c170d;
-  --color-hero-cream: #feffdf;
+  --color-nav-text: var(--color-brand-obsidian);
+  --color-hero-cream: var(--color-brand-light-cream);
 
   --color-on-surface: #1a1c1c;
   --color-surface-container-high: #e8e8e8;
   --color-surface-container-low: #f3f3f3;
-  --color-on-surface-variant: #4e4639;
-  --color-on-primary-fixed-variant: #5d4201;
-  --color-primary: #775a19;
-  --color-outline: #7f7667;
+  --color-on-surface-variant: #474747;
+  --color-on-primary-fixed-variant: var(--color-accent-gold);
+  --color-primary: var(--color-brand-obsidian);
+  --color-outline: var(--color-brand-light-gray);
   --color-on-secondary-fixed-variant: #474746;
   --color-surface-dim: #dadada;
-  --color-secondary: #5f5e5e;
+  --color-secondary: var(--color-brand-midnight);
   --color-on-error: #ffffff;
   --color-on-background: #1a1c1c;
   --color-tertiary: #5e5e5e;
   --color-error: #ba1a1a;
-  --color-surface-tint: #775a19;
+  --color-surface-tint: var(--color-brand-midnight);
   --color-surface-container: #eeeeee;
   --color-on-tertiary-container: #3a3b3b;
   --color-on-tertiary-fixed-variant: #464747;
@@ -54,38 +66,38 @@
   --color-error-container: #ffdad6;
   --color-on-tertiary-fixed: #1b1c1c;
   --color-tertiary-fixed: #e3e2e2;
-  --color-primary-container: #c5a059;
-  --color-primary-fixed-dim: #e9c176;
-  --color-secondary-container: #e2dfde;
-  --color-on-primary-container: #4e3700;
+  --color-primary-container: color-mix(in srgb, var(--color-brand-midnight) 12%, white);
+  --color-primary-fixed-dim: color-mix(in srgb, var(--color-accent-gold) 75%, white);
+  --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 8%, white);
+  --color-on-primary-container: var(--color-brand-midnight);
   --color-inverse-surface: #2f3131;
   --color-on-secondary-fixed: #1c1b1b;
   --color-on-secondary: #ffffff;
   --color-on-secondary-container: #636262;
   --color-on-error-container: #93000a;
-  --color-surface-bright: #f9f9f9;
+  --color-surface-bright: #ffffff;
   --color-surface-variant: #e2e2e2;
-  --color-on-primary-fixed: #261900;
+  --color-on-primary-fixed: var(--color-brand-obsidian);
   --color-secondary-fixed-dim: #c8c6c5;
-  --color-primary-fixed: #ffdea5;
+  --color-primary-fixed: color-mix(in srgb, var(--color-accent-gold) 35%, white);
   --color-on-primary: #ffffff;
-  --color-surface: #f9f9f9;
+  --color-surface: #ffffff;
   --color-on-tertiary: #ffffff;
-  --color-inverse-on-surface: #f1f1f1;
-  --color-outline-variant: #d1c5b4;
+  --color-inverse-on-surface: var(--color-brand-light-cream);
+  --color-outline-variant: color-mix(in srgb, var(--color-brand-light-gray) 50%, white);
   --color-divider-soft: var(--color-outline-variant);
   --color-surface-container-lowest: #ffffff;
   --color-tertiary-container: #a5a5a5;
   --color-secondary-fixed: #e5e2e1;
-  --color-inverse-primary: #e9c176;
-  --color-background: #f9f9f9;
+  --color-inverse-primary: var(--color-brand-midnight);
+  --color-background: #ffffff;
 
   /* Shell semantic borders — prefer over border-outline-variant/NN in dashboard + admin */
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 15%, transparent);
   --color-border-soft: color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
   /** Positive KPI / delta accent (maps to lot-orange light, emerald dark via utilities) */
   --color-delta-positive: var(--color-lot-orange);
-  --color-accent-buying: var(--color-primary);
+  --color-accent-buying: var(--color-accent-gold);
   --color-accent-selling: var(--color-lot-orange);
   --color-accent-live: var(--color-live-red);
 
@@ -125,7 +137,7 @@
   --color-card-foreground: var(--color-on-surface);
   --color-border: var(--color-outline-variant);
   --color-input: var(--color-input-border);
-  --color-ring: var(--color-primary);
+  --color-ring: var(--color-brand-midnight);
   --color-destructive: var(--color-error);
   --color-destructive-foreground: var(--color-on-error);
   --color-sidebar: var(--color-surface-container-low);
@@ -135,18 +147,18 @@
   --color-sidebar-accent: var(--color-surface-container-high);
   --color-sidebar-accent-foreground: var(--color-on-surface);
   --color-sidebar-border: var(--color-outline-variant);
-  --color-sidebar-ring: var(--color-primary);
+  --color-sidebar-ring: var(--color-ring);
 
   /* Semantic marketing + auth (single source; use these in new code) */
-  --color-cta-bg: #050505;
-  --color-cta-on: #f1f1f3;
-  --color-scrim-hero: rgba(10, 10, 10, 0.52);
-  --color-scrim-hero-mid: rgba(10, 10, 10, 0.4);
-  --color-scrim-hero-strong: rgba(5, 5, 5, 0.88);
-  --color-scrim-hero-soft: rgba(5, 5, 5, 0.55);
-  --color-scrim-auth: rgba(5, 5, 5, 0.07);
-  --color-input-border: #757575;
-  --color-input-border-focus: #050505;
+  --color-cta-bg: var(--color-brand-obsidian);
+  --color-cta-on: var(--color-brand-light-cream);
+  --color-scrim-hero: rgba(0, 0, 0, 0.52);
+  --color-scrim-hero-mid: rgba(0, 0, 0, 0.4);
+  --color-scrim-hero-strong: rgba(0, 0, 0, 0.88);
+  --color-scrim-hero-soft: rgba(0, 0, 0, 0.55);
+  --color-scrim-auth: rgba(0, 0, 0, 0.07);
+  --color-input-border: var(--color-brand-light-gray);
+  --color-input-border-focus: var(--color-brand-obsidian);
   --color-hero-foreground: #ffffff;
 
   --radius-DEFAULT: 0.125rem;
@@ -161,11 +173,11 @@
   --text-label-2: 0.6875rem;
   --text-label-3: 0.8125rem;
 
-  --font-headline: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-artists-serif: var(--font-montserrat), ui-serif, Georgia, serif;
-  --font-footer-links: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-footer-links: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
   /* Motion tokens (F0) — single source of truth for durations + easings.
      Existing keyframes consume these so the brand "speed and feel" can be
@@ -592,7 +604,7 @@ html {
   color-scheme: light;
 }
 
-/* Dark theme: semantic tokens (mirrors @theme names) */
+/* Dark theme: semantic tokens derived from Brand Identity v1.0 */
 html.dark {
   color-scheme: dark;
   --color-accent-brand: var(--color-accent-gold);
@@ -602,35 +614,35 @@ html.dark {
   --color-footer-soft: #0d0f0f;
   --color-nav-border: #333534;
   --color-hero-cream: #1e2020;
-  --color-nav-text: #e3e2e0;
-  --color-cta-bg: #e8e8ea;
-  --color-cta-on: #0a0a0a;
+  --color-nav-text: var(--color-brand-light-cream);
+  --color-cta-bg: var(--color-brand-light-cream);
+  --color-cta-on: var(--color-brand-obsidian);
   --color-scrim-hero: rgba(0, 0, 0, 0.62);
   --color-scrim-hero-mid: rgba(0, 0, 0, 0.5);
   --color-scrim-hero-strong: rgba(0, 0, 0, 0.72);
   --color-scrim-hero-soft: rgba(0, 0, 0, 0.5);
   --color-scrim-auth: rgba(255, 255, 255, 0.06);
-  --color-input-border: #948f87;
-  --color-input-border-focus: #e8c77c;
+  --color-input-border: var(--color-brand-light-gray);
+  --color-input-border-focus: var(--color-brand-light-cream);
   --color-hero-foreground: #fafafa;
   --color-success: #56d364;
   --color-on-success: #0d1117;
 
-  --color-on-surface: #e3e2e0;
+  --color-on-surface: var(--color-brand-light-cream);
   --color-surface-container-high: #383a39;
   --color-surface-container-low: #2d2f2e;
   --color-on-surface-variant: #c9c5bc;
-  --color-on-primary-fixed-variant: #e9c176;
-  --color-primary: #e8c77c;
-  --color-outline: #948f87;
+  --color-on-primary-fixed-variant: var(--color-accent-gold);
+  --color-primary: var(--color-brand-light-cream);
+  --color-outline: var(--color-brand-light-gray);
   --color-on-secondary-fixed-variant: #e0e0e0;
   --color-surface-dim: #141616;
-  --color-secondary: #c2c1c1;
+  --color-secondary: color-mix(in srgb, var(--color-brand-midnight) 75%, white);
   --color-on-error: #690005;
-  --color-on-background: #e3e2e0;
+  --color-on-background: var(--color-brand-light-cream);
   --color-tertiary: #b0b1b1;
   --color-error: #ffb4ab;
-  --color-surface-tint: #e8c77c;
+  --color-surface-tint: color-mix(in srgb, var(--color-brand-midnight) 75%, white);
   --color-surface-container: #333534;
   --color-on-tertiary-container: #e2e3e3;
   --color-on-tertiary-fixed-variant: #d1d0d0;
@@ -639,21 +651,21 @@ html.dark {
   --color-error-container: #93000a;
   --color-on-tertiary-fixed: #e3e2e2;
   --color-tertiary-fixed: #2e3131;
-  --color-primary-container: #5c4a1a;
-  --color-primary-fixed-dim: #a68a3e;
-  --color-secondary-container: #4a4848;
-  --color-on-primary-container: #ffdea5;
+  --color-primary-container: color-mix(in srgb, var(--color-brand-midnight) 35%, black);
+  --color-primary-fixed-dim: color-mix(in srgb, var(--color-accent-gold) 55%, black);
+  --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 25%, black);
+  --color-on-primary-container: var(--color-brand-light-cream);
   --color-inverse-surface: #e4e2de;
   --color-on-secondary-fixed: #e8e7e7;
-  --color-on-secondary: #303534;
+  --color-on-secondary: #ffffff;
   --color-on-secondary-container: #e8e7e7;
   --color-on-error-container: #ffdad4;
   --color-surface-bright: #343636;
   --color-surface-variant: #444746;
-  --color-on-primary-fixed: #261900;
+  --color-on-primary-fixed: var(--color-brand-light-cream);
   --color-secondary-fixed-dim: #7a7878;
-  --color-primary-fixed: #ffdea5;
-  --color-on-primary: #261900;
+  --color-primary-fixed: color-mix(in srgb, var(--color-accent-gold) 25%, black);
+  --color-on-primary: var(--color-brand-obsidian);
   --color-surface: #1a1c1c;
   --color-on-tertiary: #ffffff;
   --color-inverse-on-surface: #1a1c1c;
@@ -662,8 +674,9 @@ html.dark {
   --color-surface-container-lowest: #0f1111;
   --color-tertiary-container: #5e6363;
   --color-secondary-fixed: #8e8d8d;
-  --color-inverse-primary: #775a19;
+  --color-inverse-primary: var(--color-brand-midnight);
   --color-background: #121414;
+  --color-link: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
 
   --color-warning: oklch(0.78 0.12 85);
   --color-on-warning: oklch(0.18 0.03 85);
@@ -681,7 +694,7 @@ html.dark {
 @keyframes bidPriceBump {
   0% {
     transform: scale(1.04);
-    color: var(--color-primary-container);
+    color: var(--color-accent-gold);
   }
   100% {
     transform: scale(1);
@@ -1087,14 +1100,14 @@ html.dark {
   --overlay-bg: rgba(0, 0, 0, 0.45);
   --overlay-border: rgba(255, 255, 255, 0.22);
   --overlay-fg-opaque: #ffffff;
-  --overlay-bg-opaque: #050505;
+  --overlay-bg-opaque: #000000;
 }
 
 [data-overlay-tone="dark"] {
-  --overlay-fg: #050505;
+  --overlay-fg: #000000;
   --overlay-bg: rgba(255, 255, 255, 0.78);
   --overlay-border: rgba(0, 0, 0, 0.12);
-  --overlay-fg-opaque: #050505;
+  --overlay-fg-opaque: #000000;
   --overlay-bg-opaque: #f9f9f9;
 }
 

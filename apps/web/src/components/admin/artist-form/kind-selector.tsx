@@ -76,7 +76,7 @@ export function KindSelector({
             className={`flex h-auto min-h-0 w-full min-w-0 flex-col items-start gap-2 whitespace-normal rounded-xl border p-3 text-left shadow-none transition-colors ${
               active
                 ? "border-primary bg-primary-container/25 ring-1 ring-primary/30"
-                : "border-outline-variant/40 bg-surface-container-lowest hover:border-primary/35"
+                : "border-outline-variant/40 bg-surface-container-lowest hover:border-link/35"
             } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-container-high text-primary">

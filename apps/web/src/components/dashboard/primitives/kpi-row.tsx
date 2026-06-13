@@ -65,7 +65,7 @@ export function KpiRow({
               <Link
                 key={id ?? `${String(tile.label)}-${index}`}
                 href={href}
-                className="block h-full min-w-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="block h-full min-w-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 {content}
               </Link>

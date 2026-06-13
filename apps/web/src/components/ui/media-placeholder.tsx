@@ -15,21 +15,21 @@ export type MediaPlaceholderProps = {
 };
 
 const SURFACE_CLASS = {
-  light: "bg-[#e4e0da]",
-  dark: "bg-[#1c1e1e]",
-  auto: "bg-[#e4e0da] dark:bg-[#1c1e1e]",
+  light: "bg-surface-container",
+  dark: "bg-surface-container-low",
+  auto: "bg-surface-container dark:bg-surface-container-low",
 } as const;
 
 const LINE_CLASS = {
-  light: "text-[#d8d3cb]",
-  dark: "text-[#232626]",
-  auto: "text-[#d8d3cb] dark:text-[#232626]",
+  light: "text-brand-100",
+  dark: "text-brand-400",
+  auto: "text-brand-100 dark:text-brand-400",
 } as const;
 
 const LABEL_CLASS = {
-  light: "text-[#aaa9a2]",
-  dark: "text-[#4a4d4d]",
-  auto: "text-[#aaa9a2] dark:text-[#4a4d4d]",
+  light: "text-brand-300",
+  dark: "text-brand-400",
+  auto: "text-brand-300 dark:text-brand-400",
 } as const;
 
 export function MediaPlaceholder({

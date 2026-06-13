@@ -49,7 +49,7 @@ export function disputeColumns(
           <Button
             type="button"
             variant="link"
-            className="h-auto max-w-[14rem] truncate px-0 py-0 text-left font-medium text-primary underline-offset-2 hover:underline"
+            className="h-auto max-w-[14rem] truncate px-0 py-0 text-left font-medium text-link underline-offset-2 hover:underline"
             onClick={() => onOpen(row.original)}
           >
             {row.original.lotTitle}
@@ -58,7 +58,7 @@ export function disputeColumns(
           <Button
             type="button"
             variant="link"
-            className="h-auto px-0 py-0 font-medium text-primary underline-offset-2 hover:underline"
+            className="h-auto px-0 py-0 font-medium text-link underline-offset-2 hover:underline"
             onClick={() => onOpen(row.original)}
           >
             View case
@@ -71,7 +71,7 @@ export function disputeColumns(
       cell: ({ row }) => (
         <Link
           href={`/admin/legal-entities/${row.original.sellerLegalEntityId}`}
-          className="block max-w-[12rem] truncate text-sm text-primary underline-offset-2 hover:underline"
+          className="block max-w-[12rem] truncate text-sm text-link underline-offset-2 hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
           {row.original.sellerDisplayName ??
@@ -86,7 +86,7 @@ export function disputeColumns(
       cell: ({ row }) => (
         <Link
           href={`/admin/payments?q=${encodeURIComponent(row.original.paymentId)}`}
-          className="font-label text-xs uppercase tracking-wide text-primary underline-offset-2 hover:underline"
+          className="font-label text-xs uppercase tracking-wide text-link underline-offset-2 hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
           Open

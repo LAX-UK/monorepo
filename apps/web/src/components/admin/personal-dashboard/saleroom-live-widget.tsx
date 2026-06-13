@@ -20,7 +20,7 @@ export function SaleroomLiveWidget({ bidsPerMinute, activeLotIds }: Props) {
         </div>
         <Link
           href="/admin/saleroom"
-          className="inline-flex min-h-9 shrink-0 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-primary hover:underline"
+          className="inline-flex min-h-9 shrink-0 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-link hover:underline"
         >
           Open
           <ChevronRight className="size-4" aria-hidden />

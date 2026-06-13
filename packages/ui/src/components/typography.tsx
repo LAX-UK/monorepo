@@ -67,7 +67,7 @@ export function Kicker({
 }: HTMLAttributes<HTMLParagraphElement> & { children: ReactNode }) {
   return (
     <p
-      className={`font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.3em)] text-primary ${className}`}
+      className={`font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.3em)] text-secondary ${className}`}
       {...props}
     >
       {children}

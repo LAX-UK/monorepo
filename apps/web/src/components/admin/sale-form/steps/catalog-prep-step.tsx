@@ -156,7 +156,7 @@ export function SaleSetupCatalogPrepStep({
       <Alert>
         <AlertDescription>
           Add lots in the previous step first.{" "}
-          <a href={saleSetupHref(saleId, "lots")} className="text-primary hover:underline">
+          <a href={saleSetupHref(saleId, "lots")} className="text-link hover:underline">
             Go to lots
           </a>
         </AlertDescription>
