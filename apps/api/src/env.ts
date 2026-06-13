@@ -195,8 +195,8 @@ const envSchema = z
     STRIPE_PAYMENTS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Stripe Transfers webhook signing secret (whsec_…) for platform transfer events. */
     STRIPE_TRANSFERS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
-    /** Max amount (GBP major units) for card-only Stripe Checkout (default £100,000). */
-    STRIPE_CARD_CHECKOUT_MAX: z.coerce.number().positive().default(100_000),
+    /** Max amount (GBP major units) for card-only Stripe Checkout (default £10,000). */
+    STRIPE_CARD_CHECKOUT_MAX: z.coerce.number().positive().default(10_000),
     /** Amounts at/above this (GBP major units) require finance manual review before checkout. */
     STRIPE_MANUAL_REVIEW_MIN: z.coerce.number().positive().default(500_000),
     /** Hard max online payment amount (GBP major units); Stripe card digit limit. */

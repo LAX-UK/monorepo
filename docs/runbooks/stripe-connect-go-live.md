@@ -39,7 +39,7 @@ Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Conne
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | Connect (Connected accounts) destination |
 | `STRIPE_TRANSFERS_WEBHOOK_SECRET` | Transfers (Your account) destination |
 | `STRIPE_PAYMENTS_WEBHOOK_SECRET` | Payments destination |
-| `STRIPE_CARD_CHECKOUT_MAX` | Card tier ceiling (major GBP, default `100000`) |
+| `STRIPE_CARD_CHECKOUT_MAX` | Card tier ceiling (major GBP, default `10000`) |
 | `STRIPE_MANUAL_REVIEW_MIN` | Manual review floor (major GBP, default `500000`) |
 | `STRIPE_ABSOLUTE_MAX` | Online payment cap (major GBP, default `999999.99`) |
 | `XERO_PAYMENT_BANK_ACCOUNT_CODE` | Xero chart account for Stripe capture payments (default `090`) |
