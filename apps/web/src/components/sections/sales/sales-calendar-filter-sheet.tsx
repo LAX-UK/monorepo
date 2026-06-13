@@ -3,6 +3,7 @@
 import { MarketingFilterSheet } from "@/components/marketing/marketing-filter-sheet";
 import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
 import { SalesFilterSidebar } from "@/components/sections/sales/sales-filter-sidebar";
+import { MARKETING_FILTER_RAIL_IN_SHEET } from "@/lib/marketing/filter-rail";
 import {
   type CalendarSalesUrlState,
   calendarClearFiltersHref,
@@ -54,7 +55,7 @@ export function SalesCalendarFilterSheet({
         years={years}
         showResultCount={false}
         onLinkClick={close}
-        className="border-0 pb-0 lg:w-full lg:max-w-none lg:border-0 lg:pr-0"
+        className={MARKETING_FILTER_RAIL_IN_SHEET}
       />
     </MarketingFilterSheet>
   );

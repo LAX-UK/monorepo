@@ -30,3 +30,13 @@ export const MARKETING_CATALOG_PT = "pt-[var(--header-height)]";
 /** Shared list-view band shell (search, archive, catalogue list). */
 export const MARKETING_CATALOG_LIST_SHELL =
   "mx-auto max-w-[var(--container-inner,1376px)] border-y border-border-hairline bg-surface-container-lowest sm:rounded-xl sm:border sm:border-border-hairline";
+
+/** Two-column catalogue hub: filter rail (16–18rem) + flexible main (`/artists`, `/sales`). */
+export const MARKETING_CATALOG_FILTER_GRID =
+  "grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)] lg:gap-10";
+
+/** First grid column: filter rail slot (hidden below `lg`). */
+export const MARKETING_CATALOG_FILTER_RAIL_SLOT = "hidden lg:block";
+
+/** Second grid column: catalogue results (grid, list, calendar). */
+export const MARKETING_CATALOG_MAIN_COLUMN = "min-w-0";
