@@ -1,12 +1,12 @@
 "use client";
 
-import type { Lot } from "@auction/types";
+import type { CatalogLotVM } from "@auction/types";
 import type { ReactNode } from "react";
 import { lotQuickLookFromLot } from "./mappers";
 import { MarketingLotOverlayActions } from "./marketing-lot-overlay-actions";
 
 type Props = {
-  lot: Lot;
+  lot: CatalogLotVM;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath: string;

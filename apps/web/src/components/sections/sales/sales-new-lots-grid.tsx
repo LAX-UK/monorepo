@@ -1,20 +1,21 @@
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MediaImage } from "@/components/ui/media-image";
+import { lotCardTimingToTimerInputs } from "@/lib/lot/to-lot-timer-inputs";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { lotStatusMarketingShortLabel } from "@/lib/marketing/lot-status-labels";
-import type { Lot } from "@auction/types";
+import type { CatalogLotVM } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
 type Props = {
-  lots: Lot[];
+  lots: CatalogLotVM[];
   catalogLinkParams?: CatalogLinkParams;
 };
 
-function resolveLotHref(lot: Lot, catalogLinkParams?: CatalogLinkParams): string {
+function resolveLotHref(lot: CatalogLotVM, catalogLinkParams?: CatalogLinkParams): string {
   return lotCatalogHref(lot, catalogLinkParams);
 }
 
@@ -56,11 +57,7 @@ export function SalesNewLotsGrid({ lots, catalogLinkParams }: Props) {
             <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
               <div className="flex items-center justify-between gap-2">
                 <LotStatusBadge
-                  status={lot.status}
-                  startTime={
-                    lot.startTime instanceof Date ? lot.startTime.toISOString() : lot.startTime
-                  }
-                  endTime={lot.endTime instanceof Date ? lot.endTime.toISOString() : lot.endTime}
+                  {...lotCardTimingToTimerInputs(lot)}
                   closingShort={lotStatusMarketingShortLabel(lot.status)}
                 />
               </div>

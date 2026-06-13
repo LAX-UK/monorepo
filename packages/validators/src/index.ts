@@ -55,5 +55,8 @@ export * from "./api-error-message.js";
 export * from "./exports.js";
 export * from "./qr.js";
 export * from "./catalog-public-visibility.js";
+export * from "./auction-timing.js";
+export * from "./lot-timing.js";
+export * from "./sale-timing.js";
 export * from "./telephone-booking.js";
 export * from "./onsite-event.js";
