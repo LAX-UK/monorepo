@@ -155,7 +155,8 @@ export function parseLot(raw: unknown): Lot {
     images: Array.isArray(o.images) ? (o.images as unknown[]).map(String) : [],
     categoryId: String(o.categoryId ?? ""),
     auctionType: o.auctionType as Lot["auctionType"],
-    startingPrice: String(o.startingPrice),
+    startingPrice:
+      o.startingPrice == null || o.startingPrice === "" ? "0.00" : String(o.startingPrice),
     reservePrice: o.reservePrice == null ? null : String(o.reservePrice),
     buyNowPrice: o.buyNowPrice == null ? null : String(o.buyNowPrice),
     currentPrice: String(o.currentPrice),

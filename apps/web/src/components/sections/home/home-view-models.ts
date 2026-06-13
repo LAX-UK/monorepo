@@ -2,6 +2,7 @@ import type { SaleListRow } from "@/lib/data/http/sales.server";
 import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-date";
 import { formatMoney } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
+import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { type HeroCoverSources, resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
@@ -329,11 +330,10 @@ export function toLotCardVMs(lots: Lot[]): LotCardVM[] {
 /** Figma B3 card: estimate row + `lotPriceDisplay` row (e.g. current bid). */
 function estimateDisplayFromLot(lot: Lot, base: LotCardVM): string {
   if (base.estimateRange?.display) return base.estimateRange.display;
-  const est = lot.marketingDetails?.estimate;
-  if (est?.low != null && est?.high != null && est.low !== "" && est.high !== "") {
-    return `${formatMoney(est.low)} – ${formatMoney(est.high)}`;
-  }
-  return formatMoney(lot.startingPrice);
+  const fromMarketing = lotEstimateLine(lot);
+  if (fromMarketing) return fromMarketing;
+  const { value } = lotPriceDisplay(lot);
+  return value && value !== "undefined" ? value : "—";
 }
 
 export function toEndingSoonLotCardVM(lot: Lot): LotCardVM {
