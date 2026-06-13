@@ -20,11 +20,10 @@ import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.serv
 import {
   fetchPublicArtistAliases,
   fetchRegistryArtistById,
-  getServerArtistById,
+  portraitForPublicArtist,
 } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { artistDirectoryBackHref } from "@/lib/marketing/catalog-links";
 import { metadataForNotFound, metadataForSeller } from "@/lib/seo/metadata-factory";
 import {
@@ -32,7 +31,6 @@ import {
   creatorJsonLd,
   itemListJsonLd,
   jsonLdScript,
-  personJsonLd,
 } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
@@ -48,26 +46,26 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-async function loadSellerLots(sellerId: string): Promise<Lot[]> {
+async function loadArtistLots(artistId: string): Promise<Lot[]> {
   const auctionReader = await getServerLotReader();
   try {
     const [active, scheduled, ended] = await Promise.all([
       auctionReader.list({
-        sellerId,
+        artistId,
         status: "active",
         limit: 24,
         offset: 0,
         sort: "endingAsc",
       }),
       auctionReader.list({
-        sellerId,
+        artistId,
         status: "scheduled",
         limit: 24,
         offset: 0,
         sort: "endingAsc",
       }),
       auctionReader.list({
-        sellerId,
+        artistId,
         status: "ended",
         limit: 24,
         offset: 0,
@@ -94,184 +92,87 @@ function shouldNoIndex(registry: RegistryArtist | null): boolean {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id, slug } = await params;
-  const [artist, registry] = await Promise.all([
-    getServerArtistById(id),
-    fetchRegistryArtistById(id),
-  ]);
-  if (artist) {
-    ensureCanonicalArtistSlug(slug, artist);
-    const base = metadataForSeller(artist);
-    if (shouldNoIndex(registry)) {
-      return { ...base, robots: { index: false, follow: true } };
-    }
-    return base;
+  const registry = await fetchRegistryArtistById(id);
+  if (!registry) return metadataForNotFound("Artist not found");
+  ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName });
+  const base = metadataForSeller({ id: registry.id, name: registry.displayName });
+  if (shouldNoIndex(registry)) {
+    return { ...base, robots: { index: false, follow: true } };
   }
-  const publicReader = await getServerPublicUserReader();
-  const user = await publicReader.getById(id).catch(() => null);
-  if (!user) return metadataForNotFound("Artist not found");
-  ensureCanonicalArtistSlug(slug, user);
-  return metadataForSeller(user);
+  return base;
 }
 
 export default async function ArtistPage({ params, searchParams }: PageProps) {
   const { id, slug } = await params;
   const sp = await searchParams;
   const directoryBackHref = artistDirectoryBackHref(sp);
-  const [sellerLots, artist, registry, aliases, session, watchedArtistIds] = await Promise.all([
-    loadSellerLots(id),
-    getServerArtistById(id),
+  const [artistLots, registry, aliases, session, watchedArtistIds] = await Promise.all([
+    loadArtistLots(id),
     fetchRegistryArtistById(id),
     fetchPublicArtistAliases(id),
     getServerSessionUser(),
     getServerMyArtistWatchIds(),
   ]);
+  if (!registry) notFound();
+
+  const artistName = registry.displayName;
+  const artistTagline = registry.nationality?.trim() || null;
+  const artistBio = registry.shortBio?.trim() || registry.longBio?.trim() || null;
+  const artistPortraitUrl = portraitForPublicArtist(registry.portraitUrl);
   const currentUserId = session?.id ?? null;
   const base = getSiteUrl();
-  const isFeatured = registry?.featured === true;
+  const isFeatured = registry.featured === true;
   const watching = watchedArtistIds.includes(id);
   const isAuthed = Boolean(session);
 
-  if (!artist) {
-    const publicReader = await getServerPublicUserReader();
-    const user = await publicReader.getById(id).catch(() => null);
-    if (!user) notFound();
-    ensureCanonicalArtistSlug(slug, user);
-    const profilePath = artistPath(user);
-    const profileUrl = `${base}${profilePath}`;
-
-    const crumbs = breadcrumbJsonLd([
-      { name: "Home", path: "/" },
-      { name: user.name, path: profilePath },
-    ]);
-    const personLd = personJsonLd({
-      name: user.name,
-      url: profileUrl,
-      description: "Seller on LAX.BID by London Art Exchange.",
-    });
-    const itemsLd =
-      sellerLots.length > 0
-        ? itemListJsonLd(sellerLots.map((l) => ({ name: l.title, url: `${base}${lotPath(l)}` })))
-        : null;
-    const jsonLdText = jsonLdScript(
-      ...(itemsLd ? [crumbs, personLd, itemsLd] : [crumbs, personLd]),
-    );
-
-    return (
-      <MarketingDetailShell
-        jsonLd={
-          <script type="application/ld+json" suppressHydrationWarning>
-            {jsonLdText}
-          </script>
-        }
-        wayfinding={
-          <MarketingDetailWayfinding
-            backHref={directoryBackHref}
-            backLabel="Back to artists"
-            breadcrumbItems={[
-              { label: "Home", href: "/" },
-              { label: user.name, current: true },
-            ]}
-            className="mb-8"
-          />
-        }
-        stickyChrome={
-          <ArtistStickyFollow
-            artistId={id}
-            artistName={user.name}
-            initialWatching={watching}
-            isAuthenticated={isAuthed}
-            loginNextPath={profilePath}
-          />
-        }
-      >
-        <ArtistHero
-          vm={{
-            id,
-            name: user.name,
-            tagline:
-              "Seller on LAX.BID by London Art Exchange \u2014 lots listed below are attributed to this account.",
-            bio: null,
-            portraitUrl: null,
-            featured: false,
-          }}
-          actions={
-            <>
-              <ArtistWatchToggle
-                artistId={id}
-                initialWatching={watching}
-                isAuthenticated={isAuthed}
-                loginNextPath={profilePath}
-              />
-              <ShareButton url={profileUrl} title={user.name} />
-            </>
-          }
-        />
-        <section id="works">
-          {sellerLots.length === 0 ? (
-            <ArtistWorksEmptyState />
-          ) : (
-            <>
-              <ViewItemListTracker
-                listId={`artist:${id}`}
-                listName="Artist works"
-                itemIds={sellerLots.map((l) => l.id)}
-              />
-              <ArtistWorksGrid lots={sellerLots} currentUserId={currentUserId} />
-            </>
-          )}
-        </section>
-      </MarketingDetailShell>
-    );
-  }
-
-  ensureCanonicalArtistSlug(slug, artist);
-  const profilePath = artistPath(artist);
+  ensureCanonicalArtistSlug(slug, { id: registry.id, name: artistName });
+  const profilePath = artistPath({ id: registry.id, name: artistName });
   const profileUrl = `${base}${profilePath}`;
 
-  const kindConfig = getCreatorKindConfig(registry?.kind);
+  const kindConfig = getCreatorKindConfig(registry.kind);
   const aliasesList = aliases.slice(0, 6);
 
   const crumbs = breadcrumbJsonLd([
     { name: "Home", path: "/" },
     { name: "Artists", path: "/artists" },
-    { name: artist.name, path: profilePath },
+    { name: artistName, path: profilePath },
   ]);
 
   const description: string | undefined =
-    (artist.tagline ?? artist.bio) ? ((artist.tagline ?? artist.bio) as string) : undefined;
-  const sameAs = registry?.websiteUrl ? [registry.websiteUrl] : undefined;
+    (artistTagline ?? artistBio) ? ((artistTagline ?? artistBio) as string) : undefined;
+  const sameAs = registry.websiteUrl ? [registry.websiteUrl] : undefined;
 
   const subjectLd = creatorJsonLd({
-    kind: registry?.kind ?? null,
-    name: artist.name,
+    kind: registry.kind ?? null,
+    name: artistName,
     url: profileUrl,
-    ...(artist.portraitUrl ? { image: artist.portraitUrl } : {}),
+    ...(artistPortraitUrl ? { image: artistPortraitUrl } : {}),
     ...(description ? { description } : {}),
     ...(sameAs ? { sameAs } : {}),
     ...(aliasesList.length > 0 ? { alternateName: aliasesList } : {}),
-    ...(registry?.birthYear ? { birthDate: registry.birthYear } : {}),
-    ...(registry?.deathYear ? { deathDate: registry.deathYear } : {}),
-    ...(registry?.foundedYear ? { foundingDate: registry.foundedYear } : {}),
-    ...(registry?.dissolvedYear ? { dissolutionDate: registry.dissolvedYear } : {}),
-    ...(registry?.nationality ? { nationality: registry.nationality } : {}),
+    ...(registry.birthYear ? { birthDate: registry.birthYear } : {}),
+    ...(registry.deathYear ? { deathDate: registry.deathYear } : {}),
+    ...(registry.foundedYear ? { foundingDate: registry.foundedYear } : {}),
+    ...(registry.dissolvedYear ? { dissolutionDate: registry.dissolvedYear } : {}),
+    ...(registry.nationality ? { nationality: registry.nationality } : {}),
   });
 
   const itemsLd =
-    sellerLots.length > 0
-      ? itemListJsonLd(sellerLots.map((l) => ({ name: l.title, url: `${base}${lotPath(l)}` })))
+    artistLots.length > 0
+      ? itemListJsonLd(artistLots.map((l) => ({ name: l.title, url: `${base}${lotPath(l)}` })))
       : null;
   const jsonLdText = jsonLdScript(
     ...(itemsLd ? [crumbs, subjectLd, itemsLd] : [crumbs, subjectLd]),
   );
 
-  const kindSegment: string | null = registry?.kind ? kindDirectorySlug(registry.kind) : null;
+  const kindSegment: string | null = registry.kind ? kindDirectorySlug(registry.kind) : null;
   const relatedRows = await loadRelatedDirectoryArtists(id, registry);
   const browseHref = kindSegment ? `/artists/kind/${kindSegment}` : "/artists";
 
   // Build directory pivot chips so visitors can jump from a single artist to
   // their decade / nationality / kind slice. Each chip is a real `<a>` so SEO
   // and JS-disabled visitors both work, and it strengthens internal linking.
-  const birthMatch = registry?.birthYear?.match(/^\d{4}/);
+  const birthMatch = registry.birthYear?.match(/^\d{4}/);
   const birthYearNum = birthMatch?.[0] != null ? Number.parseInt(birthMatch[0], 10) : null;
   const decadeSlug = (() => {
     if (birthYearNum == null) return null;
@@ -287,7 +188,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
       aria: `Browse artists born in the ${decadeSlug === "pre-1800" ? "pre-1800 era" : decadeSlug}`,
     });
   }
-  if (registry?.nationality?.trim()) {
+  if (registry.nationality?.trim()) {
     const nat = registry.nationality.trim();
     const natSlug = slugifyNationality(nat);
     pivotChips.push({
@@ -306,14 +207,14 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
 
   // Department chips link to the collecting-category directory slice. Built from
   // the registry-backed categories attached to this profile.
-  const categoryChips = (registry?.categories ?? []).slice(0, 6);
+  const categoryChips = (registry.categories ?? []).slice(0, 6);
 
   // Kind-specific attribute rows (e.g. movement/medium, marque country/founder)
   // surfaced from the JSONB attributes via the config registry (OCP).
   const attributeRows = kindConfig.attributes
     .map((field) => ({
       label: field.label,
-      value: registry?.attributes?.[field.key]?.trim() ?? "",
+      value: registry.attributes?.[field.key]?.trim() ?? "",
     }))
     .filter((entry) => entry.value.length > 0);
 
@@ -324,10 +225,10 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <ArtistScenarioBadges
-          kind={registry?.kind ?? null}
+          kind={registry.kind ?? null}
           featured={isFeatured}
-          verified={registry?.verified ?? false}
-          deathYear={registry?.deathYear ?? null}
+          verified={registry.verified ?? false}
+          deathYear={registry.deathYear ?? null}
         />
         {aliasesList.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -396,7 +297,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
           breadcrumbItems={[
             { label: "Home", href: "/" },
             { label: "Artists", href: "/artists" },
-            { label: artist.name, current: true },
+            { label: artistName, current: true },
           ]}
           className="mb-8"
         />
@@ -404,7 +305,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
       stickyChrome={
         <ArtistStickyFollow
           artistId={id}
-          artistName={artist.name}
+          artistName={artistName}
           initialWatching={watching}
           isAuthenticated={isAuthed}
           loginNextPath={profilePath}
@@ -414,10 +315,10 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
       <ArtistHero
         vm={{
           id,
-          name: artist.name,
-          tagline: artist.tagline ?? null,
-          bio: artist.bio ?? null,
-          portraitUrl: artist.portraitUrl ?? null,
+          name: artistName,
+          tagline: artistTagline,
+          bio: artistBio,
+          portraitUrl: artistPortraitUrl,
           featured: isFeatured,
         }}
         actions={
@@ -430,8 +331,8 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
                 isAuthenticated={isAuthed}
                 loginNextPath={profilePath}
               />
-              <ShareButton url={profileUrl} title={artist.name} />
-              {registry?.websiteUrl ? (
+              <ShareButton url={profileUrl} title={artistName} />
+              {registry.websiteUrl ? (
                 <a
                   href={registry.websiteUrl}
                   target="_blank"
@@ -445,21 +346,6 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
           </div>
         }
       />
-      {artist.stats.length > 0 ? (
-        <section className="mb-20 grid grid-cols-2 gap-y-5 border-y border-outline-variant/40 py-8 md:grid-cols-4 md:gap-0">
-          {artist.stats.map((s) => (
-            <div
-              key={s.label}
-              className="flex flex-col gap-2 px-0 md:border-r md:border-outline-variant/40 md:px-5 md:first:pl-0 md:last:border-r-0"
-            >
-              <span className="mb-2 font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                {s.label}
-              </span>
-              <span className="font-headline text-3xl text-on-surface">{s.value}</span>
-            </div>
-          ))}
-        </section>
-      ) : null}
       {attributeRows.length > 0 ? (
         <section className="mb-20">
           <h2 className="mb-6 font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
@@ -478,16 +364,16 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
         </section>
       ) : null}
       <section id="works">
-        {sellerLots.length === 0 ? (
+        {artistLots.length === 0 ? (
           <ArtistWorksEmptyState />
         ) : (
           <>
             <ViewItemListTracker
               listId={`artist:${id}`}
               listName="Artist works"
-              itemIds={sellerLots.map((l) => l.id)}
+              itemIds={artistLots.map((l) => l.id)}
             />
-            <ArtistWorksGrid lots={sellerLots} currentUserId={currentUserId} />
+            <ArtistWorksGrid lots={artistLots} currentUserId={currentUserId} />
           </>
         )}
       </section>
