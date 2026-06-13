@@ -1,5 +1,6 @@
 "use client";
 
+import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
@@ -77,13 +78,14 @@ function EditorsPicksCarousel({
             key={lot.id}
             className="flex w-[min(100vw-4rem,280px)] shrink-0 snap-start flex-col sm:w-[280px]"
           >
-            <EditorsPickMarketingCard
-              lot={lot}
-              index={index}
-              isAuthenticated={isAuthenticated}
-              watchedLotIds={watchedLotIds}
-              loginNextPath={loginNextPath}
-            />
+            <MarketingCardReveal index={index} className="h-full min-w-0">
+              <EditorsPickMarketingCard
+                lot={lot}
+                isAuthenticated={isAuthenticated}
+                watchedLotIds={watchedLotIds}
+                loginNextPath={loginNextPath}
+              />
+            </MarketingCardReveal>
           </li>
         ))}
       </ul>

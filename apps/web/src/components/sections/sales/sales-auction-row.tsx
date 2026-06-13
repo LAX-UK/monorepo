@@ -1,3 +1,4 @@
+import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { SaleCardActions } from "@/components/sections/sales/card/sale-card-actions";
 import { SaleCardHeader } from "@/components/sections/sales/card/sale-card-header";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
@@ -6,7 +7,6 @@ import { SaleCardShell } from "@/components/sections/sales/card/sale-card-shell"
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { SaleAction } from "@/components/sections/sales/card/types";
 import type { SaleAuctionRowVM } from "@/components/sections/sales/sales-view-models";
-import { RevealInView } from "@/components/ui/reveal";
 
 type Props = {
   vm: SaleAuctionRowVM;
@@ -34,7 +34,7 @@ export function SalesAuctionRow({ vm, index = 0 }: Props) {
 
   return (
     <li>
-      <RevealInView variant="fadeUp" delayMs={index * 60} className="block w-full">
+      <MarketingCardReveal index={index} className="block w-full">
         <SaleCardShell className="p-3 sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 sm:gap-5 md:flex-row md:items-stretch md:gap-5 lg:gap-6">
             <SaleCardMedia
@@ -62,7 +62,7 @@ export function SalesAuctionRow({ vm, index = 0 }: Props) {
             </div>
           </div>
         </SaleCardShell>
-      </RevealInView>
+      </MarketingCardReveal>
     </li>
   );
 }

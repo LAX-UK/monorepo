@@ -46,6 +46,20 @@ This document is the single source of truth for the marketing surface (`apps/web
 - **Focus:** `FOCUS_RING` on all interactive marketing chrome and link-cards.
 - **Icon buttons (chrome):** min touch target 44×44.
 
+## Motion (marketing)
+
+Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and presets in `apps/web/src/lib/marketing/motion.ts`. Do **not** sprinkle `RevealInView` + `index * N` delay at call sites.
+
+| Surface | Primitive | Variant | Stagger |
+|---------|-----------|---------|---------|
+| Card grids, carousels, archive rows | `MarketingCardReveal` | `fadeUp` | 50 ms step, 150 ms cap |
+| Section copy columns (CTA bands) | `MarketingSectionReveal` | `fadeUp` | 60 ms step, 120 ms cap |
+| Hero media (above fold) | `MarketingHeroReveal` / `RevealOnMount fadeUp` | `fadeUp` | optional `delayMs` |
+| Hero copy choreography | legacy `.fade-up-d1…d4` inside hero shells only | — | fixed 150–550 ms presets |
+
+- **`wipeZoom` / `wipe`:** not used on marketing surfaces.
+- **Card components** (`MarketingLotTile`, `SaleroomLotCard`, etc.) stay presentational — grids wrap them in `MarketingCardReveal`.
+
 ## Component catalog (target)
 
 | Primitive | Responsibility |
