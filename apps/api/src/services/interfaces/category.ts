@@ -21,4 +21,5 @@ export interface ICategoryRepository {
   archive(id: string): Promise<Category | null>;
   delete(id: string): Promise<boolean>;
   usageFor(id: string): Promise<AdminCategory["usage"]>;
+  usageForMany(ids: string[]): Promise<Map<string, AdminCategory["usage"]>>;
 }

@@ -36,6 +36,9 @@ function routeLabel(path: string): string {
   if (path.startsWith("/api/auth/")) return "/api/auth/*";
   if (path.startsWith("/webhooks/")) return "/webhooks/*";
   if (path.startsWith("/.well-known/")) return "/.well-known/*";
+  if (path === "/lots" || path.startsWith("/lots/")) return "/lots/*";
+  if (path === "/sales" || path.startsWith("/sales/")) return "/sales/*";
+  if (path.startsWith("/bids")) return "/bids/*";
   const [first] = path.split("/").filter(Boolean);
   return first ? `/${first}/*` : "/";
 }

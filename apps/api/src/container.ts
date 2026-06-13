@@ -3,7 +3,12 @@ import { createJwksAdapter } from "@auction/auth";
 import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/server";
 import { createDb, publishUserRegistered } from "@auction/db";
 import { user } from "@auction/db/schema";
-import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
+import {
+  ConsoleEmailService,
+  type IEmailService,
+  PostmarkEmailService,
+  bindEmailQueue,
+} from "@auction/email";
 import {
   CompositeMarketingEventPublisher,
   type IClickIdStore,
@@ -17,19 +22,22 @@ import {
   DATA_EXPORT_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
+  LEGAL_ENTITY_ARCHIVE_JOB_NAME,
   LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
+  type LegalEntityArchiveJobData,
+  type LegalEntityArchiveQueueProducer,
   MARKETING_EVENTS_QUEUE_NAME,
   MARKETING_SYNC_QUEUE_NAME,
   PAYOUT_STATEMENTS_QUEUE_NAME,
   QR_CODE_SCAN_QUEUE_NAME,
   type QueueName,
   VALIDATE_UPLOAD_QUEUE_NAME,
+  bindLegalEntityArchiveQueue,
   createBullQueueOptions,
 } from "@auction/queues";
-import type { DataExportJobPayload, QrCodeScanJobPayload } from "@auction/queues";
 import { Queue } from "bullmq";
 import { and, eq, isNull } from "drizzle-orm";
-import { Redis } from "ioredis";
+import type { Redis, RedisOptions } from "ioredis";
 import type { Env } from "./env.js";
 import { createExportProviderDeps } from "./exports/deps.js";
 import { createExportProviders } from "./exports/registry.js";
@@ -80,6 +88,7 @@ import {
   createPlatformCatalogLegalEntityIdProvider,
 } from "./lib/platform-catalog-legal-entity.js";
 import { queueRuntimeEnvFromApiEnv } from "./lib/queue-runtime-env.js";
+import { createRedisConnectionFactory } from "./lib/redis-connection-factory.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import type { IStripeClientFactory } from "./lib/stripe-client.js";
 import { StripeClientFactory } from "./lib/stripe-client.js";
@@ -291,6 +300,7 @@ import { RegistrationService } from "./services/registration.service.js";
 import { SaleBiddersService } from "./services/sale-bidders.service.js";
 import { SaleFollowService } from "./services/sale-follow.service.js";
 import { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
+import { SaleListReadService } from "./services/sale-list-read.service.js";
 import { SaleRegistrationService } from "./services/sale-registration.service.js";
 import { SaleSoftDeleteService } from "./services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
@@ -340,6 +350,7 @@ export type Container = {
   lotService: LotService;
   conditionReportService: IConditionReportService;
   saleService: SaleService;
+  saleListReadService: SaleListReadService;
   venueService: VenueService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   saleSoftDeleteService: SaleSoftDeleteService;
@@ -469,11 +480,11 @@ export type Container = {
   marketingSyncQueue: Queue;
   /** BullMQ queue consumed by worker to render payout PDFs to Spaces. */
   /** Async CSV export jobs (worker-generated files in object storage). */
-  dataExportQueue: Queue<DataExportJobPayload>;
+  dataExportQueue: Queue;
   exportService: ExportService;
-  payoutStatementQueue: Queue<{ payoutId: string }>;
+  payoutStatementQueue: Queue;
   /** cascade work when a legal entity is archived (proxies, lots flag, member email). */
-  legalEntityArchiveQueue: Queue<{ legalEntityId: string }>;
+  legalEntityArchiveQueue: LegalEntityArchiveQueueProducer;
   /** Service for handling Stripe payment webhooks (disputes, refunds). */
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   /** Shared Stripe SDK client (pinned API version). */
@@ -497,8 +508,13 @@ export type Container = {
 export function createContainer(env: Env): Container {
   const db = createDb(env.DATABASE_URL_API ?? env.DATABASE_URL);
   const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
-  const redis = new Redis(env.REDIS_URL);
-  const bullConnection = connectionOptionsFromRedisUrl(env.REDIS_URL);
+  const redisFactory = createRedisConnectionFactory(env.REDIS_URL);
+  const redisCache = redisFactory.getClient("cache");
+  const redis = redisFactory.getClient("pubsub");
+  const bullConnection: RedisOptions = {
+    ...connectionOptionsFromRedisUrl(env.REDIS_URL),
+    maxRetriesPerRequest: null,
+  };
   const bullTelemetry = getBullMqTelemetry("auction-api");
   const bullQueueBase = {
     connection: bullConnection,
@@ -506,10 +522,11 @@ export function createContainer(env: Env): Container {
   };
   const queueOpts = (name: QueueName) => createBullQueueOptions(name, bullQueueBase);
   const emailQueue = new Queue<{ outboxId: string }>(EMAIL_QUEUE_NAME, queueOpts(EMAIL_QUEUE_NAME));
+  const boundEmailQueue = bindEmailQueue(emailQueue);
   const emailService: IEmailService =
     env.EMAIL_PROVIDER === "postmark"
-      ? new PostmarkEmailService(db, emailQueue)
-      : new ConsoleEmailService(db, emailQueue);
+      ? new PostmarkEmailService(db, boundEmailQueue)
+      : new ConsoleEmailService(db, boundEmailQueue);
   const jwksAdapter = createJwksAdapter(authDb);
 
   const sessionRevocation = new SessionRevocationService(authDb);
@@ -586,9 +603,11 @@ export function createContainer(env: Env): Container {
   const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher);
   const organizationOnboardingService: IOrganizationOnboardingService =
     new OrganizationOnboardingService(db, domainEventPublisher);
-  const legalEntityArchiveQueue = new Queue<{ legalEntityId: string }>(
-    LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
-    queueOpts(LEGAL_ENTITY_ARCHIVE_QUEUE_NAME),
+  const legalEntityArchiveQueue = bindLegalEntityArchiveQueue(
+    new Queue<LegalEntityArchiveJobData>(
+      LEGAL_ENTITY_ARCHIVE_QUEUE_NAME,
+      queueOpts(LEGAL_ENTITY_ARCHIVE_QUEUE_NAME),
+    ),
   );
   const impersonationAuditService = new ImpersonationAuditService(db, domainEventPublisher);
   const impersonationSessionService = new ImpersonationSessionService(db);
@@ -674,7 +693,7 @@ export function createContainer(env: Env): Container {
     {
       enqueueArchiveCascade: async (legalEntityId: string) => {
         await legalEntityArchiveQueue.add(
-          "cascade",
+          LEGAL_ENTITY_ARCHIVE_JOB_NAME,
           { legalEntityId },
           { removeOnComplete: 200, attempts: 3, backoff: { type: "exponential", delay: 2000 } },
         );
@@ -721,8 +740,8 @@ export function createContainer(env: Env): Container {
   );
   const userSuspensionChecker = new DrizzleUserSuspensionChecker(db);
 
-  const cache = new RedisCacheProvider(redis);
-  const rateLimitStore = new RedisLuaRateLimitStore(redis);
+  const cache = new RedisCacheProvider(redisCache);
+  const rateLimitStore = new RedisLuaRateLimitStore(redisCache);
   const cachedUserSuspensionChecker = new CachedUserSuspensionChecker(userSuspensionChecker, cache);
   const cachedCatalogueListService = new CachedCatalogueListService(cache, 20);
   const notifier = new RedisNotificationSender(redis);
@@ -799,10 +818,7 @@ export function createContainer(env: Env): Container {
     IMAGE_CLEANUP_QUEUE_NAME,
     queueOpts(IMAGE_CLEANUP_QUEUE_NAME),
   );
-  const qrCodeScanQueue = new Queue<QrCodeScanJobPayload>(
-    QR_CODE_SCAN_QUEUE_NAME,
-    queueOpts(QR_CODE_SCAN_QUEUE_NAME),
-  );
+  const qrCodeScanQueue = new Queue(QR_CODE_SCAN_QUEUE_NAME, queueOpts(QR_CODE_SCAN_QUEUE_NAME));
   const marketingSyncQueue = new Queue(
     MARKETING_SYNC_QUEUE_NAME,
     queueOpts(MARKETING_SYNC_QUEUE_NAME),
@@ -879,14 +895,11 @@ export function createContainer(env: Env): Container {
     db,
     domainEventPublisher,
   );
-  const payoutStatementQueue = new Queue<{ payoutId: string }>(
+  const payoutStatementQueue = new Queue(
     PAYOUT_STATEMENTS_QUEUE_NAME,
     queueOpts(PAYOUT_STATEMENTS_QUEUE_NAME),
   );
-  const dataExportQueue = new Queue<DataExportJobPayload>(
-    DATA_EXPORT_QUEUE_NAME,
-    queueOpts(DATA_EXPORT_QUEUE_NAME),
-  );
+  const dataExportQueue = new Queue(DATA_EXPORT_QUEUE_NAME, queueOpts(DATA_EXPORT_QUEUE_NAME));
   const exportProviderDeps = createExportProviderDeps(db);
   const exportProviders = createExportProviders(exportProviderDeps);
   const exportService = new ExportService(
@@ -1079,6 +1092,12 @@ export function createContainer(env: Env): Container {
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     qrCodeService,
   });
+  const saleListReadService = new SaleListReadService(
+    saleRepo,
+    lotRepo,
+    catalogueMediaUrlResolver,
+    mediaAssetEnricher,
+  );
   const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db, lotLifecycleRecording);
   const saleSoftDeleteService = new SaleSoftDeleteService(
     saleRepo,
@@ -1536,6 +1555,7 @@ export function createContainer(env: Env): Container {
     lotService,
     conditionReportService,
     saleService,
+    saleListReadService,
     saleSoftDeleteService,
     lotSoftDeleteService,
     saleFollowService,

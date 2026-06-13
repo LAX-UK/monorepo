@@ -15,3 +15,11 @@ export type QrCodeScanJobPayload = {
   referrer?: string | null;
   requestId?: string | null;
 };
+
+export const LEGAL_ENTITY_ARCHIVE_JOB_NAME = "cascade" as const;
+
+export type LegalEntityArchiveJobName = typeof LEGAL_ENTITY_ARCHIVE_JOB_NAME;
+
+export type LegalEntityArchiveJobData = {
+  legalEntityId: string;
+};

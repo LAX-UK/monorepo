@@ -23,6 +23,8 @@ export type ListLotsParams = {
   endYear?: number;
   /** Server-side title search (API `q`). */
   q?: string;
+  /** Active lots ending within N hours (API `endingWithinHours`). */
+  endingWithinHours?: number;
   /** When true, only lots with zero images. */
   needsPhotos?: boolean;
   limit?: number;

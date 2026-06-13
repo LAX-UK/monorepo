@@ -23,7 +23,6 @@ import { canManageCatalogue } from "../lib/catalogue-auth.js";
 import { CATALOGUE_WRITE_CAPABILITIES, LotError } from "../lib/errors.js";
 import { respondMissingCapability, serviceErrorJsonBody } from "../lib/forbidden-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { mapLotToSummary } from "../lib/mappers.js";
 import {
   presentLotImages,
   presentSaleImages,
@@ -74,14 +73,15 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       role != null && roleHasCapability(role as UserRole, "auction.manage", staff);
 
     const buildPublicPayload = async () => {
-      const { data: rows } = await container.saleService.listSalesForPublicApi(listFilter, {
+      const { data: rows } = await container.saleListReadService.listForPublicApi(listFilter, {
         role,
         staffRole: staff,
       });
       return {
-        data: rows.map(({ sale, lots }) => ({
+        data: rows.map(({ sale, lotCount, previewLots }) => ({
           sale,
-          lots: lots.map(mapLotToSummary),
+          lots: previewLots,
+          lotCount,
         })),
       };
     };
@@ -98,14 +98,34 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       return c.json(await buildPublicPayload());
     }
 
-    const { data: rows } = await container.saleService.listSalesForPublicApi(listFilter, {
+    const { data: rows } = await container.saleListReadService.listForPublicApi(listFilter, {
       role,
       staffRole: staff,
     });
 
     const data = await (async () => {
-      const eligibilityBySale =
-        await container.saleSoftDeleteService.getDeleteEligibilityBatch(rows);
+      const draftScheduled = rows.filter(
+        (row) => row.sale.status === "draft" || row.sale.status === "scheduled",
+      );
+      const lotsBySale =
+        draftScheduled.length > 0
+          ? await container.repoFactory.root.lot.findBySaleIds(
+              draftScheduled.map((row) => row.sale.id),
+            )
+          : [];
+      const lotsBySaleId = new Map<string, typeof lotsBySale>();
+      for (const lot of lotsBySale) {
+        if (!lot.saleId) continue;
+        const arr = lotsBySaleId.get(lot.saleId) ?? [];
+        arr.push(lot);
+        lotsBySaleId.set(lot.saleId, arr);
+      }
+      const eligibilityBySale = await container.saleSoftDeleteService.getDeleteEligibilityBatch(
+        draftScheduled.map((row) => ({
+          sale: row.sale,
+          lots: lotsBySaleId.get(row.sale.id) ?? [],
+        })),
+      );
       return rows.map((row) => {
         if (row.sale.status !== "draft" && row.sale.status !== "scheduled") {
           return row;
@@ -116,9 +136,10 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     })();
 
     return c.json({
-      data: data.map(({ sale, lots, ...rest }) => ({
+      data: data.map(({ sale, previewLots, lotCount, ...rest }) => ({
         sale,
-        lots: lots.map(mapLotToSummary),
+        lots: previewLots,
+        lotCount,
         ...rest,
       })),
     });

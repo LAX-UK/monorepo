@@ -1,6 +1,11 @@
 import { createExportProviderDeps } from "@auction/api/exports";
 import { closeDb, createDb } from "@auction/db";
-import { ConsoleEmailService, type IEmailService, PostmarkEmailService } from "@auction/email";
+import {
+  ConsoleEmailService,
+  type IEmailService,
+  PostmarkEmailService,
+  bindEmailQueue,
+} from "@auction/email";
 import {
   InMemoryCircuitBreaker,
   MetaCapiMarketingEventPublisher,
@@ -312,8 +317,8 @@ const emailQueue = new Queue<EmailQueueJobData>(EMAIL_QUEUE_NAME, queueOpts(EMAI
 
 const emailOutboxService: IEmailService =
   env.EMAIL_PROVIDER === "postmark"
-    ? new PostmarkEmailService(db, emailQueue as Queue<{ outboxId: string }>)
-    : new ConsoleEmailService(db, emailQueue as Queue<{ outboxId: string }>);
+    ? new PostmarkEmailService(db, bindEmailQueue(emailQueue as Queue<{ outboxId: string }>))
+    : new ConsoleEmailService(db, bindEmailQueue(emailQueue as Queue<{ outboxId: string }>));
 const emailWorker = new Worker<EmailQueueJobData>(
   EMAIL_QUEUE_NAME,
   async (job) => {
