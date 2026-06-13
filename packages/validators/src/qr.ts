@@ -57,6 +57,37 @@ export const adminQrCodeAnalyticsQuerySchema = z.object({
 
 export type AdminQrCodeAnalyticsQuery = z.infer<typeof adminQrCodeAnalyticsQuerySchema>;
 
+export type QrCodeAnalyticsBreakdownRow = { key: string; scans: number };
+
+export type QrCodeRecentScan = {
+  scannedAt: string;
+  deviceType: string;
+  browser: string;
+  os: string;
+  country: string;
+  referrerHost: string | null;
+};
+
+export type QrCodeDetailedAnalytics = {
+  source: QrCodeAnalyticsSource;
+  granularity: QrCodeAnalyticsGranularity;
+  rangeKey: string;
+  totalScans: number;
+  uniqueIps: number | null;
+  trend: { bucket: string; scans: number }[];
+  byDevice: QrCodeAnalyticsBreakdownRow[];
+  byCountry: QrCodeAnalyticsBreakdownRow[];
+  byBrowser: QrCodeAnalyticsBreakdownRow[] | null;
+  byOs: QrCodeAnalyticsBreakdownRow[] | null;
+  byReferrer: QrCodeAnalyticsBreakdownRow[] | null;
+  recentScans: QrCodeRecentScan[] | null;
+};
+
+/** Client-side analytics fetch params (preset range or custom UTC instants). */
+export type QrCodeAnalyticsClientQuery =
+  | { range: QrCodeAnalyticsRange }
+  | { from: string; to: string };
+
 export type ResolvedQrCodeAnalyticsQuery = {
   from: Date | null;
   to: Date;
