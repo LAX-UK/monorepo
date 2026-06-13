@@ -2,6 +2,7 @@ import type { Bid, Lot, Sale } from "@auction/types";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import type { DashboardQueryService } from "./dashboard-query.service.js";
+import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type {
   WatchlistListOptions,
@@ -20,6 +21,7 @@ export class UserDashboardReadService {
     private readonly watchlistService: WatchlistService,
     private readonly mediaUrlResolver: MediaUrlResolver | undefined,
     private readonly saleLookup: SaleLookup,
+    private readonly mediaAssetEnricher?: MediaAssetEnricher,
   ) {}
 
   async listBidsForUser(userId: string): Promise<UserBidWithLot[]> {
@@ -49,7 +51,7 @@ export class UserDashboardReadService {
 
   private async enrichLots(lots: Lot[]): Promise<Lot[]> {
     if (lots.length === 0) return lots;
-    const presented = await presentLotsImages(this.mediaUrlResolver, lots);
+    const presented = await presentLotsImages(this.mediaUrlResolver, lots, this.mediaAssetEnricher);
     return this.withCheckoutPricing(presented);
   }
 

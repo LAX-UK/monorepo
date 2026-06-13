@@ -257,6 +257,7 @@ import { LotSoftDeleteService } from "./services/lot-soft-delete.service.js";
 import { LotTransitionOrchestrator } from "./services/lot-transition-orchestrator.js";
 import { LotService } from "./services/lot.service.js";
 import { MarketingEventService } from "./services/marketing-event.service.js";
+import { MediaAssetEnricher } from "./services/media-asset-enricher.js";
 import { MediaUrlResolver } from "./services/media-url-resolver.js";
 import { MemberManagementService } from "./services/member-management.service.js";
 import { EmailMembershipInviteNotifier } from "./services/membership-invite-notifier.js";
@@ -458,6 +459,7 @@ export type Container = {
   payoutService: IPayoutService;
   objectStorage: IObjectStorage;
   mediaUrlResolver: MediaUrlResolver;
+  mediaAssetEnricher: MediaAssetEnricher;
   uploadService: UploadService;
   lotDocumentService: EntityDocumentService<string>;
   saleDocumentService: EntityDocumentService<string>;
@@ -909,6 +911,7 @@ export function createContainer(env: Env): Container {
     env.STORAGE_READ_MODE,
     new StableSigningPolicy(Math.max(env.SIGNED_GET_TTL_SEC, 86_400)),
   );
+  const mediaAssetEnricher = new MediaAssetEnricher(db, objectStorage);
   const legalEntityDocumentAdminService = new LegalEntityDocumentAdminService(
     db,
     objectStorage,
@@ -1034,6 +1037,7 @@ export function createContainer(env: Env): Container {
     domainEventPublisher,
     mediaUrlResolver,
     catalogueMediaUrlResolver,
+    mediaAssetEnricher,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     lotLifecycleRecording,
     lotTransitionOrchestrator,
@@ -1065,6 +1069,7 @@ export function createContainer(env: Env): Container {
     saleFollowReader: saleFollowService,
     mediaUrlResolver,
     catalogueMediaUrlResolver,
+    mediaAssetEnricher,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     db,
     domainEventPublisher,
@@ -1115,6 +1120,7 @@ export function createContainer(env: Env): Container {
     legalEntityRepository,
     domainEventPublisher,
     mediaUrlResolver,
+    mediaAssetEnricher,
     lotLifecycleRecording,
   );
 
@@ -1370,6 +1376,7 @@ export function createContainer(env: Env): Container {
     watchlistService,
     mediaUrlResolver,
     saleService,
+    mediaAssetEnricher,
   );
   const savedSearchService = new SavedSearchService(db);
   // Watchlist now references `artist_profile.id` (post-0046 migration), so the
@@ -1625,6 +1632,7 @@ export function createContainer(env: Env): Container {
     payoutService,
     objectStorage,
     mediaUrlResolver,
+    mediaAssetEnricher,
     uploadService,
     lotDocumentService,
     saleDocumentService,

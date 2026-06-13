@@ -1,4 +1,5 @@
 import { cn } from "@auction/ui";
+import Image from "next/image";
 
 export type MemberAvatar = {
   name: string;
@@ -15,6 +16,8 @@ function initials(name: string): string {
   if (!last?.[0] || !first[0]) return first.slice(0, 2).toUpperCase();
   return `${first[0]}${last[0]}`.toUpperCase();
 }
+
+const AVATAR_SIZE = 36;
 
 type Props = {
   members: MemberAvatar[];
@@ -39,7 +42,14 @@ export function MembersAvatarStack({ members, max = 5, className }: Props) {
             title={m.name}
           >
             {m.image ? (
-              <img src={m.image} alt={m.name} className="size-full rounded-full object-cover" />
+              <Image
+                src={m.image}
+                alt={m.name}
+                width={AVATAR_SIZE}
+                height={AVATAR_SIZE}
+                loading="lazy"
+                className="size-full rounded-full object-cover"
+              />
             ) : (
               <span aria-hidden>{initials(m.name)}</span>
             )}

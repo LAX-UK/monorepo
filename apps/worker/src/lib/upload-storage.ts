@@ -10,6 +10,8 @@ import {
 } from "@aws-sdk/client-s3";
 import type { WorkerEnv } from "../env.js";
 
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
 export type UploadStorage = {
   putObject(key: string, body: Buffer, contentType: string): Promise<{ url: string }>;
   putObjectFromFile(
@@ -60,6 +62,7 @@ class WorkerS3UploadStorage implements UploadStorage {
         Key: key,
         Body: body,
         ContentType: contentType,
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       }),
     );
     return { url: `${this.publicBaseUrl}/${key}` };
@@ -78,6 +81,7 @@ class WorkerS3UploadStorage implements UploadStorage {
         Body: createReadStream(filePath),
         ContentType: contentType,
         ContentLength: info.size,
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       }),
     );
     return { url: `${this.publicBaseUrl}/${key}`, byteLength: info.size };

@@ -49,6 +49,7 @@ import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
+import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";
 
@@ -116,6 +117,7 @@ export type LotServiceOptions = {
   domainEventPublisher?: DomainEventPublisher | null;
   mediaUrlResolver?: MediaUrlResolver;
   catalogueMediaUrlResolver?: MediaUrlResolver;
+  mediaAssetEnricher?: MediaAssetEnricher;
   englishOnlyAuctions?: boolean;
   lotLifecycleRecording?: LotLifecycleRecording | null;
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
@@ -137,6 +139,7 @@ export class LotService {
   private readonly db: Database | null;
   private readonly domainEventPublisher: DomainEventPublisher | null;
   private readonly catalogueMediaUrlResolver: MediaUrlResolver | undefined;
+  private readonly mediaAssetEnricher: MediaAssetEnricher | undefined;
   private readonly englishOnlyAuctions: boolean;
   private readonly lotLifecycleRecording: LotLifecycleRecording | null;
   private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
@@ -157,6 +160,7 @@ export class LotService {
     this.db = opts.db ?? null;
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
     this.catalogueMediaUrlResolver = opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver;
+    this.mediaAssetEnricher = opts.mediaAssetEnricher;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.lotLifecycleRecording = opts.lotLifecycleRecording ?? null;
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
@@ -715,7 +719,11 @@ export class LotService {
 
     const rows = await this.lotRepo.list(queryFilter);
 
-    const presented = await presentLotsImages(this.catalogueMediaUrlResolver, rows);
+    const presented = await presentLotsImages(
+      this.catalogueMediaUrlResolver,
+      rows,
+      this.mediaAssetEnricher,
+    );
     return {
       data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole, viewerStaffRole)),
     };

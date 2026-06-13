@@ -25,6 +25,10 @@ type MediaImageProps = {
   onImageLoad?: (() => void) | undefined;
   /** Set for canvas sampling only; omit for prod image loading (default). */
   crossOrigin?: "anonymous";
+  /** Server-generated LQIP from `media_asset` when available. */
+  blurDataURL?: string | undefined;
+  width?: number | undefined;
+  height?: number | undefined;
 };
 
 export function MediaImage({
@@ -43,28 +47,41 @@ export function MediaImage({
   imgRef,
   onImageLoad,
   crossOrigin,
+  blurDataURL,
+  width,
+  height,
 }: MediaImageProps) {
   const normalizedSrc = resolveMediaSrc(src);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     normalizedSrc ? "loading" : "error",
   );
+  // Skip LQIP on priority (LCP) images — shimmer is enough; blur adds decode cost.
+  const useBlurPlaceholder = Boolean(blurDataURL) && !priority;
+  const intrinsicAspect =
+    aspect ??
+    (width != null && height != null && width > 0 && height > 0
+      ? ([width, height] as const)
+      : undefined);
+  const hasAspect = intrinsicAspect != null;
 
   useEffect(() => {
     setStatus(normalizedSrc ? "loading" : "error");
   }, [normalizedSrc]);
 
-  const showPlaceholder = !normalizedSrc || status !== "loaded";
+  const showPlaceholder = !normalizedSrc || (status !== "loaded" && !useBlurPlaceholder);
   const isCircle = shape === "circle";
 
   return (
     <div
       className={cn(
         "relative overflow-hidden",
-        aspect ? "w-full" : "h-full w-full",
+        hasAspect ? "w-full" : "h-full w-full",
         isCircle && "rounded-full",
         className,
       )}
-      style={aspect ? { aspectRatio: `${aspect[0]} / ${aspect[1]}` } : undefined}
+      style={
+        hasAspect ? { aspectRatio: `${intrinsicAspect[0]} / ${intrinsicAspect[1]}` } : undefined
+      }
     >
       {showPlaceholder ? (
         <MediaPlaceholder
@@ -83,6 +100,9 @@ export function MediaImage({
           fill
           sizes={sizes}
           priority={priority}
+          {...(useBlurPlaceholder && blurDataURL
+            ? { placeholder: "blur" as const, blurDataURL }
+            : {})}
           {...(crossOrigin ? { crossOrigin } : {})}
           onLoad={() => {
             setStatus("loaded");
@@ -91,8 +111,10 @@ export function MediaImage({
           onError={() => setStatus("error")}
           onClick={onClick}
           className={cn(
-            "object-cover opacity-0 transition-opacity duration-300 motion-reduce:transition-none",
-            status === "loaded" && "opacity-100",
+            "object-cover",
+            !useBlurPlaceholder &&
+              "opacity-0 transition-opacity duration-300 motion-reduce:transition-none",
+            !useBlurPlaceholder && status === "loaded" && "opacity-100",
             onClick && "cursor-pointer",
             imgClassName,
           )}

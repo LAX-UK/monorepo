@@ -54,6 +54,7 @@ import type { ILegalEntityRepository } from "./interfaces/legal-entity-repositor
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { IVenueRepository } from "./interfaces/venue.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
+import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";
 
@@ -75,6 +76,7 @@ export type SaleServiceOptions = {
   saleFollowReader?: SaleFollowReader | null;
   mediaUrlResolver?: MediaUrlResolver;
   catalogueMediaUrlResolver?: MediaUrlResolver;
+  mediaAssetEnricher?: MediaAssetEnricher;
   englishOnlyAuctions?: boolean;
   db?: Database;
   domainEventPublisher?: DomainEventPublisher | null;
@@ -94,6 +96,7 @@ export class SaleService {
   private readonly saleFollowReader: SaleFollowReader | null;
   private readonly mediaUrlResolver: MediaUrlResolver | undefined;
   private readonly catalogueMediaUrlResolver: MediaUrlResolver | undefined;
+  private readonly mediaAssetEnricher: MediaAssetEnricher | undefined;
   private readonly englishOnlyAuctions: boolean;
   private readonly db: Database | undefined;
   private readonly domainEventPublisher: DomainEventPublisher | null;
@@ -112,6 +115,7 @@ export class SaleService {
     this.saleFollowReader = opts.saleFollowReader ?? null;
     this.mediaUrlResolver = opts.mediaUrlResolver;
     this.catalogueMediaUrlResolver = opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver;
+    this.mediaAssetEnricher = opts.mediaAssetEnricher;
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.db = opts.db;
     this.domainEventPublisher = opts.domainEventPublisher ?? null;
@@ -305,8 +309,16 @@ export class SaleService {
   } | null> {
     const bundle = await this.getByIdWithLots(saleId);
     if (!bundle) return null;
-    const sale = await presentSaleAdminImages(this.mediaUrlResolver, bundle.sale);
-    const lots = await presentLotsImages(this.mediaUrlResolver, bundle.lots);
+    const sale = await presentSaleAdminImages(
+      this.mediaUrlResolver,
+      bundle.sale,
+      this.mediaAssetEnricher,
+    );
+    const lots = await presentLotsImages(
+      this.mediaUrlResolver,
+      bundle.lots,
+      this.mediaAssetEnricher,
+    );
     return { data: { sale, lots } };
   }
 
@@ -327,8 +339,8 @@ export class SaleService {
         ? await this.saleFollowReader.isFollowing(viewerUserId, saleId)
         : false;
     const [sale, lots] = await Promise.all([
-      presentSaleImages(this.mediaUrlResolver, bundle.sale),
-      presentLotsImages(this.mediaUrlResolver, bundle.lots),
+      presentSaleImages(this.mediaUrlResolver, bundle.sale, this.mediaAssetEnricher),
+      presentLotsImages(this.mediaUrlResolver, bundle.lots, this.mediaAssetEnricher),
     ]);
     const visibleLots = canPreview
       ? lots
@@ -355,7 +367,11 @@ export class SaleService {
           : {}),
     };
     const rows = await this.list(queryFilter);
-    const data = await presentSalesWithLotsImages(this.catalogueMediaUrlResolver, rows);
+    const data = await presentSalesWithLotsImages(
+      this.catalogueMediaUrlResolver,
+      rows,
+      this.mediaAssetEnricher,
+    );
     if (canPreview) return { data };
     return {
       data: data
@@ -398,7 +414,11 @@ export class SaleService {
             requirePublicSale: true,
           }),
     });
-    const items = await presentLotsImages(this.mediaUrlResolver, page.items);
+    const items = await presentLotsImages(
+      this.mediaUrlResolver,
+      page.items,
+      this.mediaAssetEnricher,
+    );
     return {
       data: {
         items,
@@ -1064,13 +1084,15 @@ export class SaleService {
   async getById(id: string): Promise<Sale | null> {
     const row = await this.saleRepo.findById(id);
     if (!row) return null;
-    return presentSaleImages(this.mediaUrlResolver, row);
+    return presentSaleImages(this.mediaUrlResolver, row, this.mediaAssetEnricher);
   }
 
   /** Batch read by ids — single DB round trip for portfolio / lot-list pricing joins. */
   async findByIds(ids: string[]): Promise<Sale[]> {
     if (ids.length === 0) return [];
     const rows = await this.saleRepo.findByIds(ids);
-    return Promise.all(rows.map((r) => presentSaleImages(this.mediaUrlResolver, r)));
+    return Promise.all(
+      rows.map((r) => presentSaleImages(this.mediaUrlResolver, r, this.mediaAssetEnricher)),
+    );
   }
 }

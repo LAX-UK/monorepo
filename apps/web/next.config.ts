@@ -64,6 +64,9 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
+    // Tailwind breakpoints + 2x retina ceiling; omit 2048/3840 (no container that wide).
+    deviceSizes: [640, 768, 1024, 1280, 1536, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 192, 256, 384],
     remotePatterns: [
       {
         protocol: "https",
