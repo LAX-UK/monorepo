@@ -16,10 +16,16 @@ type Props = {
   imgClassName?: string;
 };
 
-/** Portrait media with adaptive overlay tone for on-image follow hearts. */
+/** Portrait media with adaptive overlay tone for on-image follow hearts.
+ *  Must fill a `relative` + sized parent (e.g. `aspect-[4/5]` on artist cards). */
 export function ArtistPortraitFrame({ src, alt, label, sizes, imgClassName }: Props) {
   return (
-    <AdaptiveMediaFrame src={src} objectFit="cover" slots={ARTIST_PORTRAIT_SLOTS}>
+    <AdaptiveMediaFrame
+      src={src}
+      objectFit="cover"
+      slots={ARTIST_PORTRAIT_SLOTS}
+      className="absolute inset-0"
+    >
       <AdaptiveMediaFrameContainer className="absolute inset-0">
         <AdaptiveFrameImage
           src={src}
