@@ -2,7 +2,12 @@
 
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import type { SlotName } from "@/lib/media/overlay-tone-types";
-import { overlayIconButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
+import {
+  type OverlaySurface,
+  overlayIconButtonClasses,
+  overlayToneProps,
+  resolveOverlayChrome,
+} from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Eye } from "lucide-react";
@@ -20,6 +25,8 @@ type Props = {
   };
   className?: string;
   layout?: LayoutMode;
+  /** Visual shell: `onImage` = frosted glass; `inline` = solid toolbar; `auto` = derive from layout/frame. */
+  surface?: OverlaySurface;
   /** Adaptive tone slot when using overlay chrome (default bottomLeft). */
   overlaySlot?: SlotName;
   /** Override default aria-label */
@@ -34,6 +41,7 @@ export function LotQuickLookTrigger({
   options,
   className,
   layout = "inline",
+  surface = "auto",
   overlaySlot = "bottomLeft",
   ariaLabel,
 }: Props) {
@@ -41,7 +49,7 @@ export function LotQuickLookTrigger({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inFrame = useOverlayToneContext() != null;
   const overlayTone = useOverlayTone(overlaySlot);
-  const useOverlayChrome = layout === "overlay" || inFrame;
+  const useOverlayChrome = resolveOverlayChrome(surface, layout, inFrame);
 
   if (!quickLook) return null;
 

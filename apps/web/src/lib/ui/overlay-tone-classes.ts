@@ -1,5 +1,19 @@
+import { DEFAULT_OVERLAY_TONE } from "@/hooks/use-image-overlay-tones";
 import type { OverlayToneResult } from "@/lib/media/overlay-tone-types";
 import { cn } from "@auction/ui";
+
+/** Where overlay chrome is rendered — decouples visual shell from layout positioning. */
+export type OverlaySurface = "auto" | "onImage" | "inline";
+
+export function resolveOverlayChrome(
+  surface: OverlaySurface,
+  layout: "overlay" | "inline",
+  inFrame: boolean,
+): boolean {
+  if (surface === "onImage") return true;
+  if (surface === "inline") return false;
+  return layout === "overlay" || inFrame;
+}
 
 const toneAttrs = (result: OverlayToneResult) => ({
   "data-overlay-tone": result.tone,
@@ -53,4 +67,13 @@ export function overlayDisplayClasses(result: OverlayToneResult, extra?: string)
 
 export function overlayToneProps(result: OverlayToneResult) {
   return toneAttrs(result);
+}
+
+/** Default light frosted shell when on-image but outside AdaptiveMediaFrame. */
+export function defaultOverlayIconButton(extra?: string): string {
+  return overlayIconButtonClasses(DEFAULT_OVERLAY_TONE, extra);
+}
+
+export function defaultOverlayToneProps() {
+  return overlayToneProps(DEFAULT_OVERLAY_TONE);
 }

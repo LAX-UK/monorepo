@@ -1,3 +1,4 @@
+import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { ArtistDirectoryCard } from "@/components/sections/artists/artist-directory-card";
 import { MediaImage } from "@/components/ui/media-image";
@@ -115,7 +116,7 @@ export function ArtistBrowseCard({
               aria-label={`View ${artist.displayName}`}
             >
               <div className={cn("relative overflow-hidden bg-surface-container-low", heroAspect)}>
-                <MediaImage
+                <ArtistPortraitFrame
                   src={artist.portraitUrl}
                   alt={isBrand ? "" : altText}
                   label={isBrand ? artist.displayName : "Artist portrait"}
@@ -207,6 +208,7 @@ export function ArtistBrowseList({
                 initialWatching={watchSet.has(a.id)}
                 isAuthenticated={isAuthenticated}
                 loginNextPath={href}
+                surface="inline"
               />
             </div>
             <Link

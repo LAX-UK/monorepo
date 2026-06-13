@@ -20,6 +20,9 @@ export const LOT_CARD_TIMER_SLOTS: FixedSlotDef[] = [
   { name: "bottomRight", type: "pill", rect: SLOT_RECTS.bottomRight },
 ];
 
+/** Home lot tiles (Editor's Picks, Urgency): heart, quick-look, status timer. */
+export const HOME_LOT_TILE_SLOTS: FixedSlotDef[] = LOT_CARD_TIMER_SLOTS;
+
 export const GALLERY_HERO_SLOTS: FixedSlotDef[] = [
   { name: "topRight", type: "pill", rect: SLOT_RECTS.topRight },
   { name: "bottomRight", type: "pill", rect: SLOT_RECTS.bottomRight },
@@ -36,4 +39,9 @@ export const EDITORIAL_CALM_SLOTS: FixedSlotDef[] = [
 export const EDITORIAL_BOLD_SLOTS: OverlaySlotDef[] = [
   { name: "topRight", type: "pill", rect: SLOT_RECTS.topRight },
   { name: "contentBlock", type: "heroBody" },
+];
+
+/** Artist directory portrait — follow heart sits bottom-right. */
+export const ARTIST_PORTRAIT_SLOTS: FixedSlotDef[] = [
+  { name: "bottomRight", type: "pill", rect: SLOT_RECTS.bottomRight },
 ];
