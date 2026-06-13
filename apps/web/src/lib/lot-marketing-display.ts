@@ -1,8 +1,8 @@
 import { formatMoney } from "@/lib/format-currency";
-import type { Lot } from "@auction/types";
+import type { CatalogLotVM } from "@auction/types";
 
 /** One-line pre-sale estimate for cards and rails; returns null when absent. */
-export function lotEstimateLine(auction: Lot): string | null {
+export function lotEstimateLine(auction: Pick<CatalogLotVM, "marketingDetails">): string | null {
   const est = auction.marketingDetails?.estimate;
   if (!est?.low || !est?.high) return null;
   try {

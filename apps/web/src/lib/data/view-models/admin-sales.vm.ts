@@ -1,6 +1,7 @@
 import type { SaleDeleteEligibility } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
+import { toDisplayDate, toRequiredIsoString } from "@auction/validators";
 
 export type AdminSaleBoardInput = {
   sale: Sale;
@@ -14,7 +15,7 @@ export function scheduleEndingSparkline(lots: Lot[], days = 7): number[] {
   now.setHours(0, 0, 0, 0);
   const buckets = Array.from({ length: days }, () => 0);
   for (const lot of lots) {
-    const e = new Date(lot.endTime);
+    const e = toDisplayDate(lot.endTime);
     e.setHours(0, 0, 0, 0);
     const diff = Math.round((e.getTime() - now.getTime()) / 86400000);
     if (diff >= 0 && diff < days) {
@@ -32,7 +33,7 @@ export function toAdminSaleBoardRow(row: AdminSaleBoardInput) {
     title: row.sale.title,
     status: row.sale.status,
     lotCount: row.lots.length,
-    startTimeIso: row.sale.startTime.toISOString(),
+    startTimeIso: toRequiredIsoString(row.sale.startTime),
     startTimeLabel: formatDateTime(row.sale.startTime),
     sparklineValues: scheduleEndingSparkline(row.lots, 7),
     canDelete: row.deleteEligibility?.canDelete === true,

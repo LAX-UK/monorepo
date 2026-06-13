@@ -1,5 +1,5 @@
 import { formatMoney } from "@/lib/format-currency";
-import type { LotStatus } from "@auction/types";
+import type { LotCardTimingVM } from "@auction/types";
 
 export type WatchlistBoardRow = {
   watchlistId: string;
@@ -10,10 +10,7 @@ export type WatchlistBoardRow = {
   medium: string | null;
   lotNumber: number | null;
   estimateLabel: string;
-  status: LotStatus;
-  startTime: string;
-  endTime: string;
-};
+} & LotCardTimingVM;
 
 export function estimateLabel(row: {
   estimate: { low: string; high: string; currency: string } | undefined;

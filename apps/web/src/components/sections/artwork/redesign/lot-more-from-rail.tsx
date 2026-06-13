@@ -80,7 +80,9 @@ export function LotMoreFromRail({
       <ul className="flex list-none gap-5 overflow-x-auto pb-3">
         {rail.cards.map((c, cardIndex) => {
           const closing =
-            nowMs == null ? null : formatCountdownForDisplay(new Date(c.endTime).getTime() - nowMs);
+            nowMs == null || c.endTime == null
+              ? null
+              : formatCountdownForDisplay(new Date(c.endTime).getTime() - nowMs);
           return (
             <li key={c.id} className="w-[200px] shrink-0 min-w-0">
               <div className="flex flex-col gap-4">
