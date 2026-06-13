@@ -3,7 +3,7 @@ import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell"
 import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard";
 import { firstString } from "@/lib/admin/admin-list-params";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { buildConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
+import { connectRequiredFromLots } from "@/lib/admin/connect-readiness";
 import {
   loadAdminSaleDetail,
   loadAdminSalePendingRegistrationCount,
@@ -58,7 +58,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         })
         .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
       loadAdminSalePendingRegistrationCount(id, sale),
-      buildConnectRequiredByLotId(lots),
+      Promise.resolve(connectRequiredFromLots(lots)),
     ]);
 
   const initialStep =

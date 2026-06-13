@@ -10,6 +10,7 @@ import type {
   PendingPaymentRow,
   ReconcileStripeTransferPatch,
 } from "../services/interfaces/payout-repository.js";
+import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type PayoutRow = typeof payout.$inferSelect;
 type PayoutLineRow = typeof payoutLine.$inferSelect;
@@ -462,5 +463,9 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
       .returning();
     if (!row) throw new Error("payout_line_update_failed");
     return rowToLine(row);
+  }
+
+  async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return queryCreatedAtDailyCounts(this.db, payout, payout.createdAt, rangeStart);
   }
 }

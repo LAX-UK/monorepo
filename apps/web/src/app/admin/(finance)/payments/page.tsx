@@ -27,7 +27,6 @@ import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminUsersByIds } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { buildPaymentsSummary } from "@/lib/data/view-models/admin-payments-summary.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatCompactMoney } from "@/lib/ui/format";
 import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
@@ -91,13 +90,13 @@ export default async function AdminPaymentsPage({
 
   let loadError: string | null = null;
   let paymentRows: AdminPaymentTableRow[] = [];
-  let summaryRows: AdminPaymentTableRow[] = [];
+  let summary = { totalVolume: 0, captured: 0, pending: 0, refunded: 0 };
   let total = 0;
   try {
     const result = await paymentsListController.fetch(query);
     paymentRows = result.rows;
-    summaryRows = result.rowsForSummary ?? result.rows;
-    total = result.total ?? summaryRows.length;
+    summary = result.paymentsSummary ?? summary;
+    total = result.total ?? paymentRows.length;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load payments.";
   }
@@ -109,12 +108,7 @@ export default async function AdminPaymentsPage({
     ...row,
     buyerLabel: row.buyerLabel ?? buyerLabels.get(row.buyerId) ?? null,
   }));
-  summaryRows = summaryRows.map((row) => ({
-    ...row,
-    buyerLabel: row.buyerLabel ?? buyerLabels.get(row.buyerId) ?? null,
-  }));
 
-  const summary = buildPaymentsSummary(summaryRows);
   let navCounts = EMPTY_ADMIN_NAV_COUNTS;
   try {
     navCounts = await getAdminNavCounts();
@@ -123,7 +117,6 @@ export default async function AdminPaymentsPage({
   }
   const paymentAnomalies = detectAnomaliesFromNavCounts(navCounts, {
     awaitingCaptureVolume: summary.pending,
-    stalePendingPayments: summaryRows.filter((r) => r.status === "pending").length,
   });
 
   const statusChips = (
@@ -394,7 +387,7 @@ export default async function AdminPaymentsPage({
         />
       }
       mobileSummary={
-        !loadError && summaryRows.length > 0 ? (
+        !loadError && total > 0 ? (
           <div className="space-y-3">
             <CatalogListMobileSummary
               metrics={[
@@ -412,7 +405,7 @@ export default async function AdminPaymentsPage({
         ) : null
       }
       kpiStrip={
-        !loadError && summaryRows.length > 0 ? (
+        !loadError && total > 0 ? (
           <>
             {paymentAnomalies.length > 0 ? (
               <AdminAnomalyBanner anomalies={paymentAnomalies} storageKey="payments" />
@@ -453,14 +446,14 @@ export default async function AdminPaymentsPage({
       }
       wrapView={false}
       view={
-        !loadError && summaryRows.length > 0 ? (
+        !loadError && paymentRows.length > 0 ? (
           <Suspense fallback={<PageSkeleton variant="table" />}>
             <AdminPaymentsBoard rows={paymentRows} />
           </Suspense>
         ) : null
       }
       empty={
-        !loadError && summaryRows.length === 0 ? (
+        !loadError && total === 0 ? (
           <AdminEmptyState
             title="No payments"
             description="No payment records match the current filters."

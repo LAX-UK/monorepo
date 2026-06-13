@@ -45,6 +45,29 @@ export type ListPaymentsExportFilter = {
   manualReview?: boolean;
 };
 
+export type ListPaymentsAdminTableFilter = {
+  status?: PaymentRecord["status"];
+  /** Case-insensitive match on payment id, buyer id/name/email, lot title, fulfilment status. */
+  q?: string;
+  limit: number;
+  offset: number;
+};
+
+export type AdminPaymentTableRowDto = PaymentRecord & {
+  lotTitle: string;
+  buyerLabel: string | null;
+  fulfilmentStatus: string | null;
+  buyerId: string;
+  sellerId: string;
+};
+
+export type AdminPaymentsSummaryStats = {
+  totalVolume: string;
+  captured: string;
+  pending: string;
+  refunded: string;
+};
+
 export interface IPaymentWriteRepository {
   create(row: CreatePaymentRow): Promise<PaymentRecord>;
   findById(id: string): Promise<PaymentRecord | null>;
@@ -69,6 +92,16 @@ export interface IPaymentWriteRepository {
   listStalePendingBefore(cutoff: Date): Promise<{ id: string; lotId: string; buyerId: string }[]>;
   /** Sum captured payment amounts in `[start, end]`. */
   sumCapturedBetween(start: Date, end: Date): Promise<string>;
+  /** UTC day counts for admin KPI trends (created_at >= rangeStart). */
+  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
+  /** Paginated admin payments table (with optional status/search). */
+  listForAdminTable(filter: ListPaymentsAdminTableFilter): Promise<AdminPaymentTableRowDto[]>;
+  countForAdminTable(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+  ): Promise<number>;
+  summarizeForAdminTable(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+  ): Promise<AdminPaymentsSummaryStats>;
 
   applyCapturedInTransaction(
     tx: Database,

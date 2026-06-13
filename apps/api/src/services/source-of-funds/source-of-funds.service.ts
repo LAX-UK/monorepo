@@ -116,8 +116,16 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
     return this.repo.countByStatus("pending");
   }
 
-  async listByStatus(status: "pending" | "rejected", limit = 50): Promise<SourceOfFundsCase[]> {
-    return this.repo.listByStatus(status, limit);
+  async countByStatus(status: "pending" | "rejected"): Promise<number> {
+    return this.repo.countByStatus(status);
+  }
+
+  async listByStatus(
+    status: "pending" | "rejected",
+    limit = 50,
+    offset = 0,
+  ): Promise<SourceOfFundsCase[]> {
+    return this.repo.listByStatus(status, limit, offset);
   }
 
   /**

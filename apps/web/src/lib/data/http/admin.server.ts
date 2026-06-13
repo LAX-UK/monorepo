@@ -10,6 +10,7 @@ import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type AdminAmlScreeningRow, screeningFromJson } from "@/lib/data/http/compliance.server";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import type {
   AdminArtistListResult,
   AdminArtistListRow,
@@ -794,14 +795,6 @@ export async function getAdminLotDetail(id: string): Promise<{
   };
 }
 
-/** Resolve lots referenced by id (e.g. payment rows) without scanning the full lot list. */
-export async function getAdminLotsByIds(lotIds: string[]): Promise<Lot[]> {
-  const unique = [...new Set(lotIds.filter(Boolean))];
-  if (unique.length === 0) return [];
-  const lots = await Promise.all(unique.map((id) => getAdminLotById(id)));
-  return lots.filter((lot): lot is Lot => lot != null);
-}
-
 export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   const res = await authedServerFetch("/payments");
   if (!res.ok) {
@@ -809,6 +802,90 @@ export async function getAdminPaymentList(): Promise<AdminPaymentRow[]> {
   }
   const body = (await res.json()) as { data: unknown[] };
   return body.data.map(parseAdminPaymentRow);
+}
+
+export type AdminPaymentsListPageResult = {
+  rows: AdminPaymentTableRow[];
+  total: number;
+  offset: number;
+  limit: number;
+  summary: {
+    totalVolume: number;
+    captured: number;
+    pending: number;
+    refunded: number;
+  };
+};
+
+function parseAdminPaymentTableRow(raw: unknown): AdminPaymentTableRow {
+  const o = raw as Record<string, unknown>;
+  const base = parseAdminPaymentRow(raw);
+  return {
+    id: base.id,
+    lotId: base.lotId,
+    lotTitle: String(o.lotTitle ?? base.lotId),
+    buyerId: base.buyerId,
+    buyerLabel: o.buyerLabel == null ? null : String(o.buyerLabel),
+    sellerId: base.sellerId,
+    amount: base.amount,
+    platformFee: base.platformFee,
+    status: base.status,
+    fulfilmentStatus: o.fulfilmentStatus == null ? null : String(o.fulfilmentStatus),
+    xeroInvoiceNumber: base.xeroInvoiceNumber,
+    xeroOnlineInvoiceUrl: base.xeroOnlineInvoiceUrl,
+    xeroSyncStatus: base.xeroSyncStatus,
+    xeroLastError: base.xeroLastError,
+  };
+}
+
+function parseMoneyStat(value: unknown): number {
+  const n = Number.parseFloat(String(value ?? "0"));
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function getAdminPaymentsListPage(params: {
+  limit: number;
+  offset: number;
+  status?: PaymentStatus;
+  q?: string;
+}): Promise<AdminPaymentsListPageResult> {
+  const qs = new URLSearchParams({
+    limit: String(params.limit),
+    offset: String(params.offset),
+  });
+  if (params.status) qs.set("status", params.status);
+  if (params.q?.trim()) qs.set("q", params.q.trim());
+  const res = await authedServerFetch(`/admin/payments?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Failed to load payments: ${res.status}`);
+  const body = (await res.json()) as {
+    data?: unknown[];
+    meta?: {
+      total?: number;
+      limit?: number;
+      offset?: number;
+      summary?: {
+        totalVolume?: string;
+        captured?: string;
+        pending?: string;
+        refunded?: string;
+      };
+    };
+  };
+  const rows = Array.isArray(body.data) ? body.data.map(parseAdminPaymentTableRow) : [];
+  const meta = body.meta ?? {};
+  const summaryRaw = meta.summary ?? {};
+  return {
+    rows,
+    total: meta.total ?? rows.length,
+    offset: meta.offset ?? params.offset,
+    limit: meta.limit ?? params.limit,
+    summary: {
+      totalVolume: parseMoneyStat(summaryRaw.totalVolume),
+      captured: parseMoneyStat(summaryRaw.captured),
+      pending: parseMoneyStat(summaryRaw.pending),
+      refunded: parseMoneyStat(summaryRaw.refunded),
+    },
+  };
 }
 
 export async function getAdminPaymentsForUser(userId: string): Promise<AdminPaymentRow[]> {
