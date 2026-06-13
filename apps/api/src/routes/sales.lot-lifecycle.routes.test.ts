@@ -21,7 +21,7 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
       saleSoftDeleteService: { softDelete: vi.fn(), getDeleteEligibility: vi.fn() },
       saleFollowService: {},
       saleBiddersService: { list: vi.fn() },
-      mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
+      mediaUrlResolver: { resolveManyUnique: vi.fn().mockResolvedValue(new Map()) },
       lotService: {
         getById,
         cancel,
@@ -43,7 +43,7 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
   it("delegates cancelled status to LotService.cancel", async () => {
     const { ok } = await import("neverthrow");
     const { app, cancel, setLotStatus } = appWithMocks();
-    cancel.mockResolvedValue(ok({ id: lotId, status: "cancelled" }));
+    cancel.mockResolvedValue(ok({ id: lotId, status: "cancelled", images: [] }));
 
     const res = await app.request(`http://t/sales/${saleId}/lots/${lotId}/status`, {
       method: "POST",
