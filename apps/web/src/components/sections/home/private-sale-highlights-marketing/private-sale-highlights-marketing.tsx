@@ -1,7 +1,10 @@
+import {
+  MarketingCardReveal,
+  MarketingSectionReveal,
+} from "@/components/marketing/marketing-reveal";
 import { PRIVATE_SALE_COPY } from "@/components/sections/home/home-copy";
 import type { PrivateSaleHighlightVM } from "@/components/sections/home/home-view-models";
 import { MediaImage } from "@/components/ui/media-image";
-import { RevealInView } from "@/components/ui/reveal";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { DisplayHeading, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -27,7 +30,7 @@ export function PrivateSaleHighlightsMarketing({
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-14">
         <div className="flex max-w-[640px] flex-col gap-6">
-          <RevealInView variant="fadeUp">
+          <MarketingSectionReveal index={0}>
             <DisplayHeading
               as="h2"
               id="private-sale-heading"
@@ -36,25 +39,24 @@ export function PrivateSaleHighlightsMarketing({
             >
               {PRIVATE_SALE_COPY.heading}
             </DisplayHeading>
-          </RevealInView>
-          <RevealInView variant="fadeUp" delayMs={60}>
+          </MarketingSectionReveal>
+          <MarketingSectionReveal index={1}>
             <p className="font-body text-[20px] font-normal leading-[1.4] text-on-surface-variant">
               {PRIVATE_SALE_COPY.subtitle}
             </p>
-          </RevealInView>
-          <RevealInView variant="fadeUp" delayMs={120}>
+          </MarketingSectionReveal>
+          <MarketingSectionReveal index={2}>
             <Button variant="outline" asChild className="min-h-[44px] gap-2 px-5">
               <Link href={PRIVATE_SALE_COPY.ctaHref}>
                 {PRIVATE_SALE_COPY.cta}
                 <ChevronRight className="size-4 shrink-0" aria-hidden />
               </Link>
             </Button>
-          </RevealInView>
+          </MarketingSectionReveal>
         </div>
 
-        <RevealInView
-          variant="wipeZoom"
-          delayMs={80}
+        <MarketingCardReveal
+          index={0}
           className="flex w-full shrink-0 flex-col gap-3 lg:max-w-[676px]"
         >
           <Link
@@ -71,7 +73,7 @@ export function PrivateSaleHighlightsMarketing({
               />
             </div>
           </Link>
-        </RevealInView>
+        </MarketingCardReveal>
       </div>
     </section>
   );

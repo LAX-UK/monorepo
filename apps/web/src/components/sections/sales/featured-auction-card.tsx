@@ -1,10 +1,10 @@
+import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { SaleCardGrid } from "@/components/marketing/sale-card";
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
 import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { FeaturedAuctionCardVM } from "@/components/sections/sales/sales-view-models";
-import { RevealInView } from "@/components/ui/reveal";
 
 type Props = {
   vm: FeaturedAuctionCardVM;
@@ -16,7 +16,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
 
   return (
     <li className="h-full min-w-0 flex-1">
-      <RevealInView variant="fadeUp" delayMs={index * 70} className="block h-full min-w-0">
+      <MarketingCardReveal index={index} className="block h-full min-w-0">
         <SaleCardGrid href={vm.href} className="motion-safe:ease-out">
           <SaleCardMedia
             href={vm.href}
@@ -45,7 +45,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
             <SaleCardMeta locationLabel={vm.locationLabel} />
           </div>
         </SaleCardGrid>
-      </RevealInView>
+      </MarketingCardReveal>
     </li>
   );
 }

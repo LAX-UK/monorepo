@@ -1,3 +1,4 @@
+import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import { SaleCardActions } from "@/components/sections/sales/card/sale-card-actions";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
@@ -5,7 +6,6 @@ import { SaleCardShell } from "@/components/sections/sales/card/sale-card-shell"
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { SaleAction } from "@/components/sections/sales/card/types";
 import type { CalendarGridCardVM } from "@/components/sections/sales/sales-view-models";
-import { RevealInView } from "@/components/ui/reveal";
 import { cn } from "@auction/ui";
 
 type Props = {
@@ -37,7 +37,7 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
 
   return (
     <li className="h-full min-w-0">
-      <RevealInView variant="fadeUp" delayMs={index * 70} className="block h-full min-w-0">
+      <MarketingCardReveal index={index} className="block h-full min-w-0">
         <SaleCardShell className="flex h-full min-h-0 flex-col gap-2 p-3 md:gap-3 md:p-4 lg:gap-3">
           <SaleCardMedia
             href={vm.href}
@@ -80,7 +80,7 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
             />
           </div>
         </SaleCardShell>
-      </RevealInView>
+      </MarketingCardReveal>
     </li>
   );
 }

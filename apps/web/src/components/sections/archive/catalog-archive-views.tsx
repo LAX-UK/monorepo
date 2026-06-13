@@ -1,7 +1,7 @@
+import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { ArchiveLotCardHero } from "@/components/sections/archive/archive-lot-card-hero";
 import { PastAuctionCard } from "@/components/sections/archive/past-auction-card";
 import { MediaImage } from "@/components/ui/media-image";
-import { RevealInView } from "@/components/ui/reveal";
 import { formatMoney } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
@@ -51,7 +51,7 @@ export function ArchiveLotGridView({
       )}
     >
       {items.map((row, i) => (
-        <RevealInView key={row.auction.id} variant="fadeUp" delayMs={i * 70} className="min-w-0">
+        <MarketingCardReveal key={row.auction.id} index={i} className="min-w-0">
           <PastAuctionCard
             auction={row.auction}
             sellerName={row.sellerName}
@@ -59,7 +59,7 @@ export function ArchiveLotGridView({
             gridOffsetClass={OFFSET_PATTERN[i % OFFSET_PATTERN.length] ?? ""}
             isOwner={Boolean(currentUserId && row.auction.sellerId === currentUserId)}
           />
-        </RevealInView>
+        </MarketingCardReveal>
       ))}
     </section>
   );
@@ -76,18 +76,13 @@ export function ArchiveLotCardView({
   return (
     <section className="mx-auto flex max-w-3xl flex-col gap-12">
       {items.map((row, i) => (
-        <RevealInView
-          key={row.auction.id}
-          variant="fadeUp"
-          delayMs={i * 70}
-          className="block w-full"
-        >
+        <MarketingCardReveal key={row.auction.id} index={i} className="block w-full">
           <ArchiveLotCardHero
             row={row}
             href={resolveArchiveLotHref(row.auction, catalogLinkParams)}
             isOwner={Boolean(currentUserId && row.auction.sellerId === currentUserId)}
           />
-        </RevealInView>
+        </MarketingCardReveal>
       ))}
     </section>
   );
@@ -109,7 +104,7 @@ export function ArchiveLotListView({
           const img = a.images[0];
           return (
             <li key={a.id}>
-              <RevealInView variant="fadeUp" delayMs={i * 50} className="block w-full">
+              <MarketingCardReveal index={i} className="block w-full">
                 <Link
                   href={resolveArchiveLotHref(a, catalogLinkParams)}
                   className={cn(
@@ -144,7 +139,7 @@ export function ArchiveLotListView({
                     </p>
                   </div>
                 </Link>
-              </RevealInView>
+              </MarketingCardReveal>
             </li>
           );
         })}
