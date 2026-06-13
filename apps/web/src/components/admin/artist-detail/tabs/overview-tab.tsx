@@ -108,6 +108,7 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
               <MediaImage
                 src={portraitSrc}
                 alt={`${artist.displayName} portrait`}
+                sizes="8rem"
                 className="aspect-square w-full max-w-[8rem] rounded-lg object-cover"
               />
             ) : null}

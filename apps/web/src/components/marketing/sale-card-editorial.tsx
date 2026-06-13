@@ -80,7 +80,9 @@ export function SaleCardEditorial({
               src={adaptiveMedia.src}
               alt={adaptiveMedia.alt}
               objectFit="cover"
-              {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
+              {...(adaptiveMedia.sizes
+                ? { sizes: adaptiveMedia.sizes }
+                : { sizes: "(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px" })}
               className="size-full"
             />
           ) : (

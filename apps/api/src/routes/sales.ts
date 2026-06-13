@@ -294,7 +294,16 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     const body = c.req.valid("json");
     try {
       const sale = await container.saleService.create(userId, body);
-      return c.json({ data: await presentSaleImages(container.mediaUrlResolver, sale) }, 201);
+      return c.json(
+        {
+          data: await presentSaleImages(
+            container.mediaUrlResolver,
+            sale,
+            container.mediaAssetEnricher,
+          ),
+        },
+        201,
+      );
     } catch (e) {
       if (e instanceof LotError) {
         return c.json({ error: e.message }, asHttpStatus(e.status));
@@ -317,7 +326,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentSaleImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 
@@ -343,7 +358,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     if (result.isErr()) {
       return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
     }
-    return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
+    return c.json({
+      data: await presentSaleImages(
+        container.mediaUrlResolver,
+        result.value,
+        container.mediaAssetEnricher,
+      ),
+    });
   });
 
   r.post(
@@ -360,7 +381,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentSaleImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentSaleImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 
@@ -404,7 +431,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
       return c.json(
-        { data: await presentLotImages(container.mediaUrlResolver, result.value) },
+        {
+          data: await presentLotImages(
+            container.mediaUrlResolver,
+            result.value,
+            container.mediaAssetEnricher,
+          ),
+        },
         201,
       );
     },
@@ -430,7 +463,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentLotImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 
@@ -501,7 +540,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentLotImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 
@@ -535,7 +580,11 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
           );
         }
         return c.json({
-          data: await presentLotImages(container.mediaUrlResolver, cancelResult.value),
+          data: await presentLotImages(
+            container.mediaUrlResolver,
+            cancelResult.value,
+            container.mediaAssetEnricher,
+          ),
         });
       }
       const result = await container.saleStatusTransitionService.setLotStatus(
@@ -549,7 +598,13 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentLotImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 

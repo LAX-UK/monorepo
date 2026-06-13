@@ -49,6 +49,7 @@ export * from "./processed-webhook-events.js";
 export * from "./domain-events.js";
 export * from "./impersonation-sessions.js";
 export * from "./upload-objects.js";
+export * from "./media-assets.js";
 export * from "./email.js";
 export * from "./failed-jobs.js";
 export * from "./data-exports.js";

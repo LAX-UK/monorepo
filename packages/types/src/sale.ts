@@ -11,6 +11,8 @@ export type Sale = {
   title: string;
   description: string | null;
   coverImages: string[];
+  /** Enriched metadata (width/height/blur) aligned with `coverImages` when available. */
+  coverImageAssets?: import("./gallery.js").GalleryImage[];
   categoryIds?: string[];
   /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string | null;

@@ -10,35 +10,35 @@ export async function validateUploadJob(args: {
   storage: UploadStorage;
   uploadId: string;
   log: pino.Logger;
-}): Promise<void> {
+}): Promise<{ validated: boolean; key?: string }> {
   const [row] = await args.db
     .select()
     .from(uploadObject)
     .where(eq(uploadObject.id, args.uploadId))
     .limit(1);
-  if (!row || row.status !== "uploaded") return;
+  if (!row || row.status !== "uploaded") return { validated: false };
 
   const head = await args.storage.headObject(row.key);
   if (!head) {
     await rejectUpload(args.db, row.id, "missing");
-    return;
+    return { validated: false };
   }
   if (head.byteSize > row.declaredByteSize) {
     await rejectUpload(args.db, row.id, "oversize", head);
-    return;
+    return { validated: false };
   }
 
   const validator = pickValidator(row.declaredContentType);
   if (!validator) {
     await rejectUpload(args.db, row.id, "unsupported_content_type", head);
-    return;
+    return { validated: false };
   }
 
   const firstBytes = await args.storage.getObjectBytes(row.key, 64);
   const magic = firstBytes ?? Buffer.alloc(0);
   if (!validator.matches(magic)) {
     await rejectUpload(args.db, row.id, "content_type_mismatch", head);
-    return;
+    return { validated: false };
   }
 
   await args.db
@@ -52,6 +52,7 @@ export async function validateUploadJob(args: {
     })
     .where(eq(uploadObject.id, row.id));
   args.log.info({ uploadId: row.id, key: row.key }, "upload validated");
+  return { validated: true, key: row.key };
 }
 
 export async function gcPendingUploads(args: {

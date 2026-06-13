@@ -30,6 +30,12 @@ function LotCardNavLink({ lotId, href, ...rest }: NavLinkProps & { lotId?: strin
 const mediaHover =
   "transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100";
 
+/** Default `sizes` for catalogue grid tiles (`4/5` aspect). */
+const LOT_CARD_GRID_SIZES = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px";
+
+/** Default `sizes` for editorial `aspect-video` lot cards. */
+const LOT_CARD_EDITORIAL_SIZES = "(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px";
+
 const cardShell =
   "group relative block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-px motion-safe:hover:ring-primary/20 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary";
 
@@ -98,7 +104,9 @@ export function LotCardGrid({
                 src={adaptiveMedia.src}
                 alt={adaptiveMedia.alt}
                 objectFit={adaptiveMedia.objectFit}
-                {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
+                {...(adaptiveMedia.sizes
+                  ? { sizes: adaptiveMedia.sizes }
+                  : { sizes: LOT_CARD_GRID_SIZES })}
                 {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
                 className="h-full w-full"
                 imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
@@ -259,7 +267,9 @@ export function LotCardEditorialBold({
                 src={adaptiveMedia.src}
                 alt={adaptiveMedia.alt}
                 objectFit={adaptiveMedia.objectFit}
-                {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
+                {...(adaptiveMedia.sizes
+                  ? { sizes: adaptiveMedia.sizes }
+                  : { sizes: LOT_CARD_EDITORIAL_SIZES })}
                 {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
                 className="h-full w-full"
               />
@@ -341,7 +351,9 @@ export function LotCardEditorialCalm({
                 src={adaptiveMedia.src}
                 alt={adaptiveMedia.alt}
                 objectFit={adaptiveMedia.objectFit}
-                {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : {})}
+                {...(adaptiveMedia.sizes
+                  ? { sizes: adaptiveMedia.sizes }
+                  : { sizes: LOT_CARD_EDITORIAL_SIZES })}
                 {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
                 className="h-full w-full"
               />

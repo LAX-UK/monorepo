@@ -23,6 +23,7 @@ import {
   MARKETING_SYNC_QUEUE_NAME,
   PAYOUT_SETTLEMENT_QUEUE_NAME,
   PAYOUT_STATEMENTS_QUEUE_NAME,
+  PROCESS_IMAGE_QUEUE_NAME,
   PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME,
   PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
@@ -67,6 +68,7 @@ import {
   processMarketingEventJob,
   runMarketingEventOutboxPoller,
 } from "./jobs/marketing-event-processor.js";
+import { processImageJob } from "./jobs/process-image.js";
 import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
 import { purgeQrCodeScans } from "./jobs/purge-qr-code-scans.js";
@@ -89,6 +91,7 @@ import {
 } from "./lib/marketing-events-enabled.js";
 import { queueRuntimeEnvFromWorkerEnv } from "./lib/queue-runtime-env.js";
 import { loadSentryMonitorSlugs, withSentryCronMonitor } from "./lib/sentry-cron.js";
+import { SharpImageProcessor } from "./lib/sharp-image-processor.js";
 import { createUploadStorage } from "./lib/upload-storage.js";
 import { CachedClickIdStore } from "./marketing/cached-click-id.store.js";
 import { DrizzleProfileMarketingReader } from "./marketing/drizzle-profile.reader.js";
@@ -137,6 +140,7 @@ const bullConnection = bullTelemetry
   : { connection: redis };
 const queueOpts = (name: QueueName) => createBullQueueOptions(name, bullConnection);
 const uploadStorage = createUploadStorage(env);
+const imageProcessor = new SharpImageProcessor();
 const publicUploadBase =
   env.STORAGE_DRIVER === "s3" && env.S3_BUCKET && env.S3_REGION
     ? (env.S3_PUBLIC_BASE_URL ?? `https://${env.S3_BUCKET}.s3.${env.S3_REGION}.amazonaws.com`)
@@ -192,6 +196,8 @@ webhookWorker.on("failed", (job, err) => {
   reportWorkerJobFailure(WEBHOOK_EVENTS_QUEUE_NAME, job, err);
 });
 
+const processImageQueue = new Queue(PROCESS_IMAGE_QUEUE_NAME, queueOpts(PROCESS_IMAGE_QUEUE_NAME));
+
 const validateUploadWorker = new Worker(
   VALIDATE_UPLOAD_QUEUE_NAME,
   async (job) => {
@@ -199,7 +205,10 @@ const validateUploadWorker = new Worker(
     if (!uploadId) {
       throw new Error("validate-upload job is missing uploadId");
     }
-    await validateUploadJob({ db, storage: uploadStorage, uploadId, log });
+    const result = await validateUploadJob({ db, storage: uploadStorage, uploadId, log });
+    if (result.validated && result.key) {
+      await processImageQueue.add("process-image", { key: result.key });
+    }
     await heartbeat("validate-upload");
   },
   bullConnection,
@@ -207,6 +216,23 @@ const validateUploadWorker = new Worker(
 validateUploadWorker.on("completed", () => void heartbeat("validate-upload"));
 validateUploadWorker.on("failed", (job, err) => {
   reportWorkerJobFailure("validate-upload", job, err);
+});
+
+const processImageWorker = new Worker(
+  PROCESS_IMAGE_QUEUE_NAME,
+  async (job) => {
+    const key = String((job.data as { key?: unknown }).key ?? "");
+    if (!key) {
+      throw new Error("process-image job is missing key");
+    }
+    await processImageJob({ db, storage: uploadStorage, processor: imageProcessor, key, log });
+    await heartbeat("process-image");
+  },
+  bullConnection,
+);
+processImageWorker.on("completed", () => void heartbeat("process-image"));
+processImageWorker.on("failed", (job, err) => {
+  reportWorkerJobFailure("process-image", job, err);
 });
 
 const imageCleanupWorker = new Worker(
@@ -823,6 +849,7 @@ if (env.CRON_INTERNAL_SECRET) {
 registerWorkerErrorHandlers([
   { worker: webhookWorker, queue: WEBHOOK_EVENTS_QUEUE_NAME },
   { worker: validateUploadWorker, queue: VALIDATE_UPLOAD_QUEUE_NAME },
+  { worker: processImageWorker, queue: PROCESS_IMAGE_QUEUE_NAME },
   { worker: imageCleanupWorker, queue: IMAGE_CLEANUP_QUEUE_NAME },
   { worker: qrCodeScanWorker, queue: QR_CODE_SCAN_QUEUE_NAME },
   { worker: gcPendingUploadsWorker, queue: GC_PENDING_UPLOADS_QUEUE_NAME },
@@ -887,6 +914,7 @@ registerDlqHandlers(
 void Promise.all([
   heartbeat("webhook-events"),
   heartbeat("validate-upload"),
+  heartbeat("process-image"),
   heartbeat("image-cleanup"),
   heartbeat("qr-code-scan"),
   heartbeat("gc-pending-uploads"),
@@ -1018,6 +1046,8 @@ function shutdown(signal: NodeJS.Signals) {
       Promise.allSettled([
         webhookWorker.close(),
         validateUploadWorker.close(),
+        processImageWorker.close(),
+        processImageQueue.close(),
         imageCleanupWorker.close(),
         qrCodeScanWorker.close(),
         gcPendingUploadsWorker.close(),

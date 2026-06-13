@@ -60,6 +60,8 @@ export type Lot = {
   /** Display dimensions (e.g. 180 x 140 cm). */
   dimensions: string | null;
   images: string[];
+  /** Enriched metadata (width/height/blur) aligned with `images` when available. */
+  imageAssets?: import("./gallery.js").GalleryImage[];
   categoryIds?: string[];
   /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string;
