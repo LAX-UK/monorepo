@@ -14,6 +14,7 @@ import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
 import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotPath } from "@/lib/seo/url";
+import type { OverlaySurface } from "@/lib/ui/overlay-tone-classes";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { CatalogLotVM } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -42,12 +43,14 @@ function LotWatchlistHeart({
   watchedLotIds,
   loginNextPath,
   layout = "overlay",
+  surface,
 }: {
   lot: CatalogLotVM;
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath: string;
   layout?: "overlay" | "inline";
+  surface?: OverlaySurface;
 }) {
   return (
     <MarketingWatchlistHeart
@@ -57,6 +60,7 @@ function LotWatchlistHeart({
       isAuthenticated={isAuthenticated}
       loginNextPath={loginNextPath}
       layout={layout}
+      {...(surface ? { surface } : {})}
     />
   );
 }
@@ -174,6 +178,8 @@ export function CatalogLotCardView({
                     isAuthenticated={isAuthenticated}
                     watchedLotIds={watchedLotIds}
                     loginNextPath={loginNextPath}
+                    layout="inline"
+                    surface="onImage"
                   />
                 </div>
               }
@@ -256,6 +262,7 @@ export function CatalogLotListView({
                       watchedLotIds={watchedLotIds}
                       loginNextPath={loginNextPath}
                       layout="inline"
+                      surface="inline"
                     />
                   </div>
                 }

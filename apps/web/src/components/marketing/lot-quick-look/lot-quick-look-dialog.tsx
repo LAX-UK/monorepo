@@ -589,6 +589,7 @@ export function LotQuickLookDialog() {
             isAuthenticated={options.isAuthenticated}
             loginNextPath={loginNextPath}
             layout="inline"
+            surface="inline"
           />
           <ShareButton url={shareUrl} title={vm.title} className="min-h-10" />
         </div>
