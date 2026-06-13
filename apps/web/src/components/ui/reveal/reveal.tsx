@@ -10,6 +10,7 @@ import { cn } from "@auction/ui";
 import { type CSSProperties, Children, type ReactNode, isValidElement } from "react";
 
 /** Visual reveal variants. Driven by CSS classes in `globals.css`.
+ * Marketing surfaces: use `MarketingCardReveal`, not raw `RevealInView`.
  * - `wipe`        : clip-path inset wipe-in (90 0 0 0 → 0 0 0 0).
  * - `zoom`        : inner element scales 1.08 → 1.
  * - `wipeZoom`    : both, in parallel.
@@ -30,7 +31,7 @@ export type RevealProps = {
 
 export function Reveal({
   trigger,
-  variant = "wipeZoom",
+  variant = "fadeUp",
   delayMs,
   className,
   innerClassName,

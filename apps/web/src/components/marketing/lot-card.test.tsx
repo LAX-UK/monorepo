@@ -30,7 +30,6 @@ describe("LotCard", () => {
     render(
       <MarketingLotTile
         lotId="1"
-        index={0}
         href="/lot/a"
         linkAriaLabel="Lot A — view artwork"
         imageUrl={null}
@@ -49,7 +48,6 @@ describe("LotCard", () => {
     const { container } = render(
       <MarketingLotTile
         lotId="1"
-        index={0}
         href="/lot/a"
         linkAriaLabel="Lot A — view artwork"
         imageUrl={null}
@@ -66,7 +64,6 @@ describe("LotCard", () => {
     const { container } = render(
       <MarketingLotTile
         lotId="1"
-        index={0}
         href="/lot/a"
         linkAriaLabel="Lot A — view artwork"
         imageUrl={null}
