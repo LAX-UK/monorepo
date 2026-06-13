@@ -69,6 +69,7 @@ export interface IWatchlistScreeningReader {
   listByReviewStatus(
     reviewStatus: AmlReviewStatus,
     limit: number,
+    offset?: number,
     conn?: Database,
   ): Promise<WatchlistScreeningRecord[]>;
   countByReviewStatus(reviewStatus: AmlReviewStatus, conn?: Database): Promise<number>;

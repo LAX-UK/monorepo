@@ -157,8 +157,21 @@ export const COMPLIANCE_QUEUE_LIST_LIMIT = 200;
 
 export async function getAdminAmlScreeningsPending(
   limit = COMPLIANCE_QUEUE_LIST_LIMIT,
+  offset = 0,
 ): Promise<AdminAmlScreeningRow[]> {
-  const res = await authedServerFetch(`/admin/compliance/aml/screenings?limit=${limit}`);
+  const page = await getAdminAmlScreeningsPage({ limit, offset });
+  return page.rows;
+}
+
+export async function getAdminAmlScreeningsPage(params: {
+  limit: number;
+  offset: number;
+}): Promise<{ rows: AdminAmlScreeningRow[]; total: number }> {
+  const qs = new URLSearchParams({
+    limit: String(params.limit),
+    offset: String(params.offset),
+  });
+  const res = await authedServerFetch(`/admin/compliance/aml/screenings?${qs.toString()}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
@@ -168,28 +181,41 @@ export async function getAdminAmlScreeningsPending(
       ),
     );
   }
-  const json = (await res.json()) as { data?: unknown };
+  const json = (await res.json()) as { data?: unknown; meta?: { total?: number } };
   const rows = Array.isArray(json.data) ? json.data : [];
-  return rows.map(screeningFromJson).filter((r): r is AdminAmlScreeningRow => r != null);
+  return {
+    rows: rows.map(screeningFromJson).filter((r): r is AdminAmlScreeningRow => r != null),
+    total: json.meta?.total ?? rows.length,
+  };
 }
 
 export async function getAdminSourceOfFundsPending(
   limit = COMPLIANCE_QUEUE_LIST_LIMIT,
+  offset = 0,
 ): Promise<AdminSourceOfFundsRow[]> {
-  return getAdminSourceOfFundsByStatus("pending", limit);
+  const page = await getAdminSourceOfFundsPage({ status: "pending", limit, offset });
+  return page.rows;
 }
 
-export async function getAdminSourceOfFundsRejected(limit = 50): Promise<AdminSourceOfFundsRow[]> {
-  return getAdminSourceOfFundsByStatus("rejected", limit);
-}
-
-async function getAdminSourceOfFundsByStatus(
-  status: "pending" | "rejected",
+export async function getAdminSourceOfFundsRejected(
   limit = 50,
+  offset = 0,
 ): Promise<AdminSourceOfFundsRow[]> {
-  const res = await authedServerFetch(
-    `/admin/compliance/source-of-funds?limit=${limit}&status=${status}`,
-  );
+  const page = await getAdminSourceOfFundsPage({ status: "rejected", limit, offset });
+  return page.rows;
+}
+
+export async function getAdminSourceOfFundsPage(params: {
+  status: "pending" | "rejected";
+  limit: number;
+  offset: number;
+}): Promise<{ rows: AdminSourceOfFundsRow[]; total: number }> {
+  const qs = new URLSearchParams({
+    limit: String(params.limit),
+    offset: String(params.offset),
+    status: params.status,
+  });
+  const res = await authedServerFetch(`/admin/compliance/source-of-funds?${qs.toString()}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
@@ -199,7 +225,10 @@ async function getAdminSourceOfFundsByStatus(
       ),
     );
   }
-  const json = (await res.json()) as { data?: unknown };
+  const json = (await res.json()) as { data?: unknown; meta?: { total?: number } };
   const rows = Array.isArray(json.data) ? json.data : [];
-  return rows.map(sofFromJson).filter((r): r is AdminSourceOfFundsRow => r != null);
+  return {
+    rows: rows.map(sofFromJson).filter((r): r is AdminSourceOfFundsRow => r != null),
+    total: json.meta?.total ?? rows.length,
+  };
 }

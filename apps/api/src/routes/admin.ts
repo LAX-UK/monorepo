@@ -22,14 +22,15 @@ import {
   adminDomainEventsQuerySchema,
   adminFinanceDisputeDomainEventsQuerySchema,
   adminFinanceDisputesQuerySchema,
+  adminKpiTrendQuerySchema,
   adminListEventsQuerySchema,
   adminListOutboxQuerySchema,
   adminListSuppressionsQuerySchema,
   adminLotBrowseQuerySchema,
   adminLotFulfilmentListQuerySchema,
   adminLotFulfilmentLotIdParamSchema,
-  adminLotsKpiTrendQuerySchema,
   adminPatchStaffRoleBodySchema,
+  adminPaymentsListQuerySchema,
   adminQrCodeAnalyticsQuerySchema,
   adminQrCodeCreateSchema,
   adminQrCodeEntityQuerySchema,
@@ -160,10 +161,12 @@ const amlScreeningIdParamSchema = z.object({
 
 const amlReviewQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
 });
 
 const sourceOfFundsListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
   status: z.enum(["pending", "rejected"]).optional().default("pending"),
 });
 
@@ -297,11 +300,68 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.get(
     "/kpi/lots-trend",
     requireAdminDashboard,
-    zValidator("query", adminLotsKpiTrendQuerySchema),
+    zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
       const data = await container.adminLotsKpiTrendService.getTrend(q.periodDays);
       return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/kpi/payments-trend",
+    requireFinanceAccess,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.adminPaymentsKpiTrendService.getTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/kpi/sales-trend",
+    requireAdminDashboard,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.adminSalesKpiTrendService.getTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/kpi/payouts-trend",
+    requireFinanceAccess,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.adminPayoutsKpiTrendService.getTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/payments",
+    requireFinanceAccess,
+    zValidator("query", adminPaymentsListQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const page = await container.adminPaymentListQueryService.getPage({
+        limit: q.limit,
+        offset: q.offset,
+        ...(q.status ? { status: q.status } : {}),
+        ...(q.q ? { q: q.q } : {}),
+      });
+      return c.json({
+        data: page.rows,
+        meta: {
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          summary: page.summary,
+        },
+      });
     },
   );
 
@@ -1491,9 +1551,12 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     requireAmlReview,
     zValidator("query", amlReviewQuerySchema),
     async (c) => {
-      const { limit } = c.req.valid("query");
-      const data = await container.amlService.listPendingReviews(limit);
-      return c.json({ data });
+      const { limit, offset } = c.req.valid("query");
+      const [data, total] = await Promise.all([
+        container.amlService.listPendingReviews(limit, offset),
+        container.amlService.countPendingReviews(),
+      ]);
+      return c.json({ data, meta: { total, limit, offset } });
     },
   );
 
@@ -1578,9 +1641,12 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     requireAmlReview,
     zValidator("query", sourceOfFundsListQuerySchema),
     async (c) => {
-      const { limit, status } = c.req.valid("query");
-      const data = await container.sourceOfFundsService.listByStatus(status, limit);
-      return c.json({ data });
+      const { limit, offset, status } = c.req.valid("query");
+      const [data, total] = await Promise.all([
+        container.sourceOfFundsService.listByStatus(status, limit, offset),
+        container.sourceOfFundsService.countByStatus(status),
+      ]);
+      return c.json({ data, meta: { total, limit, offset } });
     },
   );
 

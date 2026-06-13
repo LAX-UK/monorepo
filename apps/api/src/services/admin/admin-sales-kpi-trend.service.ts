@@ -2,15 +2,12 @@ import type { IAdminKpiTrendService } from "../interfaces/admin-kpi-trend.js";
 import type { ICreatedAtDailyCountRepository } from "../interfaces/created-at-daily-count.js";
 import { AdminKpiTrendEngine } from "./admin-kpi-trend.engine.js";
 
-export type { AdminKpiTrendBundle } from "../interfaces/admin-kpi-trend.js";
-
-/** Counts new lots per UTC day (delegates to lot repository). */
-export class AdminLotsKpiTrendService implements IAdminKpiTrendService {
+export class AdminSalesKpiTrendService implements IAdminKpiTrendService {
   private readonly engine: AdminKpiTrendEngine;
 
-  constructor(lotRepository: ICreatedAtDailyCountRepository) {
+  constructor(saleRepository: ICreatedAtDailyCountRepository) {
     this.engine = new AdminKpiTrendEngine((rangeStart) =>
-      lotRepository.countCreatedAtByDay(rangeStart),
+      saleRepository.countCreatedAtByDay(rangeStart),
     );
   }
 

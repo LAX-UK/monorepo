@@ -15,6 +15,7 @@ import type {
   ListLotsSort,
   SaleCatalogLotsSort,
 } from "../services/interfaces/repositories.js";
+import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type ListWhereInput = Omit<ListLotsFilter, "limit" | "offset" | "sort">;
 
@@ -726,5 +727,9 @@ export class DrizzleLotRepository implements ILotRepository {
       items: await this.withCategoryIds(rows),
       total: countRow?.n ?? 0,
     };
+  }
+
+  async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return queryCreatedAtDailyCounts(this.db, lot, lot.createdAt, rangeStart, lotNotDeleted());
   }
 }

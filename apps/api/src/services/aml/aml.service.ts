@@ -139,8 +139,8 @@ export class AmlService {
   }
 
   /** Pending watchlist screenings awaiting MLRO/compliance review. */
-  async listPendingReviews(limit = 50): Promise<WatchlistScreeningRecord[]> {
-    return this.screeningReader.listByReviewStatus("pending", limit);
+  async listPendingReviews(limit = 50, offset = 0): Promise<WatchlistScreeningRecord[]> {
+    return this.screeningReader.listByReviewStatus("pending", limit, offset);
   }
 
   async countPendingReviews(): Promise<number> {

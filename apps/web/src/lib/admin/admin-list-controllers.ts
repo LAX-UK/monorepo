@@ -22,18 +22,15 @@ import {
   getAdminConveyorPipeline,
   getAdminDisputeCases,
   getAdminLegalEntityList,
-  getAdminLotFulfilmentList,
   getAdminLotList,
-  getAdminLotsByIds,
-  getAdminPaymentList,
+  getAdminPaymentsListPage,
   getAdminPayoutList,
   getAdminSalesList,
   getAdminUserList,
-  getAdminUsersByIds,
 } from "@/lib/data/http/admin.server";
 import {
-  getAdminAmlScreeningsPending,
-  getAdminSourceOfFundsPending,
+  getAdminAmlScreeningsPage,
+  getAdminSourceOfFundsPage,
 } from "@/lib/data/http/compliance.server";
 import {
   type AdminInvitationSummary,
@@ -48,11 +45,7 @@ import {
   type AdminDisputeTableRow,
   buildAdminDisputeTableRows,
 } from "@/lib/data/view-models/admin-disputes-table.vm";
-import {
-  type AdminPaymentTableRow,
-  buildAdminPaymentTableRows,
-  filterPaymentTableRowsByStatus,
-} from "@/lib/data/view-models/admin-payments-table.vm";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import {
   type AdminSofTableRow,
   buildAdminSofTableRows,
@@ -444,38 +437,18 @@ export const paymentsListController: IAdminListController<AdminPaymentTableRow, 
       return { ...base, status, limit: Math.min(200, base.limit) };
     },
     async fetch(q) {
-      const [payments, fulfilmentRows] = await Promise.all([
-        getAdminPaymentList(),
-        getAdminLotFulfilmentList().catch(() => []),
-      ]);
-      const lots = await getAdminLotsByIds(payments.map((p) => p.lotId));
-      let allRows = buildAdminPaymentTableRows(payments, lots, fulfilmentRows);
-      const buyerIds = [...new Set(allRows.map((row) => row.buyerId).filter(Boolean))];
-      const buyers = await getAdminUsersByIds(buyerIds).catch(() => []);
-      const buyerLabels = new Map(buyers.map((b) => [b.id, b.name || b.email || null]));
-      allRows = allRows.map((row) => ({
-        ...row,
-        buyerLabel: buyerLabels.get(row.buyerId) ?? null,
-      }));
-      let filtered = filterPaymentTableRowsByStatus(allRows, q.status);
-      const needle = q.q?.trim().toLowerCase();
-      if (needle) {
-        filtered = filtered.filter(
-          (r) =>
-            r.lotTitle.toLowerCase().includes(needle) ||
-            r.buyerId.toLowerCase().includes(needle) ||
-            (r.buyerLabel?.toLowerCase().includes(needle) ?? false) ||
-            r.id.toLowerCase().includes(needle) ||
-            (r.fulfilmentStatus?.toLowerCase().includes(needle) ?? false),
-        );
-      }
-      const { rows, total } = sliceAdminListWindow(filtered, q.offset, q.limit);
-      return {
-        rows,
-        rowsForSummary: filtered,
-        total,
-        offset: q.offset,
+      const page = await getAdminPaymentsListPage({
         limit: q.limit,
+        offset: q.offset,
+        ...(q.status ? { status: q.status } : {}),
+        ...(q.q?.trim() ? { q: q.q.trim() } : {}),
+      });
+      return {
+        rows: page.rows,
+        total: page.total,
+        offset: page.offset,
+        limit: page.limit,
+        paymentsSummary: page.summary,
       };
     },
   };
@@ -747,10 +720,9 @@ export const amlListController: IAdminListController<AdminAmlTableRow, AdminList
     return { ...base, limit: Math.min(100, base.limit) };
   },
   async fetch(q) {
-    const raw = await getAdminAmlScreeningsPending();
-    const all = buildAdminAmlTableRows(raw);
-    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
-    return { rows, offset: q.offset, limit: q.limit, total, rowsForSummary: all };
+    const page = await getAdminAmlScreeningsPage({ limit: q.limit, offset: q.offset });
+    const rows = buildAdminAmlTableRows(page.rows);
+    return { rows, offset: q.offset, limit: q.limit, total: page.total };
   },
 };
 
@@ -761,9 +733,12 @@ export const sofListController: IAdminListController<AdminSofTableRow, AdminList
     return { ...base, limit: Math.min(100, base.limit) };
   },
   async fetch(q) {
-    const raw = await getAdminSourceOfFundsPending();
-    const all = buildAdminSofTableRows(raw);
-    const { rows, total } = sliceAdminListWindow(all, q.offset, q.limit);
-    return { rows, offset: q.offset, limit: q.limit, total, rowsForSummary: all };
+    const page = await getAdminSourceOfFundsPage({
+      status: "pending",
+      limit: q.limit,
+      offset: q.offset,
+    });
+    const rows = buildAdminSofTableRows(page.rows);
+    return { rows, offset: q.offset, limit: q.limit, total: page.total };
   },
 };
