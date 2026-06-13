@@ -424,16 +424,14 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     );
   });
 
-  it("propagates capture failure so the event claim rolls back", async () => {
+  it("captures payment that was held for manual review when Stripe succeeded", async () => {
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "requires_manual_review",
       amount: "100.00",
     });
-    const capture = vi
-      .fn()
-      .mockRejectedValue(new PaymentCaptureNotAppliedError("pay_1", "requires_manual_review"));
+    const capture = vi.fn().mockResolvedValue({ captured: true });
     const { svc } = createWebhookService({
       db,
       paymentCapture: { capture },
@@ -442,6 +440,47 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
           id: "pay_1",
           amount: "100.00",
           status: "requires_manual_review",
+        }),
+      },
+    });
+    const event = { id: "evt_pi_manual", type: "payment_intent.succeeded" } as Stripe.Event;
+    const pi = {
+      id: "pi_1",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentSucceeded(event, pi);
+
+    expect(result).toEqual({ processed: true, action: "payment_intent_succeeded" });
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentId: "pay_1",
+        via: "stripe_checkout_webhook",
+        requireApply: true,
+      }),
+    );
+  });
+
+  it("propagates capture failure so the event claim rolls back", async () => {
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "cancelled",
+      amount: "100.00",
+    });
+    const capture = vi
+      .fn()
+      .mockRejectedValue(new PaymentCaptureNotAppliedError("pay_1", "cancelled"));
+    const { svc } = createWebhookService({
+      db,
+      paymentCapture: { capture },
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          amount: "100.00",
+          status: "cancelled",
         }),
       },
     });

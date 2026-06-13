@@ -247,6 +247,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
       findById: vi
@@ -321,6 +322,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -376,6 +378,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -443,6 +446,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -489,6 +493,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
       findById: vi.fn().mockResolvedValue(pay),
@@ -663,10 +668,21 @@ describe("PaymentService", () => {
   });
 
   it("promotes an existing pending payment when compliance blocks checkout", async () => {
-    const existingPending = { ...payment, id: "pay-pending", status: "pending" } as PaymentRecord;
+    const existingPending = {
+      ...payment,
+      id: "pay-pending",
+      status: "pending",
+      stripePaymentIntentId: "pi_pending",
+    } as PaymentRecord;
+    const revokeOpenCheckoutForPayment = vi.fn().mockResolvedValue(undefined);
+    const stripePayments: IStripePaymentGateway = {
+      isConfigured: () => true,
+      revokeOpenCheckoutForPayment,
+    } as unknown as IStripePaymentGateway;
     const payments: IPaymentWriteRepository = {
       findOpenByLotAndBuyer: vi.fn().mockResolvedValue(existingPending),
       findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findById: vi.fn().mockResolvedValue(existingPending),
       updateStatus: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPaymentWriteRepository;
     const settlementCompliance: ISettlementCompliancePolicy = {
@@ -674,6 +690,7 @@ describe("PaymentService", () => {
     };
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
     const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(true) });
+    const stripeCheckout = mockStripeCheckout();
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
       payments,
@@ -687,14 +704,14 @@ describe("PaymentService", () => {
       undefined,
       {} as never,
       publisher as never,
-      null,
+      stripePayments,
       undefined,
       undefined,
       undefined,
       undefined,
       undefined,
       undefined,
-      mockStripeCheckout(),
+      stripeCheckout,
       undefined,
       undefined,
       undefined,
@@ -709,7 +726,9 @@ describe("PaymentService", () => {
       expect(result.value.manualReviewReason).toBe("aml_hold");
       expect(result.value.checkoutUrl).toBeNull();
     }
+    expect(revokeOpenCheckoutForPayment).toHaveBeenCalledWith("pay-pending", "pi_pending");
     expect(payments.updateStatus).toHaveBeenCalledWith("pay-pending", "requires_manual_review");
+    expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
     expect(publisher.publish).toHaveBeenCalledWith(
       {},
       expect.objectContaining({
@@ -717,6 +736,60 @@ describe("PaymentService", () => {
         payload: expect.objectContaining({ reason: "aml_hold" }),
       }),
     );
+  });
+
+  it("promotes an existing pending payment when seller is archived on retry", async () => {
+    const existingPending = { ...payment, id: "pay-pending", status: "pending" } as PaymentRecord;
+    const revokeOpenCheckoutForPayment = vi.fn().mockResolvedValue(undefined);
+    const stripePayments: IStripePaymentGateway = {
+      isConfigured: () => true,
+      revokeOpenCheckoutForPayment,
+    } as unknown as IStripePaymentGateway;
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(existingPending),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findById: vi.fn().mockResolvedValue(existingPending),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as IPaymentWriteRepository;
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      {
+        findById: vi.fn().mockResolvedValue({ status: "archived" }),
+      } as unknown as ILegalEntityRepository,
+      {} as never,
+      { publish: vi.fn() } as never,
+      stripePayments,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+    );
+
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.manualReviewReason).toBe("seller_archived");
+      expect(result.value.checkoutUrl).toBeNull();
+    }
+    expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
+    expect(payments.updateStatus).toHaveBeenCalledWith("pay-pending", "requires_manual_review");
   });
 
   it("blocks release for capture when settlement compliance holds (AML)", async () => {

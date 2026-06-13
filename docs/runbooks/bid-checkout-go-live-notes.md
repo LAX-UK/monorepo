@@ -50,3 +50,36 @@ When `CRON_INTERNAL_SECRET` is set, the worker registers:
 | `refresh-xero-tokens` | 6 h | `POST /internal/jobs/refresh-xero-tokens` |
 
 Manual replay remains available via the same endpoints (see `docs/runbooks/xero-stripe-payment-setup.md`, `docs/runbooks/monitoring-alerts.md`).
+
+## Go-live hardening (applied)
+
+| Fix | What changed |
+|-----|----------------|
+| **B1 — compliance hold strands funds** | Before promoting a pending payment to `requires_manual_review`, revoke open Stripe Checkout sessions / cancel the PaymentIntent (`revokeOpenCheckoutForPayment`). Webhook capture now accepts `requires_manual_review` so a buyer who pays on a stale session still settles locally (`payment_capture_from_manual_review_reconciliation`). |
+| **H1 — bid idempotency scope** | Idempotency keys include `lotId`: `idempotency:bid:{userId}:{lotId}:{key}`. Telephone default key includes `lotId`. |
+| **H3 — seller archived on pending retry** | Re-evaluates seller-archived / tier manual-review gate before re-issuing checkout for an existing `pending` payment. |
+| **H5 — socket reconnect** | `joinLot` is re-emitted on socket reconnect so live bid events resume without a full page reload. |
+
+## Go-live findings (verified non-bugs / deferred)
+
+| Finding | Outcome |
+|---------|---------|
+| **H2 — refund double clawback** | **Not a bug.** Admin refund clawback runs only when `applyRefundedInTransaction` succeeds (status still `captured`/`requires_manual_review`). Webhook `charge.refunded` sets `refunded` and clawback in one transaction; admin path no-ops when status is already `refunded`. |
+| **H4 — `payment_intent.payment_failed` leaves status pending** | **By design** — keeps checkout retryable; `payment.checkout_failed` domain event is published. |
+| **H6 — worker cron 503 treated as success** | **Low risk** — prod env validation requires identical `CRON_INTERNAL_SECRET` on API + worker. Optional follow-up: Sentry alert on worker `cron_not_configured` warn. |
+
+### Deploy checklist
+
+- [ ] `CRON_INTERNAL_SECRET` (≥32 chars) set identically on **API** and **worker**
+- [ ] Alert on worker log `"skipped (API reports cron_not_configured)"` and missing `worker:heartbeat:lot-lifecycle-tick`
+
+### Medium/low backlog (not code-fixed this pass)
+
+- Validator 2dp gaps on telephone / absentee / auto-bid schemas
+- Lot cross-field validation (`endTime > startTime`, `reserve <= buyNow`)
+- Rate limit increments before bid outcome
+- `setAutoBid` rewrites all historical bid rows for a bidder on a lot
+- Admin `/capture-and-process` is release-only (rename or chain checkout)
+- `OnlineBidsView` bid history not resynced on reconnect
+- Cron trigger queues outside `QUEUE_REGISTRY`
+- Reserve enforced at close only (English auctions — confirm with saleroom ops)
