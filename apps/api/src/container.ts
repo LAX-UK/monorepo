@@ -302,6 +302,7 @@ import { StripeCheckoutService } from "./services/payment/stripe-checkout.servic
 import { PayoutService } from "./services/payout.service.js";
 import { PayoutAdjustmentService } from "./services/payout/payout-adjustment.service.js";
 import { ProfileService } from "./services/profile.service.js";
+import { QrCodeAnalyticsService } from "./services/qr-code-analytics.service.js";
 import { QrCodeService } from "./services/qr-code.service.js";
 import { QuietHoursChecker } from "./services/quiet-hours.checker.js";
 import { RegistrationService } from "./services/registration.service.js";
@@ -391,6 +392,7 @@ export type Container = {
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
   qrCodeService: QrCodeService;
+  qrCodeAnalytics: QrCodeAnalyticsService;
   paymentRefundReconcileService: PaymentRefundReconcileService;
   accountingProvider: IInvoiceAccountingProvider;
   /** bill-to resolver for Xero + payment-invoice email. */
@@ -1006,6 +1008,7 @@ export function createContainer(env: Env): Container {
     createBaseLogger(env).child({ component: "qr_code" }),
     qrCodeScanQueue,
   );
+  const qrCodeAnalytics = new QrCodeAnalyticsService(db);
 
   const lotNotificationCoordinator = new LotNotificationCoordinator(
     notificationWriteRepo,
@@ -1617,6 +1620,7 @@ export function createContainer(env: Env): Container {
     notificationQueryService,
     paymentService,
     qrCodeService,
+    qrCodeAnalytics,
     paymentRefundReconcileService,
     accountingProvider,
     invoiceAddressingService,

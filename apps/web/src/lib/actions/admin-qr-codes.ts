@@ -6,6 +6,7 @@ import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/for
 import { QR_CODES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import {
+  type QrCodeAnalyticsRange,
   adminQrCodeCreateSchema,
   adminQrCodeEntityQuerySchema,
   adminQrCodeRegenerateSchema,
@@ -23,12 +24,35 @@ export type AdminQrCodeItem = {
   placement: string | null;
 };
 
-export type AdminQrCodeAnalytics = {
-  totalScans: number;
-  daily: { day: string; scans: number }[];
-  byCountry: { country: string; scans: number }[];
-  byDevice: { deviceType: string; scans: number }[];
+export type AdminQrCodeBreakdownRow = { key: string; scans: number };
+
+export type AdminQrCodeRecentScan = {
+  scannedAt: string;
+  deviceType: string;
+  browser: string;
+  os: string;
+  country: string;
+  referrerHost: string | null;
 };
+
+export type AdminQrCodeAnalytics = {
+  source: "raw" | "daily";
+  granularity: "hour" | "day";
+  rangeKey: string;
+  totalScans: number;
+  uniqueIps: number | null;
+  trend: { bucket: string; scans: number }[];
+  byDevice: AdminQrCodeBreakdownRow[];
+  byCountry: AdminQrCodeBreakdownRow[];
+  byBrowser: AdminQrCodeBreakdownRow[] | null;
+  byOs: AdminQrCodeBreakdownRow[] | null;
+  byReferrer: AdminQrCodeBreakdownRow[] | null;
+  recentScans: AdminQrCodeRecentScan[] | null;
+};
+
+export type AdminQrCodeAnalyticsQuery =
+  | { range: QrCodeAnalyticsRange }
+  | { from: string; to: string };
 
 export type AdminQrCodeDialogData = {
   item: AdminQrCodeItem;
@@ -65,8 +89,25 @@ export async function adminLoadQrCodeDialogResultAction(
     if (!itemResult.ok) return itemResult;
     if (!itemResult.data) return actionFailure("invalid_response");
 
-    const analytics = await getQrCodeAnalytics(itemResult.data.id, 30);
+    const analytics = await getQrCodeAnalytics(itemResult.data.id, { range: "30d" });
     return actionSuccess({ item: itemResult.data, analytics });
+  });
+}
+
+export async function adminLoadQrCodeAnalyticsResultAction(
+  qrCodeId: string,
+  query: AdminQrCodeAnalyticsQuery,
+): Promise<ActionResult<AdminQrCodeAnalytics>> {
+  return instrumentServerAction("adminLoadQrCodeAnalyticsResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(QR_CODES_ACCESS);
+    if (denied) return denied;
+
+    const parsedId = z.string().uuid().safeParse(qrCodeId);
+    if (!parsedId.success) return actionFailure("Invalid QR code id");
+
+    const analytics = await getQrCodeAnalytics(parsedId.data, query);
+    if (!analytics) return actionFailure("Could not load QR analytics");
+    return actionSuccess(analytics);
   });
 }
 
@@ -168,9 +209,15 @@ async function ensureQrCode(input: {
 
 async function getQrCodeAnalytics(
   qrCodeId: string,
-  days: number,
+  query: AdminQrCodeAnalyticsQuery,
 ): Promise<AdminQrCodeAnalytics | null> {
-  const qs = new URLSearchParams({ days: String(days) });
+  const qs = new URLSearchParams();
+  if ("range" in query) {
+    qs.set("range", query.range);
+  } else {
+    qs.set("from", query.from);
+    qs.set("to", query.to);
+  }
   const res = await authedServerFetch(`/admin/qr-codes/${qrCodeId}/analytics?${qs}`, {
     skipActingLegalEntityHeader: true,
   });

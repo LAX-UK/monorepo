@@ -5,6 +5,122 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminRoutes } from "./admin.js";
 
 describe("admin QR code routes", () => {
+  it("GET /qr-codes/:id/analytics resolves range presets and returns detailed analytics", async () => {
+    const getDetailed = vi.fn().mockResolvedValue({
+      source: "raw",
+      granularity: "hour",
+      rangeKey: "24h",
+      totalScans: 4,
+      uniqueIps: 2,
+      trend: [],
+      byDevice: [],
+      byCountry: [],
+      byBrowser: [],
+      byOs: [],
+      byReferrer: [],
+      recentScans: [],
+    });
+    const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+      admin: {
+        requestLifecycle: {
+          isSuspended: vi.fn().mockResolvedValue(false),
+          reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+      qrCodeAnalytics: { getDetailed },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "staff-user-id", role: "staff", staffRole: "super_admin" }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request(
+      "http://test/admin/qr-codes/22222222-2222-4222-8222-222222222222/analytics?range=24h",
+    );
+
+    expect(res.status).toBe(200);
+    expect(getDetailed).toHaveBeenCalledWith(
+      "22222222-2222-4222-8222-222222222222",
+      expect.objectContaining({ source: "raw", granularity: "hour", rangeKey: "24h" }),
+    );
+  });
+
+  it("GET /qr-codes/:id/analytics resolves custom from/to ranges", async () => {
+    const getDetailed = vi.fn().mockResolvedValue({
+      source: "daily",
+      granularity: "day",
+      rangeKey: "custom",
+      totalScans: 0,
+      uniqueIps: null,
+      trend: [],
+      byDevice: [],
+      byCountry: [],
+      byBrowser: null,
+      byOs: null,
+      byReferrer: null,
+      recentScans: null,
+    });
+    const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+      admin: {
+        requestLifecycle: {
+          isSuspended: vi.fn().mockResolvedValue(false),
+          reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+      qrCodeAnalytics: { getDetailed },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "staff-user-id", role: "staff", staffRole: "super_admin" }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request(
+      "http://test/admin/qr-codes/22222222-2222-4222-8222-222222222222/analytics?from=2026-06-01T00:00:00.000Z&to=2026-06-10T23:59:59.999Z",
+    );
+
+    expect(res.status).toBe(200);
+    expect(getDetailed).toHaveBeenCalledWith(
+      "22222222-2222-4222-8222-222222222222",
+      expect.objectContaining({ rangeKey: "custom", source: "daily", granularity: "day" }),
+    );
+  });
+
+  it("GET /qr-codes/:id/analytics rejects invalid custom ranges", async () => {
+    const getDetailed = vi.fn();
+    const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+      admin: {
+        requestLifecycle: {
+          isSuspended: vi.fn().mockResolvedValue(false),
+          reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+      qrCodeAnalytics: { getDetailed },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "staff-user-id", role: "staff", staffRole: "super_admin" }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request(
+      "http://test/admin/qr-codes/22222222-2222-4222-8222-222222222222/analytics?from=2026-06-10T00:00:00.000Z&to=2026-06-01T00:00:00.000Z",
+    );
+
+    expect(res.status).toBe(400);
+    expect(getDetailed).not.toHaveBeenCalled();
+  });
+
   it("POST /qr-codes/regenerate regenerates the default QR code", async () => {
     const regenerateDefault = vi.fn().mockResolvedValue({
       id: "qr_2",
