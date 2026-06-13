@@ -8,6 +8,8 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { IObjectStorage } from "../services/interfaces/object-storage.js";
 
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
 export type S3ObjectStorageConfig = {
   bucket: string;
   region: string;
@@ -47,6 +49,7 @@ export class S3ObjectStorage implements IObjectStorage {
         Key: key,
         Body: body,
         ContentType: contentType,
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       }),
     );
     return { url: this.getPublicUrl(key) };
@@ -78,12 +81,14 @@ export class S3ObjectStorage implements IObjectStorage {
       Key: args.key,
       ContentType: args.contentType,
       ContentLength: args.byteSize,
+      CacheControl: IMMUTABLE_CACHE_CONTROL,
     });
     const url = await getSignedUrl(this.client, command, { expiresIn: args.expiresInSec });
     return {
       url,
       requiredHeaders: {
         "content-type": args.contentType,
+        "cache-control": IMMUTABLE_CACHE_CONTROL,
       },
     };
   }

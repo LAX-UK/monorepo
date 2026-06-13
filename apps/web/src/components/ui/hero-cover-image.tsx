@@ -4,7 +4,8 @@ import { useAdaptiveMediaImageProps } from "@/components/ui/adaptive-media-frame
 import { HERO_COVER_DEFAULTS } from "@/lib/media/hero-cover-defaults";
 import { type HeroCoverSources, heroCoverObjectPosition } from "@/lib/media/hero-cover-sources";
 import { cn } from "@auction/ui";
-import { useCallback, useState } from "react";
+import { getImageProps } from "next/image";
+import { useCallback, useMemo, useState } from "react";
 
 type HeroCoverImageProps = {
   cover: HeroCoverSources;
@@ -18,6 +19,21 @@ type HeroCoverImageProps = {
   /** Show shimmer placeholder while loading. Defaults to true. */
   showPlaceholder?: boolean;
 };
+
+const HERO_WIDTH = 2560;
+const HERO_HEIGHT = 900;
+
+function optimizedHeroSrc(src: string, alt: string, sizes: string, priority: boolean) {
+  const { props } = getImageProps({
+    src,
+    alt,
+    width: HERO_WIDTH,
+    height: HERO_HEIGHT,
+    sizes,
+    priority,
+  });
+  return { src: props.src, srcSet: props.srcSet };
+}
 
 /** Responsive hero cover — native img for overlay tone sampling; optional mobile art direction. */
 export function HeroCoverImage({
@@ -49,7 +65,20 @@ export function HeroCoverImage({
     [imgRef, markLoaded],
   );
 
-  if (!desktopUrl) {
+  const desktopOptimized = useMemo(
+    () => (desktopUrl ? optimizedHeroSrc(desktopUrl, alt, sizes, priority) : null),
+    [desktopUrl, alt, sizes, priority],
+  );
+  const mobileOptimized = useMemo(
+    () => (mobileUrl ? optimizedHeroSrc(mobileUrl, alt, sizes, priority) : null),
+    [mobileUrl, alt, sizes, priority],
+  );
+  const desktopWideOptimized = useMemo(
+    () => (desktopWideUrl ? optimizedHeroSrc(desktopWideUrl, alt, sizes, priority) : null),
+    [desktopWideUrl, alt, sizes, priority],
+  );
+
+  if (!desktopUrl || !desktopOptimized) {
     return null;
   }
 
@@ -64,19 +93,23 @@ export function HeroCoverImage({
         <div aria-hidden className="absolute inset-0 bg-surface-container-high shimmer-sweep" />
       ) : null}
       <picture className="block h-full w-full">
-        {desktopWideUrl ? (
-          <source media={HERO_COVER_DEFAULTS.pictureDesktopWideMedia} srcSet={desktopWideUrl} />
+        {desktopWideOptimized ? (
+          <source
+            media={HERO_COVER_DEFAULTS.pictureDesktopWideMedia}
+            srcSet={desktopWideOptimized.srcSet}
+          />
         ) : null}
-        {mobileUrl ? (
-          <source media={HERO_COVER_DEFAULTS.pictureMobileMedia} srcSet={mobileUrl} />
+        {mobileOptimized ? (
+          <source media={HERO_COVER_DEFAULTS.pictureMobileMedia} srcSet={mobileOptimized.srcSet} />
         ) : null}
         <img
           ref={assignImgRef}
-          src={desktopUrl}
+          src={desktopOptimized.src}
+          srcSet={desktopOptimized.srcSet}
           alt={alt}
           sizes={sizes}
-          width={2560}
-          height={900}
+          width={HERO_WIDTH}
+          height={HERO_HEIGHT}
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : "auto"}
           decoding="async"

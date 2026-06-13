@@ -4,7 +4,7 @@ import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 
 type Props = {
-  lot: Pick<Lot, "id" | "title" | "images" | "marketingDetails" | "dimensions">;
+  lot: Pick<Lot, "id" | "title" | "images" | "imageAssets" | "marketingDetails" | "dimensions">;
   wide?: boolean;
 };
 
@@ -43,7 +43,8 @@ export function LotMediaBlock({ lot, wide = false }: Props) {
         <ArtworkImageStage
           title={lot.title}
           images={lot.images}
-          imageAlts={lot.marketingDetails.imageAlts}
+          {...(lot.imageAssets ? { imageAssets: lot.imageAssets } : {})}
+          {...(lot.marketingDetails.imageAlts ? { imageAlts: lot.marketingDetails.imageAlts } : {})}
         />
       </div>
     </LotHeroViewTransitionShell>

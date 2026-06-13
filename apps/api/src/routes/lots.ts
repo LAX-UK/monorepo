@@ -246,7 +246,13 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     if (result.isErr()) {
       return jsonLotOrAuthzError(c, result.error);
     }
-    return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+    return c.json({
+      data: await presentLotImages(
+        container.mediaUrlResolver,
+        result.value,
+        container.mediaAssetEnricher,
+      ),
+    });
   });
 
   r.post("/:id/withdraw-request", requireAuth, zValidator("param", lotIdParamSchema), async (c) => {
@@ -280,7 +286,13 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentLotImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 
@@ -323,7 +335,13 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentLotImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 
@@ -341,7 +359,13 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       if (result.isErr()) {
         return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
       }
-      return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) });
+      return c.json({
+        data: await presentLotImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      });
     },
   );
 
@@ -462,7 +486,11 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     if (!lot) {
       return c.json({ error: "Not found" }, 404);
     }
-    const presented = await presentLotImages(container.mediaUrlResolver, lot);
+    const presented = await presentLotImages(
+      container.mediaUrlResolver,
+      lot,
+      container.mediaAssetEnricher,
+    );
     const sale = lot.saleId ? await container.saleService.getById(lot.saleId) : null;
     const canPreview = viewerCanSeeNonPublicCatalog(role, staffRole);
     if (!canPreview && !isPublicCatalogLot(presented, sale)) {
@@ -505,7 +533,16 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     if (result.isErr()) {
       return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
     }
-    return c.json({ data: await presentLotImages(container.mediaUrlResolver, result.value) }, 201);
+    return c.json(
+      {
+        data: await presentLotImages(
+          container.mediaUrlResolver,
+          result.value,
+          container.mediaAssetEnricher,
+        ),
+      },
+      201,
+    );
   });
 
   r.get(
