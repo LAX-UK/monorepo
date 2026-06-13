@@ -58,7 +58,7 @@ export function AdminClientArtistProfilesPanel({
                 </div>
                 <Link
                   href={`/admin/artists/${encodeURIComponent(a.id)}/edit`}
-                  className="font-label text-xs uppercase tracking-wide text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-wide text-link hover:underline"
                 >
                   Edit
                 </Link>

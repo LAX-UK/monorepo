@@ -57,7 +57,7 @@ export function UrgencyLotRow({
         <div className="relative w-full shrink-0 lg:w-44">
           <Link
             href={item.href}
-            className="group relative block aspect-[4/3] w-full overflow-hidden rounded-md bg-surface-container-high outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary dark:bg-surface-container-high"
+            className="group relative block aspect-[4/3] w-full overflow-hidden rounded-md bg-surface-container-high outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring dark:bg-surface-container-high"
             aria-label={`${item.title} — view artwork`}
           >
             <MediaImage
@@ -135,7 +135,7 @@ export function UrgencyLotRow({
             </div>
             <Link
               href={item.href}
-              className="inline-flex h-10 min-h-[44px] min-w-[7.5rem] flex-1 items-center justify-center rounded-md border border-outline-variant/40 bg-transparent px-4 text-center text-sm font-semibold leading-5 tracking-wide text-on-surface outline-offset-2 transition-colors hover:bg-surface-container-high/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex-initial lg:min-w-[9rem]"
+              className="inline-flex h-10 min-h-[44px] min-w-[7.5rem] flex-1 items-center justify-center rounded-md border border-outline-variant/40 bg-transparent px-4 text-center text-sm font-semibold leading-5 tracking-wide text-on-surface outline-offset-2 transition-colors hover:bg-surface-container-high/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:flex-initial lg:min-w-[9rem]"
             >
               {ctaLabel}
             </Link>

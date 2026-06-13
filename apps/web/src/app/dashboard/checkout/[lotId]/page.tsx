@@ -164,14 +164,14 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
               After payment, your lot moves to{" "}
               <Link
                 href="/dashboard/portfolio"
-                className="font-medium text-primary underline-offset-4 hover:underline"
+                className="font-medium text-link underline-offset-4 hover:underline"
               >
                 Collection
               </Link>
               . Need help?{" "}
               <Link
                 href={lotPath(auction)}
-                className="rounded font-medium text-primary underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="rounded font-medium text-link underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 View full lot details
               </Link>

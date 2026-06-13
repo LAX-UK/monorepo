@@ -35,7 +35,7 @@ export function CheckoutLotMobileChrome({
           variant="cta"
           disabled={ctaDisabled}
           aria-busy={isSubmitting}
-          className="min-h-11 shrink-0 min-w-[10rem] font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="min-h-11 shrink-0 min-w-[10rem] font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           {isSubmitting ? "Processing…" : "Complete purchase"}
         </Button>

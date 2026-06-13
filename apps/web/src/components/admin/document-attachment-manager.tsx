@@ -162,7 +162,7 @@ export function DocumentAttachmentManager<TKind extends string>({
                     href={d.downloadUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-body text-xs text-primary underline"
+                    className="font-body text-xs text-link underline"
                   >
                     Download
                   </a>

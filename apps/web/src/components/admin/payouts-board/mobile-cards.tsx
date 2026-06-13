@@ -30,7 +30,7 @@ export function PayoutsMobileCards({
               </p>
               <Link
                 href={`/admin/legal-entities/${row.legalEntityId}`}
-                className="mt-1 inline-block text-xs text-primary underline"
+                className="mt-1 inline-block text-xs text-link underline"
               >
                 View legal entity
               </Link>

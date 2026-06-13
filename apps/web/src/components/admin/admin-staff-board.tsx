@@ -28,7 +28,7 @@ function staffColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow
         <Button
           type="button"
           variant="link"
-          className="h-auto max-w-[12rem] truncate px-0 py-0 text-left font-medium text-primary underline-offset-2 hover:underline"
+          className="h-auto max-w-[12rem] truncate px-0 py-0 text-left font-medium text-link underline-offset-2 hover:underline"
           onClick={() => onOpen(row.original)}
         >
           {row.original.name}

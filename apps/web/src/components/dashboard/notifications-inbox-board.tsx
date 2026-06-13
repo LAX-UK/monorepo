@@ -384,7 +384,7 @@ export function NotificationsInboxBoard({
               Tip: enable browser push in{" "}
               <Link
                 href="/dashboard/settings/notifications"
-                className="text-primary underline-offset-2 hover:underline"
+                className="text-link underline-offset-2 hover:underline"
               >
                 notification settings
               </Link>

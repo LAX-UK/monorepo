@@ -15,7 +15,7 @@ type Props = {
 };
 
 const navButtonClass =
-  "inline-flex size-11 items-center justify-center rounded-full border border-outline-variant/40 bg-surface/90 text-on-surface shadow-sm backdrop-blur transition-colors hover:bg-surface-container-high disabled:pointer-events-none disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "inline-flex size-11 items-center justify-center rounded-full border border-outline-variant/40 bg-surface/90 text-on-surface shadow-sm backdrop-blur transition-colors hover:bg-surface-container-high disabled:pointer-events-none disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export function LotQuickLookDeckNav({
   deckIndex,

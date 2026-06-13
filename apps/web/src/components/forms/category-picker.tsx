@@ -156,7 +156,7 @@ export function CategoryPicker({
               key={category.id}
               type="button"
               variant="ghost"
-              className="h-auto min-h-0 rounded-full border border-outline-variant/30 px-3 py-1 font-body text-xs font-normal text-on-surface-variant hover:bg-transparent hover:border-primary hover:text-primary"
+              className="h-auto min-h-0 rounded-full border border-outline-variant/30 px-3 py-1 font-body text-xs font-normal text-on-surface-variant hover:bg-transparent hover:border-link hover:text-link"
               onClick={() => toggle(category.id)}
             >
               {index === 0 ? "Primary: " : ""}

@@ -93,7 +93,7 @@ export async function ArtistDuplicateReviewSection() {
                   <h2 className="font-display text-lg font-semibold text-on-surface">
                     <Link
                       href={`/admin/artists/${artist.id}`}
-                      className="text-primary hover:underline"
+                      className="text-link hover:underline"
                     >
                       {artist.displayName}
                     </Link>

@@ -134,11 +134,11 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className="block rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-colors hover:border-primary/30 hover:bg-primary/5"
+      className="block rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-colors hover:border-link/30 hover:bg-primary/5"
     >
       <h3 className="font-headline text-base text-on-surface">{title}</h3>
       <p className="mt-2 font-body text-sm text-on-surface-variant">{description}</p>
-      <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary">
+      <span className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         {cta}
       </span>
     </Link>

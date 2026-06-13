@@ -127,7 +127,7 @@ export function SaleLotsTabSection({
                   href={`/admin/lots/${l.id}`}
                   className={cn(
                     "flex h-full flex-col overflow-hidden rounded-lg border border-border-hairline",
-                    "bg-surface-container-lowest/40 transition-colors hover:border-primary/30 hover:bg-primary/5",
+                    "bg-surface-container-lowest/40 transition-colors hover:border-link/30 hover:bg-primary/5",
                   )}
                 >
                   <div className="relative aspect-square bg-surface-container-low">
@@ -168,7 +168,7 @@ export function SaleLotsTabSection({
                   <div className="min-w-0">
                     <Link
                       href={`/admin/lots/${l.id}`}
-                      className="font-headline text-base text-on-surface hover:text-primary"
+                      className="font-headline text-base text-on-surface hover:text-link"
                     >
                       {l.title}
                     </Link>

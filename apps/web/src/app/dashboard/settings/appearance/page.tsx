@@ -37,7 +37,7 @@ export default async function AppearanceSettingsPage() {
         Quick theme toggle is also in the site header.{" "}
         <Link
           href="/dashboard/settings/account"
-          className="text-primary underline-offset-4 hover:underline"
+          className="text-link underline-offset-4 hover:underline"
         >
           Account &amp; email
         </Link>{" "}

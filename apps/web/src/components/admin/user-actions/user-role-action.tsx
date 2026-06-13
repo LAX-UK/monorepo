@@ -93,7 +93,7 @@ export function UserRoleAction({ userId, defaultRole, layout = "row" }: UserRole
           type="button"
           variant="link"
           disabled={pending}
-          className="h-auto min-h-11 px-0 py-0 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary underline-offset-2 hover:underline disabled:opacity-50"
+          className="h-auto min-h-11 px-0 py-0 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-2 hover:underline disabled:opacity-50"
           onClick={runSave}
         >
           Save

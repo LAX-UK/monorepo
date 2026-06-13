@@ -14,7 +14,7 @@ html {
 body {
   margin: 0;
   overflow-x: hidden;
-  background-color: #121212;
+  background-color: var(--lax-slate-mid);
 }
 
 img,
@@ -27,10 +27,12 @@ svg {
 
 /* Dark slate field + centred invitation card (Option A — invitation on slate) */
 .event-page {
-  --lax-champagne: #c9a962;
-  --lax-paper: #efefef;
+  --lax-champagne: var(--brand-accent-gold);
+  --lax-midnight: var(--brand-midnight);
+  --lax-light-gray: var(--brand-light-gray);
+  --lax-paper: var(--brand-light-cream);
   --lax-paper-alt: #e8e8e8;
-  --lax-slate-deep: #0a0a0a;
+  --lax-slate-deep: var(--brand-obsidian);
   --lax-slate-mid: #121212;
   --lax-slate-soft: #252525;
   position: relative;
@@ -86,7 +88,7 @@ svg {
   max-width: 600px;
   overflow: hidden;
   background-color: var(--lax-paper);
-  color: #1a1a1a;
+  color: var(--brand-ink);
   color-scheme: light;
   flex: 0 1 600px;
   border-top: 1px solid rgba(201, 169, 98, 0.42);

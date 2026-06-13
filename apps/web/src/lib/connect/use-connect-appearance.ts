@@ -16,12 +16,12 @@ function buildAppearance(): AppearanceOptions {
   return {
     overlays: "dialog",
     variables: {
-      colorPrimary: readCssVar("--color-primary", isDark ? "#e8c77c" : "#775a19"),
+      colorPrimary: readCssVar("--color-primary", isDark ? "#f2f1df" : "#000000"),
       colorBackground: readCssVar(
         isDark ? "--color-surface-container" : "--color-page-bg",
-        isDark ? "#1a1614" : "#f1f1f3",
+        isDark ? "#1a1614" : "#ffffff",
       ),
-      colorText: readCssVar("--color-on-surface", isDark ? "#f1f1f3" : "#1a1614"),
+      colorText: readCssVar("--color-on-surface", isDark ? "#f2f1df" : "#1a1614"),
       colorDanger: readCssVar("--color-error", "#b3261e"),
       fontFamily: "var(--font-body, system-ui, sans-serif)",
       borderRadius: "8px",

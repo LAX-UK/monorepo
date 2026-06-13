@@ -32,10 +32,10 @@ const ENDING_SOON_OVERLAY_POS =
 const ENDING_SOON_INLINE_POS = "relative inline-flex max-w-full shrink-0 pointer-events-auto";
 
 const ENDING_SOON_COUNTDOWN =
-  "min-w-0 tabular-nums text-base font-semibold leading-4 tracking-normal text-[#D1D1D1] dark:text-[#D1D1D1]";
+  "min-w-0 tabular-nums text-base font-semibold leading-4 tracking-normal text-brand-100";
 
 const ENDING_SOON_MUTED_SHELL_SHARED =
-  "inline-flex h-8 items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-[family-name:var(--font-poppins)] text-xs font-semibold uppercase leading-4 tracking-wide text-[#D1D1D1]/85 dark:text-[#D1D1D1]/85";
+  "inline-flex h-8 items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-supporting text-xs font-semibold uppercase leading-4 tracking-wide text-brand-100/85";
 
 function ariaLabelFor(state: LotTimerState, clockText?: string): string {
   switch (state.kind) {
@@ -144,7 +144,7 @@ export function LotTimerPill({
           <Clock
             className={cn(
               "shrink-0",
-              figma ? "size-4 text-[#D1D1D1] dark:text-[#D1D1D1]" : "size-3.5 text-accent-brand",
+              figma ? "size-4 text-brand-100" : "size-3.5 text-accent-brand",
             )}
             aria-hidden
           />

@@ -60,7 +60,7 @@ export function SaleDesktopStickyBar({
       return (
         <Link
           href="#catalog"
-          className="inline-flex items-center rounded-sm border border-outline-variant/40 px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[0.22em] text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+          className="inline-flex items-center rounded-sm border border-outline-variant/40 px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[0.22em] text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
         >
           View results
         </Link>

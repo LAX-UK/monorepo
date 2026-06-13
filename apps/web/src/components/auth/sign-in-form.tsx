@@ -11,6 +11,7 @@ import { SignInEmailStep } from "@/components/auth/sign-in-email-step";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { LogoutButton } from "@/components/layout/logout-button";
+import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
 import { buildAuthHref, parseAuthEmailParam } from "@/lib/auth/auth-route-links";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
@@ -307,10 +308,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
               </div>
             ) : null}
             <div className="flex justify-end">
-              <Link
-                href={forgotPasswordHref}
-                className="min-h-[44px] content-center font-footer-links text-sm font-medium text-brand-900 underline decoration-brand-900 underline-offset-2 dark:text-primary"
-              >
+              <Link href={forgotPasswordHref} className={AUTH_FOOTER_LINK_ROW}>
                 Forgot password?
               </Link>
             </div>
@@ -398,7 +396,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
               New to LAX?{" "}
               <Link
                 href={sellRegisterHref}
-                className="text-primary underline-offset-2 hover:underline"
+                className="text-link underline-offset-2 hover:underline"
               >
                 Create an account
               </Link>{" "}

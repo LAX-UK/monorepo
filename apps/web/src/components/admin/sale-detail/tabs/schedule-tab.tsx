@@ -56,7 +56,7 @@ export function SaleScheduleTab({ saleId, sale, lots }: Props) {
         <p className="text-xs text-on-surface-variant">
           Displayed in your browser locale. Cross-check with published catalog copy for the
           canonical timezone.{" "}
-          <Link href={`/admin/sales/${saleId}/edit`} className="text-primary hover:underline">
+          <Link href={`/admin/sales/${saleId}/edit`} className="text-link hover:underline">
             Edit sale schedule →
           </Link>
         </p>
@@ -73,10 +73,7 @@ export function SaleScheduleTab({ saleId, sale, lots }: Props) {
           {previewLots.length === 0 ? (
             <p className="mt-4 rounded-md border border-dashed border-outline-variant/40 p-4 text-sm text-on-surface-variant">
               No lots attached yet.{" "}
-              <Link
-                href={saleDetailTabHref(saleId, "lots")}
-                className="text-primary hover:underline"
-              >
+              <Link href={saleDetailTabHref(saleId, "lots")} className="text-link hover:underline">
                 Add lots →
               </Link>
             </p>
@@ -96,7 +93,7 @@ export function SaleScheduleTab({ saleId, sale, lots }: Props) {
                       <td className="py-2.5 pr-4">
                         <Link
                           href={`/admin/lots/${lot.id}`}
-                          className="font-medium text-primary hover:underline"
+                          className="font-medium text-link hover:underline"
                         >
                           {lot.lotNumber != null ? `#${lot.lotNumber} · ` : ""}
                           {lot.title}
@@ -117,7 +114,7 @@ export function SaleScheduleTab({ saleId, sale, lots }: Props) {
                   Showing {previewLots.length} of {lots.length} lots.{" "}
                   <Link
                     href={saleDetailTabHref(saleId, "lots")}
-                    className="text-primary hover:underline"
+                    className="text-link hover:underline"
                   >
                     View all lots →
                   </Link>

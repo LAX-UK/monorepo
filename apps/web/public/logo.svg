@@ -5,7 +5,7 @@
     <style>
       .st0 {
         fill: #091f5b;
-        font-family: Poppins-Bold, Poppins;
+        font-family: Montserrat-Bold, Montserrat;
         font-size: 61.31px;
         font-weight: 700;
       }
@@ -15,7 +15,7 @@
       }
 
       .st2 {
-        font-family: Poppins-Medium, Poppins;
+        font-family: Montserrat-Medium, Montserrat;
         font-size: 94.35px;
         font-weight: 500;
       }

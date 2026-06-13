@@ -37,7 +37,7 @@ function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={action.ariaLabel}
-      className="inline-flex min-h-11 items-center text-xs font-semibold text-primary underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="inline-flex min-h-11 items-center text-xs font-semibold text-link underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       {action.label}
     </a>
@@ -48,11 +48,11 @@ function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
 export function PaymentRowCard({ row }: { row: PaymentDisplayRow }) {
   return (
     <li className="lift-row">
-      <Surface variant="card" padding="md" className="transition-colors hover:border-primary/20">
+      <Surface variant="card" padding="md" className="transition-colors hover:border-link/20">
         <div className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 text-sm">
           <Link
             href={lotPath({ id: row.lotId, title: row.lotTitle })}
-            className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             aria-label={`View ${row.lotTitle}`}
           >
             <MediaImage src={row.lotImageUrl} alt="" label="Lot artwork" sizes="56px" />
@@ -60,7 +60,7 @@ export function PaymentRowCard({ row }: { row: PaymentDisplayRow }) {
           <div className="min-w-0">
             <Link
               href={lotPath({ id: row.lotId, title: row.lotTitle })}
-              className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               {row.lotTitle}
             </Link>

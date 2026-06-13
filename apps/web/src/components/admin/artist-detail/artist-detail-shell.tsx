@@ -149,7 +149,7 @@ export function ArtistDetailShell({
               registryStatus === "pending" ? (
                 <Link
                   href={artistDetailTabHref(artistId, "review")}
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
                 >
                   Review profile →
                 </Link>

@@ -1,4 +1,5 @@
 import { SITE_NAME } from "@/lib/brand";
+import { OG_BRAND } from "@/lib/brand/og-colors";
 import { fetchRegistryArtistById, getServerArtistById } from "@/lib/data/http/artist.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { renderOgJpeg } from "@/lib/seo/og-image-response";
@@ -98,8 +99,8 @@ export default async function Image({ params }: Props) {
         width: "100%",
         height: "100%",
         display: "flex",
-        backgroundColor: "#0d0d0f",
-        color: "#f3efe6",
+        backgroundColor: OG_BRAND.background,
+        color: OG_BRAND.foreground,
         fontFamily: "Georgia, serif",
       }}
     >
@@ -110,7 +111,7 @@ export default async function Image({ params }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#1a1a1c",
+          backgroundColor: OG_BRAND.panel,
         }}
       >
         {portrait ? (
@@ -121,7 +122,7 @@ export default async function Image({ params }: Props) {
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : (
-          <div style={{ display: "flex", fontSize: 220, color: "#3b3b3f", lineHeight: 1 }}>
+          <div style={{ display: "flex", fontSize: 220, color: OG_BRAND.muted, lineHeight: 1 }}>
             {name.slice(0, 1).toUpperCase()}
           </div>
         )}
@@ -158,8 +159,8 @@ export default async function Image({ params }: Props) {
                     letterSpacing: 3,
                     textTransform: "uppercase",
                     padding: "6px 14px",
-                    border: "1px solid #5b5447",
-                    color: "#c9c0ad",
+                    border: `1px solid ${OG_BRAND.muted}`,
+                    color: OG_BRAND.muted,
                     borderRadius: 999,
                   }}
                 >
@@ -174,7 +175,7 @@ export default async function Image({ params }: Props) {
               style={{
                 display: "flex",
                 fontSize: 28,
-                color: "#c9c0ad",
+                color: OG_BRAND.muted,
                 letterSpacing: 1,
               }}
             >
@@ -186,7 +187,7 @@ export default async function Image({ params }: Props) {
               style={{
                 display: "flex",
                 fontSize: 24,
-                color: "#a89e88",
+                color: OG_BRAND.muted,
                 fontStyle: "italic",
                 maxWidth: 600,
                 lineHeight: 1.3,

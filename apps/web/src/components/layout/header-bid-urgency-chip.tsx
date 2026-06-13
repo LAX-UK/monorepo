@@ -38,7 +38,7 @@ export function HeaderBidUrgencyChip({ className }: { className?: string }) {
     <Link
       href="/dashboard/bids?tab=active"
       className={cn(
-        "inline-flex min-h-[var(--tap-target-min,44px)] items-center gap-1.5 rounded-full border border-lot-orange/40 bg-lot-orange/10 px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-lot-orange transition-colors hover:bg-lot-orange/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:px-3.5 lg:text-xs",
+        "inline-flex min-h-[var(--tap-target-min,44px)] items-center gap-1.5 rounded-full border border-lot-orange/40 bg-lot-orange/10 px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-lot-orange transition-colors hover:bg-lot-orange/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:px-3.5 lg:text-xs",
         className,
       )}
     >

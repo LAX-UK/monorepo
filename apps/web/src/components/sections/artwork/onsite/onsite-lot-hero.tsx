@@ -54,7 +54,7 @@ export function OnsiteLotHero({
               className="border-outline-variant/30 bg-surface-container-low text-on-surface-variant"
             />
             {auction.lotNumber != null && (
-              <span className="font-label text-xs font-bold uppercase tracking-widest text-primary">
+              <span className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
                 Lot {auction.lotNumber}
               </span>
             )}
@@ -70,7 +70,7 @@ export function OnsiteLotHero({
 
           <div className="space-y-2">
             <p className="font-body text-xs uppercase tracking-wide text-on-surface-variant/80">
-              <Link href={salePath(sale)} className="hover:text-primary hover:underline">
+              <Link href={salePath(sale)} className="hover:text-link hover:underline">
                 {sale.title}
               </Link>
             </p>
@@ -80,7 +80,7 @@ export function OnsiteLotHero({
             {summarySeed.sellerHref ? (
               <Link
                 href={summarySeed.sellerHref}
-                className="font-body text-base font-medium text-on-surface-variant hover:text-primary hover:underline"
+                className="font-body text-base font-medium text-on-surface-variant hover:text-link hover:underline"
               >
                 {summarySeed.sellerName}
               </Link>

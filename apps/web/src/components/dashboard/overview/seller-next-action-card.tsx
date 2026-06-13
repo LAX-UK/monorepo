@@ -16,7 +16,7 @@ export function SellerNextActionCard({ action }: Props) {
       aria-label="Your next action"
     >
       <div className="min-w-0 space-y-1">
-        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.22em] text-secondary">
           Next action
         </p>
         <h2 className="font-headline text-lg text-on-surface">{action.title}</h2>

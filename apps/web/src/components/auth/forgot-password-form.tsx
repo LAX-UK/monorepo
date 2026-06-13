@@ -56,7 +56,7 @@ export function ForgotPasswordForm() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-primary/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-auto min-h-11 rounded-md border border-outline-variant/40 bg-transparent px-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface hover:border-link/50 hover:bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => void resend()}
           disabled={cooldown > 0 || loading || !turnstileReady}
         >

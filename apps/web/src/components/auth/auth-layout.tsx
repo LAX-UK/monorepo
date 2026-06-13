@@ -69,7 +69,7 @@ export function AuthLayout({
         )}
         {!isTask ? (
           <p className="text-center font-body text-sm text-on-surface-variant">
-            <Link href="/search" className="text-primary underline-offset-4 hover:underline">
+            <Link href="/search" className="text-link underline-offset-4 hover:underline">
               Browse catalogue
             </Link>
           </p>

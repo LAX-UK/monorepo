@@ -26,7 +26,7 @@ export function SiteFooter({
   regionsLine = "London",
 }: SiteFooterProps = {}) {
   const linkClass = cn(
-    "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-primary",
+    "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
     FOCUS_RING,
   );
   const headingClass = FOOTER_NAV_LABEL_CLASSES;

@@ -76,7 +76,7 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
                   value={b.id}
                   className="border-b border-outline-variant/40"
                 >
-                  <AccordionTrigger className="py-4 text-left font-['DM_Sans',sans-serif] text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+                  <AccordionTrigger className="py-4 text-left font-label text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
                     {b.title}
                   </AccordionTrigger>
                   <AccordionContent>
@@ -114,7 +114,7 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
       <Accordion type="multiple" className="w-full space-y-0">
         {visible.map((b) => (
           <AccordionItem key={b.id} value={b.id} className="border-b border-outline-variant/40">
-            <AccordionTrigger className="py-4 text-left font-['DM_Sans',sans-serif] text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+            <AccordionTrigger className="py-4 text-left font-label text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {b.title}
             </AccordionTrigger>
             <AccordionContent>

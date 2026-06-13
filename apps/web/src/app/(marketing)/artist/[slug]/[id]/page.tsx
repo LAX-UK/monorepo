@@ -352,7 +352,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
               key={c.id}
               href={`/artists?category=${encodeURIComponent(c.slug)}`}
               aria-label={`Browse ${kindConfig.pluralLabel.toLowerCase()} in ${c.name}`}
-              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/40 hover:bg-surface-container-high hover:text-primary"
+              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:bg-surface-container-high hover:text-link"
             >
               {c.name}
             </Link>
@@ -369,7 +369,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
               key={c.href}
               href={c.href}
               aria-label={c.aria}
-              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/40 hover:bg-surface-container-high hover:text-primary"
+              className="rounded-full border border-outline-variant/40 bg-surface-container-low px-3 py-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:bg-surface-container-high hover:text-link"
             >
               {c.label}
             </Link>
@@ -436,7 +436,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
                   href={registry.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+                  className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
                 >
                   Official website
                 </a>

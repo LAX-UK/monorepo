@@ -69,7 +69,7 @@ export function StaffNotificationBell({ items }: Props) {
         ref={triggerRef}
         label="Staff attention"
         className={cn(
-          "relative text-secondary transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none hover:bg-surface-container-low hover:text-primary",
+          "relative text-secondary transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none hover:bg-surface-container-low hover:text-link",
         )}
         aria-expanded={open}
         aria-controls={MENU_ID}
@@ -94,7 +94,7 @@ export function StaffNotificationBell({ items }: Props) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-auto px-0 py-0 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:underline"
+                className="h-auto px-0 py-0 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:bg-transparent hover:underline"
                 onClick={markSeen}
               >
                 Mark seen

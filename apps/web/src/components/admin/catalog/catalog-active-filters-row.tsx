@@ -24,7 +24,7 @@ export function CatalogActiveFiltersRow({ chips, className }: Props) {
           <Link
             href={chip.clearHref}
             scroll={false}
-            className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-low px-3 py-1.5 font-body text-sm text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-low px-3 py-1.5 font-body text-sm text-on-surface transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <span className="truncate">{chip.label}</span>
             <X className="size-3.5 shrink-0 text-on-surface-variant" aria-hidden />

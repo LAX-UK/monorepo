@@ -117,7 +117,7 @@ export function DashboardBannerStack({
       ))}
       {overflow > 0 ? (
         <p className="font-body text-sm text-on-surface-variant">
-          <Link href="/dashboard/settings" className="font-medium text-primary underline">
+          <Link href="/dashboard/settings" className="font-medium text-link underline">
             {compactOverflow
               ? `View ${overflow} more alert${overflow === 1 ? "" : "s"}`
               : `+${overflow} more account alert${overflow === 1 ? "" : "s"}`}

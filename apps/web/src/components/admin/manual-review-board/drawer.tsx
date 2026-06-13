@@ -26,7 +26,7 @@ export function ManualReviewDrawerContent({
       <div>
         <Link
           href={`/admin/lots/${payment.lotId}`}
-          className="font-headline text-base text-primary hover:underline"
+          className="font-headline text-base text-link hover:underline"
         >
           {payment.lotTitle}
         </Link>
@@ -37,7 +37,7 @@ export function ManualReviewDrawerContent({
           </Badge>
         ) : null}
         <p className="mt-2 text-sm">
-          <Link href={`/admin/clients/${payment.winnerUserId}`} className="text-primary underline">
+          <Link href={`/admin/clients/${payment.winnerUserId}`} className="text-link underline">
             {payment.winnerEmail?.trim() || "Buyer profile"}
           </Link>
           {compliance && canOpenComplianceQueues ? (
@@ -49,7 +49,7 @@ export function ManualReviewDrawerContent({
                     ? "/admin/compliance/aml"
                     : "/admin/compliance/source-of-funds"
                 }
-                className="text-primary underline"
+                className="text-link underline"
               >
                 Open compliance queue
               </Link>

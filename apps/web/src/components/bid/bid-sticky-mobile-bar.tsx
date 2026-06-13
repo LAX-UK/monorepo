@@ -189,7 +189,7 @@ export function BidStickyMobileBar({
         right = (
           <Link
             href="/admin"
-            className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+            className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
           >
             Staff
           </Link>
@@ -249,7 +249,7 @@ export function BidStickyMobileBar({
         type="button"
         variant="outline"
         onClick={onScrollToBid}
-        className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:text-primary"
+        className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:text-link"
       >
         Confirm bid
       </Button>
@@ -268,7 +268,7 @@ export function BidStickyMobileBar({
           {currentPriceLabel}
         </p>
         {autoBidLabel || positionLabel ? (
-          <p className="mt-0.5 truncate font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
+          <p className="mt-0.5 truncate font-label text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
             {autoBidLabel ?? positionLabel}
           </p>
         ) : null}

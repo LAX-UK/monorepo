@@ -51,7 +51,7 @@ export default async function NotificationSettingsPage({
     <DashboardPage className="space-y-6">
       <Link
         href="/dashboard/notifications"
-        className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:underline"
+        className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
       >
         Back to inbox
       </Link>

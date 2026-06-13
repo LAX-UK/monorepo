@@ -33,7 +33,7 @@ export function SalesPrimaryTabs({ state, hasLiveSales = false }: Props) {
                 "snap-start inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap py-2 font-body text-base font-semibold uppercase leading-5 text-nav-text transition-colors duration-200 ease-out sm:pb-1.5 lg:text-lg lg:leading-[21px]",
                 "border-b-[1.5px] border-transparent hover:text-on-surface",
                 "motion-safe:transition-[color,border-color] motion-safe:duration-200",
-                "focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary",
+                "focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
                 isActive && "border-on-surface text-on-surface",
                 !isActive && "border-transparent",
               )}

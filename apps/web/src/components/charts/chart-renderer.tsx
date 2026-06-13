@@ -1,5 +1,6 @@
 "use client";
 
+import { BRAND_COLORS } from "@auction/branding";
 import { cn } from "@auction/ui";
 import { useId, useMemo } from "react";
 import {
@@ -47,9 +48,9 @@ type DonutProps = {
 
 export type ChartRendererProps = LineProps | BarProps | DonutProps;
 
-const PRIMARY = "#775a19";
-const PRIMARY_CONTAINER = "#c5a059";
-const SECONDARY = "#5f5e5e";
+const PRIMARY = BRAND_COLORS.midnight;
+const PRIMARY_CONTAINER = "#d4daf0";
+const SECONDARY = BRAND_COLORS.lightGray;
 const ERROR = "#ba1a1a";
 
 const tooltipStyles = {

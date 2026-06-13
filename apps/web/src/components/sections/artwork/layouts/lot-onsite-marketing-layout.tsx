@@ -234,7 +234,7 @@ export function LotOnsiteMarketingLayout({
                   <ShareButton
                     url={shareUrl}
                     title={auction.title}
-                    className="h-10 w-full min-h-10 border-brand-400 font-['DM_Sans',sans-serif] text-base font-semibold"
+                    className="h-10 w-full min-h-10 border-brand-400 font-body text-base font-semibold"
                   />
                 }
               />

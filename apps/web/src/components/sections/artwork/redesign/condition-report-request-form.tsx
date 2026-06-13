@@ -117,7 +117,7 @@ export function ConditionReportRequestForm({
             Track progress anytime in{" "}
             <Link
               href="/dashboard/condition-reports"
-              className="font-semibold text-primary underline-offset-2 hover:underline"
+              className="font-semibold text-link underline-offset-2 hover:underline"
             >
               My condition reports
             </Link>

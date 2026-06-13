@@ -5,6 +5,7 @@ import { FormBanner } from "@/components/auth/primitives/form-error";
 import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { LogoutButton } from "@/components/layout/logout-button";
+import { AUTH_LABEL_LINK } from "@/lib/auth/auth-link-classes";
 import { useResetPasswordController } from "@/lib/auth/hooks/use-reset-password-controller";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { Button } from "@auction/ui/components/button";
@@ -26,7 +27,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           You&apos;re signed in as <span className="font-medium">{signedInEmail}</span>. If this
           reset is for a different account, sign out before saving your new password.
           <span className="mt-3 block">
-            <LogoutButton className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-brand-900 underline dark:text-primary" />
+            <LogoutButton className={AUTH_LABEL_LINK} />
           </span>
         </output>
       ) : null}

@@ -14,13 +14,13 @@ describe("GalleryMediaPlaceholder", () => {
 
   it("uses auto tone for inline variant", () => {
     const { container } = render(<GalleryMediaPlaceholder variant="inline" />);
-    expect(container.firstElementChild).toHaveClass("dark:bg-[#1c1e1e]");
+    expect(container.firstElementChild).toHaveClass("dark:bg-surface-container-low");
   });
 
   it("uses dark tone for lightbox variant", () => {
     const { container } = render(<GalleryMediaPlaceholder variant="lightbox" />);
-    expect(container.firstElementChild).toHaveClass("bg-[#1c1e1e]");
-    expect(container.firstElementChild).not.toHaveClass("dark:bg-[#1c1e1e]");
+    expect(container.firstElementChild).toHaveClass("bg-surface-container-low");
+    expect(container.firstElementChild).not.toHaveClass("dark:bg-surface-container-low");
   });
 
   it("applies pulse when loading", () => {

@@ -206,7 +206,7 @@ export function AdminSaleForm({
                 <p>{saveNotice}</p>
                 <Link
                   href={saleSetupHref(saleId, "lots")}
-                  className="font-medium text-primary underline underline-offset-2"
+                  className="font-medium text-link underline underline-offset-2"
                 >
                   Open sale setup — Lots step
                 </Link>

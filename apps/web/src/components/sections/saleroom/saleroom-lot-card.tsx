@@ -64,7 +64,7 @@ export function SaleroomLotCard({
         <div className="relative size-24 shrink-0">
           <Link
             href={lot.href}
-            className="relative block size-full overflow-hidden rounded-md bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
+            className="relative block size-full overflow-hidden rounded-md bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:bg-surface-container-high"
             aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
           >
             <AdaptiveMediaFrameContainer className="absolute inset-0">
@@ -98,7 +98,7 @@ export function SaleroomLotCard({
             <div className="min-w-0">
               <Link
                 href={lot.href}
-                className="line-clamp-2 block text-base font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface"
+                className="line-clamp-2 block text-base font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:text-on-surface"
               >
                 {lot.title}
               </Link>
@@ -149,7 +149,7 @@ export function SaleroomLotCard({
       <div className="relative w-full">
         <Link
           href={lot.href}
-          className="relative block aspect-[4/5] w-full min-h-0 overflow-hidden rounded-lg bg-surface-container-high transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-container-high"
+          className="relative block aspect-[4/5] w-full min-h-0 overflow-hidden rounded-lg bg-surface-container-high transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:bg-surface-container-high"
           aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
         >
           <AdaptiveMediaFrameContainer className="absolute inset-0">
@@ -183,7 +183,7 @@ export function SaleroomLotCard({
         <div>
           <Link
             href={lot.href}
-            className="line-clamp-2 block min-h-12 text-sm font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:text-lg md:leading-6 dark:text-on-surface"
+            className="line-clamp-2 block min-h-12 text-sm font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:text-lg md:leading-6 dark:text-on-surface"
           >
             {lot.title}
           </Link>

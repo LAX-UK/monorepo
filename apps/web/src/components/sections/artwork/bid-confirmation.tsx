@@ -56,7 +56,7 @@ export function BidConfirmation({
         </dl>
         <p className="mt-4 font-label text-xs leading-relaxed text-on-surface-variant">
           By placing a bid you agree to the{" "}
-          <Link href="/terms" className="text-primary underline-offset-2 hover:underline">
+          <Link href="/terms" className="text-link underline-offset-2 hover:underline">
             terms of sale
           </Link>
           .

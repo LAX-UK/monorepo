@@ -135,7 +135,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           message="The basket URL did not contain valid lot identifiers. Open your collection to build a basket again."
         >
           <p className="font-body text-sm">
-            <Link href="/dashboard/portfolio" className="text-primary underline">
+            <Link href="/dashboard/portfolio" className="text-link underline">
               Open your collection
             </Link>
           </p>

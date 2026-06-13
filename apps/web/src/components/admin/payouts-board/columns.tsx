@@ -36,7 +36,7 @@ export function payoutColumns(onOpen: (row: AdminPayoutRow) => void): ColumnDef<
       cell: ({ row }) => (
         <Link
           href={`/admin/legal-entities/${row.original.legalEntityId}`}
-          className="text-sm font-medium text-primary underline"
+          className="text-sm font-medium text-link underline"
         >
           View entity
         </Link>

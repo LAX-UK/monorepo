@@ -24,7 +24,7 @@ export function PaymentDrawerContent({
         </p>
         <Link
           href={`/admin/lots/${p.lotId}`}
-          className="font-headline text-base text-primary hover:underline"
+          className="font-headline text-base text-link hover:underline"
           onClick={onClose}
         >
           {p.lotTitle}
@@ -36,7 +36,7 @@ export function PaymentDrawerContent({
           <dd>
             <Link
               href={`/admin/clients/${encodeURIComponent(p.buyerId)}`}
-              className="font-medium text-primary underline"
+              className="font-medium text-link underline"
               onClick={onClose}
             >
               {p.buyerLabel?.trim() || "View buyer profile"}
@@ -48,7 +48,7 @@ export function PaymentDrawerContent({
           <dd>
             <Link
               href={`/admin/clients/${encodeURIComponent(p.sellerId)}`}
-              className="font-medium text-primary underline"
+              className="font-medium text-link underline"
               onClick={onClose}
             >
               View seller profile

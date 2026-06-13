@@ -29,7 +29,7 @@ export function saleBoardColumns(
       cell: ({ row }) => (
         <Link
           href={adminSaleHref(row.original.saleId)}
-          className="font-headline text-base text-on-surface hover:text-primary"
+          className="font-headline text-base text-on-surface hover:text-link"
         >
           {row.original.title}
         </Link>

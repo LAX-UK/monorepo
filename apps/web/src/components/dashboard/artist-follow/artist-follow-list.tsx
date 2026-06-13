@@ -193,12 +193,12 @@ export function ArtistFollowCard({ artist, variant = "grid" }: Props) {
       padding="md"
       interactive
       aria-label={`${artist.displayName}, followed artist`}
-      className="relative border-border-hairline shadow-sm transition hover:border-primary/25 hover:shadow-md"
+      className="relative border-border-hairline shadow-sm transition hover:border-link/25 hover:shadow-md"
     >
       <div className="flex gap-3">
         <Link
           href={profileHref}
-          className="shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <ArtistPortrait artist={artist} variant="grid" />
         </Link>

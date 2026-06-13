@@ -68,7 +68,7 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
               </>
             );
             const tabClassName = cn(
-              "flex min-h-[var(--tap-target-min,44px)] w-full flex-col items-center justify-center rounded-lg px-1 font-label transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              "flex min-h-[var(--tap-target-min,44px)] w-full flex-col items-center justify-center rounded-lg px-1 font-label transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
               active
                 ? "bg-primary-container/20 text-primary"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",

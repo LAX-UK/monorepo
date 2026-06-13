@@ -21,7 +21,7 @@ export function ConditionReportDrawerContent({ row }: { row: AdminConditionRepor
         <div className="flex flex-wrap items-start justify-between gap-3">
           <Link
             href={`/admin/lots/${row.lotId}`}
-            className="font-headline text-base text-primary hover:underline"
+            className="font-headline text-base text-link hover:underline"
           >
             {row.lotTitle ?? "View lot"}
           </Link>
@@ -30,7 +30,7 @@ export function ConditionReportDrawerContent({ row }: { row: AdminConditionRepor
         <p className="mt-1 text-sm text-on-surface-variant">
           <Link
             href={`/admin/clients/${row.requestedByUserId}`}
-            className="text-primary hover:underline"
+            className="text-link hover:underline"
           >
             {requesterLabel}
           </Link>
