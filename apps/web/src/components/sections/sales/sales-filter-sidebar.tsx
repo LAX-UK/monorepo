@@ -1,11 +1,20 @@
 "use client";
 
+import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-sidebar";
 import {
   SalesFilterGroupContents,
   salesFilterAccordionContentClass,
 } from "@/components/sections/sales/sales-filter-group-contents";
+import {
+  MARKETING_FILTER_ACCORDION_TRIGGER,
+  MARKETING_FILTER_RAIL_STICKY,
+  MARKETING_FILTER_RESULT_COUNT,
+} from "@/lib/marketing/filter-rail";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
-import { SALES_FILTER_SIDEBAR_GROUPS } from "@/lib/marketing/sales-filter-sidebar-catalog";
+import {
+  SALES_FILTER_SIDEBAR_DEFAULT_OPEN,
+  SALES_FILTER_SIDEBAR_GROUPS,
+} from "@/lib/marketing/sales-filter-sidebar-catalog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, cn } from "@auction/ui";
 import { useState } from "react";
 
@@ -22,8 +31,6 @@ type Props = {
 };
 
 const itemBorderClass = "border-b border-outline-variant dark:border-outline-variant/30";
-const triggerClass =
-  "py-4 font-body text-base font-medium text-on-surface hover:no-underline dark:text-on-surface";
 
 export function SalesFilterSidebar({
   state,
@@ -34,50 +41,47 @@ export function SalesFilterSidebar({
   showResultCount = true,
   onLinkClick,
 }: Props) {
-  const [openSections, setOpenSections] = useState<string[]>([]);
+  const [openSections, setOpenSections] = useState<string[]>(SALES_FILTER_SIDEBAR_DEFAULT_OPEN);
 
   return (
-    <aside
+    <MarketingFilterSidebar
       className={cn(
-        "w-full shrink-0 border-outline-variant pb-4 dark:border-outline-variant/30 lg:border-r lg:w-[min(100%,441px)] lg:max-w-[441px] lg:pr-8",
+        "space-y-4 pb-0 lg:border-outline-variant dark:lg:border-outline-variant/30",
+        MARKETING_FILTER_RAIL_STICKY,
         className,
       )}
     >
-      <div className="flex flex-col gap-2.5">
-        {showResultCount ? (
-          <div className="flex items-center gap-2.5 border-b border-outline-variant pb-4 dark:border-outline-variant/30">
-            <p
-              className="flex-1 font-body text-sm font-normal uppercase leading-6 text-on-surface-variant"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              Showing {resultCount} Result{resultCount === 1 ? "" : "s"}
-            </p>
-          </div>
-        ) : null}
+      {showResultCount ? (
+        <div className="border-b border-outline-variant pb-3 dark:border-outline-variant/30">
+          <p className={MARKETING_FILTER_RESULT_COUNT} aria-live="polite" aria-atomic="true">
+            Showing {resultCount} Result{resultCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      ) : null}
 
-        <Accordion
-          type="multiple"
-          className="w-full"
-          value={openSections}
-          onValueChange={setOpenSections}
-        >
-          {SALES_FILTER_SIDEBAR_GROUPS.map((g) => (
-            <AccordionItem key={g.value} value={g.value} className={itemBorderClass}>
-              <AccordionTrigger className={triggerClass}>{g.title}</AccordionTrigger>
-              <AccordionContent className={salesFilterAccordionContentClass[g.value]}>
-                <SalesFilterGroupContents
-                  group={g.value}
-                  state={state}
-                  categories={categories}
-                  years={years}
-                  {...(onLinkClick ? { onLinkClick } : {})}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
-    </aside>
+      <Accordion
+        type="multiple"
+        className="w-full"
+        value={openSections}
+        onValueChange={setOpenSections}
+      >
+        {SALES_FILTER_SIDEBAR_GROUPS.map((g) => (
+          <AccordionItem key={g.value} value={g.value} className={itemBorderClass}>
+            <AccordionTrigger className={MARKETING_FILTER_ACCORDION_TRIGGER}>
+              {g.title}
+            </AccordionTrigger>
+            <AccordionContent className={salesFilterAccordionContentClass[g.value]}>
+              <SalesFilterGroupContents
+                group={g.value}
+                state={state}
+                categories={categories}
+                years={years}
+                {...(onLinkClick ? { onLinkClick } : {})}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </MarketingFilterSidebar>
   );
 }

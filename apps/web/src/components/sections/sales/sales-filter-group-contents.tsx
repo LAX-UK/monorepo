@@ -1,10 +1,10 @@
 "use client";
 
 import { SalesPriceSlider } from "@/components/sections/sales/sales-price-slider";
+import { marketingFilterRailLink } from "@/lib/marketing/filter-rail";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import type { SalesFilterSidebarGroupValue } from "@/lib/marketing/sales-filter-sidebar-catalog";
-import { cn } from "@auction/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -33,11 +33,7 @@ export type SalesFilterGroupContentsProps = {
   onLinkClick?: () => void;
 };
 
-const linkClass = (active: boolean) =>
-  cn(
-    "font-body text-sm text-on-surface-variant hover:underline",
-    active && "font-semibold text-on-surface",
-  );
+const linkClass = (active: boolean) => marketingFilterRailLink(active);
 
 function FilterLink({
   href,
@@ -64,13 +60,13 @@ function FilterLink({
 
 /** AccordionContent `className` per group (layout scroll / spacing). */
 export const salesFilterAccordionContentClass: Record<SalesFilterSidebarGroupValue, string> = {
-  delivery: "flex flex-col gap-2 pb-4",
-  location: "flex flex-col gap-2 pb-4",
-  sort: "flex flex-col gap-2 pb-4",
-  price: "pb-4",
-  department: "flex max-h-60 flex-col gap-2 overflow-y-auto pb-4",
-  month: "flex max-h-52 flex-col gap-1 overflow-y-auto pb-4",
-  year: "flex max-h-52 flex-col gap-1 overflow-y-auto pb-4",
+  delivery: "flex flex-col gap-1 pb-3",
+  location: "flex flex-col gap-1 pb-3",
+  sort: "flex flex-col gap-1 pb-3",
+  price: "pb-3",
+  department: "flex max-h-52 flex-col gap-1 overflow-y-auto pb-3",
+  month: "flex max-h-48 flex-col gap-1 overflow-y-auto pb-3",
+  year: "flex max-h-48 flex-col gap-1 overflow-y-auto pb-3",
 };
 
 export function SalesFilterGroupContents({
