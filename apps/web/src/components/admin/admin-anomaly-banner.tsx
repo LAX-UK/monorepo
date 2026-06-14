@@ -84,7 +84,7 @@ export function AdminAnomalyBanner({ anomalies, storageKey, className }: Props) 
           Dismiss
         </Button>
       </div>
-      <ul className="space-y-2">
+      <ul className="max-h-[60vh] space-y-2 overflow-y-auto">
         {visible.map((a) => (
           <li
             key={a.id}
@@ -94,7 +94,7 @@ export function AdminAnomalyBanner({ anomalies, storageKey, className }: Props) 
             {a.href ? (
               <Link
                 href={a.href}
-                className="font-body text-on-surface underline-offset-2 hover:underline"
+                className="font-body text-on-surface underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 {a.message}
               </Link>

@@ -16,13 +16,13 @@ export function GreetingWidget({ name }: Props) {
       <div className="flex flex-wrap gap-2">
         <Link
           href="/admin/lots/new"
-          className="inline-flex min-h-9 items-center rounded-md bg-primary px-3 py-2 font-label text-xs font-semibold text-on-primary"
+          className="inline-flex min-h-9 items-center rounded-md bg-primary px-3 py-2 font-label text-xs font-semibold text-on-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           New lot
         </Link>
         <Link
           href="/admin/submissions"
-          className="inline-flex min-h-9 items-center rounded-md border border-outline-variant px-3 py-2 font-label text-xs font-semibold text-on-surface"
+          className="inline-flex min-h-9 items-center rounded-md border border-outline-variant px-3 py-2 font-label text-xs font-semibold text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           Submissions
         </Link>
