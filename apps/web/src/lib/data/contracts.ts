@@ -88,8 +88,18 @@ export type AutoBidSettings = {
   isActive: boolean;
 };
 
+/** Opening min bid returned when setAutoBid places the first bid on a lot. */
+export type AutoBidPlacedBid = {
+  id: string;
+  amount: string;
+  bidderId?: string | null;
+  placedByUserId?: string | null;
+  maxAutoBidAmount?: string | null;
+  autoBidStepAmount?: string | null;
+};
+
 export type AutoBidMutationResult =
-  | { ok: true; settings: AutoBidSettings }
+  | { ok: true; settings: AutoBidSettings; placedBid?: AutoBidPlacedBid }
   | {
       ok: false;
       error: string;

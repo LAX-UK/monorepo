@@ -1,5 +1,7 @@
 import {
+  canSubmitBid,
   isLiveBiddingAllowed,
+  isRealtimeHealthy,
   liveConnectionMessage,
   mergeConnectionStatus,
 } from "@/lib/connection/merge-connection-status";
@@ -54,13 +56,35 @@ describe("liveConnectionMessage", () => {
   it("returns offline copy", () => {
     expect(liveConnectionMessage("offline")).toContain("No connection");
   });
+
+  it("returns degraded copy that allows bidding", () => {
+    expect(liveConnectionMessage("degraded")).toContain("still place bids");
+  });
+});
+
+describe("canSubmitBid", () => {
+  it("allows live and degraded states", () => {
+    expect(canSubmitBid("live")).toBe(true);
+    expect(canSubmitBid("degraded")).toBe(true);
+    expect(canSubmitBid("offline")).toBe(false);
+    expect(canSubmitBid("connecting")).toBe(false);
+  });
+});
+
+describe("isRealtimeHealthy", () => {
+  it("only treats live as healthy", () => {
+    expect(isRealtimeHealthy("live")).toBe(true);
+    expect(isRealtimeHealthy("degraded")).toBe(false);
+    expect(isRealtimeHealthy("offline")).toBe(false);
+    expect(isRealtimeHealthy("connecting")).toBe(false);
+  });
 });
 
 describe("isLiveBiddingAllowed", () => {
-  it("only allows live state", () => {
+  it("aliases canSubmitBid", () => {
     expect(isLiveBiddingAllowed("live")).toBe(true);
+    expect(isLiveBiddingAllowed("degraded")).toBe(true);
     expect(isLiveBiddingAllowed("offline")).toBe(false);
     expect(isLiveBiddingAllowed("connecting")).toBe(false);
-    expect(isLiveBiddingAllowed("degraded")).toBe(false);
   });
 });

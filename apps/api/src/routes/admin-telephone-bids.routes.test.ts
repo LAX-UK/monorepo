@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { BidError } from "../lib/errors.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminRoutes } from "./admin.js";
 
@@ -42,6 +43,9 @@ function buildTelephoneBidApp() {
       },
     },
     bidService: { placeBidWithIdempotency, placeBid },
+    saleroomOnBlockPolicy: {
+      assertLotOnBlock: vi.fn().mockResolvedValue(ok(undefined)),
+    },
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {
@@ -105,5 +109,63 @@ describe("POST /admin/saleroom/telephone-bids", () => {
     expect(placeBidWithIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: "clerk-confirm-abc123" }),
     );
+  });
+
+  it("returns lot_not_on_block when saleroom policy rejects", async () => {
+    const placeBidWithIdempotencyReject = vi.fn();
+    const customContainer = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+      admin: {
+        requestLifecycle: {
+          isSuspended: vi.fn().mockResolvedValue(false),
+          reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
+        },
+        disputeCases: { countOpenCases: vi.fn().mockResolvedValue(0) },
+      },
+      telephoneBidBookingService: {
+        countGlobalPending: vi.fn().mockResolvedValue(0),
+        assertBookingAllowsTelephoneBid: vi.fn().mockResolvedValue(ok(undefined)),
+      },
+      onsiteEventRsvpService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
+      repoFactory: {
+        root: {
+          lot: {
+            findById: vi.fn().mockResolvedValue({
+              id: LOT_ID,
+              saleId: "00000000-0000-4000-8000-000000000002",
+            }),
+          },
+        },
+      },
+      bidService: { placeBidWithIdempotency: placeBidWithIdempotencyReject, placeBid: vi.fn() },
+      saleroomOnBlockPolicy: {
+        assertLotOnBlock: vi
+          .fn()
+          .mockResolvedValue(
+            err(new BidError("This lot is not on the block", 400, "lot_not_on_block")),
+          ),
+      },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "super_admin" }),
+    };
+    const rejectApp = new Hono();
+    rejectApp.route("/admin", createAdminRoutes(customContainer, authenticator));
+    const res = await rejectApp.request("http://test/admin/saleroom/telephone-bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lotId: LOT_ID,
+        buyerUserId: BUYER_ID,
+        buyerLegalEntityId: BUYER_ENTITY,
+        amount: 500,
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("lot_not_on_block");
+    expect(placeBidWithIdempotencyReject).not.toHaveBeenCalled();
   });
 });

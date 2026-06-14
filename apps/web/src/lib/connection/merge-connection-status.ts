@@ -21,12 +21,23 @@ export function liveConnectionMessage(state: LiveConnectionState): string | null
     case "connecting":
       return "Reconnecting to the saleroom…";
     case "degraded":
-      return "Slow connection — live bidding is paused until latency improves.";
+      return "Slow connection — live updates may be delayed. You can still place bids; we refresh the price before you confirm.";
     default:
       return null;
   }
 }
 
-export function isLiveBiddingAllowed(state: LiveConnectionState): boolean {
+/** True when HTTP bid submission is allowed (live or degraded socket). */
+export function canSubmitBid(state: LiveConnectionState): boolean {
+  return state === "live" || state === "degraded";
+}
+
+/** True when realtime latency is healthy (strict live feed). */
+export function isRealtimeHealthy(state: LiveConnectionState): boolean {
   return state === "live";
+}
+
+/** @deprecated Use canSubmitBid — kept for gradual migration in tests. */
+export function isLiveBiddingAllowed(state: LiveConnectionState): boolean {
+  return canSubmitBid(state);
 }

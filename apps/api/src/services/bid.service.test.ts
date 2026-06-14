@@ -924,7 +924,6 @@ describe("BidService.placeBid", () => {
       bidPolicy: {
         antiSnipingWindowMs: 120_000,
         antiSnipingExtensionMs: 30_000,
-        maxProxyRounds: 100,
       },
     });
 
@@ -966,7 +965,6 @@ describe("BidService.placeBid", () => {
       bidPolicy: {
         antiSnipingWindowMs: 120_000,
         antiSnipingExtensionMs: 30_000,
-        maxProxyRounds: 100,
       },
     });
 
@@ -1009,7 +1007,6 @@ describe("BidService.placeBid", () => {
       bidPolicy: {
         antiSnipingWindowMs: 120_000,
         antiSnipingExtensionMs: 30_000,
-        maxProxyRounds: 100,
       },
     });
 

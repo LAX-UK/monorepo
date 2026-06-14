@@ -125,6 +125,7 @@ describe("ProxyAutoBidResolver.resolve", () => {
       mkLot(),
       mkBid({ amount: "120.00" }),
       {} as Database,
+      [],
     );
 
     expect(create).toHaveBeenCalledWith(
@@ -165,7 +166,7 @@ describe("ProxyAutoBidResolver.resolve", () => {
     } as unknown as IBidRepository;
 
     const resolver = new ProxyAutoBidResolver(null, {} as NotificationService, null);
-    await resolver.resolve(bids, "lot-1", mkLot(), mkBid({ amount: "120.00" }), {} as Database);
+    await resolver.resolve(bids, "lot-1", mkLot(), mkBid({ amount: "120.00" }), {} as Database, []);
 
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ placedByUserId: "bidder-early", amount: "400.00" }),
@@ -199,7 +200,9 @@ describe("ProxyAutoBidResolver.resolve", () => {
       { notifyProxyCancelled } as unknown as NotificationService,
       null,
     );
-    await resolver.cancelViolatingProxyBids("lot-1", mkLot(), bids, {} as Database);
+    const pending: import("./proxy-auto-bid.resolver.js").ProxyCancelNotification[] = [];
+    await resolver.cancelViolatingProxyBids("lot-1", mkLot(), bids, {} as Database, pending);
+    await resolver.flushPendingProxyCancels(pending);
     expect(clearProxyAutoBidForBidderOnLot).toHaveBeenCalledWith("lot-1", "shill");
     expect(notifyProxyCancelled).toHaveBeenCalledWith("lot-1", "shill", "anti_shilling_violation");
   });
