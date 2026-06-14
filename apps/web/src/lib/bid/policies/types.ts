@@ -36,7 +36,7 @@ export type BidPolicyContext = {
   /** When set, buyer_agent acting context must have approved sale registration. */
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
   /** When set, `not-live` policy uses lifecycle-specific block copy (aligned with `classifyLotLifecycle`). */
-  biddingLifecycle?: { kind: LotLifecycleKind } | null;
+  biddingLifecycle?: { kind: LotLifecycleKind; isOnBlock?: boolean } | null;
   orgModuleEnabled?: boolean;
 };
 

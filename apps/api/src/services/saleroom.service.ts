@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { saleroomEvent, saleroomSession } from "@auction/db/schema";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import { desc, eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import { type Result, err, ok } from "neverthrow";
@@ -139,6 +140,12 @@ export class SaleroomService implements ISaleroomService {
   }): Promise<Result<{ sessionId: string; status: string }, SaleroomServiceError>> {
     const sale = await this.saleRepo.findById(input.saleId);
     if (!sale) return err({ message: "Sale not found", status: 404 });
+    if (!isSaleroomDeliveryMode(sale.deliveryMode)) {
+      return err({
+        message: "Saleroom sessions are only available for onsite and hybrid sales",
+        status: 400,
+      });
+    }
     if (sale.status !== "active") {
       return err({ message: "Sale must be active to open the saleroom", status: 400 });
     }

@@ -16,6 +16,10 @@ import { endedBidErrorMatcher } from "./matchers/ended.matcher";
 import { kycRequiredBidErrorMatcher } from "./matchers/kyc-required.matcher";
 import { minBidBidErrorMatcher } from "./matchers/min-bid.matcher";
 import { notAcceptingBidErrorMatcher } from "./matchers/not-accepting.matcher";
+import {
+  lotNotOnBlockBidErrorMatcher,
+  saleroomPausedBidErrorMatcher,
+} from "./matchers/saleroom-bid.matcher";
 import { sealedClosedBidErrorMatcher } from "./matchers/sealed-closed.matcher";
 import { sellerOwnLotBidErrorMatcher } from "./matchers/seller.matcher";
 import { suspendedBidErrorMatcher } from "./matchers/suspended.matcher";
@@ -37,6 +41,8 @@ export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   bidInFlightBidErrorMatcher,
   alreadyLeadingBidErrorMatcher,
   notAcceptingBidErrorMatcher,
+  lotNotOnBlockBidErrorMatcher,
+  saleroomPausedBidErrorMatcher,
   endedBidErrorMatcher,
   minBidBidErrorMatcher,
   dutchPriceBidErrorMatcher,
