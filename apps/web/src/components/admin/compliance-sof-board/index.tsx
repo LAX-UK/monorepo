@@ -52,6 +52,15 @@ export function ComplianceSofBoard({ rows, canTriage, canDecide, currentUserId }
     loadDetail(selected.id);
   }, [selected, loadDetail]);
 
+  // Poll while the drawer is open so staff see new buyer uploads without manual refresh.
+  useEffect(() => {
+    if (!selected || selected.status !== "pending") return;
+    const interval = window.setInterval(() => {
+      loadDetail(selected.id);
+    }, 10_000);
+    return () => window.clearInterval(interval);
+  }, [selected, loadDetail]);
+
   return (
     <>
       <EntityList

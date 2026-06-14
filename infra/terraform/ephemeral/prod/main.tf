@@ -109,12 +109,13 @@ module "postgres" {
 }
 
 module "redis" {
-  source      = "../../modules/redis-cluster"
-  name        = "lax-${local.environment}-redis"
-  environment = local.environment
-  region      = local.redis_region
-  size        = "db-s-1vcpu-2gb"
-  node_count  = 1
+  source          = "../../modules/redis-cluster"
+  name            = "lax-${local.environment}-redis"
+  environment     = local.environment
+  region          = local.redis_region
+  size            = "db-s-1vcpu-2gb"
+  node_count      = 2
+  eviction_policy = "noeviction"
 }
 
 provider "postgresql" {
@@ -153,9 +154,13 @@ locals {
       # web is prebuilt in CI (build args from infra/web-build/prod.env) and pushed
       # to DOCR, so it inherits var.app_deploy_source like the other components.
       # The NEXT_PUBLIC_* env entries below now act as RUN_TIME values.
-      http_port         = 3000
-      instance_size     = "professional-xs"
-      instance_count    = 2
+      http_port     = 3000
+      instance_size = "professional-xs"
+      autoscaling = {
+        min_instance_count = 2
+        max_instance_count = 6
+        cpu_percent        = 70
+      }
       health_check_path = "/api/health"
       domain            = local.domain.web
       primary_domain    = true
@@ -175,13 +180,17 @@ locals {
       ])
     },
     {
-      name              = "api"
-      kind              = "service"
-      source_dir        = "/"
-      dockerfile_path   = "apps/api/Dockerfile"
-      http_port         = 3001
-      instance_size     = "professional-xs"
-      instance_count    = 2
+      name            = "api"
+      kind            = "service"
+      source_dir      = "/"
+      dockerfile_path = "apps/api/Dockerfile"
+      http_port       = 3001
+      instance_size   = "professional-xs"
+      autoscaling = {
+        min_instance_count = 2
+        max_instance_count = 8
+        cpu_percent        = 70
+      }
       health_check_path = "/health/live"
       domain            = local.domain.api
       primary_domain    = false
@@ -288,7 +297,7 @@ locals {
       dockerfile_path   = "apps/ws/Dockerfile"
       http_port         = 3002
       instance_size     = "professional-xs"
-      instance_count    = 2
+      instance_count    = 3
       health_check_path = "/health/live"
       domain            = local.domain.ws
       primary_domain    = false
@@ -323,6 +332,21 @@ locals {
         { key = "VITE_EVENT_ORIGIN", value = local.event_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "VITE_CDN_BASE", value = local.cdn_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
       ]
+    },
+    {
+      name            = "clamav"
+      kind            = "service"
+      source_dir      = "/"
+      dockerfile_path = "apps/clamav/Dockerfile"
+      # 4 GiB dedicated (~$49/mo). ClamAV holds the full signature DB in RAM (~1.5-2 GB)
+      # and briefly doubles it during a reload; 2 GB risks OOM.
+      instance_size                      = "apps-d-1vcpu-4gb"
+      instance_count                     = 1
+      internal_ports                     = [9000]
+      health_check_path                  = "/"
+      health_check_initial_delay_seconds = 180
+      health_check_period_seconds        = 30
+      env                                = []
     },
     {
       name            = "worker"
@@ -362,7 +386,8 @@ locals {
         { key = "META_CAPI_ACCESS_TOKEN", value = var.meta_capi_access_token, type = "SECRET", scope = "RUN_TIME" },
         { key = "META_CAPI_TEST_EVENT_CODE", value = var.meta_capi_test_event_code, type = "SECRET", scope = "RUN_TIME" },
         { key = "GA4_MEASUREMENT_ID", value = var.ga4_measurement_id, type = "GENERAL", scope = "RUN_TIME" },
-        { key = "MARKETING_EVENT_WORKER_CONCURRENCY", value = "5", type = "GENERAL", scope = "RUN_TIME" }
+        { key = "MARKETING_EVENT_WORKER_CONCURRENCY", value = "5", type = "GENERAL", scope = "RUN_TIME" },
+        { key = "CLAMAV_URL", value = "http://clamav:9000", type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
     {

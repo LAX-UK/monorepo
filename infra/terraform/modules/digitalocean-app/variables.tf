@@ -38,17 +38,25 @@ variable "image_tag" {
 
 variable "components" {
   type = list(object({
-    name              = string
-    kind              = string
-    source_dir        = string
-    dockerfile_path   = string
-    run_command       = optional(string)
-    http_port         = optional(number)
-    instance_size     = string
-    instance_count    = number
-    health_check_path = optional(string)
-    domain            = optional(string)
-    primary_domain    = optional(bool, false)
+    name                               = string
+    kind                               = string
+    source_dir                         = string
+    dockerfile_path                    = string
+    run_command                        = optional(string)
+    http_port                          = optional(number)
+    instance_size                      = string
+    instance_count                     = optional(number)
+    health_check_path                  = optional(string)
+    health_check_initial_delay_seconds = optional(number)
+    health_check_period_seconds        = optional(number)
+    internal_ports                     = optional(list(number))
+    domain                             = optional(string)
+    primary_domain                     = optional(bool, false)
+    autoscaling = optional(object({
+      min_instance_count = number
+      max_instance_count = number
+      cpu_percent        = number
+    }))
     # DOCR repository name (within the account registry) used when
     # deploy_source = "image". Defaults to "lax-<environment>-<name>".
     image_repository = optional(string)
