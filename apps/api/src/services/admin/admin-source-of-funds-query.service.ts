@@ -5,6 +5,7 @@ import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,
 } from "../../admin/admin-route-dtos.js";
+import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
 import type { ISourceOfFundsRepository } from "../source-of-funds/source-of-funds.types.js";
@@ -41,6 +42,7 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
 
   constructor(
     private readonly caseRepo: ISourceOfFundsRepository,
+    private readonly docRepo: ISourceOfFundsDocumentRepository,
     private readonly db: Database,
     private readonly mediaUrlResolver: MediaUrlResolver,
   ) {
@@ -94,18 +96,20 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
       (id): id is string => typeof id === "string" && id.length > 0,
     );
 
-    const [buyers, staff, settlementItems, currentActiveExposurePence, blockedPayments] =
+    const [buyers, staff, settlementItems, currentActiveExposurePence, blockedPayments, docs] =
       await Promise.all([
         this.loadBuyers([userId]),
         this.loadBuyers(staffIds),
         this.settlementRead.listSettlementItemsForBuyer(userId),
         this.settlementRead.sumActivePaymentExposurePence(userId),
         this.settlementRead.listBlockedPaymentsForBuyer(userId),
+        this.docRepo.listActiveForCase(caseId),
       ]);
 
     const buyer = buyers.get(userId);
     const evidenceKeys = caseRecord.evidence ?? [];
     const evidenceDownloads = await this.resolveEvidenceDownloads(evidenceKeys);
+    const submittedDocuments = this.resolveSubmittedDocuments(docs);
 
     const triagedBy =
       caseRecord.triagedByUserId != null
@@ -149,7 +153,36 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
         manualReviewReason: "source_of_funds_required" as const,
       })),
       evidenceDownloads,
+      documentRequest: {
+        requestedAt: caseRecord.documentsRequestedAt?.toISOString() ?? null,
+        requestedByUserId: caseRecord.documentsRequestedByUserId,
+        note: caseRecord.documentRequestNote,
+        requestedDocumentTypes: caseRecord.requestedDocumentTypes ?? [],
+        submittedAt: caseRecord.documentsSubmittedAt?.toISOString() ?? null,
+      },
+      submittedDocuments,
     };
+  }
+
+  /**
+   * Map submitted documents to DTOs WITHOUT embedding presigned URLs. Staff
+   * downloads must go through the dedicated, audited download endpoint
+   * (short-TTL presigned GET + `document_downloaded` audit event), so the
+   * detail payload never carries a long-lived link to sensitive evidence.
+   */
+  private resolveSubmittedDocuments(
+    docs: Awaited<ReturnType<ISourceOfFundsDocumentRepository["listActiveForCase"]>>,
+  ): AdminSourceOfFundsDetailDto["submittedDocuments"] {
+    return docs.map((doc) => ({
+      id: doc.id,
+      requestedType: doc.requestedType,
+      label: doc.label,
+      fileName: doc.fileName ?? null,
+      reviewStatus: doc.reviewStatus,
+      uploadedAt: doc.uploadedAt.toISOString(),
+      uploadedByUserId: doc.uploadedByUserId,
+      downloadUrl: null,
+    }));
   }
 
   private async loadBuyers(

@@ -1,5 +1,6 @@
+import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import type { WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
-import type { Lot } from "@auction/types";
+import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { buildDashboardOverviewVm } from "./dashboard-overview.vm";
 
@@ -71,5 +72,28 @@ describe("buildDashboardOverviewVm", () => {
       now: far,
     });
     expect(vm.endingSoonWatchlist).toHaveLength(1);
+  });
+
+  it("primary CTA points to SoF requirements when settlement is compliance-held", () => {
+    const portfolio = [
+      {
+        lot: { id: "l-sof", title: "Held lot", status: "ended", endTime: new Date() },
+        payment: { status: "pending", manualReviewReason: "source_of_funds_required" },
+      },
+    ] as PortfolioRow[];
+    const vm = buildDashboardOverviewVm({
+      user: { id: "u1", name: "Test", role: "client" },
+      activeLots: [],
+      portfolio,
+      watchlist: [],
+      artistFollow: [],
+      bidRows: [],
+      errors: emptyErrors,
+      formatMoney: (s) => `£${s}`,
+    });
+    expect(vm.primaryCta).toEqual({
+      label: "View source of funds requirements",
+      href: dashboardSofRequirementsUrl(),
+    });
   });
 });

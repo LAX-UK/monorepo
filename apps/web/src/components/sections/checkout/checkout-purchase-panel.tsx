@@ -16,7 +16,10 @@ import {
   checkoutPaymentErrorMessage,
   manualReviewReasonCopy,
 } from "@/lib/checkout/checkout-payment-errors";
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import {
+  dashboardCheckoutLotUrl,
+  dashboardSofRequirementsUrl,
+} from "@/lib/dashboard/dashboard-copy";
 import type { SessionUser } from "@/lib/data/contracts";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { notify } from "@/lib/ui/notify";
@@ -204,11 +207,18 @@ function ManualReviewBlock({ reason }: { reason: ManualReviewReason | null }) {
         {manualReviewReasonCopy(reason)}
       </p>
       {reason === "source_of_funds_required" ? (
-        <ul className="mt-4 list-disc space-y-1 pl-5 font-body text-sm text-on-surface-variant">
-          <li>Bank statements covering the funds used for this purchase</li>
-          <li>Proof of sale or liquidation if proceeds funded the bid</li>
-          <li>Documentation for inheritance, gift, or corporate treasury sources if applicable</li>
-        </ul>
+        <>
+          <ul className="mt-4 list-disc space-y-1 pl-5 font-body text-sm text-on-surface-variant">
+            <li>Bank statements covering the funds used for this purchase</li>
+            <li>Proof of sale or liquidation if proceeds funded the bid</li>
+            <li>
+              Documentation for inheritance, gift, or corporate treasury sources if applicable
+            </li>
+          </ul>
+          <Button className="mt-6" asChild>
+            <Link href={dashboardSofRequirementsUrl()}>View requirements &amp; upload</Link>
+          </Button>
+        </>
       ) : null}
       <p className="mt-4 break-all font-body text-sm text-on-surface">
         {compliance ? "Support: " : "Settlements: "}

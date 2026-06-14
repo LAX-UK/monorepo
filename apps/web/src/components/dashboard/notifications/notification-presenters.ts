@@ -64,6 +64,15 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "submission_draft_reminder") {
     return { label: "Submission reminder", Icon: Clock, tone: "info" };
   }
+  if (type === "source_of_funds_documents_requested") {
+    return { label: "Source of funds", Icon: ShieldAlert, tone: "warn" };
+  }
+  if (type === "source_of_funds_approved") {
+    return { label: "SoF verified", Icon: ShieldAlert, tone: "success" };
+  }
+  if (type === "source_of_funds_rejected") {
+    return { label: "SoF review", Icon: ShieldAlert, tone: "danger" };
+  }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };
   }

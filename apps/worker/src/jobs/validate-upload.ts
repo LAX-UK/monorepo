@@ -2,14 +2,18 @@ import type { Database } from "@auction/db";
 import { uploadObject } from "@auction/db";
 import { and, eq, lt } from "drizzle-orm";
 import type pino from "pino";
+import type { IMalwareScanner } from "../lib/malware-scanner.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
 import { pickValidator } from "./content-type-validators.js";
+
+const MALWARE_SCAN_KINDS = new Set(["source_of_funds_document"]);
 
 export async function validateUploadJob(args: {
   db: Database;
   storage: UploadStorage;
   uploadId: string;
   log: pino.Logger;
+  malwareScanner?: IMalwareScanner | undefined;
 }): Promise<{ validated: boolean; key?: string }> {
   const [row] = await args.db
     .select()
@@ -39,6 +43,18 @@ export async function validateUploadJob(args: {
   if (!validator.matches(magic)) {
     await rejectUpload(args.db, row.id, "content_type_mismatch", head);
     return { validated: false };
+  }
+
+  if (MALWARE_SCAN_KINDS.has(row.kind) && args.malwareScanner) {
+    const scan = await args.malwareScanner.scan({
+      key: row.key,
+      byteSize: head.byteSize,
+    });
+    if (!scan.clean) {
+      await rejectUpload(args.db, row.id, scan.reason ?? "malware", head);
+      args.log.warn({ uploadId: row.id, reason: scan.reason }, "upload_malware_rejected");
+      return { validated: false };
+    }
   }
 
   await args.db

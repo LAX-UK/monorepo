@@ -171,4 +171,21 @@ export type AdminSourceOfFundsDetailDto = {
     downloadUrl: string | null;
     error?: string;
   }>;
+  documentRequest: {
+    requestedAt: string | null;
+    requestedByUserId: string | null;
+    note: string | null;
+    requestedDocumentTypes: string[];
+    submittedAt: string | null;
+  };
+  submittedDocuments: Array<{
+    id: string;
+    requestedType: string;
+    label: string | null;
+    fileName: string | null;
+    reviewStatus: string;
+    uploadedAt: string;
+    uploadedByUserId: string;
+    downloadUrl: string | null;
+  }>;
 };

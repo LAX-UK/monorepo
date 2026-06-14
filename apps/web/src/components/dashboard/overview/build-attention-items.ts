@@ -7,9 +7,9 @@ import {
   kycLinkActionLabel,
   resolveKycFeedback,
 } from "@/components/kyc/kyc-copy";
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
+import { portfolioSettlementAttentionAction } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 
 export type BuildAttentionItemsOptions = {
@@ -94,12 +94,13 @@ export function buildAttentionItems({
 
   const settlements = skipFirstSettlement ? vm.settlementsDue.slice(1) : vm.settlementsDue;
   for (const row of settlements) {
+    const action = portfolioSettlementAttentionAction(row);
     items.push({
       id: `settlement-${row.lot.id}`,
       title: `Payment due: ${row.lot.title}`,
       hint: `Total ${formatSettlementTotal(row)}`,
-      href: dashboardCheckoutLotUrl(row.lot.id),
-      ctaLabel: "Pay",
+      href: action.href,
+      ctaLabel: action.label === "Complete checkout" ? "Pay" : action.label,
     });
   }
 

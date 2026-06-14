@@ -1,4 +1,7 @@
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import {
+  dashboardCheckoutLotUrl,
+  dashboardSofRequirementsUrl,
+} from "@/lib/dashboard/dashboard-copy";
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
 import { describe, expect, it } from "vitest";
 import { sortPaymentsNewestFirst, toPaymentDisplayRows } from "./dashboard-payments.vm";
@@ -53,7 +56,7 @@ describe("toPaymentDisplayRows", () => {
     ]);
     expect(out?.primaryAction).toEqual({
       kind: "review",
-      href: dashboardCheckoutLotUrl("abc-123"),
+      href: dashboardSofRequirementsUrl(),
       reason: "source_of_funds_required",
     });
   });

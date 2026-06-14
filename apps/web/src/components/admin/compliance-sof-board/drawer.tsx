@@ -5,6 +5,7 @@ import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-i
 import { SofCaseAuditTrail } from "@/components/admin/compliance-sof-board/sof-case-audit-trail";
 import { SofEvidenceList } from "@/components/admin/compliance-sof-board/sof-evidence-list";
 import { SofMakerCheckerBanner } from "@/components/admin/compliance-sof-board/sof-maker-checker-banner";
+import { SofRequestDocumentsForm } from "@/components/admin/compliance-sof-board/sof-request-documents-form";
 import { SofSettlementBreakdown } from "@/components/admin/compliance-sof-board/sof-settlement-breakdown";
 import {
   ComplianceDecideForm,
@@ -154,6 +155,10 @@ export function SofDrawerContent({
           <SofEvidenceList detail={detail} evidenceCount={row.evidenceCount} />
         </div>
       </section>
+
+      {row.displayStatus === "pending" && canTriage ? (
+        <SofRequestDocumentsForm caseId={row.id} disabled={detailLoading} />
+      ) : null}
 
       <SofCaseAuditTrail row={row} detail={detail} />
 

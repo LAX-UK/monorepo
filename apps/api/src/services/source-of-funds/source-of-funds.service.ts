@@ -248,6 +248,7 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
       }
       const updated = await this.repo.reopenRejected(command.caseId, conn);
       if (!updated) throw new Error("source_of_funds_reopen_failed");
+      await this.repo.resetDocumentCycle(command.caseId, conn);
 
       if (conn && this.events) {
         await this.events.publish(conn, {
