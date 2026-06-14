@@ -84,7 +84,19 @@ describe("classifyLotLifecycle", () => {
     expect(r.kind).toBe("extended");
   });
 
-  it("returns liveSaleroom when saleroom session is active on hybrid sale", () => {
+  it("returns saleroomPaused when saleroom session is paused on hybrid sale", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - hour),
+      endTime: new Date(t + hour),
+    });
+    const hybridSale = { status: "active" as const, deliveryMode: "hybrid" as const };
+    const r = classifyLotLifecycle(l, hybridSale, t, { saleroomSessionPaused: true });
+    expect(r.kind).toBe("saleroomPaused");
+    expect(r.msLeft).toBeNull();
+  });
+
+  it("returns liveSaleroom when saleroom session is live on hybrid sale", () => {
     const t = Date.now();
     const l = lotBase("active", {
       startTime: new Date(t - hour),

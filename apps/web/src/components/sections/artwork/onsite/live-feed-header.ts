@@ -14,6 +14,10 @@ export function getLiveFeedHeaderMeta(
 ): LiveFeedHeaderMeta {
   const { countdownClock, watcherCount } = opts ?? {};
 
+  if (lifecycleKind === "saleroomPaused") {
+    return { title: "Live Feed", statusLabel: "Auction paused", pulse: false, tone: "live" };
+  }
+
   if (
     lifecycleKind === "live" ||
     lifecycleKind === "extended" ||

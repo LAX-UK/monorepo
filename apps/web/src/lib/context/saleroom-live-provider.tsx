@@ -3,7 +3,10 @@
 import { fetchSaleroomStatus } from "@/lib/data/http/saleroom-status.client";
 import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
-import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
+import {
+  isSaleroomSessionActive,
+  isSaleroomSessionLive,
+} from "@/lib/saleroom/public-session-status";
 import { getSocket } from "@/lib/socket";
 import { notify } from "@/lib/ui/notify";
 import type { SaleroomRealtimePayload } from "@auction/types";
@@ -19,6 +22,7 @@ import {
 
 type SaleroomLiveContextValue = PublicSaleroomSessionStatus & {
   isSessionActive: boolean;
+  isSessionLive: boolean;
   isLotOnBlock: (lotId: string) => boolean;
 };
 
@@ -93,7 +97,7 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
   }, [saleId]);
 
   const isLotOnBlock = useCallback(
-    (lotId: string) => state.currentLotId === lotId && isSaleroomSessionActive(state.status),
+    (lotId: string) => state.status === "live" && state.currentLotId === lotId,
     [state.currentLotId, state.status],
   );
 
@@ -101,6 +105,7 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
     (): SaleroomLiveContextValue => ({
       ...state,
       isSessionActive: isSaleroomSessionActive(state.status),
+      isSessionLive: isSaleroomSessionLive(state.status),
       isLotOnBlock,
     }),
     [state, isLotOnBlock],

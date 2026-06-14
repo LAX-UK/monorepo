@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { bid, lot, sale, user } from "@auction/db/schema";
 import type { TelephoneBidBooking, TelephoneBidBookingStatus } from "@auction/types";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import { and, eq, inArray } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { moneyToDbString, parseAuthorizedMaxCap } from "../lib/telephone-booking.mapper.js";
@@ -113,9 +114,9 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
     if (!saleRow) {
       return this.err("Sale not found", 404);
     }
-    if (saleRow.deliveryMode !== "onsite") {
+    if (!isSaleroomDeliveryMode(saleRow.deliveryMode)) {
       return this.err(
-        "Telephone bidding is only available for in-person sales",
+        "Telephone bidding is only available for in-person and hybrid sales",
         400,
         "onsite_sale_required",
       );
