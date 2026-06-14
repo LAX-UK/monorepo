@@ -1,7 +1,7 @@
 import { createDb } from "@auction/db";
 import { bid, legalEntity, legalEntityMember, lot, user } from "@auction/db/schema";
 import { count, eq, sql } from "drizzle-orm";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DrizzleRepositoryFactory } from "../repositories/drizzle-repository.factory.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import { BidService } from "./bid.service.js";
@@ -38,22 +38,32 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
     lotJobs: null,
   });
 
-  afterAll(async () => {
+  async function cleanupFixture(): Promise<void> {
     await db.delete(bid).where(eq(bid.lotId, lotId));
     await db.delete(lot).where(eq(lot.id, lotId));
     await db
       .delete(legalEntityMember)
       .where(
-        sql`${legalEntityMember.legalEntityId} IN (${sellerLeId}::uuid, ${buyer1LeId}::uuid, ${buyer2LeId}::uuid)`,
+        sql`${legalEntityMember.legalEntityId} IN (${sellerLeId}::uuid, ${buyer1LeId}::uuid, ${buyer2LeId}::uuid, ${buyer3LeId}::uuid)`,
       );
     await db
       .delete(legalEntity)
       .where(
-        sql`${legalEntity.id} IN (${sellerLeId}::uuid, ${buyer1LeId}::uuid, ${buyer2LeId}::uuid)`,
+        sql`${legalEntity.id} IN (${sellerLeId}::uuid, ${buyer1LeId}::uuid, ${buyer2LeId}::uuid, ${buyer3LeId}::uuid)`,
       );
     await db
       .delete(user)
-      .where(sql`${user.id} IN (${sellerUserId}, ${buyer1UserId}, ${buyer2UserId})`);
+      .where(
+        sql`${user.id} IN (${sellerUserId}, ${buyer1UserId}, ${buyer2UserId}, ${buyer3UserId})`,
+      );
+  }
+
+  beforeEach(async () => {
+    await cleanupFixture();
+  });
+
+  afterEach(async () => {
+    await cleanupFixture();
   });
 
   async function waitForBidCount(minCount: number): Promise<void> {
