@@ -17,6 +17,7 @@ import { notify } from "@/lib/ui/notify";
 import type { LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import { LayoutGrid, List } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -66,7 +67,7 @@ export function SaleLotsTabSection({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [view, setView] = useState<ViewMode>("list");
-  const isOnsite = deliveryMode === "onsite";
+  const isSaleroom = isSaleroomDeliveryMode(deliveryMode);
   const returnEligible = lots.filter(
     (l) =>
       (l.status === "ended" || l.status === "cancelled" || l.status === "voided") && !l.winnerId,
@@ -293,7 +294,7 @@ export function SaleLotsTabSection({
             Attach existing lot
           </DisplayHeading>
           <p className="mt-2 font-body text-sm text-on-surface-variant">
-            {attachExistingLotPanelBody(isOnsite)}
+            {attachExistingLotPanelBody(isSaleroom)}
           </p>
           <div className="mt-4 max-w-xl">
             <AttachExistingLotReview

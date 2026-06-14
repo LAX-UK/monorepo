@@ -1,4 +1,5 @@
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 
 export type SaleroomHubSummary = {
   liveCount: number;
@@ -9,7 +10,7 @@ export type SaleroomHubSummary = {
 export function filterSaleroomHubRows(rows: readonly AdminSaleListRow[]): AdminSaleListRow[] {
   return rows.filter(
     (row) =>
-      row.sale.deliveryMode === "onsite" &&
+      isSaleroomDeliveryMode(row.sale.deliveryMode) &&
       (row.sale.status === "active" || row.sale.status === "scheduled"),
   );
 }
