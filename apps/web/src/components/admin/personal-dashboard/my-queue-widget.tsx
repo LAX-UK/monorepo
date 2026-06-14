@@ -35,17 +35,23 @@ export function MyQueueWidget({ attention }: Props) {
         </div>
       ) : (
         <div className="space-y-6">
-          {groups.map((group) => (
-            <section key={group.domain} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <h4 className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                  {group.domain}
-                </h4>
-                <AdminQueueCountBadge count={group.items.length} />
-              </div>
-              <AttentionList items={group.items} />
-            </section>
-          ))}
+          {groups.map((group) => {
+            const headingId = `my-queue-${group.domain.toLowerCase().replace(/\s+/g, "-")}`;
+            return (
+              <section key={group.domain} className="space-y-2" aria-labelledby={headingId}>
+                <div className="flex items-center gap-2">
+                  <h4
+                    id={headingId}
+                    className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
+                  >
+                    {group.domain}
+                  </h4>
+                  <AdminQueueCountBadge count={group.items.length} />
+                </div>
+                <AttentionList items={group.items} />
+              </section>
+            );
+          })}
         </div>
       )}
     </Surface>
