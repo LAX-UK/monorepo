@@ -184,6 +184,7 @@ import { AdminPaymentListQueryService } from "./services/admin/admin-payment-lis
 import { AdminPaymentsKpiTrendService } from "./services/admin/admin-payments-kpi-trend.service.js";
 import { AdminPayoutsKpiTrendService } from "./services/admin/admin-payouts-kpi-trend.service.js";
 import { AdminSalesKpiTrendService } from "./services/admin/admin-sales-kpi-trend.service.js";
+import { AdminSourceOfFundsQueryService } from "./services/admin/admin-source-of-funds-query.service.js";
 import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
 import { LegalEntityDocumentAdminService } from "./services/admin/legal-entity-document-admin.service.js";
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
@@ -467,6 +468,8 @@ export type Container = {
   amlService: AmlService;
   /** Source-of-Funds (CDD Section 6) collection + MLRO/finance review gate. */
   sourceOfFundsService: SourceOfFundsService;
+  /** Admin read models for SoF compliance queues (list enrichment + detail). */
+  adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
   /** organisation onboarding. */
   organizationOnboardingService: IOrganizationOnboardingService;
   /** Production-domain gate for org module mutations. */
@@ -947,6 +950,11 @@ export function createContainer(env: Env): Container {
     objectStorage,
     env.STORAGE_READ_MODE,
     new PerRequestSigningPolicy(env.SIGNED_GET_TTL_SEC),
+  );
+  const adminSourceOfFundsQueryService = new AdminSourceOfFundsQueryService(
+    sourceOfFundsRepository,
+    db,
+    mediaUrlResolver,
   );
   const catalogueMediaUrlResolver = new MediaUrlResolver(
     objectStorage,
@@ -1705,6 +1713,7 @@ export function createContainer(env: Env): Container {
     kycResubmissionNotifier,
     amlService,
     sourceOfFundsService,
+    adminSourceOfFundsQueryService,
     organizationOnboardingService,
     orgModuleGate,
     organizationOnboardingFlowService,
