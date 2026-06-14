@@ -11,6 +11,7 @@ export const uploadKinds = [
   "lot_document",
   "sale_document",
   "submission_document",
+  "source_of_funds_document",
   "artist_image",
   "category_image",
 ] as const;
@@ -62,6 +63,11 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     maxBytes: 25 * 1024 * 1024,
     allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/submission-documents",
+  },
+  source_of_funds_document: {
+    maxBytes: 25 * 1024 * 1024,
+    allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    keyPrefix: "uploads/pending/source-of-funds",
   },
   artist_image: {
     maxBytes: 10 * 1024 * 1024,
@@ -116,6 +122,12 @@ export function canUploadKind(
         roleHasCapability(role, "platform.admin.full", staffRole) ||
         roleHasCapability(role, "auction.manage", staffRole) ||
         roleHasCapability(role, "catalogue.write", staffRole)
+      );
+    case "source_of_funds_document":
+      return (
+        roleHasCapability(role, "client.read", staffRole) ||
+        roleHasCapability(role, "aml.review", staffRole) ||
+        roleHasCapability(role, "platform.admin.full", staffRole)
       );
     case "artist_image":
     case "category_image":

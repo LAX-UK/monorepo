@@ -48,7 +48,10 @@ export const notification = pgTable(
         'submission_converted',
         'submission_draft_reminder',
         'condition_report_ready',
-        'condition_report_declined'
+        'condition_report_declined',
+        'source_of_funds_documents_requested',
+        'source_of_funds_approved',
+        'source_of_funds_rejected'
       )`,
     ),
   ],

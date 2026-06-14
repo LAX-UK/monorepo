@@ -60,6 +60,9 @@ const envSchema = z
     META_GRAPH_API_VERSION: z.preprocess(emptyToUndefined, z.string().optional()),
     MARKETING_EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
     QR_SCAN_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
+    /** Optional ClamAV daemon for SoF document malware scanning. */
+    CLAMAV_HOST: z.preprocess(emptyToUndefined, z.string().optional()),
+    CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {

@@ -21,6 +21,11 @@ export type SourceOfFundsCase = {
   currency: string;
   declaredSource: string | null;
   evidence: string[];
+  documentsRequestedAt: Date | null;
+  documentsRequestedByUserId: string | null;
+  documentRequestNote: string | null;
+  requestedDocumentTypes: string[];
+  documentsSubmittedAt: Date | null;
   triageRecommendation: SourceOfFundsTriageRecommendation | null;
   triagedByUserId: string | null;
   triagedAt: Date | null;
@@ -30,6 +35,24 @@ export type SourceOfFundsCase = {
   reviewNotes: string | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type SourceOfFundsDocumentReviewStatus = "pending" | "superseded";
+
+export type SourceOfFundsDocumentRow = {
+  id: string;
+  sourceOfFundsId: string;
+  uploadObjectId: string;
+  requestedType: string;
+  label: string | null;
+  reviewStatus: SourceOfFundsDocumentReviewStatus | string;
+  retentionClass: string;
+  uploadedByUserId: string;
+  uploadedAt: Date;
+  supersededAt: Date | null;
+  anonymizedAt: Date | null;
+  /** Populated on buyer/admin reads when joined with upload_object. */
+  fileName?: string | null;
 };
 
 export type CreateSourceOfFundsCaseInput = {
@@ -70,6 +93,17 @@ export interface ISourceOfFundsRepository {
   setReview(input: SourceOfFundsReviewInput, conn?: Database): Promise<SourceOfFundsCase | null>;
   /** Re-open a rejected case for a fresh maker-checker cycle (clears triage/decision). */
   reopenRejected(id: string, conn?: Database): Promise<SourceOfFundsCase | null>;
+  setDocumentRequest(
+    input: {
+      id: string;
+      requestedByUserId: string;
+      documentTypes: string[];
+      note: string | null;
+    },
+    conn?: Database,
+  ): Promise<SourceOfFundsCase | null>;
+  setDocumentsSubmitted(id: string, conn?: Database): Promise<SourceOfFundsCase | null>;
+  resetDocumentCycle(id: string, conn?: Database): Promise<void>;
   /**
    * Aggregate the buyer's in-flight + settled settlement value (pence) across
    * open payment records, used for linked-transaction (structuring) detection.

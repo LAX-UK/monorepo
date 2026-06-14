@@ -201,6 +201,16 @@ const sourceOfFundsTriageBodySchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+const sourceOfFundsRequestDocumentsBodySchema = z.object({
+  documentTypes: z.array(z.string().min(1).max(500)).min(1).max(20),
+  note: z.string().max(2000).optional(),
+});
+
+const sourceOfFundsDocumentIdParamSchema = z.object({
+  id: z.string().uuid(),
+  docId: z.string().uuid(),
+});
+
 /** Only match UUID segments so static routes (`search`, `stats`, …) are never captured. */
 const adminArtistIdSegment =
   ":artistId{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}";
@@ -1927,8 +1937,57 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
+  platform.post(
+    "/compliance/source-of-funds/:id/request-documents",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    zValidator("json", sourceOfFundsRequestDocumentsBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { documentTypes, note } = c.req.valid("json");
+      const staffUserId = c.get("userId") as string;
+      try {
+        const record = await container.sourceOfFundsDocumentCollectionService.requestDocuments({
+          caseId: id,
+          staffUserId,
+          documentTypes,
+          note: note ?? null,
+        });
+        return c.json({ ok: true, sourceOfFunds: record });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "source_of_funds_request_documents_failed";
+        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
+        if (message === "source_of_funds_not_pending") return c.json({ error: message }, 409);
+        if (message === "source_of_funds_document_types_required") {
+          return c.json({ error: message }, 400);
+        }
+        throw err;
+      }
+    },
+  );
+
+  platform.get(
+    "/compliance/source-of-funds/:id/documents/:docId/download",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsDocumentIdParamSchema),
+    async (c) => {
+      const { id, docId } = c.req.valid("param");
+      const staffUserId = c.get("userId") as string;
+      const clientIp =
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const result = await container.sourceOfFundsDocumentCollectionService.getStaffDownloadUrl({
+        caseId: id,
+        documentId: docId,
+        staffUserId,
+        clientIp,
+      });
+      if (!result) return c.json({ error: "document_not_found" }, 404);
+      return c.json({ data: result });
+    },
+  );
+
   platform.patch(
-    "/users/:userId/role",
     requireUsersDirectory,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminSetRoleBodySchema),

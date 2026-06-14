@@ -25,6 +25,11 @@ function makeCase(
     currency: "GBP",
     declaredSource: null,
     evidence: [],
+    documentsRequestedAt: null,
+    documentsRequestedByUserId: null,
+    documentRequestNote: null,
+    requestedDocumentTypes: [],
+    documentsSubmittedAt: null,
     triageRecommendation: null,
     triagedByUserId: null,
     triagedAt: null,
@@ -99,6 +104,31 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
       existing.reviewedAt = null;
       existing.reviewNotes = null;
       return existing;
+    },
+    async setDocumentRequest(input) {
+      const existing = state.cases.find((c) => c.id === input.id);
+      if (!existing) return null;
+      existing.documentsRequestedAt = new Date();
+      existing.documentsRequestedByUserId = input.requestedByUserId;
+      existing.documentRequestNote = input.note;
+      existing.requestedDocumentTypes = input.documentTypes;
+      existing.documentsSubmittedAt = null;
+      return existing;
+    },
+    async setDocumentsSubmitted(id) {
+      const existing = state.cases.find((c) => c.id === id);
+      if (!existing) return null;
+      existing.documentsSubmittedAt = new Date();
+      return existing;
+    },
+    async resetDocumentCycle(id) {
+      const existing = state.cases.find((c) => c.id === id);
+      if (!existing) return;
+      existing.documentsRequestedAt = null;
+      existing.documentsRequestedByUserId = null;
+      existing.documentRequestNote = null;
+      existing.requestedDocumentTypes = [];
+      existing.documentsSubmittedAt = null;
     },
     async sumActiveBuyerSettlementPence(_userId: string, excludePaymentId?: string) {
       if (excludePaymentId === "pay_double") {

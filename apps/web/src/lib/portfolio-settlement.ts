@@ -1,3 +1,7 @@
+import {
+  dashboardCheckoutLotUrl,
+  dashboardSofRequirementsUrl,
+} from "@/lib/dashboard/dashboard-copy";
 import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 
 /** User-facing label for settlement state on won lots. */
@@ -39,4 +43,19 @@ export function portfolioComplianceReason(row: PortfolioRow): ManualReviewReason
   const reason = row.payment?.manualReviewReason ?? null;
   if (reason === "aml_hold" || reason === "source_of_funds_required") return reason;
   return null;
+}
+
+/** Primary CTA for settlement attention surfaces (overview banner, attention list, hero). */
+export function portfolioSettlementAttentionAction(row: PortfolioRow): {
+  href: string;
+  label: string;
+} {
+  const reason = portfolioComplianceReason(row);
+  if (reason === "source_of_funds_required") {
+    return { href: dashboardSofRequirementsUrl(), label: "View requirements" };
+  }
+  return {
+    href: dashboardCheckoutLotUrl(row.lot.id),
+    label: reason === "aml_hold" ? "View status" : "Complete checkout",
+  };
 }

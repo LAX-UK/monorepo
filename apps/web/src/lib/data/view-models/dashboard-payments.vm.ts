@@ -1,4 +1,7 @@
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import {
+  dashboardCheckoutLotUrl,
+  dashboardSofRequirementsUrl,
+} from "@/lib/dashboard/dashboard-copy";
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
 import { formatMoney } from "@/lib/format-currency";
 import { getPaymentStatusView } from "@/lib/presenters/payment-status";
@@ -51,7 +54,10 @@ function buildPrimaryAction(row: MyPaymentRow): PaymentDisplayRow["primaryAction
     if (reason === "aml_hold" || reason === "source_of_funds_required") {
       return {
         kind: "review",
-        href: dashboardCheckoutLotUrl(row.lotId),
+        href:
+          reason === "source_of_funds_required"
+            ? dashboardSofRequirementsUrl()
+            : dashboardCheckoutLotUrl(row.lotId),
         reason,
       };
     }
@@ -66,7 +72,10 @@ function buildPrimaryAction(row: MyPaymentRow): PaymentDisplayRow["primaryAction
     if (reason) {
       return {
         kind: "review",
-        href: dashboardCheckoutLotUrl(row.lotId),
+        href:
+          reason === "source_of_funds_required"
+            ? dashboardSofRequirementsUrl()
+            : dashboardCheckoutLotUrl(row.lotId),
         reason,
       };
     }

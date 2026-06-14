@@ -100,9 +100,18 @@ import ProxyCancelledNoticeEmail, {
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SourceOfFundsApprovedEmail, {
+  subject as sourceOfFundsApprovedSubject,
+} from "./templates/source-of-funds-approved.js";
 import SourceOfFundsBuyerNoticeEmail, {
   subject as sourceOfFundsBuyerNoticeSubject,
 } from "./templates/source-of-funds-buyer-notice.js";
+import SourceOfFundsDocumentsRequestedEmail, {
+  subject as sourceOfFundsDocumentsRequestedSubject,
+} from "./templates/source-of-funds-documents-requested.js";
+import SourceOfFundsRejectedEmail, {
+  subject as sourceOfFundsRejectedSubject,
+} from "./templates/source-of-funds-rejected.js";
 import SubmissionApprovedEmail, {
   subject as submissionApprovedSubject,
 } from "./templates/submission-approved.js";
@@ -289,6 +298,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "source-of-funds-buyer-notice": {
     subject: sourceOfFundsBuyerNoticeSubject,
     component: (vars) => <SourceOfFundsBuyerNoticeEmail {...vars} />,
+  },
+  "source-of-funds-documents-requested": {
+    subject: sourceOfFundsDocumentsRequestedSubject,
+    component: (vars) => <SourceOfFundsDocumentsRequestedEmail {...vars} />,
+  },
+  "source-of-funds-approved": {
+    subject: sourceOfFundsApprovedSubject,
+    component: (vars) => <SourceOfFundsApprovedEmail {...vars} />,
+  },
+  "source-of-funds-rejected": {
+    subject: sourceOfFundsRejectedSubject,
+    component: (vars) => <SourceOfFundsRejectedEmail {...vars} />,
   },
 };
 

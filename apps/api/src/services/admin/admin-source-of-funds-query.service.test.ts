@@ -32,6 +32,11 @@ function makeCase(
     currency: "GBP",
     declaredSource: null,
     evidence: ["evidence/key.pdf"],
+    documentsRequestedAt: null,
+    documentsRequestedByUserId: null,
+    documentRequestNote: null,
+    requestedDocumentTypes: [],
+    documentsSubmittedAt: null,
     triageRecommendation: null,
     triagedByUserId: null,
     triagedAt: null,
@@ -51,7 +56,14 @@ describe("AdminSourceOfFundsQueryService", () => {
   };
 
   let repo: ISourceOfFundsRepository;
+  let docRepo: {
+    listActiveForCase: ReturnType<typeof vi.fn>;
+  } & Record<string, ReturnType<typeof vi.fn>>;
   let media: MediaUrlResolver;
+
+  function makeSvc() {
+    return new AdminSourceOfFundsQueryService(repo, docRepo as never, mockDb as never, media);
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -71,7 +83,18 @@ describe("AdminSourceOfFundsQueryService", () => {
       setTriage: vi.fn(),
       setReview: vi.fn(),
       reopenRejected: vi.fn(),
+      setDocumentRequest: vi.fn(),
+      setDocumentsSubmitted: vi.fn(),
+      resetDocumentCycle: vi.fn(),
       sumActiveBuyerSettlementPence: vi.fn(),
+    };
+    docRepo = {
+      listActiveForCase: vi.fn().mockResolvedValue([]),
+      attach: vi.fn(),
+      supersedeActiveForType: vi.fn(),
+      listForCase: vi.fn(),
+      findById: vi.fn(),
+      countActiveForCase: vi.fn(),
     };
     media = {
       resolve: vi.fn(),
@@ -84,7 +107,7 @@ describe("AdminSourceOfFundsQueryService", () => {
 
   it("returns null from getDetail when case is missing", async () => {
     vi.mocked(repo.findById).mockResolvedValue(null);
-    const svc = new AdminSourceOfFundsQueryService(repo, mockDb as never, media);
+    const svc = makeSvc();
     await expect(svc.getDetail("missing")).resolves.toBeNull();
   });
 
@@ -106,7 +129,7 @@ describe("AdminSourceOfFundsQueryService", () => {
         groupBy: vi.fn().mockResolvedValue([{ userId: "user-1", n: 1 }]),
       });
 
-    const svc = new AdminSourceOfFundsQueryService(repo, mockDb as never, media);
+    const svc = makeSvc();
     const { rows, total } = await svc.listEnriched("pending", 50, 0);
 
     expect(total).toBe(1);
@@ -124,7 +147,7 @@ describe("AdminSourceOfFundsQueryService", () => {
       where: vi.fn().mockResolvedValue([{ id: "user-1", email: "buyer@example.com", name: null }]),
     });
 
-    const svc = new AdminSourceOfFundsQueryService(repo, mockDb as never, media);
+    const svc = makeSvc();
     const detail = await svc.getDetail("sof-1");
 
     expect(detail).not.toBeNull();

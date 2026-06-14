@@ -9,7 +9,8 @@ export type DocumentUploadKind =
   | "lot_document"
   | "sale_document"
   | "submission_document"
-  | "legal_entity_document";
+  | "legal_entity_document"
+  | "source_of_funds_document";
 
 type DocumentUploadFieldProps = {
   kind: DocumentUploadKind;
