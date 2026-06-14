@@ -154,8 +154,9 @@ locals {
       # web is prebuilt in CI (build args from infra/web-build/prod.env) and pushed
       # to DOCR, so it inherits var.app_deploy_source like the other components.
       # The NEXT_PUBLIC_* env entries below now act as RUN_TIME values.
-      http_port     = 3000
-      instance_size = "professional-xs"
+      http_port = 3000
+      # Dedicated CPU required for CPU-based autoscaling (professional-xs is shared-only).
+      instance_size = "apps-d-1vcpu-1gb"
       autoscaling = {
         min_instance_count = 2
         max_instance_count = 6
@@ -185,7 +186,8 @@ locals {
       source_dir      = "/"
       dockerfile_path = "apps/api/Dockerfile"
       http_port       = 3001
-      instance_size   = "professional-xs"
+      # Dedicated CPU required for CPU-based autoscaling (professional-xs is shared-only).
+      instance_size = "apps-d-1vcpu-1gb"
       autoscaling = {
         min_instance_count = 2
         max_instance_count = 8
