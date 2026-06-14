@@ -14,7 +14,11 @@ export function getLiveFeedHeaderMeta(
 ): LiveFeedHeaderMeta {
   const { countdownClock, watcherCount } = opts ?? {};
 
-  if (lifecycleKind === "live" || lifecycleKind === "extended") {
+  if (
+    lifecycleKind === "live" ||
+    lifecycleKind === "extended" ||
+    lifecycleKind === "liveSaleroom"
+  ) {
     if (watcherCount != null) {
       const label =
         watcherCount >= 1000

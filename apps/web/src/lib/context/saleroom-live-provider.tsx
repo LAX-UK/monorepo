@@ -1,9 +1,11 @@
 "use client";
 
+import { fetchSaleroomStatus } from "@/lib/data/http/saleroom-status.client";
 import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
 import { getSocket } from "@/lib/socket";
+import { notify } from "@/lib/ui/notify";
 import type { SaleroomRealtimePayload } from "@auction/types";
 import {
   type ReactNode,
@@ -38,6 +40,22 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
 
   useEffect(() => {
     const socket = getSocket();
+    let hadConnected = socket.connected;
+
+    const hydrateFromServer = async (): Promise<boolean> => {
+      const snap = await fetchSaleroomStatus(saleId);
+      if (!snap) {
+        notify.warning("Could not refresh saleroom status", {
+          id: `saleroom-hydrate-failed-${saleId}`,
+          description: "On-block lot info may be stale until the connection recovers.",
+          duration: 7000,
+        });
+        return false;
+      }
+      setState(snap);
+      return true;
+    };
+
     const onSaleroom = (raw: unknown) => {
       const event = raw as SaleroomRealtimePayload;
       if (!event || typeof event.kind !== "string" || event.saleId !== saleId) return;
@@ -48,13 +66,28 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
       socket.emit("joinSaleroom", { saleId }, () => {});
     };
 
+    const onConnect = () => {
+      join();
+      if (hadConnected) {
+        void hydrateFromServer().then((ok) => {
+          if (ok) {
+            notify.success("Reconnected — saleroom status refreshed", {
+              id: `saleroom-reconnect-${saleId}`,
+              duration: 5000,
+            });
+          }
+        });
+      }
+      hadConnected = true;
+    };
+
     join();
     socket.on("saleroomEvent", onSaleroom);
-    socket.on("connect", join);
+    socket.on("connect", onConnect);
 
     return () => {
       socket.off("saleroomEvent", onSaleroom);
-      socket.off("connect", join);
+      socket.off("connect", onConnect);
       socket.emit("leaveSaleroom", { saleId }, () => {});
     };
   }, [saleId]);

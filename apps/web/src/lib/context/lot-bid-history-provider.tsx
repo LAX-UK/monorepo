@@ -98,32 +98,41 @@ export function LotBidHistoryProvider({
     }));
   }, []);
 
-  const hydrateFromServer = useCallback(async (): Promise<boolean> => {
-    const [lotSnap, bidEntries] = await Promise.all([
-      fetchLotBidSnapshot(lotId),
-      fetchLotBidHistory(lotId),
-    ]);
-    if (!lotSnap || !bidEntries) {
-      notify.warning("Could not refresh live prices", {
-        id: `lot-hydrate-failed-${lotId}`,
-        description: "Showing last known bids until the connection recovers.",
-        duration: 7000,
-      });
-      return false;
-    }
-    const leadingBidderId =
-      lotSnap.status === "ended"
-        ? (lotSnap.winnerId ?? deriveLeadingBidderId(bidEntries))
-        : deriveLeadingBidderId(bidEntries);
-    setState((prev) =>
-      reduceOnHydrate(prev, {
-        currentPrice: lotSnap.currentPrice,
-        leadingBidderId,
-        entries: bidEntries,
-      }),
-    );
-    return true;
-  }, [lotId]);
+  const hydrateFromServer = useCallback(
+    async (opts?: { fromReconnect?: boolean }): Promise<boolean> => {
+      const [lotSnap, bidEntries] = await Promise.all([
+        fetchLotBidSnapshot(lotId),
+        fetchLotBidHistory(lotId),
+      ]);
+      if (!lotSnap || !bidEntries) {
+        notify.warning("Could not refresh live prices", {
+          id: `lot-hydrate-failed-${lotId}`,
+          description: "Showing last known bids until the connection recovers.",
+          duration: 7000,
+        });
+        return false;
+      }
+      const leadingBidderId =
+        lotSnap.status === "ended"
+          ? (lotSnap.winnerId ?? deriveLeadingBidderId(bidEntries))
+          : deriveLeadingBidderId(bidEntries);
+      setState((prev) =>
+        reduceOnHydrate(prev, {
+          currentPrice: lotSnap.currentPrice,
+          leadingBidderId,
+          entries: bidEntries,
+        }),
+      );
+      if (opts?.fromReconnect) {
+        notify.success("Reconnected — live prices refreshed", {
+          id: `lot-reconnect-${lotId}`,
+          duration: 5000,
+        });
+      }
+      return true;
+    },
+    [lotId],
+  );
 
   useLotRealtime(lotId, {
     onBidUpdate: (e: BidUpdateEvent) => {
@@ -143,7 +152,7 @@ export function LotBidHistoryProvider({
       }));
     },
     onReconnect: () => {
-      void hydrateFromServer();
+      void hydrateFromServer({ fromReconnect: true });
     },
   });
 

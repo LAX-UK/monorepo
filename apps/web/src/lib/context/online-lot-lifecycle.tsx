@@ -25,6 +25,9 @@ type Ctx = {
   sale: SalePick;
   extendedByMs: number | null;
   setExtendedDeltaMs: (deltaMs: number | null) => void;
+  /** Authoritative end time after anti-snipe extend or reconnect hydrate. */
+  liveEndTimeMs: number | null;
+  setLiveEndTimeMs: (ms: number) => void;
   /** Mobile sticky coordination: bid card intersects viewport. */
   bidCardInView: boolean;
   setBidCardInView: (inView: boolean) => void;
@@ -41,6 +44,7 @@ type ProviderProps = {
 
 export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProps) {
   const [extendedByMs, setExtendedByMs] = useState<number | null>(null);
+  const [liveEndTimeMs, setLiveEndTimeMs] = useState<number | null>(null);
   const [bidCardInView, setBidCardInView] = useState(true);
   const ownBidEchoGuardRef = useRef<OwnBidEchoGuard | null>(null);
 
@@ -54,11 +58,13 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       sale,
       extendedByMs,
       setExtendedDeltaMs,
+      liveEndTimeMs,
+      setLiveEndTimeMs,
       bidCardInView,
       setBidCardInView,
       ownBidEchoGuardRef,
     }),
-    [lot, sale, extendedByMs, setExtendedDeltaMs, bidCardInView],
+    [lot, sale, extendedByMs, setExtendedDeltaMs, liveEndTimeMs, bidCardInView],
   );
 
   return (
