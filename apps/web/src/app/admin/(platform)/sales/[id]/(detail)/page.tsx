@@ -7,6 +7,7 @@ import {
   loadAdminSalePendingRegistrationCount,
   loadAdminSaleRegistrationCount,
 } from "@/lib/admin/load-sale-detail";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -20,7 +21,7 @@ export default async function AdminSaleOverviewPage({ params, searchParams }: Pr
   const bundle = await loadAdminSaleDetail(id);
   const { sale, lots } = bundle;
   const liveish = isSaleLiveish(sale);
-  const isOnsite = sale.deliveryMode === "onsite";
+  const isSaleroom = isSaleroomDeliveryMode(sale.deliveryMode);
   const [registrationCount, pendingRegistrationCount, connectRequiredByLotId] = await Promise.all([
     loadAdminSaleRegistrationCount(id, sale),
     loadAdminSalePendingRegistrationCount(id, sale),
@@ -35,7 +36,7 @@ export default async function AdminSaleOverviewPage({ params, searchParams }: Pr
         sale={sale}
         lots={lots}
         liveish={liveish}
-        isOnsite={isOnsite}
+        isSaleroom={isSaleroom}
         venueLines={saleVenueLines(sale)}
         registrationCount={registrationCount}
         pendingRegistrationCount={pendingRegistrationCount}

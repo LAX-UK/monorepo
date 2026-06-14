@@ -37,7 +37,12 @@ import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
-import { buildGoogleMapsSearchUrl, formatPostalAddress, isUkPostcode } from "@auction/validators";
+import {
+  buildGoogleMapsSearchUrl,
+  formatPostalAddress,
+  isSaleroomDeliveryMode,
+  isUkPostcode,
+} from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -164,7 +169,9 @@ export function SaleSetupWizard({
   const deliveryMode = form.watch("deliveryMode");
   const watchedStartTime = form.watch("startTime");
   const watchedEndTime = form.watch("endTime");
-  const isOnsite = deliveryMode === "onsite";
+  const isSaleroom = isSaleroomDeliveryMode(
+    (deliveryMode ?? "online") as "online" | "onsite" | "hybrid",
+  );
   const watchedLocation = {
     locationName: form.watch("locationName"),
     locationAddressLine1: form.watch("locationAddressLine1"),
@@ -510,7 +517,7 @@ export function SaleSetupWizard({
                       <SaleScheduleStep
                         form={form}
                         isDraft
-                        isOnsite={isOnsite}
+                        isSaleroom={isSaleroom}
                         pending={pending}
                         fields={fields}
                         append={append}

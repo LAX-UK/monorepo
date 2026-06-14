@@ -12,6 +12,7 @@ import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useNow } from "@/hooks/use-now";
 import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
+import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
@@ -49,6 +50,7 @@ export function OnlineBidsView({
 }: Props) {
   const now = useNow();
   const onlineCtx = useOnlineLotLifecycle();
+  const saleroomLive = useSaleroomLive();
   const [entries, setEntries] = useState<BidHistoryEntry[]>(initialHistory);
   const [liveCurrentPrice, setLiveCurrentPrice] = useState(currentPrice);
   const [lotSnap, setLotSnap] = useState(() => ({
@@ -84,6 +86,7 @@ export function OnlineBidsView({
           bidderId: e.bidderId,
           amount: e.amount,
           ...(e.isAutoBid ? { isAutoBid: true } : {}),
+          ...(e.placedVia ? { placedVia: e.placedVia } : {}),
         }),
       );
     },
@@ -129,10 +132,21 @@ export function OnlineBidsView({
         now ?? 0,
       );
     }
-    return classifyLotLifecycle(onlineCtx.lot, onlineCtx.sale, now ?? 0, {
-      recentlyExtended: Boolean(onlineCtx.extendedByMs && onlineCtx.extendedByMs > 0),
-    });
-  }, [onlineCtx, lotId, lotSnap, now]);
+    return classifyLotLifecycle(
+      {
+        ...onlineCtx.lot,
+        status: lotSnap.status,
+        winnerId: lotSnap.winnerId,
+      },
+      onlineCtx.sale,
+      now ?? 0,
+      {
+        recentlyExtended: Boolean(onlineCtx.extendedByMs && onlineCtx.extendedByMs > 0),
+        saleroomSessionActive: saleroomLive?.isSessionActive ?? false,
+        isOnBlock: saleroomLive?.isLotOnBlock(lotId) ?? false,
+      },
+    );
+  }, [onlineCtx, lotId, lotSnap, now, saleroomLive]);
 
   const countdownClock = useMemo(() => {
     if (now == null) return "";

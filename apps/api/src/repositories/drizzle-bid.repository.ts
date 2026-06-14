@@ -58,6 +58,14 @@ export class DrizzleBidRepository implements IBidRepository {
     return rows.map(mapBidRow);
   }
 
+  async countForLot(lotId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bid)
+      .where(eq(bid.lotId, lotId));
+    return row?.count ?? 0;
+  }
+
   async listForLotSettlement(lotId: string, limit: number) {
     const rows = await this.db
       .select()

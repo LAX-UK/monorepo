@@ -1,6 +1,6 @@
 "use client";
 
-import { minNextBidAmount, useClerkLotLivePrice } from "@/hooks/use-clerk-lot-live-price";
+import { minNextBidAmount, useClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
 import {
   adminPaddlePlaceBidResultAction,
   adminTelephonePlaceBidResultAction,
@@ -9,7 +9,7 @@ import type {
   AdminPaddleRosterEntry,
   AdminTelephoneBookingRow,
 } from "@/lib/data/http/admin.server";
-import type { AdminSaleroomSessionSnapshot } from "@/lib/data/http/admin.server";
+import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import { formatMoney } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
@@ -28,7 +28,7 @@ import { useMemo, useState, useTransition } from "react";
 
 type Props = {
   saleId: string;
-  initial: AdminSaleroomSessionSnapshot;
+  currentLotId: string | null;
   lots: Lot[];
   telephoneBookings: AdminTelephoneBookingRow[];
   paddleRoster?: AdminPaddleRosterEntry[];
@@ -36,7 +36,7 @@ type Props = {
 
 export function LotOnBlockPanel({
   saleId,
-  initial,
+  currentLotId,
   lots,
   telephoneBookings,
   paddleRoster = [],
@@ -46,9 +46,13 @@ export function LotOnBlockPanel({
   const [paddleNumber, setPaddleNumber] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const currentLotId = initial.session?.currentLotId ?? null;
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
-  const liveCurrentPrice = useClerkLotLivePrice(currentLotId, currentLot?.currentPrice ?? "0.00");
+  const liveBid = useClerkLotLiveBidState(
+    currentLotId,
+    currentLot?.currentPrice ?? "0.00",
+    paddleRoster,
+  );
+  const liveCurrentPrice = liveBid.currentPrice;
   const minNextBid = currentLot
     ? minNextBidAmount(liveCurrentPrice, currentLot.minBidIncrement)
     : null;
@@ -161,14 +165,29 @@ export function LotOnBlockPanel({
           Lot on block
         </h2>
         <p className="mt-2 font-body text-sm text-foreground">
-          {currentLot.title?.trim() || currentLot.id}
+          {formatLotRunListLabel(currentLot)}
         </p>
         <p className="font-body text-xs text-secondary tabular-nums">
           Current {formatMoney(liveCurrentPrice)}
           {minNextBid != null ? (
             <span className="ml-2">· Min next {formatMoney(minNextBid.toFixed(2))}</span>
           ) : null}
+          {liveBid.bidCount != null ? (
+            <span className="ml-2">
+              · {liveBid.bidCount} bid{liveBid.bidCount === 1 ? "" : "s"}
+            </span>
+          ) : null}
         </p>
+        {liveBid.leaderLabel ? (
+          <p className="mt-1 font-body text-xs text-on-surface">
+            Leading: <span className="font-medium">{liveBid.leaderLabel}</span>
+            {liveBid.leaderAmount ? (
+              <span className="ml-2 tabular-nums text-secondary">
+                at {formatMoney(liveBid.leaderAmount)}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-3">

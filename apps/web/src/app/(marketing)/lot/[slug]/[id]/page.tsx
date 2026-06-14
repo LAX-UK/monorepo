@@ -188,6 +188,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     amount: b.amount,
     at: b.createdAt.getTime(),
     ...(b.isAutoBid ? { isAutoBid: true } : {}),
+    ...(b.placedVia ? { placedVia: b.placedVia } : {}),
   }));
   const initialLeadingBidderId =
     initialBids.find((b) => b.isWinning)?.bidderId ??

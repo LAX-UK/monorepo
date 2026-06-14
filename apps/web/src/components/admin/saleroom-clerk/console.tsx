@@ -4,6 +4,7 @@ import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { LotOnBlockPanel } from "@/components/admin/saleroom-clerk/lot-on-block-panel";
 import { TelephoneLinesPanel } from "@/components/admin/saleroom-clerk/telephone-lines-panel";
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
+import { useSaleroomSessionState } from "@/hooks/use-saleroom-session-state";
 import {
   adminSaleroomAdvanceAction,
   adminSaleroomCloseAction,
@@ -19,9 +20,13 @@ import type {
   AdminSaleroomSessionSnapshot,
   AdminTelephoneBookingRow,
 } from "@/lib/data/http/admin.server";
-import { getSocket } from "@/lib/socket";
+import { mapAdminSaleroomSnapshotToSessionStatus } from "@/lib/saleroom/map-admin-saleroom-snapshot";
+import {
+  findNextRunListLot,
+  formatLotRunListLabel,
+  sortLotsForRunList,
+} from "@/lib/saleroom/sort-lots-for-run-list";
 import type { Lot } from "@auction/types";
-import type { SaleroomRealtimePayload } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -31,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
 type Props = {
   saleId: string;
@@ -52,28 +57,23 @@ export function SaleroomClerkConsole({
   paddleRoster = [],
   error,
 }: Props) {
-  const [liveFeed, setLiveFeed] = useState<SaleroomRealtimePayload[]>([]);
-  const [advanceLotId, setAdvanceLotId] = useState(lots[0]?.id ?? "");
+  const initialSession = useMemo(() => mapAdminSaleroomSnapshotToSessionStatus(initial), [initial]);
+  const { session, liveFeed } = useSaleroomSessionState({
+    saleId,
+    initial: initialSession,
+    trackLiveFeed: true,
+  });
+  const orderedLots = useMemo(() => sortLotsForRunList(lots), [lots]);
+  const [advanceLotId, setAdvanceLotId] = useState(
+    () => initialSession.currentLotId ?? orderedLots[0]?.id ?? "",
+  );
+  const nextLot = useMemo(
+    () => findNextRunListLot(orderedLots, session.currentLotId),
+    [orderedLots, session.currentLotId],
+  );
 
-  useEffect(() => {
-    const socket = getSocket();
-    const onSaleroom = (raw: unknown) => {
-      const p = raw as SaleroomRealtimePayload;
-      if (p && typeof p.kind === "string" && p.saleId === saleId) {
-        setLiveFeed((prev) => [p, ...prev].slice(0, 40));
-      }
-    };
-    socket.emit("joinSaleroom", { saleId }, () => {});
-    socket.on("saleroomEvent", onSaleroom);
-    return () => {
-      socket.off("saleroomEvent", onSaleroom);
-      socket.emit("leaveSaleroom", { saleId }, () => {});
-    };
-  }, [saleId]);
-
-  const session = initial.session;
-  const status = session?.status ?? "none";
-  const currentLotId = session?.currentLotId ?? null;
+  const status = session.status;
+  const currentLotId = session.currentLotId;
 
   return (
     <div className="space-y-8">
@@ -94,7 +94,12 @@ export function SaleroomClerkConsole({
             <>
               {" "}
               · current lot:{" "}
-              <span className="text-foreground font-mono text-xs">{currentLotId}</span>
+              <span className="text-foreground font-mono text-xs">
+                {(() => {
+                  const currentLot = orderedLots.find((lot) => lot.id === currentLotId);
+                  return currentLot ? formatLotRunListLabel(currentLot) : currentLotId;
+                })()}
+              </span>
             </>
           ) : null}
         </p>
@@ -150,7 +155,7 @@ export function SaleroomClerkConsole({
         <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Advance
         </h2>
-        {lots.length === 0 ? (
+        {orderedLots.length === 0 ? (
           <p className="mt-2 font-body text-sm text-secondary">No lots on this sale yet.</p>
         ) : (
           <form
@@ -170,9 +175,10 @@ export function SaleroomClerkConsole({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {lots.map((l) => (
+                  {orderedLots.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
-                      {l.title?.trim() || l.id}
+                      {formatLotRunListLabel(l)}
+                      {l.id === currentLotId ? " (on block)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -185,6 +191,15 @@ export function SaleroomClerkConsole({
             >
               On the block
             </SaleroomPendingSubmit>
+            {nextLot ? (
+              <button
+                type="button"
+                className="font-body text-xs text-link underline-offset-2 hover:underline"
+                onClick={() => setAdvanceLotId(nextLot.id)}
+              >
+                Select next lot ({formatLotRunListLabel(nextLot)})
+              </button>
+            ) : null}
           </form>
         )}
       </div>
@@ -192,8 +207,8 @@ export function SaleroomClerkConsole({
       <div className="grid gap-6 md:grid-cols-2">
         <LotOnBlockPanel
           saleId={saleId}
-          initial={initial}
-          lots={lots}
+          currentLotId={currentLotId}
+          lots={orderedLots}
           telephoneBookings={telephoneBookings}
           paddleRoster={paddleRoster}
         />

@@ -97,6 +97,7 @@ function baseBidRepo(overrides: Partial<IBidRepository> = {}): IBidRepository {
     listForLotSettlement: vi.fn(),
     findEligibleBidsForLotClose: vi.fn().mockResolvedValue([]),
     listForLot: vi.fn().mockResolvedValue([]),
+    countForLot: vi.fn().mockResolvedValue(1),
     listForBidder: vi.fn(),
     findWinningBid: vi.fn().mockResolvedValue(null),
     listDistinctBidderIds: vi.fn(),
