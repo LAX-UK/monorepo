@@ -69,7 +69,10 @@ export function LiveBidFeed({
   const watchingHeader = useMemo(() => {
     if (compactHeader) {
       const tone: LiveFeedHeaderMeta["tone"] =
-        lifecycleKind === "live" || lifecycleKind === "extended" || lifecycleKind === "liveSaleroom"
+        lifecycleKind === "live" ||
+        lifecycleKind === "extended" ||
+        lifecycleKind === "liveSaleroom" ||
+        lifecycleKind === "saleroomPaused"
           ? "live"
           : lifecycleKind === "scheduled" || lifecycleKind === "preLaunch"
             ? "upcoming"

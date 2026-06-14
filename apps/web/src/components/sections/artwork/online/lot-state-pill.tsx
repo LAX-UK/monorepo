@@ -58,6 +58,8 @@ function lifecycleDetail(lifecycle: LotLifecycle, isOnBlock?: boolean): string |
       return isOnBlock
         ? "This lot is on the block in the saleroom — bidding closes when the auctioneer hammers."
         : "The saleroom session is live — lots close when the auctioneer hammers, not on a countdown timer.";
+    case "saleroomPaused":
+      return "The auction is paused — bidding will resume when the auctioneer continues.";
     case "endedSold":
     case "endedNoSale":
     case "cancelled":
@@ -96,10 +98,19 @@ export function LotStatePill({
     () =>
       classifyLotLifecycle(lot, sale, now ?? 0, {
         recentlyExtended,
-        saleroomSessionActive: saleroomLive?.isSessionActive ?? false,
+        saleroomSessionPaused: saleroomLive?.status === "paused",
+        saleroomSessionActive: saleroomLive?.isSessionLive ?? false,
         isOnBlock,
       }),
-    [lot, sale, now, recentlyExtended, saleroomLive?.isSessionActive, isOnBlock],
+    [
+      lot,
+      sale,
+      now,
+      recentlyExtended,
+      saleroomLive?.status,
+      saleroomLive?.isSessionLive,
+      isOnBlock,
+    ],
   );
   const badge = useMemo(() => {
     if (lifecycle.kind === "liveSaleroom" && isOnBlock) {
@@ -113,6 +124,7 @@ export function LotStatePill({
     now != null &&
     lifecycle.msLeft != null &&
     lifecycle.kind !== "liveSaleroom" &&
+    lifecycle.kind !== "saleroomPaused" &&
     (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
       ? formatCountdownForDisplay(lifecycle.msLeft)
       : null;

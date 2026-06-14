@@ -66,4 +66,33 @@ describe("notLivePolicy", () => {
     });
     expect(d.kind).toBe("allow");
   });
+
+  it("blocks liveSaleroom when lot is not on block", () => {
+    const d = notLivePolicy.evaluate({
+      ...base(),
+      lotStatus: "active",
+      biddingLifecycle: { kind: "liveSaleroom", isOnBlock: false },
+    });
+    expect(d.kind).toBe("block");
+    if (d.kind === "block") expect(d.viewId).toBe("not-live:off-block");
+  });
+
+  it("allows liveSaleroom when lot is on block", () => {
+    const d = notLivePolicy.evaluate({
+      ...base(),
+      lotStatus: "active",
+      biddingLifecycle: { kind: "liveSaleroom", isOnBlock: true },
+    });
+    expect(d.kind).toBe("allow");
+  });
+
+  it("blocks when saleroom is paused", () => {
+    const d = notLivePolicy.evaluate({
+      ...base(),
+      lotStatus: "active",
+      biddingLifecycle: { kind: "saleroomPaused" },
+    });
+    expect(d.kind).toBe("block");
+    if (d.kind === "block") expect(d.viewId).toBe("not-live:saleroomPaused");
+  });
 });

@@ -18,6 +18,12 @@ describe("getLiveFeedHeaderMeta", () => {
     expect(m.tone).toBe("live");
   });
 
+  it("shows paused label for saleroomPaused lifecycle", () => {
+    const m = getLiveFeedHeaderMeta("saleroomPaused");
+    expect(m.statusLabel).toBe("Auction paused");
+    expect(m.tone).toBe("live");
+  });
+
   it("shows watching count when live with watchers", () => {
     const m = getLiveFeedHeaderMeta("extended", { watcherCount: 1200 });
     expect(m.statusLabel).toBe("1k watching");
