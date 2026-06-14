@@ -28,6 +28,9 @@ type Ctx = {
   /** Authoritative end time after anti-snipe extend or reconnect hydrate. */
   liveEndTimeMs: number | null;
   setLiveEndTimeMs: (ms: number) => void;
+  /** Lot status after reconnect hydrate (null until first server sync). */
+  liveLotStatus: Lot["status"] | null;
+  setLiveLotStatus: (status: Lot["status"]) => void;
   /** Mobile sticky coordination: bid card intersects viewport. */
   bidCardInView: boolean;
   setBidCardInView: (inView: boolean) => void;
@@ -45,6 +48,7 @@ type ProviderProps = {
 export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProps) {
   const [extendedByMs, setExtendedByMs] = useState<number | null>(null);
   const [liveEndTimeMs, setLiveEndTimeMs] = useState<number | null>(null);
+  const [liveLotStatus, setLiveLotStatus] = useState<Lot["status"] | null>(null);
   const [bidCardInView, setBidCardInView] = useState(true);
   const ownBidEchoGuardRef = useRef<OwnBidEchoGuard | null>(null);
 
@@ -60,11 +64,13 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       setExtendedDeltaMs,
       liveEndTimeMs,
       setLiveEndTimeMs,
+      liveLotStatus,
+      setLiveLotStatus,
       bidCardInView,
       setBidCardInView,
       ownBidEchoGuardRef,
     }),
-    [lot, sale, extendedByMs, setExtendedDeltaMs, liveEndTimeMs, bidCardInView],
+    [lot, sale, extendedByMs, setExtendedDeltaMs, liveEndTimeMs, liveLotStatus, bidCardInView],
   );
 
   return (

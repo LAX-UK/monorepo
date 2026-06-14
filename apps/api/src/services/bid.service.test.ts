@@ -149,13 +149,34 @@ const mockTxForBids = {
   }),
 } as const;
 
-function createMockFactory(lotRepo: ILotRepository, bidRepo: IBidRepository): IRepositoryFactory {
+function createMockTxWithSaleroomSession(
+  session: { status: string; currentLotId: string | null } | null,
+) {
+  return {
+    insert: () => ({
+      values: vi.fn().mockResolvedValue(undefined),
+    }),
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: vi.fn().mockResolvedValue(session ? [session] : []),
+        }),
+      }),
+    }),
+  } as const;
+}
+
+function createMockFactory(
+  lotRepo: ILotRepository,
+  bidRepo: IBidRepository,
+  mockTx: typeof mockTxForBids | ReturnType<typeof createMockTxWithSaleroomSession> = mockTxForBids,
+): IRepositoryFactory {
   const repos = { lot: lotRepo, bid: bidRepo };
   return {
     root: repos,
     forConnection: () => repos,
     runInTransaction: async <T>(fn: (r: typeof repos, tx: Database) => Promise<T>) =>
-      fn(repos, mockTxForBids as unknown as Database),
+      fn(repos, mockTx as unknown as Database),
   };
 }
 
@@ -953,7 +974,11 @@ describe("BidService.placeBid", () => {
       shouldSkipAntiSnipeForLot: vi.fn().mockResolvedValue(true),
     };
     const service = new BidService({
-      repos: createMockFactory(lotRepo, bidRepo),
+      repos: createMockFactory(
+        lotRepo,
+        bidRepo,
+        createMockTxWithSaleroomSession({ status: "live", currentLotId: "auc-1" }),
+      ),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
       notifications: new NotificationService(
@@ -992,7 +1017,11 @@ describe("BidService.placeBid", () => {
       shouldSkipAntiSnipeForLot: vi.fn().mockResolvedValue(true),
     };
     const service = new BidService({
-      repos: createMockFactory(lotRepo, bidRepo),
+      repos: createMockFactory(
+        lotRepo,
+        bidRepo,
+        createMockTxWithSaleroomSession({ status: "live", currentLotId: "auc-1" }),
+      ),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
       notifications: new NotificationService(
@@ -1006,6 +1035,74 @@ describe("BidService.placeBid", () => {
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isOk()).toBe(true);
     expect(saleroomSessionLookup.shouldSkipAntiSnipeForLot).toHaveBeenCalledWith("auc-1");
+  });
+
+  it("rejects web bid when lot is not on block during live saleroom", async () => {
+    const active = lot({
+      saleId: "sale-hybrid",
+      currentPrice: "100.00",
+    });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const saleroomSessionLookup: ISaleroomSessionLookup = {
+      shouldSkipAntiSnipeForLot: vi.fn().mockResolvedValue(true),
+    };
+    const service = new BidService({
+      repos: createMockFactory(
+        lotRepo,
+        baseBidRepo(),
+        createMockTxWithSaleroomSession({ status: "live", currentLotId: "other-lot" }),
+      ),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      saleroomSessionLookup,
+    });
+
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("lot_not_on_block");
+    }
+  });
+
+  it("rejects all bids when saleroom session is paused", async () => {
+    const active = lot({
+      saleId: "sale-hybrid",
+      currentPrice: "100.00",
+    });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const saleroomSessionLookup: ISaleroomSessionLookup = {
+      shouldSkipAntiSnipeForLot: vi.fn().mockResolvedValue(true),
+    };
+    const service = new BidService({
+      repos: createMockFactory(
+        lotRepo,
+        baseBidRepo(),
+        createMockTxWithSaleroomSession({ status: "paused", currentLotId: "auc-1" }),
+      ),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      saleroomSessionLookup,
+    });
+
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("saleroom_paused");
+    }
   });
 
   it("chains anti-sniping extensions for consecutive bids in the window", async () => {

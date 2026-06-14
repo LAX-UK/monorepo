@@ -3,7 +3,7 @@
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { fetchLotBidHistory } from "@/lib/bid/fetch-lot-bid-history.client";
-import { fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
+import { type LotBidSnapshot, fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
 import {
   type LotBidHistoryState,
   type OwnBidInput,
@@ -32,7 +32,10 @@ type LotBidHistoryContextValue = {
   leadingBidderId: string | null;
   applyOwnBid: (bid: OwnBidInput) => void;
   setEndedWinner: (winnerId: string | null, currentPrice: string) => void;
-  refreshFromServer: () => Promise<boolean>;
+  refreshFromServer: (opts?: { fromReconnect?: boolean }) => Promise<{
+    ok: boolean;
+    snapshot?: LotBidSnapshot;
+  }>;
 };
 
 const LotBidHistoryContext = createContext<LotBidHistoryContextValue | null>(null);
@@ -99,7 +102,10 @@ export function LotBidHistoryProvider({
   }, []);
 
   const hydrateFromServer = useCallback(
-    async (opts?: { fromReconnect?: boolean }): Promise<boolean> => {
+    async (opts?: { fromReconnect?: boolean }): Promise<{
+      ok: boolean;
+      snapshot?: LotBidSnapshot;
+    }> => {
       const [lotSnap, bidEntries] = await Promise.all([
         fetchLotBidSnapshot(lotId),
         fetchLotBidHistory(lotId),
@@ -110,7 +116,7 @@ export function LotBidHistoryProvider({
           description: "Showing last known bids until the connection recovers.",
           duration: 7000,
         });
-        return false;
+        return { ok: false };
       }
       const leadingBidderId =
         lotSnap.status === "ended"
@@ -123,15 +129,18 @@ export function LotBidHistoryProvider({
           entries: bidEntries,
         }),
       );
+      const endMs = new Date(lotSnap.endTime).getTime();
+      onlineLifecycle?.setLiveEndTimeMs(endMs);
+      onlineLifecycle?.setLiveLotStatus(lotSnap.status);
       if (opts?.fromReconnect) {
         notify.success("Reconnected — live prices refreshed", {
           id: `lot-reconnect-${lotId}`,
           duration: 5000,
         });
       }
-      return true;
+      return { ok: true, snapshot: lotSnap };
     },
-    [lotId],
+    [lotId, onlineLifecycle],
   );
 
   useLotRealtime(lotId, {
