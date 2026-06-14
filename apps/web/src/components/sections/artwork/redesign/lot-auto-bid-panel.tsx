@@ -3,7 +3,7 @@
 import { BidErrorView } from "@/components/bid/bid-error-view";
 import { UnderlineInput } from "@/components/ui/input";
 import { useLotPorts } from "@/lib/context/lot-ports";
-import type { AutoBidSettings } from "@/lib/data/contracts";
+import type { AutoBidPlacedBid, AutoBidSettings } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
 import { clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import type { Lot, LotAuctionType } from "@auction/types";
@@ -24,7 +24,7 @@ type Props = {
   initialSettings: AutoBidSettings | null;
   approvedBidLimit?: number | null;
   onDraftChange?: (draft: { maxAuto: string; step: string; dirty: boolean }) => void;
-  onSettingsSaved?: (settings: AutoBidSettings | null) => void;
+  onSettingsSaved?: (settings: AutoBidSettings | null, placedBid?: AutoBidPlacedBid) => void;
 };
 
 const ELIGIBLE: LotAuctionType[] = ["english", "buy_it_now"];
@@ -216,7 +216,7 @@ export function LotAutoBidPanel({
     setUserEdited(false);
     emitDraft(result.settings.maxAutoBidAmount, result.settings.autoBidStepAmount ?? step, false);
     setSuccess("Auto-bid saved.");
-    onSettingsSaved?.(result.settings);
+    onSettingsSaved?.(result.settings, result.placedBid);
   }, [
     autoBidWriter,
     emitDraft,
