@@ -151,6 +151,7 @@ export function mapBidRow(row: BidRow): Bid {
   return {
     id: row.id,
     lotId: row.lotId,
+    bidderId: row.bidderId,
     placedByUserId: row.bidderId,
     buyerLegalEntityId: requireBackfilledLegalEntityId(row.buyerLegalEntityId, `bid:${row.id}`),
     amount: String(row.amount),

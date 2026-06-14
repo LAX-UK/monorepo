@@ -7,12 +7,18 @@ export function parseBidUpdateEvent(raw: unknown): BidUpdateEvent | null {
   const lotId =
     typeof o.lotId === "string" ? o.lotId : typeof o.auctionId === "string" ? o.auctionId : null;
   const bid = o.bid as Record<string, unknown> | undefined;
+  const bidderId =
+    bid && typeof bid.bidderId === "string"
+      ? bid.bidderId
+      : bid && typeof bid.placedByUserId === "string"
+        ? bid.placedByUserId
+        : null;
   if (
     lotId &&
     typeof o.currentPrice === "string" &&
     bid &&
     typeof bid.id === "string" &&
-    typeof bid.bidderId === "string" &&
+    bidderId &&
     typeof bid.amount === "string"
   ) {
     const placedByUserId =
@@ -24,7 +30,7 @@ export function parseBidUpdateEvent(raw: unknown): BidUpdateEvent | null {
     return {
       lotId,
       bidId: bid.id,
-      bidderId: bid.bidderId,
+      bidderId,
       amount: bid.amount,
       currentPrice: o.currentPrice,
       endTime: typeof o.endTime === "string" ? o.endTime : undefined,

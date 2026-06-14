@@ -10,6 +10,14 @@ describe("getLiveFeedHeaderMeta", () => {
     expect(m.tone).toBe("live");
   });
 
+  it("shows live tone for hybrid saleroom session", () => {
+    const m = getLiveFeedHeaderMeta("liveSaleroom");
+    expect(m.title).toBe("Live Feed");
+    expect(m.statusLabel).toBe("Live now");
+    expect(m.pulse).toBe(true);
+    expect(m.tone).toBe("live");
+  });
+
   it("shows watching count when live with watchers", () => {
     const m = getLiveFeedHeaderMeta("extended", { watcherCount: 1200 });
     expect(m.statusLabel).toBe("1k watching");
