@@ -3,6 +3,8 @@ import type { Bid, Lot } from "@auction/types";
 export type BidPlacedRealtimeMeta = {
   /** Previous high bidder (for client-side outbid toast). */
   outbidUserId?: string | undefined;
+  /** Total bids on the lot after placement. */
+  bidCount?: number | undefined;
 };
 
 /** ISP: bid-related realtime / outbound notifications only. */

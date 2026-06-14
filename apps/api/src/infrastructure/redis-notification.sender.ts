@@ -31,6 +31,7 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
         currentPrice: lot.currentPrice,
         emittedAt: Date.now(),
         ...(meta?.outbidUserId ? { outbidUserId: meta.outbidUserId } : {}),
+        ...(meta?.bidCount != null ? { bidCount: meta.bidCount } : {}),
       }),
     );
   }

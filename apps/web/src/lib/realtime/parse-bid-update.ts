@@ -35,6 +35,9 @@ export function parseBidUpdateEvent(raw: unknown): BidUpdateEvent | null {
       placedByUserId,
       autoBidStepAmount:
         typeof bid.autoBidStepAmount === "string" ? bid.autoBidStepAmount : undefined,
+      placedVia: typeof bid.placedVia === "string" ? bid.placedVia : undefined,
+      bidCount:
+        typeof o.bidCount === "number" && Number.isFinite(o.bidCount) ? o.bidCount : undefined,
     };
   }
   return null;

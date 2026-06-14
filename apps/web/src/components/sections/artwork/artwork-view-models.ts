@@ -1,4 +1,5 @@
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import { formatBidChannelLabel } from "@/lib/bid/bid-channel-label";
 import type { PublicUser } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -375,6 +376,7 @@ export type BidFeedEntryVM = {
   isYourBid: boolean;
   timestamp: number;
   isAutoBid?: boolean;
+  channelLabel?: string | null;
 };
 
 /** Top session bar for online auction layout. */
@@ -565,6 +567,7 @@ export function mapBidHistoryToFeedEntries(
     isYourBid: Boolean(currentUserId && e.bidderId === currentUserId),
     timestamp: e.at,
     ...(e.isAutoBid ? { isAutoBid: true } : {}),
+    ...(e.placedVia ? { channelLabel: formatBidChannelLabel(e.placedVia) } : {}),
   }));
 }
 

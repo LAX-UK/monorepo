@@ -199,6 +199,7 @@ export interface IBidRepository {
     },
   ): Promise<Bid[]>;
   listForLot(lotId: string, limit: number): Promise<Bid[]>;
+  countForLot(lotId: string): Promise<number>;
   findWinningBid(lotId: string): Promise<Bid | null>;
   listDistinctBidderIds(lotId: string): Promise<string[]>;
   /** Latest bids placed by a bidder (for dashboard). */

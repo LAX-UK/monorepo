@@ -8,6 +8,7 @@ import { type LotBidPosition, deriveLotBidPosition } from "@/lib/bid/derive-lot-
 import { fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
 import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
+import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { type LotLifecycle, classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
@@ -77,6 +78,7 @@ export function useLotBidState({
   saleForLifecycle = null,
 }: UseLotBidStateParams): UseLotBidStateResult {
   const onlineLifecycle = useOnlineLotLifecycle();
+  const saleroomLive = useSaleroomLive();
   const now = useNow();
 
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
@@ -131,6 +133,7 @@ export function useLotBidState({
         bidderId: e.bidderId,
         amount: e.amount,
         ...(e.isAutoBid ? { isAutoBid: true } : {}),
+        ...(e.placedVia ? { placedVia: e.placedVia } : {}),
       });
       if (sessionUser?.id && e.outbidUserId === sessionUser.id) {
         setOutbidSignal(true);
@@ -230,8 +233,10 @@ export function useLotBidState({
         recentlyExtended: Boolean(
           onlineLifecycle?.extendedByMs && onlineLifecycle.extendedByMs > 0,
         ),
+        saleroomSessionActive: saleroomLive?.isSessionActive ?? false,
+        isOnBlock: saleroomLive?.isLotOnBlock(auction.id) ?? false,
       }),
-    [lifecycleLot, saleForLifecycle, now, onlineLifecycle?.extendedByMs],
+    [lifecycleLot, saleForLifecycle, now, onlineLifecycle?.extendedByMs, saleroomLive, auction.id],
   );
 
   const remainingLabel = now != null ? formatCountdownForDisplay(endTime - now) : "";

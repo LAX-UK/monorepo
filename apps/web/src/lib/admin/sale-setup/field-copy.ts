@@ -83,6 +83,17 @@ export function deliveryModeExplanation(mode: SaleDeliveryMode): string {
   return "Live event at a venue. All lots share this sale’s opening and closing times.";
 }
 
+export function deliveryModeLabel(mode: SaleDeliveryMode): string {
+  switch (mode) {
+    case "online":
+      return "Online (interactive bidding)";
+    case "hybrid":
+      return "Hybrid (in-room + live online bidding)";
+    case "onsite":
+      return "Onsite (read-only marketing)";
+  }
+}
+
 export function saleSavedMessage(nextStep: SaleSetupStepId): string {
   switch (nextStep) {
     case "documents":

@@ -23,4 +23,18 @@ describe("mapBidHistoryToFeedEntries", () => {
     expect(rows[0]?.isAutoBid).toBe(true);
     expect(rows[0]?.isHighest).toBe(true);
   });
+
+  it("maps placedVia to channel labels on feed rows", () => {
+    const entries: BidHistoryEntry[] = [
+      {
+        id: "b1",
+        bidderId: "u1",
+        amount: "200",
+        at: 2,
+        placedVia: "saleroom",
+      },
+    ];
+    const rows = mapBidHistoryToFeedEntries(entries, null);
+    expect(rows[0]?.channelLabel).toBe("Floor");
+  });
 });

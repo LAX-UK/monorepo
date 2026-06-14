@@ -3,6 +3,7 @@ import { SaleTelephoneBookingsTab } from "@/components/admin/sale-detail/tabs/te
 import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminTelephoneBookings } from "@/lib/data/http/admin.server";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -14,7 +15,7 @@ export default async function AdminSaleTelephoneBookingsPage({ params, searchPar
   const { id } = await params;
   const sp = await searchParams;
   const bundle = await loadAdminSaleDetail(id);
-  if (bundle.sale.deliveryMode !== "onsite") notFound();
+  if (!isSaleroomDeliveryMode(bundle.sale.deliveryMode)) notFound();
   const liveish = isSaleLiveish(bundle.sale);
 
   const bookingsResult = liveish

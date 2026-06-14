@@ -27,7 +27,7 @@ type Props = {
   sale: Sale;
   lots: Lot[];
   liveish: boolean;
-  isOnsite: boolean;
+  isSaleroom: boolean;
   venueLines: string[];
   registrationCount: number | null;
   pendingRegistrationCount?: number | null;
@@ -39,7 +39,7 @@ export function SaleOverviewTab({
   sale,
   lots,
   liveish,
-  isOnsite,
+  isSaleroom,
   venueLines,
   registrationCount,
   pendingRegistrationCount = null,
@@ -188,8 +188,8 @@ export function SaleOverviewTab({
         </div>
       </CatalogDetailSection>
 
-      {isOnsite && venueLines.length > 0 ? (
-        <CatalogDetailSection title="Venue" description="Onsite location for this sale.">
+      {isSaleroom && venueLines.length > 0 ? (
+        <CatalogDetailSection title="Venue" description="Saleroom location for this sale.">
           <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-6">
             <ul className="list-inside list-disc space-y-1 font-body text-sm text-on-surface-variant">
               {venueLines.map((line, i) => (
@@ -223,7 +223,7 @@ export function SaleOverviewTab({
               cta="Open saleroom →"
             />
             <ActionCard
-              title={isOnsite ? "Paddle registrations" : "Bidder registrations"}
+              title={isSaleroom ? "Paddle registrations" : "Bidder registrations"}
               description={
                 registrationCount != null && registrationCount > 0
                   ? `${registrationCount} registration${registrationCount === 1 ? "" : "s"} on file.`
