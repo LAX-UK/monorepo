@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { bid, lot, sale, saleroomSession } from "@auction/db/schema";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import { and, eq, sql } from "drizzle-orm";
 import type { ISaleRegistrationService } from "./interfaces/sale-registration-service.js";
 import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
@@ -60,7 +61,12 @@ export class AdminSaleOperationsSnapshotService {
       .from(sale)
       .where(and(eq(sale.id, saleId), saleNotDeleted()))
       .limit(1);
-    if (!saleRow || saleRow.deliveryMode !== "onsite") return null;
+    if (
+      !saleRow ||
+      !isSaleroomDeliveryMode(saleRow.deliveryMode as "online" | "onsite" | "hybrid")
+    ) {
+      return null;
+    }
 
     const [session] = await this.db
       .select()

@@ -74,6 +74,8 @@ export const user = pgTable(
     /** Count of hard verification failures (not `requires_input` retries). */
     kycRetryCount: integer("kyc_retry_count").notNull().default(0),
     kycVerifiedAt: timestamp("kyc_verified_at", { mode: "date", withTimezone: true }),
+    /** Optional default paddle suggestion for in-room check-in (per-sale assignment still required). */
+    preferredPaddleNumber: integer("preferred_paddle_number"),
     /** AML/sanctions hold disposition (drives settlement gating). */
     amlHoldStatus: userAmlHoldStatusEnum("aml_hold_status").notNull().default("none"),
     /** Machine-readable reason for the current AML hold (e.g. `sanctions_match`). */

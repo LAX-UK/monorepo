@@ -17,6 +17,7 @@ import type { PlaceBidWithIdempotencyOutcome } from "./bid/place-bid-idempotency
 import { ProxyAutoBidResolver } from "./bid/proxy-auto-bid.resolver.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
+import { isOperatorPlacement } from "./interfaces/auction-strategy.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
@@ -118,7 +119,8 @@ export class BidService implements IBidPlacer {
     try {
       if (this.saleModeLookup) {
         const saleMode = await this.saleModeLookup.findSaleModeForLot(lotId);
-        if (saleMode && !saleModeAllowsBidding(saleMode)) {
+        const placedVia = bidPlacement?.placedVia ?? null;
+        if (saleMode && !saleModeAllowsBidding(saleMode) && !isOperatorPlacement(placedVia)) {
           return err(new BidError("Lot is not accepting bids", 400));
         }
       }
@@ -148,6 +150,10 @@ export class BidService implements IBidPlacer {
           ...(bidPlacement?.placedVia != null ? { placedVia: bidPlacement.placedVia } : {}),
           ...(bidPlacement?.telephoneBookingId != null
             ? { telephoneBookingId: bidPlacement.telephoneBookingId }
+            : {}),
+          ...(bidPlacement?.saleId != null ? { saleId: bidPlacement.saleId } : {}),
+          ...(bidPlacement?.paddleNumber != null
+            ? { paddleNumber: bidPlacement.paddleNumber }
             : {}),
         });
         if (elig.isErr()) {
@@ -237,6 +243,7 @@ export class BidService implements IBidPlacer {
             ...(bidPlacement?.telephoneBookingId != null
               ? { telephoneBookingId: bidPlacement.telephoneBookingId }
               : {}),
+            ...(bidPlacement?.clerkUserId != null ? { clerkUserId: bidPlacement.clerkUserId } : {}),
           });
 
           if (this.antiShillingGuard) {

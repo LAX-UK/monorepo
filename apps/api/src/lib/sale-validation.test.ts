@@ -135,12 +135,14 @@ describe("createSaleSchema", () => {
     }
   });
 
-  it("treats hybrid as not a member of saleDeliveryModes", () => {
+  it("accepts hybrid delivery mode", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "hybrid",
+      streamUrl: "https://www.youtube.com/watch?v=abc12345678",
+      locationName: "Main hall",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects venueId on online sales", () => {

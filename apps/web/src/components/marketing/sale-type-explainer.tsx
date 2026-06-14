@@ -1,23 +1,26 @@
 "use client";
 
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
+import type { SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { HelpCircle, Laptop, MapPin } from "lucide-react";
 import type * as React from "react";
 
 type Props = {
-  activeMode?: "online" | "onsite" | undefined;
+  activeMode?: SaleDeliveryMode | undefined;
   className?: string;
 };
 
 export function SaleTypeExplainerContent({ activeMode, className }: Props) {
   const onlinePres = getSaleTypePresentation("online");
   const onsitePres = getSaleTypePresentation("onsite");
+  const hybridPres = getSaleTypePresentation("hybrid");
 
   const sections = [
     { pres: onlinePres, icon: Laptop, isSelected: activeMode === "online" },
     { pres: onsitePres, icon: MapPin, isSelected: activeMode === "onsite" },
+    { pres: hybridPres, icon: Laptop, isSelected: activeMode === "hybrid" },
   ];
 
   return (
@@ -25,7 +28,7 @@ export function SaleTypeExplainerContent({ activeMode, className }: Props) {
       <h3 className="font-headline text-base font-semibold text-on-surface">
         Auction Formats Explained
       </h3>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sections.map(({ pres, icon: Icon, isSelected }) => (
           <div
             key={pres.key}
@@ -40,7 +43,7 @@ export function SaleTypeExplainerContent({ activeMode, className }: Props) {
               <div
                 className={cn(
                   "flex size-7 shrink-0 items-center justify-center rounded-full",
-                  pres.key === "online"
+                  pres.key === "online" || pres.key === "hybrid"
                     ? "bg-brand-500/10 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400"
                     : "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
                 )}
@@ -85,7 +88,7 @@ export function SaleTypeExplainerContent({ activeMode, className }: Props) {
 
 type PopoverProps = {
   children?: React.ReactNode;
-  activeMode?: "online" | "onsite";
+  activeMode?: SaleDeliveryMode;
   align?: "start" | "center" | "end";
 };
 

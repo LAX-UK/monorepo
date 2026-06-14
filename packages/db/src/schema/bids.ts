@@ -40,6 +40,8 @@ export const bid = pgTable(
     telephoneBookingId: uuid("telephone_booking_id").references(() => telephoneBidBooking.id, {
       onDelete: "set null",
     }),
+    /** Staff clerk who placed this bid on behalf of the buyer (operator placements). */
+    clerkUserId: text("clerk_user_id").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -49,6 +51,7 @@ export const bid = pgTable(
     index("bid_bidder_id_created_at_idx").on(table.bidderId, table.createdAt),
     index("bid_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
     index("bid_lot_id_created_at_idx").on(table.lotId, table.createdAt),
+    index("bid_clerk_user_id_idx").on(table.clerkUserId),
     uniqueIndex("bid_one_winner_per_lot_uniq")
       .on(table.lotId)
       .where(sql`${table.isWinning} = true`),

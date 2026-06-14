@@ -4,7 +4,7 @@ import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-b
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
-import type { Sale } from "@auction/types";
+import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
 import Link from "next/link";
 
@@ -16,7 +16,7 @@ type Props = {
   /** Sale lifecycle — drives the label/CTA switch. */
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
   saleTitle: string;
-  deliveryMode?: "online" | "onsite";
+  deliveryMode?: SaleDeliveryMode;
   /** Optional live lots count — when present and live, surfaces a "{n} lots active" caption. */
   liveLotsCount?: number;
   /** External directions URL for onsite sales. */

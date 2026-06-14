@@ -78,6 +78,7 @@ describe("POST /admin/saleroom/telephone-bids", () => {
         amount: 500,
         placedVia: "telephone",
         telephoneBookingId: BOOKING_ID,
+        clerkUserId: "clerk-1",
         idempotencyKey: `telephone-booking:${LOT_ID}:${BOOKING_ID}:500`,
       }),
     );

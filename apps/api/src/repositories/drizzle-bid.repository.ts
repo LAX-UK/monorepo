@@ -30,6 +30,7 @@ export class DrizzleBidRepository implements IBidRepository {
         autoBidStepAmount: row.autoBidStepAmount ?? null,
         placedVia: row.placedVia ?? null,
         telephoneBookingId: row.telephoneBookingId ?? null,
+        clerkUserId: row.clerkUserId ?? null,
       })
       .returning();
     if (!created) throw new Error("Failed to create bid");

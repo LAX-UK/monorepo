@@ -179,6 +179,7 @@ export type CreateBidRow = {
   autoBidStepAmount?: string | null;
   placedVia?: string | null;
   telephoneBookingId?: string | null;
+  clerkUserId?: string | null;
 };
 
 export interface IBidRepository {

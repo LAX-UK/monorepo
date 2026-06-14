@@ -186,6 +186,22 @@ export class LotLifecycleService {
     return true;
   }
 
+  /** Finalize all still-active lots on a sale (e.g. when saleroom session closes). */
+  async finalizeActiveLotsPastEnd(saleId: string, now: Date = new Date()): Promise<number> {
+    const lots = this.repos.root.lot;
+    const saleLots = await lots.findBySaleId(saleId);
+    let closed = 0;
+    for (const a of saleLots) {
+      if (a.status !== "active") continue;
+      const outcome = await this.runFinalizeLotTransaction(a, now, true);
+      if (outcome) {
+        closed += 1;
+        await this.notifyBiddersAfterLotClose(a, outcome);
+      }
+    }
+    return closed;
+  }
+
   private async runFinalizeLotTransaction(
     a: Lot,
     now: Date,

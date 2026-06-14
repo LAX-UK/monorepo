@@ -30,6 +30,9 @@ import {
   adminLotBrowseQuerySchema,
   adminLotFulfilmentListQuerySchema,
   adminLotFulfilmentLotIdParamSchema,
+  adminPaddleAssignBodySchema,
+  adminPaddlePlaceBidBodySchema,
+  adminPaddleRegistrationParamsSchema,
   adminPatchStaffRoleBodySchema,
   adminPaymentsListQuerySchema,
   adminQrCodeAnalyticsQuerySchema,
@@ -39,6 +42,7 @@ import {
   adminQrCodeRegenerateSchema,
   adminQrCodeUpdateSchema,
   adminRejectSaleRegistrationBodySchema,
+  adminSalePaddleRosterParamsSchema,
   adminSaleRegistrationListQuerySchema,
   adminSaleRegistrationParamsSchema,
   adminSaleroomSaleIdParamSchema,
@@ -77,6 +81,7 @@ import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-bro
 import { mapAdminUserListQuery } from "../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { presentLotImages } from "../lib/media-presenters.js";
+import { checkPaddleAssignRateLimit } from "../lib/paddle-assign-rate-limit.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
@@ -629,6 +634,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminTelephonePlaceBidBodySchema),
     async (c) => {
       const body = c.req.valid("json");
+      const clerkUserId = c.get("userId") as string;
       if (body.telephoneBookingId) {
         const lotRow = await container.repoFactory.root.lot.findById(body.lotId);
         if (!lotRow?.saleId) return c.json({ error: "Lot not found" }, 404);
@@ -652,6 +658,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       }
       const placement = {
         placedVia: "telephone" as const,
+        clerkUserId,
         ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
       };
       const idempotencyKey =
@@ -668,6 +675,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         amount: body.amount,
         ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
         placedVia: placement.placedVia,
+        clerkUserId,
         ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
         ...(idempotencyKey ? { idempotencyKey } : {}),
       };
@@ -698,6 +706,148 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         (e) =>
           c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
       );
+    },
+  );
+
+  platform.post(
+    "/saleroom/paddle-bids",
+    requireAuctionManage,
+    zValidator("json", adminPaddlePlaceBidBodySchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      const clerkUserId = c.get("userId") as string;
+      const resolution = await container.paddleService.assertPaddleAllowsBid({
+        saleId: body.saleId,
+        paddleNumber: body.paddleNumber,
+        lotId: body.lotId,
+      });
+      if (resolution.isErr()) {
+        const e = resolution.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      const resolved = resolution.value;
+      const idempotencyKey =
+        body.idempotencyKey ??
+        c.req.header("idempotency-key") ??
+        c.req.header("Idempotency-Key") ??
+        `paddle:${body.saleId}:${body.paddleNumber}:${body.lotId}:${body.amount}`;
+      const bidInput = {
+        placedByUserId: resolved.userId,
+        buyerLegalEntityId: resolved.buyerLegalEntityId,
+        lotId: body.lotId,
+        amount: body.amount,
+        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
+        placedVia: "saleroom" as const,
+        clerkUserId,
+        saleId: body.saleId,
+        paddleNumber: body.paddleNumber,
+        idempotencyKey,
+      };
+      const out = await container.bidService.placeBidWithIdempotency(bidInput);
+      if (out.type === "replay") {
+        console.info(
+          JSON.stringify({
+            action: "paddle_bid_placed",
+            saleId: body.saleId,
+            lotId: body.lotId,
+            paddleNumber: body.paddleNumber,
+            clerkUserId,
+            outcome: "replay",
+          }),
+        );
+        return c.json(out.body, 201);
+      }
+      if (out.type === "err") {
+        console.info(
+          JSON.stringify({
+            action: "paddle_bid_placed",
+            saleId: body.saleId,
+            lotId: body.lotId,
+            paddleNumber: body.paddleNumber,
+            clerkUserId,
+            outcome: "error",
+            error: out.error.message,
+          }),
+        );
+        const e = out.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      container.adminMetricsService.recordBidPlaced();
+      console.info(
+        JSON.stringify({
+          action: "paddle_bid_placed",
+          saleId: body.saleId,
+          lotId: body.lotId,
+          paddleNumber: body.paddleNumber,
+          clerkUserId,
+          outcome: "ok",
+        }),
+      );
+      return c.json(out.body, 201);
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/registrations/:registrationId/paddle",
+    requireAuctionManage,
+    zValidator("param", adminPaddleRegistrationParamsSchema),
+    zValidator("json", adminPaddleAssignBodySchema),
+    async (c) => {
+      const { saleId, registrationId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const clerkUserId = c.get("userId") as string;
+      const allowed = await checkPaddleAssignRateLimit(container.redis, clerkUserId);
+      if (!allowed) {
+        return c.json({ error: "Too many paddle assignments", code: "rate_limited" }, 429);
+      }
+      const result = await container.paddleService.assignPaddle({
+        saleId,
+        registrationId,
+        clerkUserId,
+        ...(body.paddleNumber != null ? { paddleNumber: body.paddleNumber } : {}),
+      });
+      return result.match(
+        (data) => c.json({ data }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.delete(
+    "/sales/:saleId/registrations/:registrationId/paddle",
+    requireAuctionManage,
+    zValidator("param", adminPaddleRegistrationParamsSchema),
+    async (c) => {
+      const { saleId, registrationId } = c.req.valid("param");
+      const clerkUserId = c.get("userId") as string;
+      const result = await container.paddleService.clearPaddle({
+        saleId,
+        registrationId,
+        clerkUserId,
+      });
+      return result.match(
+        () => c.json({ ok: true }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/paddles",
+    requireAuctionManage,
+    zValidator("param", adminSalePaddleRosterParamsSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const roster = await container.paddleService.listSaleRoster(saleId);
+      return c.json({ data: { items: roster } });
     },
   );
 
