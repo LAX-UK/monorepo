@@ -98,7 +98,11 @@ import {
 import { runStaleSubmissionDraftRemindersJob } from "./jobs/stale-submission-draft-reminders.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho-campaigns-sync.js";
-import { ClamAvMalwareScanner, NoOpMalwareScanner } from "./lib/malware-scanner.js";
+import {
+  ClamAvHttpMalwareScanner,
+  ClamAvMalwareScanner,
+  NoOpMalwareScanner,
+} from "./lib/malware-scanner.js";
 import { createMarketingContactSync } from "./lib/marketing-contact-sync/index.js";
 import {
   getMarketingEventsConfig,
@@ -156,14 +160,22 @@ const bullConnection = bullTelemetry
 const queueOpts = (name: QueueName) => createBullQueueOptions(name, bullConnection);
 const uploadStorage = createUploadStorage(env);
 const malwareScanner =
-  env.CLAMAV_HOST != null
-    ? new ClamAvMalwareScanner(env.CLAMAV_HOST, env.CLAMAV_PORT, (key, max) =>
+  env.CLAMAV_URL != null
+    ? new ClamAvHttpMalwareScanner(env.CLAMAV_URL, (key, max) =>
         uploadStorage.getObjectBytes(key, max),
       )
-    : new NoOpMalwareScanner();
-if (env.CLAMAV_HOST == null && env.APP_ENV === "production") {
+    : env.CLAMAV_HOST != null
+      ? new ClamAvMalwareScanner(env.CLAMAV_HOST, env.CLAMAV_PORT, (key, max) =>
+          uploadStorage.getObjectBytes(key, max),
+        )
+      : new NoOpMalwareScanner();
+if (env.CLAMAV_URL == null && env.CLAMAV_HOST == null) {
   log.warn(
-    "CLAMAV_HOST is not configured: Source-of-Funds document uploads will NOT be malware-scanned in production. Provision ClamAV and set CLAMAV_HOST/CLAMAV_PORT.",
+    {
+      appEnv: env.APP_ENV,
+      scanner: "NoOpMalwareScanner",
+    },
+    "ClamAV is not configured: Source-of-Funds document uploads will NOT be malware-scanned",
   );
 }
 const imageProcessor = new SharpImageProcessor();

@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { uploadObject } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
+import { zipSync } from "fflate";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
@@ -278,6 +279,65 @@ export class SourceOfFundsDocumentCollectionService {
     }
 
     return { url: signed.url, fileName: doc.fileName ?? "document" };
+  }
+
+  /** Bundle all active case documents into a zip for staff download (audited per file). */
+  async getStaffBulkDownloadZip(command: {
+    caseId: string;
+    staffUserId: string;
+    clientIp?: string | null;
+  }): Promise<{ buffer: Buffer; fileName: string } | null> {
+    const caseRecord = await this.caseRepo.findById(command.caseId);
+    if (!caseRecord) return null;
+
+    const docs = await this.docRepo.listActiveForCase(command.caseId);
+    if (docs.length === 0) return null;
+
+    const zipEntries: Record<string, Uint8Array> = {};
+    const events = this.events;
+    const maxBytes = 25 * 1024 * 1024;
+
+    for (const doc of docs) {
+      const [upload] = await this.db
+        .select({ key: uploadObject.key })
+        .from(uploadObject)
+        .where(eq(uploadObject.id, doc.uploadObjectId))
+        .limit(1);
+      if (!upload) continue;
+
+      const bytes = await this.storage.getObjectBytes(upload.key, maxBytes);
+      if (!bytes) continue;
+
+      const safeType = doc.requestedType.replace(/[^\w\s.-]/g, "_").slice(0, 80);
+      const safeName = (doc.fileName ?? doc.id).replace(/[^\w\s.-]/g, "_");
+      const entryName = `${safeType}/${safeName}`;
+      zipEntries[entryName] = new Uint8Array(bytes);
+
+      if (events) {
+        await this.db.transaction(async (tx) => {
+          await events.publish(tx, {
+            aggregateType: "source_of_funds",
+            aggregateId: command.caseId,
+            eventType: SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT,
+            actorUserId: command.staffUserId,
+            payload: {
+              sourceOfFundsId: command.caseId,
+              documentId: doc.id,
+              clientIp: command.clientIp ?? null,
+              bulk: true,
+            },
+          });
+        });
+      }
+    }
+
+    if (Object.keys(zipEntries).length === 0) return null;
+
+    const zipped = zipSync(zipEntries);
+    return {
+      buffer: Buffer.from(zipped),
+      fileName: `source-of-funds-${command.caseId}.zip`,
+    };
   }
 
   async listDocumentsForCase(caseId: string): Promise<AdminSourceOfFundsDocumentDto[]> {

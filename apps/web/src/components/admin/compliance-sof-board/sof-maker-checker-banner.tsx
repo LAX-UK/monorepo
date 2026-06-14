@@ -2,6 +2,7 @@
 
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   row: AdminSofTableRow;
@@ -36,10 +37,25 @@ export function SofMakerCheckerBanner({ row, canTriage, canDecide, currentUserId
   }
 
   const sameAsTriager = row.triagedByUserId === currentUserId;
+  const recommendApprove = row.triageRecommendation === "recommend_approve";
   return (
-    <Alert>
-      <AlertTitle>Awaiting MLRO decision</AlertTitle>
+    <Alert
+      className={cn(
+        recommendApprove
+          ? "border-emerald-500/30 bg-emerald-500/10"
+          : "border-destructive/30 bg-destructive/10",
+      )}
+    >
+      <AlertTitle className={recommendApprove ? "text-emerald-800" : "text-destructive"}>
+        Awaiting MLRO decision
+      </AlertTitle>
       <AlertDescription>
+        <span
+          className={cn("font-medium", recommendApprove ? "text-emerald-800" : "text-destructive")}
+        >
+          Analyst recommends {recommendApprove ? "approve" : "reject"}
+        </span>
+        {" · "}
         Triage recorded ({row.triageLabel}).
         {canDecide
           ? sameAsTriager

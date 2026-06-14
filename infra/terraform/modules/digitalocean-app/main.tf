@@ -72,8 +72,22 @@ resource "digitalocean_app" "this" {
         source_dir         = service.value.source_dir
         dockerfile_path    = service.value.dockerfile_path
         http_port          = service.value.http_port
+        internal_ports     = service.value.internal_ports
         instance_size_slug = service.value.instance_size
-        instance_count     = service.value.instance_count
+        instance_count     = service.value.autoscaling == null ? service.value.instance_count : null
+
+        dynamic "autoscaling" {
+          for_each = service.value.autoscaling == null ? [] : [service.value.autoscaling]
+          content {
+            min_instance_count = autoscaling.value.min_instance_count
+            max_instance_count = autoscaling.value.max_instance_count
+            metrics {
+              cpu {
+                percent = autoscaling.value.cpu_percent
+              }
+            }
+          }
+        }
 
         dynamic "github" {
           for_each = coalesce(service.value.deploy_source, var.deploy_source) == "github" ? [1] : []
@@ -105,10 +119,12 @@ resource "digitalocean_app" "this" {
         }
 
         dynamic "health_check" {
-          for_each = service.value.health_check_path == null ? [] : [service.value.health_check_path]
+          for_each = service.value.health_check_path == null ? [] : [service.value]
 
           content {
-            http_path = health_check.value
+            http_path             = health_check.value.health_check_path
+            initial_delay_seconds = health_check.value.health_check_initial_delay_seconds
+            period_seconds        = health_check.value.health_check_period_seconds
           }
         }
       }

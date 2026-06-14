@@ -11,6 +11,7 @@ import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
 import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
+import { checkSofDocumentAttachRateLimit } from "../lib/sof-document-attach-rate-limit.js";
 import { zValidator } from "../lib/z-validator.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
@@ -84,6 +85,10 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       const userId = c.get("userId") as string;
       const { id: caseId } = c.req.valid("param");
       const { uploadObjectId, requestedType, label } = c.req.valid("json");
+      const allowed = await checkSofDocumentAttachRateLimit(container.redis, userId);
+      if (!allowed) {
+        return c.json({ error: "Too many upload attempts", code: "rate_limited" }, 429);
+      }
       try {
         const doc = await container.sourceOfFundsDocumentCollectionService.attachDocument({
           caseId,

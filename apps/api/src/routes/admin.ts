@@ -1987,6 +1987,29 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
+  platform.get(
+    "/compliance/source-of-funds/:id/documents/download-all",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const staffUserId = c.get("userId") as string;
+      const clientIp =
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const result = await container.sourceOfFundsDocumentCollectionService.getStaffBulkDownloadZip(
+        {
+          caseId: id,
+          staffUserId,
+          clientIp,
+        },
+      );
+      if (!result) return c.json({ error: "no_documents" }, 404);
+      c.header("Content-Type", "application/zip");
+      c.header("Content-Disposition", `attachment; filename="${result.fileName}"`);
+      return c.body(new Uint8Array(result.buffer));
+    },
+  );
+
   platform.patch(
     requireUsersDirectory,
     zValidator("param", userIdParamSchema),

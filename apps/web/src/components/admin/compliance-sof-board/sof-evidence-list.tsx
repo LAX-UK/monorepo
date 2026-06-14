@@ -1,9 +1,11 @@
 "use client";
 
-import { downloadSofDocumentAction } from "@/lib/actions/compliance";
+import { SofDocumentThumbnail } from "@/components/admin/compliance-sof-board/sof-document-thumbnail";
+import { downloadAllSofDocumentsAction, downloadSofDocumentAction } from "@/lib/actions/compliance";
 import { SOF_EVIDENCE_CHECKLIST } from "@/lib/admin/sof-evidence-checklist";
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import { formatDateTime } from "@/lib/ui/format";
+import { Button } from "@auction/ui/components/button";
 import { useState, useTransition } from "react";
 
 type Props = {
@@ -37,27 +39,72 @@ function SubmittedDocumentRow({
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded border border-border-hairline bg-surface-container-low px-2 py-1 text-sm">
-      <span className="min-w-0 flex-1 truncate font-medium">
-        {doc.fileName ?? doc.requestedType}
-      </span>
-      <span className="shrink-0 font-label text-[9px] uppercase tracking-wide text-on-surface-variant">
-        {doc.reviewStatus}
-      </span>
-      <button
-        type="button"
-        onClick={handleDownload}
-        disabled={pending}
-        className="shrink-0 text-link underline disabled:opacity-60"
-      >
-        {pending ? "Preparing…" : "Download"}
-      </button>
+    <li className="rounded border border-border-hairline bg-surface-container-low px-2 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="min-w-0 flex-1 truncate font-medium">
+          {doc.fileName ?? doc.requestedType}
+        </span>
+        <span className="shrink-0 font-label text-[9px] uppercase tracking-wide text-on-surface-variant">
+          {doc.reviewStatus}
+        </span>
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={pending}
+          className="shrink-0 text-link underline disabled:opacity-60"
+        >
+          {pending ? "Preparing…" : "Download"}
+        </button>
+      </div>
+      <SofDocumentThumbnail doc={doc} downloadUrl={doc.downloadUrl} />
       {error ? (
-        <span className="w-full text-[11px] text-error" role="alert">
+        <span className="mt-1 block text-[11px] text-error" role="alert">
           {error}
         </span>
       ) : null}
     </li>
+  );
+}
+
+function DownloadAllButton({ caseId }: { caseId: string }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleDownloadAll() {
+    setError(null);
+    startTransition(async () => {
+      const result = await downloadAllSofDocumentsAction(caseId);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const blob = new Blob([result.data], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = result.fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={handleDownloadAll}
+      >
+        {pending ? "Preparing zip…" : "Download all (zip)"}
+      </Button>
+      {error ? (
+        <span className="font-body text-xs text-error" role="alert">
+          {error}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -75,6 +122,7 @@ export function SofEvidenceList({ detail, evidenceCount }: Props) {
             Buyer submitted {formatDateTime(request.submittedAt)}
           </p>
         ) : null}
+        <DownloadAllButton caseId={caseId} />
         <ul className="mt-1 space-y-1">
           {submitted.map((file) => (
             <SubmittedDocumentRow key={file.id} caseId={caseId} doc={file} />
