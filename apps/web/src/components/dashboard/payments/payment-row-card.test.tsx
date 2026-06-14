@@ -21,6 +21,7 @@ const sampleRow: PaymentDisplayRow = {
   statusTone: "info",
   primaryAction: { kind: "pay", href: "/dashboard/checkout/l1", label: "Pay now" },
   invoiceNumber: "INV-001",
+  manualReviewReason: null,
 };
 
 describe("PaymentRowCard", () => {

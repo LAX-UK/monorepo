@@ -6,6 +6,10 @@ import {
   DashboardMobileList,
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
+import {
+  isComplianceManualReviewReason,
+  manualReviewQueueEyebrow,
+} from "@/lib/admin/compliance-manual-review";
 import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
@@ -29,6 +33,17 @@ function PrimaryAction({ row }: { row: PaymentDisplayRow }) {
   const action = row.primaryAction;
   if (action.kind === "none") {
     return <span className="text-xs text-on-surface-variant">—</span>;
+  }
+  if (action.kind === "review") {
+    return (
+      <Link
+        href={action.href}
+        className="inline-flex min-h-11 items-center text-xs font-semibold text-warning underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        title={`${isComplianceManualReviewReason(action.reason) ? "Compliance" : "Finance"} review required`}
+      >
+        {manualReviewQueueEyebrow(action.reason)}
+      </Link>
+    );
   }
   if (action.kind === "pay") {
     return (

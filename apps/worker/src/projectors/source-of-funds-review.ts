@@ -1,4 +1,5 @@
 import { adminReviewTask, domainEvent, projectorState } from "@auction/db";
+import { user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
@@ -164,6 +165,30 @@ export async function processSourceOfFundsReview(options: {
             category: "transactional",
             idempotencyKey: `aml-compliance-review-notice:sof:${sourceOfFundsId}:admin`,
           });
+        }
+
+        // Buyer-facing notification: inform them checkout is on hold and our
+        // team will contact with secure upload instructions.
+        const buyerId = payload.userId;
+        if (buyerId) {
+          const [buyerRow] = await db
+            .select({ email: user.email, firstName: user.firstName })
+            .from(user)
+            .where(eq(user.id, buyerId))
+            .limit(1);
+          if (buyerRow?.email) {
+            await emailService.enqueue({
+              template: "source-of-funds-buyer-notice",
+              to: buyerRow.email,
+              userId: buyerId,
+              vars: {
+                userName: buyerRow.firstName ?? null,
+                supportContactEmail,
+              },
+              category: "transactional",
+              idempotencyKey: `source-of-funds-buyer-notice:${sourceOfFundsId}`,
+            });
+          }
         }
       }
       maxId = row.id;

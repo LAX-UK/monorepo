@@ -61,6 +61,13 @@ type Props = {
   openPaymentManualReviewReason?: ManualReviewReason | null;
   /** When true, hide pay form — payment history failed to load (may already be paid). */
   paymentsLoadFailed?: boolean;
+  /**
+   * Pre-flight user-level compliance gate — set before any payment row exists.
+   * When non-null and no `openPaymentManualReviewReason` is available, the
+   * panel shows the ManualReviewBlock proactively so the buyer is informed
+   * before attempting to submit.
+   */
+  preflightComplianceGate?: "clear" | "aml_hold" | "source_of_funds_required" | null;
 };
 
 function settlementsEmail(): string {
@@ -227,6 +234,7 @@ export function CheckoutPurchasePanel({
   openPaymentStatus = null,
   openPaymentManualReviewReason = null,
   paymentsLoadFailed = false,
+  preflightComplianceGate = null,
 }: Props) {
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
@@ -281,7 +289,12 @@ export function CheckoutPurchasePanel({
           (openPaymentStatus === "requires_manual_review" ||
             isComplianceManualReviewReason(openPaymentManualReviewReason))
         ? openPaymentManualReviewReason
-        : null;
+        : !submitted &&
+            !openPaymentStatus &&
+            (preflightComplianceGate === "aml_hold" ||
+              preflightComplianceGate === "source_of_funds_required")
+          ? preflightComplianceGate
+          : null;
 
   if (paymentComplete || localPaymentComplete) {
     return (
@@ -412,7 +425,7 @@ export function CheckoutPurchasePanel({
                 Payment
               </h2>
               <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
-                Pay by card (up to £100,000) or UK bank transfer via secure Stripe Checkout.
+                Pay by card (up to £10,000) or UK bank transfer via secure Stripe Checkout.
                 High-value purchases may require finance review before checkout is issued.
               </p>
               <p className="font-body text-sm text-on-surface">

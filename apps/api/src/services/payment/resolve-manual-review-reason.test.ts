@@ -15,6 +15,7 @@ describe("resolveManualReviewReason", () => {
   it("prefers AML hold over tier reason", async () => {
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+      peek: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
     };
     const result = await resolveManualReviewReason({
       buyerUserId: "buyer-1",
@@ -30,6 +31,7 @@ describe("resolveManualReviewReason", () => {
   it("returns tier reason when compliance is clear", async () => {
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: false, reason: null }),
+      peek: vi.fn().mockResolvedValue({ hold: false, reason: null }),
     };
     const result = await resolveManualReviewReason({
       buyerUserId: "buyer-1",
@@ -46,6 +48,7 @@ describe("resolveManualReviewReason", () => {
   it("returns compliance reason for pending payments when hold is active", async () => {
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
+      peek: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
     };
     const result = await resolveManualReviewReason({
       buyerUserId: "buyer-1",

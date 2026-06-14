@@ -632,6 +632,7 @@ describe("PaymentService", () => {
     } as unknown as IPaymentWriteRepository;
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
+      peek: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
     };
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
@@ -688,6 +689,7 @@ describe("PaymentService", () => {
     } as unknown as IPaymentWriteRepository;
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+      peek: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
     };
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
     const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(true) });
@@ -806,6 +808,7 @@ describe("PaymentService", () => {
     } as unknown as IPaymentWriteRepository;
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+      peek: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
     };
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,
@@ -863,6 +866,7 @@ describe("PaymentService", () => {
     } as unknown as IPaymentWriteRepository;
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
+      peek: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
     };
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,

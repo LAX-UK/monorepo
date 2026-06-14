@@ -20,6 +20,7 @@ import {
 import { kpiCompareHint } from "@/lib/dashboard/kpi-slot-conventions";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerBuyerComplianceGate } from "@/lib/data/http/payments.server";
 import {
   buildPortfolioAnalytics,
   filterPortfolioRows,
@@ -44,8 +45,15 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   const container = await getServerDataContainer();
   let won: Awaited<ReturnType<typeof container.portfolio.listMine>> = [];
   let loadFailure: DashboardSliceFailure | null = null;
+  let complianceGate: Awaited<ReturnType<typeof getServerBuyerComplianceGate>> = "clear";
   try {
-    won = await container.portfolio.listMine();
+    const [wonResult, gateResult] = await Promise.allSettled([
+      container.portfolio.listMine(),
+      getServerBuyerComplianceGate(),
+    ]);
+    if (wonResult.status === "rejected") throw wonResult.reason;
+    won = wonResult.value;
+    complianceGate = gateResult.status === "fulfilled" ? gateResult.value : "clear";
   } catch (e) {
     won = [];
     loadFailure = describeDashboardSliceFailure(e, "portfolio", "Could not load portfolio.");
@@ -58,7 +66,7 @@ export default async function DashboardPortfolioPage({ searchParams }: PageProps
   const filteredHint = hasActiveFilters ? kpiCompareHint(`${filtered.length} shown`) : {};
   const artistIds = filtered.map((row) => row.lot.artistId ?? null);
   const artistNameById = await resolveArtistNames(artistIds);
-  const portfolioCards = toPortfolioLotCards(filtered, { artistNameById });
+  const portfolioCards = toPortfolioLotCards(filtered, { artistNameById, complianceGate });
   const workspaceMeta = await readClientWorkspacePageMeta();
 
   return (

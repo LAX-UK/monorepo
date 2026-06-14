@@ -12,6 +12,7 @@ import { resolveCheckoutPagePaymentState } from "@/lib/checkout/checkout-page-st
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerBuyerComplianceGate } from "@/lib/data/http/payments.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
@@ -38,11 +39,12 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
 
   const c = await getServerDataContainer();
-  const [lotR, fulfilmentR, addressesR, paymentsR] = await Promise.allSettled([
+  const [lotR, fulfilmentR, addressesR, paymentsR, complianceGateR] = await Promise.allSettled([
     c.buyerLots.getById(lotId),
     c.payments.getLotFulfilmentForWinner(lotId),
     c.addresses.listMine(),
     c.payments.listMine(),
+    getServerBuyerComplianceGate(),
   ]);
   if (lotR.status === "rejected") {
     throw lotR.reason;
@@ -71,6 +73,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
           "Could not load your payment history for this lot.",
         )
       : null;
+  const complianceGate = complianceGateR.status === "fulfilled" ? complianceGateR.value : "clear";
   const { paymentComplete, openPayment } = resolveCheckoutPagePaymentState(
     myPayments,
     lotId,
@@ -166,6 +169,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                       openPaymentStatus={openPayment?.status ?? null}
                       openPaymentManualReviewReason={openPayment?.manualReviewReason ?? null}
                       paymentsLoadFailed={paymentsFailure != null}
+                      preflightComplianceGate={complianceGate}
                     />
                   </>
                 )}

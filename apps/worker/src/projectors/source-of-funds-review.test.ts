@@ -58,4 +58,46 @@ describe("processSourceOfFundsReview", () => {
 
     expect(emailService.enqueue).not.toHaveBeenCalled();
   });
+
+  it("notifies the buyer when a new SoF case/task is created", async () => {
+    const eventRow = {
+      id: 12,
+      aggregateId: "sof_2",
+      payload: {
+        sourceOfFundsId: "sof_2",
+        userId: "buyer_1",
+        trigger: "threshold",
+        exposureAmount: "12000.00",
+        currency: "GBP",
+      },
+    };
+    const db = fakeDb([
+      undefined, // insert projectorState (onConflictDoNothing)
+      [{ last: 0 }], // cursor
+      [eventRow], // domain events
+      [], // existing task lookup -> none -> createdTask
+      undefined, // insert adminReviewTask
+      [], // listComplianceRecipients -> none
+      [{ email: "buyer@example.com", firstName: "Bee" }], // buyer lookup
+      undefined, // update cursor
+    ]);
+    const emailService = { enqueue: vi.fn() } as unknown as IEmailService;
+
+    await processSourceOfFundsReview({
+      db,
+      log,
+      emailService,
+      supportContactEmail: "compliance@example.com",
+      webOrigin: "https://app.example.com",
+    });
+
+    expect(emailService.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: "source-of-funds-buyer-notice",
+        to: "buyer@example.com",
+        userId: "buyer_1",
+        idempotencyKey: "source-of-funds-buyer-notice:sof_2",
+      }),
+    );
+  });
 });

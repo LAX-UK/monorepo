@@ -49,6 +49,15 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     );
   });
 
+  /** Buyer pre-flight compliance gate: checks AML hold + SoF without creating
+   * a payment row. Used by the checkout page and portfolio to surface blockers
+   * before the buyer submits. */
+  r.get("/me/compliance-gate", requireAuth, requireBuyerRole, async (c) => {
+    const userId = c.get("userId") as string;
+    const result = await container.paymentService.getBuyerComplianceGateStatus(userId);
+    return c.json({ data: result });
+  });
+
   /** Buyer-facing payments list. Strictly scoped to the JWT user; the route never
    * accepts a buyerId from the client. Optional `?status` narrows the result.
    */

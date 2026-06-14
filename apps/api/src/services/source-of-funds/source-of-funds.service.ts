@@ -94,6 +94,17 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
   }
 
   /**
+   * Read-only settlement-gate snapshot: true when the buyer's latest SoF case is
+   * still `pending` (an open review is gating settlement). No side effects — does
+   * not open a case. Used by buyer-facing surfaces to surface a blocker before a
+   * payment row exists.
+   */
+  async hasPendingCaseForUser(buyerUserId: string): Promise<boolean> {
+    const latest = await this.repo.findLatestForUser(buyerUserId);
+    return latest?.status === "pending";
+  }
+
+  /**
    * An approved SoF case clears future settlements until either the validity
    * window lapses or the buyer's aggregated exposure grows by another full
    * threshold beyond what was approved (a material increase warranting re-CDD).

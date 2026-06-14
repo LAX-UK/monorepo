@@ -111,6 +111,39 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
 
 const config = { thresholdAmount: 9000, currency: "GBP", approvalValidityDays: 365 };
 
+describe("SourceOfFundsService.hasPendingCaseForUser", () => {
+  it("is false when the buyer has no SoF case", async () => {
+    const state: FakeState = { cases: [], linkedPence: 0 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.hasPendingCaseForUser("u1")).toBe(false);
+  });
+
+  it("is true when the buyer's latest case is pending", async () => {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1", status: "pending" })],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.hasPendingCaseForUser("u1")).toBe(true);
+  });
+
+  it("is false when the latest case is approved", async () => {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1", status: "approved" })],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.hasPendingCaseForUser("u1")).toBe(false);
+  });
+
+  it("does not open a case as a side effect", async () => {
+    const state: FakeState = { cases: [], linkedPence: 0 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    await svc.hasPendingCaseForUser("u1");
+    expect(state.cases).toHaveLength(0);
+  });
+});
+
 describe("SourceOfFundsService.requiresSourceOfFunds", () => {
   it("does not require SoF below the threshold", async () => {
     const state: FakeState = { cases: [], linkedPence: 0 };
