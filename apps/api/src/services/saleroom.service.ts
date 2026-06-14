@@ -67,6 +67,27 @@ export class SaleroomService implements ISaleroomService {
     });
   }
 
+  async getPublicSessionStatus(saleId: string): Promise<{
+    status: "none" | "pending" | "live" | "paused" | "ended";
+    currentLotId: string | null;
+  }> {
+    const [session] = await this.db
+      .select({
+        status: saleroomSession.status,
+        currentLotId: saleroomSession.currentLotId,
+      })
+      .from(saleroomSession)
+      .where(eq(saleroomSession.saleId, saleId))
+      .limit(1);
+    if (!session) {
+      return { status: "none", currentLotId: null };
+    }
+    return {
+      status: session.status,
+      currentLotId: session.currentLotId ?? null,
+    };
+  }
+
   async getSessionWithRecentEvents(saleId: string): Promise<{
     session: typeof saleroomSession.$inferSelect | null;
     events: (typeof saleroomEvent.$inferSelect)[];

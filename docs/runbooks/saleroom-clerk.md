@@ -2,6 +2,10 @@
 
 Operational guide for in-room paddle bidding and the clerk console.
 
+| Variable | Service | Notes |
+|----------|---------|-------|
+| `NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS` | **Web** | `true` (default) for English-only V1; set `false` only if non-English lot types are enabled |
+
 ## Before the sale
 
 1. Confirm the sale uses **Hybrid** (preferred) or legacy **Onsite** delivery mode.
