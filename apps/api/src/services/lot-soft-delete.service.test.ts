@@ -294,7 +294,7 @@ describe("LotSoftDeleteService", () => {
       lotRepo,
       saleRepo,
       sideEffects,
-      { cancelLotJobs: vi.fn() } as unknown as ILotJobScheduler,
+      { cancelLotJobs: vi.fn(), cancelLotEndJob: vi.fn() } as unknown as ILotJobScheduler,
       null,
       { publish: vi.fn() } as unknown as DomainEventPublisher,
     );

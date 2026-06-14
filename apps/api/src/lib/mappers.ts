@@ -160,6 +160,7 @@ export function mapBidRow(row: BidRow): Bid {
     autoBidStepAmount: row.autoBidStepAmount !== null ? String(row.autoBidStepAmount) : null,
     placedVia: row.placedVia ?? null,
     telephoneBookingId: row.telephoneBookingId ?? null,
+    clerkUserId: row.clerkUserId ?? null,
     createdAt: row.createdAt,
   };
 }

@@ -1,6 +1,7 @@
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
-import type { LegalEntityMemberRole, LegalEntitySummary } from "@auction/types";
+import type { LegalEntityMemberRole, LegalEntitySummary, SaleDeliveryMode } from "@auction/types";
+import { saleModeAllowsBidding } from "@auction/validators";
 
 type SaleRegistrationRow = {
   buyerLegalEntityId: string;
@@ -10,7 +11,7 @@ type SaleRegistrationRow = {
 
 type Input = {
   saleId: string | null | undefined;
-  saleDeliveryMode: "online" | "onsite" | undefined;
+  saleDeliveryMode: SaleDeliveryMode | undefined;
   saleStatus: string | undefined;
   acting: LegalEntitySummary | null;
   memberships: LegalEntitySummary[];
@@ -52,7 +53,8 @@ export function buildSaleRegistrationBidGate(input: Input): SaleRegistrationBidG
 
   if (
     !saleId ||
-    saleDeliveryMode !== "online" ||
+    !saleDeliveryMode ||
+    !saleModeAllowsBidding(saleDeliveryMode) ||
     (saleStatus !== "scheduled" && saleStatus !== "active")
   ) {
     return null;

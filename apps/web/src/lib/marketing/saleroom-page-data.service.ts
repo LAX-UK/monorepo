@@ -14,6 +14,7 @@ import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-book
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import type { SaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
 import type { Category, Sale } from "@auction/types";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 
 const CATALOG_LOAD_ALL_BATCH = 48;
 const CATALOG_LOAD_ALL_CAP = 200;
@@ -110,7 +111,7 @@ export class SaleroomPageDataService {
       getServerRelatedSales({ id: saleId, categoryId, limit: 4 }).catch(() => []),
       session ? getServerKycStatusSummary().catch(() => null) : Promise.resolve(null),
       session ? getServerWatchedLotIdSet() : Promise.resolve(new Set<string>()),
-      session && sale.deliveryMode === "onsite"
+      session && isSaleroomDeliveryMode(sale.deliveryMode)
         ? getServerTelephoneBookingForSale(saleId).catch(() => null)
         : Promise.resolve(null),
     ]);

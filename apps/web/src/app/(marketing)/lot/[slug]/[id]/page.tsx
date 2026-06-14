@@ -20,6 +20,7 @@ import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwo
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsite-lot-unavailable";
+import { OnsiteParticipationHub } from "@/components/sections/artwork/onsite/onsite-participation-hub";
 import { mapSaleToOverviewVM } from "@/components/sections/saleroom/mappers";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
@@ -60,6 +61,7 @@ import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory"
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -262,9 +264,12 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
 
   const isOnsiteSale =
     saleBundle?.sale != null && !saleAllowsWebBidding(saleBundle.sale.deliveryMode);
+  const showSaleroomParticipation =
+    saleBundle?.sale != null && isSaleroomDeliveryMode(saleBundle.sale.deliveryMode);
+  const isHybridSale = saleBundle?.sale?.deliveryMode === "hybrid";
 
   const telephoneBookingForSale =
-    session && auction.saleId && isOnsiteSale
+    session && auction.saleId && showSaleroomParticipation
       ? await getServerTelephoneBookingForSale(auction.saleId).catch(() => null)
       : null;
 
@@ -387,6 +392,28 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     </OnlineBidsView>
   );
 
+  const hybridParticipationSection =
+    isHybridSale && saleBundle ? (
+      <OnsiteParticipationHub
+        sale={saleBundle.sale}
+        participationCtx={{
+          saleTitle: saleBundle.sale.title,
+          lotNumber: auction.lotNumber,
+          lotTitle: auction.title,
+          lotUrl: lotPath(auction),
+        }}
+        lotId={auction.id}
+        loginNextPath={lotPath(auction)}
+        isAuthenticated={Boolean(session)}
+        kycApproved={kycApprovedForBid}
+        mobile={session?.mobile ?? null}
+        {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
+        buyerEntities={buyerEntities}
+        telephoneBooking={telephoneBookingForSale}
+        orgModuleEnabled={orgModuleEnabled}
+      />
+    ) : null;
+
   const followSlot = (
     <ArtworkWatchToggle
       lotId={auction.id}
@@ -507,6 +534,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                   shareUrl={shareUrl}
                   followSlot={followSlot}
                   bidPanel={onlineBidPanel}
+                  participationSection={hybridParticipationSection}
                   bidPanelTop={
                     <ArtworkConditionReportCta
                       lotId={auction.id}

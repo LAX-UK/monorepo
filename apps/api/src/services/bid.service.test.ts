@@ -734,6 +734,43 @@ describe("BidService.placeBid", () => {
     expect(bidRepo.create).not.toHaveBeenCalled();
   });
 
+  it("allows operator telephone bid on onsite sale (legacy bypass)", async () => {
+    const active = lot({ currentPrice: "100.00" });
+    const created = createBid({ amount: "150.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const saleModeLookup: ISaleModeLookup = {
+      findSaleModeForLot: vi.fn().mockResolvedValue("onsite"),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      saleModeLookup,
+    });
+
+    const result = await service.placeBid({
+      placedByUserId: "buyer-1",
+      buyerLegalEntityId: "buyer-1",
+      lotId: "auc-1",
+      amount: 150,
+      placement: { placedVia: "telephone", clerkUserId: "clerk-1" },
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(bidRepo.create).toHaveBeenCalledOnce();
+  });
+
   it("allows bid when parent sale is online", async () => {
     const active = lot({ currentPrice: "100.00" });
     const created = createBid({ amount: "150.00" });

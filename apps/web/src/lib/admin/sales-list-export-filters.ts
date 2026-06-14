@@ -1,10 +1,10 @@
-import type { SaleStatus } from "@auction/types";
+import type { SaleDeliveryMode, SaleStatus } from "@auction/types";
 import type { SalesListQuery } from "./admin-list-controllers";
 
 export type SalesListExportFilters = {
   status?: SaleStatus;
   q?: string;
-  deliveryMode?: "online" | "onsite";
+  deliveryMode?: SaleDeliveryMode;
   settlementStatus?: "settled" | "unsettled";
   sort?: "createdDesc" | "startAsc";
 };

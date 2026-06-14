@@ -32,6 +32,12 @@ const SALE_MODE_CAPABILITIES: Record<SaleDeliveryMode, SaleModeCapabilities> = {
     allowsLocation: true,
     inheritsLotTiming: true,
   },
+  hybrid: {
+    allowsBidding: true,
+    allowsStreamUrl: true,
+    allowsLocation: true,
+    inheritsLotTiming: true,
+  },
 };
 
 export function getSaleModeCapabilities(mode: SaleDeliveryMode): SaleModeCapabilities {
@@ -40,6 +46,11 @@ export function getSaleModeCapabilities(mode: SaleDeliveryMode): SaleModeCapabil
 
 export function saleModeAllowsBidding(mode: SaleDeliveryMode): boolean {
   return SALE_MODE_CAPABILITIES[mode].allowsBidding;
+}
+
+/** Operator/clerk placements (telephone, saleroom, absentee) on legacy onsite sales. */
+export function saleModeAllowsOperatorBidding(mode: SaleDeliveryMode): boolean {
+  return saleModeAllowsBidding(mode) || mode === "onsite";
 }
 
 export function saleModeAllowsStreamUrl(mode: SaleDeliveryMode): boolean {
@@ -52,4 +63,9 @@ export function saleModeAllowsLocation(mode: SaleDeliveryMode): boolean {
 
 export function saleModeInheritsLotTiming(mode: SaleDeliveryMode): boolean {
   return SALE_MODE_CAPABILITIES[mode].inheritsLotTiming;
+}
+
+/** Modes that support live saleroom session, paddle check-in, and telephone bookings. */
+export function isSaleroomDeliveryMode(mode: SaleDeliveryMode): boolean {
+  return mode === "onsite" || mode === "hybrid";
 }

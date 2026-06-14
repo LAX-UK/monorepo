@@ -4,7 +4,7 @@ import type { BuyerPremiumTier } from "./buyer-premium.js";
 export const saleStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
 export type SaleStatus = (typeof saleStatuses)[number];
 
-export const saleDeliveryModes = ["online", "onsite"] as const;
+export const saleDeliveryModes = ["online", "onsite", "hybrid"] as const;
 export type SaleDeliveryMode = (typeof saleDeliveryModes)[number];
 
 export type Sale = {
