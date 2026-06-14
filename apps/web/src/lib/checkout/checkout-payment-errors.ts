@@ -9,6 +9,12 @@ export function checkoutPaymentErrorMessage(message: string, code?: string | nul
       return "Stripe checkout is already complete. Payment confirmation may take a few minutes — refresh this page.";
     case "stripe_checkout_unavailable":
       return "Secure checkout is temporarily unavailable. Try again shortly or contact settlements.";
+    case "accounting_unavailable":
+      return "We could not prepare your invoice right now. Try again in a few minutes or contact settlements.";
+    case "session_required":
+      return "Your session expired. Sign in again to complete checkout.";
+    case "payment_intent_amount_mismatch":
+      return "Payment could not be verified against your invoice total. Contact settlements.";
     case "address_not_found":
       return "That address was not found. Choose another saved address or add a new one.";
     case "address_not_eligible":

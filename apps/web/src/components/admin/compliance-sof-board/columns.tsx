@@ -16,7 +16,7 @@ export function sofColumns(onOpen: (row: AdminSofTableRow) => void): ColumnDef<A
     {
       id: "status",
       header: "Status",
-      cell: ({ row }) => <AdminStatusBadge domain="sofCase" status={row.original.status} />,
+      cell: ({ row }) => <AdminStatusBadge domain="sofCase" status={row.original.displayStatus} />,
     },
     {
       id: "exposure",

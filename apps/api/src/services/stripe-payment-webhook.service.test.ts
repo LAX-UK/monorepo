@@ -71,6 +71,8 @@ function createWebhookService(deps: {
     deps.publisher ?? ({ publish: vi.fn().mockResolvedValue(undefined) } as DomainEventPublisher);
   const payments = {
     applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
+    applyAuthorizedInTransaction: vi.fn().mockResolvedValue(true),
+    applyCancelledInTransaction: vi.fn().mockResolvedValue(true),
     findById: vi.fn().mockResolvedValue({
       id: "pay_1",
       amount: "100.00",
@@ -96,7 +98,7 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
   });
 
-  it("creates a clawback adjustment when a lost dispute has no open payout", async () => {
+  it("does not claw back on dispute closed lost (clawback runs on funds_withdrawn)", async () => {
     vi.mocked(eq).mockClear();
     const addLine = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
@@ -121,24 +123,80 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
     const result = await svc.handleDisputeClosed(event, dispute);
 
     expect(result).toEqual({ processed: true, action: "dispute_closed" });
-    expect(tryClaimProcessedStripeEvent).toHaveBeenCalledWith(
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+    expect(publisher.publish).toHaveBeenCalledWith(
       expect.objectContaining({ select: expect.any(Function) }),
-      "evt_dispute_closed",
-      "stripe_payment_webhook",
+      expect.objectContaining({
+        eventType: "payment.dispute_closed",
+      }),
     );
-    expect(vi.mocked(eq)).toHaveBeenCalledWith(payment.stripeChargeId, "ch_1");
+  });
+
+  it("creates a clawback adjustment when dispute funds are withdrawn", async () => {
+    const addLine = vi.fn().mockResolvedValue(undefined);
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "captured",
+      amount: "5000.00",
+    });
+    const { svc, payoutAdjustments } = createWebhookService({
+      db,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const event = {
+      id: "evt_dispute_withdrawn",
+      type: "charge.dispute.funds_withdrawn",
+    } as Stripe.Event;
+    const dispute = {
+      id: "dp_1",
+      status: "needs_response",
+      amount: 500000,
+      currency: "gbp",
+      charge: "ch_1",
+    } as Stripe.Dispute;
+
+    const result = await svc.handleDisputeFundsWithdrawn(event, dispute);
+
+    expect(result).toEqual({ processed: true, action: "dispute_funds_withdrawn" });
     expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).toHaveBeenCalledWith(
       expect.objectContaining({
         legalEntityId: "00000000-0000-4000-8000-000000000001",
         paymentId: "pay_1",
         amount: "-5000.00",
         kind: "dispute",
+        sourceEventId: "evt_dispute_withdrawn",
       }),
     );
-    expect(publisher.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ select: expect.any(Function) }),
+  });
+
+  it("reverses clawback when dispute closes won", async () => {
+    const addLine = vi.fn().mockResolvedValue(undefined);
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "captured",
+      amount: "5000.00",
+    });
+    const { svc, payoutAdjustments } = createWebhookService({
+      db,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const event = { id: "evt_dispute_won", type: "charge.dispute.closed" } as Stripe.Event;
+    const dispute = {
+      id: "dp_won",
+      status: "won",
+      amount: 500000,
+      currency: "gbp",
+      charge: "ch_1",
+    } as Stripe.Dispute;
+
+    await svc.handleDisputeClosed(event, dispute);
+
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventType: "payment.dispute_closed",
+        amount: "5000.00",
+        sourceEventId: "evt_dispute_won:won_reversal",
       }),
     );
   });
@@ -565,7 +623,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
   it("records processing without capturing", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
     const capture = vi.fn();
-    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    const applyAuthorized = vi.fn().mockResolvedValue(true);
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
@@ -583,7 +641,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
           amount: "100.00",
           status: "pending",
         }),
-        updateStatus,
+        applyAuthorizedInTransaction: applyAuthorized,
       },
     });
     const event = { id: "evt_processing", type: "payment_intent.processing" } as Stripe.Event;
@@ -597,13 +655,13 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
 
     expect(result).toEqual({ processed: true, action: "payment_intent_processing" });
     expect(capture).not.toHaveBeenCalled();
-    expect(updateStatus).toHaveBeenCalledWith("pay_1", "authorized");
+    expect(applyAuthorized).toHaveBeenCalledWith(expect.anything(), "pay_1");
   });
 
   it("records partially funded bank transfer without capturing", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
     const capture = vi.fn();
-    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    const applyAuthorized = vi.fn().mockResolvedValue(true);
     const publish = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
@@ -624,7 +682,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
           amount: "100.00",
           status: "pending",
         }),
-        updateStatus,
+        applyAuthorizedInTransaction: applyAuthorized,
       },
     });
     const event = {
@@ -646,7 +704,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
 
     expect(result).toEqual({ processed: true, action: "payment_intent_partially_funded" });
     expect(capture).not.toHaveBeenCalled();
-    expect(updateStatus).toHaveBeenCalledWith("pay_1", "authorized");
+    expect(applyAuthorized).toHaveBeenCalledWith(expect.anything(), "pay_1");
     expect(publisher.publish).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ eventType: "payment.bank_transfer_partially_funded" }),
@@ -709,7 +767,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
   it("cancels pending payment when Stripe payment intent is canceled", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
     const capture = vi.fn();
-    const updateStatus = vi.fn().mockResolvedValue(undefined);
+    const applyCancelled = vi.fn().mockResolvedValue(true);
     const publish = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
@@ -730,7 +788,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
           amount: "100.00",
           status: "pending",
         }),
-        updateStatus,
+        applyCancelledInTransaction: applyCancelled,
       },
     });
     const event = { id: "evt_canceled", type: "payment_intent.canceled" } as Stripe.Event;
@@ -744,7 +802,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
 
     expect(result).toEqual({ processed: true, action: "payment_intent_canceled" });
     expect(capture).not.toHaveBeenCalled();
-    expect(updateStatus).toHaveBeenCalledWith("pay_1", "cancelled");
+    expect(applyCancelled).toHaveBeenCalledWith(expect.anything(), "pay_1");
     expect(publisher.publish).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -753,6 +811,55 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
           lotId: "lot_1",
           reason: "stripe_payment_intent_canceled",
         }),
+      }),
+    );
+  });
+
+  it("cancels authorized payment on checkout.session.async_payment_failed", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+    const applyCancelled = vi.fn().mockResolvedValue(true);
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const db = mockDbWithPayment({
+      id: "pay_1",
+      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+      status: "authorized",
+      amount: "100.00",
+    });
+    const { svc, publisher } = createWebhookService({
+      db,
+      publisher: { publish } as DomainEventPublisher,
+      payments: {
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          buyerId: "buyer_1",
+          buyerLegalEntityId: "le_buyer",
+          amount: "100.00",
+          status: "authorized",
+        }),
+        applyCancelledInTransaction: applyCancelled,
+      },
+    });
+    const event = {
+      id: "evt_async_fail",
+      type: "checkout.session.async_payment_failed",
+    } as Stripe.Event;
+    const session = {
+      metadata: { paymentId: "pay_1" },
+    } as unknown as Stripe.Checkout.Session;
+
+    const result = await svc.handleCheckoutSessionAsyncPaymentFailed(event, session);
+
+    expect(result).toEqual({
+      processed: true,
+      action: "checkout_session_async_payment_failed",
+    });
+    expect(applyCancelled).toHaveBeenCalledWith(expect.anything(), "pay_1");
+    expect(publisher.publish).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: "payment.cancelled",
+        payload: expect.objectContaining({ reason: "stripe_checkout_async_payment_failed" }),
       }),
     );
   });

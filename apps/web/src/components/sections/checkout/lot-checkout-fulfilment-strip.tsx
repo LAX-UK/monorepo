@@ -84,12 +84,12 @@ function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
-async function fetchFulfilment(lotId: string): Promise<LotFulfilmentSnapshot | null> {
+async function fetchFulfilment(lotId: string): Promise<LotFulfilmentSnapshot | null | "error"> {
   const res = await fetch(`${apiBase()}/payments/me/lot/${encodeURIComponent(lotId)}/fulfilment`, {
     credentials: "include",
     cache: "no-store",
   });
-  if (!res.ok) return null;
+  if (!res.ok) return "error";
   const body = (await res.json()) as { data: LotFulfilmentSnapshot | null };
   return body.data ?? null;
 }
@@ -104,9 +104,11 @@ export function LotCheckoutFulfilmentStrip({ fulfilment, lotId }: Props) {
     setPolling(true);
     try {
       const next = await fetchFulfilment(lotId);
-      setSnapshot(next);
+      if (next !== "error") {
+        setSnapshot(next);
+      }
     } catch {
-      /* swallow — the strip falls back to the last known snapshot. */
+      /* swallow — retain last known snapshot. */
     } finally {
       setPolling(false);
     }

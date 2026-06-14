@@ -3,6 +3,10 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
+
 vi.mock("@/lib/actions/checkout", () => ({
   createCheckoutPaymentAction: vi.fn(),
 }));
@@ -105,6 +109,44 @@ describe("CheckoutPurchasePanel", () => {
       />,
     );
     expect(screen.getByText(/payment recorded/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
+  });
+
+  it("shows bank transfer in-flight block without purchase form", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[]}
+        openPaymentStatus="authorized"
+      />,
+    );
+    expect(screen.getByText(/bank transfer processing/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
+  });
+
+  it("blocks checkout when payments history failed to load", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[]}
+        paymentsLoadFailed
+      />,
+    );
+    expect(
+      screen.getByText(/could not confirm whether this lot is already paid/i),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
   });
 });

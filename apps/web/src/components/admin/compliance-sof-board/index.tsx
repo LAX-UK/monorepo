@@ -49,7 +49,7 @@ export function ComplianceSofBoard({ rows, canTriage, canDecide, currentUserId }
             <div className="space-y-4 pt-2">
               <AdminPreviewSheetHeader
                 title="Source of Funds"
-                subtitle={<AdminStatusBadge domain="sofCase" status={selected.status} />}
+                subtitle={<AdminStatusBadge domain="sofCase" status={selected.displayStatus} />}
               />
               <SofDrawerContent
                 row={selected}

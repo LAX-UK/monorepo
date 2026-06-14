@@ -19,7 +19,7 @@ export function SofMobileCards({ rows, onOpen }: Props) {
             onClick={() => onOpen(row)}
           >
             <div className="flex flex-wrap items-center gap-2">
-              <AdminStatusBadge domain="sofCase" status={row.status} />
+              <AdminStatusBadge domain="sofCase" status={row.displayStatus} />
               <span className="font-body text-sm text-on-surface">{row.triggerLabel}</span>
             </div>
             <p className="mt-2 font-body text-sm text-on-surface-variant">{row.exposureLabel}</p>

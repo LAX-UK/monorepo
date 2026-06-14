@@ -436,3 +436,21 @@ describe("SourceOfFundsService two-stage maker-checker", () => {
     ).rejects.toThrow("source_of_funds_not_found");
   });
 });
+
+describe("SourceOfFundsService listByStatus", () => {
+  it("lists and counts approved cases", async () => {
+    const state: FakeState = {
+      cases: [
+        makeCase({ id: "sof_pending", userId: "u1", status: "pending" }),
+        makeCase({ id: "sof_approved", userId: "u2", status: "approved" }),
+        makeCase({ id: "sof_rejected", userId: "u3", status: "rejected" }),
+      ],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    const approved = await svc.listByStatus("approved");
+    expect(approved).toHaveLength(1);
+    expect(approved[0]?.id).toBe("sof_approved");
+    expect(await svc.countByStatus("approved")).toBe(1);
+  });
+});

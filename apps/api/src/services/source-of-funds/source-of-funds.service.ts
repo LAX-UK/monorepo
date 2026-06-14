@@ -7,6 +7,7 @@ import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {
   ISourceOfFundsRepository,
   SourceOfFundsCase,
+  SourceOfFundsStatus,
   SourceOfFundsTrigger,
 } from "./source-of-funds.types.js";
 
@@ -116,12 +117,12 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
     return this.repo.countByStatus("pending");
   }
 
-  async countByStatus(status: "pending" | "rejected"): Promise<number> {
+  async countByStatus(status: SourceOfFundsStatus): Promise<number> {
     return this.repo.countByStatus(status);
   }
 
   async listByStatus(
-    status: "pending" | "rejected",
+    status: SourceOfFundsStatus,
     limit = 50,
     offset = 0,
   ): Promise<SourceOfFundsCase[]> {

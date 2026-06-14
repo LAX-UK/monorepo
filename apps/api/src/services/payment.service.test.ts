@@ -238,6 +238,7 @@ describe("PaymentService", () => {
     const stripe: IStripePaymentGateway = {
       isConfigured: () => true,
       capturePaymentIntent: vi.fn().mockResolvedValue({
+        amount: 12500,
         latest_charge: "ch_from_pi",
         status: "succeeded",
       } as Stripe.PaymentIntent),
@@ -1312,6 +1313,53 @@ describe("PaymentService", () => {
       expect(result.value.paymentId).toBe("pay-captured");
       expect(result.value.checkoutUrl).toBeNull();
       expect(result.value.checkoutRail).toBeNull();
+    }
+    expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("does not re-issue Stripe checkout when payment is authorized (bank transfer in flight)", async () => {
+    const authorizedPayment: PaymentRecord = {
+      ...payment,
+      id: "pay-authorized",
+      status: "authorized",
+      stripePaymentIntentId: "pi_inflight",
+    };
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(authorizedPayment),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+    } as unknown as IPaymentWriteRepository;
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+    );
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.paymentId).toBe("pay-authorized");
+      expect(result.value.checkoutUrl).toBeNull();
     }
     expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
   });
