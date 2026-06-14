@@ -25,6 +25,10 @@ type Props = {
   approvedBidLimit?: number | null;
   onDraftChange?: (draft: { maxAuto: string; step: string; dirty: boolean }) => void;
   onSettingsSaved?: (settings: AutoBidSettings | null, placedBid?: AutoBidPlacedBid) => void;
+  biddingLive?: boolean;
+  biddingAllowed?: boolean;
+  realtimeHealthy?: boolean;
+  refreshBeforeSave?: () => Promise<boolean>;
 };
 
 const ELIGIBLE: LotAuctionType[] = ["english", "buy_it_now"];
@@ -70,6 +74,10 @@ export function LotAutoBidPanel({
   approvedBidLimit = null,
   onDraftChange,
   onSettingsSaved,
+  biddingLive = false,
+  biddingAllowed = true,
+  realtimeHealthy = true,
+  refreshBeforeSave,
 }: Props) {
   const { autoBidWriter } = useLotPorts();
   const allowedSteps = useMemo(
@@ -182,6 +190,15 @@ export function LotAutoBidPanel({
       setError(clientBidError(msg));
       return;
     }
+    if (biddingLive && biddingAllowed && !realtimeHealthy && refreshBeforeSave) {
+      const refreshed = await refreshBeforeSave();
+      if (!refreshed) {
+        setError(
+          clientBidError("Could not refresh live prices. Check your connection and try again."),
+        );
+        return;
+      }
+    }
     setSaving(true);
     if (!saveIdempotencyKeyRef.current) {
       saveIdempotencyKeyRef.current = crypto.randomUUID();
@@ -219,11 +236,15 @@ export function LotAutoBidPanel({
     onSettingsSaved?.(result.settings, result.placedBid);
   }, [
     autoBidWriter,
+    biddingAllowed,
+    biddingLive,
     emitDraft,
     loginNextPath,
     lot.id,
     maxNumeric,
     onSettingsSaved,
+    realtimeHealthy,
+    refreshBeforeSave,
     step,
     stepNumeric,
     validate,

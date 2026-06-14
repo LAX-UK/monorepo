@@ -44,5 +44,22 @@ test.describe("hybrid saleroom clerk", () => {
 
     await page.goto(`/lot/test/${hybridLotId}`);
     await expect(page.getByText(/live feed|watching/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/bidding closed/i)).not.toBeVisible();
+  });
+
+  test("staging: two-browser competitor bid requires manual verification", async () => {
+    test.skip(!enabled, skipReason);
+    test.fixme(
+      true,
+      "Manual staging checklist: Browser A bids on live lot; Browser B feed+price update within 2s.",
+    );
+  });
+
+  test("staging: reconnect hydration requires manual verification", async () => {
+    test.skip(!enabled, skipReason);
+    test.fixme(
+      true,
+      "Manual staging checklist: disconnect Browser B, bid on A, reconnect B — history matches API.",
+    );
   });
 });

@@ -86,8 +86,10 @@ function repos(overrides: {
   };
   return {
     root: { lot: lotRepo, bid: bidRepo },
-    withTransaction: async (fn: (repos: { lot: ILotRepository; bid: IBidRepository }) => unknown) =>
-      fn({ lot: lotRepo, bid: bidRepo }),
+    forConnection: () => ({ lot: lotRepo, bid: bidRepo }),
+    runInTransaction: async (
+      fn: (repos: { lot: ILotRepository; bid: IBidRepository }, tx: unknown) => unknown,
+    ) => fn({ lot: lotRepo, bid: bidRepo }, {}),
   } as unknown as IRepositoryFactory;
 }
 
@@ -124,15 +126,25 @@ describe("AutoBidService", () => {
 
   it("updates proxy settings when user is already winning", async () => {
     const updateProxy = vi.fn().mockResolvedValue(undefined);
+    const findWinningBid = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "b1",
+        placedByUserId: "u1",
+        bidderId: "u1",
+        amount: "110.00",
+      })
+      .mockResolvedValueOnce({
+        id: "b1",
+        placedByUserId: "u1",
+        bidderId: "u1",
+        amount: "110.00",
+      });
     const service = new AutoBidService({
       repos: repos({
+        lot: { findByIdForUpdate: vi.fn().mockResolvedValue(lot()) },
         bid: {
-          findWinningBid: vi.fn().mockResolvedValue({
-            id: "b1",
-            placedByUserId: "u1",
-            bidderId: "u1",
-            amount: "110.00",
-          }),
+          findWinningBid,
           updateProxySettingsForBidderOnLot: updateProxy,
         },
       }),
@@ -154,6 +166,68 @@ describe("AutoBidService", () => {
       maxAutoBidAmount: "300.00",
       autoBidStepAmount: "20.00",
     });
+  });
+
+  it("places opening bid when stale winner check shows user was outbid", async () => {
+    const updateProxy = vi.fn();
+    const placeBidWithIdempotency = vi.fn().mockResolvedValue({
+      type: "ok",
+      body: {
+        data: {
+          id: "b2",
+          lotId: "lot-1",
+          amount: "110.00",
+          placedByUserId: "u1",
+          isWinning: true,
+          isAutoBid: true,
+          maxAutoBidAmount: "200.00",
+          autoBidStepAmount: "10.00",
+          createdAt: new Date(),
+        },
+      },
+    });
+    const findWinningBid = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "b1",
+        placedByUserId: "u1",
+        bidderId: "u1",
+        amount: "110.00",
+      })
+      .mockResolvedValueOnce({
+        id: "b9",
+        placedByUserId: "other",
+        bidderId: "other",
+        amount: "120.00",
+      });
+    const service = new AutoBidService({
+      repos: repos({
+        lot: { findByIdForUpdate: vi.fn().mockResolvedValue(lot()) },
+        bid: {
+          findWinningBid,
+          updateProxySettingsForBidderOnLot: updateProxy,
+        },
+      }),
+      bidPlacer: { placeBid: vi.fn() },
+      bidPlacerWithIdempotency: {
+        placeBid: vi.fn(),
+        placeBidWithIdempotency,
+      },
+      bidEligibility: {
+        assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)),
+      } as unknown as IBidEligibility,
+      legalEntityRepository: { ensurePersonalEntity: vi.fn() } as never,
+    });
+    const result = await service.setAutoBid({
+      lotId: "lot-1",
+      placedByUserId: "u1",
+      buyerLegalEntityId: "u1",
+      maxAutoBidAmount: 200,
+      autoBidStepAmount: 10,
+    });
+    expect(result.isOk()).toBe(true);
+    expect(updateProxy).not.toHaveBeenCalled();
+    expect(placeBidWithIdempotency).toHaveBeenCalled();
   });
 
   it("places opening bid when user is not winning", async () => {

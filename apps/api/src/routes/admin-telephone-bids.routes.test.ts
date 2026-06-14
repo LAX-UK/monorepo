@@ -111,6 +111,28 @@ describe("POST /admin/saleroom/telephone-bids", () => {
     );
   });
 
+  it("derives clerk idempotency key when telephone booking id is absent", async () => {
+    const { app, placeBidWithIdempotency, placeBid } = buildTelephoneBidApp();
+    const res = await app.request("http://test/admin/saleroom/telephone-bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lotId: LOT_ID,
+        buyerUserId: BUYER_ID,
+        buyerLegalEntityId: BUYER_ENTITY,
+        amount: 500,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(placeBidWithIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: `telephone-clerk:${LOT_ID}:clerk-1:${BUYER_ID}:500`,
+      }),
+    );
+    expect(placeBid).not.toHaveBeenCalled();
+  });
+
   it("returns lot_not_on_block when saleroom policy rejects", async () => {
     const placeBidWithIdempotencyReject = vi.fn();
     const customContainer = {

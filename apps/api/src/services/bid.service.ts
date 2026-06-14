@@ -1,6 +1,8 @@
 import type { Database } from "@auction/db";
+import { saleroomSession } from "@auction/db/schema";
 import type { Bid, Lot } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
+import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { AdminMetricsService } from "./admin-metrics.service.js";
@@ -179,8 +181,32 @@ export class BidService implements IBidPlacer {
           if (lotRow.status !== "active") {
             throw new BidError("Lot is not accepting bids", 400);
           }
-          if (Date.now() > lotRow.endTime.getTime()) {
+          const skipCatalogEndTime =
+            this.saleroomSessionLookup != null &&
+            (await this.saleroomSessionLookup.shouldSkipAntiSnipeForLot(lotId));
+          if (!skipCatalogEndTime && Date.now() > lotRow.endTime.getTime()) {
             throw new BidError("Lot has ended", 400);
+          }
+
+          if (isOperatorPlacement(bidPlacement?.placedVia ?? null) && lotRow.saleId) {
+            const [session] = await tx
+              .select({
+                status: saleroomSession.status,
+                currentLotId: saleroomSession.currentLotId,
+              })
+              .from(saleroomSession)
+              .where(eq(saleroomSession.saleId, lotRow.saleId))
+              .limit(1);
+            if (!session || session.status !== "live") {
+              throw new BidError(
+                "Saleroom is not live — bids can only be placed on the current lot",
+                400,
+                "lot_not_on_block",
+              );
+            }
+            if (session.currentLotId !== lotId) {
+              throw new BidError("This lot is not on the block", 400, "lot_not_on_block");
+            }
           }
 
           const strategy = this.strategyFactory.create(lotRow.auctionType);
