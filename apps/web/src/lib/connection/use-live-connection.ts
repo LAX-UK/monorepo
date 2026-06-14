@@ -3,7 +3,8 @@
 import { useRealtimeLatency } from "@/hooks/use-realtime-latency";
 import {
   type LiveConnectionState,
-  isLiveBiddingAllowed,
+  canSubmitBid,
+  isRealtimeHealthy,
   liveConnectionMessage,
   mergeConnectionStatus,
 } from "@/lib/connection/merge-connection-status";
@@ -15,6 +16,7 @@ export type LiveConnectionSnapshot = {
   state: LiveConnectionState;
   message: string | null;
   biddingAllowed: boolean;
+  realtimeHealthy: boolean;
 };
 
 export function useLiveConnection(): LiveConnectionSnapshot {
@@ -41,6 +43,7 @@ export function useLiveConnection(): LiveConnectionSnapshot {
   return {
     state,
     message: liveConnectionMessage(state),
-    biddingAllowed: isLiveBiddingAllowed(state),
+    biddingAllowed: canSubmitBid(state),
+    realtimeHealthy: isRealtimeHealthy(state),
   };
 }

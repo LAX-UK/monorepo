@@ -1,5 +1,6 @@
 import type {
   AutoBidMutationResult,
+  AutoBidPlacedBid,
   AutoBidSettings,
   AutoBidWriter,
   PlaceBidResult,
@@ -29,6 +30,20 @@ function parseSettings(raw: unknown): AutoBidSettings | null {
   }
 
   return null;
+}
+
+function parsePlacedBid(raw: unknown, settings: AutoBidSettings): AutoBidPlacedBid | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.id !== "string" || typeof o.amount !== "string") return undefined;
+  return {
+    id: o.id,
+    amount: o.amount,
+    bidderId: typeof o.bidderId === "string" ? o.bidderId : null,
+    placedByUserId: typeof o.placedByUserId === "string" ? o.placedByUserId : null,
+    maxAutoBidAmount: settings.maxAutoBidAmount,
+    autoBidStepAmount: settings.autoBidStepAmount,
+  };
 }
 
 export function createHttpAutoBidWriter(): AutoBidWriter {
@@ -71,7 +86,8 @@ export function createHttpAutoBidWriter(): AutoBidWriter {
       if (!settings) {
         return { ok: false, error: "Invalid response", status: res.status };
       }
-      return { ok: true, settings };
+      const placedBid = parsePlacedBid(json.data, settings);
+      return { ok: true, settings, ...(placedBid ? { placedBid } : {}) };
     },
     async clearAutoBid(lotId: string) {
       const res = await client.lots[":id"]["auto-bid"].$delete({ param: { id: lotId } });
