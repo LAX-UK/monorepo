@@ -2,6 +2,7 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import { Button } from "@auction/ui";
 import Link from "next/link";
 
@@ -24,7 +25,7 @@ export function SaleroomHubMobileCards({ rows }: Props) {
             <AdminStatusBadge domain="sale" status={row.sale.status} size="sm" />
           </div>
           <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-            Onsite sale
+            {getSaleDeliveryModeLabel(row.sale.deliveryMode)} sale
           </p>
           <Button variant="secondary" size="sm" className="mt-3 min-h-11 w-full" asChild>
             <Link href={`/admin/saleroom/${row.sale.id}`}>Open clerk console</Link>
