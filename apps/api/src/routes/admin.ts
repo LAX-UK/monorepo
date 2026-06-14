@@ -174,7 +174,7 @@ const amlReviewQuerySchema = z.object({
 const sourceOfFundsListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
   offset: z.coerce.number().int().min(0).optional().default(0),
-  status: z.enum(["pending", "rejected"]).optional().default("pending"),
+  status: z.enum(["pending", "rejected", "approved"]).optional().default("pending"),
 });
 
 const amlReviewBodySchema = z.object({

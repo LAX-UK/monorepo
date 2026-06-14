@@ -90,6 +90,10 @@ export interface IPaymentWriteRepository {
   countPendingOlderThanHours(hours: number): Promise<number>;
   /** Pending payments with `created_at` strictly before `cutoff` (cron expiry). */
   listStalePendingBefore(cutoff: Date): Promise<{ id: string; lotId: string; buyerId: string }[]>;
+  /** Authorized (in-flight bank transfer) payments with `created_at` strictly before `cutoff`. */
+  listStaleAuthorizedBefore(
+    cutoff: Date,
+  ): Promise<{ id: string; lotId: string; buyerId: string }[]>;
   /** Sum captured payment amounts in `[start, end]`. */
   sumCapturedBetween(start: Date, end: Date): Promise<string>;
   /** UTC day counts for admin KPI trends (created_at >= rangeStart). */
@@ -108,6 +112,10 @@ export interface IPaymentWriteRepository {
     id: string,
     opts: { stripeChargeId?: string | null },
   ): Promise<boolean>;
+  /** Atomically move pending → authorized (bank transfer in flight). */
+  applyAuthorizedInTransaction(tx: Database, id: string): Promise<boolean>;
+  /** Atomically cancel an open payment (pending or authorized). */
+  applyCancelledInTransaction(tx: Database, id: string): Promise<boolean>;
   applyRefundedInTransaction(
     tx: Database,
     id: string,

@@ -52,6 +52,19 @@ When `CRON_INTERNAL_SECRET` is set, the worker registers:
 
 Manual replay remains available via the same endpoints (see `docs/runbooks/xero-stripe-payment-setup.md`, `docs/runbooks/monitoring-alerts.md`).
 
+## Go-live hardening (checkout — applied)
+
+| Fix | What changed |
+|-----|----------------|
+| **Webhook status races** | `payment_intent.processing` / `partially_funded` use conditional `applyAuthorizedInTransaction` (pending → authorized only). Cancel paths use `applyCancelledInTransaction`. |
+| **Bank transfer PI orphan** | Re-POST `/payments` when status is already `authorized` returns in-flight state without minting a new Stripe session/PI. |
+| **Async bank transfer failure** | `checkout.session.async_payment_failed` cancels authorized payments so buyers can retry cleanly. |
+| **Dispute clawback timing** | Seller clawback on `charge.dispute.funds_withdrawn`; reversal on `dispute.closed` + `won`. |
+| **Stale authorized payments** | Cron expires `authorized` rows after `PAYMENT_AUTHORIZED_EXPIRE_DAYS` (default 30). |
+| **Admin capture amount parity** | `markCapturedByAdmin` rejects Stripe PI amount ≠ DB invoice total. |
+| **Buyer UX** | Null checkout URL → paid state; payments slice failure surfaced; Stripe redirect retry; manual-review keeps order summary; fulfilment polling retains last snapshot on error. |
+| **Partial refund status** | Payment stays `captured` until fully refunded (payout clawback is delta-correct) — intentional. |
+
 ## Go-live hardening (applied)
 
 | Fix | What changed |

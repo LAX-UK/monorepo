@@ -154,6 +154,24 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return row ? mapRow(row, null) : null;
   }
 
+  async applyAuthorizedInTransaction(tx: Database, id: string): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({ status: "authorized" })
+      .where(and(eq(payment.id, id), eq(payment.status, "pending")))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
+  async applyCancelledInTransaction(tx: Database, id: string): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({ status: "cancelled" })
+      .where(and(eq(payment.id, id), inArray(payment.status, ["pending", "authorized"])))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
   async applyCapturedInTransaction(
     tx: Database,
     id: string,
@@ -283,6 +301,20 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       })
       .from(payment)
       .where(and(eq(payment.status, "pending"), lte(payment.createdAt, cutoff)));
+    return rows;
+  }
+
+  async listStaleAuthorizedBefore(
+    cutoff: Date,
+  ): Promise<{ id: string; lotId: string; buyerId: string }[]> {
+    const rows = await this.db
+      .select({
+        id: payment.id,
+        lotId: payment.lotId,
+        buyerId: payment.buyerId,
+      })
+      .from(payment)
+      .where(and(eq(payment.status, "authorized"), lte(payment.createdAt, cutoff)));
     return rows;
   }
 

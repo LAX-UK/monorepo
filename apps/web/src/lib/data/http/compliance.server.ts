@@ -205,8 +205,16 @@ export async function getAdminSourceOfFundsRejected(
   return page.rows;
 }
 
+export async function getAdminSourceOfFundsApproved(
+  limit = 50,
+  offset = 0,
+): Promise<AdminSourceOfFundsRow[]> {
+  const page = await getAdminSourceOfFundsPage({ status: "approved", limit, offset });
+  return page.rows;
+}
+
 export async function getAdminSourceOfFundsPage(params: {
-  status: "pending" | "rejected";
+  status: "pending" | "rejected" | "approved";
   limit: number;
   offset: number;
 }): Promise<{ rows: AdminSourceOfFundsRow[]; total: number }> {

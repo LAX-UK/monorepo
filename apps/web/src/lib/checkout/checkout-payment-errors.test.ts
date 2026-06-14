@@ -21,6 +21,11 @@ describe("checkoutPaymentErrorMessage", () => {
       "source-of-funds",
     );
   });
+
+  it("maps accounting and session codes", () => {
+    expect(checkoutPaymentErrorMessage("x", "accounting_unavailable")).toContain("invoice");
+    expect(checkoutPaymentErrorMessage("x", "session_required")).toContain("session expired");
+  });
 });
 
 describe("manualReviewReasonCopy", () => {

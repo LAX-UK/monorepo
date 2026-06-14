@@ -124,6 +124,7 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     }
     const n = await container.paymentService.expireStalePendingPayments(
       env.PAYMENT_PENDING_EXPIRE_DAYS,
+      env.PAYMENT_AUTHORIZED_EXPIRE_DAYS,
     );
     return c.json({ data: { expired: n } });
   });
