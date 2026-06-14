@@ -7,6 +7,7 @@ export type LotLifecycleKind =
   | "scheduled"
   | "live"
   | "extended"
+  | "liveSaleroom"
   | "endedSold"
   | "endedNoSale"
   | "cancelled"
@@ -42,7 +43,7 @@ export function classifyLotLifecycle(
   lot: LotLifecycleLot,
   sale: LotLifecycleSale,
   nowMs: number,
-  opts?: { recentlyExtended?: boolean },
+  opts?: { recentlyExtended?: boolean; saleroomSessionActive?: boolean; isOnBlock?: boolean },
 ): LotLifecycle {
   if (lot.status === "voided") {
     return { kind: "withdrawn", msLeft: null };
@@ -70,6 +71,9 @@ export function classifyLotLifecycle(
     return { kind: "scheduled", msLeft: timer.msLeft };
   }
   if (timer.kind === "live") {
+    if (opts?.saleroomSessionActive) {
+      return { kind: "liveSaleroom", msLeft: null };
+    }
     if (opts?.recentlyExtended) {
       return { kind: "extended", msLeft: timer.msLeft };
     }
@@ -108,6 +112,8 @@ export function lifecycleBadge(lifecycle: LotLifecycle): LifecycleBadgeVM {
       return { label: "Live now", tone: "live", pulse: true };
     case "extended":
       return { label: "Extended", tone: "warn", pulse: true };
+    case "liveSaleroom":
+      return { label: "Live in saleroom", tone: "live", pulse: true };
     case "endedSold":
       return { label: "Sold", tone: "ended", pulse: false };
     case "endedNoSale":

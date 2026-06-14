@@ -127,9 +127,6 @@ const envSchema = z
     ENABLE_WHATSAPP_CHANNEL: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
-    ENABLE_HYBRID_SALES: z
-      .preprocess((val) => val === "true" || val === true, z.boolean())
-      .default(false),
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
     /** Directory under process.cwd() for local object storage. */
     STORAGE_LOCAL_ROOT: z.string().default("uploads"),

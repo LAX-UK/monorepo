@@ -495,4 +495,50 @@ describe("LotLifecycleService", () => {
       expect.anything(),
     );
   });
+
+  it("does not set winner on clerk hammer when reserve is not met", async () => {
+    const lotRow = baseLot({
+      reservePrice: "1000.00",
+      currentPrice: "500.00",
+    });
+    const lots: ILotRepository = {
+      findById: vi.fn().mockResolvedValue(lotRow),
+      findByIdForUpdate: vi.fn().mockResolvedValue(lotRow),
+      updateStatus: vi.fn(),
+      setWinner: vi.fn(),
+      findScheduledToActivate: vi.fn(),
+      findActivePastEnd: vi.fn(),
+      findActiveByEndTimeBetween: vi.fn(),
+      findActiveDutchLots: vi.fn(),
+      setDutchLastDecrementAt: vi.fn(),
+      updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn(),
+      voidLotAntiShillingClose: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const bids: IBidRepository = {
+      findEligibleBidsForLotClose: vi
+        .fn()
+        .mockResolvedValue([bid({ amount: "500.00", buyerLegalEntityId: "le-1" })]),
+      listForLotSettlement: vi
+        .fn()
+        .mockResolvedValue([bid({ amount: "500.00", buyerLegalEntityId: "le-1" })]),
+      listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+    } as unknown as IBidRepository;
+
+    const svc = new LotLifecycleService(
+      createFactory(lots, bids),
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+      null,
+      null,
+      null,
+    );
+
+    const outcome = await svc.finalizeActiveLotFromClerkHammer("a1");
+    expect(outcome?.winnerId).toBeNull();
+    expect(lots.setWinner).not.toHaveBeenCalled();
+  });
 });

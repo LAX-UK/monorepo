@@ -56,4 +56,29 @@ describe("sales public GET /:id contract", () => {
     const res = await app.request(`http://t/sales/${saleId}`);
     expect(res.status).toBe(404);
   });
+
+  it("GET /:id/saleroom/status returns public session snapshot", async () => {
+    const app = new Hono();
+    const saleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const getPublicSessionStatus = vi.fn().mockResolvedValue({
+      status: "live",
+      currentLotId: "lot-on-block",
+    });
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      saleService: { getSaleDetailForPublicApi: vi.fn() },
+      saleroomService: { getPublicSessionStatus },
+      saleFollowService: {},
+      saleBiddersService: { list: vi.fn() },
+      mediaUrlResolver: {},
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue(null),
+    };
+    app.route("/sales", createSaleRoutes(container, authenticator));
+    const res = await app.request(`http://t/sales/${saleId}/saleroom/status`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { status: string; currentLotId: string } };
+    expect(body.data).toEqual({ status: "live", currentLotId: "lot-on-block" });
+  });
 });

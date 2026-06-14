@@ -54,4 +54,36 @@ describe("DutchAuctionStrategy", () => {
     expect(r.isErr()).toBe(true);
     if (r.isErr()) expect(r.error.message).toContain("Seller cannot bid");
   });
+
+  it("determines winner as first acceptance by createdAt", () => {
+    const t1 = new Date("2026-01-01T10:00:00Z");
+    const t2 = new Date("2026-01-01T10:05:00Z");
+    const winner = strategy.determineWinner(mkLot(), [
+      {
+        id: "b2",
+        lotId: "auc-1",
+        bidderId: "u2",
+        placedByUserId: "u2",
+        buyerLegalEntityId: "le-2",
+        amount: "150.00",
+        isWinning: false,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: t2,
+      },
+      {
+        id: "b1",
+        lotId: "auc-1",
+        bidderId: "u1",
+        placedByUserId: "u1",
+        buyerLegalEntityId: "le-1",
+        amount: "150.00",
+        isWinning: false,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: t1,
+      },
+    ]);
+    expect(winner?.bidderId).toBe("u1");
+  });
 });

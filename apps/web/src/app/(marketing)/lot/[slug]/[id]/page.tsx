@@ -32,6 +32,7 @@ import {
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
+import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { fetchRegistryArtistById } from "@/lib/data/http/artist.server";
 import { getServerAutoBid } from "@/lib/data/http/auto-bid.server";
@@ -44,6 +45,7 @@ import {
   getServerLotReader,
   getServerLotWatchCount,
 } from "@/lib/data/http/lots.server";
+import { getServerSaleroomStatus } from "@/lib/data/http/saleroom-status.server";
 import { getServerSaleMyRegistrations, getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
@@ -267,6 +269,10 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const showSaleroomParticipation =
     saleBundle?.sale != null && isSaleroomDeliveryMode(saleBundle.sale.deliveryMode);
   const isHybridSale = saleBundle?.sale?.deliveryMode === "hybrid";
+  const initialSaleroomStatus =
+    isHybridSale && auction.saleId
+      ? await getServerSaleroomStatus(auction.saleId)
+      : { status: "none" as const, currentLotId: null };
 
   const telephoneBookingForSale =
     session && auction.saleId && showSaleroomParticipation
@@ -515,46 +521,53 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
             <OnsiteLotUnavailable saleTitle={parentSale?.title ?? null} saleId={auction.saleId} />
           ) : (
             <LotRealtimeProvider lotId={auction.id}>
-              <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
-                <ArtworkOnlineLayout
-                  auction={auction}
-                  saleForLifecycle={saleLifecyclePick}
-                  showPreviewRibbon={showPreviewRibbon}
-                  isSaleQueueLoading={isSaleQueueLoading}
-                  serverClockMs={serverNow}
-                  sessionHeader={sessionHeaderVM}
-                  queueCurrent={queueVMs.current}
-                  queueUpNext={queueVMs.upNext}
-                  queueRest={queueVMs.queue}
-                  marketingAccordionBlocks={marketingBlocks}
-                  rail={rail}
-                  isAuthenticated={Boolean(session)}
-                  watchedLotIds={watchedLotIds}
-                  currentUserId={session?.id ?? null}
-                  shareUrl={shareUrl}
-                  followSlot={followSlot}
-                  bidPanel={onlineBidPanel}
-                  participationSection={hybridParticipationSection}
-                  bidPanelTop={
-                    <ArtworkConditionReportCta
-                      lotId={auction.id}
-                      loginNextPath={lotPath(auction)}
-                      isAuthenticated={Boolean(session)}
-                      show={conditionReportCtaShow}
-                      lotEligible={conditionReportCtaShow}
-                      kycApproved={kycApprovedForCr}
-                      kycFeedback={kycFeedbackForCr}
-                      publishedConditionReport={publishedConditionReport}
-                      buyerRequest={buyerConditionReportRequest}
-                      userId={session?.id ?? null}
-                    />
-                  }
-                  hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
-                  streamUrl={saleBundle?.sale?.streamUrl ?? null}
-                  streamSaleTitle={saleBundle?.sale?.title ?? parentSale?.title ?? auction.title}
-                  streamPosterUrl={auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null}
-                />
-              </OnlineLotLifecycleProvider>
+              <MaybeSaleroomLiveProvider
+                saleId={isHybridSale ? auction.saleId : null}
+                initial={initialSaleroomStatus}
+              >
+                <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
+                  <ArtworkOnlineLayout
+                    auction={auction}
+                    saleForLifecycle={saleLifecyclePick}
+                    showPreviewRibbon={showPreviewRibbon}
+                    isSaleQueueLoading={isSaleQueueLoading}
+                    serverClockMs={serverNow}
+                    sessionHeader={sessionHeaderVM}
+                    queueCurrent={queueVMs.current}
+                    queueUpNext={queueVMs.upNext}
+                    queueRest={queueVMs.queue}
+                    marketingAccordionBlocks={marketingBlocks}
+                    rail={rail}
+                    isAuthenticated={Boolean(session)}
+                    watchedLotIds={watchedLotIds}
+                    currentUserId={session?.id ?? null}
+                    shareUrl={shareUrl}
+                    followSlot={followSlot}
+                    bidPanel={onlineBidPanel}
+                    participationSection={hybridParticipationSection}
+                    bidPanelTop={
+                      <ArtworkConditionReportCta
+                        lotId={auction.id}
+                        loginNextPath={lotPath(auction)}
+                        isAuthenticated={Boolean(session)}
+                        show={conditionReportCtaShow}
+                        lotEligible={conditionReportCtaShow}
+                        kycApproved={kycApprovedForCr}
+                        kycFeedback={kycFeedbackForCr}
+                        publishedConditionReport={publishedConditionReport}
+                        buyerRequest={buyerConditionReportRequest}
+                        userId={session?.id ?? null}
+                      />
+                    }
+                    hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
+                    streamUrl={saleBundle?.sale?.streamUrl ?? null}
+                    streamSaleTitle={saleBundle?.sale?.title ?? parentSale?.title ?? auction.title}
+                    streamPosterUrl={
+                      auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null
+                    }
+                  />
+                </OnlineLotLifecycleProvider>
+              </MaybeSaleroomLiveProvider>
             </LotRealtimeProvider>
           )}
         </LotPortsProvider>

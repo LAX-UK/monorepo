@@ -85,7 +85,6 @@ export type SaleServiceOptions = {
   venueRepository?: IVenueRepository | null;
   enforceIndividualConnectOnPublish?: boolean;
   qrCodeService?: QrCodeService | null;
-  hybridSalesEnabled?: boolean;
 };
 
 export class SaleService {
@@ -106,7 +105,6 @@ export class SaleService {
   private readonly venueRepository: IVenueRepository | null;
   private readonly enforceIndividualConnectOnPublish: boolean;
   private readonly qrCodeService: QrCodeService | null;
-  private readonly hybridSalesEnabled: boolean;
 
   constructor(opts: SaleServiceOptions) {
     this.saleRepo = opts.saleRepo;
@@ -126,13 +124,6 @@ export class SaleService {
     this.venueRepository = opts.venueRepository ?? null;
     this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
     this.qrCodeService = opts.qrCodeService ?? null;
-    this.hybridSalesEnabled = opts.hybridSalesEnabled ?? false;
-  }
-
-  private assertHybridAllowed(mode: string | undefined): void {
-    if (mode === "hybrid" && !this.hybridSalesEnabled) {
-      throw new LotError("Hybrid sales are not enabled", 400, "hybrid_disabled");
-    }
   }
 
   private async recordLotLifecycle(fn: (tx: Database) => Promise<void>): Promise<void> {
@@ -233,7 +224,6 @@ export class SaleService {
     });
     if (snapshot.isErr()) throw snapshot.error;
     const normalizedInput = { ...input, ...snapshot.value };
-    this.assertHybridAllowed(normalizedInput.deliveryMode);
     const sale = await this.saleRepo.create({ ...normalizedInput, createdByLegalEntityId });
     await this.qrCodeService?.getOrCreateDefault({
       entityType: "sale",
@@ -1013,7 +1003,6 @@ export class SaleService {
     }
     let normalized: Partial<CreateSaleInput> = { ...(patch as Partial<CreateSaleInput>) };
     const nextDelivery = patch.deliveryMode ?? sale.deliveryMode;
-    this.assertHybridAllowed(nextDelivery);
     const caps = getSaleModeCapabilities(nextDelivery);
     if (!caps.allowsStreamUrl) {
       normalized.streamUrl = null;

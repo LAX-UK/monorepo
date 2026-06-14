@@ -28,6 +28,7 @@ import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
+import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import { NotificationFactory } from "./notification.factory.js";
@@ -44,6 +45,7 @@ export type BidServiceOptions = {
   lotJobs: LotJobSchedulerPort | null;
   adminMetrics?: AdminMetricsService | null;
   saleModeLookup?: ISaleModeLookup | null;
+  saleroomSessionLookup?: ISaleroomSessionLookup | null;
   antiShillingGuard?: IAntiShillingGuard | null;
   domainEventPublisher?: DomainEventPublisher | null;
   legalEntityRepository?: ILegalEntityRepository | null;
@@ -64,6 +66,7 @@ export class BidService implements IBidPlacer {
   private readonly earlyCloseHandler: EarlyCloseHandler;
   private readonly idempotentExecutor: IdempotentBidExecutor;
   private readonly saleModeLookup: ISaleModeLookup | null;
+  private readonly saleroomSessionLookup: ISaleroomSessionLookup | null;
   private readonly antiShillingGuard: IAntiShillingGuard | null;
   private readonly bidEligibility: IBidEligibility | null;
   private readonly englishOnlyAuctions: boolean;
@@ -79,6 +82,7 @@ export class BidService implements IBidPlacer {
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.legalEntityRepository = opts.legalEntityRepository ?? null;
     this.saleModeLookup = opts.saleModeLookup ?? null;
+    this.saleroomSessionLookup = opts.saleroomSessionLookup ?? null;
     this.antiShillingGuard = opts.antiShillingGuard ?? null;
     this.bidEligibility = opts.bidEligibility ?? null;
     this.notificationOutbox = opts.notificationOutbox ?? null;
@@ -262,7 +266,11 @@ export class BidService implements IBidPlacer {
           }
 
           let nextEnd = lotRow.endTime;
+          const skipAntiSnipe =
+            this.saleroomSessionLookup != null &&
+            (await this.saleroomSessionLookup.shouldSkipAntiSnipeForLot(lotId));
           if (
+            !skipAntiSnipe &&
             strategy.shouldExtendTime(
               lotRow,
               {
