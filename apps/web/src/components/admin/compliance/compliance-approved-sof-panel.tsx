@@ -29,9 +29,12 @@ export function ComplianceApprovedSofPanel({ rows }: Props) {
                   href={`/admin/clients/${row.userId}`}
                   className="font-medium text-link underline"
                 >
-                  View client profile
+                  {vm.buyerLabel}
                 </Link>
                 <AdminStatusBadge domain="sofCase" status="approved" />
+                {vm.settlementSummary ? (
+                  <span className="text-on-surface-variant">{vm.settlementSummary}</span>
+                ) : null}
                 <span className="text-on-surface-variant">
                   {vm.triggerLabel} · {vm.exposureLabel}
                 </span>
