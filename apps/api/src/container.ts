@@ -205,6 +205,7 @@ import { AutoBidService } from "./services/auto-bid.service.js";
 import { BidEligibilityService } from "./services/bid-eligibility.service.js";
 import { BidService } from "./services/bid.service.js";
 import { DEFAULT_BID_POLICY } from "./services/bid/bid-policy.js";
+import { SaleroomOnBlockPolicy } from "./services/bid/saleroom-on-block.policy.js";
 import { CachedCatalogueListService } from "./services/cached-catalogue-list.service.js";
 import { CategoryService } from "./services/category.service.js";
 import { ConditionReportService } from "./services/condition-report.service.js";
@@ -384,6 +385,7 @@ export type Container = {
   onsiteEventCheckInService: IOnsiteEventCheckInService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomService: SaleroomService;
+  saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   lotFulfilmentService: LotFulfilmentService;
   saleLifecycleService: SaleLifecycleService;
   lotJobScheduler: ILotJobScheduler;
@@ -1419,7 +1421,6 @@ export function createContainer(env: Env): Container {
       ...DEFAULT_BID_POLICY,
       antiSnipingWindowMs: env.ANTI_SNIPING_WINDOW_MS,
       antiSnipingExtensionMs: env.ANTI_SNIPING_EXTENSION_MS,
-      maxProxyRounds: env.MAX_PROXY_ROUNDS,
     },
     notificationOutbox: notificationOutboxService,
     notificationFactory,
@@ -1448,6 +1449,7 @@ export function createContainer(env: Env): Container {
     lotJobs: lotJobScheduler,
     telephoneBidBookingService,
   });
+  const saleroomOnBlockPolicy = new SaleroomOnBlockPolicy(db);
   const userService = new UserService(userRepo);
   const personalLegalEntityResolver = new PersonalLegalEntityResolver(
     legalEntityRepository,
@@ -1652,6 +1654,7 @@ export function createContainer(env: Env): Container {
     onsiteEventCheckInService,
     adminSaleOperationsSnapshotService,
     saleroomService,
+    saleroomOnBlockPolicy,
     lotFulfilmentService,
     saleLifecycleService,
     lotJobScheduler,

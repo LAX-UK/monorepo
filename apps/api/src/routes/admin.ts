@@ -645,9 +645,20 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
+      const lotRow = await container.repoFactory.root.lot.findById(body.lotId);
+      if (!lotRow?.saleId) return c.json({ error: "Lot not found" }, 404);
+      const onBlock = await container.saleroomOnBlockPolicy.assertLotOnBlock(
+        lotRow.saleId,
+        body.lotId,
+      );
+      if (onBlock.isErr()) {
+        const e = onBlock.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
       if (body.telephoneBookingId) {
-        const lotRow = await container.repoFactory.root.lot.findById(body.lotId);
-        if (!lotRow?.saleId) return c.json({ error: "Lot not found" }, 404);
         const bookingCheck =
           await container.telephoneBidBookingService.assertBookingAllowsTelephoneBid({
             bookingId: body.telephoneBookingId,
@@ -726,6 +737,17 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
+      const onBlock = await container.saleroomOnBlockPolicy.assertLotOnBlock(
+        body.saleId,
+        body.lotId,
+      );
+      if (onBlock.isErr()) {
+        const e = onBlock.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
       const resolution = await container.paddleService.assertPaddleAllowsBid({
         saleId: body.saleId,
         paddleNumber: body.paddleNumber,

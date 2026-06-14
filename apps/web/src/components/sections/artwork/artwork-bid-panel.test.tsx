@@ -1,5 +1,7 @@
+import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
 import type { Lot } from "@auction/types";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ArtworkBidPanel } from "./artwork-bid-panel";
 
@@ -47,6 +49,7 @@ vi.mock("@/lib/connection/use-live-connection", () => ({
     state: "live",
     message: null,
     biddingAllowed: true,
+    realtimeHealthy: true,
   }),
 }));
 
@@ -80,65 +83,73 @@ const lot = (sellerId: string): Lot => ({
   marketingDetails: {},
 });
 
+const buyerSession = {
+  id: "buyer-1",
+  email: "b@b.co",
+  name: "Buyer",
+  role: "client" as const,
+};
+
+const summarySeed = {
+  title: "Piece",
+  kicker: null,
+  estimateLine: null,
+  sellerName: "Seller",
+  sellerHref: "/artist/other-artist/other",
+  sellerImageUrl: null,
+};
+
 /** Default entry mode is auto-bid; switch to manual before using the bid form. */
 function selectManualBidMode() {
   fireEvent.click(screen.getByRole("button", { name: /place one bid now/i }));
 }
 
+function renderArtworkBidPanel(props: ComponentProps<typeof ArtworkBidPanel>) {
+  return render(
+    <LotBidHistoryProvider
+      lotId={props.auction.id}
+      initialHistory={props.initialHistory}
+      initialCurrentPrice={props.auction.currentPrice}
+      initialLeadingBidderId={props.initialLeadingBidderId ?? null}
+      currentUserId={props.sessionUser?.id ?? null}
+    >
+      <ArtworkBidPanel {...props} />
+    </LotBidHistoryProvider>,
+  );
+}
+
 describe("ArtworkBidPanel", () => {
   beforeEach(() => {
     placeBidMock.mockReset();
+    setAutoBidMock.mockReset();
   });
 
   it("shows seller notice instead of bid form when user is the seller", () => {
     const sellerId = "user-seller-1";
-    render(
-      <ArtworkBidPanel
-        auction={lot(sellerId)}
-        initialHistory={[]}
-        sessionUser={{
-          id: sellerId,
-          email: "a@b.co",
-          name: "Seller",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot(sellerId),
+      initialHistory: [],
+      sessionUser: {
+        id: sellerId,
+        email: "a@b.co",
+        name: "Seller",
+        role: "client",
+      },
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
     expect(screen.getByText(/your listing/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
   });
 
   it("shows bid form for a buyer", () => {
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
     selectManualBidMode();
     expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
   });
@@ -149,53 +160,25 @@ describe("ArtworkBidPanel", () => {
       status: "scheduled" as const,
       startTime: new Date(Date.now() + 86_400_000),
     };
-    render(
-      <ArtworkBidPanel
-        auction={scheduled}
-        initialHistory={[]}
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: scheduled,
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
     expect(screen.queryByText(/save auto-bid/i)).not.toBeInTheDocument();
     expect(screen.getByText(/auto-bid opens when this lot goes live/i)).toBeInTheDocument();
   });
 
   it("shows auto-bid panel when lot is active and live", () => {
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
     expect(screen.getByRole("button", { name: /save auto-bid/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/max amount/i)).toBeInTheDocument();
   });
@@ -215,28 +198,14 @@ describe("ArtworkBidPanel", () => {
         createdAt: new Date(),
       },
     });
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-        omitPricingHeader
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
     selectManualBidMode();
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
     fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
@@ -252,30 +221,48 @@ describe("ArtworkBidPanel", () => {
     expect(await screen.findByText(/bid placed successfully/i)).toBeInTheDocument();
   });
 
+  it("applies opening auto-bid to live price immediately", async () => {
+    setAutoBidMock.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        maxAutoBidAmount: "500",
+        autoBidStepAmount: "10",
+        isActive: true,
+      },
+      placedBid: {
+        id: "bid-auto-1",
+        amount: "110",
+        placedByUserId: "buyer-1",
+        maxAutoBidAmount: "500",
+        autoBidStepAmount: "10",
+      },
+    });
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
+    fireEvent.change(screen.getByLabelText(/max amount/i), { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: /save auto-bid/i }));
+    await waitFor(() => expect(setAutoBidMock).toHaveBeenCalled());
+    expect(await screen.findByText(/auto-bid saved/i)).toBeInTheDocument();
+    expect(screen.getByText(/winning · auto-bid defending/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/£110\.00/i).length).toBeGreaterThan(0);
+  });
+
   it("recovers from placeBid network failure without stuck submitting state", async () => {
     placeBidMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-        omitPricingHeader
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
     selectManualBidMode();
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
     fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
@@ -291,28 +278,14 @@ describe("ArtworkBidPanel", () => {
       error: "Bid still processing; retry shortly",
       code: "bid_in_flight",
     });
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-        omitPricingHeader
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
     selectManualBidMode();
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
     fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
@@ -328,142 +301,86 @@ describe("ArtworkBidPanel", () => {
   });
 
   it("sticky bar offers Raise max when outbid with active auto-bid", () => {
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        initialLeadingBidderId="other-bidder"
-        initialOutbid
-        initialUserHasBid
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={{
-          maxAutoBidAmount: "500",
-          autoBidStepAmount: "10",
-          isActive: true,
-        }}
-        omitPricingHeader
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      initialLeadingBidderId: "other-bidder",
+      initialOutbid: true,
+      initialUserHasBid: true,
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: {
+        maxAutoBidAmount: "500",
+        autoBidStepAmount: "10",
+        isActive: true,
+      },
+      omitPricingHeader: true,
+    });
     expect(screen.getByRole("button", { name: /raise max/i })).toBeInTheDocument();
   });
 
   it("reveals manual bid form when Increase bid is clicked while outbid in auto mode", () => {
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        initialLeadingBidderId="other-bidder"
-        initialOutbid
-        initialUserHasBid
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={{
-          maxAutoBidAmount: "500",
-          autoBidStepAmount: "10",
-          isActive: true,
-        }}
-        omitPricingHeader
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      initialLeadingBidderId: "other-bidder",
+      initialOutbid: true,
+      initialUserHasBid: true,
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: {
+        maxAutoBidAmount: "500",
+        autoBidStepAmount: "10",
+        isActive: true,
+      },
+      omitPricingHeader: true,
+    });
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^increase bid$/i }));
     expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
   });
 
   it("shows durable outbid position on SSR when user bid but is not leading", () => {
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[
-          {
-            id: "b1",
-            bidderId: "buyer-1",
-            amount: "110",
-            at: Date.now(),
-          },
-        ]}
-        initialLeadingBidderId="other-bidder"
-        initialOutbid
-        initialUserHasBid
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [
+        {
+          id: "b1",
+          bidderId: "buyer-1",
+          amount: "110",
+          at: Date.now(),
+        },
+      ],
+      initialLeadingBidderId: "other-bidder",
+      initialOutbid: true,
+      initialUserHasBid: true,
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
     expect(screen.getByText(/you've been outbid/i)).toBeInTheDocument();
   });
 
   it("blocks review when bid exceeds approved registration limit", () => {
-    render(
-      <ArtworkBidPanel
-        auction={lot("other-seller")}
-        initialHistory={[]}
-        sessionUser={{
-          id: "buyer-1",
-          email: "b@b.co",
-          name: "Buyer",
-          role: "client",
-        }}
-        summarySeed={{
-          title: "Piece",
-          kicker: null,
-          estimateLine: null,
-          sellerName: "Seller",
-          sellerHref: "/artist/other-artist/other",
-          sellerImageUrl: null,
-        }}
-        initialAutoBidSettings={null}
-        saleRegistrationBidGate={{
-          saleId: "sale-1",
-          requiresRegistration: true,
-          actingEntityId: "le-agent",
-          registrationStatus: "approved",
-          approvedBidLimit: 500,
-          buyerEntities: [{ id: "le-agent", displayName: "Agency", memberRole: "buyer_agent" }],
-          myRegistrations: [
-            { buyerLegalEntityId: "le-agent", status: "approved", bidLimit: "500.00" },
-          ],
-          kycApproved: true,
-        }}
-      />,
-    );
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      saleRegistrationBidGate: {
+        saleId: "sale-1",
+        requiresRegistration: true,
+        actingEntityId: "le-agent",
+        registrationStatus: "approved",
+        approvedBidLimit: 500,
+        buyerEntities: [{ id: "le-agent", displayName: "Agency", memberRole: "buyer_agent" }],
+        myRegistrations: [
+          { buyerLegalEntityId: "le-agent", status: "approved", bidLimit: "500.00" },
+        ],
+        kycApproved: true,
+      },
+    });
     selectManualBidMode();
     const input = screen.getByPlaceholderText("0.00");
     fireEvent.change(input, { target: { value: "600" } });

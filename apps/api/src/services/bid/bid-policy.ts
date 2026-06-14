@@ -13,12 +13,9 @@ export type BidPolicyConfig = {
   antiSnipingWindowMs: number;
   /** Amount of time added to endTime on anti-snipe extension (ms). */
   antiSnipingExtensionMs: number;
-  /** Safety cap for legacy iterative proxy rounds (direct settlement uses 0–1 rows). */
-  maxProxyRounds: number;
 };
 
 export const DEFAULT_BID_POLICY: BidPolicyConfig = {
   antiSnipingWindowMs: DEFAULT_ANTI_SNIPING_WINDOW_MS,
   antiSnipingExtensionMs: DEFAULT_ANTI_SNIPING_EXTENSION_MS,
-  maxProxyRounds: 100,
 };

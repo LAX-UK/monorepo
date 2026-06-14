@@ -6,7 +6,7 @@ import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useNow } from "@/hooks/use-now";
 import { type LotBidPosition, deriveLotBidPosition } from "@/lib/bid/derive-lot-bid-position";
 import { fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
-import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
+import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
@@ -15,8 +15,6 @@ import { type LotLifecycle, classifyLotLifecycle } from "@/lib/lot/lot-lifecycle
 import { notify } from "@/lib/ui/notify";
 import type { Lot, Sale } from "@auction/types";
 import { useCallback, useMemo, useRef, useState } from "react";
-
-const HISTORY_CAP = 20;
 
 export type UseLotBidStateParams = {
   auction: Lot;
@@ -51,7 +49,6 @@ export type UseLotBidStateResult = {
   endedBanner: string | null;
   outbidSignal: boolean;
   userHasBid: boolean;
-  pushHistory: (entry: Omit<BidHistoryEntry, "at"> & { at?: number }) => void;
   applyOwnBidResult: (bid: {
     id: string;
     amount: string;
@@ -69,24 +66,26 @@ export type UseLotBidStateResult = {
 
 export function useLotBidState({
   auction,
-  initialHistory,
-  initialLeadingBidderId = null,
   sessionUser,
   initialAutoBidSettings = null,
   initialOutbid = false,
   initialUserHasBid = false,
   saleForLifecycle = null,
 }: UseLotBidStateParams): UseLotBidStateResult {
+  const {
+    entries: history,
+    currentPrice,
+    leadingBidderId,
+    applyOwnBid,
+    setEndedWinner,
+  } = useLotBidHistory();
   const onlineLifecycle = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
   const now = useNow();
 
-  const [currentPrice, setCurrentPrice] = useState(auction.currentPrice);
   const [endTime, setEndTime] = useState(() => new Date(auction.endTime).getTime());
   const startTimeMs = useMemo(() => new Date(auction.startTime).getTime(), [auction.startTime]);
-  const [history, setHistory] = useState<BidHistoryEntry[]>(initialHistory);
   const [lotStatus, setLotStatus] = useState<Lot["status"]>(auction.status);
-  const [leadingBidderId, setLeadingBidderId] = useState<string | null>(initialLeadingBidderId);
   const [activeAutoBid, setActiveAutoBid] = useState<AutoBidSettings | null>(
     initialAutoBidSettings,
   );
@@ -95,10 +94,6 @@ export function useLotBidState({
   const [outbidSignal, setOutbidSignal] = useState(initialOutbid);
   const [userHasBid, setUserHasBid] = useState(initialUserHasBid);
 
-  const localOwnBidRef = useRef<import("@/lib/bid/own-bid-echo-guard").OwnBidEchoGuard | null>(
-    null,
-  );
-  const lastOwnBidRef = onlineLifecycle?.ownBidEchoGuardRef ?? localOwnBidRef;
   const endTimeRef = useRef(endTime);
   endTimeRef.current = endTime;
 
@@ -107,34 +102,14 @@ export function useLotBidState({
     window.setTimeout(() => setPriceFlash(false), 500);
   }, []);
 
-  const pushHistory = useCallback((entry: Omit<BidHistoryEntry, "at"> & { at?: number }) => {
-    setHistory((h) =>
-      [{ ...entry, at: entry.at ?? Date.now() }, ...h]
-        .filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i)
-        .slice(0, HISTORY_CAP),
-    );
-  }, []);
-
   const handleAutoBidSaved = useCallback((settings: AutoBidSettings | null) => {
     setActiveAutoBid(settings);
   }, []);
 
   useLotRealtime(auction.id, {
     onBidUpdate: (e) => {
-      if (shouldSkipOwnBidEcho(e, lastOwnBidRef.current, sessionUser?.id)) {
-        return;
-      }
-      setCurrentPrice(e.currentPrice);
-      setLeadingBidderId(e.bidderId);
       triggerPriceFlash();
       onlineLifecycle?.setExtendedDeltaMs(null);
-      pushHistory({
-        id: e.bidId,
-        bidderId: e.bidderId,
-        amount: e.amount,
-        ...(e.isAutoBid ? { isAutoBid: true } : {}),
-        ...(e.placedVia ? { placedVia: e.placedVia } : {}),
-      });
       if (sessionUser?.id && e.outbidUserId === sessionUser.id) {
         setOutbidSignal(true);
       }
@@ -169,8 +144,7 @@ export function useLotBidState({
     },
     onLotEnded: (p) => {
       setLotStatus("ended");
-      setCurrentPrice(p.currentPrice);
-      setLeadingBidderId(p.winnerId ?? null);
+      setEndedWinner(p.winnerId ?? null, p.currentPrice);
       const noSale = Boolean(p.noSale) || !p.winnerId;
       if (noSale) {
         setEndedBanner("Reserve not met — this lot passed unsold.");
@@ -195,12 +169,8 @@ export function useLotBidState({
     onReconnect: () => {
       void fetchLotBidSnapshot(auction.id).then((snap) => {
         if (!snap) return;
-        setCurrentPrice(snap.currentPrice);
         setEndTime(new Date(snap.endTime).getTime());
         setLotStatus(snap.status);
-        if (snap.status === "ended") {
-          setLeadingBidderId(snap.winnerId);
-        }
       });
     },
   });
@@ -326,15 +296,14 @@ export function useLotBidState({
     }) => {
       setOutbidSignal(false);
       setUserHasBid(true);
-      setCurrentPrice(bid.amount);
-      const bidderId = bid.bidderId ?? bid.placedByUserId ?? "";
-      setLeadingBidderId(bidderId || null);
-      lastOwnBidRef.current = {
-        bidId: bid.id,
+      applyOwnBid({
+        id: bid.id,
         amount: bid.amount,
-        leadingBidderId: bidderId || null,
-        at: Date.now(),
-      };
+        bidderId: bid.bidderId ?? null,
+        placedByUserId: bid.placedByUserId ?? null,
+        ...(bid.maxAutoBidAmount ? { isAutoBid: true } : {}),
+        placedVia: "web",
+      });
       if (bid.maxAutoBidAmount) {
         setActiveAutoBid({
           maxAutoBidAmount: bid.maxAutoBidAmount,
@@ -343,14 +312,8 @@ export function useLotBidState({
         });
       }
       triggerPriceFlash();
-      pushHistory({
-        id: bid.id,
-        bidderId,
-        amount: bid.amount,
-        ...(bid.maxAutoBidAmount ? { isAutoBid: true } : {}),
-      });
     },
-    [lastOwnBidRef, pushHistory, triggerPriceFlash],
+    [applyOwnBid, triggerPriceFlash],
   );
 
   const scrollToBid = useCallback(() => {
@@ -389,7 +352,6 @@ export function useLotBidState({
     endedBanner,
     outbidSignal,
     userHasBid,
-    pushHistory,
     applyOwnBidResult,
     scrollToBid,
     scrollToAutoBid,

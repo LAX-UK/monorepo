@@ -18,9 +18,10 @@ import { type LotBidEntryMode, defaultLotBidEntryMode } from "@/lib/bid/lot-bid-
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
 import { useLiveConnection } from "@/lib/connection/use-live-connection";
+import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
-import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
+import type { AutoBidPlacedBid, AutoBidSettings, SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { formatMoney } from "@/lib/format-currency";
@@ -72,8 +73,9 @@ export function ArtworkBidPanel({
   saleForLifecycle = null,
 }: Props) {
   const { bidWriter } = useLotPorts();
+  const { refreshFromServer } = useLotBidHistory();
   const onlineLifecycle = useOnlineLotLifecycle();
-  const { biddingAllowed } = useLiveConnection();
+  const { biddingAllowed, realtimeHealthy } = useLiveConnection();
 
   const bidState = useLotBidState({
     auction,
@@ -144,8 +146,11 @@ export function ArtworkBidPanel({
   );
 
   const onAutoBidSaved = useCallback(
-    (settings: AutoBidSettings | null) => {
+    (settings: AutoBidSettings | null, placedBid?: AutoBidPlacedBid) => {
       handleAutoBidSaved(settings);
+      if (placedBid) {
+        applyOwnBidResult(placedBid);
+      }
       setAutoBidDraftDirty(false);
       if (settings) {
         setMaxAuto(settings.maxAutoBidAmount);
@@ -155,7 +160,7 @@ export function ArtworkBidPanel({
         setAutoBidStep("");
       }
     },
-    [handleAutoBidSaved],
+    [applyOwnBidResult, handleAutoBidSaved],
   );
 
   useEffect(() => {
@@ -311,6 +316,9 @@ export function ArtworkBidPanel({
       includeAutoBidOnManualBid && autoBidStep.trim() !== ""
         ? Number.parseFloat(autoBidStep)
         : undefined;
+    if (biddingLive && biddingAllowed && !realtimeHealthy) {
+      await refreshFromServer();
+    }
     setSubmitting(true);
     let result: Awaited<ReturnType<typeof bidWriter.placeBid>>;
     try {
@@ -388,6 +396,8 @@ export function ArtworkBidPanel({
     setActiveAutoBid,
     biddingAllowed,
     biddingLive,
+    realtimeHealthy,
+    refreshFromServer,
   ]);
 
   const onUseMinimum = useCallback(() => {
