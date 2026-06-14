@@ -13,6 +13,7 @@ import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { overlayPillClasses } from "@/lib/ui/overlay-tone-classes";
+import type { SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -27,7 +28,7 @@ type Props = {
   /** Mobile-only link back to the sales calendar. */
   backHref?: string;
   backLabel?: string;
-  deliveryMode?: "online" | "onsite";
+  deliveryMode?: SaleDeliveryMode;
   streamUrl?: string | null;
 };
 
@@ -39,7 +40,7 @@ function SaleroomHeroPrimaryCta({
 }: {
   hero: SaleHeroVM;
   isAuthenticated: boolean;
-  deliveryMode: "online" | "onsite";
+  deliveryMode: SaleDeliveryMode;
   streamUrl: string | null;
 }) {
   if (!saleAllowsWebBidding(deliveryMode)) {

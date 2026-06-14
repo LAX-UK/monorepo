@@ -30,8 +30,7 @@ export function coerceToIsoString(value: unknown): string | undefined {
 
 function parseSaleDeliveryMode(raw: unknown): Sale["deliveryMode"] {
   const v = typeof raw === "string" ? raw : "";
-  if (v === "online" || v === "onsite") return v;
-  if (v === "hybrid") return "online";
+  if (v === "online" || v === "onsite" || v === "hybrid") return v;
   return "onsite";
 }
 

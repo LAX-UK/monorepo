@@ -1,6 +1,7 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
+import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import { TimelineStages } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
@@ -8,6 +9,8 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+
+import type { ManualReviewReason } from "@auction/types";
 
 export type PortfolioLotCardVm = {
   id: string;
@@ -26,6 +29,8 @@ export type PortfolioLotCardVm = {
   checkoutHref: string;
   conditionReportUrl: string | null;
   endYear: number;
+  /** Compliance reason blocking this lot's checkout, if any. */
+  complianceReason: ManualReviewReason | null;
 };
 
 type Props = {
@@ -36,6 +41,13 @@ type Props = {
    */
   variant?: "split" | "stacked";
 };
+
+function complianceActionHref(row: PortfolioLotCardVm): string {
+  if (row.complianceReason === "source_of_funds_required") {
+    return dashboardSofRequirementsUrl();
+  }
+  return row.checkoutHref;
+}
 
 export function PortfolioLotGrid({ items, variant = "split" }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -77,11 +89,22 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                 <div className="space-y-2 p-4 pb-2">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
                     <StatusBadge
-                      variant={row.paymentStatus === "captured" ? "success" : "warning"}
+                      variant={
+                        row.complianceReason
+                          ? "warning"
+                          : row.paymentStatus === "captured"
+                            ? "success"
+                            : "warning"
+                      }
                       size="sm"
                     >
                       {row.settlementLabel}
                     </StatusBadge>
+                    {row.complianceReason ? (
+                      <StatusBadge variant="danger" size="sm">
+                        Compliance hold
+                      </StatusBadge>
+                    ) : null}
                   </div>
                   <h3 className="font-headline text-2xl font-light leading-tight group-hover:italic">
                     <Link href={row.checkoutHref} className="underline-offset-4 hover:underline">
@@ -146,13 +169,23 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                     Details
                   </Button>
                   {row.paymentStatus !== "captured" ? (
-                    <Button
-                      variant="primary"
-                      className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
-                      asChild
-                    >
-                      <Link href={row.checkoutHref}>Complete checkout</Link>
-                    </Button>
+                    row.complianceReason ? (
+                      <Button
+                        variant="secondary"
+                        className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                        asChild
+                      >
+                        <Link href={complianceActionHref(row)}>View requirements</Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
+                        asChild
+                      >
+                        <Link href={row.checkoutHref}>Complete checkout</Link>
+                      </Button>
+                    )
                   ) : (
                     <Button
                       variant="secondaryOutline"
@@ -256,7 +289,19 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
               </ul>
             </div>
             <Button variant="primary" asChild className="mt-2 w-full sm:w-auto">
-              <Link href={active.checkoutHref}>Go to checkout</Link>
+              <Link
+                href={
+                  active.complianceReason === "source_of_funds_required"
+                    ? dashboardSofRequirementsUrl()
+                    : active.checkoutHref
+                }
+              >
+                {active.complianceReason === "source_of_funds_required"
+                  ? "View requirements"
+                  : active.complianceReason
+                    ? "View compliance status"
+                    : "Go to checkout"}
+              </Link>
             </Button>
           </div>
         ) : null}

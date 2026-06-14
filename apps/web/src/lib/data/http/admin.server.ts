@@ -620,6 +620,9 @@ export type AdminSaleRegistrationRow = {
   decidedAt: string | null;
   decidedByUserId: string | null;
   bidLimit: string | null;
+  paddleNumber: number | null;
+  checkedInAt: string | null;
+  kycStatus: string | null;
   laxNotes: string | null;
   rejectionReason: string | null;
   userEmail: string | null;
@@ -648,6 +651,12 @@ function parseAdminSaleRegistrationRow(raw: unknown): AdminSaleRegistrationRow {
     decidedAt: o.decidedAt == null || o.decidedAt === "" ? null : String(o.decidedAt),
     decidedByUserId: o.decidedByUserId == null ? null : String(o.decidedByUserId),
     bidLimit: o.bidLimit == null ? null : String(o.bidLimit),
+    paddleNumber:
+      o.paddleNumber == null || o.paddleNumber === ""
+        ? null
+        : Number.parseInt(String(o.paddleNumber), 10),
+    checkedInAt: o.checkedInAt == null || o.checkedInAt === "" ? null : String(o.checkedInAt),
+    kycStatus: o.kycStatus == null ? null : String(o.kycStatus),
     laxNotes: o.laxNotes == null ? null : String(o.laxNotes),
     rejectionReason: o.rejectionReason == null ? null : String(o.rejectionReason),
     userEmail: o.userEmail == null ? null : String(o.userEmail),
@@ -672,6 +681,34 @@ export async function getAdminSaleRegistrations(
   if (!res.ok) throw new Error(`Failed to load sale registrations: ${res.status}`);
   const body = (await res.json()) as { data: { items: unknown[] } };
   return body.data.items.map(parseAdminSaleRegistrationRow);
+}
+
+export type AdminPaddleRosterEntry = {
+  paddleNumber: number;
+  userId: string;
+  displayName: string;
+  bidLimit: string | null;
+  hasActiveSelfServiceSession: boolean;
+};
+
+function parseAdminPaddleRosterEntry(raw: unknown): AdminPaddleRosterEntry {
+  const o = raw as Record<string, unknown>;
+  return {
+    paddleNumber: Number.parseInt(String(o.paddleNumber ?? "0"), 10),
+    userId: String(o.userId ?? ""),
+    displayName: String(o.displayName ?? ""),
+    bidLimit: o.bidLimit == null ? null : String(o.bidLimit),
+    hasActiveSelfServiceSession: Boolean(o.hasActiveSelfServiceSession),
+  };
+}
+
+export async function getAdminSalePaddleRoster(saleId: string): Promise<AdminPaddleRosterEntry[]> {
+  const res = await authedServerFetch(`/admin/sales/${encodeURIComponent(saleId)}/paddles`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load paddle roster: ${res.status}`);
+  const body = (await res.json()) as { data: { items: unknown[] } };
+  return body.data.items.map(parseAdminPaddleRosterEntry);
 }
 
 export type AdminConditionReportRequestRow = {

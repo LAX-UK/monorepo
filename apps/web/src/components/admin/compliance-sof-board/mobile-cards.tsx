@@ -2,6 +2,7 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
+import Link from "next/link";
 
 type Props = {
   rows: AdminSofTableRow[];
@@ -19,11 +20,27 @@ export function SofMobileCards({ rows, onOpen }: Props) {
             onClick={() => onOpen(row)}
           >
             <div className="flex flex-wrap items-center gap-2">
-              <AdminStatusBadge domain="sofCase" status={row.status} />
+              <AdminStatusBadge domain="sofCase" status={row.displayStatus} />
               <span className="font-body text-sm text-on-surface">{row.triggerLabel}</span>
             </div>
+            <p className="mt-2 font-body text-sm">
+              <Link
+                href={`/admin/clients/${row.userId}`}
+                className="text-link underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {row.buyerLabel}
+              </Link>
+            </p>
+            {row.settlementSummary ? (
+              <p className="mt-1 font-body text-xs text-on-surface-variant">
+                {row.settlementSummary}
+              </p>
+            ) : null}
             <p className="mt-2 font-body text-sm text-on-surface-variant">{row.exposureLabel}</p>
-            <p className="mt-1 font-body text-xs text-on-surface-variant">{row.triageLabel}</p>
+            <p className="mt-1 font-body text-xs text-on-surface-variant">
+              {row.triageLabel} · Opened {row.openedLabel}
+            </p>
           </button>
         </li>
       ))}

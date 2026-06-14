@@ -86,6 +86,7 @@ import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
 import { purgeQrCodeScans } from "./jobs/purge-qr-code-scans.js";
 import { purgeSoftDeletedUsers } from "./jobs/purge-soft-deleted-users.js";
+import { purgeSourceOfFundsDocumentsJob } from "./jobs/purge-source-of-funds-documents.js";
 import { purgeStaleMarketingClickIds } from "./jobs/purge-stale-marketing-click-ids.js";
 import { purgeStaleMarketingOutbox } from "./jobs/purge-stale-marketing-outbox.js";
 import { recordQrCodeScanJob } from "./jobs/qr-code-scan.js";
@@ -97,6 +98,11 @@ import {
 import { runStaleSubmissionDraftRemindersJob } from "./jobs/stale-submission-draft-reminders.js";
 import { gcPendingUploads, validateUploadJob } from "./jobs/validate-upload.js";
 import { type ZohoCampaignsSyncJobData, zohoCampaignsSyncJob } from "./jobs/zoho-campaigns-sync.js";
+import {
+  ClamAvHttpMalwareScanner,
+  ClamAvMalwareScanner,
+  NoOpMalwareScanner,
+} from "./lib/malware-scanner.js";
 import { createMarketingContactSync } from "./lib/marketing-contact-sync/index.js";
 import {
   getMarketingEventsConfig,
@@ -153,6 +159,25 @@ const bullConnection = bullTelemetry
   : { connection: redis };
 const queueOpts = (name: QueueName) => createBullQueueOptions(name, bullConnection);
 const uploadStorage = createUploadStorage(env);
+const malwareScanner =
+  env.CLAMAV_URL != null
+    ? new ClamAvHttpMalwareScanner(env.CLAMAV_URL, (key, max) =>
+        uploadStorage.getObjectBytes(key, max),
+      )
+    : env.CLAMAV_HOST != null
+      ? new ClamAvMalwareScanner(env.CLAMAV_HOST, env.CLAMAV_PORT, (key, max) =>
+          uploadStorage.getObjectBytes(key, max),
+        )
+      : new NoOpMalwareScanner();
+if (env.CLAMAV_URL == null && env.CLAMAV_HOST == null) {
+  log.warn(
+    {
+      appEnv: env.APP_ENV,
+      scanner: "NoOpMalwareScanner",
+    },
+    "ClamAV is not configured: Source-of-Funds document uploads will NOT be malware-scanned",
+  );
+}
 const imageProcessor = new SharpImageProcessor();
 const publicUploadBase =
   env.STORAGE_DRIVER === "s3" && env.S3_BUCKET && env.S3_REGION
@@ -218,7 +243,13 @@ const validateUploadWorker = new Worker(
     if (!uploadId) {
       throw new Error("validate-upload job is missing uploadId");
     }
-    const result = await validateUploadJob({ db, storage: uploadStorage, uploadId, log });
+    const result = await validateUploadJob({
+      db,
+      storage: uploadStorage,
+      uploadId,
+      log,
+      malwareScanner,
+    });
     if (result.validated && result.key) {
       await processImageQueue.add("process-image", { key: result.key });
     }
@@ -297,6 +328,7 @@ const gcPendingUploadsWorker = new Worker(
   async () => {
     await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
       await gcPendingUploads({ db, storage: uploadStorage, log });
+      await purgeSourceOfFundsDocumentsJob({ db, storage: uploadStorage, log });
       await heartbeat("gc-pending-uploads");
     });
   },

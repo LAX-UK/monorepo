@@ -50,5 +50,9 @@ export type CreatePaymentResponse = {
 /** Winner portfolio row from `GET /users/me/portfolio`. */
 export type PortfolioRow = {
   lot: Lot;
-  payment: { id: string; status: PaymentStatus } | null;
+  payment: {
+    id: string;
+    status: PaymentStatus;
+    manualReviewReason: ManualReviewReason | null;
+  } | null;
 };

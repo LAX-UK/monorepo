@@ -3,8 +3,10 @@ import {
   type SettlementRow,
   formatSettlementTotal,
 } from "@/components/dashboard/overview/overview-presenters";
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
-import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
+import {
+  portfolioSettlementAttentionAction,
+  portfolioSettlementLabel,
+} from "@/lib/portfolio-settlement";
 import { LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -18,6 +20,8 @@ type ActionRequiredBannerProps = {
 export function ActionRequiredBanner({ row, variant = "card" }: ActionRequiredBannerProps) {
   if (!row) return null;
 
+  const { href, label } = portfolioSettlementAttentionAction(row);
+
   if (variant === "strip") {
     return (
       <div className="flex flex-col gap-3 border-l-4 border-lot-orange bg-lot-orange/10 py-2 pl-4 sm:flex-row sm:items-center sm:justify-between">
@@ -30,7 +34,7 @@ export function ActionRequiredBanner({ row, variant = "card" }: ActionRequiredBa
           </p>
         </div>
         <Button size="sm" className="shrink-0" asChild>
-          <Link href={dashboardCheckoutLotUrl(row.lot.id)}>Complete checkout</Link>
+          <Link href={href}>{label}</Link>
         </Button>
       </div>
     );
@@ -57,7 +61,7 @@ export function ActionRequiredBanner({ row, variant = "card" }: ActionRequiredBa
           </div>
         </div>
         <Button className="min-h-11 shrink-0" asChild>
-          <Link href={dashboardCheckoutLotUrl(row.lot.id)}>Complete checkout</Link>
+          <Link href={href}>{label}</Link>
         </Button>
       </div>
     </section>

@@ -1,4 +1,8 @@
-import type { PortfolioRow } from "@auction/types";
+import {
+  dashboardCheckoutLotUrl,
+  dashboardSofRequirementsUrl,
+} from "@/lib/dashboard/dashboard-copy";
+import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 
 /** User-facing label for settlement state on won lots. */
 export function portfolioSettlementLabel(row: PortfolioRow): string {
@@ -8,6 +12,12 @@ export function portfolioSettlementLabel(row: PortfolioRow): string {
   }
   if (!payment) {
     return "Awaiting payment";
+  }
+  if (
+    payment.manualReviewReason === "aml_hold" ||
+    payment.manualReviewReason === "source_of_funds_required"
+  ) {
+    return "Compliance review";
   }
   switch (payment.status) {
     case "pending":
@@ -23,4 +33,29 @@ export function portfolioSettlementLabel(row: PortfolioRow): string {
     default:
       return "Awaiting payment";
   }
+}
+
+/**
+ * Returns the compliance reason from a portfolio row's payment, or null.
+ * Used by the portfolio card to decide whether to disable the checkout CTA.
+ */
+export function portfolioComplianceReason(row: PortfolioRow): ManualReviewReason | null {
+  const reason = row.payment?.manualReviewReason ?? null;
+  if (reason === "aml_hold" || reason === "source_of_funds_required") return reason;
+  return null;
+}
+
+/** Primary CTA for settlement attention surfaces (overview banner, attention list, hero). */
+export function portfolioSettlementAttentionAction(row: PortfolioRow): {
+  href: string;
+  label: string;
+} {
+  const reason = portfolioComplianceReason(row);
+  if (reason === "source_of_funds_required") {
+    return { href: dashboardSofRequirementsUrl(), label: "View requirements" };
+  }
+  return {
+    href: dashboardCheckoutLotUrl(row.lot.id),
+    label: reason === "aml_hold" ? "View status" : "Complete checkout",
+  };
 }

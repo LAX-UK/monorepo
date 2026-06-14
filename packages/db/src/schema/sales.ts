@@ -34,7 +34,7 @@ export const saleStatusEnum = pgEnum("sale_status", [
   "cancelled",
 ]);
 
-export const saleDeliveryModeEnum = pgEnum("sale_delivery_mode", ["online", "onsite"]);
+export const saleDeliveryModeEnum = pgEnum("sale_delivery_mode", ["online", "onsite", "hybrid"]);
 
 export const sale = pgTable(
   "sale",

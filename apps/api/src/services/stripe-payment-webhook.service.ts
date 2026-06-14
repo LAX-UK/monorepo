@@ -25,6 +25,7 @@ type PaymentWebhookResult = {
     | "payment_intent_partially_funded"
     | "payment_intent_failed"
     | "payment_intent_canceled"
+    | "checkout_session_async_payment_failed"
     | "skipped";
   reason?: string;
 };
@@ -119,9 +120,7 @@ export class StripePaymentWebhookService {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
       }
 
-      if (paymentRow.status === "pending") {
-        await this.payments.updateStatus(paymentId, "authorized");
-      }
+      await this.payments.applyAuthorizedInTransaction(tx, paymentId);
       recordMoneyPathEvent("payment_intent_processing");
       return { processed: true, action: "payment_intent_processing" };
     });
@@ -162,9 +161,7 @@ export class StripePaymentWebhookService {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
       }
 
-      if (paymentRow.status === "pending") {
-        await this.payments.updateStatus(paymentId, "authorized");
-      }
+      await this.payments.applyAuthorizedInTransaction(tx, paymentId);
 
       await this.domainEventPublisher.publish(tx, {
         aggregateType: "payment",
@@ -257,8 +254,8 @@ export class StripePaymentWebhookService {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
       }
 
-      if (paymentRow.status === "pending" || paymentRow.status === "authorized") {
-        await this.payments.updateStatus(paymentId, "cancelled");
+      const cancelled = await this.payments.applyCancelledInTransaction(tx, paymentId);
+      if (cancelled) {
         await this.domainEventPublisher.publish(tx, {
           aggregateType: "payment",
           aggregateId: paymentId,
@@ -275,6 +272,52 @@ export class StripePaymentWebhookService {
 
       recordMoneyPathEvent("payment_intent_canceled");
       return { processed: true, action: "payment_intent_canceled" };
+    });
+  }
+
+  async handleCheckoutSessionAsyncPaymentFailed(
+    event: Stripe.Event,
+    session: Stripe.Checkout.Session,
+  ): Promise<PaymentWebhookResult> {
+    const paymentId = session.metadata?.paymentId;
+    if (!paymentId) {
+      return { processed: true, action: "skipped", reason: "missing_payment_id_metadata" };
+    }
+
+    const paymentRow = await this.payments.findById(paymentId);
+    if (!paymentRow) {
+      recordMoneyPathEvent("stripe_payment_webhook_payment_not_found");
+      return { processed: false, action: "skipped", reason: "payment_not_found" };
+    }
+
+    return this.db.transaction(async (tx) => {
+      const { claimed } = await tryClaimProcessedStripeEvent(
+        tx,
+        event.id,
+        PAYMENT_WEBHOOK_EVENT_SOURCE,
+      );
+      if (!claimed) {
+        return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      const cancelled = await this.payments.applyCancelledInTransaction(tx, paymentId);
+      if (cancelled) {
+        await this.domainEventPublisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: paymentId,
+          eventType: "payment.cancelled",
+          payload: {
+            lotId: paymentRow.lotId,
+            buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
+            reason: "stripe_checkout_async_payment_failed",
+          },
+          actorUserId: null,
+          actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
+        });
+      }
+
+      recordMoneyPathEvent("checkout_session_async_payment_failed");
+      return { processed: true, action: "checkout_session_async_payment_failed" };
     });
   }
 
@@ -346,6 +389,17 @@ export class StripePaymentWebhookService {
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
 
+      const negativeAmount = (-dispute.amount / 100).toFixed(2);
+      await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: paymentRow.sellerLegalEntityId,
+        paymentId: paymentRow.id,
+        amount: negativeAmount,
+        kind: "dispute",
+        sourceEventId: event.id,
+        note: `Dispute funds withdrawn: ${dispute.id}`,
+        tx,
+      });
+
       await this.domainEventPublisher.publish(tx, {
         aggregateType: "payment",
         aggregateId: paymentRow.id,
@@ -392,15 +446,15 @@ export class StripePaymentWebhookService {
       const outcome =
         dispute.status === "won" ? "won" : dispute.status === "lost" ? "lost" : "closed";
 
-      if (dispute.status === "lost") {
-        const negativeAmount = (-dispute.amount / 100).toFixed(2);
+      if (dispute.status === "won") {
+        const reversalAmount = (dispute.amount / 100).toFixed(2);
         await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
           legalEntityId: paymentRow.sellerLegalEntityId,
           paymentId: paymentRow.id,
-          amount: negativeAmount,
+          amount: reversalAmount,
           kind: "dispute",
-          sourceEventId: event.id,
-          note: `Dispute lost: ${dispute.id}`,
+          sourceEventId: `${event.id}:won_reversal`,
+          note: `Dispute won — reverse clawback: ${dispute.id}`,
           tx,
         });
       }

@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, jsonb, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { sourceOfFundsDocument } from "./source-of-funds-documents.js";
 
 export const sourceOfFundsStatusEnum = pgEnum("source_of_funds_status", [
   "pending",
@@ -46,6 +47,24 @@ export const sourceOfFunds = pgTable(
     declaredSource: text("declared_source"),
     /** Upload-object keys for SoF documents (stored under the sensitive class). */
     evidence: jsonb("evidence").$type<string[]>().notNull().default([]),
+    /** When staff issued a documented upload request to the buyer. */
+    documentsRequestedAt: timestamp("documents_requested_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    documentsRequestedByUserId: text("documents_requested_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    documentRequestNote: text("document_request_note"),
+    requestedDocumentTypes: jsonb("requested_document_types")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    /** When the buyer submitted their uploaded documents for staff review. */
+    documentsSubmittedAt: timestamp("documents_submitted_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     /** First-line analyst triage (maker) — advisory recommendation + author. */
     triageRecommendation: sourceOfFundsTriageRecommendationEnum("triage_recommendation"),
     triagedByUserId: text("triaged_by_user_id").references(() => user.id, {
@@ -69,7 +88,7 @@ export const sourceOfFunds = pgTable(
   ],
 );
 
-export const sourceOfFundsRelations = relations(sourceOfFunds, ({ one }) => ({
+export const sourceOfFundsRelations = relations(sourceOfFunds, ({ one, many }) => ({
   user: one(user, {
     fields: [sourceOfFunds.userId],
     references: [user.id],
@@ -82,4 +101,9 @@ export const sourceOfFundsRelations = relations(sourceOfFunds, ({ one }) => ({
     fields: [sourceOfFunds.triagedByUserId],
     references: [user.id],
   }),
+  documentsRequestedBy: one(user, {
+    fields: [sourceOfFunds.documentsRequestedByUserId],
+    references: [user.id],
+  }),
+  documents: many(sourceOfFundsDocument),
 }));

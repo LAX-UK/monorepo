@@ -39,6 +39,7 @@ import {
   type UserRole,
   type UserStaffRole,
 } from "@auction/types";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import { cookies } from "next/headers";
 
 export default async function AdminHomePage({
@@ -180,7 +181,9 @@ export default async function AdminHomePage({
   if (canAccessSaleroom && isWidgetAllowed(role, staffRole, "onsite-radar")) {
     try {
       const onsiteSales = await getAdminSalesList({ limit: 12, status: "active" });
-      const onsiteCandidates = onsiteSales.filter((row) => row.sale.deliveryMode === "onsite");
+      const onsiteCandidates = onsiteSales.filter((row) =>
+        isSaleroomDeliveryMode(row.sale.deliveryMode),
+      );
       const snapshots = await Promise.all(
         onsiteCandidates
           .slice(0, 6)

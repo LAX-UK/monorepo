@@ -132,7 +132,12 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     const svc = new SaleStatusTransitionService(
       saleRepo,
       lotRepo,
-      { scheduleLot: vi.fn(), cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      {
+        scheduleLot: vi.fn(),
+        cancelLotJobs: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotEndJob: vi.fn(),
+      },
       null,
       null,
       null,
@@ -179,7 +184,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     const svc = new SaleStatusTransitionService(
       saleRepo,
       lotRepo,
-      { scheduleLot, cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      { scheduleLot, cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn(), cancelLotEndJob: vi.fn() },
       null,
       null,
       null,
@@ -215,7 +220,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     const svc = new SaleStatusTransitionService(
       saleRepo,
       lotRepo,
-      { scheduleLot, cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      { scheduleLot, cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn(), cancelLotEndJob: vi.fn() },
       null,
       null,
       null,
@@ -260,7 +265,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     const svc = new SaleStatusTransitionService(
       saleRepo,
       lotRepo,
-      { scheduleLot, cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      { scheduleLot, cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn(), cancelLotEndJob: vi.fn() },
       null,
       null,
       null,
@@ -298,7 +303,12 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     const svc = new SaleStatusTransitionService(
       saleRepo,
       lotRepo,
-      { scheduleLot: vi.fn(), cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      {
+        scheduleLot: vi.fn(),
+        cancelLotJobs: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotEndJob: vi.fn(),
+      },
       null,
       null,
       null,
@@ -342,7 +352,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     const svc = new SaleStatusTransitionService(
       saleRepo,
       lotRepo,
-      { scheduleLot, cancelLotJobs, rescheduleEnd: vi.fn() },
+      { scheduleLot, cancelLotJobs, rescheduleEnd: vi.fn(), cancelLotEndJob: vi.fn() },
       null,
       null,
       null,

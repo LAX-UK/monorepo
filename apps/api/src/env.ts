@@ -140,6 +140,8 @@ const envSchema = z
     /** public keeps CDN/object URLs; signed returns short-lived presigned GET URLs for owned keys. */
     STORAGE_READ_MODE: z.enum(["public", "signed"]).default("public"),
     SIGNED_GET_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(900),
+    /** Short TTL for sensitive Source-of-Funds document downloads (staff, aml.review only). */
+    SOF_DOWNLOAD_TTL_SEC: z.coerce.number().int().min(30).max(600).default(120),
     /** Row-count threshold: exports at or below this use sync HTTP stream; above enqueue async job. */
     EXPORT_SYNC_MAX_ROWS: z.coerce.number().int().min(100).max(50_000).default(5000),
     /** Pending/processing exports older than this are not deduped and are marked failed by purge job. */
@@ -232,6 +234,8 @@ const envSchema = z
     }, z.boolean().optional()),
     /** Days before `pending` buyer payments auto-expire (cron). */
     PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+    /** Days before in-flight `authorized` bank-transfer payments auto-expire (cron). */
+    PAYMENT_AUTHORIZED_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(30),
     /** Days of inactivity before a seller draft submission reminder is sent (cron). */
     SUBMISSION_DRAFT_REMINDER_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     /** Emergency: reject new bids with 503. */

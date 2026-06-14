@@ -14,6 +14,7 @@ import type { PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
+import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
 import { NotificationService } from "./notification.service.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
@@ -734,6 +735,43 @@ describe("BidService.placeBid", () => {
     expect(bidRepo.create).not.toHaveBeenCalled();
   });
 
+  it("allows operator telephone bid on onsite sale (legacy bypass)", async () => {
+    const active = lot({ currentPrice: "100.00" });
+    const created = createBid({ amount: "150.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const saleModeLookup: ISaleModeLookup = {
+      findSaleModeForLot: vi.fn().mockResolvedValue("onsite"),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      saleModeLookup,
+    });
+
+    const result = await service.placeBid({
+      placedByUserId: "buyer-1",
+      buyerLegalEntityId: "buyer-1",
+      lotId: "auc-1",
+      amount: 150,
+      placement: { placedVia: "telephone", clerkUserId: "clerk-1" },
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(bidRepo.create).toHaveBeenCalledOnce();
+  });
+
   it("allows bid when parent sale is online", async () => {
     const active = lot({ currentPrice: "100.00" });
     const created = createBid({ amount: "150.00" });
@@ -766,6 +804,36 @@ describe("BidService.placeBid", () => {
     expect(result.isOk()).toBe(true);
     expect(saleModeLookup.findSaleModeForLot).toHaveBeenCalledWith("auc-1");
     expect(lotRepo.findByIdForUpdate).toHaveBeenCalled();
+    expect(bidRepo.create).toHaveBeenCalledOnce();
+  });
+
+  it("allows web bid when parent sale is hybrid", async () => {
+    const active = lot({ currentPrice: "100.00", saleId: "sale-hybrid" });
+    const created = createBid({ amount: "150.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const saleModeLookup: ISaleModeLookup = {
+      findSaleModeForLot: vi.fn().mockResolvedValue("hybrid"),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      saleModeLookup,
+    });
+
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
+    expect(result.isOk()).toBe(true);
     expect(bidRepo.create).toHaveBeenCalledOnce();
   });
 
@@ -864,6 +932,90 @@ describe("BidService.placeBid", () => {
     expect(lotRepo.updateEndTime).toHaveBeenCalledOnce();
     expect(notifyLotExtended).toHaveBeenCalledOnce();
     expect(rescheduleEnd).toHaveBeenCalledOnce();
+  });
+
+  it("skips anti-sniping extension when live saleroom session controls close", async () => {
+    const now = Date.now();
+    const active = lot({
+      saleId: "sale-hybrid",
+      currentPrice: "100.00",
+      endTime: new Date(now + 60_000),
+    });
+    const created = createBid({ amount: "150.00" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn(),
+    });
+    const saleroomSessionLookup: ISaleroomSessionLookup = {
+      shouldSkipAntiSnipeForLot: vi.fn().mockResolvedValue(true),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: { rescheduleEnd: vi.fn(), cancelLotJobs: vi.fn() },
+      saleroomSessionLookup,
+      bidPolicy: {
+        antiSnipingWindowMs: 120_000,
+        antiSnipingExtensionMs: 30_000,
+        maxProxyRounds: 100,
+      },
+    });
+
+    const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
+    expect(result.isOk()).toBe(true);
+    expect(lotRepo.updateEndTime).not.toHaveBeenCalled();
+    expect(saleroomSessionLookup.shouldSkipAntiSnipeForLot).toHaveBeenCalledWith("auc-1");
+  });
+
+  it("chains anti-sniping extensions for consecutive bids in the window", async () => {
+    const now = Date.now();
+    let endTime = new Date(now + 60_000);
+    const created = createBid({ amount: "150.00" });
+    const updateEndTime = vi.fn().mockImplementation(async (_id: string, next: Date) => {
+      endTime = next;
+    });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockImplementation(async () =>
+        lot({
+          currentPrice: "100.00",
+          endTime,
+        }),
+      ),
+      updateEndTime,
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn(),
+    });
+    const rescheduleEnd = vi.fn().mockResolvedValue(undefined);
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: { rescheduleEnd, cancelLotJobs: vi.fn() },
+      bidPolicy: {
+        antiSnipingWindowMs: 120_000,
+        antiSnipingExtensionMs: 30_000,
+        maxProxyRounds: 100,
+      },
+    });
+
+    await service.placeBid(personalBid("bidder-1", "auc-1", 150));
+    await service.placeBid(personalBid("bidder-2", "auc-1", 160));
+    expect(updateEndTime).toHaveBeenCalledTimes(2);
+    expect(rescheduleEnd).toHaveBeenCalledTimes(2);
   });
 
   it("rejects bid when bidder is already leading", async () => {

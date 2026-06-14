@@ -2,6 +2,7 @@ import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import Link from "next/link";
 
 type Props = {
@@ -66,8 +67,8 @@ export function SaleScheduleTab({ saleId, sale, lots }: Props) {
             Per-lot timing
           </h3>
           <p className="mt-1 font-body text-sm text-on-surface-variant">
-            {sale.deliveryMode === "onsite"
-              ? "Onsite lots typically share the sale window above."
+            {isSaleroomDeliveryMode(sale.deliveryMode)
+              ? "Saleroom lots typically share the sale window above."
               : "Each online lot has its own start/end."}
           </p>
           {previewLots.length === 0 ? (

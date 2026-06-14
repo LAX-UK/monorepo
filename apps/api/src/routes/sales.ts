@@ -200,6 +200,12 @@ export function createSaleRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data: { items } });
   });
 
+  r.get("/:id/saleroom/status", zValidator("param", saleIdParamSchema), async (c) => {
+    const { id: saleId } = c.req.valid("param");
+    const data = await container.saleroomService.getPublicSessionStatus(saleId);
+    return c.json({ data });
+  });
+
   r.get("/:id", optionalAuth, zValidator("param", saleIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
     const userId = c.get("userId");

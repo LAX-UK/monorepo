@@ -1,8 +1,9 @@
 import type { PortfolioLotCardVm } from "@/components/dashboard/portfolio-lot-grid";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
 import { formatMoney } from "@/lib/format-currency";
-import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
-import type { PortfolioRow } from "@auction/types";
+import { portfolioComplianceReason, portfolioSettlementLabel } from "@/lib/portfolio-settlement";
+import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
 export function filterPortfolioRowsByTitle(rows: PortfolioRow[], qLower: string): PortfolioRow[] {
@@ -85,18 +86,36 @@ export function buildPortfolioAnalytics(
   };
 }
 
+/** A won lot still needs checkout when it is not yet captured or refunded. */
+function isAwaitingCheckout(row: PortfolioRow): boolean {
+  const status = row.payment?.status ?? null;
+  return status !== "captured" && status !== "refunded";
+}
+
 export function toPortfolioLotCards(
   rows: PortfolioRow[],
-  options: { artistNameById?: Record<string, string> } = {},
+  options: {
+    artistNameById?: Record<string, string>;
+    /** User-level compliance gate; blocks all not-yet-paid lots when active. */
+    complianceGate?: ComplianceGateStatus;
+  } = {},
 ): PortfolioLotCardVm[] {
-  const { artistNameById = {} } = options;
+  const { artistNameById = {}, complianceGate = "clear" } = options;
+  const gateReason: ManualReviewReason | null =
+    complianceGate === "aml_hold" || complianceGate === "source_of_funds_required"
+      ? complianceGate
+      : null;
   return rows.map((row) => {
     const a = row.lot;
     const img = a.images[0];
     const cp = a.checkoutPricing;
     const premium = cp ? Number.parseFloat(cp.premiumMajor) : Number.NaN;
     const total = cp ? Number.parseFloat(cp.totalMajor) : Number.NaN;
-    const settlementLabel = portfolioSettlementLabel(row);
+    // Per-payment reason takes precedence; otherwise fall back to the user-level
+    // gate for lots that still require checkout (covers the pre-payment-row case).
+    const complianceReason =
+      portfolioComplianceReason(row) ?? (isAwaitingCheckout(row) ? gateReason : null);
+    const settlementLabel = complianceReason ? "Compliance review" : portfolioSettlementLabel(row);
     const settlementStageIndex =
       settlementLabel === "Paid" || settlementLabel === "Payment authorized"
         ? 2
@@ -125,6 +144,7 @@ export function toPortfolioLotCards(
       checkoutHref: dashboardCheckoutLotUrl(a.id),
       conditionReportUrl,
       endYear: a.endTime.getUTCFullYear(),
+      complianceReason,
     };
   });
 }

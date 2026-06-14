@@ -17,6 +17,7 @@ function lifecycleBlockMessage(kind: LotLifecycleKind): string | null {
       return "This lot was withdrawn — bidding is closed.";
     case "live":
     case "extended":
+    case "liveSaleroom":
       return null;
   }
 }

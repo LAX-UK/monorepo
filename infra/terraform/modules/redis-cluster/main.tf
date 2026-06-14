@@ -39,13 +39,14 @@ terraform {
 locals { tags = ["environment:${var.environment}", "managed_by:terraform"] }
 
 resource "digitalocean_database_cluster" "this" {
-  name       = var.name
-  engine     = var.engine
-  version    = var.engine_version
-  size       = var.size
-  region     = var.region
-  node_count = var.node_count
-  tags       = local.tags
+  name            = var.name
+  engine          = var.engine
+  version         = var.engine_version
+  size            = var.size
+  region          = var.region
+  node_count      = var.node_count
+  eviction_policy = var.eviction_policy
+  tags            = local.tags
 }
 
 resource "digitalocean_database_firewall" "this" {

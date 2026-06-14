@@ -51,7 +51,11 @@ import { salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Sale } from "@auction/types";
 import { cn } from "@auction/ui";
-import { formatPostalAddressLines, resolveOnsiteMapUrl } from "@auction/validators";
+import {
+  formatPostalAddressLines,
+  isSaleroomDeliveryMode,
+  resolveOnsiteMapUrl,
+} from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -438,13 +442,13 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           endTime={bundle.sale.endTime}
           streamUrl={bundle.sale.streamUrl}
           {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
-          {...(bundle.sale.deliveryMode === "onsite"
+          {...(isSaleroomDeliveryMode(bundle.sale.deliveryMode)
             ? { telephoneAnchorId: "bid-onsite-hub" }
             : {})}
           registerReturnPath={basePath}
           className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
         />
-        {bundle.sale.deliveryMode === "onsite" &&
+        {isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
         (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
           <div className="mt-8">
             <SaleTelephoneBookingPanel

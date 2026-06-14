@@ -28,3 +28,9 @@ variable "allowed_sources" {
   type    = list(string)
   default = []
 }
+
+variable "eviction_policy" {
+  type        = string
+  default     = null
+  description = "Valkey maxmemory-policy (e.g. noeviction for BullMQ). Null leaves DO default unchanged."
+}

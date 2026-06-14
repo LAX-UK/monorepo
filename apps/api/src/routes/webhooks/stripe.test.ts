@@ -83,3 +83,33 @@ describe("POST /webhooks/stripe/transfers", () => {
     expect(await res.json()).toEqual({ ok: true, processed: true });
   });
 });
+
+describe("POST /webhooks/stripe/payments", () => {
+  it("returns 500 when dispute webhook is missing charge id so Stripe retries", async () => {
+    const handleDisputeCreated = vi.fn().mockResolvedValue({
+      processed: false,
+      reason: "missing_charge_id",
+    });
+    const container = makeContainer({
+      stripePaymentWebhookService: {
+        handleDisputeCreated,
+      } as unknown as Container["stripePaymentWebhookService"],
+    });
+    const event = {
+      id: "evt_dispute",
+      type: "charge.dispute.created",
+      data: { object: { id: "dp_1" } },
+    } as unknown as Stripe.Event;
+    vi.mocked(container.stripeWebhookVerifier.verify).mockReturnValue(event);
+    const app = createStripeWebhookRoutes(container);
+
+    const res = await app.request("/payments", {
+      method: "POST",
+      body: "{}",
+      headers: { "stripe-signature": "sig" },
+    });
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({ ok: false, reason: "missing_charge_id" });
+  });
+});

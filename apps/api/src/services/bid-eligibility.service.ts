@@ -5,7 +5,6 @@ import {
   legalEntityMember,
   lot,
   saleRegistration,
-  telephoneBidBooking,
 } from "@auction/db/schema";
 import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
 import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
@@ -13,6 +12,7 @@ import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import { memberRequiresSaleRegistration } from "../lib/sale-registration-policy.js";
 import type { IAmlHoldStore } from "./aml/ports.js";
+import { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
 import type { BidEligibilityCheckInput, IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { IKycService } from "./interfaces/kyc-service.js";
 import { KycRequiredError } from "./interfaces/kyc-service.js";
@@ -30,11 +30,15 @@ function minPositiveCap(a: number | null, b: number | null): number | null {
 }
 
 export class BidEligibilityService implements IBidEligibility {
+  private readonly operatorPolicy: OperatorPlacementPolicy;
+
   constructor(
     private readonly db: Database,
     private readonly kycService: IKycService | null = null,
     private readonly amlHoldStore: IAmlHoldStore | null = null,
-  ) {}
+  ) {
+    this.operatorPolicy = new OperatorPlacementPolicy(db);
+  }
 
   async assertCanPlaceBid(input: BidEligibilityCheckInput): Promise<Result<void, BidError>> {
     const {
@@ -46,6 +50,8 @@ export class BidEligibilityService implements IBidEligibility {
       autoBidStepAmount,
       placedVia,
       telephoneBookingId,
+      saleId: inputSaleId,
+      paddleNumber,
     } = input;
     const effectiveAmount =
       maxAutoBidAmount != null && Number.isFinite(maxAutoBidAmount)
@@ -110,7 +116,7 @@ export class BidEligibilityService implements IBidEligibility {
       }
     }
 
-    const saleId = lotRow.saleId;
+    const saleId = lotRow.saleId ?? inputSaleId ?? null;
 
     const [mem] = await this.db
       .select({ role: legalEntityMember.role })
@@ -128,22 +134,29 @@ export class BidEligibilityService implements IBidEligibility {
       return err(new BidError("Not a member of this legal entity", 403, "membership_required"));
     }
 
-    const telephoneOperatorBypass =
-      placedVia === "telephone" &&
-      telephoneBookingId != null &&
-      saleId != null &&
-      (await this.isActiveTelephoneBooking(telephoneBookingId, saleId));
+    const operatorBypass =
+      (placedVia === "telephone" &&
+        telephoneBookingId != null &&
+        saleId != null &&
+        (await this.operatorPolicy.isActiveTelephoneBooking(telephoneBookingId, saleId))) ||
+      (placedVia === "saleroom" && saleId != null && paddleNumber != null);
 
-    if (telephoneOperatorBypass && telephoneBookingId != null) {
-      const cap = await this.telephoneAuthorizedMax(telephoneBookingId);
-      if (cap != null && effectiveAmount > cap + 1e-9) {
-        return err(
-          new BidError("Bid exceeds authorized telephone limit", 403, "authorized_max_exceeded"),
-        );
+    if (operatorBypass) {
+      try {
+        const cap = await this.operatorPolicy.resolveOperatorCap({
+          placedVia: placedVia ?? null,
+          telephoneBookingId: telephoneBookingId ?? null,
+          saleId,
+          paddleNumber: paddleNumber ?? null,
+        });
+        this.operatorPolicy.assertCapNotExceeded(cap, effectiveAmount, placedVia ?? null);
+      } catch (e) {
+        if (e instanceof BidError) return err(e);
+        throw e;
       }
     }
 
-    if (saleId && memberRequiresSaleRegistration(mem.role) && !telephoneOperatorBypass) {
+    if (saleId && memberRequiresSaleRegistration(mem.role) && !operatorBypass) {
       const [reg] = await this.db
         .select({
           status: saleRegistration.status,
@@ -177,7 +190,7 @@ export class BidEligibilityService implements IBidEligibility {
       }
     }
 
-    if (memberRequiresSaleRegistration(mem.role) && !telephoneOperatorBypass) {
+    if (memberRequiresSaleRegistration(mem.role) && !operatorBypass) {
       const now = new Date();
       const rows = await this.db
         .select({
@@ -230,24 +243,5 @@ export class BidEligibilityService implements IBidEligibility {
     }
 
     return ok(undefined);
-  }
-
-  private async isActiveTelephoneBooking(bookingId: string, saleId: string): Promise<boolean> {
-    const [row] = await this.db
-      .select({ status: telephoneBidBooking.status, saleId: telephoneBidBooking.saleId })
-      .from(telephoneBidBooking)
-      .where(eq(telephoneBidBooking.id, bookingId))
-      .limit(1);
-    if (!row || row.saleId !== saleId) return false;
-    return row.status === "confirmed" || row.status === "in_progress";
-  }
-
-  private async telephoneAuthorizedMax(bookingId: string): Promise<number | null> {
-    const [row] = await this.db
-      .select({ reserveAltMax: telephoneBidBooking.reserveAltMax })
-      .from(telephoneBidBooking)
-      .where(eq(telephoneBidBooking.id, bookingId))
-      .limit(1);
-    return parseMoneyCap(row?.reserveAltMax != null ? String(row.reserveAltMax) : null);
   }
 }

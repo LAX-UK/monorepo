@@ -86,4 +86,9 @@ export class LotJobScheduler implements ILotJobScheduler {
       if (j) await j.remove();
     }
   }
+
+  async cancelLotEndJob(lotId: string): Promise<void> {
+    const j = await this.queue.getJob(lotLifecycleJobId("end", lotId));
+    if (j) await j.remove();
+  }
 }

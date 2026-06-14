@@ -1,4 +1,7 @@
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import {
+  dashboardCheckoutLotUrl,
+  dashboardSofRequirementsUrl,
+} from "@/lib/dashboard/dashboard-copy";
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
 import { describe, expect, it } from "vitest";
 import { sortPaymentsNewestFirst, toPaymentDisplayRows } from "./dashboard-payments.vm";
@@ -44,6 +47,33 @@ describe("toPaymentDisplayRows", () => {
       kind: "pay",
       href: dashboardCheckoutLotUrl("abc-123"),
       label: "Pay now",
+    });
+  });
+
+  it("pending status with a compliance reason yields a review action (not Pay-now)", () => {
+    const [out] = toPaymentDisplayRows([
+      row({ status: "pending", lotId: "abc-123", manualReviewReason: "source_of_funds_required" }),
+    ]);
+    expect(out?.primaryAction).toEqual({
+      kind: "review",
+      href: dashboardSofRequirementsUrl(),
+      reason: "source_of_funds_required",
+    });
+  });
+
+  it("requires_manual_review with a reason yields a review action instead of none", () => {
+    const [out] = toPaymentDisplayRows([
+      row({
+        status: "requires_manual_review",
+        lotId: "abc-123",
+        invoiceUrl: null,
+        manualReviewReason: "high_value",
+      }),
+    ]);
+    expect(out?.primaryAction).toEqual({
+      kind: "review",
+      href: dashboardCheckoutLotUrl("abc-123"),
+      reason: "high_value",
     });
   });
 

@@ -60,4 +60,5 @@ export * from "./auction-timing.js";
 export * from "./lot-timing.js";
 export * from "./sale-timing.js";
 export * from "./telephone-booking.js";
+export * from "./paddle.js";
 export * from "./onsite-event.js";

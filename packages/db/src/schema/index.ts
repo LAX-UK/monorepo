@@ -65,6 +65,7 @@ export * from "./payment-refund-reconcile.js";
 export * from "./kyc.js";
 export * from "./aml.js";
 export * from "./source-of-funds.js";
+export * from "./source-of-funds-documents.js";
 export * from "./artist-aliases.js";
 export * from "./admin-review-tasks.js";
 export {

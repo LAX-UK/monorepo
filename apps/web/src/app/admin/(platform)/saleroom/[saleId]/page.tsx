@@ -4,6 +4,7 @@ import { SaleroomClerkConsole } from "@/components/admin/saleroom-clerk-console"
 import {
   type AdminSaleroomSessionSnapshot,
   getAdminSaleById,
+  getAdminSalePaddleRoster,
   getAdminSaleroomSession,
   getAdminTelephoneBookings,
 } from "@/lib/data/http/admin.server";
@@ -20,13 +21,14 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
   const { error } = await searchParams;
   let saleroomLoadError: string | null = null;
 
-  const [saleRow, saleroomResult, telephoneBookings] = await Promise.all([
+  const [saleRow, saleroomResult, telephoneBookings, paddleRoster] = await Promise.all([
     getAdminSaleById(saleId),
     getAdminSaleroomSession(saleId).catch((e): AdminSaleroomSessionSnapshot => {
       saleroomLoadError = e instanceof Error ? e.message : "Could not load the saleroom session.";
       return { session: null, events: [] };
     }),
     getAdminTelephoneBookings(saleId).catch(() => []),
+    getAdminSalePaddleRoster(saleId).catch(() => []),
   ]);
   if (!saleRow) notFound();
   const saleroom = saleroomResult;
@@ -55,6 +57,7 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         initial={saleroom}
         lots={saleRow.lots}
         telephoneBookings={telephoneBookings}
+        paddleRoster={paddleRoster}
         error={error ?? saleroomLoadError}
       />
     </AdminEntityDetailShell>

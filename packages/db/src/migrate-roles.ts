@@ -53,6 +53,8 @@ const WORKER_READ_TABLES = [
   "kyc_verification",
   "artist_alias",
   "admin_review_task",
+  /** SoF projectors read case status / exposure for emails and retention job. */
+  "source_of_funds",
 ];
 /** Columns `api_app` may UPDATE on `public.user` — must cover every `apps/api` write path
  * that uses `container.db`. Anything missing here surfaces as `permission denied for table user`.
@@ -91,6 +93,7 @@ export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
     "email_change_new_ok",
     "email_change_expires_at",
     "deletion_requested_at",
+    "preferred_paddle_number",
     "updated_at",
   ],
 };
@@ -285,8 +288,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     /** worker jobs append domain_events (archive cascade, impersonation sweeper). */
     await grantIfExists(client, "worker_app", "domain_events", "INSERT");
-    /** AML match-review projector inserts MLRO review work items (admin_review_task). */
-    await grantIfExists(client, "worker_app", "admin_review_task", "INSERT, SELECT");
+    /** AML / SoF projectors insert and resolve MLRO review work items (admin_review_task). */
+    await grantIfExists(client, "worker_app", "admin_review_task", "INSERT, SELECT, UPDATE");
+    /** SoF documents projector inserts buyer in-app notifications (documents requested / closure). */
+    await grantIfExists(client, "worker_app", "notification", "INSERT, SELECT");
+    /** Retention job anonymizes buyer-supplied SoF evidence after AML window. */
+    await grantIfExists(client, "worker_app", "source_of_funds_document", "SELECT, UPDATE");
     /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
     await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
     /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email

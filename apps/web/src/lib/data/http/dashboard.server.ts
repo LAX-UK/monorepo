@@ -7,7 +7,7 @@ import type {
   WatchlistWithLotRow,
 } from "@/lib/data/dto/dashboard-dtos";
 import { parseBid, parseLot } from "@/lib/data/http/parse";
-import type { PaymentStatus, PortfolioRow } from "@auction/types";
+import type { ManualReviewReason, PaymentStatus, PortfolioRow } from "@auction/types";
 
 import { authedServerFetch } from "./authed-fetch.server";
 
@@ -35,17 +35,36 @@ function isPaymentStatus(s: string): s is PaymentStatus {
   );
 }
 
+function isManualReviewReason(s: unknown): s is ManualReviewReason {
+  return (
+    s === "seller_archived" ||
+    s === "high_value" ||
+    s === "seller_archived_and_high_value" ||
+    s === "aml_hold" ||
+    s === "source_of_funds_required"
+  );
+}
+
 export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
   const res = await authedServerFetch("/users/me/portfolio");
   await throwIfNotOk(res, "portfolio");
   const body = (await res.json()) as {
-    data: Array<{ lot: unknown; payment: { id: string; status: string } | null }>;
+    data: Array<{
+      lot: unknown;
+      payment: { id: string; status: string; manualReviewReason?: string | null } | null;
+    }>;
   };
   return body.data.map((row) => ({
     lot: parseLot(row.lot),
     payment:
       row.payment && isPaymentStatus(row.payment.status)
-        ? { id: row.payment.id, status: row.payment.status }
+        ? {
+            id: row.payment.id,
+            status: row.payment.status,
+            manualReviewReason: isManualReviewReason(row.payment.manualReviewReason)
+              ? row.payment.manualReviewReason
+              : null,
+          }
         : null,
   }));
 }

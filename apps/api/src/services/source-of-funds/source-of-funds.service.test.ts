@@ -25,6 +25,11 @@ function makeCase(
     currency: "GBP",
     declaredSource: null,
     evidence: [],
+    documentsRequestedAt: null,
+    documentsRequestedByUserId: null,
+    documentRequestNote: null,
+    requestedDocumentTypes: [],
+    documentsSubmittedAt: null,
     triageRecommendation: null,
     triagedByUserId: null,
     triagedAt: null,
@@ -100,6 +105,31 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
       existing.reviewNotes = null;
       return existing;
     },
+    async setDocumentRequest(input) {
+      const existing = state.cases.find((c) => c.id === input.id);
+      if (!existing) return null;
+      existing.documentsRequestedAt = new Date();
+      existing.documentsRequestedByUserId = input.requestedByUserId;
+      existing.documentRequestNote = input.note;
+      existing.requestedDocumentTypes = input.documentTypes;
+      existing.documentsSubmittedAt = null;
+      return existing;
+    },
+    async setDocumentsSubmitted(id) {
+      const existing = state.cases.find((c) => c.id === id);
+      if (!existing) return null;
+      existing.documentsSubmittedAt = new Date();
+      return existing;
+    },
+    async resetDocumentCycle(id) {
+      const existing = state.cases.find((c) => c.id === id);
+      if (!existing) return;
+      existing.documentsRequestedAt = null;
+      existing.documentsRequestedByUserId = null;
+      existing.documentRequestNote = null;
+      existing.requestedDocumentTypes = [];
+      existing.documentsSubmittedAt = null;
+    },
     async sumActiveBuyerSettlementPence(_userId: string, excludePaymentId?: string) {
       if (excludePaymentId === "pay_double") {
         return 0;
@@ -110,6 +140,39 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
 }
 
 const config = { thresholdAmount: 9000, currency: "GBP", approvalValidityDays: 365 };
+
+describe("SourceOfFundsService.hasPendingCaseForUser", () => {
+  it("is false when the buyer has no SoF case", async () => {
+    const state: FakeState = { cases: [], linkedPence: 0 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.hasPendingCaseForUser("u1")).toBe(false);
+  });
+
+  it("is true when the buyer's latest case is pending", async () => {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1", status: "pending" })],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.hasPendingCaseForUser("u1")).toBe(true);
+  });
+
+  it("is false when the latest case is approved", async () => {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1", status: "approved" })],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.hasPendingCaseForUser("u1")).toBe(false);
+  });
+
+  it("does not open a case as a side effect", async () => {
+    const state: FakeState = { cases: [], linkedPence: 0 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    await svc.hasPendingCaseForUser("u1");
+    expect(state.cases).toHaveLength(0);
+  });
+});
 
 describe("SourceOfFundsService.requiresSourceOfFunds", () => {
   it("does not require SoF below the threshold", async () => {
@@ -434,5 +497,23 @@ describe("SourceOfFundsService two-stage maker-checker", () => {
         notes: null,
       }),
     ).rejects.toThrow("source_of_funds_not_found");
+  });
+});
+
+describe("SourceOfFundsService listByStatus", () => {
+  it("lists and counts approved cases", async () => {
+    const state: FakeState = {
+      cases: [
+        makeCase({ id: "sof_pending", userId: "u1", status: "pending" }),
+        makeCase({ id: "sof_approved", userId: "u2", status: "approved" }),
+        makeCase({ id: "sof_rejected", userId: "u3", status: "rejected" }),
+      ],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    const approved = await svc.listByStatus("approved");
+    expect(approved).toHaveLength(1);
+    expect(approved[0]?.id).toBe("sof_approved");
+    expect(await svc.countByStatus("approved")).toBe(1);
   });
 });

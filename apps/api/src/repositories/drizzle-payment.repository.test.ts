@@ -63,4 +63,32 @@ describe("DrizzlePaymentRepository", () => {
     expect(set).toHaveBeenCalledWith({ stripeChargeId: "ch_captured" });
     expect(where).toHaveBeenCalled();
   });
+
+  it("applyAuthorizedInTransaction only moves pending to authorized", async () => {
+    const returning = vi.fn().mockResolvedValue([{ id: "pay-1" }]);
+    const where = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where });
+    const tx = {
+      update: vi.fn().mockReturnValue({ set }),
+    } as unknown as Database;
+    const repo = new DrizzlePaymentRepository({} as Database);
+
+    const ok = await repo.applyAuthorizedInTransaction(tx, "pay-1");
+    expect(ok).toBe(true);
+    expect(set).toHaveBeenCalledWith({ status: "authorized" });
+  });
+
+  it("applyCancelledInTransaction only cancels pending or authorized rows", async () => {
+    const returning = vi.fn().mockResolvedValue([{ id: "pay-1" }]);
+    const where = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where });
+    const tx = {
+      update: vi.fn().mockReturnValue({ set }),
+    } as unknown as Database;
+    const repo = new DrizzlePaymentRepository({} as Database);
+
+    const ok = await repo.applyCancelledInTransaction(tx, "pay-1");
+    expect(ok).toBe(true);
+    expect(set).toHaveBeenCalledWith({ status: "cancelled" });
+  });
 });

@@ -1,11 +1,19 @@
 "use client";
 
-import { adminTelephonePlaceBidResultAction } from "@/lib/actions/admin";
-import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
+import { minNextBidAmount, useClerkLotLivePrice } from "@/hooks/use-clerk-lot-live-price";
+import {
+  adminPaddlePlaceBidResultAction,
+  adminTelephonePlaceBidResultAction,
+} from "@/lib/actions/admin";
+import type {
+  AdminPaddleRosterEntry,
+  AdminTelephoneBookingRow,
+} from "@/lib/data/http/admin.server";
 import type { AdminSaleroomSessionSnapshot } from "@/lib/data/http/admin.server";
 import { formatMoney } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
@@ -23,15 +31,27 @@ type Props = {
   initial: AdminSaleroomSessionSnapshot;
   lots: Lot[];
   telephoneBookings: AdminTelephoneBookingRow[];
+  paddleRoster?: AdminPaddleRosterEntry[];
 };
 
-export function LotOnBlockPanel({ saleId, initial, lots, telephoneBookings }: Props) {
+export function LotOnBlockPanel({
+  saleId,
+  initial,
+  lots,
+  telephoneBookings,
+  paddleRoster = [],
+}: Props) {
   const [amount, setAmount] = useState("");
   const [bookingId, setBookingId] = useState("");
+  const [paddleNumber, setPaddleNumber] = useState("");
   const [pending, startTransition] = useTransition();
 
   const currentLotId = initial.session?.currentLotId ?? null;
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
+  const liveCurrentPrice = useClerkLotLivePrice(currentLotId, currentLot?.currentPrice ?? "0.00");
+  const minNextBid = currentLot
+    ? minNextBidAmount(liveCurrentPrice, currentLot.minBidIncrement)
+    : null;
 
   const inProgressBookings = useMemo(() => {
     if (!currentLotId) return [];
@@ -43,6 +63,12 @@ export function LotOnBlockPanel({ saleId, initial, lots, telephoneBookings }: Pr
 
   const selectedBooking = inProgressBookings.find((b) => b.id === bookingId) ?? null;
 
+  const parsedPaddle = Number.parseInt(paddleNumber, 10);
+  const matchedPaddle = useMemo(() => {
+    if (!Number.isInteger(parsedPaddle)) return null;
+    return paddleRoster.find((p) => p.paddleNumber === parsedPaddle) ?? null;
+  }, [paddleRoster, parsedPaddle]);
+
   if (!currentLotId || !currentLot) {
     return (
       <div className="rounded-lg border border-outline-variant/25 p-4">
@@ -50,20 +76,31 @@ export function LotOnBlockPanel({ saleId, initial, lots, telephoneBookings }: Pr
           Lot on block
         </h2>
         <p className="mt-2 font-body text-sm text-secondary">
-          Advance a lot to the block before placing telephone bids.
+          Advance a lot to the block before placing telephone or paddle bids.
         </p>
       </div>
     );
   }
 
-  const onPlaceBid = () => {
+  const validateBidAmount = (parsedAmount: number): string | null => {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return "Enter a valid bid amount";
+    }
+    if (minNextBid != null && parsedAmount + 1e-9 < minNextBid) {
+      return `Bid must be at least ${formatMoney(minNextBid.toFixed(2))} (current ${formatMoney(liveCurrentPrice)} + increment)`;
+    }
+    return null;
+  };
+
+  const onPlaceTelephoneBid = () => {
     if (!selectedBooking) {
       notify.error("Select a telephone booking");
       return;
     }
     const parsedAmount = Number.parseFloat(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      notify.error("Enter a valid bid amount");
+    const amountError = validateBidAmount(parsedAmount);
+    if (amountError) {
+      notify.error(amountError);
       return;
     }
     startTransition(async () => {
@@ -83,8 +120,42 @@ export function LotOnBlockPanel({ saleId, initial, lots, telephoneBookings }: Pr
     });
   };
 
+  const onPlacePaddleBid = () => {
+    if (!Number.isInteger(parsedPaddle) || parsedPaddle < 100) {
+      notify.error("Enter a valid paddle number (≥100)");
+      return;
+    }
+    const parsedAmount = Number.parseFloat(amount);
+    const amountError = validateBidAmount(parsedAmount);
+    if (amountError) {
+      notify.error(amountError);
+      return;
+    }
+    startTransition(async () => {
+      const result = await adminPaddlePlaceBidResultAction({
+        saleId,
+        lotId: currentLotId,
+        paddleNumber: parsedPaddle,
+        amount: parsedAmount,
+      });
+      if (!result.ok) {
+        notify.error(result.error);
+        return;
+      }
+      notify.success(`Paddle ${parsedPaddle} bid placed`);
+      setAmount("");
+    });
+  };
+
+  const onPaddleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onPlacePaddleBid();
+    }
+  };
+
   return (
-    <div className="rounded-lg border border-outline-variant/25 p-4 space-y-4">
+    <div className="rounded-lg border border-outline-variant/25 p-4 space-y-6">
       <div>
         <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Lot on block
@@ -93,16 +164,69 @@ export function LotOnBlockPanel({ saleId, initial, lots, telephoneBookings }: Pr
           {currentLot.title?.trim() || currentLot.id}
         </p>
         <p className="font-body text-xs text-secondary tabular-nums">
-          Current {formatMoney(currentLot.currentPrice)}
+          Current {formatMoney(liveCurrentPrice)}
+          {minNextBid != null ? (
+            <span className="ml-2">· Min next {formatMoney(minNextBid.toFixed(2))}</span>
+          ) : null}
         </p>
+      </div>
+
+      <div className="space-y-3">
+        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Paddle bid
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <Label htmlFor={`paddle-num-${saleId}`}>Paddle #</Label>
+            <Input
+              id={`paddle-num-${saleId}`}
+              value={paddleNumber}
+              onChange={(e) => setPaddleNumber(e.target.value)}
+              onKeyDown={onPaddleKeyDown}
+              placeholder="142"
+              className="w-24 font-body text-sm tabular-nums"
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-1 min-w-[120px] flex-1">
+            <Label htmlFor={`paddle-bid-amount-${saleId}`}>Amount</Label>
+            <Input
+              id={`paddle-bid-amount-${saleId}`}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              onKeyDown={onPaddleKeyDown}
+              placeholder="Hammer bid"
+              className="font-body text-sm"
+            />
+          </div>
+          <Button type="button" disabled={pending} onClick={onPlacePaddleBid}>
+            {pending ? "Placing…" : "Place paddle bid"}
+          </Button>
+        </div>
+        {matchedPaddle?.hasActiveSelfServiceSession ? (
+          <Alert variant="default" className="py-2">
+            <AlertDescription className="font-body text-xs">
+              Warning: paddle {matchedPaddle.paddleNumber} ({matchedPaddle.displayName}) has recent
+              self-service activity — confirm the bidder is not also bidding online.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {matchedPaddle?.bidLimit ? (
+          <p className="font-body text-xs text-secondary">
+            Authorised limit: {formatMoney(matchedPaddle.bidLimit)}
+          </p>
+        ) : null}
       </div>
 
       {inProgressBookings.length === 0 ? (
         <p className="font-body text-sm text-secondary">
-          No confirmed telephone lines available for bidding.
+          No confirmed telephone lines for this lot.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 border-t border-outline-variant/20 pt-4">
+          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            Telephone bid
+          </p>
           <div className="space-y-1">
             <Label htmlFor={`telephone-booking-${saleId}`}>Telephone line</Label>
             <Select value={bookingId} onValueChange={setBookingId}>
@@ -118,17 +242,7 @@ export function LotOnBlockPanel({ saleId, initial, lots, telephoneBookings }: Pr
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`telephone-bid-amount-${saleId}`}>Bid amount</Label>
-            <Input
-              id={`telephone-bid-amount-${saleId}`}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Hammer bid"
-              className="font-body text-sm"
-            />
-          </div>
-          <Button type="button" disabled={pending} onClick={onPlaceBid}>
+          <Button type="button" disabled={pending} onClick={onPlaceTelephoneBid}>
             {pending ? "Placing…" : "Place telephone bid"}
           </Button>
         </div>

@@ -40,6 +40,9 @@ export class IdempotentBidExecutor {
     autoBidStepAmount?: number;
     placedVia?: string;
     telephoneBookingId?: string;
+    clerkUserId?: string;
+    saleId?: string;
+    paddleNumber?: number;
   }): Promise<PlaceBidWithIdempotencyOutcome> {
     const { placedByUserId, idempotencyKey, lotId, amount, maxAutoBidAmount } = input;
     let idempotencyRedisKey: string | undefined;
@@ -73,12 +76,19 @@ export class IdempotentBidExecutor {
     }
 
     const placement =
-      input.placedVia != null || input.telephoneBookingId != null
+      input.placedVia != null ||
+      input.telephoneBookingId != null ||
+      input.clerkUserId != null ||
+      input.saleId != null ||
+      input.paddleNumber != null
         ? {
             ...(input.placedVia != null ? { placedVia: input.placedVia } : {}),
             ...(input.telephoneBookingId != null
               ? { telephoneBookingId: input.telephoneBookingId }
               : {}),
+            ...(input.clerkUserId != null ? { clerkUserId: input.clerkUserId } : {}),
+            ...(input.saleId != null ? { saleId: input.saleId } : {}),
+            ...(input.paddleNumber != null ? { paddleNumber: input.paddleNumber } : {}),
           }
         : undefined;
 

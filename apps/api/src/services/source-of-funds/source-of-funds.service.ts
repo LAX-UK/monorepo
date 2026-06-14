@@ -7,6 +7,7 @@ import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {
   ISourceOfFundsRepository,
   SourceOfFundsCase,
+  SourceOfFundsStatus,
   SourceOfFundsTrigger,
 } from "./source-of-funds.types.js";
 
@@ -93,6 +94,17 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
   }
 
   /**
+   * Read-only settlement-gate snapshot: true when the buyer's latest SoF case is
+   * still `pending` (an open review is gating settlement). No side effects — does
+   * not open a case. Used by buyer-facing surfaces to surface a blocker before a
+   * payment row exists.
+   */
+  async hasPendingCaseForUser(buyerUserId: string): Promise<boolean> {
+    const latest = await this.repo.findLatestForUser(buyerUserId);
+    return latest?.status === "pending";
+  }
+
+  /**
    * An approved SoF case clears future settlements until either the validity
    * window lapses or the buyer's aggregated exposure grows by another full
    * threshold beyond what was approved (a material increase warranting re-CDD).
@@ -116,12 +128,12 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
     return this.repo.countByStatus("pending");
   }
 
-  async countByStatus(status: "pending" | "rejected"): Promise<number> {
+  async countByStatus(status: SourceOfFundsStatus): Promise<number> {
     return this.repo.countByStatus(status);
   }
 
   async listByStatus(
-    status: "pending" | "rejected",
+    status: SourceOfFundsStatus,
     limit = 50,
     offset = 0,
   ): Promise<SourceOfFundsCase[]> {
@@ -236,6 +248,7 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
       }
       const updated = await this.repo.reopenRejected(command.caseId, conn);
       if (!updated) throw new Error("source_of_funds_reopen_failed");
+      await this.repo.resetDocumentCycle(command.caseId, conn);
 
       if (conn && this.events) {
         await this.events.publish(conn, {

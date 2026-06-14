@@ -67,8 +67,11 @@ export class PaymentRefundReconcileService {
             actingLegalEntityId: row.payload.sellerLegalEntityId,
           });
         });
-        await this.repo.markReconciled(row.paymentId);
-        reconciled += 1;
+        const current = await this.payments.findById(row.paymentId);
+        if (current?.status === "refunded") {
+          await this.repo.markReconciled(row.paymentId);
+          reconciled += 1;
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         await this.repo.markFailed(row.paymentId, msg, attempts);

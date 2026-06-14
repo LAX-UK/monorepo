@@ -67,6 +67,27 @@ export class SaleroomService implements ISaleroomService {
     });
   }
 
+  async getPublicSessionStatus(saleId: string): Promise<{
+    status: "none" | "pending" | "live" | "paused" | "ended";
+    currentLotId: string | null;
+  }> {
+    const [session] = await this.db
+      .select({
+        status: saleroomSession.status,
+        currentLotId: saleroomSession.currentLotId,
+      })
+      .from(saleroomSession)
+      .where(eq(saleroomSession.saleId, saleId))
+      .limit(1);
+    if (!session) {
+      return { status: "none", currentLotId: null };
+    }
+    return {
+      status: session.status,
+      currentLotId: session.currentLotId ?? null,
+    };
+  }
+
   async getSessionWithRecentEvents(saleId: string): Promise<{
     session: typeof saleroomSession.$inferSelect | null;
     events: (typeof saleroomEvent.$inferSelect)[];
@@ -140,6 +161,14 @@ export class SaleroomService implements ISaleroomService {
 
     await this.insertEvent(session.id, "opened", {}, input.actorUserId);
     await this.publish(input.saleId, { kind: "opened" });
+
+    const saleLots = await this.lotRepo.findBySaleId(input.saleId);
+    for (const lotRow of saleLots) {
+      if (lotRow.status === "active") {
+        await this.lotJobs?.cancelLotEndJob(lotRow.id);
+      }
+    }
+
     return ok({ sessionId: session.id, status: "live" });
   }
 
@@ -317,6 +346,7 @@ export class SaleroomService implements ISaleroomService {
       })
       .where(eq(saleroomSession.id, session.id));
     await this.telephoneBidBookingService?.closeAllOpenForSale(input.saleId);
+    await this.lotLifecycle.finalizeActiveLotsPastEnd(input.saleId);
     await this.insertEvent(session.id, "closed", {}, input.actorUserId);
     await this.publish(input.saleId, { kind: "closed" });
     return ok({ sessionId: session.id });

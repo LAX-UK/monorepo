@@ -1,6 +1,7 @@
 "use client";
 
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
+import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import {
   type LifecycleBadgeTone,
@@ -47,12 +48,16 @@ function toneClasses(tone: LifecycleBadgeTone): string {
   }
 }
 
-function lifecycleDetail(lifecycle: LotLifecycle): string | null {
+function lifecycleDetail(lifecycle: LotLifecycle, isOnBlock?: boolean): string | null {
   switch (lifecycle.kind) {
     case "preLaunch":
       return "This lot is in preview — bidding has not opened yet.";
     case "scheduled":
       return "Bidding opens soon — register to bid before the lot goes live.";
+    case "liveSaleroom":
+      return isOnBlock
+        ? "This lot is on the block in the saleroom — bidding closes when the auctioneer hammers."
+        : "The saleroom session is live — lots close when the auctioneer hammers, not on a countdown timer.";
     case "endedSold":
     case "endedNoSale":
     case "cancelled":
@@ -77,6 +82,8 @@ export function LotStatePill({
   // back to `null` until mount to avoid a hydration mismatch on the countdown text.
   const [now, setNow] = useState<number | null>(() => initialNowMs ?? null);
   const onlineCtx = useOnlineLotLifecycle();
+  const saleroomLive = useSaleroomLive();
+  const isOnBlock = saleroomLive?.isLotOnBlock(lot.id) ?? false;
 
   useEffect(() => {
     setNow((cur) => cur ?? Date.now());
@@ -86,15 +93,26 @@ export function LotStatePill({
 
   const recentlyExtended = onlineCtx?.extendedByMs != null && onlineCtx.extendedByMs > 0;
   const lifecycle = useMemo(
-    () => classifyLotLifecycle(lot, sale, now ?? 0, { recentlyExtended }),
-    [lot, sale, now, recentlyExtended],
+    () =>
+      classifyLotLifecycle(lot, sale, now ?? 0, {
+        recentlyExtended,
+        saleroomSessionActive: saleroomLive?.isSessionActive ?? false,
+        isOnBlock,
+      }),
+    [lot, sale, now, recentlyExtended, saleroomLive?.isSessionActive, isOnBlock],
   );
-  const badge = useMemo(() => lifecycleBadge(lifecycle), [lifecycle]);
-  const detail = useMemo(() => lifecycleDetail(lifecycle), [lifecycle]);
+  const badge = useMemo(() => {
+    if (lifecycle.kind === "liveSaleroom" && isOnBlock) {
+      return { label: "On the block", tone: "live" as const, pulse: true };
+    }
+    return lifecycleBadge(lifecycle);
+  }, [lifecycle, isOnBlock]);
+  const detail = useMemo(() => lifecycleDetail(lifecycle, isOnBlock), [lifecycle, isOnBlock]);
 
   const countdown =
     now != null &&
     lifecycle.msLeft != null &&
+    lifecycle.kind !== "liveSaleroom" &&
     (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
       ? formatCountdownForDisplay(lifecycle.msLeft)
       : null;

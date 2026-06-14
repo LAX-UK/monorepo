@@ -8,7 +8,13 @@ export type SaleroomSessionSnapshot = {
   events: (typeof saleroomEvent.$inferSelect)[];
 };
 
+export type PublicSaleroomSessionStatus = {
+  status: "none" | "pending" | "live" | "paused" | "ended";
+  currentLotId: string | null;
+};
+
 export interface ISaleroomService {
+  getPublicSessionStatus(saleId: string): Promise<PublicSaleroomSessionStatus>;
   getSessionWithRecentEvents(saleId: string): Promise<SaleroomSessionSnapshot>;
   goLive(input: {
     saleId: string;

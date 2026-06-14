@@ -16,6 +16,7 @@ export type Bid = {
   /** Origin of bid: web, absentee, telephone, saleroom, … */
   placedVia?: string | null;
   telephoneBookingId?: string | null;
+  clerkUserId?: string | null;
   createdAt: Date;
 };
 
