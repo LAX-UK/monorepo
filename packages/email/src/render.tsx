@@ -100,6 +100,9 @@ import ProxyCancelledNoticeEmail, {
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SourceOfFundsBuyerNoticeEmail, {
+  subject as sourceOfFundsBuyerNoticeSubject,
+} from "./templates/source-of-funds-buyer-notice.js";
 import SubmissionApprovedEmail, {
   subject as submissionApprovedSubject,
 } from "./templates/submission-approved.js";
@@ -282,6 +285,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "submission-draft-reminder": {
     subject: submissionDraftReminderSubject,
     component: (vars) => <SubmissionDraftReminderEmail {...vars} />,
+  },
+  "source-of-funds-buyer-notice": {
+    subject: sourceOfFundsBuyerNoticeSubject,
+    component: (vars) => <SourceOfFundsBuyerNoticeEmail {...vars} />,
   },
 };
 

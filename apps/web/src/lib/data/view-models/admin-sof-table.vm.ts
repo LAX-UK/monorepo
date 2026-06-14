@@ -17,6 +17,10 @@ export type AdminSofTableRow = {
   triageRecommendation: string | null;
   triagedByUserId: string | null;
   triageNotes: string | null;
+  /** Number of evidence file keys attached to this case. */
+  evidenceCount: number;
+  /** Raw evidence file keys (S3 object keys). */
+  evidenceKeys: string[];
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -78,6 +82,8 @@ export function buildAdminSofTableRow(row: AdminSourceOfFundsRow): AdminSofTable
     triageRecommendation: row.triageRecommendation,
     triagedByUserId: row.triagedByUserId,
     triageNotes: row.triageNotes,
+    evidenceCount: Array.isArray(row.evidence) ? row.evidence.length : 0,
+    evidenceKeys: Array.isArray(row.evidence) ? row.evidence.map(String) : [],
   };
 }
 

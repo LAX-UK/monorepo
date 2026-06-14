@@ -391,6 +391,31 @@ export class PaymentService {
     return { data };
   }
 
+  /**
+   * Pre-flight read-only compliance gate for buyer surfaces. Surfaces an active
+   * AML hold or an open (pending) Source-of-Funds case without creating a
+   * payment row and without any side effects (no SoF case creation, no events) —
+   * safe to call from GET handlers on every checkout/portfolio load.
+   *
+   * This intentionally does NOT predict whether a not-yet-attempted purchase
+   * would cross the SoF threshold; the authoritative amount-based gate runs at
+   * `POST /payments`. It closes the pre-payment-row gap where a pending case
+   * already exists but no payment row carries the reason yet.
+   */
+  async getBuyerComplianceGateStatus(
+    userId: string,
+  ): Promise<{ status: "clear" | "aml_hold" | "source_of_funds_required" }> {
+    if (!this.settlementCompliance) return { status: "clear" };
+    const decision = await this.settlementCompliance.peek(userId);
+    if (decision.hold) {
+      const reason = decision.reason;
+      if (reason === "aml_hold" || reason === "source_of_funds_required") {
+        return { status: reason };
+      }
+    }
+    return { status: "clear" };
+  }
+
   countPendingOlderThanHours(hours: number): Promise<number> {
     return this.payments.countPendingOlderThanHours(hours);
   }
