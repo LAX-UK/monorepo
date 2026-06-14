@@ -232,6 +232,8 @@ const envSchema = z
     }, z.boolean().optional()),
     /** Days before `pending` buyer payments auto-expire (cron). */
     PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+    /** Days before in-flight `authorized` bank-transfer payments auto-expire (cron). */
+    PAYMENT_AUTHORIZED_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(30),
     /** Days of inactivity before a seller draft submission reminder is sent (cron). */
     SUBMISSION_DRAFT_REMINDER_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     /** Emergency: reject new bids with 503. */

@@ -150,6 +150,14 @@ export class PaymentService {
       if (existing.status === "refunded") {
         return err(new LotError("Payment for this lot has already been refunded", 409));
       }
+      if (existing.status === "authorized") {
+        return ok({
+          paymentId: existing.id,
+          checkoutUrl: null,
+          checkoutRail: null,
+          manualReviewReason: null,
+        });
+      }
       if (existing.status === "requires_manual_review") {
         const amountPence = gbpAmountToPence(existing.amount);
         const sellerEntity =
@@ -854,6 +862,17 @@ export class PaymentService {
       } catch (e) {
         return err(paymentProviderErrorFromUnknown(e));
       }
+      const expectedPence = gbpAmountToPence(p.amount);
+      if (pi.amount !== expectedPence) {
+        recordMoneyPathEvent("admin_capture_amount_mismatch");
+        return err(
+          new PaymentProviderError(
+            "Stripe payment amount does not match the invoice total",
+            400,
+            "payment_intent_amount_mismatch",
+          ),
+        );
+      }
       const lc = pi.latest_charge;
       const fromPi =
         typeof lc === "string"
@@ -1113,28 +1132,47 @@ export class PaymentService {
     return ok(undefined);
   }
 
-  /** Cron: expire pending payments older than `maxAgeDays` (ops recovery for stuck lots). */
-  async expireStalePendingPayments(maxAgeDays: number): Promise<number> {
-    const cutoff = new Date(Date.now() - maxAgeDays * 86_400_000);
-    const stale = await this.payments.listStalePendingBefore(cutoff);
-    for (const row of stale) {
-      await this.payments.updateStatus(row.id, "cancelled");
-      if (this.db && this.domainEventPublisher) {
-        await this.domainEventPublisher.publish(this.db, {
-          aggregateType: "payment",
-          aggregateId: row.id,
-          eventType: "payment.cancelled",
-          payload: {
-            lotId: row.lotId,
-            buyerUserId: row.buyerId,
-            reason: "stale_pending_expired",
-          },
-          actorUserId: null,
-          actingLegalEntityId: null,
-        });
-      }
+  /** Cron: expire pending and authorized payments older than configured thresholds. */
+  async expireStalePendingPayments(
+    pendingMaxAgeDays: number,
+    authorizedMaxAgeDays?: number,
+  ): Promise<number> {
+    const pendingCutoff = new Date(Date.now() - pendingMaxAgeDays * 86_400_000);
+    const stalePending = await this.payments.listStalePendingBefore(pendingCutoff);
+    const authorizedDays = authorizedMaxAgeDays ?? pendingMaxAgeDays * 2;
+    const authorizedCutoff = new Date(Date.now() - authorizedDays * 86_400_000);
+    const staleAuthorized = await this.payments.listStaleAuthorizedBefore(authorizedCutoff);
+    let expired = 0;
+    for (const row of stalePending) {
+      await this.cancelStalePayment(row, "stale_pending_expired");
+      expired += 1;
     }
-    return stale.length;
+    for (const row of staleAuthorized) {
+      await this.cancelStalePayment(row, "stale_authorized_expired");
+      expired += 1;
+    }
+    return expired;
+  }
+
+  private async cancelStalePayment(
+    row: { id: string; lotId: string; buyerId: string },
+    reason: string,
+  ): Promise<void> {
+    await this.payments.updateStatus(row.id, "cancelled");
+    if (this.db && this.domainEventPublisher) {
+      await this.domainEventPublisher.publish(this.db, {
+        aggregateType: "payment",
+        aggregateId: row.id,
+        eventType: "payment.cancelled",
+        payload: {
+          lotId: row.lotId,
+          buyerUserId: row.buyerId,
+          reason,
+        },
+        actorUserId: null,
+        actingLegalEntityId: null,
+      });
+    }
   }
 
   async syncPaymentFromXeroAsAdmin(

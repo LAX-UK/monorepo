@@ -63,6 +63,14 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
       : null;
   const addresses = addressesR.status === "fulfilled" ? addressesR.value : [];
   const myPayments = paymentsR.status === "fulfilled" ? paymentsR.value : [];
+  const paymentsFailure =
+    paymentsR.status === "rejected"
+      ? describeDashboardSliceFailure(
+          paymentsR.reason,
+          "checkout",
+          "Could not load your payment history for this lot.",
+        )
+      : null;
   const { paymentComplete, openPayment } = resolveCheckoutPagePaymentState(
     myPayments,
     lotId,
@@ -139,6 +147,9 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                     {fulfilmentFailure ? (
                       <DashboardSliceErrorAlert failure={fulfilmentFailure} />
                     ) : null}
+                    {paymentsFailure ? (
+                      <DashboardSliceErrorAlert failure={paymentsFailure} />
+                    ) : null}
                     <LotCheckoutFulfilmentStrip fulfilment={fulfilment} lotId={auction.id} />
 
                     <CheckoutPurchasePanel
@@ -154,6 +165,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                       paymentComplete={paymentComplete}
                       openPaymentStatus={openPayment?.status ?? null}
                       openPaymentManualReviewReason={openPayment?.manualReviewReason ?? null}
+                      paymentsLoadFailed={paymentsFailure != null}
                     />
                   </>
                 )}

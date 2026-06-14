@@ -1,9 +1,12 @@
 import type { AdminSourceOfFundsRow } from "@/lib/data/http/compliance.server";
 
+export type SofDisplayStatus = "pending" | "awaiting_decision" | "approved" | "rejected";
+
 export type AdminSofTableRow = {
   id: string;
   userId: string;
   status: string;
+  displayStatus: SofDisplayStatus;
   statusLabel: string;
   trigger: string;
   triggerLabel: string;
@@ -32,10 +35,23 @@ function humanizeToken(value: string): string {
   return value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+export function resolveSofDisplayStatus(
+  status: string,
+  triageRecommendation: string | null,
+): SofDisplayStatus {
+  if (status === "pending" && triageRecommendation) return "awaiting_decision";
+  if (status === "pending" || status === "approved" || status === "rejected") {
+    return status;
+  }
+  return "pending";
+}
+
 function triageLabel(recommendation: string | null): string {
   if (!recommendation) return "Awaiting triage";
+  if (recommendation === "recommend_approve") return "Recommend approve";
+  if (recommendation === "recommend_reject") return "Recommend reject";
   if (recommendation.startsWith("recommend_")) {
-    return humanizeToken(recommendation.slice("recommend_".length));
+    return `Recommend ${humanizeToken(recommendation.slice("recommend_".length)).toLowerCase()}`;
   }
   return humanizeToken(recommendation);
 }
@@ -46,10 +62,12 @@ function moneyLabel(currency: string, amount: string): string {
 }
 
 export function buildAdminSofTableRow(row: AdminSourceOfFundsRow): AdminSofTableRow {
+  const displayStatus = resolveSofDisplayStatus(row.status, row.triageRecommendation);
   return {
     id: row.id,
     userId: row.userId,
     status: row.status,
+    displayStatus,
     statusLabel: STATUS_LABELS[row.status] ?? humanizeToken(row.status),
     trigger: row.trigger,
     triggerLabel: TRIGGER_LABELS[row.trigger] ?? humanizeToken(row.trigger),

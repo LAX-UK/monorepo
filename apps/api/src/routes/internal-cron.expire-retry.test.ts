@@ -55,6 +55,7 @@ describe("POST /internal/jobs/expire-stale-payments", () => {
     const app = cronApp({ paymentService } as unknown as Container, {
       CRON_INTERNAL_SECRET: "secret",
       PAYMENT_PENDING_EXPIRE_DAYS: 14,
+      PAYMENT_AUTHORIZED_EXPIRE_DAYS: 30,
     });
     const res = await app.request("/internal/jobs/expire-stale-payments", {
       method: "POST",
@@ -62,7 +63,7 @@ describe("POST /internal/jobs/expire-stale-payments", () => {
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ data: { expired: 5 } });
-    expect(paymentService.expireStalePendingPayments).toHaveBeenCalledWith(14);
+    expect(paymentService.expireStalePendingPayments).toHaveBeenCalledWith(14, 30);
   });
 });
 

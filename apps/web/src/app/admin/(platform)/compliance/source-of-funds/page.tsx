@@ -5,12 +5,16 @@ import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-e
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { ComplianceSofBoard } from "@/components/admin/compliance-sof-board";
+import { ComplianceApprovedSofPanel } from "@/components/admin/compliance/compliance-approved-sof-panel";
 import { ComplianceRejectedSofPanel } from "@/components/admin/compliance/compliance-rejected-sof-panel";
 import { sofListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { getAdminSourceOfFundsRejected } from "@/lib/data/http/compliance.server";
+import {
+  getAdminSourceOfFundsApproved,
+  getAdminSourceOfFundsRejected,
+} from "@/lib/data/http/compliance.server";
 import { summarizeSofQueue } from "@/lib/data/view-models/admin-sof-table.vm";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -37,17 +41,20 @@ export default async function AdminComplianceSourceOfFundsPage({
   let total = 0;
   let summaryRows: Awaited<ReturnType<typeof sofListController.fetch>>["rowsForSummary"] = [];
   let rejectedRows: Awaited<ReturnType<typeof getAdminSourceOfFundsRejected>> = [];
+  let approvedRows: Awaited<ReturnType<typeof getAdminSourceOfFundsApproved>> = [];
   let loadError: string | null = null;
 
   try {
-    const [result, rejected] = await Promise.all([
+    const [result, rejected, approved] = await Promise.all([
       sofListController.fetch(query),
       getAdminSourceOfFundsRejected(20),
+      getAdminSourceOfFundsApproved(20),
     ]);
     rows = result.rows;
     total = result.total ?? 0;
     summaryRows = result.rowsForSummary ?? result.rows;
     rejectedRows = rejected;
+    approvedRows = approved;
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load Source of Funds cases.";
   }
@@ -106,6 +113,7 @@ export default async function AdminComplianceSourceOfFundsPage({
             tiles={[
               { label: "Awaiting triage", value: summary.pending },
               { label: "Triaged", value: summary.triaged },
+              { label: "Approved (recent)", value: approvedRows.length },
               { label: "Rejected (recent)", value: rejectedRows.length },
               { label: "Total pending", value: total },
             ]}
@@ -129,6 +137,7 @@ export default async function AdminComplianceSourceOfFundsPage({
               </Link>
               .
             </p>
+            <ComplianceApprovedSofPanel rows={approvedRows} />
             <ComplianceRejectedSofPanel rows={rejectedRows} canReopen={canDecide} />
             {rows.length > 0 ? (
               <ComplianceSofBoard
