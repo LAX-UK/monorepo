@@ -27,6 +27,9 @@ export function BidFeedEntry({ entry, className }: Props) {
           <div className="min-w-0">
             <p className="font-body text-xs font-medium leading-3 text-on-surface-variant">
               {entry.paddleNumber}
+              {entry.channelLabel ? (
+                <span className="ml-2 text-on-surface-variant/80">{entry.channelLabel}</span>
+              ) : null}
               {entry.isYourBid ? <span className="ml-2 text-primary">You</span> : null}
             </p>
             <p className="font-body text-xs font-semibold uppercase leading-6 tabular-nums text-on-surface">
@@ -59,6 +62,9 @@ export function BidFeedEntry({ entry, className }: Props) {
       <div className="min-w-0 flex-1">
         <p className="font-body text-xs font-medium leading-3 text-on-surface-variant">
           {entry.paddleNumber}
+          {entry.channelLabel ? (
+            <span className="ml-2 text-on-surface-variant/80">{entry.channelLabel}</span>
+          ) : null}
           {entry.isYourBid ? <span className="ml-2 text-primary">You</span> : null}
         </p>
         <p className="font-body text-xs font-semibold uppercase leading-6 tabular-nums text-on-surface">

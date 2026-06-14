@@ -15,6 +15,7 @@ import {
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -31,7 +32,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     SALES_ACCESS,
   );
   const bundle = await loadAdminSaleDetail(id);
-  const isOnsite = bundle.sale.deliveryMode === "onsite";
+  const isSaleroom = isSaleroomDeliveryMode(bundle.sale.deliveryMode);
   const [
     registrationCount,
     pendingRegistrationCount,
@@ -47,7 +48,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       () => [],
     ),
     loadSaleConnectRequiredByLotId(id),
-    isOnsite ? getAdminTelephoneBookings(id, "requested").catch(() => []) : Promise.resolve([]),
+    isSaleroom ? getAdminTelephoneBookings(id, "requested").catch(() => []) : Promise.resolve([]),
   ]);
   const liveish = isSaleLiveish(bundle.sale);
   const pendingRegs =

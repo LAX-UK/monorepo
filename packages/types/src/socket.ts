@@ -24,6 +24,10 @@ export type BidUpdateEvent = {
   placedByUserId?: string | undefined;
   /** Step used for this auto bid row, when applicable. */
   autoBidStepAmount?: string | undefined;
+  /** Origin channel for the leading bid row (web, saleroom, telephone, absentee). */
+  placedVia?: string | null | undefined;
+  /** Total bids on the lot after this update (when provided by the API). */
+  bidCount?: number | undefined;
 };
 
 export type LotEndedEvent = {

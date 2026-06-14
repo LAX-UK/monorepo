@@ -1793,7 +1793,6 @@ export async function adminSaleroomGoLiveAction(formData: FormData): Promise<voi
         redirectSaleroomError(saleId, payload.error ?? "Go live failed");
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
-      redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
     },
     { formData },
   );
@@ -1820,7 +1819,6 @@ export async function adminSaleroomPauseAction(formData: FormData): Promise<void
         redirectSaleroomError(saleId, payload.error ?? "Pause failed");
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
-      redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
     },
     { formData },
   );
@@ -1845,7 +1843,6 @@ export async function adminSaleroomResumeAction(formData: FormData): Promise<voi
         redirectSaleroomError(saleId, payload.error ?? "Resume failed");
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
-      redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
     },
     { formData },
   );
@@ -1876,7 +1873,6 @@ export async function adminSaleroomAdvanceAction(formData: FormData): Promise<vo
         redirectSaleroomError(saleId, payload.error ?? "Advance failed");
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
-      redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
     },
     { formData },
   );
@@ -1901,7 +1897,6 @@ export async function adminSaleroomHammerAction(formData: FormData): Promise<voi
         redirectSaleroomError(saleId, payload.error ?? "Hammer failed");
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
-      redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
     },
     { formData },
   );
@@ -1926,7 +1921,6 @@ export async function adminSaleroomNoSaleAction(formData: FormData): Promise<voi
         redirectSaleroomError(saleId, payload.error ?? "No sale failed");
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
-      redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
     },
     { formData },
   );
@@ -1953,7 +1947,6 @@ export async function adminSaleroomCloseAction(formData: FormData): Promise<void
         redirectSaleroomError(saleId, payload.error ?? "Close failed");
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
-      redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
     },
     { formData },
   );
