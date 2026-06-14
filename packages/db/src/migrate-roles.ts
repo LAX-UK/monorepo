@@ -91,6 +91,7 @@ export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
     "email_change_new_ok",
     "email_change_expires_at",
     "deletion_requested_at",
+    "preferred_paddle_number",
     "updated_at",
   ],
 };
