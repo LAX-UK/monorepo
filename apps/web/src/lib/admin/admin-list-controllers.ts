@@ -57,6 +57,7 @@ import type {
   LotStatus,
   PaymentStatus,
   PayoutStatus,
+  SaleDeliveryMode,
   SaleStatus,
 } from "@auction/types";
 import { payoutStatuses } from "@auction/types";
@@ -129,7 +130,7 @@ export const salesListController: IAdminListController<AdminSaleListRow, SalesLi
       offset: number;
       status?: SaleStatus;
       q?: string;
-      deliveryMode?: "online" | "onsite";
+      deliveryMode?: SaleDeliveryMode;
       settlementStatus?: "settled" | "unsettled";
       sort?: "createdDesc" | "startAsc";
       needsSetup?: boolean;

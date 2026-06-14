@@ -1,8 +1,8 @@
-import type { Sale } from "@auction/types";
+import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { formatAntiSnipingRuleSentence } from "@auction/validators";
 
 export type SaleTypePresentation = {
-  key: "online" | "onsite";
+  key: SaleDeliveryMode;
   label: string;
   title: string;
   tagline: string;
@@ -63,7 +63,7 @@ export function getOnlineCloseStepDescription(saleEndDate?: Date | string | null
   return `${base} The sale catalogue closes on ${endLabel}.`;
 }
 
-const PRESENTATION_STRATEGY: Record<"online" | "onsite", SaleTypePresentation> = {
+const PRESENTATION_STRATEGY: Record<SaleDeliveryMode, SaleTypePresentation> = {
   online: {
     key: "online",
     label: "Online",
@@ -129,6 +129,43 @@ const PRESENTATION_STRATEGY: Record<"online" | "onsite", SaleTypePresentation> =
       },
     ],
   },
+  hybrid: {
+    key: "hybrid",
+    label: "Hybrid",
+    title: "Hybrid Auction",
+    tagline: "Bid online or in the saleroom",
+    description:
+      "This sale supports online timed bidding and in-room participation. Register to bid on the website, or collect a paddle at reception and bid live in the saleroom. Telephone and absentee instructions are also available before lots open.",
+    colorClass:
+      "bg-violet-50 text-violet-900 border-violet-200/50 dark:bg-violet-950/30 dark:text-violet-200 dark:border-violet-900/40",
+    iconName: "Laptop",
+    howToTakePart: [
+      {
+        stepKey: "register",
+        title: "Register to Bid",
+        description:
+          "Sign in with an approved buyer profile to bid online, or check in at reception for an in-room paddle.",
+      },
+      {
+        stepKey: "maxBids",
+        title: "Bid Online or In-Room",
+        description:
+          "Place bids on the website when lots are live, or bid through a clerk with your paddle number in the saleroom.",
+      },
+      {
+        stepKey: "phoneLine",
+        title: "Request a Phone Line",
+        description:
+          "Submit a telephone bidding request before your lot opens if you cannot attend in person.",
+      },
+      {
+        stepKey: "stream",
+        title: "Watch the Broadcast",
+        description:
+          "When a live stream is available, follow the saleroom session from your device while bidding online.",
+      },
+    ],
+  },
 };
 
 /**
@@ -136,7 +173,7 @@ const PRESENTATION_STRATEGY: Record<"online" | "onsite", SaleTypePresentation> =
  * Supports passing a full Sale object, a partial Sale, or a raw SaleDeliveryMode string.
  */
 export function getSaleTypePresentation(
-  input: "online" | "onsite" | Sale | Pick<Sale, "deliveryMode"> | undefined | null,
+  input: SaleDeliveryMode | Sale | Pick<Sale, "deliveryMode"> | undefined | null,
 ): SaleTypePresentation {
   if (!input) {
     return PRESENTATION_STRATEGY.onsite;
@@ -151,7 +188,7 @@ export function getSaleTypePresentation(
 }
 
 /** Canonical delivery-mode label (Online / In-person). */
-export function getSaleDeliveryModeLabel(mode: "online" | "onsite"): string {
+export function getSaleDeliveryModeLabel(mode: SaleDeliveryMode): string {
   return getSaleTypePresentation(mode).label;
 }
 
@@ -167,7 +204,7 @@ export function getOnsiteParticipationSummary(): string {
 
 /** Lookup canonical step copy by key from presentation metadata. */
 export function getParticipationStepCopy(
-  mode: "online" | "onsite",
+  mode: SaleDeliveryMode,
   stepKey: ParticipationStepKey,
 ): { title: string; description: string } | null {
   const step = getSaleTypePresentation(mode).howToTakePart.find((s) => s.stepKey === stepKey);

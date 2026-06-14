@@ -17,6 +17,8 @@ export type SaleRegistrationRow = {
   decidedAt: Date | null;
   decidedByUserId: string | null;
   bidLimit: string | null;
+  paddleNumber: number | null;
+  checkedInAt: Date | null;
   laxNotes: string | null;
   rejectionReason: string | null;
 };
@@ -27,6 +29,7 @@ export type SaleRegistrationAdminRow = SaleRegistrationRow & {
   buyerLegalEntityDisplayName: string | null;
   /** Current membership role for (buyerLegalEntityId, userId); null if no active row. */
   memberRole: LegalEntityMemberRole | null;
+  kycStatus: string | null;
 };
 
 export type SaleRegistrationServiceError = {
@@ -179,10 +182,13 @@ export class SaleRegistrationService {
         decidedAt: saleRegistration.decidedAt,
         decidedByUserId: saleRegistration.decidedByUserId,
         bidLimit: saleRegistration.bidLimit,
+        paddleNumber: saleRegistration.paddleNumber,
+        checkedInAt: saleRegistration.checkedInAt,
         laxNotes: saleRegistration.laxNotes,
         rejectionReason: saleRegistration.rejectionReason,
         userEmail: user.email,
         userName: user.name,
+        kycStatus: user.kycStatus,
         buyerLegalEntityDisplayName: legalEntity.displayName,
         memberRole: legalEntityMember.role,
       })
@@ -213,9 +219,12 @@ export class SaleRegistrationService {
         bidLimit: r.bidLimit,
         laxNotes: r.laxNotes,
         rejectionReason: r.rejectionReason,
+        paddleNumber: r.paddleNumber,
+        checkedInAt: r.checkedInAt,
       } as typeof saleRegistration.$inferSelect),
       userEmail: r.userEmail,
       userName: r.userName,
+      kycStatus: r.kycStatus,
       buyerLegalEntityDisplayName: r.buyerLegalEntityDisplayName,
       memberRole: (r.memberRole ?? null) as LegalEntityMemberRole | null,
     }));
@@ -301,6 +310,8 @@ export class SaleRegistrationService {
       bidLimit: r.bidLimit,
       laxNotes: r.laxNotes,
       rejectionReason: r.rejectionReason,
+      paddleNumber: r.paddleNumber,
+      checkedInAt: r.checkedInAt,
     };
   }
 }

@@ -5,6 +5,7 @@ import {
   buyerPremiumTiersSchema,
   createSaleSchema,
   isAllowedStreamUrl,
+  isSaleroomDeliveryMode,
   isStartInFutureForPublish,
   isUkPostcode,
   majorToMinor,
@@ -97,7 +98,7 @@ export const adminSaleFormValuesSchema = z
         path: ["streamUrl"],
       });
     }
-    if (values.deliveryMode === "onsite") {
+    if (isSaleroomDeliveryMode(values.deliveryMode)) {
       const postcode = values.locationPostcode.trim();
       if (postcode) {
         const normalized = normalizeUkPostcode(postcode);
@@ -215,16 +216,16 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
   if (!tiers.ok) {
     return { success: false as const, error: tiers.error };
   }
-  const isOnsite = values.deliveryMode === "onsite";
+  const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
   return createSaleSchema.safeParse({
     title: values.title.trim(),
     description: values.description.trim() || undefined,
     coverImages: values.coverImages.length > 0 ? values.coverImages : undefined,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
-    streamUrl: isOnsite ? values.streamUrl.trim() || undefined : undefined,
-    venueId: isOnsite ? values.venueId.trim() || undefined : undefined,
-    ...pickLocationCreate(values, isOnsite),
+    streamUrl: isSaleroom ? values.streamUrl.trim() || undefined : undefined,
+    venueId: isSaleroom ? values.venueId.trim() || undefined : undefined,
+    ...pickLocationCreate(values, isSaleroom),
     startTime: instantFromDatetimeFormString(values.startTime),
     endTime: instantFromDatetimeFormString(values.endTime),
     previewStartTime: values.previewStartTime.trim()
@@ -251,16 +252,16 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
     return { success: false as const, error: tiers.error };
   }
   const streamRaw = values.streamUrl.trim();
-  const isOnsite = values.deliveryMode === "onsite";
+  const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
   return updateSaleSchema.safeParse({
     title: values.title.trim() || undefined,
     description: values.description.trim() || undefined,
     coverImages: values.coverImages,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
-    streamUrl: isOnsite ? (streamRaw === "" ? null : streamRaw) : null,
-    venueId: isOnsite ? values.venueId.trim() || null : null,
-    ...pickLocationUpdate(values, isOnsite),
+    streamUrl: isSaleroom ? (streamRaw === "" ? null : streamRaw) : null,
+    venueId: isSaleroom ? values.venueId.trim() || null : null,
+    ...pickLocationUpdate(values, isSaleroom),
     startTime: values.startTime.trim()
       ? instantFromDatetimeFormString(values.startTime)
       : undefined,

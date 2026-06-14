@@ -14,6 +14,7 @@ import {
   adminSaleroomResumeAction,
 } from "@/lib/actions/admin";
 import type {
+  AdminPaddleRosterEntry,
   AdminSaleroomEventRow,
   AdminSaleroomSessionSnapshot,
   AdminTelephoneBookingRow,
@@ -38,6 +39,7 @@ type Props = {
   initial: AdminSaleroomSessionSnapshot;
   lots: Lot[];
   telephoneBookings?: AdminTelephoneBookingRow[];
+  paddleRoster?: AdminPaddleRosterEntry[];
   error?: string | null;
 };
 
@@ -47,6 +49,7 @@ export function SaleroomClerkConsole({
   initial,
   lots,
   telephoneBookings = [],
+  paddleRoster = [],
   error,
 }: Props) {
   const [liveFeed, setLiveFeed] = useState<SaleroomRealtimePayload[]>([]);
@@ -192,6 +195,7 @@ export function SaleroomClerkConsole({
           initial={initial}
           lots={lots}
           telephoneBookings={telephoneBookings}
+          paddleRoster={paddleRoster}
         />
         <TelephoneLinesPanel saleId={saleId} currentLotId={currentLotId} rows={telephoneBookings} />
       </div>

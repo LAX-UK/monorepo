@@ -46,6 +46,8 @@ type Props = {
   bidPanel: ReactNode;
   /** Optional strip above the bid panel (e.g. condition report request). */
   bidPanelTop?: ReactNode;
+  /** Optional saleroom participation hub for hybrid sales (below bid panel column). */
+  participationSection?: ReactNode;
   /** When true, show the Video Stream tab in the bid panel. */
   hasVideoStream?: boolean;
   streamUrl?: string | null;
@@ -72,6 +74,7 @@ export function ArtworkOnlineLayout({
   followSlot,
   bidPanel,
   bidPanelTop,
+  participationSection,
   hasVideoStream = false,
   streamUrl,
   streamSaleTitle,
@@ -159,6 +162,7 @@ export function ArtworkOnlineLayout({
               }
               hasVideoStream={hasVideoStream && Boolean(streamUrl && streamSaleTitle)}
             />
+            {participationSection ? <div className="mt-6">{participationSection}</div> : null}
             <div className="mt-6">
               <LotActionsRow
                 followSlot={followSlot}

@@ -71,10 +71,16 @@ export function attachExistingLotPanelBody(isOnsite: boolean): string {
     : "Search draft inventory. Review the lot and adjust its schedule to fit this sale before attaching.";
 }
 
-export function deliveryModeExplanation(mode: "online" | "onsite"): string {
-  return mode === "online"
-    ? "Bidders bid remotely. Each lot can close within the sale window."
-    : "Live event at a venue. All lots share this sale’s opening and closing times.";
+import type { SaleDeliveryMode } from "@auction/types";
+
+export function deliveryModeExplanation(mode: SaleDeliveryMode): string {
+  if (mode === "online") {
+    return "Bidders bid remotely. Each lot can close within the sale window.";
+  }
+  if (mode === "hybrid") {
+    return "Bidders can bid online and in the saleroom. All lots share this sale’s opening and closing times.";
+  }
+  return "Live event at a venue. All lots share this sale’s opening and closing times.";
 }
 
 export function saleSavedMessage(nextStep: SaleSetupStepId): string {

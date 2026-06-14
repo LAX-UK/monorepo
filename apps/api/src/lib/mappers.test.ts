@@ -71,6 +71,7 @@ function bidRow(
     autoBidStepAmount: null,
     placedVia: null,
     telephoneBookingId: null,
+    clerkUserId: null,
     createdAt: now,
     ...overrides,
   };

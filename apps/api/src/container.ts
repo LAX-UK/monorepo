@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { createJwksAdapter } from "@auction/auth";
 import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/server";
 import { createDb, publishUserRegistered } from "@auction/db";
-import { user } from "@auction/db/schema";
+import { bid, lot, user } from "@auction/db/schema";
 import {
   ConsoleEmailService,
   type IEmailService,
@@ -36,7 +36,7 @@ import {
   createBullQueueOptions,
 } from "@auction/queues";
 import { Queue } from "bullmq";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import type { Redis, RedisOptions } from "ioredis";
 import type { Env } from "./env.js";
 import { createExportProviderDeps } from "./exports/deps.js";
@@ -136,6 +136,7 @@ import { DrizzleOnsiteEventCheckInLogRepository } from "./repositories/drizzle-o
 import { DrizzleOnsiteEventClientReader } from "./repositories/drizzle-onsite-event-client.reader.js";
 import { DrizzleOnsiteEventRsvpRepository } from "./repositories/drizzle-onsite-event-rsvp.repository.js";
 import { DrizzleOnsiteEventRepository } from "./repositories/drizzle-onsite-event.repository.js";
+import { DrizzlePaddleRepository } from "./repositories/drizzle-paddle.repository.js";
 import { DrizzlePaymentExternalRefRepository } from "./repositories/drizzle-payment-external-ref.repository.js";
 import { DrizzlePaymentMetricsReader } from "./repositories/drizzle-payment-metrics.reader.js";
 import { DrizzlePaymentRefundReconcileRepository } from "./repositories/drizzle-payment-refund-reconcile.repository.js";
@@ -287,6 +288,7 @@ import { OnsiteEventNotifier } from "./services/onsite-event-notifier.js";
 import { OnsiteEventRsvpService } from "./services/onsite-event-rsvp.service.js";
 import { OrganizationOnboardingService } from "./services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "./services/organization-onboarding/organization-onboarding-flow.service.js";
+import { PaddleService } from "./services/paddle.service.js";
 import { PassQrRenderService } from "./services/pass-qr-render.service.js";
 import { PaymentService } from "./services/payment.service.js";
 import { BankTransferCheckoutRail } from "./services/payment/bank-transfer-checkout.rail.js";
@@ -373,6 +375,7 @@ export type Container = {
   adminLotBrowseService: AdminLotBrowseService;
   absenteeBidService: AbsenteeBidService;
   telephoneBidBookingService: TelephoneBidBookingService;
+  paddleService: PaddleService;
   onsiteEventRsvpService: IOnsiteEventRsvpService;
   onsiteEventCheckInService: IOnsiteEventCheckInService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
@@ -1033,6 +1036,26 @@ export function createContainer(env: Env): Container {
     telephoneBookingNotifier,
   );
 
+  const paddleRepo = new DrizzlePaddleRepository(db);
+  const SELF_SERVICE_BID_WINDOW_MS = 30 * 60_000;
+  const paddleService = new PaddleService(paddleRepo, db, cache, async (saleId, userId) => {
+    const cutoff = new Date(Date.now() - SELF_SERVICE_BID_WINDOW_MS);
+    const rows = await db
+      .select({ id: bid.id })
+      .from(bid)
+      .innerJoin(lot, eq(lot.id, bid.lotId))
+      .where(
+        and(
+          eq(lot.saleId, saleId),
+          eq(bid.bidderId, userId),
+          or(eq(bid.placedVia, "web"), isNull(bid.placedVia)),
+          gt(bid.createdAt, cutoff),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
+  });
+
   const onsiteEventRepo = new DrizzleOnsiteEventRepository(db);
   const onsiteEventRsvpRepo = new DrizzleOnsiteEventRsvpRepository(db);
   const onsiteEventCheckInLogRepo = new DrizzleOnsiteEventCheckInLogRepository(db);
@@ -1117,6 +1140,7 @@ export function createContainer(env: Env): Container {
     venueRepository: venueRepo,
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     qrCodeService,
+    hybridSalesEnabled: env.ENABLE_HYBRID_SALES,
   });
   const saleListReadService = new SaleListReadService(
     saleRepo,
@@ -1599,6 +1623,7 @@ export function createContainer(env: Env): Container {
     adminLotBrowseService,
     absenteeBidService,
     telephoneBidBookingService,
+    paddleService,
     onsiteEventRsvpService,
     onsiteEventCheckInService,
     adminSaleOperationsSnapshotService,

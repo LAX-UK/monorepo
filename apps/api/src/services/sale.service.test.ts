@@ -639,6 +639,7 @@ describe("SaleService.publish domain events", () => {
         jobScheduler: {
           scheduleLot: vi.fn(),
           cancelLotJobs: vi.fn(),
+          cancelLotEndJob: vi.fn(),
           rescheduleEnd: vi.fn(),
         } as ILotJobScheduler,
         db,
@@ -792,6 +793,7 @@ describe("SaleService.publish domain events", () => {
           scheduleLot,
           cancelLotJobs,
           rescheduleEnd: vi.fn(),
+          cancelLotEndJob: vi.fn(),
         } as ILotJobScheduler,
       }),
     );
@@ -1278,6 +1280,7 @@ describe("SaleService venue assignment", () => {
         jobScheduler: {
           scheduleLot: vi.fn(),
           cancelLotJobs: vi.fn(),
+          cancelLotEndJob: vi.fn(),
           rescheduleEnd: vi.fn(),
         } as ILotJobScheduler,
         venueRepository: venueRepo,

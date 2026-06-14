@@ -2254,3 +2254,118 @@ export async function adminTelephonePlaceBidResultAction(
     return actionSuccess({ bidId });
   });
 }
+
+const paddleRegistrationActionForm = z.object({
+  saleId: z.string().uuid(),
+  registrationId: z.string().uuid(),
+});
+
+const paddleAssignForm = paddleRegistrationActionForm.extend({
+  paddleNumber: z.coerce.number().int().min(100).optional(),
+});
+
+const paddlePlaceBidForm = z.object({
+  saleId: z.string().uuid(),
+  lotId: z.string().uuid(),
+  paddleNumber: z.coerce.number().int().min(100),
+  amount: z.coerce.number().finite().positive(),
+  maxAutoBidAmount: z.coerce.number().finite().positive().optional(),
+});
+
+export async function adminAssignPaddleResultAction(
+  input: unknown,
+): Promise<ActionResult<{ paddleNumber: number }>> {
+  return instrumentServerAction("adminAssignPaddleResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+    if (denied) return denied;
+
+    const parsed = paddleAssignForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+
+    const { saleId, registrationId, paddleNumber } = parsed.data;
+    const res = await authedServerFetch(
+      `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/paddle`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paddleNumber != null ? { paddleNumber } : {}),
+      },
+    );
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      return actionFailure(payload.error ?? "Paddle assignment failed");
+    }
+
+    const json = (await res.json()) as { data?: { paddleNumber?: number } };
+    const assigned = json.data?.paddleNumber;
+    if (assigned == null) return actionFailure("Unexpected response from server");
+    return actionSuccess({ paddleNumber: assigned });
+  });
+}
+
+export async function adminClearPaddleResultAction(
+  input: unknown,
+): Promise<ActionResult<{ ok: true }>> {
+  return instrumentServerAction("adminClearPaddleResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+    if (denied) return denied;
+
+    const parsed = paddleRegistrationActionForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+
+    const { saleId, registrationId } = parsed.data;
+    const res = await authedServerFetch(
+      `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/paddle`,
+      { method: "DELETE" },
+    );
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      return actionFailure(payload.error ?? "Clear paddle failed");
+    }
+
+    return actionSuccess({ ok: true });
+  });
+}
+
+export async function adminPaddlePlaceBidResultAction(
+  input: unknown,
+): Promise<ActionResult<{ bidId: string }>> {
+  return instrumentServerAction("adminPaddlePlaceBidResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+    if (denied) return denied;
+
+    const parsed = paddlePlaceBidForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+
+    const body = parsed.data;
+    const res = await authedServerFetch("/admin/saleroom/paddle-bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        saleId: body.saleId,
+        lotId: body.lotId,
+        paddleNumber: body.paddleNumber,
+        amount: body.amount,
+        ...(body.maxAutoBidAmount != null ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
+      }),
+    });
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      return actionFailure(payload.error ?? "Paddle bid failed");
+    }
+
+    const json = (await res.json()) as { data?: { id?: string } };
+    const bidId = json.data?.id;
+    if (!bidId) return actionFailure("Unexpected response from server");
+    return actionSuccess({ bidId });
+  });
+}

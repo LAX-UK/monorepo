@@ -224,7 +224,12 @@ describe("LotService.update", () => {
       lotRepo,
       bids: {} as IBidRepository,
       watchlist: {} as IWatchlistRepository,
-      jobScheduler: { cancelLotJobs, scheduleLot, rescheduleEnd: vi.fn() },
+      jobScheduler: {
+        cancelLotJobs,
+        scheduleLot,
+        rescheduleEnd: vi.fn(),
+        cancelLotEndJob: vi.fn(),
+      },
       lotNotifications: null,
     });
 
@@ -624,6 +629,7 @@ describe("LotService.cancel", () => {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn().mockResolvedValue(undefined),
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications,
       legalEntityNotificationRecipients: legalEntityRecipients,
@@ -662,6 +668,7 @@ describe("LotService.cancel", () => {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs,
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications: null,
     });
@@ -710,6 +717,7 @@ describe("LotService.publish", () => {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn(),
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications: null,
       legalEntityRepository,
@@ -740,6 +748,7 @@ describe("LotService.publish", () => {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn(),
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications: null,
       legalEntityRepository,
@@ -767,6 +776,7 @@ describe("LotService.publish", () => {
       scheduleLot: vi.fn(),
       rescheduleEnd: vi.fn(),
       cancelLotJobs: vi.fn(),
+      cancelLotEndJob: vi.fn(),
     };
     const svc = new LotService({
       lotRepo,
@@ -801,6 +811,7 @@ describe("LotService.publish", () => {
       scheduleLot: vi.fn(),
       rescheduleEnd: vi.fn(),
       cancelLotJobs: vi.fn(),
+      cancelLotEndJob: vi.fn(),
     };
     const svc = new LotService({
       lotRepo,
@@ -828,6 +839,7 @@ describe("LotService.publish", () => {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn(),
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications: null,
     });
@@ -856,6 +868,7 @@ describe("LotService.publish", () => {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn(),
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications: null,
     });
@@ -885,6 +898,7 @@ describe("LotService.publish", () => {
         scheduleLot: vi.fn(),
         rescheduleEnd: vi.fn(),
         cancelLotJobs: vi.fn(),
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications: null,
     });
@@ -913,6 +927,7 @@ describe("LotService.publish", () => {
         scheduleLot,
         rescheduleEnd: vi.fn(),
         cancelLotJobs,
+        cancelLotEndJob: vi.fn(),
       },
       lotNotifications: null,
     });
@@ -1140,7 +1155,12 @@ describe("LotService.bulkPublishOrCancel", () => {
       lotRepo,
       bids: {} as IBidRepository,
       watchlist: {} as IWatchlistRepository,
-      jobScheduler: { scheduleLot: vi.fn(), cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      jobScheduler: {
+        scheduleLot: vi.fn(),
+        cancelLotJobs: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotEndJob: vi.fn(),
+      },
       lotNotifications: null,
     });
     const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", "catalogue_manager");
@@ -1187,7 +1207,12 @@ describe("LotService.bulkPublishOrCancel", () => {
       lotRepo,
       bids: {} as IBidRepository,
       watchlist: {} as IWatchlistRepository,
-      jobScheduler: { scheduleLot: vi.fn(), cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      jobScheduler: {
+        scheduleLot: vi.fn(),
+        cancelLotJobs: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotEndJob: vi.fn(),
+      },
       lotNotifications: null,
       legalEntityRepository,
       enforceIndividualConnectOnPublish: true,
@@ -1228,7 +1253,12 @@ describe("LotService.bulkPublishOrCancel", () => {
       saleRepo,
       bids: {} as IBidRepository,
       watchlist: {} as IWatchlistRepository,
-      jobScheduler: { scheduleLot: vi.fn(), cancelLotJobs: vi.fn(), rescheduleEnd: vi.fn() },
+      jobScheduler: {
+        scheduleLot: vi.fn(),
+        cancelLotJobs: vi.fn(),
+        rescheduleEnd: vi.fn(),
+        cancelLotEndJob: vi.fn(),
+      },
       lotNotifications: null,
     });
     const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", "catalogue_manager");

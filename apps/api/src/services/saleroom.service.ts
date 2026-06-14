@@ -140,6 +140,14 @@ export class SaleroomService implements ISaleroomService {
 
     await this.insertEvent(session.id, "opened", {}, input.actorUserId);
     await this.publish(input.saleId, { kind: "opened" });
+
+    const saleLots = await this.lotRepo.findBySaleId(input.saleId);
+    for (const lotRow of saleLots) {
+      if (lotRow.status === "active") {
+        await this.lotJobs?.cancelLotEndJob(lotRow.id);
+      }
+    }
+
     return ok({ sessionId: session.id, status: "live" });
   }
 
@@ -317,6 +325,7 @@ export class SaleroomService implements ISaleroomService {
       })
       .where(eq(saleroomSession.id, session.id));
     await this.telephoneBidBookingService?.closeAllOpenForSale(input.saleId);
+    await this.lotLifecycle.finalizeActiveLotsPastEnd(input.saleId);
     await this.insertEvent(session.id, "closed", {}, input.actorUserId);
     await this.publish(input.saleId, { kind: "closed" });
     return ok({ sessionId: session.id });

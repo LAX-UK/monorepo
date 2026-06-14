@@ -1,6 +1,7 @@
 "use client";
 
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import type { SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot, cn } from "@auction/ui";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -12,7 +13,7 @@ type Props = {
   end: Date;
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
   saleTitle: string;
-  deliveryMode?: "online" | "onsite";
+  deliveryMode?: SaleDeliveryMode;
   streamUrl?: string | null;
   /** Optional live lot count surfaced as a caption when the sale is live. */
   liveLotsCount?: number;
