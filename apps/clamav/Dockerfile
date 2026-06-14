@@ -1,5 +1,6 @@
 # Docker Hub repo is ajilaag/clamav-rest (GitHub org is ajilach). Pin a release tag.
-FROM ajilaag/clamav-rest:v0.4.15
+# Hub tags omit the "v" prefix (e.g. 0.4.15, not v0.4.15).
+FROM ajilaag/clamav-rest:0.4.15
 
 # clamd + freshclam + REST API run in one container; HTTP REST listens on 9000.
 # Size cap is governed by MAX_FILE_SIZE (default 25M -> HTTP 413 over that). Our
