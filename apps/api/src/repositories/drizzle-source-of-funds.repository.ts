@@ -23,6 +23,11 @@ function rowToCase(row: typeof sourceOfFunds.$inferSelect): SourceOfFundsCase {
     currency: row.currency,
     declaredSource: row.declaredSource ?? null,
     evidence: (row.evidence ?? []) as string[],
+    documentsRequestedAt: row.documentsRequestedAt ?? null,
+    documentsRequestedByUserId: row.documentsRequestedByUserId ?? null,
+    documentRequestNote: row.documentRequestNote ?? null,
+    requestedDocumentTypes: (row.requestedDocumentTypes ?? []) as string[],
+    documentsSubmittedAt: row.documentsSubmittedAt ?? null,
     triageRecommendation:
       (row.triageRecommendation as SourceOfFundsTriageRecommendation | null) ?? null,
     triagedByUserId: row.triagedByUserId ?? null,
@@ -170,11 +175,73 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
         reviewedByUserId: null,
         reviewedAt: null,
         reviewNotes: null,
+        documentsRequestedAt: null,
+        documentsRequestedByUserId: null,
+        documentRequestNote: null,
+        requestedDocumentTypes: [],
+        documentsSubmittedAt: null,
         updatedAt: new Date(),
       })
       .where(and(eq(sourceOfFunds.id, id), eq(sourceOfFunds.status, "rejected")))
       .returning();
     return row ? rowToCase(row) : null;
+  }
+
+  async setDocumentRequest(
+    input: {
+      id: string;
+      requestedByUserId: string;
+      documentTypes: string[];
+      note: string | null;
+    },
+    conn?: Database,
+  ): Promise<SourceOfFundsCase | null> {
+    const [row] = await this.conn(conn)
+      .update(sourceOfFunds)
+      .set({
+        documentsRequestedAt: new Date(),
+        documentsRequestedByUserId: input.requestedByUserId,
+        documentRequestNote: input.note,
+        requestedDocumentTypes: input.documentTypes,
+        documentsSubmittedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(sourceOfFunds.id, input.id), eq(sourceOfFunds.status, "pending")))
+      .returning();
+    return row ? rowToCase(row) : null;
+  }
+
+  async setDocumentsSubmitted(id: string, conn?: Database): Promise<SourceOfFundsCase | null> {
+    const [row] = await this.conn(conn)
+      .update(sourceOfFunds)
+      .set({
+        documentsSubmittedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(sourceOfFunds.id, id),
+          eq(sourceOfFunds.status, "pending"),
+          sql`${sourceOfFunds.documentsRequestedAt} IS NOT NULL`,
+          sql`${sourceOfFunds.documentsSubmittedAt} IS NULL`,
+        ),
+      )
+      .returning();
+    return row ? rowToCase(row) : null;
+  }
+
+  async resetDocumentCycle(id: string, conn?: Database): Promise<void> {
+    await this.conn(conn)
+      .update(sourceOfFunds)
+      .set({
+        documentsRequestedAt: null,
+        documentsRequestedByUserId: null,
+        documentRequestNote: null,
+        requestedDocumentTypes: [],
+        documentsSubmittedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sourceOfFunds.id, id));
   }
 
   async sumActiveBuyerSettlementPence(

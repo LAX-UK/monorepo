@@ -9,7 +9,7 @@ export const subject = (_vars: TemplateVarsByName["source-of-funds-buyer-notice"
 export default function SourceOfFundsBuyerNoticeEmail(
   vars: TemplateVarsByName["source-of-funds-buyer-notice"],
 ) {
-  const { userName, supportContactEmail } = vars;
+  const { userName, supportContactEmail, settlementSummary } = vars;
 
   return (
     <Layout
@@ -19,6 +19,11 @@ export default function SourceOfFundsBuyerNoticeEmail(
       title="Source of funds verification required"
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
+      {settlementSummary ? (
+        <TextBlock>
+          This review relates to: <strong>{settlementSummary}</strong>.
+        </TextBlock>
+      ) : null}
       <TextBlock>
         As part of our anti-money laundering obligations, we need to verify the source of funds for
         your recent purchase before settlement can be completed. Your checkout is currently on hold

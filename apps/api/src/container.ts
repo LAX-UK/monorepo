@@ -153,6 +153,7 @@ import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.j
 import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-soft-delete.side-effects.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
 import { DrizzleSaleroomSessionLookup } from "./repositories/drizzle-saleroom-session.lookup.js";
+import { DrizzleSourceOfFundsDocumentRepository } from "./repositories/drizzle-source-of-funds-document.repository.js";
 import { DrizzleSourceOfFundsRepository } from "./repositories/drizzle-source-of-funds.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
 import { DrizzleTelephoneBidBookingRepository } from "./repositories/drizzle-telephone-bid-booking.repository.js";
@@ -322,6 +323,7 @@ import { SaleroomService } from "./services/saleroom.service.js";
 import { SavedSearchService } from "./services/saved-search.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { PerRequestSigningPolicy, StableSigningPolicy } from "./services/signed-url-policy.js";
+import { SourceOfFundsDocumentCollectionService } from "./services/source-of-funds/source-of-funds-document-collection.service.js";
 import { SourceOfFundsService } from "./services/source-of-funds/source-of-funds.service.js";
 import { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
 import { StripeConnectFacade } from "./services/stripe/stripe-connect.facade.js";
@@ -470,6 +472,8 @@ export type Container = {
   sourceOfFundsService: SourceOfFundsService;
   /** Admin read models for SoF compliance queues (list enrichment + detail). */
   adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
+  /** In-platform SoF document request / upload / submit flow. */
+  sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
   /** organisation onboarding. */
   organizationOnboardingService: IOrganizationOnboardingService;
   /** Production-domain gate for org module mutations. */
@@ -917,6 +921,7 @@ export function createContainer(env: Env): Container {
     VeriffWatchlistFetcher.fromEnv(env),
   );
   const sourceOfFundsRepository = new DrizzleSourceOfFundsRepository(db);
+  const sourceOfFundsDocumentRepository = new DrizzleSourceOfFundsDocumentRepository(db);
   const sourceOfFundsService = new SourceOfFundsService(
     sourceOfFundsRepository,
     {
@@ -953,8 +958,17 @@ export function createContainer(env: Env): Container {
   );
   const adminSourceOfFundsQueryService = new AdminSourceOfFundsQueryService(
     sourceOfFundsRepository,
+    sourceOfFundsDocumentRepository,
     db,
     mediaUrlResolver,
+  );
+  const sourceOfFundsDocumentCollectionService = new SourceOfFundsDocumentCollectionService(
+    sourceOfFundsRepository,
+    sourceOfFundsDocumentRepository,
+    db,
+    domainEventPublisher,
+    objectStorage,
+    new PerRequestSigningPolicy(env.SOF_DOWNLOAD_TTL_SEC),
   );
   const catalogueMediaUrlResolver = new MediaUrlResolver(
     objectStorage,
@@ -1714,6 +1728,7 @@ export function createContainer(env: Env): Container {
     amlService,
     sourceOfFundsService,
     adminSourceOfFundsQueryService,
+    sourceOfFundsDocumentCollectionService,
     organizationOnboardingService,
     orgModuleGate,
     organizationOnboardingFlowService,

@@ -46,6 +46,9 @@ export const templateNames = [
   "submission-rejected",
   "submission-draft-reminder",
   "source-of-funds-buyer-notice",
+  "source-of-funds-documents-requested",
+  "source-of-funds-approved",
+  "source-of-funds-rejected",
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -346,6 +349,27 @@ export type TemplateVarsByName = {
   "source-of-funds-buyer-notice": {
     userName?: string | null;
     supportContactEmail: string;
+    settlementSummary?: string | null;
+  };
+  "source-of-funds-documents-requested": {
+    userName?: string | null;
+    documentTypes: string[];
+    requestNote?: string | null;
+    uploadUrl: string;
+    settlementSummary?: string | null;
+    supportContactEmail: string;
+  };
+  "source-of-funds-approved": {
+    userName?: string | null;
+    settlementSummary?: string | null;
+    dashboardUrl: string;
+    supportContactEmail: string;
+  };
+  "source-of-funds-rejected": {
+    userName?: string | null;
+    settlementSummary?: string | null;
+    dashboardUrl: string;
+    supportContactEmail: string;
   };
 };
 
@@ -398,6 +422,9 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "submission-rejected": "live",
   "submission-draft-reminder": "live",
   "source-of-funds-buyer-notice": "live",
+  "source-of-funds-documents-requested": "live",
+  "source-of-funds-approved": "live",
+  "source-of-funds-rejected": "live",
 };
 
 export type RenderedEmail = {

@@ -207,3 +207,81 @@ export async function fetchAdminSofCaseDetailAction(
     }
   });
 }
+
+export type SofDocumentDownloadResult = { ok: true; url: string } | { ok: false; error: string };
+
+/** Resolve a short-TTL, audited download URL for a buyer-submitted SoF document.
+ * The API emits a `source_of_funds.document_downloaded` audit event (actor + IP)
+ * on every call, so staff downloads are never served from a long-lived link. */
+export async function downloadSofDocumentAction(
+  caseId: string,
+  documentId: string,
+): Promise<SofDocumentDownloadResult> {
+  return instrumentServerAction("downloadSofDocumentAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const id = caseId.trim();
+    const docId = documentId.trim();
+    if (!id || !docId) {
+      return { ok: false as const, error: "Document id is required" };
+    }
+
+    const res = await authedServerFetch(
+      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/${encodeURIComponent(docId)}/download`,
+    );
+    if (!res.ok) {
+      return { ok: false as const, error: await apiError(res, "Download failed") };
+    }
+    const body = (await res.json().catch(() => ({}))) as { data?: { url?: unknown } };
+    const url = typeof body.data?.url === "string" ? body.data.url : null;
+    if (!url) {
+      return { ok: false as const, error: "Download URL unavailable" };
+    }
+    return { ok: true as const, url };
+  });
+}
+
+export type RequestSofDocumentsResult = { ok: true } | { ok: false; error: string };
+
+export async function requestSofDocumentsAction(
+  formData: FormData,
+): Promise<RequestSofDocumentsResult> {
+  return instrumentServerAction("requestSofDocumentsAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const caseId = String(formData.get("caseId") ?? "").trim();
+    const typesRaw = String(formData.get("documentTypes") ?? "[]");
+    const note = String(formData.get("note") ?? "").trim();
+    let documentTypes: string[] = [];
+    try {
+      const parsed = JSON.parse(typesRaw) as unknown;
+      documentTypes = Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+    } catch {
+      return { ok: false as const, error: "Invalid document types" };
+    }
+    if (!caseId || documentTypes.length === 0) {
+      return { ok: false as const, error: "Case and at least one document type required" };
+    }
+
+    const res = await authedServerFetch(
+      `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}/request-documents`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentTypes, note: note || undefined }),
+      },
+    );
+    if (!res.ok) {
+      return { ok: false as const, error: await apiError(res, "Request failed") };
+    }
+
+    revalidatePath("/admin/compliance/source-of-funds");
+    return { ok: true as const };
+  });
+}

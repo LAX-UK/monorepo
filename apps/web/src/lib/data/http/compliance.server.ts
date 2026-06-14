@@ -110,6 +110,44 @@ export type AdminSourceOfFundsDetail = {
     downloadUrl: string | null;
     error?: string;
   }>;
+  documentRequest: {
+    requestedAt: string | null;
+    requestedByUserId: string | null;
+    note: string | null;
+    requestedDocumentTypes: string[];
+    submittedAt: string | null;
+  };
+  submittedDocuments: Array<{
+    id: string;
+    requestedType: string;
+    label: string | null;
+    fileName: string | null;
+    reviewStatus: string;
+    uploadedAt: string;
+    uploadedByUserId: string;
+    downloadUrl: string | null;
+  }>;
+};
+
+export type BuyerSourceOfFundsView = {
+  caseId: string;
+  status: string;
+  trigger: string;
+  documentsRequested: boolean;
+  documentsSubmitted: boolean;
+  requestedDocumentTypes: string[];
+  documentRequestNote: string | null;
+  documents: Array<{
+    id: string;
+    requestedType: string;
+    label: string | null;
+    fileName: string | null;
+    statusLabel: "received" | "under_review" | "superseded";
+    uploadedAt: string;
+  }>;
+  settlementSummary: string | null;
+  settlementItemCount: number;
+  decisionOutcome: "approved" | "rejected" | null;
 };
 
 function str(v: unknown): string {
@@ -306,7 +344,115 @@ export function sofDetailFromJson(raw: unknown): AdminSourceOfFundsDetail | null
     settlementItems,
     blockedPayments,
     evidenceDownloads,
+    documentRequest: parseDocumentRequest(o.documentRequest),
+    submittedDocuments: parseSubmittedDocuments(o.submittedDocuments),
   };
+}
+
+function parseDocumentRequest(raw: unknown): AdminSourceOfFundsDetail["documentRequest"] {
+  if (!raw || typeof raw !== "object") {
+    return {
+      requestedAt: null,
+      requestedByUserId: null,
+      note: null,
+      requestedDocumentTypes: [],
+      submittedAt: null,
+    };
+  }
+  const o = raw as Record<string, unknown>;
+  return {
+    requestedAt: o.requestedAt == null ? null : String(o.requestedAt),
+    requestedByUserId: o.requestedByUserId == null ? null : str(o.requestedByUserId),
+    note: o.note == null ? null : str(o.note),
+    requestedDocumentTypes: Array.isArray(o.requestedDocumentTypes)
+      ? o.requestedDocumentTypes.map(String)
+      : [],
+    submittedAt: o.submittedAt == null ? null : String(o.submittedAt),
+  };
+}
+
+function parseSubmittedDocuments(raw: unknown): AdminSourceOfFundsDetail["submittedDocuments"] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const o = item as Record<string, unknown>;
+      const id = str(o.id);
+      if (!id) return null;
+      return {
+        id,
+        requestedType: str(o.requestedType),
+        label: o.label == null ? null : str(o.label),
+        fileName: o.fileName == null ? null : str(o.fileName),
+        reviewStatus: str(o.reviewStatus),
+        uploadedAt: String(o.uploadedAt ?? ""),
+        uploadedByUserId: str(o.uploadedByUserId),
+        downloadUrl: o.downloadUrl == null ? null : str(o.downloadUrl),
+      };
+    })
+    .filter((d): d is NonNullable<typeof d> => d != null);
+}
+
+export function buyerSofViewFromJson(raw: unknown): BuyerSourceOfFundsView | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const caseId = str(o.caseId);
+  if (!caseId) return null;
+  return {
+    caseId,
+    status: str(o.status),
+    trigger: str(o.trigger),
+    documentsRequested: Boolean(o.documentsRequested),
+    documentsSubmitted: Boolean(o.documentsSubmitted),
+    requestedDocumentTypes: Array.isArray(o.requestedDocumentTypes)
+      ? o.requestedDocumentTypes.map(String)
+      : [],
+    documentRequestNote: o.documentRequestNote == null ? null : str(o.documentRequestNote),
+    documents: Array.isArray(o.documents)
+      ? o.documents
+          .map((d) => {
+            if (!d || typeof d !== "object") return null;
+            const row = d as Record<string, unknown>;
+            const id = str(row.id);
+            if (!id) return null;
+            const statusLabel = row.statusLabel;
+            const normalizedStatus: BuyerSourceOfFundsView["documents"][number]["statusLabel"] =
+              statusLabel === "under_review" || statusLabel === "superseded"
+                ? statusLabel
+                : "received";
+            return {
+              id,
+              requestedType: str(row.requestedType),
+              label: row.label == null ? null : str(row.label),
+              fileName: row.fileName == null ? null : str(row.fileName),
+              statusLabel: normalizedStatus,
+              uploadedAt: String(row.uploadedAt ?? ""),
+            };
+          })
+          .filter((d): d is NonNullable<typeof d> => d != null)
+      : [],
+    settlementSummary: o.settlementSummary == null ? null : str(o.settlementSummary),
+    settlementItemCount: num(o.settlementItemCount),
+    decisionOutcome:
+      o.decisionOutcome === "approved" || o.decisionOutcome === "rejected"
+        ? o.decisionOutcome
+        : null,
+  };
+}
+
+export async function getBuyerSourceOfFundsView(): Promise<BuyerSourceOfFundsView | null> {
+  const res = await authedServerFetch("/payments/me/source-of-funds");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      normalizeApiErrorMessage(
+        (body as { error?: unknown }).error,
+        "Could not load source of funds status",
+      ),
+    );
+  }
+  const json = (await res.json()) as { data?: unknown };
+  return buyerSofViewFromJson(json.data);
 }
 
 /** Align with nav badge fetch cap so queue rows match sidebar counts. */

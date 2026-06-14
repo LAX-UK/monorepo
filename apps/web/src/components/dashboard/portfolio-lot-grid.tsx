@@ -1,6 +1,7 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
+import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import { TimelineStages } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
@@ -40,6 +41,13 @@ type Props = {
    */
   variant?: "split" | "stacked";
 };
+
+function complianceActionHref(row: PortfolioLotCardVm): string {
+  if (row.complianceReason === "source_of_funds_required") {
+    return dashboardSofRequirementsUrl();
+  }
+  return row.checkoutHref;
+}
 
 export function PortfolioLotGrid({ items, variant = "split" }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -167,7 +175,7 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
                         className="px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
                         asChild
                       >
-                        <Link href={row.checkoutHref}>View details</Link>
+                        <Link href={complianceActionHref(row)}>View requirements</Link>
                       </Button>
                     ) : (
                       <Button
@@ -281,7 +289,19 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
               </ul>
             </div>
             <Button variant="primary" asChild className="mt-2 w-full sm:w-auto">
-              <Link href={active.checkoutHref}>Go to checkout</Link>
+              <Link
+                href={
+                  active.complianceReason === "source_of_funds_required"
+                    ? dashboardSofRequirementsUrl()
+                    : active.checkoutHref
+                }
+              >
+                {active.complianceReason === "source_of_funds_required"
+                  ? "View requirements"
+                  : active.complianceReason
+                    ? "View compliance status"
+                    : "Go to checkout"}
+              </Link>
             </Button>
           </div>
         ) : null}

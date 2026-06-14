@@ -140,6 +140,8 @@ const envSchema = z
     /** public keeps CDN/object URLs; signed returns short-lived presigned GET URLs for owned keys. */
     STORAGE_READ_MODE: z.enum(["public", "signed"]).default("public"),
     SIGNED_GET_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(900),
+    /** Short TTL for sensitive Source-of-Funds document downloads (staff, aml.review only). */
+    SOF_DOWNLOAD_TTL_SEC: z.coerce.number().int().min(30).max(600).default(120),
     /** Row-count threshold: exports at or below this use sync HTTP stream; above enqueue async job. */
     EXPORT_SYNC_MAX_ROWS: z.coerce.number().int().min(100).max(50_000).default(5000),
     /** Pending/processing exports older than this are not deduped and are marked failed by purge job. */
