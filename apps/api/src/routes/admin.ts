@@ -1800,11 +1800,26 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", sourceOfFundsListQuerySchema),
     async (c) => {
       const { limit, offset, status } = c.req.valid("query");
-      const [data, total] = await Promise.all([
-        container.sourceOfFundsService.listByStatus(status, limit, offset),
-        container.sourceOfFundsService.countByStatus(status),
-      ]);
-      return c.json({ data, meta: { total, limit, offset } });
+      const { rows, total } = await container.adminSourceOfFundsQueryService.listEnriched(
+        status,
+        limit,
+        offset,
+      );
+      return c.json({ data: rows, meta: { total, limit, offset } });
+    },
+  );
+
+  platform.get(
+    "/compliance/source-of-funds/:id/detail",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const detail = await container.adminSourceOfFundsQueryService.getDetail(id);
+      if (!detail) {
+        return c.json({ error: "source_of_funds_not_found" }, 404);
+      }
+      return c.json({ data: detail });
     },
   );
 

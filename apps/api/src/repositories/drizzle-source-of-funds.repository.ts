@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { payment, sourceOfFunds } from "@auction/db/schema";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "../services/source-of-funds/active-settlement-statuses.js";
 import type {
   CreateSourceOfFundsCaseInput,
   ISourceOfFundsRepository,
@@ -10,14 +11,6 @@ import type {
   SourceOfFundsTriageInput,
   SourceOfFundsTriageRecommendation,
 } from "../services/source-of-funds/source-of-funds.types.js";
-
-/** Payment statuses that represent live or settled buyer exposure for SoF aggregation. */
-const ACTIVE_PAYMENT_STATUSES = [
-  "pending",
-  "authorized",
-  "captured",
-  "requires_manual_review",
-] as const;
 
 function rowToCase(row: typeof sourceOfFunds.$inferSelect): SourceOfFundsCase {
   return {
@@ -191,7 +184,7 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
   ): Promise<number> {
     const conditions = [
       eq(payment.buyerId, userId),
-      inArray(payment.status, [...ACTIVE_PAYMENT_STATUSES]),
+      inArray(payment.status, [...ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES]),
     ];
     if (excludePaymentId) {
       conditions.push(ne(payment.id, excludePaymentId));

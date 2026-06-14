@@ -3,6 +3,7 @@ import type { ArtistKind, ArtistStatus, LegalEntityStatus } from "@auction/types
 import type { adminCreateArtistBodySchema, adminUpdateArtistBodySchema } from "@auction/validators";
 import type { InferSelectModel } from "drizzle-orm";
 import type { z } from "zod";
+import type { SourceOfFundsCase } from "../services/source-of-funds/source-of-funds.types.js";
 
 /** Rows for `/admin/onboarding-issues` — mirrors `AdminDashboardQueryService.getOnboardingIssues` selects. */
 export type AdminOnboardingLegalEntityRow = {
@@ -112,3 +113,62 @@ export type AdminArtistListOptions = {
 
 export type AdminCatalogCreateArtistBody = z.infer<typeof adminCreateArtistBodySchema>;
 export type AdminCatalogUpdateArtistBody = z.infer<typeof adminUpdateArtistBodySchema>;
+
+/** Settlement line item for admin SoF detail (payment or won-unpaid estimate). */
+export type AdminSourceOfFundsSettlementItemDto = {
+  kind: "payment" | "won_unpaid";
+  lotId: string;
+  lotTitle: string;
+  lotNumber: number | null;
+  saleId: string;
+  saleTitle: string;
+  amountPence: number;
+  paymentId?: string;
+  paymentStatus?: string;
+};
+
+/** Enriched row for `GET /admin/compliance/source-of-funds`. */
+export type AdminSourceOfFundsListRowDto = SourceOfFundsCase & {
+  buyerEmail: string | null;
+  buyerName: string | null;
+  buyerLabel: string | null;
+  settlementSummary: string | null;
+  settlementItemCount: number;
+  pendingCasesForBuyer: number;
+};
+
+export type AdminSourceOfFundsStaffActorDto = {
+  id: string;
+  label: string | null;
+};
+
+export type AdminSourceOfFundsBuyerDto = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  label: string | null;
+};
+
+/** Full read model for `GET /admin/compliance/source-of-funds/:id/detail`. */
+export type AdminSourceOfFundsDetailDto = {
+  case: SourceOfFundsCase;
+  buyer: AdminSourceOfFundsBuyerDto;
+  triagedBy: AdminSourceOfFundsStaffActorDto | null;
+  reviewedBy: AdminSourceOfFundsStaffActorDto | null;
+  exposureAtOpenPence: number;
+  currentActiveExposurePence: number;
+  settlementItems: AdminSourceOfFundsSettlementItemDto[];
+  blockedPayments: Array<{
+    paymentId: string;
+    lotId: string;
+    lotTitle: string;
+    lotNumber: number | null;
+    manualReviewReason: "source_of_funds_required";
+  }>;
+  evidenceDownloads: Array<{
+    key: string;
+    fileName: string;
+    downloadUrl: string | null;
+    error?: string;
+  }>;
+};

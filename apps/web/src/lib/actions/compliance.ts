@@ -3,6 +3,10 @@
 import { complianceErrorMessage } from "@/lib/admin/compliance-error-messages";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import {
+  type AdminSourceOfFundsDetail,
+  getAdminSourceOfFundsDetail,
+} from "@/lib/data/http/compliance.server";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { normalizeApiErrorMessage } from "@auction/validators";
@@ -167,5 +171,39 @@ export async function sofReopenAction(formData: FormData): Promise<void> {
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
     redirectSof("Rejected case reopened for review");
+  });
+}
+
+export type FetchAdminSofCaseDetailResult =
+  | { ok: true; data: AdminSourceOfFundsDetail }
+  | { ok: false; error: string };
+
+/** Read-only detail fetch for the SoF review drawer (no redirect). */
+export async function fetchAdminSofCaseDetailAction(
+  caseId: string,
+): Promise<FetchAdminSofCaseDetailResult> {
+  return instrumentServerAction("fetchAdminSofCaseDetailAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const id = caseId.trim();
+    if (!id) {
+      return { ok: false as const, error: "Case id is required" };
+    }
+
+    try {
+      const data = await getAdminSourceOfFundsDetail(id);
+      if (!data) {
+        return { ok: false as const, error: "Source of Funds case not found" };
+      }
+      return { ok: true as const, data };
+    } catch (e) {
+      return {
+        ok: false as const,
+        error: e instanceof Error ? e.message : "Could not load case detail",
+      };
+    }
   });
 }

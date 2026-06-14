@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildAdminSofTableRow, resolveSofDisplayStatus } from "./admin-sof-table.vm";
+import {
+  buildAdminSofTableRow,
+  buildSettlementSummaryLabel,
+  resolveSofDisplayStatus,
+} from "./admin-sof-table.vm";
 
 const baseRow = {
   id: "sof_1",
@@ -20,6 +24,12 @@ const baseRow = {
   evidence: [],
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
+  buyerEmail: "buyer@example.com",
+  buyerName: "Buyer One",
+  buyerLabel: "Buyer One",
+  settlementSummary: "Lot 42 · Summer Sale (+2 more)",
+  settlementItemCount: 3,
+  pendingCasesForBuyer: 1,
 };
 
 describe("admin-sof-table.vm", () => {
@@ -28,6 +38,8 @@ describe("admin-sof-table.vm", () => {
     const row = buildAdminSofTableRow(baseRow);
     expect(row.displayStatus).toBe("pending");
     expect(row.triageLabel).toBe("Awaiting triage");
+    expect(row.buyerLabel).toBe("Buyer One");
+    expect(row.settlementSummary).toBe("Lot 42 · Summer Sale (+2 more)");
   });
 
   it("maps pending with triage to awaiting_decision display status", () => {
@@ -40,12 +52,43 @@ describe("admin-sof-table.vm", () => {
     expect(row.triageLabel).toBe("Recommend approve");
   });
 
-  it("uses recommend-prefixed triage labels", () => {
-    const row = buildAdminSofTableRow({
-      ...baseRow,
-      triageRecommendation: "recommend_reject",
-    });
-    expect(row.triageLabel).toBe("Recommend reject");
+  it("uses correct trigger labels for all enum values", () => {
+    expect(buildAdminSofTableRow({ ...baseRow, trigger: "threshold" }).triggerLabel).toBe(
+      "Single transaction threshold",
+    );
+    expect(buildAdminSofTableRow({ ...baseRow, trigger: "linked_transactions" }).triggerLabel).toBe(
+      "Aggregated linked transactions",
+    );
+    expect(buildAdminSofTableRow({ ...baseRow, trigger: "risk_indicator" }).triggerLabel).toBe(
+      "Risk indicator",
+    );
+    expect(buildAdminSofTableRow({ ...baseRow, trigger: "manual" }).triggerLabel).toBe(
+      "Manual compliance flag",
+    );
+  });
+
+  it("falls back buyer label to email then unknown", () => {
+    expect(
+      buildAdminSofTableRow({
+        ...baseRow,
+        buyerLabel: null,
+        buyerName: null,
+        buyerEmail: "only@email.com",
+      }).buyerLabel,
+    ).toBe("only@email.com");
+    expect(
+      buildAdminSofTableRow({
+        ...baseRow,
+        buyerLabel: null,
+        buyerName: null,
+        buyerEmail: null,
+      }).buyerLabel,
+    ).toBe("Unknown buyer");
+  });
+
+  it("buildSettlementSummaryLabel falls back to count when summary missing", () => {
+    expect(buildSettlementSummaryLabel(null, 2)).toBe("2 settlements");
+    expect(buildSettlementSummaryLabel(null, 0)).toBeNull();
   });
 
   it("passes through approved and rejected statuses", () => {
