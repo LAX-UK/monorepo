@@ -152,6 +152,7 @@ import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-soft-delete.side-effects.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
+import { DrizzleSaleroomSessionLookup } from "./repositories/drizzle-saleroom-session.lookup.js";
 import { DrizzleSourceOfFundsRepository } from "./repositories/drizzle-source-of-funds.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "./repositories/drizzle-submission-document.repository.js";
 import { DrizzleTelephoneBidBookingRepository } from "./repositories/drizzle-telephone-bid-booking.repository.js";
@@ -1140,7 +1141,6 @@ export function createContainer(env: Env): Container {
     venueRepository: venueRepo,
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     qrCodeService,
-    hybridSalesEnabled: env.ENABLE_HYBRID_SALES,
   });
   const saleListReadService = new SaleListReadService(
     saleRepo,
@@ -1371,6 +1371,7 @@ export function createContainer(env: Env): Container {
   );
 
   const saleModeLookup = new DrizzleSaleModeLookup(db);
+  const saleroomSessionLookup = new DrizzleSaleroomSessionLookup(db);
 
   const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
   const bidEligibilityService = new BidEligibilityService(db, kycService, amlHoldStore);
@@ -1384,6 +1385,7 @@ export function createContainer(env: Env): Container {
     lotJobs: lotJobScheduler,
     adminMetrics: adminMetricsService,
     saleModeLookup,
+    saleroomSessionLookup,
     antiShillingGuard,
     domainEventPublisher,
     legalEntityRepository,

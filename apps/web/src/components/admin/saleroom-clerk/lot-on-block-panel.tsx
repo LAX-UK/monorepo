@@ -1,5 +1,6 @@
 "use client";
 
+import { minNextBidAmount, useClerkLotLivePrice } from "@/hooks/use-clerk-lot-live-price";
 import {
   adminPaddlePlaceBidResultAction,
   adminTelephonePlaceBidResultAction,
@@ -47,6 +48,10 @@ export function LotOnBlockPanel({
 
   const currentLotId = initial.session?.currentLotId ?? null;
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
+  const liveCurrentPrice = useClerkLotLivePrice(currentLotId, currentLot?.currentPrice ?? "0.00");
+  const minNextBid = currentLot
+    ? minNextBidAmount(liveCurrentPrice, currentLot.minBidIncrement)
+    : null;
 
   const inProgressBookings = useMemo(() => {
     if (!currentLotId) return [];
@@ -77,14 +82,25 @@ export function LotOnBlockPanel({
     );
   }
 
+  const validateBidAmount = (parsedAmount: number): string | null => {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return "Enter a valid bid amount";
+    }
+    if (minNextBid != null && parsedAmount + 1e-9 < minNextBid) {
+      return `Bid must be at least ${formatMoney(minNextBid.toFixed(2))} (current ${formatMoney(liveCurrentPrice)} + increment)`;
+    }
+    return null;
+  };
+
   const onPlaceTelephoneBid = () => {
     if (!selectedBooking) {
       notify.error("Select a telephone booking");
       return;
     }
     const parsedAmount = Number.parseFloat(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      notify.error("Enter a valid bid amount");
+    const amountError = validateBidAmount(parsedAmount);
+    if (amountError) {
+      notify.error(amountError);
       return;
     }
     startTransition(async () => {
@@ -110,8 +126,9 @@ export function LotOnBlockPanel({
       return;
     }
     const parsedAmount = Number.parseFloat(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      notify.error("Enter a valid bid amount");
+    const amountError = validateBidAmount(parsedAmount);
+    if (amountError) {
+      notify.error(amountError);
       return;
     }
     startTransition(async () => {
@@ -147,7 +164,10 @@ export function LotOnBlockPanel({
           {currentLot.title?.trim() || currentLot.id}
         </p>
         <p className="font-body text-xs text-secondary tabular-nums">
-          Current {formatMoney(currentLot.currentPrice)}
+          Current {formatMoney(liveCurrentPrice)}
+          {minNextBid != null ? (
+            <span className="ml-2">· Min next {formatMoney(minNextBid.toFixed(2))}</span>
+          ) : null}
         </p>
       </div>
 
