@@ -1,6 +1,8 @@
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import type { AdminSaleOperationsSnapshot } from "@/lib/data/http/admin.server";
+import type { SaleDeliveryMode } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -23,10 +25,10 @@ export function OnsiteSalesRadarWidget({ rows }: Props) {
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h3 className="font-headline text-lg font-semibold text-on-surface">
-            Onsite sales radar
+            Saleroom sales radar
           </h3>
           <p className="font-body text-sm text-on-surface-variant">
-            Live onsite sales with pending registrations or telephone line work.
+            Live saleroom sales with pending registrations or telephone line work.
           </p>
         </div>
         <Link
@@ -40,7 +42,7 @@ export function OnsiteSalesRadarWidget({ rows }: Props) {
 
       {rows.length === 0 ? (
         <p className="font-body text-sm text-on-surface-variant">
-          No onsite sales need immediate operations attention.
+          No saleroom sales need immediate operations attention.
         </p>
       ) : (
         <ul className="divide-y divide-border-hairline rounded-lg border border-border-hairline">
@@ -75,7 +77,9 @@ export function OnsiteSalesRadarWidget({ rows }: Props) {
 export function mapOperationsSnapshotToRadarRow(
   snapshot: AdminSaleOperationsSnapshot,
 ): OnsiteSalesRadarRow | null {
-  if (snapshot.sale.deliveryMode !== "onsite") return null;
+  if (!isSaleroomDeliveryMode(snapshot.sale.deliveryMode as SaleDeliveryMode)) {
+    return null;
+  }
   const pendingRegistrations = snapshot.registrations.pending;
   const pendingTelephone = snapshot.telephoneBookings.requested;
   const inProgressTelephone = snapshot.telephoneBookings.inProgress;
