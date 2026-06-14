@@ -3,7 +3,6 @@ import {
   type AccordionBlock,
   mapLotToAccordionBlocks,
 } from "@/components/sections/artwork/artwork-view-models";
-import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { BidHistoryInAccordion } from "@/components/sections/artwork/redesign/bid-history-in-accordion";
 import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-details-inline";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
@@ -18,10 +17,9 @@ import Link from "next/link";
 export function buildArtworkPageAccordionBlocks(args: {
   lot: Lot;
   artist: PublicUser | null;
-  initialHistory: BidHistoryEntry[];
   documents?: LotDocumentPublicRow[];
 }): AccordionBlock[] {
-  const { lot, artist, initialHistory, documents = [] } = args;
+  const { lot, artist, documents = [] } = args;
   const minNext = getMinNextBidAmount(lot, lot.currentPrice).toFixed(2);
   const saleEndLocal = new Date(lot.endTime).toLocaleString("en-GB", {
     dateStyle: "medium",
@@ -110,7 +108,7 @@ export function buildArtworkPageAccordionBlocks(args: {
       id: "bid-history",
       title: "Bid history",
       hidden: false,
-      contentNode: <BidHistoryInAccordion lotId={lot.id} initialHistory={initialHistory} />,
+      contentNode: <BidHistoryInAccordion lotId={lot.id} />,
     },
   ];
 }

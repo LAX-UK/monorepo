@@ -4,13 +4,11 @@ import {
   type UserBidsHistoryVM,
   mapUserBidsHistoryVM,
 } from "@/components/sections/artwork/artwork-view-models";
-import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
-import { prependBidHistoryEntry } from "@/components/sections/artwork/bid-history-utils";
 import { UserBidsHistory } from "@/components/sections/artwork/online/user-bids-history";
 import { LiveBidFeed } from "@/components/sections/artwork/onsite/live-bid-feed";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useNow } from "@/hooks/use-now";
-import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
+import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
@@ -24,13 +22,11 @@ import { useEffect, useMemo, useState } from "react";
 type Props = {
   lotId: string;
   lot: Pick<Lot, "status" | "winnerId">;
-  initialHistory: BidHistoryEntry[];
   currentUserId: string | null;
   watcherCount?: number | null;
   /** Omit duplicate countdown in feed header (pricing header owns the clock). */
   compactFeedHeader?: boolean;
   initialOutbid?: boolean;
-  currentPrice?: string;
   children: ReactNode;
   className?: string;
 };
@@ -39,32 +35,22 @@ type Props = {
 export function OnlineBidsView({
   lotId,
   lot,
-  initialHistory,
   currentUserId,
   watcherCount = null,
   compactFeedHeader = false,
   initialOutbid = false,
-  currentPrice = "0",
   children,
   className,
 }: Props) {
   const now = useNow();
   const onlineCtx = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
-  const [entries, setEntries] = useState<BidHistoryEntry[]>(initialHistory);
-  const [liveCurrentPrice, setLiveCurrentPrice] = useState(currentPrice);
+  const { entries, currentPrice: liveCurrentPrice } = useLotBidHistory();
+
   const [lotSnap, setLotSnap] = useState(() => ({
     status: lot.status,
     winnerId: lot.winnerId ?? null,
   }));
-
-  useEffect(() => {
-    setLiveCurrentPrice(currentPrice);
-  }, [currentPrice]);
-
-  useEffect(() => {
-    setEntries(initialHistory);
-  }, [initialHistory]);
 
   useEffect(() => {
     setLotSnap({
@@ -74,22 +60,6 @@ export function OnlineBidsView({
   }, [lot.status, lot.winnerId]);
 
   useLotRealtime(lotId, {
-    onBidUpdate: (e) => {
-      if (shouldSkipOwnBidEcho(e, onlineCtx?.ownBidEchoGuardRef.current ?? null, currentUserId)) {
-        return;
-      }
-
-      setLiveCurrentPrice(e.currentPrice);
-      setEntries((prev) =>
-        prependBidHistoryEntry(prev, {
-          id: e.bidId,
-          bidderId: e.bidderId,
-          amount: e.amount,
-          ...(e.isAutoBid ? { isAutoBid: true } : {}),
-          ...(e.placedVia ? { placedVia: e.placedVia } : {}),
-        }),
-      );
-    },
     onLotEnded: (p) => {
       const ev = p as LotEndedEvent;
       setLotSnap({ status: "ended", winnerId: ev.winnerId ?? null });
@@ -126,7 +96,7 @@ export function OnlineBidsView({
           endTime: new Date(),
           winnerId: lotSnap.winnerId,
           reservePrice: null,
-          currentPrice: "0",
+          currentPrice: liveCurrentPrice,
         },
         null,
         now ?? 0,
@@ -137,6 +107,7 @@ export function OnlineBidsView({
         ...onlineCtx.lot,
         status: lotSnap.status,
         winnerId: lotSnap.winnerId,
+        currentPrice: liveCurrentPrice,
       },
       onlineCtx.sale,
       now ?? 0,
@@ -146,7 +117,7 @@ export function OnlineBidsView({
         isOnBlock: saleroomLive?.isLotOnBlock(lotId) ?? false,
       },
     );
-  }, [onlineCtx, lotId, lotSnap, now, saleroomLive]);
+  }, [onlineCtx, lotId, lotSnap, liveCurrentPrice, now, saleroomLive]);
 
   const countdownClock = useMemo(() => {
     if (now == null) return "";

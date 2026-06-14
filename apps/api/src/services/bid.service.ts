@@ -14,7 +14,10 @@ import {
 import { EarlyCloseHandler } from "./bid/early-close.handler.js";
 import { IdempotentBidExecutor } from "./bid/idempotent-bid.executor.js";
 import type { PlaceBidWithIdempotencyOutcome } from "./bid/place-bid-idempotency.js";
-import { ProxyAutoBidResolver } from "./bid/proxy-auto-bid.resolver.js";
+import {
+  ProxyAutoBidResolver,
+  type ProxyCancelNotification,
+} from "./bid/proxy-auto-bid.resolver.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import { isOperatorPlacement } from "./interfaces/auction-strategy.js";
@@ -166,6 +169,7 @@ export class BidService implements IBidPlacer {
       }
 
       let prevWinnerId: string | null = null;
+      const pendingProxyCancels: ProxyCancelNotification[] = [];
       const { created, lot, nextEnd, endedEarly } = await this.repos.runInTransaction(
         async ({ lot: lots, bid: bids }, tx) => {
           const lotRow = await lots.findByIdForUpdate(lotId);
@@ -251,11 +255,24 @@ export class BidService implements IBidPlacer {
           });
 
           if (this.antiShillingGuard) {
-            await this.proxyResolver.cancelViolatingProxyBids(lotId, lotRow, bids, tx);
+            await this.proxyResolver.cancelViolatingProxyBids(
+              lotId,
+              lotRow,
+              bids,
+              tx,
+              pendingProxyCancels,
+            );
           }
 
           if (lotRow.auctionType === "english" || lotRow.auctionType === "buy_it_now") {
-            lastBid = await this.proxyResolver.resolve(bids, lotId, lotRow, lastBid, tx);
+            lastBid = await this.proxyResolver.resolve(
+              bids,
+              lotId,
+              lotRow,
+              lastBid,
+              tx,
+              pendingProxyCancels,
+            );
           }
 
           await bids.markWinningBid(lotId, lastBid.id);
@@ -329,6 +346,8 @@ export class BidService implements IBidPlacer {
         : nextEnd.getTime() !== lot.endTime.getTime()
           ? { ...lot, endTime: nextEnd, currentPrice: displayPrice }
           : { ...lot, currentPrice: displayPrice };
+
+      await this.proxyResolver.flushPendingProxyCancels(pendingProxyCancels);
 
       await this.notificationCoordinator.afterBidCommitted({
         lotId,
