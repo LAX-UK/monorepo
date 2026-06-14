@@ -3,7 +3,26 @@ import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
 import { describe, expect, it } from "vitest";
 
 describe("saleroom live UX", () => {
-  it("classifies hybrid lot as liveSaleroom when session is active", () => {
+  it("classifies hybrid lot as saleroomPaused when session is paused", () => {
+    const now = Date.now();
+    const lifecycle = classifyLotLifecycle(
+      {
+        id: "lot-1",
+        status: "active",
+        startTime: new Date(now - 60_000),
+        endTime: new Date(now + 60_000),
+        winnerId: null,
+        reservePrice: null,
+        currentPrice: "100.00",
+      },
+      { status: "active", deliveryMode: "hybrid" },
+      now,
+      { saleroomSessionPaused: true },
+    );
+    expect(lifecycle.kind).toBe("saleroomPaused");
+  });
+
+  it("classifies hybrid lot as liveSaleroom when session is live", () => {
     const now = Date.now();
     const lifecycle = classifyLotLifecycle(
       {

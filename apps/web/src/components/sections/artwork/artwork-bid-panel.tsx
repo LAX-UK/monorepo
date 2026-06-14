@@ -21,6 +21,7 @@ import { useLiveConnection } from "@/lib/connection/use-live-connection";
 import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
+import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import type { AutoBidPlacedBid, AutoBidSettings, SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -75,7 +76,9 @@ export function ArtworkBidPanel({
   const { bidWriter } = useLotPorts();
   const { refreshFromServer } = useLotBidHistory();
   const onlineLifecycle = useOnlineLotLifecycle();
+  const saleroomLive = useSaleroomLive();
   const { biddingAllowed, realtimeHealthy } = useLiveConnection();
+  const isLotOnBlock = saleroomLive?.isLotOnBlock(auction.id) ?? false;
 
   const bidState = useLotBidState({
     auction,
@@ -318,7 +321,7 @@ export function ArtworkBidPanel({
         : undefined;
     if (biddingLive && biddingAllowed && !realtimeHealthy) {
       const refreshed = await refreshFromServer();
-      if (!refreshed) {
+      if (!refreshed.ok) {
         setError(
           clientBidError("Could not refresh live prices. Check your connection and try again."),
         );
@@ -420,7 +423,9 @@ export function ArtworkBidPanel({
   const autoBidEligible =
     !englishOnlySurfaceLock &&
     supportsAutoBid &&
-    (lifecycle.kind === "live" || lifecycle.kind === "extended");
+    (lifecycle.kind === "live" ||
+      lifecycle.kind === "extended" ||
+      (lifecycle.kind === "liveSaleroom" && isLotOnBlock));
   const showAutoBidExplainer =
     !englishOnlySurfaceLock &&
     supportsAutoBid &&
@@ -451,7 +456,7 @@ export function ArtworkBidPanel({
           : null
       }
       saleRegistrationBidGate={saleRegistrationBidGate}
-      biddingLifecycle={{ kind: lifecycle.kind }}
+      biddingLifecycle={{ kind: lifecycle.kind, isOnBlock: isLotOnBlock }}
       orgModuleEnabled={orgModuleEnabled}
     >
       {({ decision }) => (
@@ -559,7 +564,7 @@ export function ArtworkBidPanel({
                   biddingLive={biddingLive}
                   biddingAllowed={biddingAllowed}
                   realtimeHealthy={realtimeHealthy}
-                  refreshBeforeSave={refreshFromServer}
+                  refreshBeforeSave={async () => (await refreshFromServer()).ok}
                 />
               </div>
             ) : showAutoBidExplainer ? (

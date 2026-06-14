@@ -188,7 +188,7 @@ export class BidService implements IBidPlacer {
             throw new BidError("Lot has ended", 400);
           }
 
-          if (isOperatorPlacement(bidPlacement?.placedVia ?? null) && lotRow.saleId) {
+          if (skipCatalogEndTime && lotRow.saleId) {
             const [session] = await tx
               .select({
                 status: saleroomSession.status,
@@ -197,6 +197,13 @@ export class BidService implements IBidPlacer {
               .from(saleroomSession)
               .where(eq(saleroomSession.saleId, lotRow.saleId))
               .limit(1);
+            if (session?.status === "paused") {
+              throw new BidError(
+                "Saleroom is paused — bidding will resume shortly",
+                400,
+                "saleroom_paused",
+              );
+            }
             if (!session || session.status !== "live") {
               throw new BidError(
                 "Saleroom is not live — bids can only be placed on the current lot",

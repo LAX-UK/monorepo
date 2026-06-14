@@ -6,3 +6,8 @@ export type PublicSaleroomSessionStatus = {
 export function isSaleroomSessionActive(status: PublicSaleroomSessionStatus["status"]): boolean {
   return status === "live" || status === "paused";
 }
+
+/** Live floor only — paused sessions block bidding. */
+export function isSaleroomSessionLive(status: PublicSaleroomSessionStatus["status"]): boolean {
+  return status === "live";
+}

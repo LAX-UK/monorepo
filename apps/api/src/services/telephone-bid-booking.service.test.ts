@@ -136,6 +136,23 @@ describe("TelephoneBidBookingService", () => {
     }
   });
 
+  it("creates booking for valid hybrid request", async () => {
+    const service = new TelephoneBidBookingService(
+      mockDb({ sale: { deliveryMode: "hybrid", status: "scheduled" } }),
+      repo,
+      mockLegalEntity(),
+    );
+    const result = await service.requestBooking({
+      userId: "user-1",
+      saleId: "sale-1",
+      buyerLegalEntityId: "le-1",
+      lotIds: ["lot-1"],
+      authorizedMax: 5000,
+    });
+    expect(result.isOk()).toBe(true);
+    expect(repo.insert).toHaveBeenCalledOnce();
+  });
+
   it("rejects request without profile phone", async () => {
     const service = new TelephoneBidBookingService(
       mockDb({ mobile: null }),

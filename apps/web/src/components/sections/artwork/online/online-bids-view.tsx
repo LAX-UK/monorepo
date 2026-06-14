@@ -113,7 +113,8 @@ export function OnlineBidsView({
       now ?? 0,
       {
         recentlyExtended: Boolean(onlineCtx.extendedByMs && onlineCtx.extendedByMs > 0),
-        saleroomSessionActive: saleroomLive?.isSessionActive ?? false,
+        saleroomSessionPaused: saleroomLive?.status === "paused",
+        saleroomSessionActive: saleroomLive?.isSessionLive ?? false,
         isOnBlock: saleroomLive?.isLotOnBlock(lotId) ?? false,
       },
     );

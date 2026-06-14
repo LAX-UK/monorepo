@@ -5,7 +5,6 @@ import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history"
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
 import { useNow } from "@/hooks/use-now";
 import { type LotBidPosition, deriveLotBidPosition } from "@/lib/bid/derive-lot-bid-position";
-import { fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
 import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
@@ -14,7 +13,7 @@ import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { type LotLifecycle, classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { notify } from "@/lib/ui/notify";
 import type { Lot, Sale } from "@auction/types";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type UseLotBidStateParams = {
   auction: Lot;
@@ -167,16 +166,19 @@ export function useLotBidState({
         duration: 8000,
       });
     },
-    onReconnect: () => {
-      void fetchLotBidSnapshot(auction.id).then((snap) => {
-        if (!snap) return;
-        const newEndMs = new Date(snap.endTime).getTime();
-        setEndTime(newEndMs);
-        onlineLifecycle?.setLiveEndTimeMs(newEndMs);
-        setLotStatus(snap.status);
-      });
-    },
   });
+
+  useEffect(() => {
+    if (onlineLifecycle?.liveEndTimeMs != null) {
+      setEndTime(onlineLifecycle.liveEndTimeMs);
+    }
+  }, [onlineLifecycle?.liveEndTimeMs]);
+
+  useEffect(() => {
+    if (onlineLifecycle?.liveLotStatus != null) {
+      setLotStatus(onlineLifecycle.liveLotStatus);
+    }
+  }, [onlineLifecycle?.liveLotStatus]);
 
   const lifecycleLot = useMemo(
     () => ({
@@ -206,7 +208,8 @@ export function useLotBidState({
         recentlyExtended: Boolean(
           onlineLifecycle?.extendedByMs && onlineLifecycle.extendedByMs > 0,
         ),
-        saleroomSessionActive: saleroomLive?.isSessionActive ?? false,
+        saleroomSessionPaused: saleroomLive?.status === "paused",
+        saleroomSessionActive: saleroomLive?.isSessionLive ?? false,
         isOnBlock: saleroomLive?.isLotOnBlock(auction.id) ?? false,
       }),
     [lifecycleLot, saleForLifecycle, now, onlineLifecycle?.extendedByMs, saleroomLive, auction.id],
