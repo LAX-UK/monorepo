@@ -46,7 +46,7 @@ describe("useLiveConnection", () => {
     expect(notifySuccess).not.toHaveBeenCalled();
   });
 
-  it("toasts when reconnecting after a prior live session", () => {
+  it("does not toast on reconnect — bid history provider owns hydrate success toast", () => {
     const { rerender } = renderHook(() => useLiveConnection());
     mockLatency.mockReturnValue({
       state: "online",
@@ -69,6 +69,6 @@ describe("useLiveConnection", () => {
       lastBidPropagationMs: null,
     });
     act(() => rerender());
-    expect(notifySuccess).toHaveBeenCalledWith("Reconnected — live prices refreshed");
+    expect(notifySuccess).not.toHaveBeenCalled();
   });
 });

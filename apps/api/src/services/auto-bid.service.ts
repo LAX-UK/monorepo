@@ -132,21 +132,29 @@ export class AutoBidService {
     const minNext = Number.parseFloat(minNextMoney);
 
     if (winnerUserId === input.placedByUserId) {
-      await this.opts.repos.runInTransaction(async ({ lot: lots, bid: bids }) => {
+      const updated = await this.opts.repos.runInTransaction(async ({ lot: lots, bid: bids }) => {
         const lotRow = await lots.findByIdForUpdate(input.lotId);
         if (!lotRow || lotRow.status !== "active") {
           throw new BidError("Lot is not accepting bids", 400);
+        }
+        const winningInside = await bids.findWinningBid(input.lotId);
+        const stillWinningUserId = winningInside?.placedByUserId ?? winningInside?.bidderId ?? null;
+        if (stillWinningUserId !== input.placedByUserId) {
+          return null;
         }
         await bids.updateProxySettingsForBidderOnLot(input.lotId, input.placedByUserId, {
           maxAutoBidAmount: maxStr,
           autoBidStepAmount: stepStr,
         });
+        return {
+          maxAutoBidAmount: maxStr,
+          autoBidStepAmount: stepStr,
+          isActive: true,
+        };
       });
-      return ok({
-        maxAutoBidAmount: maxStr,
-        autoBidStepAmount: stepStr,
-        isActive: true,
-      });
+      if (updated) {
+        return ok(updated);
+      }
     }
 
     const result = this.opts.bidPlacerWithIdempotency

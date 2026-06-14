@@ -317,7 +317,13 @@ export function ArtworkBidPanel({
         ? Number.parseFloat(autoBidStep)
         : undefined;
     if (biddingLive && biddingAllowed && !realtimeHealthy) {
-      await refreshFromServer();
+      const refreshed = await refreshFromServer();
+      if (!refreshed) {
+        setError(
+          clientBidError("Could not refresh live prices. Check your connection and try again."),
+        );
+        return;
+      }
     }
     setSubmitting(true);
     let result: Awaited<ReturnType<typeof bidWriter.placeBid>>;
@@ -550,6 +556,10 @@ export function ArtworkBidPanel({
                   approvedBidLimit={saleRegistrationBidGate?.approvedBidLimit ?? null}
                   onDraftChange={handleAutoBidDraft}
                   onSettingsSaved={onAutoBidSaved}
+                  biddingLive={biddingLive}
+                  biddingAllowed={biddingAllowed}
+                  realtimeHealthy={realtimeHealthy}
+                  refreshBeforeSave={refreshFromServer}
                 />
               </div>
             ) : showAutoBidExplainer ? (
