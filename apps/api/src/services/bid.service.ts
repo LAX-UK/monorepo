@@ -339,6 +339,7 @@ export class BidService implements IBidPlacer {
         nextEnd,
         lotEndBefore: lot.endTime,
         endedEarly,
+        bidCount: await this.repos.root.bid.countForLot(lotId),
       });
 
       return ok(created);

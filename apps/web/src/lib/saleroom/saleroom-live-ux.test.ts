@@ -43,4 +43,18 @@ describe("saleroom live UX", () => {
     });
     expect(state.currentLotId).toBeNull();
   });
+
+  it("tracks paused and resumed session states", () => {
+    let state = applySaleroomEvent(
+      { status: "live", currentLotId: "lot-1" },
+      { kind: "paused", saleId: "s1", emittedAt: new Date().toISOString() },
+    );
+    expect(state.status).toBe("paused");
+    state = applySaleroomEvent(state, {
+      kind: "resumed",
+      saleId: "s1",
+      emittedAt: new Date().toISOString(),
+    });
+    expect(state.status).toBe("live");
+  });
 });

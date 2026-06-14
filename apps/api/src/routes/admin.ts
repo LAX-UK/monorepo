@@ -868,7 +868,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const data = await container.adminSaleOperationsSnapshotService.getSnapshot(saleId);
-      if (!data) return c.json({ error: "Sale not found or not onsite" }, 404);
+      if (!data) return c.json({ error: "Sale not found or not a saleroom sale" }, 404);
       return c.json({ data });
     },
   );

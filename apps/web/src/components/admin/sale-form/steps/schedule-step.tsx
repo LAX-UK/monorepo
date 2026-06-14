@@ -9,7 +9,11 @@ import {
   findLotsOutsideSaleWindow,
   parseSaleWindowFromForm,
 } from "@/lib/admin/sale-lot-window-sync";
-import { scheduleLotConflictBanner } from "@/lib/admin/sale-setup/field-copy";
+import {
+  deliveryModeExplanation,
+  deliveryModeLabel,
+  scheduleLotConflictBanner,
+} from "@/lib/admin/sale-setup/field-copy";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { formatDateTime, formatNumber } from "@/lib/ui/format";
 import type { Lot, Venue } from "@auction/types";
@@ -45,7 +49,7 @@ type TierPreview =
 type Props = {
   form: UseFormReturn<AdminSaleFormValues>;
   isDraft: boolean;
-  isOnsite: boolean;
+  isSaleroom: boolean;
   pending: boolean;
   fields: FieldArrayWithId<AdminSaleFormValues, "buyerPremiumTiers", "id">[];
   append: UseFieldArrayAppend<AdminSaleFormValues, "buyerPremiumTiers">;
@@ -65,7 +69,7 @@ const MANUAL_VENUE_VALUE = "__manual__";
 export function SaleScheduleStep({
   form,
   isDraft,
-  isOnsite,
+  isSaleroom,
   pending: _pending,
   fields,
   append,
@@ -144,7 +148,7 @@ export function SaleScheduleStep({
 
       <CatalogFormSection
         title="Delivery & venue"
-        description="Online vs onsite, stream link, and structured venue when applicable."
+        description="Online, hybrid, or onsite delivery; stream link and venue when applicable."
         collapsible={false}
       >
         <FormField
@@ -153,7 +157,7 @@ export function SaleScheduleStep({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                <LabelCaps>Auction type</LabelCaps>
+                <LabelCaps>Delivery mode</LabelCaps>
               </FormLabel>
               <RhfSelect
                 value={field.value ?? ""}
@@ -164,23 +168,21 @@ export function SaleScheduleStep({
                 disabled={!isDraft}
                 options={saleDeliveryModes.map((m) => ({
                   value: m,
-                  label:
-                    m === "onsite"
-                      ? "Onsite (read-only marketing)"
-                      : "Online (interactive bidding)",
+                  label: deliveryModeLabel(m),
                 }))}
                 triggerClassName="w-full font-body text-sm"
               />
               <p className="mt-2 font-body text-xs text-on-surface-variant">
-                Online auctions support live bidding on each lot. Onsite auctions are marketing-only
-                catalogs for in-person events; lots inherit the auction's start/end dates.
+                {deliveryModeExplanation(
+                  (deliveryMode ?? "online") as (typeof saleDeliveryModes)[number],
+                )}
               </p>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {isOnsite ? (
+        {isSaleroom ? (
           <>
             <FormField
               control={form.control}
@@ -546,10 +548,10 @@ export function SaleScheduleStep({
             )}
           />
         </div>
-        {isOnsite ? (
+        {isSaleroom ? (
           <p className="-mt-4 font-body text-xs text-on-surface-variant">
-            For onsite auctions the start/end window controls the entire event. All lots in this
-            auction will share these times automatically.
+            For onsite and hybrid auctions the start/end window controls the entire event. All lots
+            in this auction will share these times automatically.
           </p>
         ) : null}
 

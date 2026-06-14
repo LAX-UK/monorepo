@@ -69,6 +69,7 @@ function repos(overrides: {
     listForLotSettlement: vi.fn(),
     findEligibleBidsForLotClose: vi.fn(),
     listForLot: vi.fn(),
+    countForLot: vi.fn().mockResolvedValue(0),
     listForBidder: vi.fn(),
     findWinningBid: vi.fn().mockResolvedValue(null),
     listDistinctBidderIds: vi.fn(),

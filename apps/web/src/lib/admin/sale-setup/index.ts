@@ -13,6 +13,7 @@ export {
 } from "./steps";
 export {
   deliveryModeExplanation,
+  deliveryModeLabel,
   lotsStepFirstLotPrompt,
   attachLotReviewPrompt,
   attachLotScheduleConflictBanner,

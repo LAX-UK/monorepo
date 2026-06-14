@@ -21,6 +21,7 @@ export class BidNotificationCoordinator {
     nextEnd: Date;
     lotEndBefore: Date;
     endedEarly: boolean;
+    bidCount?: number;
   }): Promise<void> {
     const {
       lotId,
@@ -31,6 +32,7 @@ export class BidNotificationCoordinator {
       nextEnd,
       lotEndBefore,
       endedEarly,
+      bidCount,
     } = params;
 
     await this.runBestEffort("cache.set", () =>
@@ -41,8 +43,10 @@ export class BidNotificationCoordinator {
 
     const outbidMeta =
       prevWinnerId && prevWinnerId !== created.placedByUserId
-        ? { outbidUserId: prevWinnerId }
-        : undefined;
+        ? { outbidUserId: prevWinnerId, ...(bidCount != null ? { bidCount } : {}) }
+        : bidCount != null
+          ? { bidCount }
+          : undefined;
 
     await this.runBestEffort("notifyBidPlaced", () =>
       this.notifications.notifyBidPlaced(updatedLot, created, outbidMeta),
