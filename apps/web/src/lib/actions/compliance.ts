@@ -210,6 +210,10 @@ export async function fetchAdminSofCaseDetailAction(
 
 export type SofDocumentDownloadResult = { ok: true; url: string } | { ok: false; error: string };
 
+export type SofBulkDownloadResult =
+  | { ok: true; data: ArrayBuffer; fileName: string }
+  | { ok: false; error: string };
+
 /** Resolve a short-TTL, audited download URL for a buyer-submitted SoF document.
  * The API emits a `source_of_funds.document_downloaded` audit event (actor + IP)
  * on every call, so staff downloads are never served from a long-lived link. */
@@ -241,6 +245,35 @@ export async function downloadSofDocumentAction(
       return { ok: false as const, error: "Download URL unavailable" };
     }
     return { ok: true as const, url };
+  });
+}
+
+/** Download all active SoF documents for a case as a zip archive (audited per file). */
+export async function downloadAllSofDocumentsAction(
+  caseId: string,
+): Promise<SofBulkDownloadResult> {
+  return instrumentServerAction("downloadAllSofDocumentsAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const id = caseId.trim();
+    if (!id) {
+      return { ok: false as const, error: "Case id is required" };
+    }
+
+    const res = await authedServerFetch(
+      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/download-all`,
+    );
+    if (!res.ok) {
+      return { ok: false as const, error: await apiError(res, "Download failed") };
+    }
+    const buffer = await res.arrayBuffer();
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const fileName = match?.[1] ?? `source-of-funds-${id}.zip`;
+    return { ok: true as const, data: buffer, fileName };
   });
 }
 

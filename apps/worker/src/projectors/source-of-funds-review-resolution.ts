@@ -1,6 +1,7 @@
 import { adminReviewTask, domainEvent, projectorState, sourceOfFunds } from "@auction/db";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
+import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
 
 export const SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR = "source_of_funds_review_resolution";
 
@@ -107,7 +108,17 @@ export async function processSourceOfFundsReviewResolution(options: {
 
       maxId = row.id;
     } catch (err) {
-      log.error({ err, eventId: row.id }, "source_of_funds_review_resolution_failed");
+      const outcome = await recordProjectorEventFailure({
+        db,
+        log,
+        projectorName: SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR,
+        eventId: row.id,
+        err,
+      });
+      if (outcome.action === "skip") {
+        maxId = row.id;
+        continue;
+      }
       return;
     }
   }

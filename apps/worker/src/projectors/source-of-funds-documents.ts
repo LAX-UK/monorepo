@@ -10,6 +10,7 @@ import type { IEmailService } from "@auction/email";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
 import { listComplianceRecipients } from "../lib/compliance-email-recipients.js";
+import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
 
 export const SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR = "source_of_funds_documents";
 
@@ -126,7 +127,17 @@ export async function processSourceOfFundsDocuments(options: {
       }
       maxId = row.id;
     } catch (err) {
-      log.error({ err, eventId: row.id }, "source_of_funds_documents_projector_failed");
+      const outcome = await recordProjectorEventFailure({
+        db,
+        log,
+        projectorName: SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR,
+        eventId: row.id,
+        err,
+      });
+      if (outcome.action === "skip") {
+        maxId = row.id;
+        continue;
+      }
       return;
     }
   }
