@@ -48,7 +48,27 @@ export async function getServerMyPayments(
   return body.data;
 }
 
-/** Row from `GET /payments/me/lot/:lotId/fulfilment` (winner only). */
+export type ComplianceGateStatus = "clear" | "aml_hold" | "source_of_funds_required";
+
+/**
+ * Buyer pre-flight compliance gate. Returns the user-level compliance status
+ * without requiring an existing payment row — used by checkout + portfolio to
+ * surface blockers proactively. Fails open (returns "clear") on network error
+ * so the buyer can still attempt checkout and see the block on submit.
+ */
+export async function getServerBuyerComplianceGate(): Promise<ComplianceGateStatus> {
+  try {
+    const res = await authedServerFetch("/payments/me/compliance-gate", { cache: "no-store" });
+    if (!res.ok) return "clear";
+    const body = (await res.json()) as { data: { status: ComplianceGateStatus } };
+    const s = body.data?.status;
+    return s === "aml_hold" || s === "source_of_funds_required" ? s : "clear";
+  } catch {
+    return "clear";
+  }
+}
+
+/** Winner checkout: current fulfilment / logistics state for the lot. */
 export type LotFulfilmentSnapshot = {
   id: string;
   lotId: string;

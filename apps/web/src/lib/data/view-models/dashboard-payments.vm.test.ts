@@ -47,6 +47,33 @@ describe("toPaymentDisplayRows", () => {
     });
   });
 
+  it("pending status with a compliance reason yields a review action (not Pay-now)", () => {
+    const [out] = toPaymentDisplayRows([
+      row({ status: "pending", lotId: "abc-123", manualReviewReason: "source_of_funds_required" }),
+    ]);
+    expect(out?.primaryAction).toEqual({
+      kind: "review",
+      href: dashboardCheckoutLotUrl("abc-123"),
+      reason: "source_of_funds_required",
+    });
+  });
+
+  it("requires_manual_review with a reason yields a review action instead of none", () => {
+    const [out] = toPaymentDisplayRows([
+      row({
+        status: "requires_manual_review",
+        lotId: "abc-123",
+        invoiceUrl: null,
+        manualReviewReason: "high_value",
+      }),
+    ]);
+    expect(out?.primaryAction).toEqual({
+      kind: "review",
+      href: dashboardCheckoutLotUrl("abc-123"),
+      reason: "high_value",
+    });
+  });
+
   it("non-pending status with invoice URL yields an invoice action with a labelled aria-label", () => {
     const [out] = toPaymentDisplayRows([
       row({

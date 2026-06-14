@@ -45,6 +45,7 @@ export const templateNames = [
   "submission-converted",
   "submission-rejected",
   "submission-draft-reminder",
+  "source-of-funds-buyer-notice",
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -342,6 +343,10 @@ export type TemplateVarsByName = {
     staleDays: number;
     unsubscribeUrl: string;
   };
+  "source-of-funds-buyer-notice": {
+    userName?: string | null;
+    supportContactEmail: string;
+  };
 };
 
 export type RecipientResolution = "live" | "snapshot";
@@ -392,6 +397,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "submission-converted": "live",
   "submission-rejected": "live",
   "submission-draft-reminder": "live",
+  "source-of-funds-buyer-notice": "live",
 };
 
 export type RenderedEmail = {

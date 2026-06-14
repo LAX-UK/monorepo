@@ -19,6 +19,7 @@ const sampleItem = {
   checkoutHref: "/dashboard/checkout/l1",
   conditionReportUrl: null,
   endYear: 2025,
+  complianceReason: null,
 };
 
 describe("PortfolioLotGrid", () => {

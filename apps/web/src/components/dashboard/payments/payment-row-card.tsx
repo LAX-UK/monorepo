@@ -1,4 +1,8 @@
 import { MediaImage } from "@/components/ui/media-image";
+import {
+  isComplianceManualReviewReason,
+  manualReviewQueueEyebrow,
+} from "@/lib/admin/compliance-manual-review";
 import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
@@ -23,6 +27,18 @@ function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
   const action = row.primaryAction;
   if (action.kind === "none") {
     return <span className="text-xs text-on-surface-variant">—</span>;
+  }
+  if (action.kind === "review") {
+    const isCompliance = isComplianceManualReviewReason(action.reason);
+    return (
+      <Link
+        href={action.href}
+        className="inline-flex min-h-11 items-center text-xs font-semibold text-warning underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        title={`View details — ${isCompliance ? "compliance" : "finance"} review required`}
+      >
+        {manualReviewQueueEyebrow(action.reason)}
+      </Link>
+    );
   }
   if (action.kind === "pay") {
     return (
