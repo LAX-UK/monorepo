@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { BidError } from "../lib/errors.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminRoutes } from "./admin.js";
 
@@ -57,6 +58,9 @@ function buildPaddleApp() {
     },
     paddleService: { assignPaddle, clearPaddle, assertPaddleAllowsBid, listSaleRoster },
     bidService: { placeBidWithIdempotency },
+    saleroomOnBlockPolicy: {
+      assertLotOnBlock: vi.fn().mockResolvedValue(ok(undefined)),
+    },
     redis: {
       incr: vi.fn().mockResolvedValue(1),
       expire: vi.fn().mockResolvedValue(1),
@@ -110,6 +114,69 @@ describe("paddle admin routes", () => {
         idempotencyKey: `paddle:${SALE_ID}:142:${LOT_ID}:500`,
       }),
     );
+  });
+
+  it("returns lot_not_on_block when saleroom policy rejects paddle bid", async () => {
+    const placeBidWithIdempotency = vi.fn();
+    const container = {
+      env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+      admin: {
+        requestLifecycle: {
+          isSuspended: vi.fn().mockResolvedValue(false),
+          reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
+        },
+        disputeCases: { countOpenCases: vi.fn().mockResolvedValue(0) },
+      },
+      adminMetricsService: { recordBidPlaced: vi.fn() },
+      telephoneBidBookingService: { countGlobalPending: vi.fn().mockResolvedValue(0) },
+      onsiteEventRsvpService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
+      repoFactory: {
+        root: {
+          lot: {
+            findById: vi.fn().mockResolvedValue({
+              id: LOT_ID,
+              saleId: SALE_ID,
+            }),
+          },
+        },
+      },
+      paddleService: {
+        assignPaddle: vi.fn(),
+        clearPaddle: vi.fn(),
+        assertPaddleAllowsBid: vi.fn(),
+        listSaleRoster: vi.fn(),
+      },
+      bidService: { placeBidWithIdempotency },
+      saleroomOnBlockPolicy: {
+        assertLotOnBlock: vi
+          .fn()
+          .mockResolvedValue(
+            err(new BidError("This lot is not on the block", 400, "lot_not_on_block")),
+          ),
+      },
+      redis: { incr: vi.fn(), expire: vi.fn() },
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "super_admin" }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+    const res = await app.request("http://test/admin/saleroom/paddle-bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        saleId: SALE_ID,
+        lotId: LOT_ID,
+        paddleNumber: 142,
+        amount: 500,
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("lot_not_on_block");
+    expect(placeBidWithIdempotency).not.toHaveBeenCalled();
   });
 
   it("POST assign paddle returns 409 from service", async () => {

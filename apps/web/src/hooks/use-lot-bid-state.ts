@@ -130,6 +130,7 @@ export function useLotBidState({
       const prev = endTimeRef.current;
       const delta = Math.max(0, newMs - prev);
       setEndTime(newMs);
+      onlineLifecycle?.setLiveEndTimeMs(newMs);
       if (delta > 0) {
         onlineLifecycle?.setExtendedDeltaMs(delta);
         const bidCardVisible = onlineLifecycle?.bidCardInView ?? true;
@@ -169,7 +170,9 @@ export function useLotBidState({
     onReconnect: () => {
       void fetchLotBidSnapshot(auction.id).then((snap) => {
         if (!snap) return;
-        setEndTime(new Date(snap.endTime).getTime());
+        const newEndMs = new Date(snap.endTime).getTime();
+        setEndTime(newEndMs);
+        onlineLifecycle?.setLiveEndTimeMs(newEndMs);
         setLotStatus(snap.status);
       });
     },
