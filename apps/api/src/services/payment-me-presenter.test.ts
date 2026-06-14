@@ -71,6 +71,7 @@ describe("presentMyPayments", () => {
   it("surfaces AML hold on pending payments via compliance evaluation", async () => {
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+      peek: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
     };
     const out = await presentMyPayments(
       [row],

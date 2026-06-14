@@ -17,6 +17,7 @@ import type { PlaceBidWithIdempotencyOutcome } from "./bid/place-bid-idempotency
 import { ProxyAutoBidResolver } from "./bid/proxy-auto-bid.resolver.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
+import { isOperatorPlacement } from "./interfaces/auction-strategy.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
@@ -27,6 +28,7 @@ import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
+import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import { NotificationFactory } from "./notification.factory.js";
@@ -43,6 +45,7 @@ export type BidServiceOptions = {
   lotJobs: LotJobSchedulerPort | null;
   adminMetrics?: AdminMetricsService | null;
   saleModeLookup?: ISaleModeLookup | null;
+  saleroomSessionLookup?: ISaleroomSessionLookup | null;
   antiShillingGuard?: IAntiShillingGuard | null;
   domainEventPublisher?: DomainEventPublisher | null;
   legalEntityRepository?: ILegalEntityRepository | null;
@@ -63,6 +66,7 @@ export class BidService implements IBidPlacer {
   private readonly earlyCloseHandler: EarlyCloseHandler;
   private readonly idempotentExecutor: IdempotentBidExecutor;
   private readonly saleModeLookup: ISaleModeLookup | null;
+  private readonly saleroomSessionLookup: ISaleroomSessionLookup | null;
   private readonly antiShillingGuard: IAntiShillingGuard | null;
   private readonly bidEligibility: IBidEligibility | null;
   private readonly englishOnlyAuctions: boolean;
@@ -78,6 +82,7 @@ export class BidService implements IBidPlacer {
     this.englishOnlyAuctions = opts.englishOnlyAuctions ?? false;
     this.legalEntityRepository = opts.legalEntityRepository ?? null;
     this.saleModeLookup = opts.saleModeLookup ?? null;
+    this.saleroomSessionLookup = opts.saleroomSessionLookup ?? null;
     this.antiShillingGuard = opts.antiShillingGuard ?? null;
     this.bidEligibility = opts.bidEligibility ?? null;
     this.notificationOutbox = opts.notificationOutbox ?? null;
@@ -118,7 +123,8 @@ export class BidService implements IBidPlacer {
     try {
       if (this.saleModeLookup) {
         const saleMode = await this.saleModeLookup.findSaleModeForLot(lotId);
-        if (saleMode && !saleModeAllowsBidding(saleMode)) {
+        const placedVia = bidPlacement?.placedVia ?? null;
+        if (saleMode && !saleModeAllowsBidding(saleMode) && !isOperatorPlacement(placedVia)) {
           return err(new BidError("Lot is not accepting bids", 400));
         }
       }
@@ -148,6 +154,10 @@ export class BidService implements IBidPlacer {
           ...(bidPlacement?.placedVia != null ? { placedVia: bidPlacement.placedVia } : {}),
           ...(bidPlacement?.telephoneBookingId != null
             ? { telephoneBookingId: bidPlacement.telephoneBookingId }
+            : {}),
+          ...(bidPlacement?.saleId != null ? { saleId: bidPlacement.saleId } : {}),
+          ...(bidPlacement?.paddleNumber != null
+            ? { paddleNumber: bidPlacement.paddleNumber }
             : {}),
         });
         if (elig.isErr()) {
@@ -237,6 +247,7 @@ export class BidService implements IBidPlacer {
             ...(bidPlacement?.telephoneBookingId != null
               ? { telephoneBookingId: bidPlacement.telephoneBookingId }
               : {}),
+            ...(bidPlacement?.clerkUserId != null ? { clerkUserId: bidPlacement.clerkUserId } : {}),
           });
 
           if (this.antiShillingGuard) {
@@ -255,7 +266,11 @@ export class BidService implements IBidPlacer {
           }
 
           let nextEnd = lotRow.endTime;
+          const skipAntiSnipe =
+            this.saleroomSessionLookup != null &&
+            (await this.saleroomSessionLookup.shouldSkipAntiSnipeForLot(lotId));
           if (
+            !skipAntiSnipe &&
             strategy.shouldExtendTime(
               lotRow,
               {

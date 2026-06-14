@@ -1,9 +1,13 @@
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import {
+  dashboardCheckoutLotUrl,
+  dashboardSofRequirementsUrl,
+} from "@/lib/dashboard/dashboard-copy";
 import type {
   ArtistFollowRow,
   BidWithLot,
   WatchlistWithLotRow,
 } from "@/lib/data/dto/dashboard-dtos";
+import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
@@ -157,10 +161,18 @@ export function buildDashboardOverviewVm(input: {
   let primaryCta: { label: string; href: string } | null = null;
   const firstSettlement = settlementsDue[0];
   if (firstSettlement) {
-    primaryCta = {
-      label: `Pay for “${firstSettlement.lot.title}”`,
-      href: dashboardCheckoutLotUrl(firstSettlement.lot.id),
-    };
+    const complianceReason = portfolioComplianceReason(firstSettlement);
+    if (complianceReason === "source_of_funds_required") {
+      primaryCta = {
+        label: "View source of funds requirements",
+        href: dashboardSofRequirementsUrl(),
+      };
+    } else {
+      primaryCta = {
+        label: `Pay for “${firstSettlement.lot.title}”`,
+        href: dashboardCheckoutLotUrl(firstSettlement.lot.id),
+      };
+    }
   } else {
     const outbidLot = activeLots.find((lot) => activeLotBidHints[lot.id] === "outbid");
     if (outbidLot) {

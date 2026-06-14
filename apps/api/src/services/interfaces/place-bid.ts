@@ -5,6 +5,10 @@ import type { BidError } from "../../lib/errors.js";
 export type PlaceBidPlacement = {
   placedVia?: string;
   telephoneBookingId?: string;
+  clerkUserId?: string;
+  /** Saleroom paddle bid: sale + paddle for eligibility cap lookup. */
+  saleId?: string;
+  paddleNumber?: number;
 };
 
 /** Single canonical input for bid placement (no legacy positional overload). */

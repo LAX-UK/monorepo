@@ -60,6 +60,11 @@ const envSchema = z
     META_GRAPH_API_VERSION: z.preprocess(emptyToUndefined, z.string().optional()),
     MARKETING_EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
     QR_SCAN_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
+    /** Optional ClamAV daemon for SoF document malware scanning. */
+    CLAMAV_HOST: z.preprocess(emptyToUndefined, z.string().optional()),
+    CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+    /** Optional ClamAV REST endpoint for SoF document malware scanning. */
+    CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
@@ -105,6 +110,14 @@ const envSchema = z
           code: z.ZodIssueCode.custom,
           message: "ADMIN_EMAIL_ADDRESS is required in production for ops notifications",
           path: ["ADMIN_EMAIL_ADDRESS"],
+        });
+      }
+      if (!e.CLAMAV_URL && !e.CLAMAV_HOST) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "CLAMAV_URL or CLAMAV_HOST is required in production for Source-of-Funds malware scanning",
+          path: ["CLAMAV_URL"],
         });
       }
     }

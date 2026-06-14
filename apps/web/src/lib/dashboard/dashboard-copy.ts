@@ -47,8 +47,14 @@ export const DASHBOARD_ROUTES = {
   organisations: "/dashboard/organisations",
   invitations: "/dashboard/invitations",
   checkout: "/dashboard/checkout",
+  sofCompliance: "/dashboard/compliance/source-of-funds",
   signIn: "/login",
 } as const;
+
+/** Buyer Source-of-Funds requirements and secure upload portal. */
+export function dashboardSofRequirementsUrl(): string {
+  return DASHBOARD_ROUTES.sofCompliance;
+}
 
 /** Per-lot checkout session (buying workspace). */
 export function dashboardCheckoutLotUrl(lotId: string): string {

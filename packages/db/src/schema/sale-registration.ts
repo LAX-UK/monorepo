@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -40,6 +41,9 @@ export const saleRegistration = pgTable(
     decidedAt: timestamp("decided_at", { mode: "date", withTimezone: true }),
     decidedByUserId: text("decided_by_user_id").references(() => user.id, { onDelete: "set null" }),
     bidLimit: numeric("bid_limit", { precision: 18, scale: 2 }),
+    /** In-room paddle number for this sale (assigned at check-in). */
+    paddleNumber: integer("paddle_number"),
+    checkedInAt: timestamp("checked_in_at", { mode: "date", withTimezone: true }),
     laxNotes: text("lax_notes"),
     rejectionReason: text("rejection_reason"),
   },
@@ -53,6 +57,7 @@ export const saleRegistration = pgTable(
       .on(table.saleId, table.status)
       .where(sql`${table.status} = 'approved'`),
     index("sale_registration_user_id_idx").on(table.userId),
+    unique("sale_registration_sale_paddle_uid").on(table.saleId, table.paddleNumber),
   ],
 );
 

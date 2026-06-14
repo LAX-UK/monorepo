@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { payment, sourceOfFunds } from "@auction/db/schema";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "../services/source-of-funds/active-settlement-statuses.js";
 import type {
   CreateSourceOfFundsCaseInput,
   ISourceOfFundsRepository,
@@ -10,14 +11,6 @@ import type {
   SourceOfFundsTriageInput,
   SourceOfFundsTriageRecommendation,
 } from "../services/source-of-funds/source-of-funds.types.js";
-
-/** Payment statuses that represent live or settled buyer exposure for SoF aggregation. */
-const ACTIVE_PAYMENT_STATUSES = [
-  "pending",
-  "authorized",
-  "captured",
-  "requires_manual_review",
-] as const;
 
 function rowToCase(row: typeof sourceOfFunds.$inferSelect): SourceOfFundsCase {
   return {
@@ -30,6 +23,11 @@ function rowToCase(row: typeof sourceOfFunds.$inferSelect): SourceOfFundsCase {
     currency: row.currency,
     declaredSource: row.declaredSource ?? null,
     evidence: (row.evidence ?? []) as string[],
+    documentsRequestedAt: row.documentsRequestedAt ?? null,
+    documentsRequestedByUserId: row.documentsRequestedByUserId ?? null,
+    documentRequestNote: row.documentRequestNote ?? null,
+    requestedDocumentTypes: (row.requestedDocumentTypes ?? []) as string[],
+    documentsSubmittedAt: row.documentsSubmittedAt ?? null,
     triageRecommendation:
       (row.triageRecommendation as SourceOfFundsTriageRecommendation | null) ?? null,
     triagedByUserId: row.triagedByUserId ?? null,
@@ -177,11 +175,73 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
         reviewedByUserId: null,
         reviewedAt: null,
         reviewNotes: null,
+        documentsRequestedAt: null,
+        documentsRequestedByUserId: null,
+        documentRequestNote: null,
+        requestedDocumentTypes: [],
+        documentsSubmittedAt: null,
         updatedAt: new Date(),
       })
       .where(and(eq(sourceOfFunds.id, id), eq(sourceOfFunds.status, "rejected")))
       .returning();
     return row ? rowToCase(row) : null;
+  }
+
+  async setDocumentRequest(
+    input: {
+      id: string;
+      requestedByUserId: string;
+      documentTypes: string[];
+      note: string | null;
+    },
+    conn?: Database,
+  ): Promise<SourceOfFundsCase | null> {
+    const [row] = await this.conn(conn)
+      .update(sourceOfFunds)
+      .set({
+        documentsRequestedAt: new Date(),
+        documentsRequestedByUserId: input.requestedByUserId,
+        documentRequestNote: input.note,
+        requestedDocumentTypes: input.documentTypes,
+        documentsSubmittedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(sourceOfFunds.id, input.id), eq(sourceOfFunds.status, "pending")))
+      .returning();
+    return row ? rowToCase(row) : null;
+  }
+
+  async setDocumentsSubmitted(id: string, conn?: Database): Promise<SourceOfFundsCase | null> {
+    const [row] = await this.conn(conn)
+      .update(sourceOfFunds)
+      .set({
+        documentsSubmittedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(sourceOfFunds.id, id),
+          eq(sourceOfFunds.status, "pending"),
+          sql`${sourceOfFunds.documentsRequestedAt} IS NOT NULL`,
+          sql`${sourceOfFunds.documentsSubmittedAt} IS NULL`,
+        ),
+      )
+      .returning();
+    return row ? rowToCase(row) : null;
+  }
+
+  async resetDocumentCycle(id: string, conn?: Database): Promise<void> {
+    await this.conn(conn)
+      .update(sourceOfFunds)
+      .set({
+        documentsRequestedAt: null,
+        documentsRequestedByUserId: null,
+        documentRequestNote: null,
+        requestedDocumentTypes: [],
+        documentsSubmittedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sourceOfFunds.id, id));
   }
 
   async sumActiveBuyerSettlementPence(
@@ -191,7 +251,7 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
   ): Promise<number> {
     const conditions = [
       eq(payment.buyerId, userId),
-      inArray(payment.status, [...ACTIVE_PAYMENT_STATUSES]),
+      inArray(payment.status, [...ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES]),
     ];
     if (excludePaymentId) {
       conditions.push(ne(payment.id, excludePaymentId));

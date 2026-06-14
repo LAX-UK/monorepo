@@ -5,7 +5,7 @@ name: Build images
 # Registry. App Platform then only PULLS these images instead of building from
 # source, which is the bulk of the ~30 min deploy time.
 #
-# Scope: api, auth, ws, worker, migrate, web, event (prod only). `web` bakes
+# Scope: api, auth, ws, worker, migrate, web, clamav, event (prod only). `web` bakes
 # NEXT_PUBLIC_* at build time, so its build args come from infra/web-build/<env>.env
 # (public values) plus GitHub env vars/secrets (GTM, Turnstile site key, Sentry
 # client DSN) — see scripts/ci/web-build-args.sh and infra/web-build/README.md.
@@ -58,6 +58,8 @@ jobs:
             dockerfile: docker/migrate.Dockerfile
           - component: web
             dockerfile: apps/web/Dockerfile
+          - component: clamav
+            dockerfile: apps/clamav/Dockerfile
     env:
       # Account-level DOCR registry name (registry.digitalocean.com/<name>).
       # Set as a repository or environment variable. Terraform output:

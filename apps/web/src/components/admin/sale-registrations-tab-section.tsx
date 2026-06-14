@@ -1,15 +1,25 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { PaddleCheckInControls } from "@/components/admin/paddle-check-in-controls";
 import { SaleRegistrationRejectButton } from "@/components/admin/sale-registration-reject-button";
 import { adminApproveSaleRegistrationAction } from "@/lib/actions/admin";
 import { saleStatusLabel } from "@/lib/admin/status-badge-variants";
 import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
-import type { SaleStatus } from "@auction/types";
+import type { SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 
-function RegistrationRow({ saleId, row }: { saleId: string; row: AdminSaleRegistrationRow }) {
+function RegistrationRow({
+  saleId,
+  row,
+  showPaddleCheckIn,
+}: {
+  saleId: string;
+  row: AdminSaleRegistrationRow;
+  showPaddleCheckIn: boolean;
+}) {
   const pending = row.status === "pending";
   return (
     <div className="rounded-lg border border-border-hairline bg-surface-container-low/30 p-4">
@@ -29,6 +39,11 @@ function RegistrationRow({ saleId, row }: { saleId: string; row: AdminSaleRegist
           ) : null}
           {row.bidLimit ? (
             <p className="font-body text-xs text-on-surface-variant">Limit: {row.bidLimit}</p>
+          ) : null}
+          {row.paddleNumber != null ? (
+            <p className="font-body text-xs text-on-surface-variant">
+              Paddle: <span className="tabular-nums">{row.paddleNumber}</span>
+            </p>
           ) : null}
           {row.requestedAt ? (
             <p className="font-body text-xs text-on-surface-variant">
@@ -59,6 +74,7 @@ function RegistrationRow({ saleId, row }: { saleId: string; row: AdminSaleRegist
           ) : null}
         </div>
       </div>
+      {showPaddleCheckIn ? <PaddleCheckInControls saleId={saleId} row={row} /> : null}
     </div>
   );
 }
@@ -66,6 +82,7 @@ function RegistrationRow({ saleId, row }: { saleId: string; row: AdminSaleRegist
 type Props = {
   saleId: string;
   saleStatus: SaleStatus;
+  deliveryMode: SaleDeliveryMode;
   liveish: boolean;
   rows: AdminSaleRegistrationRow[];
   fetchError?: string | null;
@@ -75,11 +92,13 @@ type Props = {
 export function SaleRegistrationsTabSection({
   saleId,
   saleStatus,
+  deliveryMode,
   liveish,
   rows,
   fetchError = null,
   actionError = null,
 }: Props) {
+  const showPaddleCheckIn = isSaleroomDeliveryMode(deliveryMode);
   if (!liveish) {
     return (
       <p className="font-body text-sm text-on-surface-variant">
@@ -124,7 +143,12 @@ export function SaleRegistrationsTabSection({
             Pending ({pending.length})
           </p>
           {pending.map((row) => (
-            <RegistrationRow key={row.id} saleId={saleId} row={row} />
+            <RegistrationRow
+              key={row.id}
+              saleId={saleId}
+              row={row}
+              showPaddleCheckIn={showPaddleCheckIn}
+            />
           ))}
         </section>
       ) : null}
@@ -135,7 +159,12 @@ export function SaleRegistrationsTabSection({
             Decided ({decided.length})
           </p>
           {decided.map((row) => (
-            <RegistrationRow key={row.id} saleId={saleId} row={row} />
+            <RegistrationRow
+              key={row.id}
+              saleId={saleId}
+              row={row}
+              showPaddleCheckIn={showPaddleCheckIn}
+            />
           ))}
         </section>
       ) : null}

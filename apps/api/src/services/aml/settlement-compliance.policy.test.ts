@@ -16,8 +16,11 @@ function holdStore(
   };
 }
 
-function sofGate(requires: boolean): ISourceOfFundsGate {
-  return { requiresSourceOfFunds: async () => requires };
+function sofGate(requires: boolean, pending = requires): ISourceOfFundsGate {
+  return {
+    requiresSourceOfFunds: async () => requires,
+    hasPendingCaseForUser: async () => pending,
+  };
 }
 
 const input = { buyerUserId: "u1", amountPence: 50_000 };
@@ -72,5 +75,61 @@ describe("AmlSettlementCompliancePolicy", () => {
       sofGate(false),
     );
     expect(await policy.evaluate(input)).toEqual({ hold: false, reason: null });
+  });
+
+  describe("peek (read-only, amount-independent)", () => {
+    it("reports an AML hold without consulting the SoF gate", async () => {
+      let sofCalled = false;
+      const policy = new AmlSettlementCompliancePolicy(
+        holdStore({ status: "hold", reason: "screening_review" }),
+        {
+          requiresSourceOfFunds: async () => {
+            sofCalled = true;
+            return true;
+          },
+          hasPendingCaseForUser: async () => {
+            sofCalled = true;
+            return true;
+          },
+        },
+      );
+      expect(await policy.peek("u1")).toEqual({ hold: true, reason: "aml_hold" });
+      expect(sofCalled).toBe(false);
+    });
+
+    it("reports source_of_funds_required when a pending case exists", async () => {
+      const policy = new AmlSettlementCompliancePolicy(
+        holdStore({ status: "none", reason: null }),
+        sofGate(false, true),
+      );
+      expect(await policy.peek("u1")).toEqual({
+        hold: true,
+        reason: "source_of_funds_required",
+      });
+    });
+
+    it("is clear when no hold and no pending case", async () => {
+      const policy = new AmlSettlementCompliancePolicy(
+        holdStore({ status: "none", reason: null }),
+        sofGate(false, false),
+      );
+      expect(await policy.peek("u1")).toEqual({ hold: false, reason: null });
+    });
+
+    it("never calls the mutating requiresSourceOfFunds path", async () => {
+      let requiresCalled = false;
+      const policy = new AmlSettlementCompliancePolicy(
+        holdStore({ status: "none", reason: null }),
+        {
+          requiresSourceOfFunds: async () => {
+            requiresCalled = true;
+            return true;
+          },
+          hasPendingCaseForUser: async () => false,
+        },
+      );
+      await policy.peek("u1");
+      expect(requiresCalled).toBe(false);
+    });
   });
 });

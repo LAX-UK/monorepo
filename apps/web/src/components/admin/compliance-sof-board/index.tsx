@@ -7,9 +7,11 @@ import { sofColumns } from "@/components/admin/compliance-sof-board/columns";
 import { SofDrawerContent } from "@/components/admin/compliance-sof-board/drawer";
 import { SofMobileCards } from "@/components/admin/compliance-sof-board/mobile-cards";
 import { useTableDensity } from "@/components/layout/density-provider";
+import { fetchAdminSofCaseDetailAction } from "@/lib/actions/compliance";
+import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 type Props = {
   rows: AdminSofTableRow[];
@@ -21,8 +23,43 @@ type Props = {
 export function ComplianceSofBoard({ rows, canTriage, canDecide, currentUserId }: Props) {
   const { density } = useTableDensity();
   const [selected, setSelected] = useState<AdminSofTableRow | null>(null);
+  const [detail, setDetail] = useState<AdminSourceOfFundsDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailLoading, startDetailTransition] = useTransition();
+
   const onOpen = useCallback((row: AdminSofTableRow) => setSelected(row), []);
   const columns = useMemo(() => sofColumns(onOpen), [onOpen]);
+
+  const loadDetail = useCallback((caseId: string) => {
+    startDetailTransition(async () => {
+      setDetailError(null);
+      const result = await fetchAdminSofCaseDetailAction(caseId);
+      if (result.ok) {
+        setDetail(result.data);
+      } else {
+        setDetail(null);
+        setDetailError(result.error);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!selected) {
+      setDetail(null);
+      setDetailError(null);
+      return;
+    }
+    loadDetail(selected.id);
+  }, [selected, loadDetail]);
+
+  // Poll while the drawer is open so staff see new buyer uploads without manual refresh.
+  useEffect(() => {
+    if (!selected || selected.status !== "pending") return;
+    const interval = window.setInterval(() => {
+      loadDetail(selected.id);
+    }, 10_000);
+    return () => window.clearInterval(interval);
+  }, [selected, loadDetail]);
 
   return (
     <>
@@ -49,10 +86,14 @@ export function ComplianceSofBoard({ rows, canTriage, canDecide, currentUserId }
             <div className="space-y-4 pt-2">
               <AdminPreviewSheetHeader
                 title="Source of Funds"
-                subtitle={<AdminStatusBadge domain="sofCase" status={selected.status} />}
+                subtitle={<AdminStatusBadge domain="sofCase" status={selected.displayStatus} />}
               />
               <SofDrawerContent
                 row={selected}
+                detail={detail}
+                detailLoading={detailLoading}
+                detailError={detailError}
+                onRetryDetail={() => loadDetail(selected.id)}
                 canTriage={canTriage}
                 canDecide={canDecide}
                 currentUserId={currentUserId}

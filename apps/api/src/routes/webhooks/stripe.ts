@@ -143,11 +143,20 @@ export function createStripeWebhookRoutes(container: Container) {
       } else if (event.type === "charge.refunded") {
         const charge = event.data.object as Stripe.Charge;
         result = await container.stripePaymentWebhookService.handleChargeRefunded(event, charge);
+      } else if (event.type === "checkout.session.async_payment_failed") {
+        const session = event.data.object as Stripe.Checkout.Session;
+        result =
+          await container.stripePaymentWebhookService.handleCheckoutSessionAsyncPaymentFailed(
+            event,
+            session,
+          );
       }
 
       if (
         !result.processed &&
-        (result.reason === "payment_not_found" || result.reason === "amount_mismatch")
+        (result.reason === "payment_not_found" ||
+          result.reason === "amount_mismatch" ||
+          result.reason === "missing_charge_id")
       ) {
         recordMoneyPathEvent(`stripe_payment_webhook_${result.reason}`);
         recordStripeWebhookHttpError("payments", 500);

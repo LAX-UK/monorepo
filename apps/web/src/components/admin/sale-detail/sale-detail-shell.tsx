@@ -34,6 +34,7 @@ import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { salePath } from "@/lib/seo/url";
 import { Badge } from "@auction/ui";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -81,16 +82,16 @@ export function SaleDetailShell({
     sale.status === "draft" || sale.status === "scheduled"
       ? (bundle.deleteEligibility?.blockers ?? [])
       : [];
-  const isOnsite = sale.deliveryMode === "onsite";
+  const isSaleroom = isSaleroomDeliveryMode(sale.deliveryMode);
   const canMarkOnsiteEnded =
-    canManageSales && isOnsite && (sale.status === "active" || sale.status === "scheduled");
+    canManageSales && isSaleroom && (sale.status === "active" || sale.status === "scheduled");
 
   const pendingRegs =
     liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
       ? pendingRegistrationCount
       : 0;
   const pendingTelephone =
-    isOnsite && pendingTelephoneBookingCount != null && pendingTelephoneBookingCount > 0
+    isSaleroom && pendingTelephoneBookingCount != null && pendingTelephoneBookingCount > 0
       ? pendingTelephoneBookingCount
       : 0;
 
@@ -135,7 +136,7 @@ export function SaleDetailShell({
       href: saleDetailTabHref(saleId, "registrations"),
       ...(pendingRegs > 0 ? { badge: "pending" as const } : {}),
     },
-    ...(isOnsite
+    ...(isSaleroom
       ? [
           {
             id: "operations",

@@ -5,11 +5,13 @@ import {
   paymentIdParamSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Container } from "../container.js";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
 import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
+import { checkSofDocumentAttachRateLimit } from "../lib/sof-document-attach-rate-limit.js";
 import { zValidator } from "../lib/z-validator.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
@@ -19,6 +21,14 @@ import { requireFinanceEntityWrite } from "../middleware/require-capability.js";
 import { createOptionalLegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+
+const sourceOfFundsCaseIdParamSchema = z.object({ id: z.string().uuid() });
+
+const attachSofDocumentBodySchema = z.object({
+  uploadObjectId: z.string().uuid(),
+  requestedType: z.string().min(1).max(500),
+  label: z.string().max(500).optional(),
+});
 
 export function createPaymentRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -48,6 +58,98 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
     );
   });
+
+  /** Buyer pre-flight compliance gate: checks AML hold + SoF without creating
+   * a payment row. Used by the checkout page and portfolio to surface blockers
+   * before the buyer submits. */
+  r.get("/me/compliance-gate", requireAuth, requireBuyerRole, async (c) => {
+    const userId = c.get("userId") as string;
+    const result = await container.paymentService.getBuyerComplianceGateStatus(userId);
+    return c.json({ data: result });
+  });
+
+  /** Buyer Source-of-Funds case + document upload status. */
+  r.get("/me/source-of-funds", requireAuth, requireBuyerRole, async (c) => {
+    const userId = c.get("userId") as string;
+    const view = await container.sourceOfFundsDocumentCollectionService.getBuyerView(userId);
+    return c.json({ data: view });
+  });
+
+  r.post(
+    "/me/source-of-funds/:id/documents",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", sourceOfFundsCaseIdParamSchema),
+    zValidator("json", attachSofDocumentBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id: caseId } = c.req.valid("param");
+      const { uploadObjectId, requestedType, label } = c.req.valid("json");
+      const allowed = await checkSofDocumentAttachRateLimit(container.redis, userId);
+      if (!allowed) {
+        return c.json({ error: "Too many upload attempts", code: "rate_limited" }, 429);
+      }
+      try {
+        const doc = await container.sourceOfFundsDocumentCollectionService.attachDocument({
+          caseId,
+          buyerUserId: userId,
+          uploadObjectId,
+          requestedType,
+          label: label ?? null,
+        });
+        return c.json({ ok: true, document: doc });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "attach_failed";
+        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
+        if (message === "source_of_funds_forbidden") return c.json({ error: message }, 403);
+        if (
+          message === "source_of_funds_documents_not_requested" ||
+          message === "source_of_funds_documents_already_submitted" ||
+          message === "source_of_funds_not_pending"
+        ) {
+          return c.json({ error: message }, 409);
+        }
+        if (
+          message === "upload_not_active" ||
+          message === "upload_kind_mismatch" ||
+          message === "source_of_funds_requested_type_not_allowed"
+        ) {
+          return c.json({ error: message }, 400);
+        }
+        throw err;
+      }
+    },
+  );
+
+  r.post(
+    "/me/source-of-funds/:id/documents/submit",
+    requireAuth,
+    requireBuyerRole,
+    zValidator("param", sourceOfFundsCaseIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id: caseId } = c.req.valid("param");
+      try {
+        const record = await container.sourceOfFundsDocumentCollectionService.submitDocuments({
+          caseId,
+          buyerUserId: userId,
+        });
+        return c.json({ ok: true, sourceOfFunds: record });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "submit_failed";
+        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
+        if (message === "source_of_funds_forbidden") return c.json({ error: message }, 403);
+        if (
+          message === "source_of_funds_documents_not_requested" ||
+          message === "source_of_funds_documents_already_submitted" ||
+          message === "source_of_funds_no_documents_to_submit"
+        ) {
+          return c.json({ error: message }, 409);
+        }
+        throw err;
+      }
+    },
+  );
 
   /** Buyer-facing payments list. Strictly scoped to the JWT user; the route never
    * accepts a buyerId from the client. Optional `?status` narrows the result.

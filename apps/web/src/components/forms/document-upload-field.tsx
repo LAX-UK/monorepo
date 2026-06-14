@@ -9,7 +9,8 @@ export type DocumentUploadKind =
   | "lot_document"
   | "sale_document"
   | "submission_document"
-  | "legal_entity_document";
+  | "legal_entity_document"
+  | "source_of_funds_document";
 
 type DocumentUploadFieldProps = {
   kind: DocumentUploadKind;
@@ -25,6 +26,8 @@ type DocumentUploadFieldProps = {
   dropzone?: boolean;
   helperText?: string;
   inputId?: string;
+  /** Optional client-side max size (bytes) before upload starts. */
+  maxBytes?: number;
 };
 
 const DOCUMENT_ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
@@ -39,6 +42,7 @@ export function DocumentUploadField({
   dropzone = false,
   helperText,
   inputId,
+  maxBytes,
 }: DocumentUploadFieldProps) {
   const { uploadFile } = useUploadObjectLifecycle();
   const [status, setStatus] = useState<string | null>(null);
@@ -49,6 +53,10 @@ export function DocumentUploadField({
   const processFile = useCallback(
     async (file: File) => {
       setError(null);
+      if (maxBytes != null && file.size > maxBytes) {
+        setError(`File is too large (max ${Math.round(maxBytes / (1024 * 1024))} MB)`);
+        return;
+      }
       if (onFileSelected) {
         await onFileSelected(file);
         return;
@@ -68,7 +76,7 @@ export function DocumentUploadField({
         setStatus(null);
       }
     },
-    [kind, onChange, onFileSelected, uploadFile, valueMode],
+    [kind, maxBytes, onChange, onFileSelected, uploadFile, valueMode],
   );
 
   async function onPick(files: FileList) {

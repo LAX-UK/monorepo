@@ -3,6 +3,10 @@
 import { complianceErrorMessage } from "@/lib/admin/compliance-error-messages";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import {
+  type AdminSourceOfFundsDetail,
+  getAdminSourceOfFundsDetail,
+} from "@/lib/data/http/compliance.server";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { normalizeApiErrorMessage } from "@auction/validators";
@@ -167,5 +171,150 @@ export async function sofReopenAction(formData: FormData): Promise<void> {
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
     redirectSof("Rejected case reopened for review");
+  });
+}
+
+export type FetchAdminSofCaseDetailResult =
+  | { ok: true; data: AdminSourceOfFundsDetail }
+  | { ok: false; error: string };
+
+/** Read-only detail fetch for the SoF review drawer (no redirect). */
+export async function fetchAdminSofCaseDetailAction(
+  caseId: string,
+): Promise<FetchAdminSofCaseDetailResult> {
+  return instrumentServerAction("fetchAdminSofCaseDetailAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const id = caseId.trim();
+    if (!id) {
+      return { ok: false as const, error: "Case id is required" };
+    }
+
+    try {
+      const data = await getAdminSourceOfFundsDetail(id);
+      if (!data) {
+        return { ok: false as const, error: "Source of Funds case not found" };
+      }
+      return { ok: true as const, data };
+    } catch (e) {
+      return {
+        ok: false as const,
+        error: e instanceof Error ? e.message : "Could not load case detail",
+      };
+    }
+  });
+}
+
+export type SofDocumentDownloadResult = { ok: true; url: string } | { ok: false; error: string };
+
+export type SofBulkDownloadResult =
+  | { ok: true; data: ArrayBuffer; fileName: string }
+  | { ok: false; error: string };
+
+/** Resolve a short-TTL, audited download URL for a buyer-submitted SoF document.
+ * The API emits a `source_of_funds.document_downloaded` audit event (actor + IP)
+ * on every call, so staff downloads are never served from a long-lived link. */
+export async function downloadSofDocumentAction(
+  caseId: string,
+  documentId: string,
+): Promise<SofDocumentDownloadResult> {
+  return instrumentServerAction("downloadSofDocumentAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const id = caseId.trim();
+    const docId = documentId.trim();
+    if (!id || !docId) {
+      return { ok: false as const, error: "Document id is required" };
+    }
+
+    const res = await authedServerFetch(
+      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/${encodeURIComponent(docId)}/download`,
+    );
+    if (!res.ok) {
+      return { ok: false as const, error: await apiError(res, "Download failed") };
+    }
+    const body = (await res.json().catch(() => ({}))) as { data?: { url?: unknown } };
+    const url = typeof body.data?.url === "string" ? body.data.url : null;
+    if (!url) {
+      return { ok: false as const, error: "Download URL unavailable" };
+    }
+    return { ok: true as const, url };
+  });
+}
+
+/** Download all active SoF documents for a case as a zip archive (audited per file). */
+export async function downloadAllSofDocumentsAction(
+  caseId: string,
+): Promise<SofBulkDownloadResult> {
+  return instrumentServerAction("downloadAllSofDocumentsAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const id = caseId.trim();
+    if (!id) {
+      return { ok: false as const, error: "Case id is required" };
+    }
+
+    const res = await authedServerFetch(
+      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/download-all`,
+    );
+    if (!res.ok) {
+      return { ok: false as const, error: await apiError(res, "Download failed") };
+    }
+    const buffer = await res.arrayBuffer();
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const fileName = match?.[1] ?? `source-of-funds-${id}.zip`;
+    return { ok: true as const, data: buffer, fileName };
+  });
+}
+
+export type RequestSofDocumentsResult = { ok: true } | { ok: false; error: string };
+
+export async function requestSofDocumentsAction(
+  formData: FormData,
+): Promise<RequestSofDocumentsResult> {
+  return instrumentServerAction("requestSofDocumentsAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const caseId = String(formData.get("caseId") ?? "").trim();
+    const typesRaw = String(formData.get("documentTypes") ?? "[]");
+    const note = String(formData.get("note") ?? "").trim();
+    let documentTypes: string[] = [];
+    try {
+      const parsed = JSON.parse(typesRaw) as unknown;
+      documentTypes = Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+    } catch {
+      return { ok: false as const, error: "Invalid document types" };
+    }
+    if (!caseId || documentTypes.length === 0) {
+      return { ok: false as const, error: "Case and at least one document type required" };
+    }
+
+    const res = await authedServerFetch(
+      `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}/request-documents`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentTypes, note: note || undefined }),
+      },
+    );
+    if (!res.ok) {
+      return { ok: false as const, error: await apiError(res, "Request failed") };
+    }
+
+    revalidatePath("/admin/compliance/source-of-funds");
+    return { ok: true as const };
   });
 }

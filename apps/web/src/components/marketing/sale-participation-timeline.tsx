@@ -14,8 +14,10 @@ import {
   getOnsiteTimelineStepTitle,
 } from "@/lib/sale-participation-steps";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
+import type { SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { saleModeAllowsBidding } from "@auction/validators";
 import { ArrowRight, Check, Clock, Lock, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
@@ -32,7 +34,7 @@ type EntityItem = {
 };
 
 type Props = {
-  deliveryMode: "online" | "onsite";
+  deliveryMode: SaleDeliveryMode;
   isAuthenticated?: boolean;
   kycApproved?: boolean;
   myRegistrations?: RegistrationItem[];
@@ -103,7 +105,7 @@ export function SaleParticipationTimeline({
   }, [isAuthenticated, kycApproved, buyerEntities, myRegistrations]);
 
   const steps = React.useMemo(() => {
-    if (deliveryMode === "online") {
+    if (saleModeAllowsBidding(deliveryMode)) {
       const step1 = {
         title: getOnlineTimelineStepTitle(1),
         description: getOnlineRegisterStepDescription(registrationStatus),

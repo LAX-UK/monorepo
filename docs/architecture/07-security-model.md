@@ -215,9 +215,11 @@ The dedupe key (`event_key`) on `webhook_event` ensures the same payload is proc
 
 **Impact:** Storage cost growth, malicious files served from the CDN, or user-facing pages rendering broken media.
 
-**Mitigations.** Uploads use browser-direct presigned PUT URLs with a 5-minute TTL and per-user daily quotas at `/uploads/presign` (250 MB and 200 files; administrators bypass for catalog operations). The API records each object in `upload_object` as `pending`, and objects do not become attachable until `apps/worker` HEADs the object, verifies size, sniffs the first bytes for JPEG/PNG/WebP magic values, and marks the row `active`. Stale `pending` rows and objects are garbage-collected hourly, and Spaces has a documented lifecycle rule for `uploads/pending/` as a second line of cleanup.
+**Mitigations.** Uploads use browser-direct presigned PUT URLs with a 5-minute TTL and per-user daily quotas at `/uploads/presign` (250 MB and 200 files; administrators bypass for catalog operations). The API records each object in `upload_object` as `pending`, and objects do not become attachable until `apps/worker` HEADs the object, verifies size, sniffs the first bytes for JPEG/PNG/WebP/PDF magic values, and marks the row `active`. Stale `pending` rows and objects are garbage-collected hourly, and Spaces has a documented lifecycle rule for `uploads/pending/` as a second line of cleanup.
 
-**Acceptance.** We do not run antivirus scanning or image transcoding in v1. If uploads expand beyond still images, add a dedicated scanning/processing job before allowing those objects to become active.
+**Source-of-funds documents (PDFs).** Buyer-supplied SoF evidence uses kind `source_of_funds_document`. After magic-byte validation, `validate-upload` runs an optional ClamAV scan (`CLAMAV_HOST` / `CLAMAV_PORT`; no-op in dev). Infected files are rejected before `active`. Staff access is presigned GET only with a short TTL (`SIGNED_GET_TTL_SEC`, default 90s) — never public URLs or stable cached links. Bucket SSE (AES-256) must be enabled for the `uploads/` prefix in production.
+
+**Acceptance.** Catalog still images skip antivirus. SoF PDFs and images require malware scanning in production. Image transcoding remains out of scope for v1.
 
 ## Secrets management
 

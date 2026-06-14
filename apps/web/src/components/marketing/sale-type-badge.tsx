@@ -1,6 +1,6 @@
 "use client";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
-import type { Sale } from "@auction/types";
+import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -8,7 +8,7 @@ import { HelpCircle, Laptop, MapPin } from "lucide-react";
 import { SaleTypeExplainerPopover } from "./sale-type-explainer";
 
 type Props = {
-  deliveryMode: "online" | "onsite" | Sale | Pick<Sale, "deliveryMode"> | undefined | null;
+  deliveryMode: SaleDeliveryMode | Sale | Pick<Sale, "deliveryMode"> | undefined | null;
   className?: string;
   withIcon?: boolean;
   withExplainer?: boolean;

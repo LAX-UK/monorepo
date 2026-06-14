@@ -21,6 +21,13 @@ export type SettlementComplianceInput = {
 
 export interface ISettlementCompliancePolicy {
   evaluate(input: SettlementComplianceInput): Promise<SettlementComplianceDecision>;
+  /**
+   * Read-only, amount-independent compliance snapshot for a buyer. Unlike
+   * `evaluate`, this MUST NOT mutate state (no SoF case creation, no events) and
+   * does not require a transaction amount — it is safe to call from GET
+   * endpoints to surface blockers before any payment row exists.
+   */
+  peek(buyerUserId: string): Promise<SettlementComplianceDecision>;
 }
 
 /**
@@ -29,6 +36,11 @@ export interface ISettlementCompliancePolicy {
  */
 export interface ISourceOfFundsGate {
   requiresSourceOfFunds(input: SettlementComplianceInput): Promise<boolean>;
+  /**
+   * Read-only check: does the buyer have an unresolved (pending) SoF case that
+   * is currently gating settlement? No side effects (does not open a case).
+   */
+  hasPendingCaseForUser(buyerUserId: string): Promise<boolean>;
 }
 
 /**
@@ -53,6 +65,20 @@ export class AmlSettlementCompliancePolicy implements ISettlementCompliancePolic
     if (this.sourceOfFundsGate) {
       const requiresSof = await this.sourceOfFundsGate.requiresSourceOfFunds(input);
       if (requiresSof) {
+        return { hold: true, reason: "source_of_funds_required" };
+      }
+    }
+    return { hold: false, reason: null };
+  }
+
+  async peek(buyerUserId: string): Promise<SettlementComplianceDecision> {
+    const hold = await this.holdStore.getHold(buyerUserId);
+    if (hold && hold.status !== "none") {
+      return { hold: true, reason: "aml_hold" };
+    }
+    if (this.sourceOfFundsGate) {
+      const pending = await this.sourceOfFundsGate.hasPendingCaseForUser(buyerUserId);
+      if (pending) {
         return { hold: true, reason: "source_of_funds_required" };
       }
     }

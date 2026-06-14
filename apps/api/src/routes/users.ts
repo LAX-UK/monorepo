@@ -184,7 +184,9 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       limit: 50,
       offset: 0,
     });
-    const payments = await container.paymentService.listForBuyer(userId);
+    // Use the full buyer payments presenter so manualReviewReason is derived
+    // (AML/SoF compliance check included) — avoids a separate N+1 gate call.
+    const { data: payments } = await container.paymentService.listMyPaymentsForBuyerApi(userId, {});
     const byLot = new Map<string, (typeof payments)[number]>();
     for (const p of payments) {
       if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
@@ -199,7 +201,9 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       const p = byLot.get(lotRow.id);
       return {
         lot: lotRow,
-        payment: p ? { id: p.id, status: p.status } : null,
+        payment: p
+          ? { id: p.id, status: p.status, manualReviewReason: p.manualReviewReason ?? null }
+          : null,
       };
     });
     return c.json({ data });

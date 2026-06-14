@@ -16,7 +16,7 @@ export function RecentActivityWidget({ activity }: Props) {
         <h3 className="font-headline text-lg font-semibold text-on-surface">Recent activity</h3>
         <Link
           href="/admin/lots"
-          className="inline-flex min-h-9 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-link hover:underline"
+          className="inline-flex min-h-9 items-center gap-1 font-label text-xs font-semibold uppercase tracking-widest text-link hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           View all
           <ChevronRight className="size-4" aria-hidden />
@@ -29,7 +29,7 @@ export function RecentActivityWidget({ activity }: Props) {
           description: "Recently updated lots will appear here once catalogue work starts.",
         }}
         table={
-          <div className="hidden overflow-x-auto rounded-md border border-border-hairline md:block">
+          <div className="overflow-x-auto rounded-md border border-border-hairline">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border-hairline bg-surface-container-low/50 font-label text-xs uppercase tracking-wider text-on-surface-variant">
                 <tr>
@@ -71,7 +71,7 @@ export function RecentActivityWidget({ activity }: Props) {
               <li key={r.id}>
                 <Link
                   href={r.href}
-                  className="flex min-h-11 flex-col gap-1 rounded-sm border border-border-hairline bg-surface-container-low/30 p-3 transition-colors hover:bg-surface-container-high/50"
+                  className="flex min-h-11 flex-col gap-1 rounded-sm border border-border-hairline bg-surface-container-low/30 p-3 transition-colors hover:bg-surface-container-high/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <span className="font-headline text-sm text-on-surface">{r.title}</span>
                   <span className="text-xs text-on-surface-variant">{r.meta}</span>

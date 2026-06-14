@@ -705,10 +705,11 @@ export function formatAmlHoldReason(reason: string | null | undefined): string |
   return amlHoldReasonLabel[reason] ?? reason.replaceAll("_", " ");
 }
 
-export type SofCaseStatus = "pending" | "approved" | "rejected";
+export type SofCaseStatus = "pending" | "awaiting_decision" | "approved" | "rejected";
 
 export const sofCaseStatusLabel: Record<string, string> = {
   pending: "Pending review",
+  awaiting_decision: "Awaiting MLRO decision",
   approved: "Approved",
   rejected: "Rejected",
 };
@@ -719,6 +720,8 @@ export function sofCaseStatusToBadgeVariant(status: string): AdminStatusBadgeVar
       return "success";
     case "rejected":
       return "danger";
+    case "awaiting_decision":
+      return "info";
     case "pending":
       return "warning";
     default:

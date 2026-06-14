@@ -30,6 +30,9 @@ import {
   adminLotBrowseQuerySchema,
   adminLotFulfilmentListQuerySchema,
   adminLotFulfilmentLotIdParamSchema,
+  adminPaddleAssignBodySchema,
+  adminPaddlePlaceBidBodySchema,
+  adminPaddleRegistrationParamsSchema,
   adminPatchStaffRoleBodySchema,
   adminPaymentsListQuerySchema,
   adminQrCodeAnalyticsQuerySchema,
@@ -39,6 +42,7 @@ import {
   adminQrCodeRegenerateSchema,
   adminQrCodeUpdateSchema,
   adminRejectSaleRegistrationBodySchema,
+  adminSalePaddleRosterParamsSchema,
   adminSaleRegistrationListQuerySchema,
   adminSaleRegistrationParamsSchema,
   adminSaleroomSaleIdParamSchema,
@@ -77,6 +81,7 @@ import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-bro
 import { mapAdminUserListQuery } from "../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { presentLotImages } from "../lib/media-presenters.js";
+import { checkPaddleAssignRateLimit } from "../lib/paddle-assign-rate-limit.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
@@ -169,7 +174,7 @@ const amlReviewQuerySchema = z.object({
 const sourceOfFundsListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
   offset: z.coerce.number().int().min(0).optional().default(0),
-  status: z.enum(["pending", "rejected"]).optional().default("pending"),
+  status: z.enum(["pending", "rejected", "approved"]).optional().default("pending"),
 });
 
 const amlReviewBodySchema = z.object({
@@ -194,6 +199,16 @@ const sourceOfFundsReviewBodySchema = z.object({
 const sourceOfFundsTriageBodySchema = z.object({
   recommendation: z.enum(["approve", "reject"]),
   notes: z.string().max(2000).optional(),
+});
+
+const sourceOfFundsRequestDocumentsBodySchema = z.object({
+  documentTypes: z.array(z.string().min(1).max(500)).min(1).max(20),
+  note: z.string().max(2000).optional(),
+});
+
+const sourceOfFundsDocumentIdParamSchema = z.object({
+  id: z.string().uuid(),
+  docId: z.string().uuid(),
 });
 
 /** Only match UUID segments so static routes (`search`, `stats`, …) are never captured. */
@@ -629,6 +644,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminTelephonePlaceBidBodySchema),
     async (c) => {
       const body = c.req.valid("json");
+      const clerkUserId = c.get("userId") as string;
       if (body.telephoneBookingId) {
         const lotRow = await container.repoFactory.root.lot.findById(body.lotId);
         if (!lotRow?.saleId) return c.json({ error: "Lot not found" }, 404);
@@ -652,6 +668,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       }
       const placement = {
         placedVia: "telephone" as const,
+        clerkUserId,
         ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
       };
       const idempotencyKey =
@@ -668,6 +685,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         amount: body.amount,
         ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
         placedVia: placement.placedVia,
+        clerkUserId,
         ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
         ...(idempotencyKey ? { idempotencyKey } : {}),
       };
@@ -698,6 +716,148 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         (e) =>
           c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
       );
+    },
+  );
+
+  platform.post(
+    "/saleroom/paddle-bids",
+    requireAuctionManage,
+    zValidator("json", adminPaddlePlaceBidBodySchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      const clerkUserId = c.get("userId") as string;
+      const resolution = await container.paddleService.assertPaddleAllowsBid({
+        saleId: body.saleId,
+        paddleNumber: body.paddleNumber,
+        lotId: body.lotId,
+      });
+      if (resolution.isErr()) {
+        const e = resolution.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      const resolved = resolution.value;
+      const idempotencyKey =
+        body.idempotencyKey ??
+        c.req.header("idempotency-key") ??
+        c.req.header("Idempotency-Key") ??
+        `paddle:${body.saleId}:${body.paddleNumber}:${body.lotId}:${body.amount}`;
+      const bidInput = {
+        placedByUserId: resolved.userId,
+        buyerLegalEntityId: resolved.buyerLegalEntityId,
+        lotId: body.lotId,
+        amount: body.amount,
+        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
+        placedVia: "saleroom" as const,
+        clerkUserId,
+        saleId: body.saleId,
+        paddleNumber: body.paddleNumber,
+        idempotencyKey,
+      };
+      const out = await container.bidService.placeBidWithIdempotency(bidInput);
+      if (out.type === "replay") {
+        console.info(
+          JSON.stringify({
+            action: "paddle_bid_placed",
+            saleId: body.saleId,
+            lotId: body.lotId,
+            paddleNumber: body.paddleNumber,
+            clerkUserId,
+            outcome: "replay",
+          }),
+        );
+        return c.json(out.body, 201);
+      }
+      if (out.type === "err") {
+        console.info(
+          JSON.stringify({
+            action: "paddle_bid_placed",
+            saleId: body.saleId,
+            lotId: body.lotId,
+            paddleNumber: body.paddleNumber,
+            clerkUserId,
+            outcome: "error",
+            error: out.error.message,
+          }),
+        );
+        const e = out.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      container.adminMetricsService.recordBidPlaced();
+      console.info(
+        JSON.stringify({
+          action: "paddle_bid_placed",
+          saleId: body.saleId,
+          lotId: body.lotId,
+          paddleNumber: body.paddleNumber,
+          clerkUserId,
+          outcome: "ok",
+        }),
+      );
+      return c.json(out.body, 201);
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/registrations/:registrationId/paddle",
+    requireAuctionManage,
+    zValidator("param", adminPaddleRegistrationParamsSchema),
+    zValidator("json", adminPaddleAssignBodySchema),
+    async (c) => {
+      const { saleId, registrationId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const clerkUserId = c.get("userId") as string;
+      const allowed = await checkPaddleAssignRateLimit(container.redis, clerkUserId);
+      if (!allowed) {
+        return c.json({ error: "Too many paddle assignments", code: "rate_limited" }, 429);
+      }
+      const result = await container.paddleService.assignPaddle({
+        saleId,
+        registrationId,
+        clerkUserId,
+        ...(body.paddleNumber != null ? { paddleNumber: body.paddleNumber } : {}),
+      });
+      return result.match(
+        (data) => c.json({ data }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.delete(
+    "/sales/:saleId/registrations/:registrationId/paddle",
+    requireAuctionManage,
+    zValidator("param", adminPaddleRegistrationParamsSchema),
+    async (c) => {
+      const { saleId, registrationId } = c.req.valid("param");
+      const clerkUserId = c.get("userId") as string;
+      const result = await container.paddleService.clearPaddle({
+        saleId,
+        registrationId,
+        clerkUserId,
+      });
+      return result.match(
+        () => c.json({ ok: true }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/paddles",
+    requireAuctionManage,
+    zValidator("param", adminSalePaddleRosterParamsSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const roster = await container.paddleService.listSaleRoster(saleId);
+      return c.json({ data: { items: roster } });
     },
   );
 
@@ -1650,11 +1810,26 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", sourceOfFundsListQuerySchema),
     async (c) => {
       const { limit, offset, status } = c.req.valid("query");
-      const [data, total] = await Promise.all([
-        container.sourceOfFundsService.listByStatus(status, limit, offset),
-        container.sourceOfFundsService.countByStatus(status),
-      ]);
-      return c.json({ data, meta: { total, limit, offset } });
+      const { rows, total } = await container.adminSourceOfFundsQueryService.listEnriched(
+        status,
+        limit,
+        offset,
+      );
+      return c.json({ data: rows, meta: { total, limit, offset } });
+    },
+  );
+
+  platform.get(
+    "/compliance/source-of-funds/:id/detail",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const detail = await container.adminSourceOfFundsQueryService.getDetail(id);
+      if (!detail) {
+        return c.json({ error: "source_of_funds_not_found" }, 404);
+      }
+      return c.json({ data: detail });
     },
   );
 
@@ -1762,8 +1937,80 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     },
   );
 
+  platform.post(
+    "/compliance/source-of-funds/:id/request-documents",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    zValidator("json", sourceOfFundsRequestDocumentsBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { documentTypes, note } = c.req.valid("json");
+      const staffUserId = c.get("userId") as string;
+      try {
+        const record = await container.sourceOfFundsDocumentCollectionService.requestDocuments({
+          caseId: id,
+          staffUserId,
+          documentTypes,
+          note: note ?? null,
+        });
+        return c.json({ ok: true, sourceOfFunds: record });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "source_of_funds_request_documents_failed";
+        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
+        if (message === "source_of_funds_not_pending") return c.json({ error: message }, 409);
+        if (message === "source_of_funds_document_types_required") {
+          return c.json({ error: message }, 400);
+        }
+        throw err;
+      }
+    },
+  );
+
+  platform.get(
+    "/compliance/source-of-funds/:id/documents/:docId/download",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsDocumentIdParamSchema),
+    async (c) => {
+      const { id, docId } = c.req.valid("param");
+      const staffUserId = c.get("userId") as string;
+      const clientIp =
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const result = await container.sourceOfFundsDocumentCollectionService.getStaffDownloadUrl({
+        caseId: id,
+        documentId: docId,
+        staffUserId,
+        clientIp,
+      });
+      if (!result) return c.json({ error: "document_not_found" }, 404);
+      return c.json({ data: result });
+    },
+  );
+
+  platform.get(
+    "/compliance/source-of-funds/:id/documents/download-all",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const staffUserId = c.get("userId") as string;
+      const clientIp =
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const result = await container.sourceOfFundsDocumentCollectionService.getStaffBulkDownloadZip(
+        {
+          caseId: id,
+          staffUserId,
+          clientIp,
+        },
+      );
+      if (!result) return c.json({ error: "no_documents" }, 404);
+      c.header("Content-Type", "application/zip");
+      c.header("Content-Disposition", `attachment; filename="${result.fileName}"`);
+      return c.body(new Uint8Array(result.buffer));
+    },
+  );
+
   platform.patch(
-    "/users/:userId/role",
     requireUsersDirectory,
     zValidator("param", userIdParamSchema),
     zValidator("json", adminSetRoleBodySchema),
