@@ -34,6 +34,9 @@ export async function signInService(input: SignInServiceInput): Promise<AuthSubm
   }
 
   if (!res.ok) {
+    if (res.status === 429) {
+      return authSubmitFailure("rate_limited");
+    }
     // Better Auth can return either `{code, message}` (top-level) or
     // `{error: {code, message}}` (nested) depending on the plugin and version.
     const nested = body?.error;
