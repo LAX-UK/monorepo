@@ -70,8 +70,9 @@ export function OnsiteParticipationHub({
               Bid Live in the Room
             </h3>
             <p className="font-body text-xs leading-relaxed text-on-surface-variant">
-              Attend the saleroom and collect your physical bidding paddle at reception before the
-              session starts.
+              Visit the saleroom desk on arrival for paddle check-in. You must already have an
+              account and completed identity verification — staff will assign your paddle at
+              reception.
             </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-2 border-t border-outline-variant/10 pt-3">

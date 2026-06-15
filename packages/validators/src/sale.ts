@@ -5,6 +5,7 @@ import { buyerPremiumTiersSchema } from "./buyer-premium.js";
 import { bulkIdListSchema, createNestedLotForSaleSchema } from "./lot.js";
 import { mediaReferenceSchema } from "./media.js";
 import { isUkPostcode, normalizeUkPostcode } from "./onsite-location.js";
+import { PADDLE_NUMBER_MIN } from "./paddle.js";
 import { getSaleModeCapabilities } from "./sale-mode-policy.js";
 import { saleSettlementStatuses } from "./sale-settlement.js";
 import { isAllowedStreamUrl } from "./stream-embed.js";
@@ -337,3 +338,22 @@ export type AdminSaleRegistrationParams = z.infer<typeof adminSaleRegistrationPa
 export const adminRejectSaleRegistrationBodySchema = z.object({
   reason: z.string().max(2000).optional(),
 });
+
+/** Staff in-room check-in: approved registration + optional paddle assignment. */
+export const adminSaleroomCheckInBodySchema = z.object({
+  userId: z.string().uuid(),
+  buyerLegalEntityId: z.string().uuid(),
+  bidLimit: z.coerce.number().finite().positive().max(1e12).optional(),
+  paddleNumber: z.coerce.number().int().min(PADDLE_NUMBER_MIN).optional(),
+  laxNotes: z.string().max(2000).optional(),
+});
+
+export type AdminSaleroomCheckInBody = z.infer<typeof adminSaleroomCheckInBodySchema>;
+
+export const adminSaleroomCheckInCandidatesQuerySchema = z.object({
+  q: z.string().trim().min(2).max(200),
+});
+
+export type AdminSaleroomCheckInCandidatesQuery = z.infer<
+  typeof adminSaleroomCheckInCandidatesQuerySchema
+>;

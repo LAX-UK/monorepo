@@ -156,7 +156,7 @@ export class BidEligibilityService implements IBidEligibility {
       }
     }
 
-    if (saleId && memberRequiresSaleRegistration(mem.role) && !operatorBypass) {
+    if (saleId && !operatorBypass) {
       const [reg] = await this.db
         .select({
           status: saleRegistration.status,
@@ -172,21 +172,29 @@ export class BidEligibilityService implements IBidEligibility {
         )
         .limit(1);
 
-      if (!reg || reg.status !== "approved") {
-        return err(
-          new BidError(
-            "Register and be approved to bid on this sale",
-            403,
-            "sale_registration_required",
-          ),
-        );
+      if (memberRequiresSaleRegistration(mem.role)) {
+        if (!reg || reg.status !== "approved") {
+          return err(
+            new BidError(
+              "Register and be approved to bid on this sale",
+              403,
+              "sale_registration_required",
+            ),
+          );
+        }
       }
 
-      const regCap = parseMoneyCap(reg.bidLimit);
-      if (regCap != null && effectiveAmount > regCap) {
-        return err(
-          new BidError("Bid exceeds your approved limit for this sale", 403, "bid_limit_exceeded"),
-        );
+      if (reg?.status === "approved") {
+        const regCap = parseMoneyCap(reg.bidLimit);
+        if (regCap != null && effectiveAmount > regCap) {
+          return err(
+            new BidError(
+              "Bid exceeds your approved limit for this sale",
+              403,
+              "bid_limit_exceeded",
+            ),
+          );
+        }
       }
     }
 
