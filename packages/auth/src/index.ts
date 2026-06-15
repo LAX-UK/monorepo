@@ -26,3 +26,9 @@ export {
   buildMagicLinkSetPasswordCallbackUrl,
   isSafeMagicLinkNextPath,
 } from "./magic-link-callback.js";
+export {
+  computeSlidingWindowRetryAfterSec,
+  oldestBlockingScoreMs,
+  slidingWindowRetryAfterSec,
+  type SlidingWindowRedis,
+} from "./sliding-window-rate-limit.js";

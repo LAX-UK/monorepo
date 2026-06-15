@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { slidingWindowRetryAfterSec } from "@auction/auth";
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
@@ -38,6 +40,11 @@ export const RATE_LIMIT_CONFIG = {
   sendVerificationEmailMax: 3,
 } as const;
 
+function rateLimited(c: Context, retryAfterSec: number) {
+  c.header("Retry-After", String(retryAfterSec));
+  return c.json({ error: "Too many requests", code: "rate_limited", retryAfterSec }, 429);
+}
+
 async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
   const now = Date.now();
   const windowMs = windowSec * 1000;
@@ -67,13 +74,14 @@ export function createAuthRateLimitMiddleware(redis: Redis) {
       const lockKey = `rl:auth:totp-lock:${ip}`;
       const locked = await redis.get(lockKey);
       if (locked) {
-        return c.json({ error: "Too many requests" }, 429);
+        const ttl = await redis.ttl(lockKey);
+        return rateLimited(c, ttl > 0 ? ttl : RATE_LIMIT_CONFIG.totpLockoutSec);
       }
       const key = `rl:auth:totp:${ip}`;
       const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.totpWindowSec);
       if (n > RATE_LIMIT_CONFIG.totpMax) {
         await redis.set(lockKey, "1", "EX", RATE_LIMIT_CONFIG.totpLockoutSec);
-        return c.json({ error: "Too many requests" }, 429);
+        return rateLimited(c, RATE_LIMIT_CONFIG.totpLockoutSec);
       }
       await next();
       return;
@@ -85,7 +93,8 @@ export function createAuthRateLimitMiddleware(redis: Redis) {
     const maxRequests = isSignIn ? RATE_LIMIT_CONFIG.signInMax : RATE_LIMIT_CONFIG.authGeneralMax;
     const n = await slidingIncrement(redis, key, windowSec);
     if (n > maxRequests) {
-      return c.json({ error: "Too many requests" }, 429);
+      const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, n, maxRequests);
+      return rateLimited(c, retryAfterSec);
     }
     await next();
   });
