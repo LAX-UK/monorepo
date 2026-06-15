@@ -1,15 +1,16 @@
 import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto-bid-panel";
 import type { Lot } from "@auction/types";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const setAutoBidMock = vi.fn();
+const clearAutoBidMock = vi.fn();
 
 vi.mock("@/lib/context/lot-ports", () => ({
   useLotPorts: () => ({
     autoBidWriter: {
       setAutoBid: (...args: unknown[]) => setAutoBidMock(...args),
-      clearAutoBid: vi.fn(),
+      clearAutoBid: (...args: unknown[]) => clearAutoBidMock(...args),
       getAutoBid: vi.fn(),
     },
   }),
@@ -49,6 +50,7 @@ const lot: Lot = {
 describe("LotAutoBidPanel", () => {
   beforeEach(() => {
     setAutoBidMock.mockReset();
+    clearAutoBidMock.mockReset();
     Element.prototype.scrollIntoView = vi.fn();
   });
 
@@ -86,5 +88,34 @@ describe("LotAutoBidPanel", () => {
     const chip = screen.getByRole("button", { name: /\+£10\.00/i });
     fireEvent.click(chip);
     expect(screen.queryByText(/save auto-bid to apply/i)).not.toBeInTheDocument();
+  });
+
+  it("confirms before clearing a saved auto-bid", async () => {
+    clearAutoBidMock.mockResolvedValueOnce({ ok: true });
+    render(
+      <LotAutoBidPanel
+        lot={lot}
+        auctionType="english"
+        currentPrice="100"
+        minNextBid={110}
+        isWinning={false}
+        disabled={false}
+        loginNextPath="/lot/test/lot-1"
+        initialSettings={{
+          maxAutoBidAmount: "500",
+          autoBidStepAmount: "10",
+          isActive: true,
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /clear auto-bid/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/removes your saved max auto-bid/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: /^clear auto-bid$/i }),
+    );
+    await waitFor(() => expect(clearAutoBidMock).toHaveBeenCalledWith("lot-1"));
   });
 });
