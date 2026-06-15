@@ -80,6 +80,11 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
   } as Lot;
 }
 
+function summaryMarketingDetails(lot: Lot): Lot["marketingDetails"] {
+  const estimate = lot.marketingDetails?.estimate;
+  return estimate ? { estimate } : {};
+}
+
 export function mapLotToSummary(lot: Lot): LotSummary {
   return {
     id: lot.id,
@@ -88,9 +93,14 @@ export function mapLotToSummary(lot: Lot): LotSummary {
     title: lot.title,
     status: lot.status,
     currentPrice: lot.currentPrice,
+    startingPrice: lot.startingPrice,
+    auctionType: lot.auctionType,
+    medium: lot.medium,
+    startTime: lot.startTime,
     endTime: lot.endTime,
     images: lot.images,
     categoryIds: lot.categoryIds ?? (lot.categoryId ? [lot.categoryId] : []),
+    marketingDetails: summaryMarketingDetails(lot),
   };
 }
 
