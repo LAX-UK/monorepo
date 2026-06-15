@@ -1,5 +1,6 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
+import { ActingEntityCookieReconciler } from "@/components/legal-entity/acting-entity-cookie-reconciler";
 import { LotPager } from "@/components/marketing/lot-pager";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
@@ -485,7 +486,13 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
           {...(viewItemPriceMinor != null ? { priceMinor: viewItemPriceMinor } : {})}
         />
         <RecentlyViewedTracker lotId={auction.id} href={lotPath(auction)} title={auction.title} />
-        <LotPortsProvider>
+        {session && actingCtx.acting ? (
+          <ActingEntityCookieReconciler
+            serverActingId={actingCtx.acting.id}
+            verbose={sp.acting_debug === "1" || sp.acting_debug === "true"}
+          />
+        ) : null}
+        <LotPortsProvider actingEntityId={actingCtx.acting?.id}>
           {isOnsiteSale && saleBundle && onsiteOverviewVM ? (
             <LotOnsiteMarketingLayout
               auction={auction}
