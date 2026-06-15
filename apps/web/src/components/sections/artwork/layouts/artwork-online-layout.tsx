@@ -5,6 +5,7 @@ import type {
   LotQueueCardVM,
   LotRelatedRailVM,
 } from "@/components/sections/artwork/artwork-view-models";
+import { splitArtworkAccordionBlocks } from "@/components/sections/artwork/artwork-view-models";
 import { AuctionSessionHeader } from "@/components/sections/artwork/online/auction-session-header";
 import { BidPanelTabs } from "@/components/sections/artwork/online/bid-panel-tabs";
 import { LatencyBadgeContainer } from "@/components/sections/artwork/online/latency-badge-container";
@@ -14,7 +15,10 @@ import { shouldShowLotQueueSidebar } from "@/components/sections/artwork/online/
 import { LotSessionStatePill } from "@/components/sections/artwork/online/lot-session-state-pill";
 import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
-import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
+import {
+  LotDetailsSection,
+  LotMarketingAccordion,
+} from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { Lot, Sale } from "@auction/types";
@@ -46,8 +50,6 @@ type Props = {
   bidPanel: ReactNode;
   /** Optional strip above the bid panel (e.g. condition report request). */
   bidPanelTop?: ReactNode;
-  /** Optional saleroom participation hub for hybrid sales (below bid panel column). */
-  participationSection?: ReactNode;
   /** When true, show the Video Stream tab in the bid panel. */
   hasVideoStream?: boolean;
   streamUrl?: string | null;
@@ -74,7 +76,6 @@ export function ArtworkOnlineLayout({
   followSlot,
   bidPanel,
   bidPanelTop,
-  participationSection,
   hasVideoStream = false,
   streamUrl,
   streamSaleTitle,
@@ -91,6 +92,10 @@ export function ArtworkOnlineLayout({
   };
 
   const showQueue = shouldShowLotQueueSidebar(queueUpNext, queueRest, isSaleQueueLoading);
+  const isHybridSale = saleForLifecycle?.deliveryMode === "hybrid";
+  const { lotDetails: hybridLotDetailsBlock, accordionBlocks: hybridAccordionBlocks } = isHybridSale
+    ? splitArtworkAccordionBlocks(marketingAccordionBlocks)
+    : { lotDetails: null, accordionBlocks: marketingAccordionBlocks };
 
   return (
     <section aria-labelledby="lot-heading" className="bg-page-bg dark:bg-background">
@@ -162,7 +167,11 @@ export function ArtworkOnlineLayout({
               }
               hasVideoStream={hasVideoStream && Boolean(streamUrl && streamSaleTitle)}
             />
-            {participationSection ? <div className="mt-6">{participationSection}</div> : null}
+            {isHybridSale && hybridLotDetailsBlock ? (
+              <div className="mt-6">
+                <LotDetailsSection block={hybridLotDetailsBlock} compact />
+              </div>
+            ) : null}
             <div className="mt-6">
               <LotActionsRow
                 followSlot={followSlot}
@@ -184,7 +193,10 @@ export function ArtworkOnlineLayout({
             showQueue ? "lg:max-w-[786px]" : "lg:max-w-[900px]",
           )}
         >
-          <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
+          <LotMarketingAccordion
+            blocks={isHybridSale ? hybridAccordionBlocks : marketingAccordionBlocks}
+            variant={isHybridSale ? "default" : "artworkCenter"}
+          />
         </div>
 
         <LotMoreFromRail
