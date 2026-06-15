@@ -22,9 +22,15 @@ export type LotSummary = {
   title: string;
   status: LotStatus;
   currentPrice: string;
+  startingPrice: string;
+  auctionType: LotAuctionType;
+  medium: string | null;
+  startTime: Date;
   endTime: Date;
   images: string[];
   categoryIds?: string[];
+  /** Estimate only on list rows; full marketing JSON lives on lot detail. */
+  marketingDetails: LotMarketingDetails;
 };
 
 /** Optional marketing / catalog enrichment (stored as JSON on `lot`). */
