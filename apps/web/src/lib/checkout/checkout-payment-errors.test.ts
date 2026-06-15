@@ -32,4 +32,8 @@ describe("manualReviewReasonCopy", () => {
   it("describes high value review", () => {
     expect(manualReviewReasonCopy("high_value")).toContain("finance review");
   });
+
+  it("describes finance release after compliance clears", () => {
+    expect(manualReviewReasonCopy("finance_release_required")).toContain("settlements for release");
+  });
 });

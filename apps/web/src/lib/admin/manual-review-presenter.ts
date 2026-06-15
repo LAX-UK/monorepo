@@ -15,6 +15,8 @@ export function manualReviewReasonLabel(
       return "AML hold";
     case "source_of_funds_required":
       return "Source of funds required";
+    case "finance_release_required":
+      return "Awaiting finance release";
     default:
       return reason ? reason.replaceAll("_", " ") : "Manual review";
   }
