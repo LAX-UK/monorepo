@@ -384,6 +384,7 @@ describe("BidService.placeBid", () => {
       expect(result.error).toBeInstanceOf(BidError);
       expect(result.error.message).toBe("Seller cannot bid on own lot");
       expect(result.error.status).toBe(400);
+      expect(result.error.code).toBe("seller_cannot_bid");
     }
     expect(antiShillingGuard.violatesAntiShilling).toHaveBeenCalledWith({
       bidderUserId: "org-member",

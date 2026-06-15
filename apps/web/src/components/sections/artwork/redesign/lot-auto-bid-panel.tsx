@@ -1,6 +1,5 @@
 "use client";
 
-import { BidErrorView } from "@/components/bid/bid-error-view";
 import { UnderlineInput } from "@/components/ui/input";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { AutoBidPlacedBid, AutoBidSettings } from "@/lib/data/contracts";
@@ -25,6 +24,8 @@ type Props = {
   approvedBidLimit?: number | null;
   onDraftChange?: (draft: { maxAuto: string; step: string; dirty: boolean }) => void;
   onSettingsSaved?: (settings: AutoBidSettings | null, placedBid?: AutoBidPlacedBid) => void;
+  onFeedbackError?: (error: ReturnType<typeof clientBidError> | null) => void;
+  kycFeedback?: import("@/lib/data/dto/dashboard-dtos").KycUserFeedbackDto | null;
   biddingLive?: boolean;
   biddingAllowed?: boolean;
   realtimeHealthy?: boolean;
@@ -74,6 +75,8 @@ export function LotAutoBidPanel({
   approvedBidLimit = null,
   onDraftChange,
   onSettingsSaved,
+  onFeedbackError,
+  kycFeedback = null,
   biddingLive = false,
   biddingAllowed = true,
   realtimeHealthy = true,
@@ -100,9 +103,21 @@ export function LotAutoBidPanel({
   const [userEdited, setUserEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [error, setError] = useState<ReturnType<typeof clientBidError> | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const saveIdempotencyKeyRef = useRef<string | null>(null);
+
+  const reportError = useCallback(
+    (presentation: ReturnType<typeof clientBidError> | null, scrollToFeedback = false) => {
+      onFeedbackError?.(presentation);
+      if (presentation && scrollToFeedback) {
+        document.getElementById("lot-bid-entry")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    },
+    [onFeedbackError],
+  );
 
   useEffect(() => {
     setActiveSettings(initialSettings);
@@ -123,22 +138,35 @@ export function LotAutoBidPanel({
     [onDraftChange],
   );
 
+  const baselineStep = activeSettings?.autoBidStepAmount ?? defaultStep.toFixed(2);
+  const baselineMax = activeSettings?.maxAutoBidAmount ?? "";
+
+  const markDraft = useCallback(
+    (nextMax: string, nextStep: string) => {
+      const dirty = nextMax !== baselineMax || nextStep !== baselineStep;
+      setUserEdited(dirty);
+      emitDraft(nextMax, nextStep, dirty);
+    },
+    [baselineMax, baselineStep, emitDraft],
+  );
+
   const onMaxChange = useCallback(
     (value: string) => {
-      setUserEdited(true);
       setMaxAuto(value);
-      emitDraft(value, step, true);
+      markDraft(value, step);
     },
-    [emitDraft, step],
+    [markDraft, step],
   );
 
   const onStepSelect = useCallback(
     (value: string) => {
-      setUserEdited(true);
+      if (Math.abs(Number.parseFloat(value) - Number.parseFloat(step)) < 1e-9) {
+        return;
+      }
       setStep(value);
-      emitDraft(maxAuto, value, true);
+      markDraft(maxAuto, value);
     },
-    [emitDraft, maxAuto],
+    [markDraft, maxAuto, step],
   );
 
   const maxNumeric = Number.parseFloat(maxAuto);
@@ -183,17 +211,17 @@ export function LotAutoBidPanel({
   }, [allowedSteps, approvedBidLimit, lot.autoBidEnabled, maxNumeric, minNextBid, stepNumeric]);
 
   const onSave = useCallback(async () => {
-    setError(null);
+    reportError(null);
     setSuccess(null);
     const msg = validate();
     if (msg) {
-      setError(clientBidError(msg));
+      reportError(clientBidError(msg));
       return;
     }
     if (biddingLive && biddingAllowed && !realtimeHealthy && refreshBeforeSave) {
       const refreshed = await refreshBeforeSave();
       if (!refreshed) {
-        setError(
+        reportError(
           clientBidError("Could not refresh live prices. Check your connection and try again."),
         );
         return;
@@ -212,17 +240,21 @@ export function LotAutoBidPanel({
         idempotencyKey: saveIdempotencyKeyRef.current,
       });
     } catch {
-      setError(clientBidError("Could not reach the server. Check your connection and try again."));
+      reportError(
+        clientBidError("Could not reach the server. Check your connection and try again."),
+      );
       return;
     } finally {
       setSaving(false);
     }
     if (!result.ok) {
-      setError(
+      reportError(
         mapBidError(result.error, {
           verifyReturnPath: loginNextPath,
           code: result.code ?? null,
+          kycFeedback,
         }),
+        true,
       );
       return;
     }
@@ -248,23 +280,34 @@ export function LotAutoBidPanel({
     step,
     stepNumeric,
     validate,
+    reportError,
+    kycFeedback,
   ]);
 
   const onClear = useCallback(async () => {
-    setError(null);
+    reportError(null);
     setSuccess(null);
     setClearing(true);
     let result: Awaited<ReturnType<typeof autoBidWriter.clearAutoBid>>;
     try {
       result = await autoBidWriter.clearAutoBid(lot.id);
     } catch {
-      setError(clientBidError("Could not reach the server. Check your connection and try again."));
+      reportError(
+        clientBidError("Could not reach the server. Check your connection and try again."),
+      );
       return;
     } finally {
       setClearing(false);
     }
     if (!result.ok) {
-      setError(clientBidError(result.error));
+      reportError(
+        mapBidError(result.error, {
+          verifyReturnPath: loginNextPath,
+          code: result.code ?? null,
+          kycFeedback,
+        }),
+        true,
+      );
       return;
     }
     setActiveSettings(null);
@@ -274,7 +317,16 @@ export function LotAutoBidPanel({
     emitDraft("", defaultStep.toFixed(2), false);
     setSuccess("Auto-bid cleared.");
     onSettingsSaved?.(null);
-  }, [autoBidWriter, defaultStep, emitDraft, lot.id, onSettingsSaved]);
+  }, [
+    autoBidWriter,
+    defaultStep,
+    emitDraft,
+    kycFeedback,
+    loginNextPath,
+    lot.id,
+    onSettingsSaved,
+    reportError,
+  ]);
 
   if (!ELIGIBLE.includes(auctionType)) return null;
 
@@ -326,7 +378,7 @@ export function LotAutoBidPanel({
 
       {isDirty ? (
         <p className="mt-2 font-label text-[10px] uppercase tracking-wider text-amber-800 dark:text-amber-200">
-          Unsaved changes
+          You&apos;ve changed your auto-bid — press <strong>Save auto-bid</strong> to apply.
         </p>
       ) : null}
 
@@ -378,6 +430,13 @@ export function LotAutoBidPanel({
               );
             })}
           </div>
+          {Number.isFinite(stepNumeric) ? (
+            <p className="mt-2 font-body text-sm text-on-surface">
+              Raising by{" "}
+              <span className="font-semibold">{formatMoney(stepNumeric.toFixed(2))}</span> each
+              round.
+            </p>
+          ) : null}
         </div>
 
         <p className="font-body text-sm text-on-surface-variant">
@@ -390,7 +449,6 @@ export function LotAutoBidPanel({
       </div>
 
       {success ? <output className="mt-3 block text-sm text-primary">{success}</output> : null}
-      <BidErrorView error={error} />
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button

@@ -58,7 +58,10 @@ describe("EnglishAuctionStrategy", () => {
     const a = mkLot({ sellerId: "seller-1", currentPrice: "50.00" });
     const r = strategy.validateBid(a, { bidderId: "seller-1", amount: 100 });
     expect(r.isErr()).toBe(true);
-    if (r.isErr()) expect(r.error.message).toContain("Seller cannot bid");
+    if (r.isErr()) {
+      expect(r.error.message).toContain("Seller cannot bid");
+      expect(r.error.code).toBe("seller_cannot_bid");
+    }
   });
 
   it("getNextPrice is max of current price and bid amount", () => {

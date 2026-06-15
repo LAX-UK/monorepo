@@ -16,6 +16,7 @@ type Props = {
   loginNextPath: string;
   onIncreaseBid?: () => void;
   onRaiseAutoBid?: () => void;
+  supportsAutoBid?: boolean;
   className?: string;
 };
 
@@ -33,6 +34,7 @@ export function LotBidPositionSummary({
   loginNextPath,
   onIncreaseBid,
   onRaiseAutoBid,
+  supportsAutoBid = false,
   className,
 }: Props) {
   const next = encodeURIComponent(loginNextPath);
@@ -116,6 +118,17 @@ export function LotBidPositionSummary({
           <p className="mt-1">Your bid is currently the high bid on this lot.</p>
           {position.autoBid ? (
             <AutoBidLine max={position.autoBid.max} step={position.autoBid.step} />
+          ) : (
+            <p className="mt-1 text-sm text-on-surface-variant">
+              You don&apos;t need to bid again manually — set or raise auto-bid to defend your lead.
+            </p>
+          )}
+          {supportsAutoBid && onRaiseAutoBid ? (
+            <div className="mt-3">
+              <Button type="button" size="sm" variant="default" onClick={onRaiseAutoBid}>
+                {position.autoBid ? "Raise auto-bid max" : "Set auto-bid to defend"}
+              </Button>
+            </div>
           ) : null}
         </>,
       );
@@ -133,6 +146,13 @@ export function LotBidPositionSummary({
             your max.
           </p>
           <AutoBidLine max={position.autoBid.max} step={position.autoBid.step} />
+          {onRaiseAutoBid ? (
+            <div className="mt-3">
+              <Button type="button" size="sm" variant="outline" onClick={onRaiseAutoBid}>
+                Raise auto-bid max
+              </Button>
+            </div>
+          ) : null}
         </>,
       );
 

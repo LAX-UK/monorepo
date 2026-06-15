@@ -25,6 +25,17 @@ describe("deriveLotBidPosition", () => {
     ).toEqual({ kind: "owner" });
   });
 
+  it("returns owner when isOwnLot is true", () => {
+    expect(
+      deriveLotBidPosition({
+        ...base,
+        sessionUserId: "buyer-1",
+        sellerId: null,
+        isOwnLot: true,
+      }),
+    ).toEqual({ kind: "owner" });
+  });
+
   it("returns notSignedIn without session", () => {
     expect(deriveLotBidPosition({ ...base, sessionUserId: null })).toEqual({
       kind: "notSignedIn",

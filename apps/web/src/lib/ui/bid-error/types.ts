@@ -1,11 +1,15 @@
 export type BidErrorSeverity = "error" | "info" | "warning";
 
+export type BidErrorActionKey = "switch-to-auto-bid";
+
 export type BidErrorPresentation = {
   title?: string;
   message: string;
   severity: BidErrorSeverity;
   actionHref?: string;
   actionLabel?: string;
+  /** In-page action resolved by the lot bid panel (not a navigation link). */
+  actionKey?: BidErrorActionKey;
 };
 
 export type MapBidErrorOptions = {
