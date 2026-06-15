@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -46,6 +47,8 @@ type Props = {
   telephoneBookings?: AdminTelephoneBookingRow[];
   paddleRoster?: AdminPaddleRosterEntry[];
   error?: string | null;
+  registrationsHref?: string;
+  paddleRosterEmpty?: boolean;
 };
 
 export function SaleroomClerkConsole({
@@ -56,6 +59,8 @@ export function SaleroomClerkConsole({
   telephoneBookings = [],
   paddleRoster = [],
   error,
+  registrationsHref,
+  paddleRosterEmpty = false,
 }: Props) {
   const initialSession = useMemo(() => mapAdminSaleroomSnapshotToSessionStatus(initial), [initial]);
   const { session, liveFeed } = useSaleroomSessionState({
@@ -77,6 +82,18 @@ export function SaleroomClerkConsole({
 
   return (
     <div className="space-y-8">
+      {paddleRosterEmpty && registrationsHref ? (
+        <Alert>
+          <AlertTitle>Check in bidders before going live</AlertTitle>
+          <AlertDescription>
+            No paddles assigned yet.{" "}
+            <Link href={registrationsHref} className="font-medium text-link underline">
+              Check in bidders
+            </Link>{" "}
+            so clerks can place in-room bids.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {error ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load saleroom state</AlertTitle>

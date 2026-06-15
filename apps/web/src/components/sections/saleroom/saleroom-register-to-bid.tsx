@@ -116,9 +116,14 @@ export function SaleroomRegisterToBid({
       );
     }
     return (
-      <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
-        <Link href="/onboarding/organisation">Set up bidding profile</Link>
-      </Button>
+      <p className="max-w-sm font-body text-xs text-on-surface-variant">
+        Bidding online? Sign in and verify your identity — no extra registration needed for private
+        collectors. Buyer agents can{" "}
+        <Link href="/onboarding/organisation" className="text-link underline">
+          set up an organisation profile
+        </Link>{" "}
+        to register here.
+      </p>
     );
   }
 

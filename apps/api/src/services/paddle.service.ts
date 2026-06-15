@@ -222,7 +222,9 @@ export class PaddleService {
     });
   }
 
-  private async invalidateRosterCache(saleId: string): Promise<void> {
+  /** Invalidate the cached paddle roster for a sale. Public so other flows
+   * that mutate paddles (e.g. staff saleroom check-in) can keep it consistent. */
+  async invalidateRosterCache(saleId: string): Promise<void> {
     if (this.cache) {
       await this.cache.del(`paddle:roster:${saleId}`);
     }

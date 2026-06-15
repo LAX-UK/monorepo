@@ -60,6 +60,8 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         telephoneBookings={telephoneBookings}
         paddleRoster={paddleRoster}
         error={error ?? saleroomLoadError}
+        registrationsHref={`/admin/sales/${saleId}/registrations#check-in`}
+        paddleRosterEmpty={paddleRoster.length === 0}
       />
     </AdminEntityDetailShell>
   );

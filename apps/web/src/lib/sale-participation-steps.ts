@@ -69,11 +69,18 @@ export function getOnsitePreviewStepDescription(previewStart: Date | null): stri
 }
 
 export function getOnsitePaddleStepDescription(): string {
-  const attend = getParticipationStepCopy("onsite", "attendLive");
-  return (
-    attend?.description ??
-    "Attend in person at the saleroom desk before start to register your photo ID and receive your physical bidding paddle."
-  );
+  return "Visit the saleroom desk on arrival for paddle check-in. You must already have an account and completed identity verification.";
+}
+
+export function getHybridOnlineStepDescription(kycApproved: boolean): string {
+  if (!kycApproved) {
+    return "Sign in and complete identity verification to bid online on this hybrid sale.";
+  }
+  return "Your identity is verified — you can bid online on lots with no extra sale registration.";
+}
+
+export function getHybridInRoomStepDescription(): string {
+  return "Attending in person? Visit the saleroom desk for paddle check-in before the live session.";
 }
 
 export function getOnsiteAbsenteeStepDescription(): string {

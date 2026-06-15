@@ -129,6 +129,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "owner" }] },
+      { kind: "limit", rows: [] },
     ]);
     const svc = new BidEligibilityService(db);
     const r = await svc.assertCanPlaceBid({
@@ -144,6 +145,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "admin" }] },
+      { kind: "limit", rows: [] },
     ]);
     const svc = new BidEligibilityService(db);
     const r = await svc.assertCanPlaceBid({
@@ -159,6 +161,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "staff" }] },
+      { kind: "limit", rows: [] },
     ]);
     const svc = new BidEligibilityService(db);
     const r = await svc.assertCanPlaceBid({
@@ -306,6 +309,41 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     if (r.isErr()) {
       expect(r.error.code).toBe("bid_limit_exceeded");
     }
+  });
+
+  it("enforces approved registration bid limit for owner after staff check-in", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [{ role: "owner" }] },
+      { kind: "limit", rows: [{ status: "approved", bidLimit: "100.00" }] },
+    ]);
+    const svc = new BidEligibilityService(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 200,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("bid_limit_exceeded");
+    }
+  });
+
+  it("allows owner with approved registration when under limit", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [{ role: "owner" }] },
+      { kind: "limit", rows: [{ status: "approved", bidLimit: "500.00" }] },
+    ]);
+    const svc = new BidEligibilityService(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+    });
+    expect(r.isOk()).toBe(true);
   });
 });
 

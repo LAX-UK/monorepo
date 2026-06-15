@@ -1,8 +1,10 @@
-import type { LegalEntitySummary } from "@auction/types";
+/** Re-export shared sale registration policy from validators (single source of truth). */
+export {
+  memberEligibleForStaffInRoomCheckIn,
+  memberRequiresSaleRegistration,
+  memberRequiresWebSaleRegistration,
+  saleAllowsInRoomCheckIn,
+  shouldEnforceRegistrationBidLimit,
+} from "@auction/validators";
 
-export type EntityMemberRole = LegalEntitySummary["role"];
-
-/** Single rule reused by eligibility, registration request, and UI. */
-export function memberRequiresSaleRegistration(role: EntityMemberRole | undefined | null): boolean {
-  return role === "buyer_agent";
-}
+export type { LegalEntityMemberRole as EntityMemberRole } from "@auction/types";
