@@ -1,3 +1,5 @@
+import type { ManualReviewReason, PaymentStatus } from "@auction/types";
+
 /** Maps API payment/checkout error codes to buyer-facing copy. */
 export function checkoutPaymentErrorMessage(message: string, code?: string | null): string {
   switch (code) {
@@ -37,6 +39,7 @@ export function manualReviewReasonCopy(
     | "seller_archived_and_high_value"
     | "aml_hold"
     | "source_of_funds_required"
+    | "finance_release_required"
     | null
     | undefined,
 ): string {
@@ -51,7 +54,39 @@ export function manualReviewReasonCopy(
       return "This purchase is on hold while we complete a routine compliance review. Settlement cannot proceed until this is resolved. If you have questions, contact support using the details below — please do not send unsolicited documents.";
     case "source_of_funds_required":
       return "Before settlement we need to verify the source of funds for this purchase. Our compliance team will contact you with secure instructions. Typical documents include recent bank statements, proof of sale proceeds, or inheritance/ gift documentation where applicable.";
+    case "finance_release_required":
+      return "Your invoice is with settlements for release. You can complete Stripe checkout once finance has cleared it for payment — refresh this page after you hear from the team.";
     default:
       return "Your payment record was created. Finance will issue checkout or contact you with payment instructions.";
   }
+}
+
+/** Buyer-facing manual-review reason for checkout when server omits a specific reason. */
+export function resolveCheckoutManualReviewDisplayReason(input: {
+  submitted: boolean;
+  submittedReviewReason: ManualReviewReason | null;
+  openPaymentStatus: PaymentStatus | null | undefined;
+  openPaymentManualReviewReason: ManualReviewReason | null | undefined;
+  preflightComplianceGate: "clear" | "aml_hold" | "source_of_funds_required" | null | undefined;
+}): ManualReviewReason | null {
+  if (input.submitted && input.submittedReviewReason) {
+    return input.submittedReviewReason;
+  }
+  if (input.submitted) return null;
+  if (input.openPaymentStatus === "requires_manual_review") {
+    return input.openPaymentManualReviewReason ?? "finance_release_required";
+  }
+  if (
+    input.openPaymentManualReviewReason === "aml_hold" ||
+    input.openPaymentManualReviewReason === "source_of_funds_required"
+  ) {
+    return input.openPaymentManualReviewReason;
+  }
+  if (
+    input.preflightComplianceGate === "aml_hold" ||
+    input.preflightComplianceGate === "source_of_funds_required"
+  ) {
+    return input.preflightComplianceGate;
+  }
+  return null;
 }

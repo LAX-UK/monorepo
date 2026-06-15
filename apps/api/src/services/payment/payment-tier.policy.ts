@@ -8,7 +8,8 @@ export type ManualReviewReason =
   | "high_value"
   | "seller_archived_and_high_value"
   | "aml_hold"
-  | "source_of_funds_required";
+  | "source_of_funds_required"
+  | "finance_release_required";
 
 export type PaymentTierLimits = {
   cardMaxPence: number;
