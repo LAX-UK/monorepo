@@ -4,7 +4,10 @@ import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "./types";
 export const sellerOwnLotPolicy: BidPolicy = {
   id: "seller-own-lot",
   evaluate(ctx: BidPolicyContext): BidPolicyDecision {
-    if (!ctx.user || ctx.user.id !== ctx.lot.sellerId) {
+    const legacySellerMatch = Boolean(
+      ctx.user && ctx.lot.sellerId && ctx.user.id === ctx.lot.sellerId,
+    );
+    if (!ctx.isOwnLot && !legacySellerMatch) {
       return { kind: "allow" };
     }
     return {

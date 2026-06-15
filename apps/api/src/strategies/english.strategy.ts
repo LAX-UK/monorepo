@@ -27,7 +27,7 @@ export class EnglishAuctionStrategy implements ILotStrategy {
         ? bid.buyerLegalEntityId === lot.sellerLegalEntityId
         : bid.bidderId === lot.sellerId
     ) {
-      return err(new BidError("Seller cannot bid on own lot"));
+      return err(new BidError("Seller cannot bid on own lot", 400, "seller_cannot_bid"));
     }
     return ok(undefined);
   }

@@ -97,9 +97,22 @@ export function createHttpAutoBidWriter(actingEntityId?: string): AutoBidWriter 
     },
     async clearAutoBid(lotId: string) {
       const res = await client.lots[":id"]["auto-bid"].$delete({ param: { id: lotId } });
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+        summary?: {
+          feedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
+        };
+      };
       if (!res.ok) {
-        return { ok: false, error: json.error ?? "Could not clear auto-bid", status: res.status };
+        notifyAdminCannotBuyIfNeeded(json.error, res.status);
+        return {
+          ok: false,
+          error: json.error ?? "Could not clear auto-bid",
+          status: res.status,
+          code: json.code ?? null,
+          ...(json.summary?.feedback ? { kycFeedback: json.summary.feedback } : {}),
+        };
       }
       return { ok: true };
     },

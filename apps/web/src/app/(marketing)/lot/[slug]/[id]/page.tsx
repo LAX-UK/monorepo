@@ -25,6 +25,7 @@ import { OnsiteParticipationHub } from "@/components/sections/artwork/onsite/ons
 import { mapSaleToOverviewVM } from "@/components/sections/saleroom/mappers";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
+import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
 import {
   isPublicCatalogLot,
@@ -368,6 +369,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     kycFeedback: kycApprovedForBid ? null : (kycSummary?.feedback ?? null),
   });
 
+  const isOwnLot = computeIsOwnLot(auction, session, actingCtx.acting);
+  const actingLegalEntityId = actingCtx.acting?.id ?? null;
+
   const onlineBidPanel = (
     <OnlineBidsView
       lotId={auction.id}
@@ -394,6 +398,8 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
         saleRegistrationPath={parentSale ? salePath(parentSale) : null}
         orgModuleEnabled={orgModuleEnabled}
         saleForLifecycle={saleLifecyclePick}
+        isOwnLot={isOwnLot}
+        actingLegalEntityId={actingLegalEntityId}
       />
     </OnlineBidsView>
   );

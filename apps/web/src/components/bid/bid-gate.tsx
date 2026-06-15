@@ -12,6 +12,8 @@ type Props = {
   lot: Lot;
   lotStatus: Lot["status"];
   loginNextPath: string;
+  isOwnLot?: boolean;
+  actingLegalEntityId?: string | null;
   kycBidGate?: BidPolicyContext["kycBidGate"];
   saleRegistrationBidGate?: BidPolicyContext["saleRegistrationBidGate"];
   /** Aligns gate copy with `classifyLotLifecycle` (preview, scheduled, terminal, etc.). */
@@ -26,6 +28,8 @@ export function BidGate({
   lot,
   lotStatus,
   loginNextPath,
+  isOwnLot = false,
+  actingLegalEntityId = null,
   kycBidGate = null,
   saleRegistrationBidGate = null,
   biddingLifecycle = null,
@@ -39,6 +43,8 @@ export function BidGate({
       lot,
       lotStatus,
       loginNextPath,
+      isOwnLot,
+      actingLegalEntityId,
       kycBidGate,
       saleRegistrationBidGate,
       biddingLifecycle,
@@ -49,6 +55,8 @@ export function BidGate({
       lot,
       lotStatus,
       loginNextPath,
+      isOwnLot,
+      actingLegalEntityId,
       kycBidGate,
       saleRegistrationBidGate,
       biddingLifecycle,

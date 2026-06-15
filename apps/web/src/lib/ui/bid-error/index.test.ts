@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 import { mapBidError } from "./index";
 
 describe("mapBidError", () => {
-  it("maps seller own lot message to info", () => {
+  it("maps seller own lot message to warning", () => {
     const r = mapBidError("Seller cannot bid on own lot");
-    expect(r.severity).toBe("info");
+    expect(r.severity).toBe("warning");
     expect(r.message).toContain("seller");
+  });
+
+  it("maps seller_cannot_bid code", () => {
+    const r = mapBidError("seller_cannot_bid", { code: "seller_cannot_bid" });
+    expect(r.severity).toBe("warning");
+    expect(r.title).toBe("Your listing");
   });
 
   it("maps staff / role gate codes", () => {

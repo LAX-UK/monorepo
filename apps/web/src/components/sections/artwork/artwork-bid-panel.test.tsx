@@ -388,4 +388,42 @@ describe("ArtworkBidPanel", () => {
     expect(screen.getByText(/approved limit for this sale is/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /place bid/i })).not.toBeInTheDocument();
   });
+
+  it("hides auto-bid controls when isOwnLot is true", () => {
+    renderArtworkBidPanel({
+      auction: {
+        ...lot("other-seller"),
+        sellerLegalEntityId: "le-seller",
+      },
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      isOwnLot: true,
+    });
+    expect(screen.queryByText(/save auto-bid/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /place one bid now/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/your listing/i).length).toBeGreaterThan(0);
+  });
+
+  it("blocks manual review when user is already leading", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [
+        {
+          id: "b1",
+          bidderId: "buyer-1",
+          amount: "110",
+          at: Date.now(),
+        },
+      ],
+      initialLeadingBidderId: "buyer-1",
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
+    selectManualBidMode();
+    expect(screen.getAllByText(/already the highest bidder/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /review bid/i })).toBeDisabled();
+  });
 });
