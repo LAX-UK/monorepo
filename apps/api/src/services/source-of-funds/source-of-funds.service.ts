@@ -44,6 +44,10 @@ function majorToPence(major: string): number {
   return Math.round(Number.parseFloat(major) * 100);
 }
 
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
+}
+
 /**
  * Source-of-Funds service (CDD Section 6). Implements the settlement gate: a
  * buyer crossing the SoF threshold — by single transaction or aggregated linked
@@ -100,8 +104,11 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
    * payment row exists.
    */
   async hasPendingCaseForUser(buyerUserId: string): Promise<boolean> {
-    const latest = await this.repo.findLatestForUser(buyerUserId);
-    return latest?.status === "pending";
+    // Detect *any* open pending case, not just the most recent row: a pending
+    // review can sit behind a newer approved/rejected case, and the settlement
+    // gate must keep blocking while it is unresolved.
+    const pending = await this.repo.findPendingForUser(buyerUserId);
+    return pending !== null;
   }
 
   /**
@@ -280,24 +287,38 @@ export class SourceOfFundsService implements ISourceOfFundsGate {
     trigger: SourceOfFundsTrigger,
   ): Promise<SourceOfFundsCase> {
     const run = async (conn?: Database): Promise<SourceOfFundsCase> => {
+      // Reuse any open pending case for this buyer — checking only the most
+      // recent row let an older pending case slip through whenever a newer
+      // approved/terminal case existed (or rows tied on created_at), producing
+      // duplicate pending cases and duplicate review tasks.
+      const pending = await this.repo.findPendingForUser(userId, conn);
+      if (pending) return pending;
       const latest = await this.repo.findLatestForUser(userId, conn);
-      // A pending case is already open; do not duplicate review work.
-      if (latest && latest.status === "pending") return latest;
       // A rejected case keeps blocking settlement; do NOT reopen automatically on
       // checkout retries (avoids unbounded case/task churn). Re-opening is a
       // deliberate compliance action.
       if (latest && latest.status === "rejected") return latest;
 
-      const created = await this.repo.create(
-        {
-          userId,
-          trigger,
-          thresholdAmount: this.config.thresholdAmount.toFixed(2),
-          exposureAmount: penceToMajor(exposurePence),
-          currency: this.config.currency,
-        },
-        conn,
-      );
+      let created: SourceOfFundsCase;
+      try {
+        created = await this.repo.create(
+          {
+            userId,
+            trigger,
+            thresholdAmount: this.config.thresholdAmount.toFixed(2),
+            exposureAmount: penceToMajor(exposurePence),
+            currency: this.config.currency,
+          },
+          conn,
+        );
+      } catch (err) {
+        // Partial unique index race: another checkout opened the pending case concurrently.
+        if (isUniqueViolation(err)) {
+          const raced = await this.repo.findPendingForUser(userId, conn);
+          if (raced) return raced;
+        }
+        throw err;
+      }
 
       if (conn && this.events) {
         await this.events.publish(conn, {

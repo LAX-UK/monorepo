@@ -56,6 +56,10 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
       const approved = state.cases.filter((c) => c.userId === userId && c.status === "approved");
       return approved[approved.length - 1] ?? null;
     },
+    async findPendingForUser(userId) {
+      const pending = state.cases.filter((c) => c.userId === userId && c.status === "pending");
+      return pending[0] ?? null;
+    },
     async listByStatus(status: SourceOfFundsStatus) {
       return state.cases.filter((c) => c.status === status);
     },
@@ -166,6 +170,29 @@ describe("SourceOfFundsService.hasPendingCaseForUser", () => {
     expect(await svc.hasPendingCaseForUser("u1")).toBe(false);
   });
 
+  it("is true when a pending case sits behind a newer approved case", async () => {
+    const state: FakeState = {
+      cases: [
+        makeCase({
+          id: "sof_pending",
+          userId: "u1",
+          status: "pending",
+          createdAt: new Date("2026-01-01T00:00:00Z"),
+        }),
+        makeCase({
+          id: "sof_approved",
+          userId: "u1",
+          status: "approved",
+          reviewedAt: new Date("2026-02-01T00:00:00Z"),
+          createdAt: new Date("2026-02-01T00:00:00Z"),
+        }),
+      ],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.hasPendingCaseForUser("u1")).toBe(true);
+  });
+
   it("does not open a case as a side effect", async () => {
     const state: FakeState = { cases: [], linkedPence: 0 };
     const svc = new SourceOfFundsService(fakeRepo(state), config);
@@ -206,6 +233,71 @@ describe("SourceOfFundsService.requiresSourceOfFunds", () => {
     await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 });
     await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 });
     expect(state.cases).toHaveLength(1);
+  });
+
+  it("reuses an open pending case behind a newer (no-longer-valid) approved case", async () => {
+    // Regression: a pending case can sit behind a newer terminal case (or rows
+    // tied on created_at). Checking only the latest row created duplicate
+    // pending cases — and duplicate review tasks — on every checkout retry.
+    const state: FakeState = {
+      cases: [
+        makeCase({
+          id: "sof_pending",
+          userId: "u1",
+          status: "pending",
+          exposureAmount: "10000.00",
+          createdAt: new Date("2026-01-01T00:00:00Z"),
+        }),
+        makeCase({
+          id: "sof_approved",
+          userId: "u1",
+          status: "approved",
+          // Small approved exposure → no longer valid once exposure grows.
+          exposureAmount: "9000.00",
+          reviewedByUserId: "mlro_1",
+          reviewedAt: new Date("2026-02-01T00:00:00Z"),
+          createdAt: new Date("2026-02-01T00:00:00Z"),
+        }),
+      ],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    // Exposure (90000) ≥ approved (9000) + threshold (9000) → approval invalid,
+    // so the gate must (re)open review — but reuse the existing pending case.
+    expect(await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 9_000_000 })).toBe(
+      true,
+    );
+    expect(state.cases).toHaveLength(2);
+    expect(state.cases.filter((c) => c.status === "pending")).toHaveLength(1);
+  });
+
+  it("reuses the pending case when create races on the unique index", async () => {
+    const pendingCase = makeCase({
+      id: "sof_pending",
+      userId: "u1",
+      status: "pending",
+      exposureAmount: "9000.00",
+    });
+    const state: FakeState = { cases: [pendingCase], linkedPence: 0 };
+    const base = fakeRepo(state);
+    let pendingReads = 0;
+    const repo: ISourceOfFundsRepository = {
+      ...base,
+      async findPendingForUser(userId, conn) {
+        pendingReads += 1;
+        if (pendingReads === 1) return null;
+        return base.findPendingForUser(userId, conn);
+      },
+      async create() {
+        throw Object.assign(new Error("duplicate key value violates unique constraint"), {
+          code: "23505",
+        });
+      },
+    };
+    const svc = new SourceOfFundsService(repo, config);
+    expect(await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(true);
+    expect(state.cases).toHaveLength(1);
+    expect(pendingReads).toBeGreaterThanOrEqual(2);
   });
 
   it("clears while a valid approved case is on file", async () => {

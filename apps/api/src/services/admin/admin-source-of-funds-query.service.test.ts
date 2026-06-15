@@ -77,6 +77,7 @@ describe("AdminSourceOfFundsQueryService", () => {
       findLatestForUser: vi.fn(),
       findById: vi.fn(),
       findLatestApprovedForUser: vi.fn(),
+      findPendingForUser: vi.fn(),
       listByStatus: vi.fn(),
       countByStatus: vi.fn(),
       create: vi.fn(),
