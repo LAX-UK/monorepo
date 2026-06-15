@@ -233,7 +233,7 @@ export class BidService implements IBidPlacer {
               lot: lotRow,
             }))
           ) {
-            throw new BidError("Seller cannot bid on own lot", 400);
+            throw new BidError("Seller cannot bid on own lot", 400, "seller_cannot_bid");
           }
 
           const prevWinning = await bids.findWinningBid(lotId);

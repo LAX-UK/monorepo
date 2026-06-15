@@ -24,6 +24,7 @@ export type UseLotBidStateParams = {
   initialOutbid?: boolean;
   initialUserHasBid?: boolean;
   saleForLifecycle?: Pick<Sale, "status" | "deliveryMode"> | null;
+  isOwnLot?: boolean;
 };
 
 export type UseLotBidStateResult = {
@@ -70,6 +71,7 @@ export function useLotBidState({
   initialOutbid = false,
   initialUserHasBid = false,
   saleForLifecycle = null,
+  isOwnLot = false,
 }: UseLotBidStateParams): UseLotBidStateResult {
   const {
     entries: history,
@@ -256,6 +258,7 @@ export function useLotBidState({
       deriveLotBidPosition({
         sessionUserId: sessionUser?.id ?? null,
         sellerId: auction.sellerId ?? null,
+        isOwnLot,
         lotStatus,
         lifecycleKind: lifecycle.kind,
         leadingBidderId,
@@ -271,6 +274,7 @@ export function useLotBidState({
     [
       sessionUser?.id,
       auction.sellerId,
+      isOwnLot,
       auction.winnerId,
       lotStatus,
       lifecycle.kind,
@@ -323,7 +327,7 @@ export function useLotBidState({
   );
 
   const scrollToBid = useCallback(() => {
-    document.getElementById("bid-interactive-anchor")?.scrollIntoView({
+    document.getElementById("lot-bid-entry")?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });

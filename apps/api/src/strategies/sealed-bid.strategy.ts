@@ -14,7 +14,7 @@ export class SealedBidAuctionStrategy implements ILotStrategy {
         ? bid.buyerLegalEntityId === lot.sellerLegalEntityId
         : bid.bidderId === lot.sellerId
     ) {
-      return err(new BidError("Seller cannot bid on own lot"));
+      return err(new BidError("Seller cannot bid on own lot", 400, "seller_cannot_bid"));
     }
     const min = Number(lot.startingPrice);
     if (bid.amount < min) {

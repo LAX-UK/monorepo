@@ -42,6 +42,8 @@ type Props = {
   hasActiveAutoBid?: boolean;
   onFocusManualBid?: () => void;
   onFocusAutoBid?: () => void;
+  /** When true, sticky primary action routes to auto-bid instead of manual review. */
+  isLeading?: boolean;
 };
 
 function saleRegistrationStickyAction(
@@ -104,6 +106,7 @@ export function BidStickyMobileBar({
   hasActiveAutoBid = false,
   onFocusManualBid,
   onFocusAutoBid,
+  isLeading = false,
 }: Props) {
   const outbid = position ? lotBidPositionShowOutbidCta(position) : false;
   const autoBidLabel = position ? lotBidPositionAutoStickyLabel(position, formatMoney) : null;
@@ -222,7 +225,17 @@ export function BidStickyMobileBar({
         right = null;
     }
   } else if (step === 1) {
-    if (outbid && (onFocusAutoBid || onFocusManualBid)) {
+    if (isLeading && onFocusAutoBid) {
+      right = (
+        <Button
+          type="button"
+          onClick={onFocusAutoBid}
+          className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
+        >
+          Raise auto-bid max
+        </Button>
+      );
+    } else if (outbid && (onFocusAutoBid || onFocusManualBid)) {
       right = (
         <Button
           type="button"

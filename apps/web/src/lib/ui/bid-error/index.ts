@@ -1,6 +1,10 @@
 import { adminBidErrorMatcher } from "./matchers/admin.matcher";
 import { alreadyLeadingBidErrorMatcher } from "./matchers/already-leading.matcher";
 import { amlBlockedBidErrorMatcher } from "./matchers/aml-blocked.matcher";
+import {
+  autoBidDisabledBidErrorMatcher,
+  autoBidStepInvalidBidErrorMatcher,
+} from "./matchers/auto-bid.matcher";
 import { dutchPriceBidErrorMatcher } from "./matchers/dutch-price.matcher";
 import {
   bidInFlightBidErrorMatcher,
@@ -42,6 +46,8 @@ export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   biddingDisabledBidErrorMatcher,
   bidInFlightBidErrorMatcher,
   alreadyLeadingBidErrorMatcher,
+  autoBidDisabledBidErrorMatcher,
+  autoBidStepInvalidBidErrorMatcher,
   notAcceptingBidErrorMatcher,
   lotNotOnBlockBidErrorMatcher,
   saleroomPausedBidErrorMatcher,
@@ -72,7 +78,17 @@ export function clientBidError(message: string): BidErrorPresentation {
   return { message, severity: "error" };
 }
 
+export {
+  BID_ERROR_CODES,
+  BID_ERROR_PRESENTATIONS,
+  isBidErrorCode,
+  matchesAlreadyLeadingError,
+  matchesSellerOwnLotError,
+  presentationForBidCode,
+} from "./codes";
+export type { BidErrorCode } from "./codes";
 export type {
+  BidErrorActionKey,
   BidErrorMatcher,
   BidErrorPresentation,
   BidErrorSeverity,
