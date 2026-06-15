@@ -392,6 +392,12 @@ export function ArtworkBidPanel({
         return;
       }
     }
+    if (n + 1e-9 < minNumeric) {
+      setFeedbackError(clientBidError(`Enter at least ${formatMoney(minNumeric.toFixed(2))}`));
+      clearConfirmAttempt();
+      setStep(1);
+      return;
+    }
     setSubmitting(true);
     let result: Awaited<ReturnType<typeof bidWriter.placeBid>>;
     try {
@@ -474,6 +480,7 @@ export function ArtworkBidPanel({
     loginNext,
     markLotEndedLocally,
     maxAuto,
+    minNumeric,
     saleRegistrationPath,
     setActiveAutoBid,
     biddingAllowed,

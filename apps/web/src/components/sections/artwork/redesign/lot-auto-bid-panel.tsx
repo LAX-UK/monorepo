@@ -218,54 +218,56 @@ export function LotAutoBidPanel({
       reportError(clientBidError(msg));
       return;
     }
-    if (biddingLive && biddingAllowed && !realtimeHealthy && refreshBeforeSave) {
-      const refreshed = await refreshBeforeSave();
-      if (!refreshed) {
+    setSaving(true);
+    try {
+      if (biddingLive && biddingAllowed && !realtimeHealthy && refreshBeforeSave) {
+        const refreshed = await refreshBeforeSave();
+        if (!refreshed) {
+          reportError(
+            clientBidError("Could not refresh live prices. Check your connection and try again."),
+          );
+          return;
+        }
+      }
+      if (!saveIdempotencyKeyRef.current) {
+        saveIdempotencyKeyRef.current = crypto.randomUUID();
+      }
+      let result: Awaited<ReturnType<typeof autoBidWriter.setAutoBid>>;
+      try {
+        result = await autoBidWriter.setAutoBid({
+          lotId: lot.id,
+          maxAutoBidAmount: maxNumeric,
+          autoBidStepAmount: stepNumeric,
+          idempotencyKey: saveIdempotencyKeyRef.current,
+        });
+      } catch {
         reportError(
-          clientBidError("Could not refresh live prices. Check your connection and try again."),
+          clientBidError("Could not reach the server. Check your connection and try again."),
         );
         return;
       }
-    }
-    setSaving(true);
-    if (!saveIdempotencyKeyRef.current) {
-      saveIdempotencyKeyRef.current = crypto.randomUUID();
-    }
-    let result: Awaited<ReturnType<typeof autoBidWriter.setAutoBid>>;
-    try {
-      result = await autoBidWriter.setAutoBid({
-        lotId: lot.id,
-        maxAutoBidAmount: maxNumeric,
-        autoBidStepAmount: stepNumeric,
-        idempotencyKey: saveIdempotencyKeyRef.current,
-      });
-    } catch {
-      reportError(
-        clientBidError("Could not reach the server. Check your connection and try again."),
-      );
-      return;
+      if (!result.ok) {
+        reportError(
+          mapBidError(result.error, {
+            verifyReturnPath: loginNextPath,
+            code: result.code ?? null,
+            kycFeedback,
+          }),
+          true,
+        );
+        return;
+      }
+      saveIdempotencyKeyRef.current = null;
+      setActiveSettings(result.settings);
+      setMaxAuto(result.settings.maxAutoBidAmount);
+      if (result.settings.autoBidStepAmount) setStep(result.settings.autoBidStepAmount);
+      setUserEdited(false);
+      emitDraft(result.settings.maxAutoBidAmount, result.settings.autoBidStepAmount ?? step, false);
+      setSuccess("Auto-bid saved.");
+      onSettingsSaved?.(result.settings, result.placedBid);
     } finally {
       setSaving(false);
     }
-    if (!result.ok) {
-      reportError(
-        mapBidError(result.error, {
-          verifyReturnPath: loginNextPath,
-          code: result.code ?? null,
-          kycFeedback,
-        }),
-        true,
-      );
-      return;
-    }
-    saveIdempotencyKeyRef.current = null;
-    setActiveSettings(result.settings);
-    setMaxAuto(result.settings.maxAutoBidAmount);
-    if (result.settings.autoBidStepAmount) setStep(result.settings.autoBidStepAmount);
-    setUserEdited(false);
-    emitDraft(result.settings.maxAutoBidAmount, result.settings.autoBidStepAmount ?? step, false);
-    setSuccess("Auto-bid saved.");
-    onSettingsSaved?.(result.settings, result.placedBid);
   }, [
     autoBidWriter,
     biddingAllowed,
