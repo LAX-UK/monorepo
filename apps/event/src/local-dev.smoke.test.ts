@@ -24,6 +24,7 @@ describe("local event dev smoke", () => {
     expect(res.status).toBe(200);
     expect(html).toContain('id="rsvp-panel"');
     expect(html).toContain('id="rsvp-support"');
+    expect(html).toContain('href="/rsvp.css"');
     expect(html).not.toContain("RSVP isn't available just now");
   });
 
