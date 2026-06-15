@@ -9,6 +9,7 @@ import type { Lot, LotAuctionType } from "@auction/types";
 import { BodyText } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { listAllowedAutoBidSteps } from "@auction/validators";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -103,6 +104,7 @@ export function LotAutoBidPanel({
   const [userEdited, setUserEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const saveIdempotencyKeyRef = useRef<string | null>(null);
 
@@ -286,7 +288,7 @@ export function LotAutoBidPanel({
     kycFeedback,
   ]);
 
-  const onClear = useCallback(async () => {
+  const performClear = useCallback(async () => {
     reportError(null);
     setSuccess(null);
     setClearing(true);
@@ -329,6 +331,15 @@ export function LotAutoBidPanel({
     onSettingsSaved,
     reportError,
   ]);
+
+  const onClearRequest = useCallback(() => {
+    setShowClearConfirm(true);
+  }, []);
+
+  const onClearConfirm = useCallback(async () => {
+    await performClear();
+    setShowClearConfirm(false);
+  }, [performClear]);
 
   if (!ELIGIBLE.includes(auctionType)) return null;
 
@@ -465,12 +476,24 @@ export function LotAutoBidPanel({
           type="button"
           variant="outline"
           disabled={disabled || saving || clearing || !isActive}
-          onClick={() => void onClear()}
+          onClick={onClearRequest}
           className="h-auto px-4 py-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
         >
           {clearing ? "Clearing…" : "Clear auto-bid"}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={showClearConfirm}
+        onOpenChange={setShowClearConfirm}
+        title="Clear auto-bid?"
+        body="This removes your saved max auto-bid for this lot. You can set it again anytime."
+        confirmLabel="Clear auto-bid"
+        cancelLabel="Keep auto-bid"
+        tone="danger"
+        loading={clearing}
+        onConfirm={onClearConfirm}
+      />
     </div>
   );
 }

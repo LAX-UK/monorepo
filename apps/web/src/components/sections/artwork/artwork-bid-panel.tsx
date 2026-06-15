@@ -128,8 +128,6 @@ export function ArtworkBidPanel({
 
   const [amount, setAmount] = useState("");
   const [maxAuto, setMaxAuto] = useState(initialAutoBidSettings?.maxAutoBidAmount ?? "");
-  const [autoBidStep, setAutoBidStep] = useState(initialAutoBidSettings?.autoBidStepAmount ?? "");
-  const [autoBidDraftDirty, setAutoBidDraftDirty] = useState(false);
   const [entryMode, setEntryMode] = useState<LotBidEntryMode>(() =>
     defaultLotBidEntryMode({
       supportsAutoBid: auction.auctionType === "english" || auction.auctionType === "buy_it_now",
@@ -142,6 +140,7 @@ export function ArtworkBidPanel({
   const [submitting, setSubmitting] = useState(false);
   const [bidSuccess, setBidSuccess] = useState(false);
   const confirmIdempotencyKeyRef = useRef<string | null>(null);
+  const userPickedModeRef = useRef(false);
 
   const minNumeric = useMemo(
     () => getMinNextBidAmount(auction, currentPrice),
@@ -151,8 +150,6 @@ export function ArtworkBidPanel({
   const handleAutoBidDraft = useCallback(
     (draft: { maxAuto: string; step: string; dirty: boolean }) => {
       setMaxAuto(draft.maxAuto);
-      setAutoBidStep(draft.step);
-      setAutoBidDraftDirty(draft.dirty);
     },
     [],
   );
@@ -163,13 +160,10 @@ export function ArtworkBidPanel({
       if (placedBid) {
         applyOwnBidResult(placedBid);
       }
-      setAutoBidDraftDirty(false);
       if (settings) {
         setMaxAuto(settings.maxAutoBidAmount);
-        setAutoBidStep(settings.autoBidStepAmount ?? "");
       } else {
         setMaxAuto("");
-        setAutoBidStep("");
       }
     },
     [applyOwnBidResult, handleAutoBidSaved],
@@ -222,22 +216,34 @@ export function ArtworkBidPanel({
     return confirmIdempotencyKeyRef.current;
   }, []);
 
-  const includeAutoBidOnManualBid = activeAutoBid?.isActive || autoBidDraftDirty;
+  const includeAutoBidOnManualBid = Boolean(activeAutoBid?.isActive);
 
   const isWinning = position.kind === "winning" || position.kind === "winningByAuto";
 
   const supportsAutoBidPanel =
     auction.auctionType === "english" || auction.auctionType === "buy_it_now";
 
-  const focusBidEntry = useCallback(
-    (mode: LotBidEntryMode) => {
+  const switchEntryMode = useCallback(
+    (mode: LotBidEntryMode, opts?: { userInitiated?: boolean }) => {
+      if (opts?.userInitiated) userPickedModeRef.current = true;
+
+      if (step !== 1) {
+        clearConfirmAttempt();
+        setStep(1);
+      }
+
+      if (mode === "manual" && amount.trim() === "") {
+        setAmount(minNumeric.toFixed(2));
+      }
+
       setEntryMode(mode);
+
       requestAnimationFrame(() => {
         if (mode === "auto") scrollToAutoBid();
         else scrollToBid();
       });
     },
-    [scrollToAutoBid, scrollToBid],
+    [amount, clearConfirmAttempt, minNumeric, scrollToAutoBid, scrollToBid, step],
   );
 
   const manualBidEligibility = useMemo(
@@ -259,35 +265,15 @@ export function ArtworkBidPanel({
   const handleFeedbackAction = useCallback(
     (actionKey: NonNullable<BidErrorPresentation["actionKey"]>) => {
       if (actionKey === "switch-to-auto-bid") {
-        focusBidEntry("auto");
+        switchEntryMode("auto", { userInitiated: true });
       }
     },
-    [focusBidEntry],
-  );
-
-  const handleModeChange = useCallback(
-    (mode: LotBidEntryMode) => {
-      if (mode === "manual" && autoBidDraftDirty) {
-        const discard = window.confirm(
-          "You have unsaved auto-bid changes. Switch to manual bidding and discard them?",
-        );
-        if (!discard) return;
-        setAutoBidDraftDirty(false);
-        if (activeAutoBid) {
-          setMaxAuto(activeAutoBid.maxAutoBidAmount);
-          setAutoBidStep(activeAutoBid.autoBidStepAmount ?? "");
-        } else {
-          setMaxAuto("");
-          setAutoBidStep("");
-        }
-      }
-      setEntryMode(mode);
-    },
-    [activeAutoBid, autoBidDraftDirty],
+    [switchEntryMode],
   );
 
   useEffect(() => {
     if (!supportsAutoBidPanel) return;
+    if (userPickedModeRef.current) return;
     if (initialOutbid) {
       setEntryMode(activeAutoBid?.isActive ? "auto" : "manual");
     }
@@ -295,6 +281,7 @@ export function ArtworkBidPanel({
 
   useEffect(() => {
     if (!supportsAutoBidPanel) return;
+    if (userPickedModeRef.current) return;
     if (position.kind === "outbid" || position.kind === "inRunning") {
       setEntryMode(activeAutoBid?.isActive ? "auto" : "manual");
     }
@@ -305,7 +292,7 @@ export function ArtworkBidPanel({
     if (!manualBidEligibility.ok) {
       setFeedbackError(manualBidEligibility.presentation);
       if (manualBidEligibility.code === "already_leading") {
-        focusBidEntry("auto");
+        switchEntryMode("auto", { userInitiated: true });
       }
       return;
     }
@@ -331,8 +318,9 @@ export function ArtworkBidPanel({
       );
       return;
     }
+    const savedMax = activeAutoBid?.maxAutoBidAmount ?? "";
     const maxN =
-      includeAutoBidOnManualBid && maxAuto.trim() !== "" ? Number.parseFloat(maxAuto) : undefined;
+      includeAutoBidOnManualBid && savedMax.trim() !== "" ? Number.parseFloat(savedMax) : undefined;
     if (maxN !== undefined) {
       if (Number.isNaN(maxN) || maxN < n) {
         setFeedbackError(clientBidError("Max auto-bid must be greater than or equal to your bid."));
@@ -352,10 +340,10 @@ export function ArtworkBidPanel({
   }, [
     amount,
     ensureConfirmIdempotencyKey,
-    focusBidEntry,
+    activeAutoBid?.maxAutoBidAmount,
+    switchEntryMode,
     includeAutoBidOnManualBid,
     manualBidEligibility,
-    maxAuto,
     minNumeric,
     saleRegistrationBidGate?.approvedBidLimit,
     biddingAllowed,
@@ -377,11 +365,13 @@ export function ArtworkBidPanel({
       setFeedbackError(clientBidError("Invalid amount"));
       return;
     }
+    const savedMax = activeAutoBid?.maxAutoBidAmount ?? "";
     const maxN =
-      includeAutoBidOnManualBid && maxAuto.trim() !== "" ? Number.parseFloat(maxAuto) : undefined;
+      includeAutoBidOnManualBid && savedMax.trim() !== "" ? Number.parseFloat(savedMax) : undefined;
+    const savedStep = activeAutoBid?.autoBidStepAmount ?? "";
     const stepN =
-      includeAutoBidOnManualBid && autoBidStep.trim() !== ""
-        ? Number.parseFloat(autoBidStep)
+      includeAutoBidOnManualBid && savedStep.trim() !== ""
+        ? Number.parseFloat(savedStep)
         : undefined;
     if (biddingLive && biddingAllowed && !realtimeHealthy) {
       const refreshed = await refreshFromServer();
@@ -432,7 +422,7 @@ export function ArtworkBidPanel({
         result.code === BID_ERROR_CODES.already_leading ||
         result.error.includes("already the highest")
       ) {
-        focusBidEntry("auto");
+        switchEntryMode("auto", { userInitiated: true });
       }
       if (!shouldStayOnBidConfirmStep(result.code ?? null, result.error)) {
         clearConfirmAttempt();
@@ -445,7 +435,6 @@ export function ArtworkBidPanel({
     if (!result.bid.maxAutoBidAmount) {
       setActiveAutoBid(null);
       setMaxAuto("");
-      setAutoBidStep("");
     }
     setAmount("");
     setStep(1);
@@ -470,16 +459,16 @@ export function ArtworkBidPanel({
     amount,
     applyOwnBidResult,
     auction,
-    autoBidStep,
     bidWriter,
     clearConfirmAttempt,
     ensureConfirmIdempotencyKey,
+    activeAutoBid?.autoBidStepAmount,
+    activeAutoBid?.maxAutoBidAmount,
     includeAutoBidOnManualBid,
-    focusBidEntry,
+    switchEntryMode,
     kycSummary?.feedback,
     loginNext,
     markLotEndedLocally,
-    maxAuto,
     minNumeric,
     saleRegistrationPath,
     setActiveAutoBid,
@@ -522,8 +511,11 @@ export function ArtworkBidPanel({
   const showPricingHeader = omitPricingHeader;
 
   const activeAutoBidNote =
-    includeAutoBidOnManualBid && maxAuto.trim() !== ""
-      ? { max: maxAuto, onChangeAutoBid: scrollToAutoBid }
+    includeAutoBidOnManualBid && activeAutoBid?.maxAutoBidAmount
+      ? {
+          max: activeAutoBid.maxAutoBidAmount,
+          onChangeAutoBid: () => switchEntryMode("auto", { userInitiated: true }),
+        }
       : null;
 
   return (
@@ -609,8 +601,10 @@ export function ArtworkBidPanel({
               <LotBidPositionSummary
                 position={position}
                 loginNextPath={loginNext}
-                onIncreaseBid={() => focusBidEntry("manual")}
-                {...(supportsAutoBid ? { onRaiseAutoBid: () => focusBidEntry("auto") } : {})}
+                onIncreaseBid={() => switchEntryMode("manual", { userInitiated: true })}
+                {...(supportsAutoBid
+                  ? { onRaiseAutoBid: () => switchEntryMode("auto", { userInitiated: true }) }
+                  : {})}
                 supportsAutoBid={supportsAutoBid}
               />
             </div>
@@ -637,17 +631,18 @@ export function ArtworkBidPanel({
                 <div className="mt-6">
                   <LotBidModeChooser
                     mode={entryMode}
-                    onModeChange={handleModeChange}
+                    onModeChange={(mode) => switchEntryMode(mode, { userInitiated: true })}
                     disabled={bidControlsDisabled(decision)}
                   />
                 </div>
               ) : null}
 
-              {!englishOnlySurfaceLock &&
-              !sellerBlocked &&
-              autoBidEligible &&
-              entryMode === "auto" ? (
-                <div id="lot-auto-bid-panel" className="mt-4 scroll-mt-28">
+              {!englishOnlySurfaceLock && !sellerBlocked && autoBidEligible ? (
+                <div
+                  id="lot-auto-bid-panel"
+                  className={cn("mt-4 scroll-mt-28", entryMode !== "auto" && "hidden")}
+                  aria-hidden={entryMode !== "auto"}
+                >
                   <LotAutoBidPanel
                     lot={auction}
                     auctionType={auction.auctionType}
@@ -718,11 +713,13 @@ export function ArtworkBidPanel({
                       <BidConfirmation
                         amount={amount}
                         maxAuto={
-                          includeAutoBidOnManualBid && maxAuto.trim() !== "" ? maxAuto : null
+                          includeAutoBidOnManualBid && activeAutoBid?.maxAutoBidAmount
+                            ? activeAutoBid.maxAutoBidAmount
+                            : null
                         }
                         autoBidStep={
-                          includeAutoBidOnManualBid && autoBidStep.trim() !== ""
-                            ? autoBidStep
+                          includeAutoBidOnManualBid && activeAutoBid?.autoBidStepAmount
+                            ? activeAutoBid.autoBidStepAmount
                             : null
                         }
                         error={null}
@@ -771,7 +768,7 @@ export function ArtworkBidPanel({
               step={step}
               currentPriceLabel={formatMoney(currentPrice)}
               priceFlash={priceFlash}
-              onScrollToBid={() => focusBidEntry("manual")}
+              onScrollToBid={() => switchEntryMode("manual", { userInitiated: true })}
               remainingLabel={remainingLabel}
               msRemaining={msRemaining}
               timerState={timerState}
@@ -779,8 +776,8 @@ export function ArtworkBidPanel({
               compact={bidCardInView}
               position={position}
               hasActiveAutoBid={Boolean(activeAutoBid?.isActive)}
-              onFocusManualBid={() => focusBidEntry("manual")}
-              onFocusAutoBid={() => focusBidEntry("auto")}
+              onFocusManualBid={() => switchEntryMode("manual", { userInitiated: true })}
+              onFocusAutoBid={() => switchEntryMode("auto", { userInitiated: true })}
               isLeading={position.kind === "winning" || position.kind === "winningByAuto"}
             />
           ) : null}
