@@ -22,7 +22,7 @@ import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
 } from "@/lib/auth/assert-admin-action-capability";
-import { getAdminLotById } from "@/lib/data/http/admin.server";
+import { getAdminLotById, parseAdminCheckInCandidate } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -2245,6 +2245,108 @@ export async function adminTelephonePlaceBidResultAction(
     const bidId = json.data?.id;
     if (!bidId) return actionFailure("Unexpected response from server");
     return actionSuccess({ bidId });
+  });
+}
+
+const saleroomCheckInCandidatesForm = z.object({
+  saleId: z.string().uuid(),
+  q: z.string().trim().min(2).max(200),
+});
+
+const saleroomCheckInForm = z.object({
+  saleId: z.string().uuid(),
+  userId: z.string().uuid(),
+  buyerLegalEntityId: z.string().uuid(),
+  bidLimit: z.coerce.number().finite().positive().max(1e12).optional(),
+  paddleNumber: z.coerce.number().int().min(100).optional(),
+});
+
+export async function adminSaleroomCheckInCandidatesResultAction(
+  input: unknown,
+): Promise<
+  ActionResult<{ items: import("@/lib/data/http/admin.server").AdminCheckInCandidate[] }>
+> {
+  return instrumentServerAction("adminSaleroomCheckInCandidatesResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+
+    const parsed = saleroomCheckInCandidatesForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+
+    const { saleId, q } = parsed.data;
+    const res = await authedServerFetch(
+      `/admin/sales/${encodeURIComponent(saleId)}/registrations/check-in-candidates?${new URLSearchParams({ q }).toString()}`,
+      { cache: "no-store" },
+    );
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      return actionFailure(payload.error ?? "Could not search clients");
+    }
+
+    const json = (await res.json()) as { data?: { items?: unknown[] } };
+    const items = (json.data?.items ?? []).map((row) => parseAdminCheckInCandidate(row));
+    return actionSuccess({ items });
+  });
+}
+
+export async function adminSaleroomCheckInResultAction(input: unknown): Promise<
+  ActionResult<{
+    registrationId: string;
+    paddleNumber: number;
+    checkedInAt: string;
+    bidLimit?: string;
+  }>
+> {
+  return instrumentServerAction("adminSaleroomCheckInResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+
+    const parsed = saleroomCheckInForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+
+    const body = parsed.data;
+    const res = await authedServerFetch(
+      `/admin/sales/${encodeURIComponent(body.saleId)}/registrations/check-in`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: body.userId,
+          buyerLegalEntityId: body.buyerLegalEntityId,
+          ...(body.bidLimit != null ? { bidLimit: body.bidLimit } : {}),
+          ...(body.paddleNumber != null ? { paddleNumber: body.paddleNumber } : {}),
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+      return actionFailure(payload.error ?? "Check-in failed", undefined, res.status, payload.code);
+    }
+
+    const json = (await res.json()) as {
+      data?: {
+        registrationId?: string;
+        paddleNumber?: number;
+        checkedInAt?: string;
+        bidLimit?: string;
+      };
+    };
+    const data = json.data;
+    if (!data?.registrationId || data.paddleNumber == null || !data.checkedInAt) {
+      return actionFailure("Unexpected response from server");
+    }
+    return actionSuccess({
+      registrationId: data.registrationId,
+      paddleNumber: data.paddleNumber,
+      checkedInAt: data.checkedInAt,
+      ...(data.bidLimit != null ? { bidLimit: data.bidLimit } : {}),
+    });
   });
 }
 

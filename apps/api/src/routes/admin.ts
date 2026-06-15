@@ -45,6 +45,8 @@ import {
   adminSalePaddleRosterParamsSchema,
   adminSaleRegistrationListQuerySchema,
   adminSaleRegistrationParamsSchema,
+  adminSaleroomCheckInBodySchema,
+  adminSaleroomCheckInCandidatesQuerySchema,
   adminSaleroomSaleIdParamSchema,
   adminSetRoleBodySchema,
   adminSubmissionCountBySellersQuerySchema,
@@ -632,6 +634,57 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       });
       return result.match(
         () => c.json({ ok: true }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/registrations/check-in-candidates",
+    requireAuctionManage,
+    zValidator("param", z.object({ saleId: z.string().uuid() })),
+    zValidator("query", adminSaleroomCheckInCandidatesQuerySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const { q } = c.req.valid("query");
+      const items = await container.saleroomCheckInService.searchCandidates({ saleId, q });
+      return c.json({ data: { items } });
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/registrations/check-in",
+    requireAuctionManage,
+    zValidator("param", z.object({ saleId: z.string().uuid() })),
+    zValidator("json", adminSaleroomCheckInBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const clerkUserId = c.get("userId") as string;
+      const allowed = await checkPaddleAssignRateLimit(container.redis, clerkUserId);
+      if (!allowed) {
+        return c.json({ error: "Too many check-in attempts", code: "rate_limited" }, 429);
+      }
+      const result = await container.saleroomCheckInService.checkInBidder({
+        saleId,
+        userId: body.userId,
+        buyerLegalEntityId: body.buyerLegalEntityId,
+        decidedByUserId: clerkUserId,
+        ...(body.bidLimit != null ? { bidLimit: body.bidLimit } : {}),
+        ...(body.paddleNumber != null ? { paddleNumber: body.paddleNumber } : {}),
+        ...(body.laxNotes != null ? { laxNotes: body.laxNotes } : {}),
+      });
+      return result.match(
+        (data) =>
+          c.json({
+            data: {
+              registrationId: data.registrationId,
+              paddleNumber: data.paddleNumber,
+              checkedInAt: data.checkedInAt.toISOString(),
+              ...(data.bidLimit != null ? { bidLimit: data.bidLimit } : {}),
+            },
+          }),
         (e) =>
           c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
       );
