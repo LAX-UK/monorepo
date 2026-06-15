@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { payment, sourceOfFunds } from "@auction/db/schema";
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "../services/source-of-funds/active-settlement-statuses.js";
 import type {
   CreateSourceOfFundsCaseInput,
@@ -76,6 +76,16 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
       .from(sourceOfFunds)
       .where(and(eq(sourceOfFunds.userId, userId), eq(sourceOfFunds.status, "approved")))
       .orderBy(desc(sourceOfFunds.reviewedAt))
+      .limit(1);
+    return rows[0] ? rowToCase(rows[0]) : null;
+  }
+
+  async findPendingForUser(userId: string, conn?: Database): Promise<SourceOfFundsCase | null> {
+    const rows = await this.conn(conn)
+      .select()
+      .from(sourceOfFunds)
+      .where(and(eq(sourceOfFunds.userId, userId), eq(sourceOfFunds.status, "pending")))
+      .orderBy(asc(sourceOfFunds.createdAt))
       .limit(1);
     return rows[0] ? rowToCase(rows[0]) : null;
   }

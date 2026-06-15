@@ -1,5 +1,15 @@
-import { relations } from "drizzle-orm";
-import { index, jsonb, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import {
+  index,
+  jsonb,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { sourceOfFundsDocument } from "./source-of-funds-documents.js";
 
@@ -85,6 +95,10 @@ export const sourceOfFunds = pgTable(
     index("source_of_funds_user_id_idx").on(table.userId),
     index("source_of_funds_status_idx").on(table.status),
     index("source_of_funds_user_status_idx").on(table.userId, table.status),
+    // At most one pending case per buyer (settlement gate dedupe + concurrency guard).
+    uniqueIndex("source_of_funds_pending_user_uidx")
+      .on(table.userId)
+      .where(sql`${table.status} = 'pending'`),
   ],
 );
 
