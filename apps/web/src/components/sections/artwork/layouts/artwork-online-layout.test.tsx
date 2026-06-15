@@ -52,6 +52,21 @@ const rail: LotRelatedRailVM = {
 
 const blocks: AccordionBlock[] = [];
 
+const blocksWithLotDetails: AccordionBlock[] = [
+  {
+    id: "lot-details",
+    title: "Lot details",
+    content: "Hybrid catalogue and reserve copy.",
+    hidden: false,
+  },
+  {
+    id: "fees",
+    title: "Fees & buyer's premium",
+    content: "25% on the hammer.",
+    hidden: false,
+  },
+];
+
 beforeEach(() => {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -125,5 +140,55 @@ describe("ArtworkOnlineLayout", () => {
     );
     expect(grid).toBeTruthy();
     expect(screen.getByRole("complementary")).toBeInTheDocument();
+  });
+
+  it("shows lot details in the bid column for hybrid sales instead of the participation hub", () => {
+    renderLayout({
+      auction,
+      saleForLifecycle: { status: "active", deliveryMode: "hybrid" },
+      sessionHeader,
+      queueCurrent: queueCard("lot-1"),
+      queueUpNext: null,
+      queueRest: [],
+      marketingAccordionBlocks: blocksWithLotDetails,
+      rail,
+      isAuthenticated: false,
+      watchedLotIds: [],
+      currentUserId: null,
+      shareUrl: "https://example.com/lot",
+      followSlot: <span>Follow</span>,
+      bidPanel: <div>Bid panel</div>,
+    });
+
+    expect(screen.getByRole("heading", { name: "LOT DETAILS" })).toBeInTheDocument();
+    expect(screen.getByText(/Hybrid catalogue and reserve copy/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "In-Person Event Participation Hub" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Fees & buyer's premium/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "LOT DETAILS" })).toHaveLength(1);
+  });
+
+  it("keeps lot details in the lower marketing section for online-only sales", () => {
+    renderLayout({
+      auction,
+      saleForLifecycle: { status: "active", deliveryMode: "online" },
+      sessionHeader,
+      queueCurrent: queueCard("lot-1"),
+      queueUpNext: null,
+      queueRest: [],
+      marketingAccordionBlocks: blocksWithLotDetails,
+      rail,
+      isAuthenticated: false,
+      watchedLotIds: [],
+      currentUserId: null,
+      shareUrl: "https://example.com/lot",
+      followSlot: <span>Follow</span>,
+      bidPanel: <div>Bid panel</div>,
+    });
+
+    expect(screen.getByRole("heading", { name: "LOT DETAILS" })).toBeInTheDocument();
+    expect(screen.getByText(/Hybrid catalogue and reserve copy/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "LOT DETAILS" })).toHaveLength(1);
   });
 });

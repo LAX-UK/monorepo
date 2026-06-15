@@ -91,7 +91,14 @@ const summarySeed: LotSummarySeedVM = {
 };
 
 const rail: LotRelatedRailVM = { mode: "sale", heading: "", viewAuctionHref: null, cards: [] };
-const blocks: AccordionBlock[] = [];
+const blocks: AccordionBlock[] = [
+  {
+    id: "lot-details",
+    title: "Lot details",
+    content: "Catalogue and reserve copy.",
+    hidden: false,
+  },
+];
 const queueVMs = mapSaleLotsToQueueVMs(baseLot, [baseLot], () => "Seller");
 const overview = mapSaleToOverviewVM(baseSale, { lotsTotal: 1, categoryLabel: null });
 
@@ -143,7 +150,6 @@ describe("LotOnsiteMarketingLayout", () => {
     const sale = { ...baseSale, streamUrl: "https://example.com/watch" };
     renderLayout(sale);
     expect(screen.getByRole("heading", { name: /Watch From Anywhere/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Go to live stream/i })).toBeInTheDocument();
   });
 
   it("shows embed preview for YouTube stream URLs", () => {
@@ -156,10 +162,19 @@ describe("LotOnsiteMarketingLayout", () => {
     expect(screen.getByRole("link", { name: /open in youtube/i })).toBeInTheDocument();
   });
 
-  it("renders participation timeline and structured bid form triggers", () => {
+  it("renders participation timeline without onsite bid form triggers", () => {
     renderLayout();
     expect(screen.getByText(/Public Preview/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Submit Bid Form/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Request Line/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Submit Bid Form/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Request Line/i })).not.toBeInTheDocument();
+  });
+
+  it("shows lot details where the participation hub used to render", () => {
+    renderLayout();
+    expect(screen.getByRole("heading", { name: "LOT DETAILS" })).toBeInTheDocument();
+    expect(screen.getByText(/Catalogue and reserve copy/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "In-Person Event Participation Hub" }),
+    ).not.toBeInTheDocument();
   });
 });

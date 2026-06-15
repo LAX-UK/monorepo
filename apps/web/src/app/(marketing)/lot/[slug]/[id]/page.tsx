@@ -21,7 +21,6 @@ import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwo
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsite-lot-unavailable";
-import { OnsiteParticipationHub } from "@/components/sections/artwork/onsite/onsite-participation-hub";
 import { mapSaleToOverviewVM } from "@/components/sections/saleroom/mappers";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
@@ -51,7 +50,6 @@ import {
 import { getServerSaleroomStatus } from "@/lib/data/http/saleroom-status.server";
 import { getServerSaleMyRegistrations, getServerSaleWithLots } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -66,7 +64,6 @@ import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory"
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -269,18 +266,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
 
   const isOnsiteSale =
     saleBundle?.sale != null && !saleAllowsWebBidding(saleBundle.sale.deliveryMode);
-  const showSaleroomParticipation =
-    saleBundle?.sale != null && isSaleroomDeliveryMode(saleBundle.sale.deliveryMode);
   const isHybridSale = saleBundle?.sale?.deliveryMode === "hybrid";
   const initialSaleroomStatus =
     isHybridSale && auction.saleId
       ? await getServerSaleroomStatus(auction.saleId)
       : { status: "none" as const, currentLotId: null };
-
-  const telephoneBookingForSale =
-    session && auction.saleId && showSaleroomParticipation
-      ? await getServerTelephoneBookingForSale(auction.saleId).catch(() => null)
-      : null;
 
   const conditionReportCtaShow =
     !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
@@ -404,28 +394,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     </OnlineBidsView>
   );
 
-  const hybridParticipationSection =
-    isHybridSale && saleBundle ? (
-      <OnsiteParticipationHub
-        sale={saleBundle.sale}
-        participationCtx={{
-          saleTitle: saleBundle.sale.title,
-          lotNumber: auction.lotNumber,
-          lotTitle: auction.title,
-          lotUrl: lotPath(auction),
-        }}
-        lotId={auction.id}
-        loginNextPath={lotPath(auction)}
-        isAuthenticated={Boolean(session)}
-        kycApproved={kycApprovedForBid}
-        mobile={session?.mobile ?? null}
-        {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
-        buyerEntities={buyerEntities}
-        telephoneBooking={telephoneBookingForSale}
-        orgModuleEnabled={orgModuleEnabled}
-      />
-    ) : null;
-
   const followSlot = (
     <ArtworkWatchToggle
       lotId={auction.id}
@@ -523,10 +491,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
               kycApproved={kycApprovedForBid}
               myRegistrations={myRegistrationsForTimeline}
               buyerEntities={buyerEntities}
-              mobile={session?.mobile ?? null}
-              {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
-              telephoneBooking={telephoneBookingForSale}
-              orgModuleEnabled={orgModuleEnabled}
               loginNextPath={lotPath(auction)}
             />
           ) : auction.saleId && !saleBundle ? (
@@ -563,7 +527,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                       shareUrl={shareUrl}
                       followSlot={followSlot}
                       bidPanel={onlineBidPanel}
-                      participationSection={hybridParticipationSection}
                       bidPanelTop={
                         <ArtworkConditionReportCta
                           lotId={auction.id}
