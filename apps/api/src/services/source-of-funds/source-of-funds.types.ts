@@ -81,6 +81,12 @@ export interface ISourceOfFundsRepository {
   findLatestForUser(userId: string, conn?: Database): Promise<SourceOfFundsCase | null>;
   findById(id: string, conn?: Database): Promise<SourceOfFundsCase | null>;
   findLatestApprovedForUser(userId: string, conn?: Database): Promise<SourceOfFundsCase | null>;
+  /**
+   * The buyer's oldest still-`pending` case, if any. Distinct from
+   * `findLatestForUser`: a pending review can exist behind a newer terminal
+   * (approved/rejected) case, and must be reused rather than duplicated.
+   */
+  findPendingForUser(userId: string, conn?: Database): Promise<SourceOfFundsCase | null>;
   listByStatus(
     status: SourceOfFundsStatus,
     limit: number,
