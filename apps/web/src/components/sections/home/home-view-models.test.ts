@@ -1,5 +1,6 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
+import { parseLot } from "../../../lib/data/http/parse";
 import { toEditorsPickLotCardVM } from "./home-view-models";
 
 function baseLot(overrides: Partial<Lot> = {}): Lot {
@@ -66,5 +67,28 @@ describe("toEditorsPickLotCardVM", () => {
       }),
     );
     expect(vm.estimateValue).toBe("—");
+  });
+
+  it("uses estimate from public list summary payload", () => {
+    const lot = parseLot({
+      id: "lot-1",
+      saleId: "sale-1",
+      lotNumber: 1,
+      title: "2018 Patek Philippe Tiffany Nautilus Ref. 5711/1A-010",
+      status: "active",
+      currentPrice: "180000.00",
+      startingPrice: "180000.00",
+      auctionType: "english",
+      medium: "Contemporary",
+      startTime: "2026-06-01T12:00:00.000Z",
+      endTime: "2026-06-18T20:00:00.000Z",
+      images: [],
+      marketingDetails: {
+        estimate: { low: "180000.00", high: "220000.00", currency: "GBP" },
+      },
+    });
+    const vm = toEditorsPickLotCardVM(lot);
+    expect(vm.estimateValue).toMatch(/£180,000\.00.*£220,000\.00.*GBP/);
+    expect(vm.estimateValue).not.toBe("£0.00");
   });
 });
