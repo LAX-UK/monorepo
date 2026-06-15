@@ -152,6 +152,7 @@ import { DrizzleSaleFollowRepository } from "./repositories/drizzle-sale-follow.
 import { DrizzleSaleModeLookup } from "./repositories/drizzle-sale-mode.lookup.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "./repositories/drizzle-sale-soft-delete.side-effects.js";
 import { DrizzleSaleRepository } from "./repositories/drizzle-sale.repository.js";
+import { DrizzleSaleroomCheckInRepository } from "./repositories/drizzle-saleroom-check-in.repository.js";
 import { DrizzleSaleroomSessionLookup } from "./repositories/drizzle-saleroom-session.lookup.js";
 import { DrizzleSourceOfFundsDocumentRepository } from "./repositories/drizzle-source-of-funds-document.repository.js";
 import { DrizzleSourceOfFundsRepository } from "./repositories/drizzle-source-of-funds.repository.js";
@@ -320,6 +321,7 @@ import { SaleRegistrationService } from "./services/sale-registration.service.js
 import { SaleSoftDeleteService } from "./services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import { SaleService } from "./services/sale.service.js";
+import { SaleroomCheckInService } from "./services/saleroom-check-in.service.js";
 import { SaleroomService } from "./services/saleroom.service.js";
 import { SavedSearchService } from "./services/saved-search.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
@@ -381,6 +383,7 @@ export type Container = {
   absenteeBidService: AbsenteeBidService;
   telephoneBidBookingService: TelephoneBidBookingService;
   paddleService: PaddleService;
+  saleroomCheckInService: SaleroomCheckInService;
   onsiteEventRsvpService: IOnsiteEventRsvpService;
   onsiteEventCheckInService: IOnsiteEventCheckInService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
@@ -1081,6 +1084,14 @@ export function createContainer(env: Env): Container {
     return rows.length > 0;
   });
 
+  const saleroomCheckInRepo = new DrizzleSaleroomCheckInRepository(db);
+  const saleroomCheckInService = new SaleroomCheckInService(
+    db,
+    saleroomCheckInRepo,
+    legalEntityRepository,
+    paddleService,
+  );
+
   const onsiteEventRepo = new DrizzleOnsiteEventRepository(db);
   const onsiteEventRsvpRepo = new DrizzleOnsiteEventRsvpRepository(db);
   const onsiteEventCheckInLogRepo = new DrizzleOnsiteEventCheckInLogRepository(db);
@@ -1650,6 +1661,7 @@ export function createContainer(env: Env): Container {
     absenteeBidService,
     telephoneBidBookingService,
     paddleService,
+    saleroomCheckInService,
     onsiteEventRsvpService,
     onsiteEventCheckInService,
     adminSaleOperationsSnapshotService,

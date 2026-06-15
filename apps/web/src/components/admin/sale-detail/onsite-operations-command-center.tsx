@@ -69,6 +69,12 @@ export function OnsiteOperationsCommandCenter({ saleId, sale, liveish, snapshot 
               cta="Open console →"
             />
             <ActionCard
+              title="Check in bidder"
+              description="Assign paddles for walk-in clients at the saleroom desk."
+              href={`${saleDetailTabHref(saleId, "registrations")}#check-in`}
+              cta="Check in →"
+            />
+            <ActionCard
               title="Telephone bookings"
               description={`${snapshot.telephoneBookings.requested} awaiting confirmation.`}
               href={saleDetailTabHref(saleId, "telephone-bookings")}
