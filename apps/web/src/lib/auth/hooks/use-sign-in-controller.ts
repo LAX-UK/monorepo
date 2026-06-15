@@ -16,6 +16,7 @@ import { signInService } from "@/lib/auth/services/sign-in.service";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
+import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 import { notify } from "@/lib/ui/notify";
 import { normalizeUserRoleOrClient } from "@auction/types";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -181,6 +182,10 @@ export function useSignInController(nextHref: string, options: SignInControllerO
         trackSellAuthHandoff();
       }
       await refetchSession();
+      // Reset acting context to the personal entity on every fresh sign-in so a
+      // stale `lax_acting_legal_entity_id` cookie from a previous account/org
+      // cannot leak into API calls (e.g. bids -> not_a_member_of_legal_entity).
+      clearClientActingLegalEntityId();
       postAuthBroadcast({ type: "signed-in" });
       setPostAuthError(null);
       const me = await fetchSessionUserWithRetry();

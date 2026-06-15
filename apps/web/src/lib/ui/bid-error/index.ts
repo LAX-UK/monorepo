@@ -10,6 +10,7 @@ import {
   buyerAgentAuthorisationBidErrorMatcher,
   entityNotAuthorisedBidErrorMatcher,
   membershipRequiredBidErrorMatcher,
+  notAMemberOfLegalEntityBidErrorMatcher,
   saleRegistrationRequiredBidErrorMatcher,
 } from "./matchers/eligibility-api.matcher";
 import { endedBidErrorMatcher } from "./matchers/ended.matcher";
@@ -34,6 +35,7 @@ export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   saleRegistrationRequiredBidErrorMatcher,
   bidLimitExceededBidErrorMatcher,
   membershipRequiredBidErrorMatcher,
+  notAMemberOfLegalEntityBidErrorMatcher,
   buyerAgentAuthorisationBidErrorMatcher,
   entityNotAuthorisedBidErrorMatcher,
   bidRateLimitedBidErrorMatcher,
