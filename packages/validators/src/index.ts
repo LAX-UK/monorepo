@@ -8,6 +8,7 @@ export * from "./onsite-location.js";
 export * from "./sale.js";
 export * from "./venue.js";
 export * from "./sale-mode-policy.js";
+export * from "./sale-registration-policy.js";
 export * from "./lot-sale-timing.js";
 export * from "./sale-settlement.js";
 export * from "./stream-embed.js";

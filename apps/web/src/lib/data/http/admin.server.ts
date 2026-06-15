@@ -683,6 +683,84 @@ export async function getAdminSaleRegistrations(
   return body.data.items.map(parseAdminSaleRegistrationRow);
 }
 
+export type AdminCheckInCandidateEntity = {
+  id: string;
+  displayName: string;
+  role: string;
+  kind: string;
+  existingRegistration: {
+    status: string;
+    paddleNumber: number | null;
+    bidLimit: string | null;
+    checkedInAt: string | null;
+  } | null;
+};
+
+export type AdminCheckInCandidate = {
+  userId: string;
+  name: string | null;
+  email: string;
+  emailVerified: boolean;
+  kycStatus: string;
+  suspended: boolean;
+  eligibleEntities: AdminCheckInCandidateEntity[];
+};
+
+export function parseAdminCheckInCandidate(raw: unknown): AdminCheckInCandidate {
+  const o = raw as Record<string, unknown>;
+  const entitiesRaw = Array.isArray(o.eligibleEntities) ? o.eligibleEntities : [];
+  return {
+    userId: String(o.userId ?? ""),
+    name: o.name == null ? null : String(o.name),
+    email: String(o.email ?? ""),
+    emailVerified: Boolean(o.emailVerified),
+    kycStatus: String(o.kycStatus ?? ""),
+    suspended: Boolean(o.suspended),
+    eligibleEntities: entitiesRaw.map((e) => {
+      const ent = e as Record<string, unknown>;
+      const reg = ent.existingRegistration as Record<string, unknown> | null | undefined;
+      return {
+        id: String(ent.id ?? ""),
+        displayName: String(ent.displayName ?? ""),
+        role: String(ent.role ?? ""),
+        kind: String(ent.kind ?? ""),
+        existingRegistration:
+          reg == null
+            ? null
+            : {
+                status: String(reg.status ?? ""),
+                paddleNumber:
+                  reg.paddleNumber == null || reg.paddleNumber === ""
+                    ? null
+                    : Number.parseInt(String(reg.paddleNumber), 10),
+                bidLimit: reg.bidLimit == null ? null : String(reg.bidLimit),
+                checkedInAt:
+                  reg.checkedInAt == null || reg.checkedInAt === ""
+                    ? null
+                    : String(reg.checkedInAt),
+              },
+      };
+    }),
+  };
+}
+
+export async function getAdminSaleroomCheckInCandidates(
+  saleId: string,
+  q: string,
+): Promise<AdminCheckInCandidate[]> {
+  const qs = new URLSearchParams({ q });
+  const res = await authedServerFetch(
+    `/admin/sales/${encodeURIComponent(saleId)}/registrations/check-in-candidates?${qs.toString()}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "Failed to load check-in candidates");
+  }
+  const body = (await res.json()) as { data?: { items?: unknown[] } };
+  return (body.data?.items ?? []).map(parseAdminCheckInCandidate);
+}
+
 export type AdminPaddleRosterEntry = {
   paddleNumber: number;
   userId: string;

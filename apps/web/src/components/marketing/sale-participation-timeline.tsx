@@ -2,6 +2,8 @@
 
 import {
   type OnlineRegistrationStatus,
+  getHybridInRoomStepDescription,
+  getHybridOnlineStepDescription,
   getOnlineRegisterStepDescription,
   getOnlineTimelineStep2Description,
   getOnlineTimelineStep3Description,
@@ -105,6 +107,67 @@ export function SaleParticipationTimeline({
   }, [isAuthenticated, kycApproved, buyerEntities, myRegistrations]);
 
   const steps = React.useMemo(() => {
+    if (deliveryMode === "hybrid") {
+      const step1 = {
+        title: "1. Verify identity to bid online",
+        description: getHybridOnlineStepDescription(kycApproved),
+        status: !isAuthenticated
+          ? ("pending" as const)
+          : !kycApproved
+            ? ("active" as const)
+            : ("completed" as const),
+        action: !isAuthenticated ? (
+          <Button size="sm" variant="outline" className="mt-2" asChild>
+            <Link href={withNext("/login")}>
+              Sign in <ArrowRight className="ml-1 size-3" />
+            </Link>
+          </Button>
+        ) : !kycApproved ? (
+          <Button size="sm" variant="outline" className="mt-2" asChild>
+            <Link href={withNext("/dashboard/verify-identity")}>
+              Verify identity <ArrowRight className="ml-1 size-3" />
+            </Link>
+          </Button>
+        ) : null,
+      };
+
+      const step2 = {
+        title: getOnlineTimelineStepTitle(2),
+        description: getOnlineTimelineStep2Description(),
+        status: isSaleEnded
+          ? ("completed" as const)
+          : kycApproved
+            ? ("active" as const)
+            : ("pending" as const),
+        action:
+          kycApproved && !isSaleEnded ? (
+            <Button size="sm" variant="outline" className="mt-2" asChild>
+              <Link href="#catalog">Explore lots</Link>
+            </Button>
+          ) : null,
+      };
+
+      const step3 = {
+        title: getOnlineTimelineStepTitle(3),
+        description: getOnlineTimelineStep3Description(isSaleEnded, end),
+        status: isSaleEnded
+          ? ("completed" as const)
+          : isSaleActive
+            ? ("active" as const)
+            : ("pending" as const),
+        action: null,
+      };
+
+      const step4 = {
+        title: "4. In-room paddle check-in",
+        description: getHybridInRoomStepDescription(),
+        status: isSaleEnded ? ("completed" as const) : ("pending" as const),
+        action: null,
+      };
+
+      return [step1, step2, step3, step4];
+    }
+
     if (saleModeAllowsBidding(deliveryMode)) {
       const step1 = {
         title: getOnlineTimelineStepTitle(1),
@@ -273,6 +336,8 @@ export function SaleParticipationTimeline({
     return [step1, step2, step3, step4];
   }, [
     deliveryMode,
+    kycApproved,
+    isAuthenticated,
     registrationStatus,
     previewStart,
     start,
