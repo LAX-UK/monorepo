@@ -80,6 +80,10 @@ consigning user**. Signing up as a client never creates an artist record.
    - Clients can browse sale/lot details.
    - Clients can follow/watch/register interest style interactions.
    - Bidding is not allowed.
+   - The lot-page **In-Person Event Participation Hub** (paddle / absentee /
+     telephone / stream cards) is **hidden in V1**. That placement shows the
+     always-open **LOT DETAILS** block instead. Telephone line requests remain
+     available on the **sale** participate section where configured.
 
 ## V1 Functional Requirements
 
@@ -93,6 +97,7 @@ consigning user**. Signing up as a client never creates an artist record.
 - **V1-FR-006**: V1 auction interactions must expose English strategy only.
 - **V1-FR-007**: Online and onsite behavior must be consistently enforced in backend and frontend.
 - **V1-FR-008**: Onsite bidding must remain blocked while allowing non-bid engagement interactions.
+- **V1-FR-009**: Onsite/hybrid lot pages must not surface the In-Person Event Participation Hub in V1; show LOT DETAILS in that region instead.
 
 ## Acceptance Criteria
 
@@ -107,12 +112,16 @@ consigning user**. Signing up as a client never creates an artist record.
 - **V1-AC-006**: V1 user flows cannot create/use non-English auction strategy paths.
 - **V1-AC-007**: Online sale lots allow bidding; onsite sale lots reject bidding.
 - **V1-AC-008**: Onsite lots still allow defined non-bid interactions (follow/watch/interest) where available.
+- **V1-AC-009**: Onsite/hybrid lot pages render LOT DETAILS (not the participation hub) and do not expose absentee/telephone hub CTAs on the lot timeline.
 
 ## Explicit V1 Out Of Scope
 
 - Full product support for Dutch, sealed, and buy-it-now auction strategies.
 - Multi-role enterprise permission system beyond the three V1 role types.
 - Invitation workflows beyond role-based onboarding for staff/clients.
+- Lot-page In-Person Event Participation Hub (absentee bid mailto form, per-lot
+  telephone request cards, and related timeline anchor CTAs). Sale-level telephone
+  booking panel may remain where product needs it.
 
 ## Known Gaps To Close (Current vs Target)
 
