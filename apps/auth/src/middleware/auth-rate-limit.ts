@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { slidingWindowRetryAfterSec } from "@auction/auth";
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
 
@@ -16,6 +18,11 @@ const RL = {
   magicLinkEmailWindowSec: 60 * 60,
   magicLinkEmailMax: 3,
 } as const;
+
+function rateLimited(c: Context, retryAfterSec: number) {
+  c.header("Retry-After", String(retryAfterSec));
+  return c.json({ error: "Too many requests", code: "rate_limited", retryAfterSec }, 429);
+}
 
 async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
   const now = Date.now();
@@ -52,7 +59,16 @@ export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis) {
       "unknown";
     const ipKey = `rl:auth-issuer:magic-link-ip:${ip}`;
     const ipCount = await slidingIncrement(redis, ipKey, RL.magicLinkIpWindowSec);
-    if (ipCount > RL.magicLinkIpMax) return c.json({ error: "Too many requests" }, 429);
+    if (ipCount > RL.magicLinkIpMax) {
+      const retryAfterSec = await slidingWindowRetryAfterSec(
+        redis,
+        ipKey,
+        RL.magicLinkIpWindowSec,
+        ipCount,
+        RL.magicLinkIpMax,
+      );
+      return rateLimited(c, retryAfterSec);
+    }
 
     let body: { email?: unknown } = {};
     try {
@@ -66,7 +82,16 @@ export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis) {
       if (normalised.length > 0 && normalised.length <= 254) {
         const emailKey = `rl:auth-issuer:magic-link-email:${normalised}`;
         const emailCount = await slidingIncrement(redis, emailKey, RL.magicLinkEmailWindowSec);
-        if (emailCount > RL.magicLinkEmailMax) return c.json({ error: "Too many requests" }, 429);
+        if (emailCount > RL.magicLinkEmailMax) {
+          const retryAfterSec = await slidingWindowRetryAfterSec(
+            redis,
+            emailKey,
+            RL.magicLinkEmailWindowSec,
+            emailCount,
+            RL.magicLinkEmailMax,
+          );
+          return rateLimited(c, retryAfterSec);
+        }
       }
     }
     await next();
@@ -86,12 +111,15 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis) {
     if (isTotp) {
       const lockKey = `rl:auth-issuer:totp-lock:${ip}`;
       const locked = await redis.get(lockKey);
-      if (locked) return c.json({ error: "Too many requests" }, 429);
+      if (locked) {
+        const ttl = await redis.ttl(lockKey);
+        return rateLimited(c, ttl > 0 ? ttl : RL.totpLockoutSec);
+      }
       const key = `rl:auth-issuer:totp:${ip}`;
       const n = await slidingIncrement(redis, key, RL.totpWindowSec);
       if (n > RL.totpMax) {
         await redis.set(lockKey, "1", "EX", RL.totpLockoutSec);
-        return c.json({ error: "Too many requests" }, 429);
+        return rateLimited(c, RL.totpLockoutSec);
       }
       await next();
       return;
@@ -101,7 +129,10 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis) {
     const windowSec = isSignIn ? RL.signInWindowSec : RL.authGeneralWindowSec;
     const max = isSignIn ? RL.signInMax : RL.authGeneralMax;
     const n = await slidingIncrement(redis, key, windowSec);
-    if (n > max) return c.json({ error: "Too many requests" }, 429);
+    if (n > max) {
+      const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, n, max);
+      return rateLimited(c, retryAfterSec);
+    }
     await next();
   });
 }

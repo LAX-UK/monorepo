@@ -45,6 +45,8 @@ export function useSignInController(nextHref: string, options: SignInControllerO
   const siteKey = turnstileSiteKey();
   const needsMagicLinkTurnstile = Boolean(siteKey);
   const [showCaptcha, setShowCaptcha] = useState(false);
+  const [signInCaptchaToken, setSignInCaptchaToken] = useState<string | null>(null);
+  const [captchaGateError, setCaptchaGateError] = useState<string | null>(null);
   const [postAuthError, setPostAuthError] = useState<string | null>(null);
   const [step, setStep] = useState<SignInStep>(
     emailFirst ? (options.initialStep ?? "email") : "credentials",
@@ -54,13 +56,18 @@ export function useSignInController(nextHref: string, options: SignInControllerO
   const [magicLinkError, setMagicLinkError] = useState<string | null>(null);
   const { remaining: linkCooldown, start: startLinkCooldown } = useResendCooldown(45);
   const webOrigin = typeof window !== "undefined" ? window.location.origin : "";
+  const signInTurnstileReady = !showCaptcha || !siteKey || Boolean(signInCaptchaToken);
+  const signInSubmitDisabled = loading || !signInTurnstileReady;
 
   const onTurnstileToken = useCallback((t: string) => {
     turnstileRef.current = t;
+    setSignInCaptchaToken(t);
+    setCaptchaGateError(null);
   }, []);
 
   const onTurnstileExpire = useCallback(() => {
     turnstileRef.current = undefined;
+    setSignInCaptchaToken(null);
   }, []);
 
   const onMagicLinkTurnstileToken = useCallback((t: string) => {
@@ -147,13 +154,21 @@ export function useSignInController(nextHref: string, options: SignInControllerO
   }, [linkCooldown, magicLinkLoading, linkSent, requestMagicLink]);
 
   const onSubmit = form.handleSubmit(async (data) => {
+    if (showCaptcha && siteKey && !turnstileRef.current) {
+      setCaptchaGateError("Please complete the security check.");
+      return;
+    }
+    setCaptchaGateError(null);
     const result = await run(data);
     if (!result.ok && result.code === "captcha_required" && siteKey) {
       setShowCaptcha(true);
+      setSignInCaptchaToken(null);
+      turnstileRef.current = undefined;
       return;
     }
     if (result.ok) {
       setShowCaptcha(false);
+      setSignInCaptchaToken(null);
       turnstileRef.current = undefined;
       if (result.requiresTwoFactor) {
         const safeNext = isSafeNextPath(nextHref) ? nextHref : "/dashboard";
@@ -203,12 +218,13 @@ export function useSignInController(nextHref: string, options: SignInControllerO
     form,
     onSubmit,
     loading,
-    bannerError: bannerError ?? postAuthError,
+    bannerError: captchaGateError ?? bannerError ?? postAuthError,
     lastErrorCode,
     showCaptcha: showCaptcha && Boolean(siteKey),
     turnstileSiteKey: siteKey ?? null,
     onTurnstileToken,
     onTurnstileExpire,
+    signInSubmitDisabled,
     emailFirst,
     step,
     goToCredentials,
