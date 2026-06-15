@@ -69,7 +69,10 @@ export function getOnsitePreviewStepDescription(previewStart: Date | null): stri
 }
 
 export function getOnsitePaddleStepDescription(): string {
-  return "Visit the saleroom desk on arrival for paddle check-in. You must already have an account and completed identity verification.";
+  return (
+    getParticipationStepCopy("onsite", "attendLive")?.description ??
+    "Join us at the physical saleroom. Present your photo ID at the reception desk to register and receive your bidding paddle."
+  );
 }
 
 export function getHybridOnlineStepDescription(kycApproved: boolean): string {
