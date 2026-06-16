@@ -6,8 +6,7 @@ import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
-export function sofColumns(onOpen: (row: AdminSofTableRow) => void): ColumnDef<AdminSofTableRow>[] {
-  const open = onOpen;
+export function sofColumns(): ColumnDef<AdminSofTableRow>[] {
   return [
     {
       id: "buyer",
@@ -79,8 +78,8 @@ export function sofColumns(onOpen: (row: AdminSofTableRow) => void): ColumnDef<A
       id: "open",
       header: "",
       cell: ({ row }) => (
-        <Button type="button" variant="secondary" size="sm" onClick={() => open(row.original)}>
-          Review
+        <Button type="button" variant="secondary" size="sm" asChild>
+          <Link href={`/admin/compliance/source-of-funds/${row.original.id}`}>Review</Link>
         </Button>
       ),
       enableSorting: false,

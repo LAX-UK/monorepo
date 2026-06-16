@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { sourceOfFunds, sourceOfFundsDocument, uploadObject } from "@auction/db/schema";
+import {
+  sourceOfFunds,
+  sourceOfFundsDocument,
+  sourceOfFundsDocumentReview,
+  uploadObject,
+} from "@auction/db/schema";
 import { and, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import type { UploadStorage } from "../lib/upload-storage.js";
 
@@ -66,6 +71,9 @@ export async function purgeSourceOfFundsDocumentsJob(input: {
         reviewStatus: "superseded",
       })
       .where(eq(sourceOfFundsDocument.id, doc.id));
+    await input.db
+      .delete(sourceOfFundsDocumentReview)
+      .where(eq(sourceOfFundsDocumentReview.documentId, doc.id));
     purged += 1;
   }
 

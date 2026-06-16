@@ -1,6 +1,11 @@
 "use client";
 
 import type { BuyerSourceOfFundsView } from "@/lib/data/http/compliance.server";
+import {
+  computeBuyerSofUploadCompletion,
+  resolveBuyerSofNextStep,
+} from "@/lib/data/view-models/buyer-sof.vm";
+import { Surface } from "@auction/ui/components/surface";
 import { cn } from "@auction/ui/lib/utils";
 
 type Step = {
@@ -22,7 +27,8 @@ function buildSteps(view: BuyerSourceOfFundsView): Step[] {
 
   const submitted = view.documentsSubmitted;
   const requested = view.documentsRequested;
-  const hasUploads = view.documents.some((d) => d.statusLabel !== "superseded");
+  const completion = computeBuyerSofUploadCompletion(view);
+  const hasUploads = completion.uploadedCount > 0;
 
   const steps: Step[] = [
     {
@@ -33,17 +39,23 @@ function buildSteps(view: BuyerSourceOfFundsView): Step[] {
     {
       id: "requested",
       label: "Documents requested",
-      state: requested ? (submitted || hasUploads ? "complete" : "current") : "upcoming",
+      state: requested ? "complete" : "upcoming",
     },
     {
       id: "upload",
       label: "Upload documents",
-      state: hasUploads ? (submitted ? "complete" : "current") : requested ? "current" : "upcoming",
+      state: !requested
+        ? "upcoming"
+        : submitted
+          ? "complete"
+          : completion.allUploaded
+            ? "complete"
+            : "current",
     },
     {
       id: "submitted",
       label: "Submitted for review",
-      state: submitted ? "complete" : hasUploads ? "current" : "upcoming",
+      state: submitted ? "complete" : completion.allUploaded ? "current" : "upcoming",
     },
     {
       id: "decision",
@@ -61,43 +73,63 @@ type Props = {
 
 export function SofProgressStepper({ view }: Props) {
   const steps = buildSteps(view);
+  const nextStep = resolveBuyerSofNextStep(view);
+  const completion = computeBuyerSofUploadCompletion(view);
+
   if (steps.length === 1) return null;
 
   return (
-    <nav aria-label="Verification progress" className="overflow-x-auto">
-      <ol className="flex min-w-max items-center gap-2">
-        {steps.map((step, index) => (
-          <li key={step.id} className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "flex size-6 shrink-0 items-center justify-center rounded-full font-label text-[10px] font-semibold",
-                  step.state === "complete" && "bg-primary text-on-primary",
-                  step.state === "current" && "border-2 border-primary text-primary",
-                  step.state === "upcoming" &&
-                    "border border-border-hairline text-on-surface-variant",
-                )}
-                aria-hidden
-              >
-                {step.state === "complete" ? "✓" : index + 1}
-              </span>
-              <span
-                className={cn(
-                  "font-body text-xs",
-                  step.state === "current"
-                    ? "font-medium text-on-surface"
-                    : "text-on-surface-variant",
-                )}
-              >
-                {step.label}
-              </span>
-            </div>
-            {index < steps.length - 1 ? (
-              <span className="h-px w-6 bg-border-hairline" aria-hidden />
-            ) : null}
-          </li>
-        ))}
-      </ol>
-    </nav>
+    <Surface variant="quiet" padding="md" className="space-y-3">
+      <div>
+        <h2 className="font-headline text-sm font-semibold text-on-surface">
+          Verification progress
+        </h2>
+        <p className="mt-1 font-body text-sm text-on-surface-variant">{nextStep.body}</p>
+        {view.documentsRequested && !view.documentsSubmitted && completion.requiredCount > 0 ? (
+          <p className="mt-1 font-body text-xs text-on-surface-variant">
+            {completion.uploadedCount} of {completion.requiredCount} documents uploaded
+          </p>
+        ) : null}
+      </div>
+      <nav aria-label="Verification progress" className="overflow-x-auto">
+        <ol className="flex min-w-max items-center gap-2">
+          {steps.map((step, index) => (
+            <li
+              key={step.id}
+              className="flex items-center gap-2"
+              aria-current={step.state === "current" ? "step" : undefined}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full font-label text-[10px] font-semibold",
+                    step.state === "complete" && "bg-primary text-on-primary",
+                    step.state === "current" && "border-2 border-primary text-primary",
+                    step.state === "upcoming" &&
+                      "border border-border-hairline text-on-surface-variant",
+                  )}
+                  aria-hidden
+                >
+                  {step.state === "complete" ? "✓" : index + 1}
+                </span>
+                <span
+                  className={cn(
+                    "font-body text-xs",
+                    step.state === "current"
+                      ? "font-medium text-on-surface"
+                      : "text-on-surface-variant",
+                  )}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {index < steps.length - 1 ? (
+                <span className="h-px w-6 bg-border-hairline" aria-hidden />
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </Surface>
   );
 }

@@ -97,10 +97,16 @@ export class S3ObjectStorage implements IObjectStorage {
     key: string;
     expiresInSec: number;
     signingDate?: Date | undefined;
+    responseContentDisposition?: string;
+    responseContentType?: string;
   }): Promise<{ url: string }> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: args.key,
+      ...(args.responseContentDisposition
+        ? { ResponseContentDisposition: args.responseContentDisposition }
+        : {}),
+      ...(args.responseContentType ? { ResponseContentType: args.responseContentType } : {}),
     });
     return {
       url: await getSignedUrl(this.client, command, {

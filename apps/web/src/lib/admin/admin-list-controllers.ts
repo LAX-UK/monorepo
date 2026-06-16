@@ -740,6 +740,18 @@ export const sofListController: IAdminListController<AdminSofTableRow, AdminList
       offset: q.offset,
     });
     const rows = buildAdminSofTableRows(page.rows);
-    return { rows, offset: q.offset, limit: q.limit, total: page.total };
+    const rowsForSummary =
+      q.offset > 0
+        ? buildAdminSofTableRows(
+            (
+              await getAdminSourceOfFundsPage({
+                status: "pending",
+                limit: 100,
+                offset: 0,
+              })
+            ).rows,
+          )
+        : rows;
+    return { rows, offset: q.offset, limit: q.limit, total: page.total, rowsForSummary };
   },
 };

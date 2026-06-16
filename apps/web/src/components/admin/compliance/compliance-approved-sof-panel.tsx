@@ -44,6 +44,12 @@ export function ComplianceApprovedSofPanel({ rows }: Props) {
                   </span>
                 ) : null}
               </div>
+              <Link
+                href={`/admin/compliance/source-of-funds/${row.id}`}
+                className="text-sm text-link underline"
+              >
+                View case
+              </Link>
             </li>
           );
         })}

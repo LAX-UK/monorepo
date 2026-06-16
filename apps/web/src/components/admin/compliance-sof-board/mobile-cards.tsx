@@ -6,24 +6,19 @@ import Link from "next/link";
 
 type Props = {
   rows: AdminSofTableRow[];
-  onOpen: (row: AdminSofTableRow) => void;
 };
 
-export function SofMobileCards({ rows, onOpen }: Props) {
+export function SofMobileCards({ rows }: Props) {
   return (
     <ul className="space-y-2">
       {rows.map((row) => (
-        <li key={row.id}>
-          <button
-            type="button"
-            className="w-full rounded-lg border border-outline-variant/40 p-4 text-left"
-            onClick={() => onOpen(row)}
-          >
+        <li key={row.id} className="relative">
+          <div className="rounded-lg border border-outline-variant/40 p-4 text-left">
             <div className="flex flex-wrap items-center gap-2">
               <AdminStatusBadge domain="sofCase" status={row.displayStatus} />
               <span className="font-body text-sm text-on-surface">{row.triggerLabel}</span>
             </div>
-            <p className="mt-2 font-body text-sm">
+            <p className="relative z-10 mt-2 font-body text-sm">
               <Link
                 href={`/admin/clients/${row.userId}`}
                 className="text-link underline"
@@ -41,7 +36,14 @@ export function SofMobileCards({ rows, onOpen }: Props) {
             <p className="mt-1 font-body text-xs text-on-surface-variant">
               {row.triageLabel} · Opened {row.openedLabel}
             </p>
-          </button>
+            <Link
+              href={`/admin/compliance/source-of-funds/${row.id}`}
+              className="absolute inset-0 z-0 rounded-lg"
+              aria-label={`Review source of funds case for ${row.buyerLabel}`}
+            >
+              <span className="sr-only">Review case</span>
+            </Link>
+          </div>
         </li>
       ))}
     </ul>

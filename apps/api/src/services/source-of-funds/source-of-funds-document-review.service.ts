@@ -1,0 +1,95 @@
+import type { Database } from "@auction/db";
+import type {
+  ISourceOfFundsDocumentReviewRepository,
+  SourceOfFundsDocumentChecks,
+  SourceOfFundsDocumentReviewRow,
+} from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
+import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
+import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { ISourceOfFundsRepository } from "./source-of-funds.types.js";
+
+export const SOURCE_OF_FUNDS_DOCUMENT_REVIEWED_EVENT = "source_of_funds.document_reviewed";
+
+const NOTES_MAX = 2000;
+
+export type ReviewSourceOfFundsDocumentCommand = {
+  caseId: string;
+  documentId: string;
+  staffUserId: string;
+  checks: SourceOfFundsDocumentChecks;
+  note: string | null;
+};
+
+export class SourceOfFundsDocumentReviewService {
+  constructor(
+    private readonly caseRepo: ISourceOfFundsRepository,
+    private readonly docRepo: ISourceOfFundsDocumentRepository,
+    private readonly reviewRepo: ISourceOfFundsDocumentReviewRepository,
+    private readonly db: Database,
+    private readonly events: DomainEventPublisher | null,
+  ) {}
+
+  async reviewDocument(
+    command: ReviewSourceOfFundsDocumentCommand,
+  ): Promise<SourceOfFundsDocumentReviewRow> {
+    const note = command.note?.trim().slice(0, NOTES_MAX) ?? null;
+    const checks = normalizeChecks(command.checks);
+
+    const run = async (conn: Database): Promise<SourceOfFundsDocumentReviewRow> => {
+      const caseRecord = await this.caseRepo.findById(command.caseId, conn);
+      if (!caseRecord) throw new Error("source_of_funds_not_found");
+      if (caseRecord.status !== "pending") throw new Error("source_of_funds_not_pending");
+
+      const doc = await this.docRepo.findById(command.documentId, conn);
+      if (!doc || doc.sourceOfFundsId !== command.caseId) {
+        throw new Error("source_of_funds_document_not_found");
+      }
+      if (doc.reviewStatus === "superseded") {
+        throw new Error("source_of_funds_document_superseded");
+      }
+
+      const reviewedAt = new Date();
+      const row = await this.reviewRepo.upsertLatest(
+        {
+          documentId: command.documentId,
+          sourceOfFundsId: command.caseId,
+          reviewedByUserId: command.staffUserId,
+          reviewedAt,
+          checks,
+          note,
+        },
+        conn,
+      );
+
+      if (this.events) {
+        await this.events.publish(conn, {
+          aggregateType: "source_of_funds",
+          aggregateId: command.caseId,
+          eventType: SOURCE_OF_FUNDS_DOCUMENT_REVIEWED_EVENT,
+          actorUserId: command.staffUserId,
+          payload: {
+            sourceOfFundsId: command.caseId,
+            documentId: command.documentId,
+            checks,
+            note,
+            reviewedByUserId: command.staffUserId,
+            reviewedAt: reviewedAt.toISOString(),
+          },
+        });
+      }
+
+      return row;
+    };
+
+    return this.db.transaction((tx) => run(tx));
+  }
+}
+
+function normalizeChecks(input: SourceOfFundsDocumentChecks): SourceOfFundsDocumentChecks {
+  return {
+    matchesDeclaredSource: Boolean(input.matchesDeclaredSource),
+    coversExposure: Boolean(input.coversExposure),
+    recentEnough: Boolean(input.recentEnough),
+    legibleComplete: Boolean(input.legibleComplete),
+  };
+}

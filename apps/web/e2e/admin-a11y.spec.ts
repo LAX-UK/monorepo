@@ -212,6 +212,115 @@ test.describe("admin a11y smoke", () => {
     ).toHaveLength(0);
   });
 
+  test("source of funds case page main content is reachable from queue", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/compliance/source-of-funds");
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const reviewLink = page.getByRole("link", { name: /^review$/i }).first();
+    if ((await reviewLink.count()) === 0) {
+      test.skip(true, "No pending Source of Funds cases in this environment");
+    }
+
+    await reviewLink.click();
+    await expect(page).toHaveURL(/\/admin\/compliance\/source-of-funds\/[^/]+$/);
+    await expect(page.locator("#main-content")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("source of funds evidence reviewer confirms before discarding unsaved review", async ({
+    page,
+  }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto("/admin/compliance/source-of-funds");
+
+    const reviewLink = page.getByRole("link", { name: /^review$/i }).first();
+    if ((await reviewLink.count()) === 0) {
+      test.skip(true, "No pending Source of Funds cases in this environment");
+    }
+
+    await reviewLink.click();
+    await expect(page.getByRole("heading", { name: /evidence review/i })).toBeVisible();
+
+    const docButtons = page
+      .locator("section")
+      .filter({ hasText: /evidence review/i })
+      .getByRole("button");
+    if ((await docButtons.count()) < 2) {
+      test.skip(true, "Case needs at least two submitted documents to test dirty-state guard");
+    }
+
+    const firstDoc = docButtons.nth(0);
+    const secondDoc = docButtons.nth(1);
+    await firstDoc.click();
+
+    const checklist = page.getByText("Verification checklist");
+    if ((await checklist.count()) === 0) {
+      test.skip(true, "Case is read-only or not pending — cannot edit review checklist");
+    }
+
+    const checkbox = page.getByRole("checkbox").first();
+    const wasChecked = await checkbox.isChecked();
+    await checkbox.click();
+
+    let dialogSeen = false;
+    page.once("dialog", async (dialog) => {
+      dialogSeen = true;
+      expect(dialog.message()).toMatch(/discard unsaved review changes/i);
+      await dialog.dismiss();
+    });
+
+    await secondDoc.click();
+    expect(dialogSeen).toBe(true);
+    await expect(checkbox).toBeChecked({ checked: !wasChecked });
+  });
+
+  test("buyer source of funds page exposes progress landmarks", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    const buyerEmail = process.env.PLAYWRIGHT_BUYER_EMAIL ?? "";
+    const buyerPassword = process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "";
+    test.skip(!buyerEmail, "Set PLAYWRIGHT_BUYER_EMAIL for buyer SoF a11y smoke");
+
+    await page.goto("/login");
+    await page.getByLabel(/email/i).fill(buyerEmail);
+    await page.getByLabel(/password/i).fill(buyerPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await page.waitForURL(/\/(admin|dashboard)/);
+
+    await page.goto("/dashboard/compliance/source-of-funds");
+    if (!page.url().includes("/dashboard/compliance/source-of-funds")) {
+      test.skip(true, "Buyer has no active Source of Funds case in this environment");
+    }
+
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /source of funds verification/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("navigation", { name: /verification progress/i })).toBeVisible();
+    await expect(page.locator('[aria-current="step"]')).toHaveCount(1);
+
+    const axe = await new AxeBuilder({ page })
+      .include("#main-content")
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
   test("onboarding issues page has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);

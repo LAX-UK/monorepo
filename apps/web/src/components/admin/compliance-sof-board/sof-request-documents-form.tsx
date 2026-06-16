@@ -6,6 +6,7 @@ import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 type Props = {
@@ -14,10 +15,12 @@ type Props = {
 };
 
 export function SofRequestDocumentsForm({ caseId, disabled }: Props) {
+  const router = useRouter();
   const [selected, setSelected] = useState<string[]>([...SOF_EVIDENCE_CHECKLIST.slice(0, 2)]);
   const [customType, setCustomType] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function toggle(type: string) {
@@ -33,13 +36,19 @@ export function SofRequestDocumentsForm({ caseId, disabled }: Props) {
 
   function submit() {
     setError(null);
+    setSuccess(null);
     const fd = new FormData();
     fd.set("caseId", caseId);
     fd.set("documentTypes", JSON.stringify(selected));
     fd.set("note", note);
     startTransition(async () => {
       const result = await requestSofDocumentsAction(fd);
-      if (result && !result.ok) setError(result.error);
+      if (result && !result.ok) {
+        setError(result.error);
+        return;
+      }
+      setSuccess("Document request sent — awaiting buyer upload.");
+      router.refresh();
     });
   }
 
@@ -127,6 +136,7 @@ export function SofRequestDocumentsForm({ caseId, disabled }: Props) {
       >
         Send document request
       </Button>
+      {success ? <p className="font-body text-xs text-success">{success}</p> : null}
       {error ? <p className="font-body text-xs text-error">{error}</p> : null}
     </div>
   );

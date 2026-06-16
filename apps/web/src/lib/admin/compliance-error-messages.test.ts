@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { complianceErrorMessage } from "./compliance-error-messages";
+import { complianceErrorMessage, isSofStaleConflictMessage } from "./compliance-error-messages";
 
 describe("complianceErrorMessage", () => {
   it("humanizes four-eyes errors", () => {
@@ -8,5 +8,17 @@ describe("complianceErrorMessage", () => {
 
   it("passes through unknown messages", () => {
     expect(complianceErrorMessage("Triage failed")).toBe("Triage failed");
+  });
+
+  it("humanizes document review errors", () => {
+    expect(complianceErrorMessage("source_of_funds_document_superseded")).toContain("superseded");
+  });
+
+  it("detects stale conflict messages", () => {
+    expect(isSofStaleConflictMessage("source_of_funds_not_pending")).toBe(true);
+    expect(
+      isSofStaleConflictMessage(complianceErrorMessage("source_of_funds_document_superseded")),
+    ).toBe(true);
+    expect(isSofStaleConflictMessage("Triage failed")).toBe(false);
   });
 });

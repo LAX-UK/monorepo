@@ -53,6 +53,7 @@ const LABELS: Record<string, string> = {
   "source_of_funds.case_opened": "Source of Funds case opened",
   "source_of_funds.approved": "Source of Funds approved",
   "source_of_funds.rejected": "Source of Funds rejected",
+  "source_of_funds.document_reviewed": "Source of Funds document reviewed",
   "kyc.session_started": "KYC session started",
   "kyc.session_completed": "KYC session completed",
   "auth.user_suspended": "User suspended",

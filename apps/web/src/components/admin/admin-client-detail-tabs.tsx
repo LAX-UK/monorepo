@@ -17,6 +17,7 @@ import {
 } from "@/components/admin/admin-user-overview-sections";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import { AdminUserReadinessPanel } from "@/components/admin/admin-user-readiness-panel";
+import { AdminUserSofPanel } from "@/components/admin/admin-user-sof-panel";
 import type { AdminClientDetailBundle } from "@/lib/admin/load-admin-client-detail";
 import type { ReactNode } from "react";
 
@@ -38,6 +39,8 @@ function buildOverviewSections(bundle: AdminClientDetailBundle): AdminUserOvervi
     canViewKyc,
     amlScreeningBySessionId,
     readinessSnapshot,
+    sofCases,
+    canViewSof,
   } = bundle;
 
   return [
@@ -72,6 +75,15 @@ function buildOverviewSections(bundle: AdminClientDetailBundle): AdminUserOvervi
             id: "aml",
             label: "AML",
             content: <AdminUserAmlPanel screenings={amlScreenings} />,
+          } satisfies AdminUserOverviewSection,
+        ]
+      : []),
+    ...(canViewSof
+      ? [
+          {
+            id: "sof",
+            label: "SoF",
+            content: <AdminUserSofPanel cases={sofCases} />,
           } satisfies AdminUserOverviewSection,
         ]
       : []),
