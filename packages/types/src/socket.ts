@@ -55,3 +55,56 @@ export type SaleroomRealtimePayload = {
   emittedAt: string;
   lotId?: string;
 };
+
+/** Fan-out on `display:{saleId}` via Socket.IO event `displayControl` (Redis `sale:{id}:display`). */
+export type SaleroomDisplayControlPayload = {
+  kind: "fair_warning" | "announcement" | "clear";
+  message?: string;
+  emittedAt: string;
+  saleId?: string;
+};
+
+export type SaleroomDisplayOverlay = {
+  kind: "fair_warning" | "announcement";
+  message?: string;
+  emittedAt: string;
+};
+
+export type SaleroomDisplaySnapshot = {
+  saleId: string;
+  saleTitle: string;
+  sessionStatus: "none" | "pending" | "live" | "paused" | "ended";
+  currentLotId: string | null;
+  currentLot: {
+    id: string;
+    lotNumber: number;
+    title: string;
+    imageUrl: string | null;
+    currentPrice: string;
+    bidCount: number;
+    leaderPaddleNumber: number | null;
+  } | null;
+  overlay: SaleroomDisplayOverlay | null;
+};
+
+export type SaleroomDisplayPairingStart = {
+  deviceCode: string;
+  userCode: string;
+  expiresIn: number;
+  interval: number;
+};
+
+export type SaleroomDisplayPairPollResult =
+  | { status: "authorization_pending" }
+  | { status: "expired" }
+  | { status: "authorized"; displayToken: string; saleId: string };
+
+export type SaleroomDisplayDeviceRow = {
+  id: string;
+  saleId: string;
+  status: "pending" | "paired" | "revoked" | "expired";
+  userCode: string;
+  pairedAt: string | null;
+  lastSeenAt: string | null;
+  isOnline: boolean;
+};

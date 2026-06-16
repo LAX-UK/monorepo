@@ -649,6 +649,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@auction/types':
+        specifier: workspace:*
+        version: link:../types
       '@auction/validators':
         specifier: workspace:*
         version: link:../validators

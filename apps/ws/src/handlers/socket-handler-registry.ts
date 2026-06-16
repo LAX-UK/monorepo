@@ -28,6 +28,10 @@ function roomForSale(saleId: string): string {
   return `sale:${saleId}`;
 }
 
+function roomForDisplay(saleId: string): string {
+  return `display:${saleId}`;
+}
+
 type AckFn = ((result: unknown) => void) | undefined;
 
 async function resolveSessionUser(
@@ -131,6 +135,57 @@ function handleLeaveSaleroom(
   ack?.({ ok: true });
 }
 
+async function verifyDisplayTokenForJoin(
+  env: WsEnv,
+  saleId: string,
+  displayToken: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${env.API_URL}/display/${encodeURIComponent(saleId)}/verify`, {
+      headers: { Authorization: `Bearer ${displayToken}`, accept: "application/json" },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function handleJoinDisplay(
+  socket: Socket,
+  ctx: HandlerContext,
+  payload: { saleId?: string; displayToken?: string },
+  ack: AckFn,
+) {
+  const saleId = payload?.saleId;
+  const displayToken = payload?.displayToken;
+  if (!saleId || !displayToken) {
+    ack?.({ ok: false, error: "saleId and displayToken required" });
+    return;
+  }
+  const valid = await verifyDisplayTokenForJoin(ctx.env, saleId, displayToken);
+  if (!valid) {
+    ack?.({ ok: false, error: "invalid_display_token" });
+    return;
+  }
+  await socket.join(roomForDisplay(saleId));
+  ack?.({ ok: true });
+}
+
+function handleLeaveDisplay(
+  socket: Socket,
+  _ctx: HandlerContext,
+  payload: { saleId?: string },
+  ack: AckFn,
+) {
+  const saleId = payload?.saleId;
+  if (!saleId) {
+    ack?.({ ok: false, error: "saleId required" });
+    return;
+  }
+  void socket.leave(roomForDisplay(saleId));
+  ack?.({ ok: true });
+}
+
 async function handleJoinUser(socket: Socket, ctx: HandlerContext, _payload: unknown, ack: AckFn) {
   const me = await resolveSessionUser(socket, ctx.env);
   if (!me) {
@@ -175,6 +230,10 @@ const handlers: Record<
     handleJoinSaleroom(socket, ctx, payload as { saleId?: string }, ack),
   leaveSaleroom: (socket, ctx, payload, ack) =>
     handleLeaveSaleroom(socket, ctx, payload as { saleId?: string }, ack),
+  joinDisplay: (socket, ctx, payload, ack) =>
+    handleJoinDisplay(socket, ctx, payload as { saleId?: string; displayToken?: string }, ack),
+  leaveDisplay: (socket, ctx, payload, ack) =>
+    handleLeaveDisplay(socket, ctx, payload as { saleId?: string }, ack),
   joinUser: (socket, ctx, payload, ack) => void handleJoinUser(socket, ctx, payload, ack),
   leaveUser: (socket, ctx, payload, ack) => void handleLeaveUser(socket, ctx, payload, ack),
   latencyProbe: (socket, ctx, payload, ack) => handleLatencyProbe(socket, ctx, payload, ack),
