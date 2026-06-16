@@ -5,10 +5,12 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { SaleroomLiveShell } from "@/features/saleroom/components/saleroom-live-shell";
 import { ConnectionStatusChip } from "@/features/saleroom/components/shared/connection-status-chip";
 import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
+import { useOperationsMetricsPoll } from "@/features/saleroom/hooks/use-operations-metrics-poll";
 import { mergeOperationsSnapshot } from "@/features/saleroom/lib/merge-operations-snapshot";
 import { operationsSnapshotToSessionStatus } from "@/features/saleroom/lib/merge-operations-snapshot";
 import type { StaffOpsPanelVM } from "@/features/saleroom/types/staff-saleroom.vm";
 import { useClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
+import type { AdminPaddleRosterEntry } from "@/lib/data/http/admin.server";
 import type { AdminSaleOperationsSnapshot } from "@/lib/telephone/telephone-booking-types";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
@@ -21,7 +23,7 @@ type Props = {
   sale: Sale;
   liveish: boolean;
   snapshot: AdminSaleOperationsSnapshot;
-  checkedInPaddleCount?: number;
+  paddleRoster?: AdminPaddleRosterEntry[];
   lots?: Lot[];
 };
 
@@ -50,7 +52,7 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className="block rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-colors duration-200 hover:border-link/30 hover:bg-primary/5"
+      className="flex min-h-11 flex-col justify-center rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-colors duration-200 hover:border-link/30 hover:bg-primary/5"
     >
       <h3 className="font-headline text-base text-on-surface">{title}</h3>
       <p className="mt-2 font-body text-sm text-on-surface-variant">{description}</p>
@@ -66,7 +68,7 @@ function OperationsLiveContent({
   sale,
   liveish,
   snapshot,
-  checkedInPaddleCount = 0,
+  paddleRoster = [],
   lots = [],
   session,
 }: Props & {
@@ -77,7 +79,7 @@ function OperationsLiveContent({
   const liveBid = useClerkLotLiveBidState(
     session.currentLotId,
     snapshot.currentLotBidding?.currentPrice ?? "0.00",
-    [],
+    paddleRoster,
   );
 
   const vm: StaffOpsPanelVM = useMemo(
@@ -95,10 +97,10 @@ function OperationsLiveContent({
           bidCount: liveBid.bidCount,
           leaderLabel: liveBid.leaderLabel,
         },
-        checkedInPaddleCount,
+        paddleRoster.length,
         lots,
       ),
-    [checkedInPaddleCount, liveBid, lots, session, snapshot],
+    [liveBid, lots, paddleRoster.length, session, snapshot],
   );
 
   const primaryCta =
@@ -208,14 +210,24 @@ function OperationsLiveContent({
 }
 
 export function OperationsLivePanel(props: Props) {
-  const initial = useMemo(
-    () => operationsSnapshotToSessionStatus(props.snapshot),
-    [props.snapshot],
-  );
+  const { snapshot, paddleRoster } = useOperationsMetricsPoll({
+    saleId: props.saleId,
+    initialSnapshot: props.snapshot,
+    initialPaddleRoster: props.paddleRoster ?? [],
+  });
+
+  const initial = useMemo(() => operationsSnapshotToSessionStatus(snapshot), [snapshot]);
 
   return (
     <SaleroomLiveShell saleId={props.saleId} initial={initial} trackLiveFeed={false}>
-      {({ session }) => <OperationsLiveContent {...props} session={session} />}
+      {({ session }) => (
+        <OperationsLiveContent
+          {...props}
+          snapshot={snapshot}
+          paddleRoster={paddleRoster}
+          session={session}
+        />
+      )}
     </SaleroomLiveShell>
   );
 }

@@ -129,8 +129,11 @@ export function SaleRegistrationsTabSection({
   actionError = null,
 }: Props) {
   const showSaleroomCheckIn = isSaleroomDeliveryMode(deliveryMode);
+  const pendingApprovals = rows.filter((r) => r.status === "pending");
   const defaultFilter: RegistrationFilter =
-    showSaleroomCheckIn && saleStatus === "active" ? "awaiting_paddle" : "all";
+    showSaleroomCheckIn && saleStatus === "active" && pendingApprovals.length === 0
+      ? "awaiting_paddle"
+      : "all";
   const [filter, setFilter] = useState<RegistrationFilter>(defaultFilter);
   const [search, setSearch] = useState("");
 
@@ -151,7 +154,6 @@ export function SaleRegistrationsTabSection({
     return rows.filter((r) => matchesFilter(r, filter) && matchesSearch(r, needle));
   }, [rows, filter, search]);
 
-  const pending = rows.filter((r) => r.status === "pending");
   const checkedInCount = rows.filter((r) => r.checkedInAt != null).length;
   const paddleRosterCount = rows.filter((r) => r.paddleNumber != null).length;
 
@@ -217,7 +219,8 @@ export function SaleRegistrationsTabSection({
         </div>
 
         <p className="font-body text-sm text-on-surface-variant">
-          {rows.length} registration{rows.length === 1 ? "" : "s"} · {pending.length} pending
+          {rows.length} registration{rows.length === 1 ? "" : "s"} · {pendingApprovals.length}{" "}
+          pending
         </p>
 
         {actionError ? (
@@ -235,7 +238,9 @@ export function SaleRegistrationsTabSection({
 
         {filteredRows.length === 0 && !fetchError ? (
           <AdminEmptyState
-            title={pending.length === 0 ? "No matching registrations" : "No pending requests"}
+            title={
+              pendingApprovals.length === 0 ? "No matching registrations" : "No pending requests"
+            }
             description={
               showSaleroomCheckIn
                 ? "No pending requests — use check-in above for walk-ins."

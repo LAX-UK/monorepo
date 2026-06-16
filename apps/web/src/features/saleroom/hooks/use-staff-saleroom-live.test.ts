@@ -85,4 +85,29 @@ describe("useStaffSaleroomLive", () => {
     expect(result.current.session.status).toBe("paused");
     expect(result.current.session.currentLotId).toBe("lot-9");
   });
+
+  it("sets connectionStatus to disconnected when socket drops", () => {
+    const adapter = createMockSaleroomSocketAdapter();
+
+    const { result } = renderHook(() =>
+      useStaffSaleroomLive({
+        saleId: "sale-1",
+        initial: initialSession,
+        socketAdapter: adapter,
+        notifyOnReconnect: false,
+      }),
+    );
+
+    act(() => {
+      adapter.simulateConnect();
+    });
+
+    expect(result.current.session.connectionStatus).toBe("connected");
+
+    act(() => {
+      adapter.simulateDisconnect();
+    });
+
+    expect(result.current.session.connectionStatus).toBe("disconnected");
+  });
 });

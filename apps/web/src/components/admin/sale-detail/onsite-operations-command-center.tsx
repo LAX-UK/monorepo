@@ -1,5 +1,6 @@
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { OperationsLivePanel } from "@/features/saleroom/components/operations-live-panel/operations-live-panel";
+import type { AdminPaddleRosterEntry } from "@/lib/data/http/admin.server";
 import type { AdminSaleOperationsSnapshot } from "@/lib/telephone/telephone-booking-types";
 import type { Lot, Sale } from "@auction/types";
 
@@ -8,7 +9,7 @@ type Props = {
   sale: Sale;
   liveish: boolean;
   snapshot: AdminSaleOperationsSnapshot | null;
-  checkedInPaddleCount?: number;
+  paddleRoster?: AdminPaddleRosterEntry[];
   lots?: Lot[];
 };
 
@@ -17,7 +18,7 @@ export function SaleroomOperationsCommandCenter({
   sale,
   liveish,
   snapshot,
-  checkedInPaddleCount = 0,
+  paddleRoster = [],
   lots = [],
 }: Props) {
   return (
@@ -32,7 +33,7 @@ export function SaleroomOperationsCommandCenter({
           sale={sale}
           liveish={liveish}
           snapshot={snapshot}
-          checkedInPaddleCount={checkedInPaddleCount}
+          paddleRoster={paddleRoster}
           lots={lots}
         />
       ) : (

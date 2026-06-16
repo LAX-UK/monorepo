@@ -1,6 +1,8 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
+import { SaleroomHubSessionBadge } from "@/components/admin/saleroom-hub-board/saleroom-hub-session-badge";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import { Button } from "@auction/ui";
@@ -27,9 +29,19 @@ export function SaleroomHubMobileCards({ rows }: Props) {
           <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
             {getSaleDeliveryModeLabel(row.sale.deliveryMode)} sale
           </p>
-          <Button variant="secondary" size="sm" className="mt-3 min-h-11 w-full" asChild>
-            <Link href={`/admin/saleroom/${row.sale.id}`}>Open clerk console</Link>
-          </Button>
+          <div className="mt-2">
+            <SaleroomHubSessionBadge saleId={row.sale.id} />
+          </div>
+          <div className="mt-3 flex flex-col gap-2">
+            <Button variant="secondary" size="sm" className="min-h-11 w-full" asChild>
+              <Link href={`/admin/saleroom/${row.sale.id}`}>Open clerk console</Link>
+            </Button>
+            <Button variant="outline" size="sm" className="min-h-11 w-full" asChild>
+              <Link href={`${saleDetailTabHref(row.sale.id, "registrations")}#check-in`}>
+                Check-in
+              </Link>
+            </Button>
+          </div>
         </li>
       ))}
     </ul>

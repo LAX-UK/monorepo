@@ -15,7 +15,7 @@ describe("SaleroomCheckInPanel", () => {
   it("shows search guidance and title", () => {
     render(<SaleroomCheckInPanel saleId="00000000-0000-4000-8000-000000000002" />);
     expect(screen.getByText("In-room check-in")).toBeInTheDocument();
-    expect(screen.getByText(/Type email to search/i)).toBeInTheDocument();
+    expect(screen.getByText(/Type email or name/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Search client")).toBeInTheDocument();
   });
 });

@@ -29,7 +29,7 @@ export default async function AdminSaleOperationsPage({ params }: Props) {
       sale={bundle.sale}
       liveish={liveish}
       snapshot={snapshot}
-      checkedInPaddleCount={paddleRoster.length}
+      paddleRoster={paddleRoster}
       lots={bundle.lots}
     />
   );
