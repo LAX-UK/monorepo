@@ -1,6 +1,7 @@
 "use client";
 
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { SaleroomLiveShell } from "@/features/saleroom/components/saleroom-live-shell";
 import { ConnectionStatusChip } from "@/features/saleroom/components/shared/connection-status-chip";
 import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
@@ -182,11 +183,11 @@ function OperationsLiveContent({
       </div>
 
       {vm.pendingTelephoneRows.length > 0 ? (
-        <details className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5">
-          <summary className="cursor-pointer font-headline text-base text-on-surface">
-            Pending telephone requests ({vm.pendingTelephoneRows.length})
-          </summary>
-          <ul className="mt-3 space-y-2 font-body text-sm">
+        <CollapsibleSection
+          title={`Pending telephone requests (${vm.pendingTelephoneRows.length})`}
+          className="rounded-xl"
+        >
+          <ul className="space-y-2 px-4 pb-4 font-body text-sm">
             {vm.pendingTelephoneRows.map((row) => (
               <li key={row.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span>{row.userName ?? row.userEmail ?? row.userId}</span>
@@ -194,7 +195,7 @@ function OperationsLiveContent({
               </li>
             ))}
           </ul>
-        </details>
+        </CollapsibleSection>
       ) : null}
 
       {sale.startTime ? (
