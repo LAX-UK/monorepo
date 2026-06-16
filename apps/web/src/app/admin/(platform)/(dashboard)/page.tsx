@@ -197,6 +197,8 @@ export default async function AdminHomePage({
     }
   }
 
+  const activeSaleroomSessions = onsiteRadarRows.filter((row) => row.isLiveSession).length;
+
   const hubLinks = hubQuickLinksFor(role, staffRole);
 
   return (
@@ -213,6 +215,7 @@ export default async function AdminHomePage({
         activity={activity}
         anomalies={anomalies}
         onsiteRadarRows={onsiteRadarRows}
+        activeSaleroomSessions={activeSaleroomSessions}
         loadWarning={dashboardLoadWarning}
         staffRole={staffRole}
         hubLinks={hubLinks}

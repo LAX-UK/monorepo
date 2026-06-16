@@ -157,7 +157,9 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
         name: displayName(selectedCandidate),
         paddleNumber: result.data.paddleNumber,
       });
-      notify.success(`Paddle ${result.data.paddleNumber} assigned`);
+      notify.success(`Paddle ${result.data.paddleNumber} assigned`, {
+        description: "Return to the clerk console to place in-room bids.",
+      });
       router.refresh();
     });
   };
@@ -185,7 +187,7 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild size="sm" variant="default">
-            <Link href={`/admin/saleroom/${saleId}`}>Open clerk console</Link>
+            <Link href={`/admin/saleroom/${saleId}?checkedIn=1`}>Open clerk console</Link>
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={resetForAnother}>
             Check in another
