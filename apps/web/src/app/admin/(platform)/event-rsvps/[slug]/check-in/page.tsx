@@ -1,5 +1,5 @@
-import { OnsiteEventCheckInConsole } from "@/components/admin/onsite-events/check-in-console";
-import { OnsiteEventBreadcrumbs } from "@/components/admin/onsite-events/onsite-event-breadcrumbs";
+import { OnsiteEventCheckInConsole } from "@/components/admin/event-rsvps/check-in-console";
+import { OnsiteEventBreadcrumbs } from "@/components/admin/event-rsvps/onsite-event-breadcrumbs";
 import { getAdminOnsiteEventDetail } from "@/lib/data/http/onsite-event.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";

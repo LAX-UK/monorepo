@@ -208,11 +208,11 @@ function buildStaffNavGroupSpecs(
             : navBadge(navCounts.saleroomLiveCount, "live")),
         },
         {
-          id: "onsite-events",
-          href: "/admin/onsite-events",
-          label: "Onsite events",
+          id: "event-rsvps",
+          href: "/admin/event-rsvps",
+          label: "Event RSVPs",
           icon: PartyPopper,
-          match: (pathname) => pathname.startsWith("/admin/onsite-events"),
+          match: (pathname) => pathname.startsWith("/admin/event-rsvps"),
           requirement: SALEROOM_ACCESS,
         },
         {

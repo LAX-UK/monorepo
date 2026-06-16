@@ -37,19 +37,19 @@ After RSVP, guests receive `https://event.lax.bid/pass/{token}`.
 
 | Method | Path |
 |--------|------|
-| `GET` | `/admin/onsite-events` |
-| `GET` | `/admin/onsite-events/lax001/rsvps` |
-| `GET` | `/admin/onsite-events/lax001/rsvps/export` |
-| `POST` | `/admin/onsite-events/lax001/rsvps/:rsvpId/resend-pass` |
-| `GET` | `/admin/onsite-events/lax001/check-in/stats` |
-| `GET` | `/admin/onsite-events/lax001/check-in/search?q=` |
-| `POST` | `/admin/onsite-events/lax001/check-in` |
-| `PATCH` | `/admin/onsite-events/lax001/check-in/dry-run` |
+| `GET` | `/admin/event-rsvps` |
+| `GET` | `/admin/event-rsvps/lax001/rsvps` |
+| `GET` | `/admin/event-rsvps/lax001/rsvps/export` |
+| `POST` | `/admin/event-rsvps/lax001/rsvps/:rsvpId/resend-pass` |
+| `GET` | `/admin/event-rsvps/lax001/check-in/stats` |
+| `GET` | `/admin/event-rsvps/lax001/check-in/search?q=` |
+| `POST` | `/admin/event-rsvps/lax001/check-in` |
+| `PATCH` | `/admin/event-rsvps/lax001/check-in/dry-run` |
 
 Web UI:
 
-- `/admin/onsite-events` → RSVP table + resend pass
-- `/admin/onsite-events/lax001/check-in` → QR scanner (BarcodeDetector + ZXing fallback), search, dry-run rehearsal mode
+- `/admin/event-rsvps` → RSVP table + resend pass
+- `/admin/event-rsvps/lax001/check-in` → QR scanner (BarcodeDetector + ZXing fallback), search, dry-run rehearsal mode
 
 ## Local development
 

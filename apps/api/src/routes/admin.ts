@@ -973,9 +973,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.use("/sales/:saleId/telephone-bookings/*", requireAuctionManage);
   platform.route("/", createAdminTelephoneBookingRoutes(container));
 
-  platform.use("/onsite-events", requireAuctionManage);
-  platform.use("/onsite-events/*", requireAuctionManage);
-  platform.route("/onsite-events", createAdminOnsiteEventRoutes(container));
+  platform.use("/event-rsvps", requireAuctionManage);
+  platform.use("/event-rsvps/*", requireAuctionManage);
+  platform.route("/event-rsvps", createAdminOnsiteEventRoutes(container));
 
   platform.get(
     "/sales/:saleId/saleroom/session",

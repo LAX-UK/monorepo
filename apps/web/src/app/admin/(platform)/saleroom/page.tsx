@@ -82,7 +82,7 @@ export default async function AdminSaleroomHubPage() {
             ariaLabel="Saleroom quick links"
             links={[
               { href: "/admin/sales", label: "All sales" },
-              { href: "/admin/onsite-events", label: "Onsite events" },
+              { href: "/admin/event-rsvps", label: "Event RSVPs" },
               { href: "/admin/lots?lens=attention", label: "Lots attention" },
             ]}
           />
