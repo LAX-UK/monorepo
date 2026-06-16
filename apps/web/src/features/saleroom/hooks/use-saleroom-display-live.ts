@@ -5,6 +5,13 @@ import {
   createSaleroomSocketAdapter,
 } from "@/features/saleroom/adapters/saleroom-socket.adapter";
 import {
+  type DisplayBidLiveState,
+  EMPTY_DISPLAY_BID_LIVE_STATE,
+  applyDisplayBidUpdate,
+  mergeSnapshotAfterHydrate,
+  resetDisplayBidLiveState,
+} from "@/features/saleroom/lib/display-bid-ticks";
+import {
   type DisplayDataClient,
   createDisplayDataClient,
 } from "@/features/saleroom/lib/display-data-client";
@@ -25,6 +32,7 @@ export type SaleroomDisplayLiveState = {
   overlay: SaleroomDisplayOverlay | null;
   flash: DisplayFlashKind;
   connectionStatus: "connected" | "reconnecting" | "disconnected";
+  bidLive: DisplayBidLiveState;
 };
 
 const EMPTY: SaleroomDisplayLiveState = {
@@ -32,7 +40,11 @@ const EMPTY: SaleroomDisplayLiveState = {
   overlay: null,
   flash: null,
   connectionStatus: "disconnected",
+  bidLive: EMPTY_DISPLAY_BID_LIVE_STATE,
 };
+
+const PRICE_FLASH_MS = 450;
+const HYDRATE_DEBOUNCE_MS = 400;
 
 function applyOverlayEvent(
   prev: SaleroomDisplayOverlay | null,
@@ -63,16 +75,49 @@ export function useSaleroomDisplayLive({
 }) {
   const [state, setState] = useState<SaleroomDisplayLiveState>(EMPTY);
   const currentLotIdRef = useRef<string | null>(null);
-  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const soldFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const priceFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydrateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydrateGenerationRef = useRef(0);
+  const syncJoinedLotRef = useRef<(lotId: string | null) => void>(() => {});
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
+
+  const clearPriceFlashTimer = useCallback(() => {
+    if (priceFlashTimerRef.current) {
+      clearTimeout(priceFlashTimerRef.current);
+      priceFlashTimerRef.current = null;
+    }
+  }, []);
+
+  const clearHydrateDebounce = useCallback(() => {
+    if (hydrateDebounceRef.current) {
+      clearTimeout(hydrateDebounceRef.current);
+      hydrateDebounceRef.current = null;
+    }
+  }, []);
+
+  const schedulePriceFlashClear = useCallback(() => {
+    clearPriceFlashTimer();
+    priceFlashTimerRef.current = setTimeout(() => {
+      setState((prev) => ({
+        ...prev,
+        bidLive: { ...prev.bidLive, priceFlash: false },
+      }));
+      priceFlashTimerRef.current = null;
+    }, PRICE_FLASH_MS);
+  }, [clearPriceFlashTimer]);
 
   const handleUnauthorized = useCallback(() => {
     onUnauthorizedRef.current?.();
   }, []);
 
   const hydrate = useCallback(async () => {
+    const generation = hydrateGenerationRef.current;
     const result = await dataClient.fetchSnapshot(saleId, displayToken);
+    if (generation !== hydrateGenerationRef.current) {
+      return false;
+    }
     if (!result.ok) {
       if (result.unauthorized) {
         handleUnauthorized();
@@ -82,15 +127,27 @@ export function useSaleroomDisplayLive({
       return false;
     }
     const { snapshot } = result;
+    const previousLotId = currentLotIdRef.current;
     currentLotIdRef.current = snapshot.currentLotId;
-    setState({
+
+    setState((prev) => ({
       snapshot,
       overlay: snapshot.overlay,
-      flash: null,
+      flash: prev.flash,
       connectionStatus: "connected",
-    });
+      bidLive: mergeSnapshotAfterHydrate(prev.bidLive, previousLotId, snapshot.currentLotId),
+    }));
+    syncJoinedLotRef.current(snapshot.currentLotId);
     return true;
   }, [dataClient, displayToken, handleUnauthorized, saleId]);
+
+  const scheduleHydrate = useCallback(() => {
+    clearHydrateDebounce();
+    hydrateDebounceRef.current = setTimeout(() => {
+      hydrateDebounceRef.current = null;
+      void hydrate();
+    }, HYDRATE_DEBOUNCE_MS);
+  }, [clearHydrateDebounce, hydrate]);
 
   useEffect(() => {
     void hydrate();
@@ -121,9 +178,26 @@ export function useSaleroomDisplayLive({
       }
     };
 
+    syncJoinedLotRef.current = joinLot;
+
+    const handleLotTransition = (nextLotId: string | null) => {
+      if (nextLotId === currentLotIdRef.current) return;
+      currentLotIdRef.current = nextLotId;
+      hydrateGenerationRef.current += 1;
+      clearHydrateDebounce();
+      clearPriceFlashTimer();
+      joinLot(nextLotId);
+      if (nextLotId) {
+        void hydrate();
+      }
+    };
+
     const onSaleroom = (raw: unknown) => {
       const event = raw as SaleroomRealtimePayload;
       if (!event || event.saleId !== saleId) return;
+
+      let nextLotId: string | null | undefined;
+      let lotChanged = false;
 
       setState((prev) => {
         if (!prev.snapshot) return prev;
@@ -138,14 +212,8 @@ export function useSaleroomDisplayLive({
         if (event.kind === "hammer") flash = "sold";
         if (event.kind === "no_sale") flash = "passed";
 
-        const nextLotId = sessionStatus.currentLotId;
-        if (nextLotId !== currentLotIdRef.current) {
-          currentLotIdRef.current = nextLotId;
-          joinLot(nextLotId);
-          if (nextLotId) {
-            void hydrate();
-          }
-        }
+        nextLotId = sessionStatus.currentLotId;
+        lotChanged = nextLotId !== currentLotIdRef.current;
 
         return {
           ...prev,
@@ -156,12 +224,17 @@ export function useSaleroomDisplayLive({
             currentLotId: sessionStatus.currentLotId,
           },
           connectionStatus: "connected",
+          bidLive: lotChanged ? resetDisplayBidLiveState() : prev.bidLive,
         };
       });
 
+      if (lotChanged && nextLotId !== undefined) {
+        handleLotTransition(nextLotId);
+      }
+
       if (event.kind === "hammer" || event.kind === "no_sale") {
-        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-        flashTimerRef.current = setTimeout(() => {
+        if (soldFlashTimerRef.current) clearTimeout(soldFlashTimerRef.current);
+        soldFlashTimerRef.current = setTimeout(() => {
           setState((prev) => ({ ...prev, flash: null }));
         }, 4000);
       }
@@ -180,12 +253,19 @@ export function useSaleroomDisplayLive({
     const onBidUpdate = (raw: unknown) => {
       const parsed = parseBidUpdateEvent(raw);
       if (!parsed || parsed.lotId !== currentLotIdRef.current) return;
+
       setState((prev) => {
         if (!prev.snapshot?.currentLot || prev.snapshot.currentLot.id !== parsed.lotId) {
           return prev;
         }
+        const suppressFlash = prev.flash === "sold" || prev.flash === "passed";
+        const bidLive = applyDisplayBidUpdate(prev.bidLive, parsed, {
+          lotId: parsed.lotId,
+          suppressFlash,
+        });
         return {
           ...prev,
+          bidLive,
           snapshot: {
             ...prev.snapshot,
             currentLot: {
@@ -197,6 +277,11 @@ export function useSaleroomDisplayLive({
           connectionStatus: "connected",
         };
       });
+
+      if (parsed) {
+        schedulePriceFlashClear();
+        scheduleHydrate();
+      }
     };
 
     const onConnect = () => {
@@ -229,9 +314,23 @@ export function useSaleroomDisplayLive({
       socketAdapter.leaveSaleroom(saleId);
       socketAdapter.leaveDisplay(saleId);
       joinLot(null);
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      syncJoinedLotRef.current = () => {};
+      if (soldFlashTimerRef.current) clearTimeout(soldFlashTimerRef.current);
+      clearPriceFlashTimer();
+      clearHydrateDebounce();
     };
-  }, [displayToken, hydrate, saleId, socketAdapter]);
+  }, [
+    clearHydrateDebounce,
+    clearPriceFlashTimer,
+    displayToken,
+    hydrate,
+    saleId,
+    scheduleHydrate,
+    schedulePriceFlashClear,
+    socketAdapter,
+  ]);
 
   return state;
 }
+
+export type { DisplayBidLiveState } from "@/features/saleroom/lib/display-bid-ticks";

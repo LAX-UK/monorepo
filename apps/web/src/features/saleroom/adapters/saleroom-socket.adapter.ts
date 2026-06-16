@@ -84,6 +84,7 @@ export function createMockSaleroomSocketAdapter(): SaleroomSocketAdapter & {
   emitBidUpdate(event: unknown): void;
   simulateConnect(): void;
   simulateDisconnect(): void;
+  getJoinedLotId(): string | null;
 } {
   let saleroomHandler: ((raw: unknown) => void) | null = null;
   let displayControlHandler: ((raw: unknown) => void) | null = null;
@@ -91,14 +92,21 @@ export function createMockSaleroomSocketAdapter(): SaleroomSocketAdapter & {
   let connectHandler: (() => void) | null = null;
   let disconnectHandler: (() => void) | null = null;
   let connected = false;
+  let joinedLotId: string | null = null;
 
   return {
     joinSaleroom() {},
     leaveSaleroom() {},
     joinDisplay() {},
     leaveDisplay() {},
-    joinLot() {},
-    leaveLot() {},
+    joinLot(lotId) {
+      joinedLotId = lotId;
+    },
+    leaveLot(lotId) {
+      if (joinedLotId === lotId) {
+        joinedLotId = null;
+      }
+    },
     onSaleroomEvent(handler) {
       saleroomHandler = handler;
     },
@@ -148,6 +156,9 @@ export function createMockSaleroomSocketAdapter(): SaleroomSocketAdapter & {
     simulateDisconnect() {
       connected = false;
       disconnectHandler?.();
+    },
+    getJoinedLotId() {
+      return joinedLotId;
     },
   };
 }
