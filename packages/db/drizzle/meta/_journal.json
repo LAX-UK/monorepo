@@ -848,6 +848,13 @@
       "when": 1787700000000,
       "tag": "0121_source_of_funds_pending_user_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1787800000000,
+      "tag": "0122_source_of_funds_document_review",
+      "breakpoints": true
     }
   ]
 }

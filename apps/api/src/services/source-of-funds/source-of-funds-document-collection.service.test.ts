@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ISourceOfFundsDocumentReviewRepository } from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import { PerRequestSigningPolicy } from "../signed-url-policy.js";
 import {
   SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT,
   SourceOfFundsDocumentCollectionService,
+  clampStaffPreviewContentType,
 } from "./source-of-funds-document-collection.service.js";
 import type {
   ISourceOfFundsRepository,
@@ -67,6 +69,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
     const service = new SourceOfFundsDocumentCollectionService(
       caseRepo,
       {} as ISourceOfFundsDocumentRepository,
+      {} as ISourceOfFundsDocumentReviewRepository,
       { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
       null,
       {} as never,
@@ -86,11 +89,15 @@ describe("SourceOfFundsDocumentCollectionService", () => {
 
   it("attachDocument supersedes prior active document of the same type", async () => {
     const caseRecord = makeCase({ id: "sof-1", userId: "buyer-1" });
-    const supersede = vi.fn().mockResolvedValue(undefined);
+    const supersede = vi.fn().mockResolvedValue([]);
     const attach = vi.fn().mockResolvedValue(makeDoc({ id: "doc-2" }));
+    const deleteForDocuments = vi.fn().mockResolvedValue(undefined);
     const docRepo: ISourceOfFundsDocumentRepository = {
       supersedeActiveForType: supersede,
       attach,
+    } as never;
+    const reviewRepo: ISourceOfFundsDocumentReviewRepository = {
+      deleteForDocuments,
     } as never;
 
     const selectChain = {
@@ -112,6 +119,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
     const service = new SourceOfFundsDocumentCollectionService(
       caseRepo,
       docRepo,
+      reviewRepo,
       { transaction: (fn: (tx: unknown) => unknown) => fn(conn) } as never,
       null,
       {} as never,
@@ -127,7 +135,92 @@ describe("SourceOfFundsDocumentCollectionService", () => {
     });
 
     expect(supersede).toHaveBeenCalledWith("sof-1", "bank_statement", conn);
+    expect(deleteForDocuments).not.toHaveBeenCalled();
     expect(attach).toHaveBeenCalled();
+  });
+
+  it("attachDocument deletes staff reviews for superseded documents", async () => {
+    const caseRecord = makeCase({ id: "sof-1", userId: "buyer-1" });
+    const supersede = vi.fn().mockResolvedValue(["doc-old"]);
+    const attach = vi.fn().mockResolvedValue(makeDoc({ id: "doc-2" }));
+    const deleteForDocuments = vi.fn().mockResolvedValue(undefined);
+    const docRepo: ISourceOfFundsDocumentRepository = {
+      supersedeActiveForType: supersede,
+      attach,
+    } as never;
+    const reviewRepo: ISourceOfFundsDocumentReviewRepository = {
+      deleteForDocuments,
+    } as never;
+
+    const selectChain = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi
+            .fn()
+            .mockResolvedValue([
+              { id: "up-1", status: "active", kind: "source_of_funds_document" },
+            ]),
+        }),
+      }),
+    };
+    const conn = { select: vi.fn().mockReturnValue(selectChain) };
+    const caseRepo: ISourceOfFundsRepository = {
+      findById: vi.fn().mockResolvedValue(caseRecord),
+    } as never;
+
+    const service = new SourceOfFundsDocumentCollectionService(
+      caseRepo,
+      docRepo,
+      reviewRepo,
+      { transaction: (fn: (tx: unknown) => unknown) => fn(conn) } as never,
+      null,
+      {} as never,
+      new PerRequestSigningPolicy(90),
+    );
+
+    await service.attachDocument({
+      caseId: "sof-1",
+      buyerUserId: "buyer-1",
+      uploadObjectId: "up-1",
+      requestedType: "bank_statement",
+      label: "June statement",
+    });
+
+    expect(deleteForDocuments).toHaveBeenCalledWith(["doc-old"], conn);
+  });
+
+  it("requestDocuments rejects when documents were already requested", async () => {
+    const caseRecord = makeCase({
+      id: "sof-1",
+      userId: "buyer-1",
+      documentsRequestedAt: new Date("2026-06-01T00:00:00Z"),
+      documentsSubmittedAt: null,
+    });
+    const setDocumentRequest = vi.fn();
+    const caseRepo: ISourceOfFundsRepository = {
+      findById: vi.fn().mockResolvedValue(caseRecord),
+      setDocumentRequest,
+    } as never;
+
+    const service = new SourceOfFundsDocumentCollectionService(
+      caseRepo,
+      {} as ISourceOfFundsDocumentRepository,
+      {} as ISourceOfFundsDocumentReviewRepository,
+      { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+      null,
+      {} as never,
+      new PerRequestSigningPolicy(90),
+    );
+
+    await expect(
+      service.requestDocuments({
+        caseId: "sof-1",
+        staffUserId: "staff-1",
+        documentTypes: ["bank_statement"],
+        note: null,
+      }),
+    ).rejects.toThrow("source_of_funds_documents_already_requested");
+    expect(setDocumentRequest).not.toHaveBeenCalled();
   });
 
   it("getStaffDownloadUrl uses short-TTL presigned GET and emits audit event", async () => {
@@ -151,6 +244,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
     const service = new SourceOfFundsDocumentCollectionService(
       { findById: vi.fn().mockResolvedValue(caseRecord) } as never,
       { findById: vi.fn().mockResolvedValue(doc) } as never,
+      {} as ISourceOfFundsDocumentReviewRepository,
       db as never,
       { publish } as never,
       { createPresignedGet } as never,
@@ -168,6 +262,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
     expect(createPresignedGet).toHaveBeenCalledWith({
       key: "uploads/active/source-of-funds/x.pdf",
       expiresInSec: 90,
+      responseContentDisposition: 'attachment; filename="statement.pdf"',
     });
     expect(publish).toHaveBeenCalledWith(
       expect.anything(),
@@ -180,5 +275,41 @@ describe("SourceOfFundsDocumentCollectionService", () => {
         }),
       }),
     );
+  });
+
+  it("getStaffDownloadUrl rejects superseded documents", async () => {
+    const caseRecord = makeCase({ id: "sof-1", userId: "buyer-1" });
+    const doc = makeDoc({
+      id: "doc-1",
+      sourceOfFundsId: "sof-1",
+      reviewStatus: "superseded",
+    });
+    const createPresignedGet = vi.fn();
+
+    const service = new SourceOfFundsDocumentCollectionService(
+      { findById: vi.fn().mockResolvedValue(caseRecord) } as never,
+      { findById: vi.fn().mockResolvedValue(doc) } as never,
+      {} as ISourceOfFundsDocumentReviewRepository,
+      { select: vi.fn() } as never,
+      { publish: vi.fn() } as never,
+      { createPresignedGet } as never,
+      new PerRequestSigningPolicy(90),
+    );
+
+    const result = await service.getStaffDownloadUrl({
+      caseId: "sof-1",
+      documentId: "doc-1",
+      staffUserId: "staff-2",
+    });
+
+    expect(result).toBeNull();
+    expect(createPresignedGet).not.toHaveBeenCalled();
+  });
+
+  it("clampStaffPreviewContentType allows pdf and images only", () => {
+    expect(clampStaffPreviewContentType("application/pdf")).toBe("application/pdf");
+    expect(clampStaffPreviewContentType("image/png")).toBe("image/png");
+    expect(clampStaffPreviewContentType("text/html")).toBe("application/octet-stream");
+    expect(clampStaffPreviewContentType("image/jpg")).toBe("image/jpeg");
   });
 });

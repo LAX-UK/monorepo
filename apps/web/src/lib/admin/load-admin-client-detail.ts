@@ -26,7 +26,11 @@ import {
   getAdminUserBids,
   getAdminUserKycSessions,
 } from "@/lib/data/http/admin.server";
-import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
+import type {
+  AdminAmlScreeningRow,
+  AdminSourceOfFundsRow,
+} from "@/lib/data/http/compliance.server";
+import { getAdminUserSourceOfFunds } from "@/lib/data/http/compliance.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
   AML_REVIEW_ACCESS,
@@ -55,6 +59,8 @@ export type AdminClientDetailBundle = {
   kycSessions: AdminKycSessionRow[];
   amlScreenings: AdminAmlScreeningRow[];
   canViewAml: boolean;
+  canViewSof: boolean;
+  sofCases: AdminSourceOfFundsRow[];
   canViewFinance: boolean;
   canViewBids: boolean;
   canViewKyc: boolean;
@@ -83,6 +89,7 @@ export const loadAdminClientDetail = cache(
     const actorStaff = sessionUser?.staffRole ?? null;
     const canViewAml =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, AML_REVIEW_ACCESS);
+    const canViewSof = canViewAml;
     const canViewFinance =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, FINANCE_ACCESS);
     const canViewBids =
@@ -102,6 +109,7 @@ export const loadAdminClientDetail = cache(
       kycSessions,
       amlScreenings,
       bidsResult,
+      sofCases,
     ] = await Promise.all([
       getAdminArtistsByOwnerUserId(user.id).catch(() => []),
       canViewFinance ? getAdminPaymentsForUser(user.id).catch(() => []) : Promise.resolve([]),
@@ -115,6 +123,7 @@ export const loadAdminClientDetail = cache(
             total: 0,
           }))
         : Promise.resolve({ rows: [], total: 0 }),
+      canViewSof ? getAdminUserSourceOfFunds(user.id).catch(() => []) : Promise.resolve([]),
     ]);
 
     const [lifetimeSpend, submissionsCount] = await Promise.all([
@@ -144,6 +153,8 @@ export const loadAdminClientDetail = cache(
       kycSessions,
       amlScreenings,
       canViewAml,
+      canViewSof,
+      sofCases,
       canViewFinance,
       canViewBids,
       canViewKyc,

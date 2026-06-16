@@ -191,6 +191,15 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Source-of-Funds MLRO/finance disposition — operational fields only (no PII). */
   "source_of_funds.reviewed": new Set(["sourceOfFundsId", "userId", "status", "trigger"]),
+  /** Staff per-document verification checklist (note may reference buyer data). */
+  "source_of_funds.document_reviewed": new Set([
+    "sourceOfFundsId",
+    "documentId",
+    "checks",
+    "note",
+    "reviewedByUserId",
+    "reviewedAt",
+  ]),
   /** restricted seller writes — audit only. */
   "item_submission.restricted_entity_write": new Set(["action", "reason"]),
   /** lot voided at close (anti-shilling). */

@@ -12,6 +12,7 @@ describe("purgeSourceOfFundsDocumentsJob", () => {
     };
 
     const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    const deleteWhere = vi.fn().mockResolvedValue(undefined);
     const db = {
       select: vi
         .fn()
@@ -32,6 +33,7 @@ describe("purgeSourceOfFundsDocumentsJob", () => {
           }),
         }),
       update: vi.fn().mockReturnValue({ set }),
+      delete: vi.fn().mockReturnValue({ where: deleteWhere }),
     };
     const deleteObject = vi.fn().mockResolvedValue(undefined);
 
@@ -45,6 +47,7 @@ describe("purgeSourceOfFundsDocumentsJob", () => {
 
     expect(result.purged).toBe(1);
     expect(deleteObject).toHaveBeenCalledWith(doc.key);
+    expect(deleteWhere).toHaveBeenCalledTimes(1);
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
         anonymizedAt: now,
