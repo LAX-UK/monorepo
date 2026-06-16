@@ -59,6 +59,7 @@ import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statemen
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
 import { createQrRoutes } from "./routes/qr.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
+import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
 import { createSaleRoutes } from "./routes/sales.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
 import { createSubmissionDocumentRoutes } from "./routes/submission-documents.js";
@@ -126,6 +127,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/auth/*", createAuthNoStoreMiddleware());
 
   app.use("/lots/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/display/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/sales/*", createRateLimitMiddleware(container.rateLimitStore));
   const publicCatalogueCache = createPublicCacheControlMiddleware({
     sMaxAge: 30,
@@ -219,6 +221,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/events", createOnsiteEventRoutes(container))
     .route("/", createTelephoneBookingRoutes(container, authenticator))
     .route("/sales", createSaleRoutes(container, authenticator))
+    .route("/", createSaleroomDisplayRoutes(container))
     .route("/sales", createSaleDocumentRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))
     .route("/users", createUserRoutes(container, authenticator))

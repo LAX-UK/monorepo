@@ -64,4 +64,25 @@ describe("bridgeRedisToSockets", () => {
       expect.objectContaining({ newEndTime: "2026-06-01T12:00:00.000Z" }),
     );
   });
+
+  it("emits displayControl to the display room, not the saleroom room", () => {
+    const io = createMockIo();
+    const sub = createMockSub();
+    bridgeRedisToSockets(io as never, sub);
+
+    const payload = JSON.stringify({
+      kind: "fair_warning",
+      emittedAt: "2026-06-01T12:00:00.000Z",
+      saleId: "sale-abc",
+    });
+
+    sub.emit("pmessage", "sale:*:display", "sale:sale-abc:display", payload);
+
+    expect(io.to).toHaveBeenCalledWith("display:sale-abc");
+    expect(io.to).not.toHaveBeenCalledWith("sale:sale-abc");
+    expect(io.to.mock.results[0]?.value.emit).toHaveBeenCalledWith(
+      "displayControl",
+      expect.objectContaining({ kind: "fair_warning" }),
+    );
+  });
 });

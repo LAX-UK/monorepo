@@ -3,6 +3,7 @@
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import { ClerkSessionBar } from "@/features/saleroom/components/clerk-console/clerk-session-bar";
+import { DisplayControlPanel } from "@/features/saleroom/components/clerk-console/display-control-panel";
 import { LotOnBlockPanel } from "@/features/saleroom/components/clerk-console/lot-on-block-panel";
 import { LotRunwayPanel } from "@/features/saleroom/components/clerk-console/lot-runway-panel";
 import { SaleroomActivityLog } from "@/features/saleroom/components/clerk-console/saleroom-activity-log";
@@ -275,6 +276,8 @@ function ClerkConsoleInner({
           />
         </div>
       </div>
+
+      <DisplayControlPanel saleId={saleId} />
 
       <div className="hidden lg:block">
         <TelephoneLinesPanel saleId={saleId} currentLotId={currentLotId} rows={telephoneBookings} />

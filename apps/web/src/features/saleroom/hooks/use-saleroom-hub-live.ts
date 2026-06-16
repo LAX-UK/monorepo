@@ -8,7 +8,7 @@ import { fetchSaleroomStatus } from "@/lib/data/http/saleroom-status.client";
 import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import type { SaleroomRealtimePayload } from "@auction/types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export type SaleroomHubLiveSession = PublicSaleroomSessionStatus & {
   connectionStatus: "connected" | "reconnecting" | "disconnected";
@@ -28,6 +28,22 @@ export type SaleroomHubLiveState = {
 
 const DEFAULT_SESSION: PublicSaleroomSessionStatus = { status: "none", currentLotId: null };
 
+function stableSaleIdsKey(saleIds: readonly string[]): string {
+  return saleIds.join("\0");
+}
+
+function stableInitialSessionsKey(
+  saleIds: readonly string[],
+  initialBySaleId: Record<string, PublicSaleroomSessionStatus>,
+): string {
+  return saleIds
+    .map((id) => {
+      const s = initialBySaleId[id] ?? DEFAULT_SESSION;
+      return `${id}:${s.status}:${s.currentLotId ?? ""}`;
+    })
+    .join("|");
+}
+
 export function useSaleroomHubLive({
   saleIds,
   initialBySaleId,
@@ -38,19 +54,31 @@ export function useSaleroomHubLive({
   );
   const [completedBumps, setCompletedBumps] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    setSessions(buildInitialSessions(saleIds, initialBySaleId));
-    setCompletedBumps({});
-  }, [saleIds, initialBySaleId]);
+  const saleIdsRef = useRef(saleIds);
+  const initialBySaleIdRef = useRef(initialBySaleId);
+  saleIdsRef.current = saleIds;
+  initialBySaleIdRef.current = initialBySaleId;
 
+  const saleIdsKey = stableSaleIdsKey(saleIds);
+  const initialSessionsKey = stableInitialSessionsKey(saleIds, initialBySaleId);
+
+  // Stable keys re-run when sale ids or initial session props change without array/object reference churn.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: saleIdsKey and initialSessionsKey are deliberate effect triggers
   useEffect(() => {
-    if (saleIds.length === 0) return;
+    setSessions(buildInitialSessions(saleIdsRef.current, initialBySaleIdRef.current));
+    setCompletedBumps({});
+  }, [saleIdsKey, initialSessionsKey]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: saleIdsKey retriggers socket subscription when the sale list changes
+  useEffect(() => {
+    const activeSaleIds = saleIdsRef.current;
+    if (activeSaleIds.length === 0) return;
 
     let hadConnected = socketAdapter.isConnected();
 
     const hydrateAll = async () => {
       const results = await Promise.all(
-        saleIds.map(async (saleId) => {
+        activeSaleIds.map(async (saleId) => {
           const snap = await fetchSaleroomStatus(saleId);
           return { saleId, snap };
         }),
@@ -78,7 +106,7 @@ export function useSaleroomHubLive({
 
     const onSaleroom = (raw: unknown) => {
       const event = raw as SaleroomRealtimePayload;
-      if (!event?.saleId || !saleIds.includes(event.saleId)) return;
+      if (!event?.saleId || !activeSaleIds.includes(event.saleId)) return;
       if (event.kind === "hammer" || event.kind === "no_sale") {
         setCompletedBumps((prev) => ({
           ...prev,
@@ -103,7 +131,7 @@ export function useSaleroomHubLive({
     };
 
     const joinAll = () => {
-      for (const saleId of saleIds) {
+      for (const saleId of activeSaleIds) {
         socketAdapter.joinSaleroom(saleId);
       }
     };
@@ -113,7 +141,7 @@ export function useSaleroomHubLive({
       if (hadConnected) {
         setSessions((prev) => {
           const next = { ...prev };
-          for (const saleId of saleIds) {
+          for (const saleId of activeSaleIds) {
             next[saleId] = {
               ...(next[saleId] ?? { ...DEFAULT_SESSION, lastEventAt: null }),
               connectionStatus: "reconnecting",
@@ -125,7 +153,7 @@ export function useSaleroomHubLive({
       } else {
         setSessions((prev) => {
           const next = { ...prev };
-          for (const saleId of saleIds) {
+          for (const saleId of activeSaleIds) {
             next[saleId] = {
               ...(next[saleId] ?? { ...DEFAULT_SESSION, lastEventAt: null }),
               connectionStatus: socketAdapter.isConnected() ? "connected" : "reconnecting",
@@ -140,7 +168,7 @@ export function useSaleroomHubLive({
     const onDisconnect = () => {
       setSessions((prev) => {
         const next = { ...prev };
-        for (const saleId of saleIds) {
+        for (const saleId of activeSaleIds) {
           next[saleId] = {
             ...(next[saleId] ?? { ...DEFAULT_SESSION, lastEventAt: null }),
             connectionStatus: "disconnected",
@@ -159,11 +187,11 @@ export function useSaleroomHubLive({
       socketAdapter.offSaleroomEvent(onSaleroom);
       socketAdapter.offConnect(onConnect);
       socketAdapter.offDisconnect(onDisconnect);
-      for (const saleId of saleIds) {
+      for (const saleId of activeSaleIds) {
         socketAdapter.leaveSaleroom(saleId);
       }
     };
-  }, [saleIds, socketAdapter]);
+  }, [saleIdsKey, socketAdapter]);
 
   return useMemo(() => ({ sessions, completedBumps }), [sessions, completedBumps]);
 }
