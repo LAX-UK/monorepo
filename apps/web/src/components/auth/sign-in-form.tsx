@@ -39,6 +39,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     loading,
     bannerError,
     showCaptcha,
+    signInSubmitDisabled,
     turnstileSiteKey,
     onTurnstileToken,
     onTurnstileExpire,
@@ -317,7 +318,12 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
         <div className="flex flex-col gap-6">
           {sellIntent ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-              <AuthSubmitButton loading={loading} loadingLabel="Signing in…" className="flex-1">
+              <AuthSubmitButton
+                loading={loading}
+                loadingLabel="Signing in…"
+                className="flex-1"
+                disabled={signInSubmitDisabled}
+              >
                 Sign In
               </AuthSubmitButton>
               <Button
@@ -330,7 +336,11 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
               </Button>
             </div>
           ) : (
-            <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
+            <AuthSubmitButton
+              loading={loading}
+              loadingLabel="Signing in…"
+              disabled={signInSubmitDisabled}
+            >
               Sign In
             </AuthSubmitButton>
           )}
@@ -360,6 +370,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           next={next}
           forgotPasswordHref={forgotPasswordHref}
           loading={loading}
+          signInSubmitDisabled={signInSubmitDisabled}
           showCaptcha={showCaptcha}
           turnstileSiteKey={turnstileSiteKey}
           onTurnstileToken={onTurnstileToken}
@@ -412,6 +423,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             next={next}
             forgotPasswordHref={forgotPasswordHref}
             loading={loading}
+            signInSubmitDisabled={signInSubmitDisabled}
             showCaptcha={showCaptcha}
             turnstileSiteKey={turnstileSiteKey}
             onTurnstileToken={onTurnstileToken}

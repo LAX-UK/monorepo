@@ -1,13 +1,9 @@
-import type { BidErrorMatcher, BidErrorPresentation } from "../types";
-
-const MESSAGE = "Seller cannot bid on own lot";
+import { BID_ERROR_CODES, matchesSellerOwnLotError, presentationForBidCode } from "../codes";
+import type { BidErrorMatcher, MapBidErrorOptions } from "../types";
 
 export const sellerOwnLotBidErrorMatcher: BidErrorMatcher = {
-  match(raw: string): BidErrorPresentation | null {
-    if (raw !== MESSAGE) return null;
-    return {
-      message: "You're the seller of this lot, so you can't place a bid.",
-      severity: "info",
-    };
+  match(raw: string, options?: MapBidErrorOptions) {
+    if (!matchesSellerOwnLotError(raw, options?.code)) return null;
+    return presentationForBidCode(BID_ERROR_CODES.seller_cannot_bid);
   },
 };

@@ -44,6 +44,15 @@ describe("sellerOwnLotPolicy", () => {
     if (d.kind === "block") expect(d.viewId).toBe("seller-own-lot");
   });
 
+  it("blocks when isOwnLot is true via seller legal entity", () => {
+    const d = sellerOwnLotPolicy.evaluate({
+      ...baseCtx(),
+      user: { id: "buyer", email: "b@x.y", name: "B", role: "client" },
+      isOwnLot: true,
+    });
+    expect(d.kind).toBe("block");
+  });
+
   it("allows when user is a different id", () => {
     const d = sellerOwnLotPolicy.evaluate({
       ...baseCtx(),

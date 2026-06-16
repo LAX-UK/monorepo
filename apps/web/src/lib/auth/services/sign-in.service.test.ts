@@ -59,6 +59,22 @@ describe("signInService", () => {
     });
   });
 
+  it("maps 429 to rate_limited", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: "Too many requests", code: "rate_limited" }), {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const r = await signInService({ email: "a@b.com", password: "secret12" });
+    expect(r).toEqual({
+      ok: false,
+      code: "rate_limited",
+      message: AUTH_ERROR_MESSAGES.rate_limited,
+    });
+  });
+
   it("maps unknown Better Auth codes to sign_in_failed with stable copy", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify({ message: "Invalid", code: "BAD" }), {

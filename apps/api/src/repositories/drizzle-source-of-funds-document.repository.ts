@@ -38,7 +38,7 @@ export interface ISourceOfFundsDocumentRepository {
     sourceOfFundsId: string,
     requestedType: string,
     conn?: Database,
-  ): Promise<void>;
+  ): Promise<string[]>;
   listForCase(sourceOfFundsId: string, conn?: Database): Promise<SourceOfFundsDocumentRow[]>;
   listActiveForCase(sourceOfFundsId: string, conn?: Database): Promise<SourceOfFundsDocumentRow[]>;
   findById(documentId: string, conn?: Database): Promise<SourceOfFundsDocumentRow | null>;
@@ -80,7 +80,20 @@ export class DrizzleSourceOfFundsDocumentRepository implements ISourceOfFundsDoc
     sourceOfFundsId: string,
     requestedType: string,
     conn?: Database,
-  ): Promise<void> {
+  ): Promise<string[]> {
+    const rows = await this.conn(conn)
+      .select({ id: sourceOfFundsDocument.id })
+      .from(sourceOfFundsDocument)
+      .where(
+        and(
+          eq(sourceOfFundsDocument.sourceOfFundsId, sourceOfFundsId),
+          eq(sourceOfFundsDocument.requestedType, requestedType),
+          ne(sourceOfFundsDocument.reviewStatus, "superseded"),
+          isNull(sourceOfFundsDocument.anonymizedAt),
+        ),
+      );
+    if (rows.length === 0) return [];
+
     const now = new Date();
     await this.conn(conn)
       .update(sourceOfFundsDocument)
@@ -93,6 +106,7 @@ export class DrizzleSourceOfFundsDocumentRepository implements ISourceOfFundsDoc
           isNull(sourceOfFundsDocument.anonymizedAt),
         ),
       );
+    return rows.map((row) => row.id);
   }
 
   async listForCase(sourceOfFundsId: string, conn?: Database): Promise<SourceOfFundsDocumentRow[]> {

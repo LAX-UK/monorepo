@@ -1,5 +1,6 @@
 "use client";
 
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import {
   Collapsible,
   CollapsibleContent,
@@ -14,7 +15,26 @@ type Props = {
 
 /** Collapsible full terms body. */
 export function SaleroomOverviewTerms({ overview }: Props) {
+  const hydrated = useHydrated();
+
   if (!overview.terms) return null;
+
+  if (!hydrated) {
+    return (
+      <div className="group mt-6 rounded border border-outline-variant/30 bg-surface-container-low/30 p-4 dark:bg-surface-container-low/30">
+        <button
+          type="button"
+          className="flex w-full cursor-pointer items-center justify-between text-lg font-semibold text-on-surface"
+          aria-expanded={false}
+        >
+          <span className="underline decoration-outline-variant/50 underline-offset-2">
+            Terms &amp; conditions
+          </span>
+          <ChevronDownIcon className="size-5" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <Collapsible className="group mt-6 rounded border border-outline-variant/30 bg-surface-container-low/30 p-4 data-[state=open]:bg-surface-container-low/50 dark:bg-surface-container-low/30 dark:data-[state=open]:bg-surface-container/40">

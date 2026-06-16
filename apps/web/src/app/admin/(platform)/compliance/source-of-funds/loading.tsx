@@ -5,7 +5,7 @@ export default function AdminComplianceSofLoading() {
     <CatalogListPageSkeleton
       title="Source of Funds"
       description="Loading Source of Funds cases…"
-      kpiTiles={2}
+      kpiTiles={3}
       tableRows={8}
       tableColumns={4}
     />

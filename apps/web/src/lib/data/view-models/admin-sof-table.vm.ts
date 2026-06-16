@@ -20,6 +20,7 @@ export type AdminSofTableRow = {
   settlementItemCount: number;
   pendingCasesForBuyer: number;
   openedLabel: string;
+  reviewedLabel: string;
   declaredSource: string | null;
   triageRecommendation: string | null;
   triagedByUserId: string | null;
@@ -113,6 +114,7 @@ export function buildAdminSofTableRow(row: AdminSourceOfFundsRow): AdminSofTable
     settlementItemCount: row.settlementItemCount ?? 0,
     pendingCasesForBuyer: row.pendingCasesForBuyer ?? 0,
     openedLabel: row.createdAt ? formatDateTime(row.createdAt) : "—",
+    reviewedLabel: row.reviewedAt ? formatDateTime(row.reviewedAt) : "—",
     declaredSource: row.declaredSource,
     triageRecommendation: row.triageRecommendation,
     triagedByUserId: row.triagedByUserId,

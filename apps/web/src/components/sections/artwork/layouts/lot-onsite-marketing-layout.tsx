@@ -7,21 +7,22 @@ import type {
   LotRelatedRailVM,
   LotSummarySeedVM,
 } from "@/components/sections/artwork/artwork-view-models";
+import { splitArtworkAccordionBlocks } from "@/components/sections/artwork/artwork-view-models";
 import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
 import { shouldShowLotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar-utils";
 import { OnsiteLotHero } from "@/components/sections/artwork/onsite/onsite-lot-hero";
-import { OnsiteParticipationHub } from "@/components/sections/artwork/onsite/onsite-participation-hub";
 import { OnsitePlanVisitSection } from "@/components/sections/artwork/onsite/onsite-plan-visit-section";
 import { OnsiteSessionHeader } from "@/components/sections/artwork/onsite/onsite-session-header";
 import { OnsiteStreamSection } from "@/components/sections/artwork/onsite/onsite-stream-section";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
-import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
+import {
+  LotDetailsSection,
+  LotMarketingAccordion,
+} from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import type { OnsiteParticipationContext } from "@/lib/onsite/participation-request-input";
 import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
-import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { formatPostalAddressLines } from "@auction/validators";
@@ -64,10 +65,6 @@ type Props = {
   kycApproved?: boolean;
   myRegistrations?: TimelineRegistration[];
   buyerEntities?: TimelineEntity[];
-  mobile?: string | null;
-  mobileDisplay?: string | null;
-  telephoneBooking?: TelephoneBookingSnapshot | null;
-  orgModuleEnabled?: boolean;
   loginNextPath?: string;
 };
 
@@ -100,22 +97,13 @@ export function LotOnsiteMarketingLayout({
   kycApproved = false,
   myRegistrations = [],
   buyerEntities = [],
-  mobile = null,
-  mobileDisplay,
-  telephoneBooking = null,
-  orgModuleEnabled = true,
   loginNextPath = "",
 }: Props) {
   const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
   const locationLine = locationOneLine(sale);
   const showQueue = shouldShowLotQueueSidebar(queueUpNext, queueRest, isSaleQueueLoading);
-
-  const participationCtx: OnsiteParticipationContext = {
-    saleTitle: sale.title,
-    lotNumber: auction.lotNumber,
-    lotTitle: auction.title,
-    lotUrl: shareUrl,
-  };
+  const { lotDetails: lotDetailsBlock, accordionBlocks } =
+    splitArtworkAccordionBlocks(marketingAccordionBlocks);
 
   return (
     <section aria-labelledby="lot-heading-onsite" className="bg-page-bg dark:bg-background">
@@ -188,26 +176,16 @@ export function LotOnsiteMarketingLayout({
               startTime={sale.startTime}
               endTime={sale.endTime}
               streamUrl={sale.streamUrl}
-              absenteeAnchorId="bid-onsite-hub"
-              telephoneAnchorId="bid-onsite-hub"
               liveStreamAnchorId="live-stream"
               {...(loginNextPath ? { registerReturnPath: loginNextPath } : {})}
               className="rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8"
             />
 
-            <OnsiteParticipationHub
-              sale={sale}
-              participationCtx={participationCtx}
-              lotId={auction.id}
-              loginNextPath={loginNextPath || shareUrl}
-              isAuthenticated={isAuthenticated}
-              kycApproved={kycApproved}
-              mobile={mobile}
-              {...(mobileDisplay ? { mobileDisplay } : {})}
-              buyerEntities={buyerEntities}
-              telephoneBooking={telephoneBooking}
-              orgModuleEnabled={orgModuleEnabled}
-            />
+            {lotDetailsBlock ? (
+              <div className="scroll-mt-28 rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8">
+                <LotDetailsSection block={lotDetailsBlock} className="mb-0 border-0 pb-0" />
+              </div>
+            ) : null}
 
             <OnsitePlanVisitSection
               sale={sale}
@@ -216,9 +194,11 @@ export function LotOnsiteMarketingLayout({
               locationLine={locationLine}
             />
 
-            <div className="mx-auto w-full max-w-[900px]">
-              <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
-            </div>
+            {accordionBlocks.length > 0 ? (
+              <div className="mx-auto w-full max-w-[900px]">
+                <LotMarketingAccordion blocks={accordionBlocks} variant="default" />
+              </div>
+            ) : null}
 
             <OnsiteStreamSection sale={sale} streamPosterUrl={streamPosterUrl} />
           </div>

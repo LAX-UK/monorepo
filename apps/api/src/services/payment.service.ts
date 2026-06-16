@@ -173,12 +173,12 @@ export class PaymentService {
               excludePaymentId: existing.id,
             })
           : { hold: false, reason: null };
-        const manualReviewReason: ManualReviewReason | null = complianceDecision.hold
-          ? complianceDecision.reason
-          : this.paymentTierPolicy.resolveManualReviewReason(
+        const manualReviewReason: ManualReviewReason = complianceDecision.hold
+          ? (complianceDecision.reason as ManualReviewReason)
+          : (this.paymentTierPolicy.resolveManualReviewReason(
               amountPence,
               sellerEntity?.status === "archived",
-            );
+            ) ?? "finance_release_required");
         return ok({
           paymentId: existing.id,
           checkoutUrl: null,

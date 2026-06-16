@@ -41,7 +41,8 @@ function isManualReviewReason(s: unknown): s is ManualReviewReason {
     s === "high_value" ||
     s === "seller_archived_and_high_value" ||
     s === "aml_hold" ||
-    s === "source_of_funds_required"
+    s === "source_of_funds_required" ||
+    s === "finance_release_required"
   );
 }
 

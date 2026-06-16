@@ -12,7 +12,7 @@ type Props = {
   ariaLabel: string;
 };
 
-/** Shared quick-link grid for staff hub pages (finance, saleroom, conveyor, onsite events). */
+/** Shared quick-link grid for staff hub pages (finance, saleroom, conveyor, event RSVPs). */
 export function AdminHubQuickLinks({ links, ariaLabel }: Props) {
   return (
     <section aria-label={ariaLabel} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

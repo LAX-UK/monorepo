@@ -116,7 +116,16 @@ export interface AutoBidWriter {
     autoBidStepAmount: number;
     idempotencyKey?: string;
   }): Promise<AutoBidMutationResult>;
-  clearAutoBid(lotId: string): Promise<{ ok: true } | { ok: false; error: string; status: number }>;
+  clearAutoBid(lotId: string): Promise<
+    | { ok: true }
+    | {
+        ok: false;
+        error: string;
+        status: number;
+        code?: string | null;
+        kycFeedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
+      }
+  >;
 }
 
 export type SessionUser = {

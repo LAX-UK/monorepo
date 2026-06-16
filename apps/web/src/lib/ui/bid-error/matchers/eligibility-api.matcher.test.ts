@@ -34,4 +34,13 @@ describe("eligibility API bid error matchers", () => {
     expect(r.title).toBe("Bid in progress");
     expect(r.severity).toBe("warning");
   });
+
+  it("maps not_a_member_of_legal_entity to a resync warning", () => {
+    const r = mapBidError("not_a_member_of_legal_entity", {
+      code: "not_a_member_of_legal_entity",
+    });
+    expect(r.title).toBe("Bidding profile out of sync");
+    expect(r.severity).toBe("warning");
+    expect(r.message).toContain("personal profile");
+  });
 });

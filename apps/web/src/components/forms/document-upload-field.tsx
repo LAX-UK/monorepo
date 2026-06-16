@@ -26,6 +26,8 @@ type DocumentUploadFieldProps = {
   dropzone?: boolean;
   helperText?: string;
   inputId?: string;
+  /** Links helper/constraints text for screen readers (aria-describedby). */
+  describedById?: string;
   /** Optional client-side max size (bytes) before upload starts. */
   maxBytes?: number;
 };
@@ -42,6 +44,7 @@ export function DocumentUploadField({
   dropzone = false,
   helperText,
   inputId,
+  describedById,
   maxBytes,
 }: DocumentUploadFieldProps) {
   const { uploadFile } = useUploadObjectLifecycle();
@@ -96,6 +99,7 @@ export function DocumentUploadField({
           busy={Boolean(busy)}
           accept={DOCUMENT_ACCEPT}
           inputId={fileInputId}
+          {...(describedById ? { describedById } : {})}
           {...(helperText ? { helperText } : {})}
           onFilesSelected={(files) => void onPick(files)}
         >

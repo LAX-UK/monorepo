@@ -55,6 +55,18 @@ export const membershipRequiredBidErrorMatcher: BidErrorMatcher = {
   },
 };
 
+export const notAMemberOfLegalEntityBidErrorMatcher: BidErrorMatcher = {
+  match(raw: string, options?: MapBidErrorOptions): BidErrorPresentation | null {
+    if (!matchesCode(options, "not_a_member_of_legal_entity", raw)) return null;
+    return {
+      title: "Bidding profile out of sync",
+      message:
+        "Your bid was sent for an organisation you're not a member of. We've reset you to your personal profile — please place the bid again.",
+      severity: "warning",
+    };
+  },
+};
+
 export const buyerAgentAuthorisationBidErrorMatcher: BidErrorMatcher = {
   match(raw: string, options?: MapBidErrorOptions): BidErrorPresentation | null {
     if (!matchesCode(options, "buyer_agent_authorisation_required", raw)) return null;

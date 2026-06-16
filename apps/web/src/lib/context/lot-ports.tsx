@@ -23,21 +23,25 @@ export function LotPortsProvider({
   autoBidWriter,
   realtime,
   health,
+  actingEntityId,
 }: {
   children: ReactNode;
   bidWriter?: BidWriter;
   autoBidWriter?: AutoBidWriter;
   realtime?: LotRealtimePort;
   health?: RealtimeHealthPort;
+  /** Server-resolved acting entity, forwarded to bid writers as an explicit
+   * `X-Legal-Entity-Id` header so bids never trust a stale browser cookie. */
+  actingEntityId?: string | undefined;
 }) {
   const value = useMemo<LotPortsValue>(
     () => ({
-      bidWriter: bidWriter ?? createHttpBidWriter(),
-      autoBidWriter: autoBidWriter ?? createHttpAutoBidWriter(),
+      bidWriter: bidWriter ?? createHttpBidWriter(actingEntityId),
+      autoBidWriter: autoBidWriter ?? createHttpAutoBidWriter(actingEntityId),
       realtime: realtime ?? createSocketLotRealtime(),
       health: health ?? createSocketHealthAdapter(),
     }),
-    [bidWriter, autoBidWriter, realtime, health],
+    [bidWriter, autoBidWriter, realtime, health, actingEntityId],
   );
   return <LotPortsContext.Provider value={value}>{children}</LotPortsContext.Provider>;
 }

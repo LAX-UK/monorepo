@@ -31,6 +31,10 @@ export type BidPolicyContext = {
   lotStatus: Lot["status"];
   /** Post-login return path for the sign-in CTA (e.g. `/lot/:slug/:id`). */
   loginNextPath: string;
+  /** Server-resolved: user is bidding as seller of this lot. */
+  isOwnLot?: boolean;
+  /** Acting legal entity id forwarded to bid writers. */
+  actingLegalEntityId?: string | null;
   /** When set, bidding is blocked until identity verification threshold is met. */
   kycBidGate?: KycBidGateContext | null;
   /** When set, buyer_agent acting context must have approved sale registration. */

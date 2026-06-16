@@ -1,8 +1,12 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
+import { SaleroomHubSessionBadge } from "@/components/admin/saleroom-hub-board/saleroom-hub-session-badge";
+import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
+import type { SaleDeliveryMode } from "@auction/types";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -27,9 +31,7 @@ export function saleroomHubColumns(): ColumnDef<Row>[] {
       id: "delivery",
       header: "Delivery",
       cell: ({ row }) => (
-        <span className="text-xs capitalize text-on-surface-variant">
-          {row.original.sale.deliveryMode}
-        </span>
+        <SaleDeliveryModeBadge mode={row.original.sale.deliveryMode as SaleDeliveryMode} />
       ),
       enableSorting: false,
     },
@@ -45,6 +47,12 @@ export function saleroomHubColumns(): ColumnDef<Row>[] {
       enableSorting: false,
     },
     {
+      id: "session",
+      header: "Session",
+      cell: ({ row }) => <SaleroomHubSessionBadge saleId={row.original.sale.id} />,
+      enableSorting: false,
+    },
+    {
       id: "status",
       header: "Status",
       cell: ({ row }) => <AdminStatusBadge domain="sale" status={row.original.sale.status} />,
@@ -53,9 +61,16 @@ export function saleroomHubColumns(): ColumnDef<Row>[] {
       id: "open",
       header: "",
       cell: ({ row }) => (
-        <Button variant="secondary" size="sm" asChild>
-          <Link href={`/admin/saleroom/${row.original.sale.id}`}>Clerk console</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" asChild>
+            <Link href={`/admin/saleroom/${row.original.sale.id}`}>Clerk console</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${saleDetailTabHref(row.original.sale.id, "registrations")}#check-in`}>
+              Check-in
+            </Link>
+          </Button>
+        </div>
       ),
       enableSorting: false,
     },

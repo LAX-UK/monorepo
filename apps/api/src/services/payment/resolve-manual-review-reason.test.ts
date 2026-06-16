@@ -45,6 +45,25 @@ describe("resolveManualReviewReason", () => {
     expect(result.complianceHold).toBe(false);
   });
 
+  it("returns finance_release_required when manual review queue has no tier reason", async () => {
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: false, reason: null }),
+      peek: vi.fn().mockResolvedValue({ hold: false, reason: null }),
+    };
+    const result = await resolveManualReviewReason({
+      buyerUserId: "buyer-1",
+      amountPence: 8_375_000,
+      sellerArchived: false,
+      paymentTierPolicy: policy,
+      settlementCompliance,
+      paymentStatus: "requires_manual_review",
+    });
+    expect(result).toEqual({
+      manualReviewReason: "finance_release_required",
+      complianceHold: false,
+    });
+  });
+
   it("returns compliance reason for pending payments when hold is active", async () => {
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),

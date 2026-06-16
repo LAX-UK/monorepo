@@ -7,7 +7,7 @@ export async function fetchOnsiteEventCheckInStats(slug: string): Promise<{
   checkInDryRun: boolean;
 }> {
   const res = await browserFetch(
-    `${browserApiBase()}/admin/onsite-events/${encodeURIComponent(slug)}/check-in/stats`,
+    `${browserApiBase()}/admin/event-rsvps/${encodeURIComponent(slug)}/check-in/stats`,
   );
   if (!res.ok) throw new Error(`Failed to load check-in stats (${res.status})`);
   const body = (await res.json()) as {
@@ -25,7 +25,7 @@ export async function setOnsiteEventCheckInDryRun(
   enabled: boolean,
 ): Promise<boolean> {
   const res = await browserFetch(
-    `${browserApiBase()}/admin/onsite-events/${encodeURIComponent(slug)}/check-in/dry-run`,
+    `${browserApiBase()}/admin/event-rsvps/${encodeURIComponent(slug)}/check-in/dry-run`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -42,7 +42,7 @@ export async function setOnsiteEventCheckInDryRun(
 
 export async function resendOnsiteEventPass(slug: string, rsvpId: string): Promise<boolean> {
   const res = await browserFetch(
-    `${browserApiBase()}/admin/onsite-events/${encodeURIComponent(slug)}/rsvps/${encodeURIComponent(rsvpId)}/resend-pass`,
+    `${browserApiBase()}/admin/event-rsvps/${encodeURIComponent(slug)}/rsvps/${encodeURIComponent(rsvpId)}/resend-pass`,
     { method: "POST" },
   );
   if (!res.ok) {
@@ -67,7 +67,7 @@ export async function searchOnsiteEventGuests(
 ): Promise<OnsiteEventCheckInSearchRow[]> {
   const params = new URLSearchParams({ q: query });
   const res = await browserFetch(
-    `${browserApiBase()}/admin/onsite-events/${encodeURIComponent(slug)}/check-in/search?${params}`,
+    `${browserApiBase()}/admin/event-rsvps/${encodeURIComponent(slug)}/check-in/search?${params}`,
   );
   if (!res.ok) throw new Error(`Search failed (${res.status})`);
   const body = (await res.json()) as { data?: OnsiteEventCheckInSearchRow[] };
@@ -79,7 +79,7 @@ export async function checkInOnsiteEventGuest(
   input: { token?: string; rsvpId?: string },
 ): Promise<OnsiteEventCheckInResult> {
   const res = await browserFetch(
-    `${browserApiBase()}/admin/onsite-events/${encodeURIComponent(slug)}/check-in`,
+    `${browserApiBase()}/admin/event-rsvps/${encodeURIComponent(slug)}/check-in`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

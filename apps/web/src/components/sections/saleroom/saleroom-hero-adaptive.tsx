@@ -10,8 +10,11 @@ import {
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
+import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
+import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import { overlayPillClasses } from "@/lib/ui/overlay-tone-classes";
 import type { SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
@@ -30,6 +33,10 @@ type Props = {
   backLabel?: string;
   deliveryMode?: SaleDeliveryMode;
   streamUrl?: string | null;
+  /** Minimal lot refs for live on-block hero copy (hybrid saleroom). */
+  catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
+  /** SSR snapshot for hybrid on-block hero copy. */
+  saleroomSession?: PublicSaleroomSessionStatus | null;
 };
 
 function SaleroomHeroPrimaryCta({
@@ -92,20 +99,37 @@ export function SaleroomHeroAdaptive({
   backLabel = "Back to calendar",
   deliveryMode = "online",
   streamUrl = null,
+  catalogLotRefs = [],
+  saleroomSession = null,
 }: Props) {
   const toneResult = useOverlayTone("contentBlock");
   const badgeOverlayClasses = overlayPillClasses(
     toneResult,
     "hover:bg-[color:var(--overlay-border)]",
   );
+  const saleroomLive = useSaleroomLive();
+  const liveSession: PublicSaleroomSessionStatus | null = saleroomLive ?? saleroomSession ?? null;
 
   const statusLabel = hero.isLive ? "Auction in progress" : (hero.statusBadge?.label ?? "Auction");
-  const liveTrailing =
+  const onBlockLot =
+    liveSession?.currentLotId != null
+      ? catalogLotRefs.find((l) => l.id === liveSession.currentLotId)
+      : null;
+  let liveTrailing =
     hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0
       ? hero.liveLotsCount === 1
         ? "· 1 lot live"
         : `· ${hero.liveLotsCount} lots live`
       : `· ${hero.itemsLabel}`;
+  if (
+    liveSession &&
+    isSaleroomSessionLive(liveSession.status) &&
+    onBlockLot &&
+    catalogLotRefs.length > 0
+  ) {
+    const lotNum = onBlockLot.lotNumber != null ? `Lot ${onBlockLot.lotNumber}` : onBlockLot.title;
+    liveTrailing = `· ${lotNum} on the block · ${catalogLotRefs.length} lots`;
+  }
   const thirdStat: readonly [string, string] = hero.estimatedTotalLabel
     ? (["Est. Total", hero.estimatedTotalLabel] as const)
     : (["Format", hero.overviewMetaLine ?? hero.dateLine] as const);
