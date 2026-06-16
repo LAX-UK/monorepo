@@ -61,6 +61,7 @@ export type SaleHeroVM = {
 export type SaleLotCardVM = {
   id: string;
   href: string;
+  lotNumber?: number | null;
   lotLabel: string | null;
   title: string;
   imageUrl: string | null;
@@ -83,6 +84,8 @@ export type SaleLotCardVM = {
   artistOrMedium: string | null;
   /** Initial watch state for the Follow control. */
   viewerIsWatching: boolean;
+  /** When saleroom session is live and this lot is on the block. */
+  isOnBlock?: boolean;
 } & LotCardTimingVM;
 
 export type RelatedSaleVM = {

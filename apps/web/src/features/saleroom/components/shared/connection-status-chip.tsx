@@ -6,6 +6,8 @@ type Props = {
   status: SaleroomConnectionStatus;
   lastEventAt?: string | null;
   className?: string;
+  /** When true, hide the chip while connected (less noise on hub cards). */
+  hideWhenConnected?: boolean;
 };
 
 const STATUS_COPY: Record<SaleroomConnectionStatus, { label: string; dotClass: string }> = {
@@ -14,7 +16,13 @@ const STATUS_COPY: Record<SaleroomConnectionStatus, { label: string; dotClass: s
   disconnected: { label: "Stale", dotClass: "bg-error" },
 };
 
-export function ConnectionStatusChip({ status, lastEventAt, className }: Props) {
+export function ConnectionStatusChip({
+  status,
+  lastEventAt,
+  className,
+  hideWhenConnected = false,
+}: Props) {
+  if (hideWhenConnected && status === "connected") return null;
   const copy = STATUS_COPY[status];
   const updatedLabel =
     lastEventAt != null

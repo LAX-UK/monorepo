@@ -13,8 +13,8 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  type RefObject,
   Suspense,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -43,24 +43,6 @@ type SiteHeaderShellProps = SiteHeaderProps & {
   searchParams: ReturnType<typeof useSearchParams> | null;
 };
 
-function SiteHeaderHeightSync({ headerRef }: { headerRef: RefObject<HTMLElement | null> }) {
-  useLayoutEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-
-    const sync = () => {
-      document.documentElement.style.setProperty("--header-height", `${el.offsetHeight}px`);
-    };
-
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [headerRef]);
-
-  return null;
-}
-
 function SiteHeaderShell({
   nav: navProp,
   transparentPaths,
@@ -78,7 +60,32 @@ function SiteHeaderShell({
   const pathname = usePathname();
   const searchKey = searchParams == null ? "" : searchParams.toString();
   const headerRef = useRef<HTMLElement>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const lastHeaderHeightRef = useRef(0);
   const { title: marketingPageTitle } = useMarketingHeaderTitle();
+
+  const setHeaderNode = useCallback((el: HTMLElement | null) => {
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+
+    headerRef.current = el;
+    if (!el) return;
+
+    const sync = () => {
+      const h = el.offsetHeight;
+      if (h === lastHeaderHeightRef.current) return;
+      lastHeaderHeightRef.current = h;
+      document.documentElement.style.setProperty("--header-height", `${h}px`);
+      window.dispatchEvent(new Event("scroll"));
+    };
+
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    resizeObserverRef.current = ro;
+  }, []);
 
   const resolvedVariant: SiteHeaderChromeVariant =
     chromeVariant ??
@@ -111,9 +118,8 @@ function SiteHeaderShell({
 
   return (
     <>
-      <SiteHeaderHeightSync headerRef={headerRef} />
       <header
-        ref={headerRef}
+        ref={setHeaderNode}
         data-chrome-variant={resolvedVariant}
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}

@@ -339,6 +339,14 @@ export const adminRejectSaleRegistrationBodySchema = z.object({
   reason: z.string().max(2000).optional(),
 });
 
+export const adminUpdateSaleRegistrationBidLimitBodySchema = z.object({
+  bidLimit: z.union([z.coerce.number().finite().positive().max(1e12), z.null()]),
+});
+
+export type AdminUpdateSaleRegistrationBidLimitBody = z.infer<
+  typeof adminUpdateSaleRegistrationBidLimitBodySchema
+>;
+
 /** Staff in-room check-in: approved registration + optional paddle assignment. */
 export const adminSaleroomCheckInBodySchema = z.object({
   userId: z.string().uuid(),

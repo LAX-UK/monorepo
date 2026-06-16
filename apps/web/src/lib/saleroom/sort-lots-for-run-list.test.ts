@@ -6,11 +6,17 @@ import {
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 
-function lot(id: string, lotNumber: number | null, title: string): Lot {
+function lot(
+  id: string,
+  lotNumber: number | null,
+  title: string,
+  status: Lot["status"] = "active",
+): Lot {
   return {
     id,
     lotNumber,
     title,
+    status,
   } as Lot;
 }
 
@@ -22,6 +28,15 @@ describe("sortLotsForRunList", () => {
 
   it("formats lot labels with number and title", () => {
     expect(formatLotRunListLabel(lot("x", 7, "Blue Vase"))).toBe("Lot 7 · Blue Vase");
+  });
+
+  it("skips ended lots when finding next", () => {
+    const lots = [
+      lot("l1", 1, "One", "ended"),
+      lot("l2", 2, "Two", "active"),
+      lot("l3", 3, "Three", "scheduled"),
+    ];
+    expect(findNextRunListLot(lots, "l2")?.id).toBe("l3");
   });
 
   it("finds the next lot after the current lot on block", () => {

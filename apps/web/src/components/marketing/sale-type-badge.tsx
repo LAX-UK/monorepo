@@ -1,4 +1,5 @@
 "use client";
+
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Badge } from "@auction/ui";
