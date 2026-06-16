@@ -9,6 +9,7 @@ import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import { BidForm } from "@/components/sections/artwork/bid-form";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import { ApprovedBidLimitNotice } from "@/components/sections/artwork/redesign/approved-bid-limit-notice";
 import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto-bid-panel";
 import { LotBidModeChooser } from "@/components/sections/artwork/redesign/lot-bid-mode-chooser";
 import { LotBidPositionSummary } from "@/components/sections/artwork/redesign/lot-bid-position-summary";
@@ -607,6 +608,12 @@ export function ArtworkBidPanel({
                   : {})}
                 supportsAutoBid={supportsAutoBid}
               />
+              {saleRegistrationBidGate?.approvedBidLimit != null ? (
+                <ApprovedBidLimitNotice
+                  approvedBidLimit={saleRegistrationBidGate.approvedBidLimit}
+                  currentPrice={currentPrice}
+                />
+              ) : null}
             </div>
 
             {englishOnlySurfaceLock ? (

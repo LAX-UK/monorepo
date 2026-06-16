@@ -2,6 +2,11 @@
 
 import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import {
+  BID_LIMIT_FIELD_LABEL,
+  bidLimitFieldHelp,
+  bidLimitFieldPlaceholder,
+} from "@/lib/saleroom/bid-limit-field-copy";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
@@ -25,10 +30,15 @@ type Props = {
   isAuthenticated: boolean;
   show: boolean;
   buyerEntities: Entity[];
-  myRegistrations: { buyerLegalEntityId: string; status: string }[];
+  myRegistrations: {
+    buyerLegalEntityId: string;
+    status: string;
+    bidLimit?: string | null;
+  }[];
   kycApproved: boolean;
   kycFeedback?: KycUserFeedbackDto | null;
   orgModuleEnabled?: boolean;
+  saleCurrency?: string;
 };
 
 function apiBase(): string {
@@ -45,6 +55,7 @@ export function SaleroomRegisterToBid({
   kycApproved,
   kycFeedback = null,
   orgModuleEnabled = true,
+  saleCurrency = "GBP",
 }: Props) {
   const router = useRouter();
   const [entityId, setEntityId] = useState("");
@@ -129,6 +140,12 @@ export function SaleroomRegisterToBid({
 
   const selectedStatus = entityId ? statusByLe.get(entityId) : undefined;
 
+  function onEntityChange(id: string) {
+    setEntityId(id);
+    const reg = myRegistrations.find((r) => r.buyerLegalEntityId === id);
+    setBidLimit(reg?.bidLimit?.replace(/\.00$/, "") ?? "");
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
@@ -174,13 +191,17 @@ export function SaleroomRegisterToBid({
       className="flex w-full min-w-0 max-w-md flex-col gap-2 rounded-md border border-outline-variant/30 bg-surface-container-low/40 p-3 sm:max-w-sm"
     >
       <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Register to bid
+        Register to bid (buyer agents)
+      </p>
+      <p className="font-body text-xs text-on-surface-variant">
+        For organisations bidding as agents on this sale. Private collectors can bid online after
+        sign-in and identity verification — no separate registration.
       </p>
       <div className="space-y-1">
         <Label htmlFor={`register-entity-${saleId}`} className="font-body text-xs text-secondary">
           Buying as
         </Label>
-        <Select value={entityId} onValueChange={setEntityId} required>
+        <Select value={entityId} onValueChange={onEntityChange} required>
           <SelectTrigger
             id={`register-entity-${saleId}`}
             className="w-full font-body text-sm"
@@ -208,7 +229,7 @@ export function SaleroomRegisterToBid({
           htmlFor={`register-bid-limit-${saleId}`}
           className="font-body text-xs text-secondary"
         >
-          Optional bid limit (same currency as the sale)
+          {BID_LIMIT_FIELD_LABEL}
         </Label>
         <Input
           id={`register-bid-limit-${saleId}`}
@@ -218,8 +239,11 @@ export function SaleroomRegisterToBid({
           className="font-body text-sm"
           value={bidLimit}
           onChange={(ev) => setBidLimit(ev.target.value)}
-          placeholder="e.g. 50000"
+          placeholder={bidLimitFieldPlaceholder(saleCurrency)}
         />
+        <p className="font-body text-xs text-on-surface-variant">
+          {bidLimitFieldHelp(saleCurrency)}
+        </p>
       </div>
       {error ? <p className="font-body text-xs text-destructive">{error}</p> : null}
       {message ? <p className="font-body text-xs text-primary">{message}</p> : null}

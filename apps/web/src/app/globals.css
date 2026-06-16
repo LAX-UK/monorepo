@@ -204,7 +204,7 @@
   /* shadcn calendar cell sizing */
   --cell-size: 2rem;
   /* Fixed marketing header offset — keep in sync with site-header (pt-3 pb-4 inner + rows). */
-  --header-height: 76px;
+  --header-height: 61px;
   --container-max: 1440px;
   --container-inner: 1376px;
   --auth-column: 528px;
@@ -260,10 +260,10 @@
   --overlay-bg-opaque: var(--color-surface);
 }
 
-/* lg — utility bar + gap-6 + mega row + py-3 (matches `lg:` in site-header). */
+/* lg — utility bar + gap-4 + mega row + pt-3 pb-4 (matches `lg:` in site-header). */
 @media (min-width: 1024px) {
   :root {
-    --header-height: 132px;
+    --header-height: 110px;
   }
 }
 

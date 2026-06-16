@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  type LotRunOutcome,
+  computeLotRunProgress,
+  deriveLotRunOutcome,
+} from "@/lib/saleroom/lot-run-progress";
+import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
+import {
   findNextRunListLot,
   formatLotRunListLabel,
   sortLotsForRunList,
@@ -11,31 +17,38 @@ import { useMemo } from "react";
 type Options = {
   lots: readonly Lot[];
   currentLotId: string | null;
-  previewCount?: number;
+  sessionStatus?: PublicSaleroomSessionStatus["status"];
 };
 
-export function useLotRunway({ lots, currentLotId, previewCount = 5 }: Options) {
+export type LotRunwayRow = {
+  lot: Lot;
+  label: string;
+  outcome: LotRunOutcome;
+  isCurrent: boolean;
+  isNext: boolean;
+};
+
+export function useLotRunway({ lots, currentLotId, sessionStatus = "none" }: Options) {
   const orderedLots = useMemo(() => sortLotsForRunList(lots), [lots]);
   const nextLot = useMemo(
     () => findNextRunListLot(orderedLots, currentLotId),
     [orderedLots, currentLotId],
   );
 
-  const runway = useMemo(() => {
-    if (orderedLots.length === 0) return [];
-    const startIndex = currentLotId
-      ? Math.max(
-          0,
-          orderedLots.findIndex((l) => l.id === currentLotId),
-        )
-      : 0;
-    return orderedLots.slice(startIndex, startIndex + previewCount).map((lot) => ({
+  const progress = useMemo(
+    () => computeLotRunProgress(orderedLots, currentLotId, sessionStatus),
+    [orderedLots, currentLotId, sessionStatus],
+  );
+
+  const runway = useMemo((): LotRunwayRow[] => {
+    return orderedLots.map((lot) => ({
       lot,
       label: formatLotRunListLabel(lot),
+      outcome: deriveLotRunOutcome(lot, currentLotId),
       isCurrent: lot.id === currentLotId,
       isNext: nextLot?.id === lot.id,
     }));
-  }, [currentLotId, nextLot?.id, orderedLots, previewCount]);
+  }, [currentLotId, nextLot?.id, orderedLots]);
 
-  return { orderedLots, nextLot, runway };
+  return { orderedLots, nextLot, runway, progress };
 }

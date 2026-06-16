@@ -290,11 +290,25 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     ? await getServerConditionReportForLot(auction.id).catch(() => null)
     : null;
 
+  const saleroomLotRefs = isHybridSale
+    ? (saleLots ?? []).map((l) => ({
+        id: l.id,
+        lotNumber: l.lotNumber,
+        title: l.title,
+        href: lotPath(l),
+        status: l.status,
+      }))
+    : [];
+
   const queueVMs = mapSaleLotsToQueueVMs(
     auction,
     saleLots,
     (l) => (l.sellerId === auction.sellerId ? sellerName : "Seller"),
     catalogLinkParams,
+  );
+
+  const artistNameByLotId = Object.fromEntries(
+    (saleLots ?? []).map((l) => [l.id, l.sellerId === auction.sellerId ? sellerName : "Seller"]),
   );
 
   const sessionHeaderVM = mapAuctionSessionHeaderVM({
@@ -549,6 +563,10 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                       streamPosterUrl={
                         auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null
                       }
+                      saleroomLotRefs={saleroomLotRefs}
+                      saleLots={saleLots}
+                      artistNameByLotId={artistNameByLotId}
+                      {...(catalogLinkParams !== undefined ? { catalogLinkParams } : {})}
                     />
                   </LotBidHistoryProvider>
                 </OnlineLotLifecycleProvider>

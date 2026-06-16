@@ -191,6 +191,7 @@ export function mapLotToCardVM(
   return {
     id: lot.id,
     href: lotCatalogHref(lot, opts.catalogLinkParams),
+    lotNumber: lot.lotNumber,
     lotLabel: lot.lotNumber != null ? `Lot ${lot.lotNumber}` : null,
     title: lot.title,
     imageUrl: lot.images[0] ?? null,

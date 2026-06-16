@@ -1,5 +1,6 @@
 "use client";
 
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -93,6 +94,22 @@ type PopoverProps = {
 };
 
 export function SaleTypeExplainerPopover({ children, activeMode, align = "center" }: PopoverProps) {
+  const hydrated = useHydrated();
+
+  if (!hydrated) {
+    return (
+      children ?? (
+        <button
+          type="button"
+          className="text-on-surface-variant/75 hover:text-on-surface transition-colors rounded-full focus-visible:ring-2 focus-visible:ring-primary outline-hidden"
+          aria-label="Learn about auction formats"
+        >
+          <HelpCircle className="size-4" />
+        </button>
+      )
+    );
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>

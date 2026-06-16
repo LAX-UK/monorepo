@@ -1,7 +1,9 @@
 "use client";
 
+import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-sidebar";
+import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { SaleroomCatalogActiveFilters } from "@/components/sections/saleroom/saleroom-catalog-active-filters";
 import { SaleroomCatalogFilterSheet } from "@/components/sections/saleroom/saleroom-catalog-filter-sheet";
@@ -11,6 +13,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { SALEROOM_CATALOG_SORT_OPTIONS } from "@/lib/marketing/saleroom-catalog-sort";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
+import { useSearchParams } from "next/navigation";
 
 type Props = {
   basePath: string;
@@ -27,6 +30,11 @@ export function SaleroomCatalogToolbarRow({
   resultCountLabel,
   totalLots,
 }: Props) {
+  const params = useSearchParams();
+  const sortValue = params?.get("sort") ?? "lot";
+  const sortLabel =
+    SALEROOM_CATALOG_SORT_OPTIONS.find((o) => o.value === sortValue)?.label ?? "Lot order";
+
   return (
     <>
       <div className="mb-4 flex items-baseline gap-2 border-b border-outline-variant/30 pb-2.5">
@@ -41,7 +49,9 @@ export function SaleroomCatalogToolbarRow({
         countLabel={countLabel}
         stackTrailingOnMobile
         mobileFilterTrigger={
-          <SaleroomCatalogFilterSheet basePath={basePath} resultCountLabel={resultCountLabel} />
+          <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>
+            <SaleroomCatalogFilterSheet basePath={basePath} resultCountLabel={resultCountLabel} />
+          </HydrationDeferred>
         }
         filters={
           <MarketingFilterSidebar
@@ -56,14 +66,25 @@ export function SaleroomCatalogToolbarRow({
             <div className="hidden w-44 sm:block">
               <SaleroomCatalogSearch />
             </div>
-            <FilterSelect
-              param="sort"
-              defaultValue="lot"
-              options={[...SALEROOM_CATALOG_SORT_OPTIONS]}
-              clearParams={["page"]}
-              ariaLabel="Sort lots"
-              className="h-10 min-h-10 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider shadow-none focus:ring-primary"
-            />
+            <HydrationDeferred
+              fallback={
+                <span
+                  className="inline-flex h-10 min-h-10 items-center rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant"
+                  aria-label={`Sort: ${sortLabel}`}
+                >
+                  {sortLabel}
+                </span>
+              }
+            >
+              <FilterSelect
+                param="sort"
+                defaultValue="lot"
+                options={[...SALEROOM_CATALOG_SORT_OPTIONS]}
+                clearParams={["page"]}
+                ariaLabel="Sort lots"
+                className="h-10 min-h-10 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider shadow-none focus:ring-primary"
+              />
+            </HydrationDeferred>
           </div>
         }
         trailing={

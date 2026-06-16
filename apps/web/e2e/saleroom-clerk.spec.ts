@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+/** Use PLAYWRIGHT_BASE_URL=http://localhost:3000 — not 127.0.0.1 (API cookie domain). */
+
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason =
   "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, staff credentials, and a hybrid sale id.";
@@ -7,12 +9,30 @@ const skipReason =
 const hybridSaleId = process.env.PLAYWRIGHT_HYBRID_SALE_ID;
 const hybridLotId = process.env.PLAYWRIGHT_HYBRID_LOT_ID;
 
+// Seeded hybrid salerooms (see packages/db dev seed: S.hybridA/B/C). Used to
+// validate the multi-room live grid. Override with env when running against a
+// staging dataset that uses different ids.
+const seededHybridSaleAId =
+  process.env.PLAYWRIGHT_HYBRID_SALE_ID ?? "e1000003-0000-4000-8000-000000000003";
+
 async function staffLogin(page: import("@playwright/test").Page) {
   await page.goto("/login");
-  await page.getByLabel(/email/i).fill(process.env.PLAYWRIGHT_STAFF_EMAIL ?? "staff@lax.bid");
-  await page.getByLabel(/password/i).fill(process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "password");
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/admin/, { timeout: 20_000 });
+  await page
+    .locator('input[name="email"]')
+    .fill(process.env.PLAYWRIGHT_STAFF_EMAIL ?? "admin@lax.bid");
+  const continueBtn = page.getByRole("button", { name: /^continue$/i });
+  if (await continueBtn.isVisible().catch(() => false)) {
+    await continueBtn.click();
+    await page.locator('input[name="password"]').waitFor({ timeout: 10_000 });
+  }
+  const password = page.locator('input[name="password"]');
+  await password.click();
+  await password.fill(process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "Password123!");
+  await page
+    .locator("form")
+    .first()
+    .evaluate((form) => (form as HTMLFormElement).requestSubmit());
+  await page.waitForURL(/\/(admin|dashboard)/, { timeout: 20_000 });
 }
 
 test.describe("hybrid saleroom clerk", () => {
@@ -147,5 +167,70 @@ test.describe("hybrid saleroom clerk", () => {
     await context.setOffline(false);
 
     await expect(page.getByText(/reconnected|live/i)).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("clerk session bar shows lot-of-total progress", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+
+    await staffLogin(page);
+    await page.goto(`/admin/saleroom/${seededHybridSaleAId}`);
+
+    // Either a live "Lot N of M" progress label or the between-lots prompt.
+    await expect(
+      page.getByText(/lot \d+ of \d+|between lots|of \d+ complete/i).first(),
+    ).toBeVisible({ timeout: 15_000 });
+  });
+});
+
+test.describe("hybrid saleroom hub (multi-room live grid)", () => {
+  test("live grid lists active hybrid rooms with progress", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+
+    await staffLogin(page);
+    await page.goto("/admin/saleroom");
+
+    await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // At least one room card surfaces a live progress label.
+    await expect(
+      page.getByText(/lot \d+ of \d+|between lots|of \d+ complete/i).first(),
+    ).toBeVisible();
+
+    // Each room card exposes a primary "Open console" action.
+    await expect(page.getByRole("link", { name: /open console/i }).first()).toBeVisible();
+  });
+
+  test("opening a room from the grid lands on its clerk console", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+
+    await staffLogin(page);
+    await page.goto("/admin/saleroom");
+    await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page
+      .getByRole("link", { name: /open console/i })
+      .first()
+      .click();
+    await page.waitForURL(/\/admin\/saleroom\/[0-9a-f-]+/i, { timeout: 15_000 });
+    await expect(page.getByText(/hybrid|live|paused/i).first()).toBeVisible();
+  });
+
+  test("live grid renders a progress bar reflecting completed lots", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+
+    await staffLogin(page);
+    await page.goto("/admin/saleroom");
+    await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const progressbar = page.getByRole("progressbar").first();
+    await expect(progressbar).toBeVisible();
+    const max = await progressbar.getAttribute("aria-valuemax");
+    expect(Number(max)).toBeGreaterThan(0);
   });
 });

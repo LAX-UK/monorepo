@@ -181,6 +181,10 @@ const CAT = {
 const S = {
   evening: "e1000001-0000-4000-8000-000000000001",
   online: "e1000002-0000-4000-8000-000000000002",
+  // Hybrid salerooms for the multi-room live grid / clerk console demo.
+  hybridA: "e1000003-0000-4000-8000-000000000003",
+  hybridB: "e1000004-0000-4000-8000-000000000004",
+  hybridC: "e1000005-0000-4000-8000-000000000005",
 } as const;
 
 const SUB = {
@@ -210,6 +214,21 @@ const L = {
   paperThin: "b1000015-0000-4000-8000-000000000015",
   riverStudy: "b1000016-0000-4000-8000-000000000016",
   connectBlockedDraft: "b1000017-0000-4000-8000-000000000017",
+  // ── Hybrid saleroom lots (Room A: live with lot on block) ──────────────────
+  hybridA1: "b1000101-0000-4000-8000-000000000101",
+  hybridA2: "b1000102-0000-4000-8000-000000000102",
+  hybridA3: "b1000103-0000-4000-8000-000000000103",
+  hybridA4: "b1000104-0000-4000-8000-000000000104",
+  hybridA5: "b1000105-0000-4000-8000-000000000105",
+  // ── Hybrid saleroom lots (Room B: live, between lots) ──────────────────────
+  hybridB1: "b1000201-0000-4000-8000-000000000201",
+  hybridB2: "b1000202-0000-4000-8000-000000000202",
+  hybridB3: "b1000203-0000-4000-8000-000000000203",
+  hybridB4: "b1000204-0000-4000-8000-000000000204",
+  // ── Hybrid saleroom lots (Room C: paused) ──────────────────────────────────
+  hybridC1: "b1000301-0000-4000-8000-000000000301",
+  hybridC2: "b1000302-0000-4000-8000-000000000302",
+  hybridC3: "b1000303-0000-4000-8000-000000000303",
 } as const;
 
 const ARTIST = {
@@ -341,6 +360,8 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     itemSubmission,
     lotCategories,
     lot,
+    saleroomEvent,
+    saleroomSession,
     saleCategories,
     sale,
     venue,
@@ -359,6 +380,8 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     xeroWebhookEvent,
     user,
   } = schema;
+  await db.delete(saleroomEvent);
+  await db.delete(saleroomSession);
   await db.delete(projectorState);
   await db.delete(domainEvent);
   await db.delete(emailEvent);
@@ -434,6 +457,8 @@ export async function runLegacyDemoSeed() {
     saleCategories,
     lot,
     lotCategories,
+    saleroomSession,
+    saleroomEvent,
     bid,
     watchlist,
     notification,
@@ -2940,6 +2965,72 @@ export async function runLegacyDemoSeed() {
       createdAt: stamp,
       updatedAt: stamp,
     },
+    {
+      id: S.hybridA,
+      title: "Hybrid Day Sale — Room A (Modern)",
+      description:
+        "Hybrid saleroom running live online and in-room. Room A is mid-session with a lot on the block.",
+      coverImages: [IMG.a, IMG.c],
+      categoryId: CAT.paintings,
+      deliveryMode: "hybrid",
+      locationName: "LAX Mayfair Saleroom — Room A",
+      locationAddress: "12 King Street, St James's, London SW1Y 6QU",
+      locationMapUrl: "https://maps.google.com/?q=12+King+Street+London",
+      streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
+      status: "active",
+      startTime: activeStart,
+      endTime: new Date(now + 14 * day),
+      previewStartTime: new Date(now - 1 * day),
+      buyerPremiumRate: "0.20",
+      terms: "Hybrid sale: online + in-room paddle bidding. Buyer's premium 20%.",
+      createdBy: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: S.hybridB,
+      title: "Hybrid Day Sale — Room B (Works on Paper)",
+      description:
+        "Hybrid saleroom running live online and in-room. Room B is between lots — the clerk advances next.",
+      coverImages: [IMG.d, IMG.e],
+      categoryId: CAT.drawings,
+      deliveryMode: "hybrid",
+      locationName: "LAX Mayfair Saleroom — Room B",
+      locationAddress: "12 King Street, St James's, London SW1Y 6QU",
+      locationMapUrl: "https://maps.google.com/?q=12+King+Street+London",
+      streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
+      status: "active",
+      startTime: activeStart,
+      endTime: new Date(now + 14 * day),
+      previewStartTime: new Date(now - 1 * day),
+      buyerPremiumRate: "0.20",
+      terms: "Hybrid sale: online + in-room paddle bidding. Buyer's premium 20%.",
+      createdBy: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: S.hybridC,
+      title: "Hybrid Day Sale — Room C (Sculpture)",
+      description:
+        "Hybrid saleroom currently paused for a short break. Resume to continue the run.",
+      coverImages: [IMG.b, IMG.a],
+      categoryId: CAT.paintings,
+      deliveryMode: "hybrid",
+      locationName: "LAX Mayfair Saleroom — Room C",
+      locationAddress: "12 King Street, St James's, London SW1Y 6QU",
+      locationMapUrl: "https://maps.google.com/?q=12+King+Street+London",
+      streamUrl: "https://www.youtube.com/watch?v=AtO699gsFS8&t=11s",
+      status: "active",
+      startTime: activeStart,
+      endTime: new Date(now + 14 * day),
+      previewStartTime: new Date(now - 1 * day),
+      buyerPremiumRate: "0.20",
+      terms: "Hybrid sale: online + in-room paddle bidding. Buyer's premium 20%.",
+      createdBy: ADMIN_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
   ];
   await db.insert(sale).values(
     saleRows.map(({ categoryId: _categoryId, createdBy: _createdBy, ...row }) => ({
@@ -2958,12 +3049,59 @@ export async function runLegacyDemoSeed() {
   );
 
   // ── Lots ───────────────────────────────────────────────────────────────────
-  const lotRows: (Omit<typeof lot.$inferInsert, "sellerLegalEntityId"> & {
+  type LotRow = Omit<typeof lot.$inferInsert, "sellerLegalEntityId"> & {
     categoryId: string;
     sellerId: string;
     /** Override seller entity when it differs from the consignor's personal profile (e2e Connect block). */
     sellerLegalEntityId?: string;
-  })[] = [
+  };
+
+  type HybridLotSpec = {
+    id: string;
+    num: number;
+    title: string;
+    status: "scheduled" | "active" | "ended";
+    sold?: boolean;
+  };
+
+  const hybridLotRows = (saleId: string, specs: readonly HybridLotSpec[]): LotRow[] =>
+    specs.map((spec, index) => {
+      const sellerId = index % 2 === 0 ? USER2_ID : USER1_ID;
+      const startMinor = 4000 + spec.num * 500;
+      const currentMinor = spec.status === "scheduled" ? startMinor : startMinor + 1500;
+      return {
+        id: spec.id,
+        saleId,
+        lotNumber: spec.num,
+        sellerId,
+        artistId: index % 2 === 0 ? ARTIST.carolina : ARTIST.robert,
+        title: spec.title,
+        description: `${spec.title} — hybrid saleroom demo lot ${spec.num}.`,
+        medium: "Mixed media",
+        dimensions: "24 × 36 in (61 × 91.4 cm)",
+        images: [IMG.a, IMG.c],
+        categoryId: CAT.contemporary,
+        auctionType: "english",
+        startingPrice: `${startMinor}.00`,
+        reservePrice: null,
+        buyNowPrice: null,
+        currentPrice: `${currentMinor}.00`,
+        buyerPremiumRate: "0.20",
+        minBidIncrement: "100.00",
+        startTime: activeStart,
+        endTime: activeEnd,
+        status: spec.status,
+        winnerId: spec.status === "ended" && spec.sold ? USER1_ID : null,
+        dutchDecrementAmount: null,
+        dutchDecrementIntervalMs: 60_000,
+        dutchLastDecrementAt: null,
+        marketingDetails: lotMarketingDetails(`${startMinor}.00`, `${currentMinor + 3000}.00`, [
+          `${spec.title} — hybrid demo`,
+        ]),
+      } satisfies LotRow;
+    });
+
+  const lotRows: LotRow[] = [
     {
       id: L.ethereal,
       saleId: S.evening,
@@ -3491,6 +3629,27 @@ export async function runLegacyDemoSeed() {
         "River Study Blue Hour — oil panel",
       ]),
     },
+    // ── Hybrid Room A lots (5 lots; lot 3 on the block, 1-2 already sold) ───────
+    ...hybridLotRows(S.hybridA, [
+      { id: L.hybridA1, num: 1, title: "Aurora Field No. 1", status: "ended", sold: true },
+      { id: L.hybridA2, num: 2, title: "Concrete Bloom", status: "ended", sold: false },
+      { id: L.hybridA3, num: 3, title: "Meridian Drift", status: "active" },
+      { id: L.hybridA4, num: 4, title: "Glass Horizon", status: "scheduled" },
+      { id: L.hybridA5, num: 5, title: "Late Signal", status: "scheduled" },
+    ]),
+    // ── Hybrid Room B lots (4 lots; first two done, between lots) ───────────────
+    ...hybridLotRows(S.hybridB, [
+      { id: L.hybridB1, num: 1, title: "Folded Light Study", status: "ended", sold: true },
+      { id: L.hybridB2, num: 2, title: "Quiet Margin", status: "ended", sold: true },
+      { id: L.hybridB3, num: 3, title: "Tidewater Sketch", status: "scheduled" },
+      { id: L.hybridB4, num: 4, title: "Northbank Notation", status: "scheduled" },
+    ]),
+    // ── Hybrid Room C lots (3 lots; paused before lot 2) ───────────────────────
+    ...hybridLotRows(S.hybridC, [
+      { id: L.hybridC1, num: 1, title: "Cast Shadow I", status: "ended", sold: true },
+      { id: L.hybridC2, num: 2, title: "Cast Shadow II", status: "scheduled" },
+      { id: L.hybridC3, num: 3, title: "Cast Shadow III", status: "scheduled" },
+    ]),
   ];
   await db.insert(lot).values(
     lotRows.map(
@@ -3507,6 +3666,85 @@ export async function runLegacyDemoSeed() {
       sortOrder: 0,
     })),
   );
+
+  // ── Saleroom sessions (hybrid live grid / clerk console demo) ───────────────
+  const SESSION = {
+    hybridA: "f1000001-0000-4000-8000-000000000001",
+    hybridB: "f1000002-0000-4000-8000-000000000002",
+    hybridC: "f1000003-0000-4000-8000-000000000003",
+  } as const;
+  await db.insert(saleroomSession).values([
+    {
+      id: SESSION.hybridA,
+      saleId: S.hybridA,
+      status: "live",
+      currentLotId: L.hybridA3,
+      startedAt: new Date(now - 40 * 60_000),
+      clerkUserId: STAFF_AUCTION_MGR_ID,
+      auctioneerUserId: STAFF_OPERATIONS_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: SESSION.hybridB,
+      saleId: S.hybridB,
+      status: "live",
+      currentLotId: null,
+      startedAt: new Date(now - 25 * 60_000),
+      clerkUserId: STAFF_OPERATIONS_ID,
+      auctioneerUserId: STAFF_AUCTION_MGR_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+    {
+      id: SESSION.hybridC,
+      saleId: S.hybridC,
+      status: "paused",
+      currentLotId: null,
+      startedAt: new Date(now - 55 * 60_000),
+      clerkUserId: STAFF_AUCTION_MGR_ID,
+      auctioneerUserId: STAFF_OPERATIONS_ID,
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+  ]);
+  await db.insert(saleroomEvent).values([
+    {
+      sessionId: SESSION.hybridA,
+      kind: "opened",
+      payload: {},
+      actorUserId: STAFF_AUCTION_MGR_ID,
+      occurredAt: new Date(now - 40 * 60_000),
+    },
+    {
+      sessionId: SESSION.hybridA,
+      kind: "hammer",
+      payload: { lotId: L.hybridA1, amountMinor: 6_500_00 },
+      actorUserId: STAFF_AUCTION_MGR_ID,
+      occurredAt: new Date(now - 20 * 60_000),
+    },
+    {
+      sessionId: SESSION.hybridA,
+      kind: "no_sale",
+      payload: { lotId: L.hybridA2 },
+      actorUserId: STAFF_AUCTION_MGR_ID,
+      occurredAt: new Date(now - 12 * 60_000),
+    },
+    {
+      sessionId: SESSION.hybridA,
+      kind: "advanced_to_lot",
+      payload: { lotId: L.hybridA3 },
+      actorUserId: STAFF_AUCTION_MGR_ID,
+      occurredAt: new Date(now - 8 * 60_000),
+    },
+    {
+      sessionId: SESSION.hybridC,
+      kind: "paused",
+      payload: {},
+      actorUserId: STAFF_AUCTION_MGR_ID,
+      occurredAt: new Date(now - 5 * 60_000),
+    },
+  ]);
 
   // ── Admin review tasks ──────────────────────────────────────────────────────
   await db.insert(adminReviewTask).values([

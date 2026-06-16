@@ -297,6 +297,43 @@ export class SaleRegistrationService {
     return ok(undefined);
   }
 
+  async updateBidLimit(input: {
+    saleId: string;
+    registrationId: string;
+    bidLimit: number | null;
+    decidedByUserId: string;
+  }): Promise<Result<void, SaleRegistrationServiceError>> {
+    const [row] = await this.db
+      .select()
+      .from(saleRegistration)
+      .where(
+        and(
+          eq(saleRegistration.id, input.registrationId),
+          eq(saleRegistration.saleId, input.saleId),
+        ),
+      )
+      .limit(1);
+    if (!row) {
+      return err({ message: "Registration not found", status: 404 });
+    }
+    if (row.status !== "approved") {
+      return err({
+        message: "Only approved registrations can update bid limits",
+        status: 400,
+      });
+    }
+    const bidLimitStr = input.bidLimit != null ? toBidLimitString(input.bidLimit) : null;
+    await this.db
+      .update(saleRegistration)
+      .set({
+        bidLimit: bidLimitStr,
+        decidedAt: new Date(),
+        decidedByUserId: input.decidedByUserId,
+      })
+      .where(eq(saleRegistration.id, input.registrationId));
+    return ok(undefined);
+  }
+
   private mapRow(r: typeof saleRegistration.$inferSelect): SaleRegistrationRow {
     return {
       id: r.id,
