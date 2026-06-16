@@ -8,6 +8,7 @@ import { ComplianceAmlBoard } from "@/components/admin/compliance-aml-board";
 import { amlListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { complianceQueueCrossLinksMeta } from "@/lib/admin/sof-list-query";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { summarizeAmlQueue } from "@/lib/data/view-models/admin-aml-table.vm";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -52,6 +53,21 @@ export default async function AdminComplianceAmlPage({
   }
 
   const summary = summarizeAmlQueue(summaryRows);
+  const { sofHref, paymentsHref } = complianceQueueCrossLinksMeta();
+
+  const meta = (
+    <p className="font-body text-sm text-on-surface-variant">
+      Also see{" "}
+      <Link href={sofHref} className="text-link underline">
+        Source of Funds queue
+      </Link>{" "}
+      and payments held for{" "}
+      <Link href={paymentsHref} className="text-link underline">
+        manual review
+      </Link>
+      .
+    </p>
+  );
 
   const pagination =
     !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total) ? (
@@ -82,6 +98,7 @@ export default async function AdminComplianceAmlPage({
       variant="queue"
       title="AML / sanctions screening"
       description="Two-stage maker-checker: analyst triage (advisory), then a different MLRO binding clear/block. Cleared screenings lift settlement holds."
+      meta={meta}
       errorAlert={
         error || loadError ? (
           <AdminListAlert title="Attention">{loadError ?? error}</AdminListAlert>
@@ -121,17 +138,6 @@ export default async function AdminComplianceAmlPage({
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             ) : null}
-            <p className="font-body text-sm text-on-surface-variant">
-              Also see{" "}
-              <Link href="/admin/compliance/source-of-funds" className="text-link underline">
-                Source of Funds queue
-              </Link>{" "}
-              and payments held for{" "}
-              <Link href="/admin/payments?manualReview=1" className="text-link underline">
-                manual review
-              </Link>
-              .
-            </p>
             <ComplianceAmlBoard
               rows={rows}
               canTriage={canTriage}
