@@ -1,8 +1,10 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
+import type { SaleDeliveryMode } from "@auction/types";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -27,9 +29,7 @@ export function saleroomHubColumns(): ColumnDef<Row>[] {
       id: "delivery",
       header: "Delivery",
       cell: ({ row }) => (
-        <span className="text-xs capitalize text-on-surface-variant">
-          {row.original.sale.deliveryMode}
-        </span>
+        <SaleDeliveryModeBadge mode={row.original.sale.deliveryMode as SaleDeliveryMode} />
       ),
       enableSorting: false,
     },

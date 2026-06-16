@@ -1,5 +1,6 @@
 "use client";
 
+import { minNextBidAmount } from "@/features/saleroom/lib/bid-entry";
 import { formatBidChannelLabel } from "@/lib/bid/bid-channel-label";
 import type { AdminPaddleRosterEntry } from "@/lib/data/http/admin.server";
 import { parseBidUpdateEvent } from "@/lib/realtime/parse-bid-update";
@@ -104,10 +105,4 @@ export function useClerkLotLiveBidState(
   );
 }
 
-export function minNextBidAmount(currentPrice: string, minBidIncrement: string): number {
-  const cur = Number.parseFloat(currentPrice);
-  const inc = Number.parseFloat(minBidIncrement);
-  const safeCur = Number.isFinite(cur) ? cur : 0;
-  const safeInc = Number.isFinite(inc) && inc > 0 ? inc : 0.01;
-  return safeCur + safeInc;
-}
+export { minNextBidAmount };
