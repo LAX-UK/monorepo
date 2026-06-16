@@ -11,13 +11,13 @@ type Props = {
 
 export function OnsiteEventBreadcrumbs({ slug, eventTitle, current }: Props) {
   const segments: CatalogBreadcrumbSegment[] = [
-    { label: "Onsite events", href: "/admin/onsite-events" },
+    { label: "Event RSVPs", href: "/admin/event-rsvps" },
   ];
 
   if (slug && eventTitle) {
     const rsvpHref =
       current === "check-in"
-        ? `/admin/onsite-events/${encodeURIComponent(slug)}?from=check-in`
+        ? `/admin/event-rsvps/${encodeURIComponent(slug)}?from=check-in`
         : undefined;
     segments.push(rsvpHref ? { label: eventTitle, href: rsvpHref } : { label: eventTitle });
   }

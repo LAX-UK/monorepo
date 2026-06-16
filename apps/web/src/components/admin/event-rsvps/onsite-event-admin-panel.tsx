@@ -2,8 +2,8 @@
 
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { OnsiteEventBreadcrumbs } from "@/components/admin/onsite-events/onsite-event-breadcrumbs";
-import { OnsiteEventRsvpMobileCards } from "@/components/admin/onsite-events/onsite-event-rsvp-mobile-cards";
+import { OnsiteEventBreadcrumbs } from "@/components/admin/event-rsvps/onsite-event-breadcrumbs";
+import { OnsiteEventRsvpMobileCards } from "@/components/admin/event-rsvps/onsite-event-rsvp-mobile-cards";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 import { resendOnsiteEventPass } from "@/lib/data/http/onsite-event-check-in.client";
 import { formatDateTime } from "@/lib/ui/format";
@@ -99,7 +99,7 @@ export function OnsiteEventAdminPanel({
     setDownloadError(null);
     try {
       const res = await browserFetch(
-        `${browserApiBase()}/admin/onsite-events/${encodeURIComponent(slug)}/rsvps/export`,
+        `${browserApiBase()}/admin/event-rsvps/${encodeURIComponent(slug)}/rsvps/export`,
         { headers: { Accept: "text/csv" } },
       );
       if (!res.ok) {
@@ -130,12 +130,12 @@ export function OnsiteEventAdminPanel({
             {title}
           </h1>
           <p className="font-body text-sm text-on-surface-variant">
-            RSVPs for this onsite event · {arrivedCount} / {rsvps.length} arrived
+            RSVPs for this event · {arrivedCount} / {rsvps.length} arrived
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="default" size="sm" asChild>
-            <Link href={`/admin/onsite-events/${encodeURIComponent(slug)}/check-in`}>
+            <Link href={`/admin/event-rsvps/${encodeURIComponent(slug)}/check-in`}>
               <ScanLine className="mr-2 size-4" />
               Open check-in
             </Link>

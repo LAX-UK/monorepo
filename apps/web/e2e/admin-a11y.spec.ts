@@ -507,10 +507,10 @@ test.describe("admin a11y smoke", () => {
     await expectNoSeriousAxeViolationsInMain(page);
   });
 
-  test("onsite events hub has no serious axe violations in main", async ({ page }) => {
+  test("event RSVPs hub has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);
-    await page.goto("/admin/onsite-events");
+    await page.goto("/admin/event-rsvps");
     await expect(page.locator("#main-content")).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
   });

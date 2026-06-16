@@ -63,7 +63,7 @@ describe("admin onsite event routes", () => {
       onsiteEventCheckInService,
       redis: buildRateLimitRedis(),
     } as unknown as Container;
-    hono.route("/admin/onsite-events", createAdminOnsiteEventRoutes(container));
+    hono.route("/admin/event-rsvps", createAdminOnsiteEventRoutes(container));
     return hono;
   }
 
@@ -84,7 +84,7 @@ describe("admin onsite event routes", () => {
       checkedInCount: 1,
     });
 
-    const res = await app("staff-1").request("/admin/onsite-events/lax001");
+    const res = await app("staff-1").request("/admin/event-rsvps/lax001");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: { slug: string; rsvpCount: number } };
     expect(body.data.slug).toBe("lax001");
@@ -93,7 +93,7 @@ describe("admin onsite event routes", () => {
 
   it("POST resend-pass requires staff auth", async () => {
     const res = await app().request(
-      "/admin/onsite-events/lax001/rsvps/550e8400-e29b-41d4-a716-446655440000/resend-pass",
+      "/admin/event-rsvps/lax001/rsvps/550e8400-e29b-41d4-a716-446655440000/resend-pass",
       { method: "POST" },
     );
     expect(res.status).toBe(401);
@@ -102,7 +102,7 @@ describe("admin onsite event routes", () => {
   it("POST resend-pass audits and returns emailSent", async () => {
     const rsvpId = "550e8400-e29b-41d4-a716-446655440000";
     const res = await app("staff-1").request(
-      `/admin/onsite-events/lax001/rsvps/${rsvpId}/resend-pass`,
+      `/admin/event-rsvps/lax001/rsvps/${rsvpId}/resend-pass`,
       { method: "POST" },
     );
     expect(res.status).toBe(200);

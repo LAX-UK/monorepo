@@ -1,6 +1,6 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { OnsiteEventAdminPanel } from "@/components/admin/onsite-events/onsite-event-admin-panel";
-import { OnsiteEventRefreshOnReturn } from "@/components/admin/onsite-events/onsite-event-refresh-on-return";
+import { OnsiteEventAdminPanel } from "@/components/admin/event-rsvps/onsite-event-admin-panel";
+import { OnsiteEventRefreshOnReturn } from "@/components/admin/event-rsvps/onsite-event-refresh-on-return";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import {
   getAdminOnsiteEventDetail,

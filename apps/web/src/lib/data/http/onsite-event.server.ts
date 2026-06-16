@@ -110,8 +110,8 @@ function parseAdminDetail(value: unknown): OnsiteEventAdminDetail | null {
 }
 
 export async function getAdminOnsiteEvents(): Promise<OnsiteEventListItem[]> {
-  const res = await authedServerFetch("/admin/onsite-events", { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to load onsite events: ${res.status}`);
+  const res = await authedServerFetch("/admin/event-rsvps", { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to load event RSVPs: ${res.status}`);
   const body = (await res.json()) as { data?: unknown[] };
   return (body.data ?? [])
     .map(parseListItem)
@@ -121,7 +121,7 @@ export async function getAdminOnsiteEvents(): Promise<OnsiteEventListItem[]> {
 export async function getAdminOnsiteEventDetail(
   slug: string,
 ): Promise<OnsiteEventAdminDetail | null> {
-  const res = await authedServerFetch(`/admin/onsite-events/${encodeURIComponent(slug)}`, {
+  const res = await authedServerFetch(`/admin/event-rsvps/${encodeURIComponent(slug)}`, {
     cache: "no-store",
   });
   if (res.status === 404) return null;
@@ -131,7 +131,7 @@ export async function getAdminOnsiteEventDetail(
 }
 
 export async function getAdminOnsiteEventRsvps(slug: string): Promise<OnsiteEventRsvpAdminRow[]> {
-  const res = await authedServerFetch(`/admin/onsite-events/${encodeURIComponent(slug)}/rsvps`, {
+  const res = await authedServerFetch(`/admin/event-rsvps/${encodeURIComponent(slug)}/rsvps`, {
     cache: "no-store",
   });
   if (res.status === 404) {
