@@ -1,5 +1,4 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
-import { SaleroomLotQuickLookCorner } from "@/components/marketing/lot-quick-look/saleroom-lot-quick-look-corner";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
@@ -13,18 +12,19 @@ import {
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
 } from "@/components/sections/saleroom/mappers";
-import { SaleroomCatalogLotsByView } from "@/components/sections/saleroom/saleroom-catalog-lots-by-view";
+import { SaleroomCatalogLiveShell } from "@/components/sections/saleroom/saleroom-catalog-live-shell";
+import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
-import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomRelatedAuctionsSection } from "@/components/sections/saleroom/saleroom-related-auctions-section";
 import {
   isPublicCatalogSale,
   viewerCanSeeNonPublicCatalog,
 } from "@/lib/catalog/public-catalog-visibility";
+import { getServerSaleroomStatus } from "@/lib/data/http/saleroom-status.server";
 import {
   type SaleLotsPage,
   getServerSaleMyRegistrations,
@@ -255,6 +255,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const myRegistrations = mySaleRegs.map((r) => ({
     buyerLegalEntityId: r.buyerLegalEntityId,
     status: r.status,
+    bidLimit: r.bidLimit,
   }));
 
   const kycApproved = session?.kycStatus === "approved";
@@ -294,198 +295,213 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const directionsUrl = resolveOnsiteMapUrl(bundle.sale);
   const featuredLotTitles = lotVMs.slice(0, 3).map((lot) => lot.title);
 
+  const isHybridSaleroom = bundle.sale.deliveryMode === "hybrid";
+  const initialSaleroomStatus = isHybridSaleroom
+    ? await getServerSaleroomStatus(bundle.sale.id)
+    : { status: "none" as const, currentLotId: null };
+
+  const catalogLotRefs = lotsPage.items.map((lot) => ({
+    id: lot.id,
+    lotNumber: lot.lotNumber,
+    title: lot.title,
+  }));
+
   return (
-    <MarketingDetailShell
-      className="lg:pb-24"
-      wrapChildren={false}
-      jsonLd={
-        <script type="application/ld+json" suppressHydrationWarning>
-          {jsonLdText}
-        </script>
-      }
-      leadingChrome={
-        <SaleMobileSummaryBar
+    <SaleroomCatalogLiveShell
+      saleId={isHybridSaleroom ? bundle.sale.id : null}
+      initial={initialSaleroomStatus}
+    >
+      <MarketingDetailShell
+        className="lg:pb-24"
+        wrapChildren={false}
+        jsonLd={
+          <script type="application/ld+json" suppressHydrationWarning>
+            {jsonLdText}
+          </script>
+        }
+        leadingChrome={
+          <SaleMobileSummaryBar
+            start={bundle.sale.startTime}
+            end={bundle.sale.endTime}
+            status={bundle.sale.status}
+            saleTitle={bundle.sale.title}
+            deliveryMode={bundle.sale.deliveryMode}
+            directionsUrl={directionsUrl}
+            streamUrl={bundle.sale.streamUrl}
+            sale={bundle.sale}
+            locationLine={locationLine}
+            {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
+          />
+        }
+        wayfinding={
+          <MarketingDetailWayfinding
+            backHref={calendarBackHref}
+            backLabel="Back to calendar"
+            breadcrumbItems={[
+              { label: "Home", href: "/" },
+              { label: "Calendar", href: "/sales" },
+              { label: bundle.sale.title, current: true },
+            ]}
+            className="pb-2"
+          />
+        }
+        wayfindingClassName="hidden md:block"
+        hero={
+          <SaleroomHero
+            hero={heroVM}
+            isAuthenticated={isAuthenticated}
+            backHref={calendarBackHref}
+            deliveryMode={bundle.sale.deliveryMode}
+            streamUrl={bundle.sale.streamUrl}
+            catalogLotRefs={catalogLotRefs}
+            saleroomSession={isHybridSaleroom ? initialSaleroomStatus : null}
+            toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
+            actions={
+              <SaleroomHeroActions
+                saleId={bundle.sale.id}
+                saleHref={basePath}
+                isAuthenticated={isAuthenticated}
+                initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
+                sale={bundle.sale}
+                registerToBid={{
+                  show: registerToBidShow,
+                  buyerEntities,
+                  myRegistrations,
+                  kycApproved,
+                  kycFeedback,
+                  orgModuleEnabled,
+                  saleCurrency: "GBP",
+                }}
+              />
+            }
+          />
+        }
+      >
+        <SaleDesktopStickyBar
           start={bundle.sale.startTime}
           end={bundle.sale.endTime}
           status={bundle.sale.status}
           saleTitle={bundle.sale.title}
           deliveryMode={bundle.sale.deliveryMode}
-          directionsUrl={directionsUrl}
           streamUrl={bundle.sale.streamUrl}
-          sale={bundle.sale}
-          locationLine={locationLine}
+          isAuthenticated={isAuthenticated}
           {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
         />
-      }
-      wayfinding={
-        <MarketingDetailWayfinding
-          backHref={calendarBackHref}
-          backLabel="Back to calendar"
-          breadcrumbItems={[
-            { label: "Home", href: "/" },
-            { label: "Calendar", href: "/sales" },
-            { label: bundle.sale.title, current: true },
+
+        <SaleAnchorTabs
+          tabs={[
+            { id: "catalog", label: "Catalogue" },
+            { id: "participate", label: "How to participate" },
+            { id: "overview", label: "Overview" },
           ]}
-          className="pb-2"
         />
-      }
-      wayfindingClassName="hidden md:block"
-      hero={
-        <SaleroomHero
-          hero={heroVM}
-          isAuthenticated={isAuthenticated}
-          backHref={calendarBackHref}
-          deliveryMode={bundle.sale.deliveryMode}
-          streamUrl={bundle.sale.streamUrl}
-          toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
-          actions={
-            <SaleroomHeroActions
-              saleId={bundle.sale.id}
-              saleHref={basePath}
-              isAuthenticated={isAuthenticated}
-              initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
-              sale={bundle.sale}
-              registerToBid={{
-                show: registerToBidShow,
-                buyerEntities,
-                myRegistrations,
-                kycApproved,
-                kycFeedback,
-                orgModuleEnabled,
-              }}
-            />
-          }
-        />
-      }
-    >
-      <SaleDesktopStickyBar
-        start={bundle.sale.startTime}
-        end={bundle.sale.endTime}
-        status={bundle.sale.status}
-        saleTitle={bundle.sale.title}
-        deliveryMode={bundle.sale.deliveryMode}
-        streamUrl={bundle.sale.streamUrl}
-        isAuthenticated={isAuthenticated}
-        {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
-      />
 
-      <SaleAnchorTabs
-        tabs={[
-          { id: "catalog", label: "Catalogue" },
-          { id: "participate", label: "How to participate" },
-          { id: "overview", label: "Overview" },
-        ]}
-      />
-
-      <section
-        id="catalog"
-        className={cn(
-          MARKETING_PAGE_SHELL,
-          "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-14",
-        )}
-      >
-        <ViewItemListTracker
-          listId={`sale:${bundle.sale.id}`}
-          listName={bundle.sale.title}
-          itemIds={lotVMs.map((l) => l.id)}
-        />
-        <SaleroomCatalogToolbarRow
-          basePath={basePath}
-          layoutView={layoutView}
-          totalLots={lotsPage.total}
-          countLabel={
-            hasCatalogNarrowing && lotVMs.length !== lotsPage.total
-              ? `${lotVMs.length} matching · ${lotsPage.total} in sale`
-              : `${lotsPage.total} lots`
-          }
-          resultCountLabel={lotVMs.length === 1 ? "Show 1 lot" : `Show ${lotVMs.length} lots`}
-        />
-        <SaleroomCatalogLotsByView
-          view={layoutView}
-          lots={lotVMs}
-          isAuthenticated={isAuthenticated}
-          emptyMessage={catalogEmptyMessage}
-          clearFiltersHref={catalogClearFiltersHref}
-          renderCorner={(lot) => (
-            <SaleroomLotQuickLookCorner lot={lot} isAuthenticated={isAuthenticated} />
+        <section
+          id="catalog"
+          className={cn(
+            MARKETING_PAGE_SHELL,
+            "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-14",
           )}
-          renderActions={(lot) => <SaleroomLotActions lotHref={lot.href} />}
-        />
-        {isCatalogLoadAll ? null : (
-          <MarketingPaginationControls
-            ariaLabel="Catalogue pagination"
-            currentPage={pageNum}
-            totalPages={catalogTotalPages}
-            getPageHref={catalogPageHref}
-            className="mt-12 border-t border-border-hairline pt-10"
-            scroll={false}
+        >
+          <ViewItemListTracker
+            listId={`sale:${bundle.sale.id}`}
+            listName={bundle.sale.title}
+            itemIds={lotVMs.map((l) => l.id)}
           />
-        )}
-      </section>
-
-      <section
-        id="participate"
-        className={cn(
-          MARKETING_PAGE_SHELL,
-          "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
-        )}
-        aria-label="How to participate"
-      >
-        <SaleParticipationTimeline
-          deliveryMode={bundle.sale.deliveryMode}
-          isAuthenticated={isAuthenticated}
-          kycApproved={kycApproved}
-          myRegistrations={myRegistrations}
-          buyerEntities={buyerEntities}
-          previewStartTime={bundle.sale.previewStartTime}
-          startTime={bundle.sale.startTime}
-          endTime={bundle.sale.endTime}
-          streamUrl={bundle.sale.streamUrl}
-          {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
-          {...(isSaleroomDeliveryMode(bundle.sale.deliveryMode)
-            ? { telephoneAnchorId: "bid-onsite-hub" }
-            : {})}
-          registerReturnPath={basePath}
-          className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
-        />
-        {isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
-        (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
-          <div className="mt-8">
-            <SaleTelephoneBookingPanel
-              saleId={bundle.sale.id}
-              saleTitle={bundle.sale.title}
-              loginNextPath={basePath}
-              isAuthenticated={isAuthenticated}
-              kycApproved={kycApproved}
-              mobile={session?.mobile ?? null}
-              {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
-              buyerEntities={buyerEntities}
-              existingBooking={telephoneBooking}
-              orgModuleEnabled={orgModuleEnabled}
+          <SaleroomCatalogToolbarRow
+            basePath={basePath}
+            layoutView={layoutView}
+            totalLots={lotsPage.total}
+            countLabel={
+              hasCatalogNarrowing && lotVMs.length !== lotsPage.total
+                ? `${lotVMs.length} matching · ${lotsPage.total} in sale`
+                : `${lotsPage.total} lots`
+            }
+            resultCountLabel={lotVMs.length === 1 ? "Show 1 lot" : `Show ${lotVMs.length} lots`}
+          />
+          <SaleroomCatalogLotsLive
+            view={layoutView}
+            lots={lotVMs}
+            isAuthenticated={isAuthenticated}
+            emptyMessage={catalogEmptyMessage}
+            clearFiltersHref={catalogClearFiltersHref}
+          />
+          {isCatalogLoadAll ? null : (
+            <MarketingPaginationControls
+              ariaLabel="Catalogue pagination"
+              currentPage={pageNum}
+              totalPages={catalogTotalPages}
+              getPageHref={catalogPageHref}
+              className="mt-12 border-t border-border-hairline pt-10"
+              scroll={false}
             />
-          </div>
-        ) : null}
-      </section>
+          )}
+        </section>
 
-      <section
-        id="overview"
-        className={cn(
-          MARKETING_PAGE_SHELL,
-          "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
-        )}
-        aria-label="Additional sale information"
-      >
-        <SaleroomOverviewPanel
-          overview={overviewVM}
-          sale={bundle.sale}
-          featuredLotTitles={featuredLotTitles}
-        />
-      </section>
+        <section
+          id="participate"
+          className={cn(
+            MARKETING_PAGE_SHELL,
+            "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
+          )}
+          aria-label="How to participate"
+        >
+          <SaleParticipationTimeline
+            deliveryMode={bundle.sale.deliveryMode}
+            isAuthenticated={isAuthenticated}
+            kycApproved={kycApproved}
+            myRegistrations={myRegistrations}
+            buyerEntities={buyerEntities}
+            previewStartTime={bundle.sale.previewStartTime}
+            startTime={bundle.sale.startTime}
+            endTime={bundle.sale.endTime}
+            streamUrl={bundle.sale.streamUrl}
+            {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
+            {...(isSaleroomDeliveryMode(bundle.sale.deliveryMode)
+              ? { telephoneAnchorId: "bid-onsite-hub" }
+              : {})}
+            registerReturnPath={basePath}
+            className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
+          />
+          {isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
+          (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
+            <div className="mt-8">
+              <SaleTelephoneBookingPanel
+                saleId={bundle.sale.id}
+                saleTitle={bundle.sale.title}
+                loginNextPath={basePath}
+                isAuthenticated={isAuthenticated}
+                kycApproved={kycApproved}
+                mobile={session?.mobile ?? null}
+                {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
+                buyerEntities={buyerEntities}
+                existingBooking={telephoneBooking}
+                orgModuleEnabled={orgModuleEnabled}
+              />
+            </div>
+          ) : null}
+        </section>
 
-      <Suspense fallback={null}>
-        <SaleroomRelatedAuctionsSection saleId={id} sale={bundle.sale} />
-      </Suspense>
-    </MarketingDetailShell>
+        <section
+          id="overview"
+          className={cn(
+            MARKETING_PAGE_SHELL,
+            "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
+          )}
+          aria-label="Additional sale information"
+        >
+          <SaleroomOverviewPanel
+            overview={overviewVM}
+            sale={bundle.sale}
+            featuredLotTitles={featuredLotTitles}
+          />
+        </section>
+
+        <Suspense fallback={null}>
+          <SaleroomRelatedAuctionsSection saleId={id} sale={bundle.sale} />
+        </Suspense>
+      </MarketingDetailShell>
+    </SaleroomCatalogLiveShell>
   );
 }
 

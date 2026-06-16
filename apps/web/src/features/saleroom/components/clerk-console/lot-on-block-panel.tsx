@@ -114,7 +114,7 @@ export function LotOnBlockPanel({
         ) : null}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 max-md:sticky max-md:bottom-0 max-md:z-10 max-md:-mx-4 max-md:px-4 max-md:pb-4 max-md:pt-3 max-md:border-t max-md:border-outline-variant/25 max-md:bg-surface-container-low/95 max-md:backdrop-blur-sm">
         <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Paddle bid
         </p>

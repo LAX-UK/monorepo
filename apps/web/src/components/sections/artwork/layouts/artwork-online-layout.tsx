@@ -10,16 +10,18 @@ import { AuctionSessionHeader } from "@/components/sections/artwork/online/aucti
 import { BidPanelTabs } from "@/components/sections/artwork/online/bid-panel-tabs";
 import { LatencyBadgeContainer } from "@/components/sections/artwork/online/latency-badge-container";
 import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
-import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
 import { shouldShowLotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar-utils";
 import { LotSessionStatePill } from "@/components/sections/artwork/online/lot-session-state-pill";
 import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
+import { SaleroomAwareLotQueueSidebar } from "@/components/sections/artwork/online/saleroom-aware-lot-queue-sidebar";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
 import {
   LotDetailsSection,
   LotMarketingAccordion,
 } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
+import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
+import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -55,6 +57,18 @@ type Props = {
   streamUrl?: string | null;
   streamSaleTitle?: string;
   streamPosterUrl?: string | null;
+  /** Hybrid saleroom: sale lots for live queue ordering. */
+  saleLots?: Lot[] | null;
+  artistNameByLotId?: Record<string, string>;
+  catalogLinkParams?: CatalogLinkParams;
+  /** Hybrid saleroom: all lots in sale for live banner. */
+  saleroomLotRefs?: Array<{
+    id: string;
+    lotNumber: number | null;
+    title: string;
+    href: string;
+    status: string;
+  }>;
 };
 
 export function ArtworkOnlineLayout({
@@ -80,6 +94,10 @@ export function ArtworkOnlineLayout({
   streamUrl,
   streamSaleTitle,
   streamPosterUrl,
+  saleroomLotRefs = [],
+  saleLots = null,
+  artistNameByLotId = {},
+  catalogLinkParams,
 }: Props) {
   const lifecycleLot = {
     id: auction.id,
@@ -107,6 +125,9 @@ export function ArtworkOnlineLayout({
           Catalogue preview — bidding opens when the sale is published.
         </div>
       ) : null}
+      {isHybridSale && saleroomLotRefs.length > 0 ? (
+        <SaleroomLiveLotBanner lots={saleroomLotRefs} viewedLotId={auction.id} />
+      ) : null}
       <div className={cn(MARKETING_PAGE_SHELL, "pb-[var(--page-bottom-padding)] pt-6")}>
         <div className="mt-0 lg:mt-2">
           <AuctionSessionHeader
@@ -131,11 +152,18 @@ export function ArtworkOnlineLayout({
           )}
         >
           {showQueue ? (
-            <LotQueueSidebar
-              current={queueCurrent}
-              upNext={queueUpNext}
-              queue={queueRest}
+            <SaleroomAwareLotQueueSidebar
+              viewedLot={auction}
+              saleLots={saleLots}
+              catalogueQueue={{
+                current: queueCurrent,
+                upNext: queueUpNext,
+                queue: queueRest,
+              }}
+              artistNameByLotId={artistNameByLotId}
+              {...(catalogLinkParams !== undefined ? { catalogLinkParams } : {})}
               isSaleQueueLoading={isSaleQueueLoading}
+              isHybridSale={isHybridSale}
               className="order-4 lg:order-none lg:col-start-1"
             />
           ) : null}

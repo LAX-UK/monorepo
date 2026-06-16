@@ -88,6 +88,11 @@ export function SaleroomLotCard({
                 {lot.lotLabel}
               </p>
             ) : null}
+            {lot.isOnBlock ? (
+              <span className="inline-flex self-start rounded-full bg-error/10 px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-error">
+                On the block
+              </span>
+            ) : null}
             <LotStatusBadge
               status={lot.status}
               startTime={lot.startTime}
@@ -151,7 +156,10 @@ export function SaleroomLotCard({
       <div className="relative w-full">
         <Link
           href={lot.href}
-          className="relative block aspect-[4/5] w-full min-h-0 overflow-hidden rounded-lg bg-surface-container-high transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:bg-surface-container-high"
+          className={cn(
+            "relative block aspect-[4/5] w-full min-h-0 overflow-hidden rounded-lg bg-surface-container-high transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:bg-surface-container-high",
+            lot.isOnBlock && "ring-2 ring-error/40",
+          )}
           aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
         >
           <AdaptiveMediaFrameContainer className="absolute inset-0">
@@ -182,6 +190,11 @@ export function SaleroomLotCard({
         >
           {lot.lotLabel ?? "Lot"}
         </p>
+        {lot.isOnBlock ? (
+          <span className="inline-flex self-start rounded-full bg-error/10 px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-error">
+            On the block
+          </span>
+        ) : null}
         <div>
           <Link
             href={lot.href}

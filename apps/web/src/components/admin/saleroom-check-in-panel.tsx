@@ -5,6 +5,12 @@ import {
   adminSaleroomCheckInResultAction,
 } from "@/lib/actions/admin";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
+import {
+  BID_LIMIT_FIELD_LABEL,
+  bidLimitFieldHelp,
+  bidLimitFieldPlaceholder,
+} from "@/lib/saleroom/bid-limit-field-copy";
+import { formatMoney } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
@@ -36,13 +42,14 @@ const CHECK_IN_ERROR_MESSAGES: Record<string, string> = {
 
 type Props = {
   saleId: string;
+  saleCurrency?: string;
 };
 
 function displayName(candidate: AdminCheckInCandidate): string {
   return candidate.name ?? candidate.email;
 }
 
-export function SaleroomCheckInPanel({ saleId }: Props) {
+export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<AdminCheckInCandidate[]>([]);
@@ -67,10 +74,15 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   useEffect(() => {
     if (!selectedCandidate) {
       setEntityId("");
+      setBidLimit("");
       return;
     }
     const personal = eligibleEntities.find((e) => e.kind === "individual");
-    setEntityId(personal?.id ?? eligibleEntities[0]?.id ?? "");
+    const nextEntityId = personal?.id ?? eligibleEntities[0]?.id ?? "";
+    setEntityId(nextEntityId);
+    const ent = eligibleEntities.find((e) => e.id === nextEntityId);
+    const existingLimit = ent?.existingRegistration?.bidLimit;
+    setBidLimit(existingLimit?.replace(/\.00$/, "") ?? "");
   }, [selectedCandidate, eligibleEntities]);
 
   const runSearch = useCallback(
@@ -319,7 +331,15 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
 
             <div className="space-y-1">
               <Label htmlFor="check-in-entity">Buying as</Label>
-              <Select value={entityId} onValueChange={setEntityId}>
+              <Select
+                value={entityId}
+                onValueChange={(id) => {
+                  setEntityId(id);
+                  const ent = eligibleEntities.find((e) => e.id === id);
+                  const existingLimit = ent?.existingRegistration?.bidLimit;
+                  setBidLimit(existingLimit?.replace(/\.00$/, "") ?? "");
+                }}
+              >
                 <SelectTrigger id="check-in-entity" className="font-body text-sm">
                   <SelectValue placeholder="Select entity…" />
                 </SelectTrigger>
@@ -335,7 +355,7 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="check-in-bid-limit">Optional bid limit</Label>
+                <Label htmlFor="check-in-bid-limit">{BID_LIMIT_FIELD_LABEL}</Label>
                 <Input
                   id="check-in-bid-limit"
                   type="number"
@@ -343,12 +363,21 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
                   step="0.01"
                   value={bidLimit}
                   onChange={(e) => setBidLimit(e.target.value)}
-                  placeholder="e.g. 50000"
+                  placeholder={bidLimitFieldPlaceholder(saleCurrency)}
                   className="font-body text-sm"
                 />
                 <p className="font-body text-xs text-on-surface-variant">
-                  Caps web and paddle bids on this sale.
+                  {bidLimitFieldHelp(saleCurrency)}
                 </p>
+                {(() => {
+                  const selectedEntity = eligibleEntities.find((e) => e.id === entityId);
+                  const existingLimit = selectedEntity?.existingRegistration?.bidLimit;
+                  return existingLimit && bidLimit.trim() === "" ? (
+                    <p className="font-body text-xs text-secondary">
+                      Current limit: {formatMoney(existingLimit, saleCurrency)}
+                    </p>
+                  ) : null;
+                })()}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="check-in-paddle">Paddle number</Label>

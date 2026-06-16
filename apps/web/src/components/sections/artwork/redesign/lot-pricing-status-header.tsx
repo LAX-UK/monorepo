@@ -37,6 +37,7 @@ export function LotPricingStatusHeader({
   const met = reserveMet(currentPrice, reservePrice);
   const live = lifecycle.kind === "live" || lifecycle.kind === "extended";
   const scheduled = lifecycle.kind === "scheduled";
+  const showTimingColumn = live || scheduled;
 
   return (
     <div className={cn("mb-4 border-b border-outline-variant/30 pb-4", className)}>
@@ -80,7 +81,7 @@ export function LotPricingStatusHeader({
             {formatMoney(currentPrice)}
           </p>
         </div>
-        {live || scheduled ? (
+        {showTimingColumn ? (
           <div className="col-span-2 sm:col-span-1">
             <p className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
               {scheduled

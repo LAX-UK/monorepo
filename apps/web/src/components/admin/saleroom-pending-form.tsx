@@ -1,11 +1,14 @@
 "use client";
 
 import { Button, type ButtonProps } from "@auction/ui/components/button";
-import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useTransition } from "react";
 
 type Props = Omit<ButtonProps, "type"> & {
   formId: string;
   pendingLabel: string;
+  /** Refresh RSC payload after server action completes. */
+  refreshOnComplete?: boolean;
 };
 
 /** Submit button with useTransition pending state for saleroom server-action forms. */
@@ -14,9 +17,19 @@ export function SaleroomPendingSubmit({
   pendingLabel,
   children,
   disabled,
+  refreshOnComplete = true,
   ...buttonProps
 }: Props) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const wasPendingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasPendingRef.current && !pending && refreshOnComplete) {
+      router.refresh();
+    }
+    wasPendingRef.current = pending;
+  }, [pending, refreshOnComplete, router]);
 
   return (
     <Button

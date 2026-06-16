@@ -55,6 +55,7 @@ import {
   adminTelephonePlaceBidBodySchema,
   adminUpdateArtistBodySchema,
   adminUpdateCategoryBodySchema,
+  adminUpdateSaleRegistrationBidLimitBodySchema,
   adminUserIdsLookupQuerySchema,
   adminUserListQuerySchema,
   artistIdParamSchema,
@@ -646,6 +647,29 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         registrationId,
         decidedByUserId: userId,
         ...(reason !== undefined ? { reason } : {}),
+      });
+      return result.match(
+        () => c.json({ ok: true }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.patch(
+    "/sales/:saleId/registrations/:registrationId/bid-limit",
+    requireAuctionManage,
+    zValidator("param", adminSaleRegistrationParamsSchema),
+    zValidator("json", adminUpdateSaleRegistrationBidLimitBodySchema),
+    async (c) => {
+      const { saleId, registrationId } = c.req.valid("param");
+      const { bidLimit } = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.saleRegistrationService.updateBidLimit({
+        saleId,
+        registrationId,
+        bidLimit,
+        decidedByUserId: userId,
       });
       return result.match(
         () => c.json({ ok: true }),
