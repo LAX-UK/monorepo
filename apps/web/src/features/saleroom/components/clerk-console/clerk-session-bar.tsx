@@ -24,7 +24,7 @@ export function ClerkSessionBar({
   leaderAmount,
 }: Props) {
   return (
-    <div className="sticky top-0 z-10 space-y-3 rounded-lg border border-outline-variant/25 bg-surface-container-low/80 p-4 backdrop-blur-sm">
+    <div className="space-y-3 rounded-lg border border-outline-variant/25 bg-surface-container-low/80 p-4">
       <div className="flex flex-wrap items-center gap-2">
         {deliveryMode ? <SaleDeliveryModeBadge mode={deliveryMode} /> : null}
         {session.isSessionLive ? <LiveBadge /> : null}

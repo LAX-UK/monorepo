@@ -48,9 +48,9 @@ For buyer-agent approvals or reassign after check-in:
 
 1. Open **Admin → Saleroom → [sale] → Clerk console**.
 2. **Go live** (suspends lot auto-close timers for active lots).
-3. **Advance** the lot on the block (lot runway shows next lots; use **Select next** for speed).
+3. **Advance** the lot on the block (lot runway shows next lots; use **Advance next** for speed).
 4. In **Paddle bid**, enter paddle # and amount (separate from telephone amount).
-5. Use **+1 / +2 / +5** increment chips or press **Enter** in the amount field to place quickly.
+5. Use **Min bid / +1 inc / +2 inc / +5 inc** increment chips or press **Enter** in the amount field to place quickly.
 6. If a **channel warning** appears (bidder also active online), confirm with the bidder they are not double-bidding — warn-only, not blocked.
 
 ### Keyboard flow

@@ -94,6 +94,14 @@ function ClerkConsoleInner({
         ).length
       : 0;
 
+  const sessionStatus = session.status;
+  const canGoLive =
+    sessionStatus === "none" || sessionStatus === "ended" || sessionStatus === "pending";
+  const canPause = sessionStatus === "live";
+  const canResume = sessionStatus === "paused";
+  const canClose = sessionStatus === "live" || sessionStatus === "paused";
+  const canHammer = sessionStatus === "live" && currentLotId != null;
+
   return (
     <div className="space-y-6">
       {paddleRosterEmpty && registrationsHref ? (
@@ -154,7 +162,7 @@ function ClerkConsoleInner({
         leaderAmount={liveBid.leaderAmount}
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" aria-label="Saleroom session controls">
         <form id={`saleroom-go-live-${saleId}`} action={adminSaleroomGoLiveAction}>
           <input type="hidden" name="saleId" value={saleId} />
           <SaleroomPendingSubmit
@@ -162,6 +170,8 @@ function ClerkConsoleInner({
             pendingLabel="Going live…"
             variant="default"
             className="min-h-11"
+            disabled={!canGoLive}
+            aria-disabled={!canGoLive}
           >
             Go live
           </SaleroomPendingSubmit>
@@ -173,6 +183,8 @@ function ClerkConsoleInner({
             pendingLabel="Pausing…"
             variant="secondary"
             className="min-h-11"
+            disabled={!canPause}
+            aria-disabled={!canPause}
           >
             Pause
           </SaleroomPendingSubmit>
@@ -184,6 +196,8 @@ function ClerkConsoleInner({
             pendingLabel="Resuming…"
             variant="secondary"
             className="min-h-11"
+            disabled={!canResume}
+            aria-disabled={!canResume}
           >
             Resume
           </SaleroomPendingSubmit>
@@ -198,6 +212,8 @@ function ClerkConsoleInner({
             confirmLabel="Close session"
             tone="warning"
             className="min-h-11"
+            disabled={!canClose}
+            aria-disabled={!canClose}
           >
             Close session
           </ConfirmFormSubmit>
@@ -205,20 +221,27 @@ function ClerkConsoleInner({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <LotRunwayPanel saleId={saleId} lots={orderedLots} currentLotId={currentLotId} />
-        <LotOnBlockPanel
+        <LotRunwayPanel
           saleId={saleId}
-          currentLotId={currentLotId}
           lots={orderedLots}
-          telephoneBookings={telephoneBookings}
-          paddleRoster={paddleRoster}
-          liveBid={liveBid}
+          currentLotId={currentLotId}
+          sessionLive={sessionStatus === "live"}
         />
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <LotOnBlockPanel
+            saleId={saleId}
+            currentLotId={currentLotId}
+            lots={orderedLots}
+            telephoneBookings={telephoneBookings}
+            paddleRoster={paddleRoster}
+            liveBid={liveBid}
+          />
+        </div>
       </div>
 
       <TelephoneLinesPanel saleId={saleId} currentLotId={currentLotId} rows={telephoneBookings} />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" aria-label="Lot outcome controls">
         <form id={`saleroom-hammer-${saleId}`} action={adminSaleroomHammerAction}>
           <input type="hidden" name="saleId" value={saleId} />
           <SaleroomPendingSubmit
@@ -226,6 +249,8 @@ function ClerkConsoleInner({
             pendingLabel="Recording…"
             variant="default"
             className="min-h-11"
+            disabled={!canHammer}
+            aria-disabled={!canHammer}
           >
             Hammer (sold)
           </SaleroomPendingSubmit>
@@ -237,6 +262,8 @@ function ClerkConsoleInner({
             pendingLabel="Recording…"
             variant="secondary"
             className="min-h-11"
+            disabled={!canHammer}
+            aria-disabled={!canHammer}
           >
             No sale
           </SaleroomPendingSubmit>

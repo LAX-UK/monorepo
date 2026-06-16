@@ -20,9 +20,10 @@ type Props = {
   saleId: string;
   lots: Lot[];
   currentLotId: string | null;
+  sessionLive?: boolean;
 };
 
-export function LotRunwayPanel({ saleId, lots, currentLotId }: Props) {
+export function LotRunwayPanel({ saleId, lots, currentLotId, sessionLive = false }: Props) {
   const { orderedLots, nextLot, runway } = useLotRunway({ lots, currentLotId });
   const [advanceLotId, setAdvanceLotId] = useState(() => currentLotId ?? orderedLots[0]?.id ?? "");
 
@@ -87,6 +88,8 @@ export function LotRunwayPanel({ saleId, lots, currentLotId }: Props) {
               pendingLabel="Advancing…"
               variant="default"
               className="min-h-11"
+              disabled={!sessionLive}
+              aria-disabled={!sessionLive}
             >
               On the block
             </SaleroomPendingSubmit>
@@ -95,12 +98,33 @@ export function LotRunwayPanel({ saleId, lots, currentLotId }: Props) {
                 type="button"
                 variant="outline"
                 className="min-h-11"
+                disabled={!sessionLive}
                 onClick={() => setAdvanceLotId(nextLot.id)}
               >
                 Select next ({formatLotRunListLabel(nextLot)})
               </Button>
             ) : null}
           </form>
+          {nextLot ? (
+            <form
+              id={`saleroom-advance-next-${saleId}`}
+              action={adminSaleroomAdvanceAction}
+              className="mt-2"
+            >
+              <input type="hidden" name="saleId" value={saleId} />
+              <input type="hidden" name="lotId" value={nextLot.id} />
+              <SaleroomPendingSubmit
+                formId={`saleroom-advance-next-${saleId}`}
+                pendingLabel="Advancing…"
+                variant="default"
+                className="min-h-11"
+                disabled={!sessionLive}
+                aria-disabled={!sessionLive}
+              >
+                Advance next
+              </SaleroomPendingSubmit>
+            </form>
+          ) : null}
         </>
       )}
     </div>
