@@ -38,6 +38,7 @@ type Props = {
   activity: readonly AdminActivityRow[];
   anomalies: readonly AdminAnomaly[];
   onsiteRadarRows?: readonly OnsiteSalesRadarRow[];
+  activeSaleroomSessions?: number;
   loadWarning?: string | null;
   staffRole?: UserStaffRole | null;
   hubLinks?: readonly AdminHubQuickLink[];
@@ -55,6 +56,7 @@ export function PersonalDashboard({
   activity,
   anomalies,
   onsiteRadarRows = [],
+  activeSaleroomSessions = 0,
   loadWarning = null,
   staffRole = null,
   hubLinks = [],
@@ -100,7 +102,11 @@ export function PersonalDashboard({
             ) : null}
             {show("saleroom-live") ? (
               <aside className={show("my-queue") ? "lg:col-span-5" : "lg:col-span-12"}>
-                <SaleroomLiveWidget bidsPerMinute={bidsPerMinute} activeLotIds={activeLotIds} />
+                <SaleroomLiveWidget
+                  bidsPerMinute={bidsPerMinute}
+                  activeLotIds={activeLotIds}
+                  activeSaleroomSessions={activeSaleroomSessions}
+                />
               </aside>
             ) : null}
           </div>

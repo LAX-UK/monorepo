@@ -5,17 +5,23 @@ import type {
   LotQueueCardVM,
   LotRelatedRailVM,
 } from "@/components/sections/artwork/artwork-view-models";
+import { splitArtworkAccordionBlocks } from "@/components/sections/artwork/artwork-view-models";
 import { AuctionSessionHeader } from "@/components/sections/artwork/online/auction-session-header";
 import { BidPanelTabs } from "@/components/sections/artwork/online/bid-panel-tabs";
 import { LatencyBadgeContainer } from "@/components/sections/artwork/online/latency-badge-container";
 import { LotImageArea } from "@/components/sections/artwork/online/lot-image-area";
-import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
 import { shouldShowLotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar-utils";
 import { LotSessionStatePill } from "@/components/sections/artwork/online/lot-session-state-pill";
 import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
+import { SaleroomAwareLotQueueSidebar } from "@/components/sections/artwork/online/saleroom-aware-lot-queue-sidebar";
 import { LotActionsRow } from "@/components/sections/artwork/redesign/lot-actions-row";
-import { LotMarketingAccordion } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
+import {
+  LotDetailsSection,
+  LotMarketingAccordion,
+} from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
+import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
+import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -46,13 +52,23 @@ type Props = {
   bidPanel: ReactNode;
   /** Optional strip above the bid panel (e.g. condition report request). */
   bidPanelTop?: ReactNode;
-  /** Optional saleroom participation hub for hybrid sales (below bid panel column). */
-  participationSection?: ReactNode;
   /** When true, show the Video Stream tab in the bid panel. */
   hasVideoStream?: boolean;
   streamUrl?: string | null;
   streamSaleTitle?: string;
   streamPosterUrl?: string | null;
+  /** Hybrid saleroom: sale lots for live queue ordering. */
+  saleLots?: Lot[] | null;
+  artistNameByLotId?: Record<string, string>;
+  catalogLinkParams?: CatalogLinkParams;
+  /** Hybrid saleroom: all lots in sale for live banner. */
+  saleroomLotRefs?: Array<{
+    id: string;
+    lotNumber: number | null;
+    title: string;
+    href: string;
+    status: string;
+  }>;
 };
 
 export function ArtworkOnlineLayout({
@@ -74,11 +90,14 @@ export function ArtworkOnlineLayout({
   followSlot,
   bidPanel,
   bidPanelTop,
-  participationSection,
   hasVideoStream = false,
   streamUrl,
   streamSaleTitle,
   streamPosterUrl,
+  saleroomLotRefs = [],
+  saleLots = null,
+  artistNameByLotId = {},
+  catalogLinkParams,
 }: Props) {
   const lifecycleLot = {
     id: auction.id,
@@ -91,6 +110,10 @@ export function ArtworkOnlineLayout({
   };
 
   const showQueue = shouldShowLotQueueSidebar(queueUpNext, queueRest, isSaleQueueLoading);
+  const isHybridSale = saleForLifecycle?.deliveryMode === "hybrid";
+  const { lotDetails: hybridLotDetailsBlock, accordionBlocks: hybridAccordionBlocks } = isHybridSale
+    ? splitArtworkAccordionBlocks(marketingAccordionBlocks)
+    : { lotDetails: null, accordionBlocks: marketingAccordionBlocks };
 
   return (
     <section aria-labelledby="lot-heading" className="bg-page-bg dark:bg-background">
@@ -101,6 +124,9 @@ export function ArtworkOnlineLayout({
         <div className="border-b border-lot-orange/30 bg-lot-orange/10 px-4 py-2 text-center font-body text-sm font-medium text-lot-orange">
           Catalogue preview — bidding opens when the sale is published.
         </div>
+      ) : null}
+      {isHybridSale && saleroomLotRefs.length > 0 ? (
+        <SaleroomLiveLotBanner lots={saleroomLotRefs} viewedLotId={auction.id} />
       ) : null}
       <div className={cn(MARKETING_PAGE_SHELL, "pb-[var(--page-bottom-padding)] pt-6")}>
         <div className="mt-0 lg:mt-2">
@@ -126,11 +152,18 @@ export function ArtworkOnlineLayout({
           )}
         >
           {showQueue ? (
-            <LotQueueSidebar
-              current={queueCurrent}
-              upNext={queueUpNext}
-              queue={queueRest}
+            <SaleroomAwareLotQueueSidebar
+              viewedLot={auction}
+              saleLots={saleLots}
+              catalogueQueue={{
+                current: queueCurrent,
+                upNext: queueUpNext,
+                queue: queueRest,
+              }}
+              artistNameByLotId={artistNameByLotId}
+              {...(catalogLinkParams !== undefined ? { catalogLinkParams } : {})}
               isSaleQueueLoading={isSaleQueueLoading}
+              isHybridSale={isHybridSale}
               className="order-4 lg:order-none lg:col-start-1"
             />
           ) : null}
@@ -162,7 +195,11 @@ export function ArtworkOnlineLayout({
               }
               hasVideoStream={hasVideoStream && Boolean(streamUrl && streamSaleTitle)}
             />
-            {participationSection ? <div className="mt-6">{participationSection}</div> : null}
+            {isHybridSale && hybridLotDetailsBlock ? (
+              <div className="mt-6">
+                <LotDetailsSection block={hybridLotDetailsBlock} compact />
+              </div>
+            ) : null}
             <div className="mt-6">
               <LotActionsRow
                 followSlot={followSlot}
@@ -184,7 +221,10 @@ export function ArtworkOnlineLayout({
             showQueue ? "lg:max-w-[786px]" : "lg:max-w-[900px]",
           )}
         >
-          <LotMarketingAccordion blocks={marketingAccordionBlocks} variant="artworkCenter" />
+          <LotMarketingAccordion
+            blocks={isHybridSale ? hybridAccordionBlocks : marketingAccordionBlocks}
+            variant={isHybridSale ? "default" : "artworkCenter"}
+          />
         </div>
 
         <LotMoreFromRail

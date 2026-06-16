@@ -6,7 +6,7 @@
 
 ## Diagnosis
 
-1. **Bucket CORS** — Terraform `digitalocean-spaces` module; browser PUT failures often CORS.
+1. **Bucket CORS** — Terraform `digitalocean-spaces` module; browser PUT failures often CORS (e.g. missing `Cache-Control` in `allowed_headers` when presigned uploads require it).
 2. **Keys** — `S3_ACCESS_KEY_ID` / `SECRET` rotated? Spaces panel → API keys.
 3. **Object existence** — `aws s3 ls s3://lax-media/...` with endpoint `https://lon1.digitaloceanspaces.com`.
 

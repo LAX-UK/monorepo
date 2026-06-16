@@ -288,7 +288,7 @@ export function SaleParticipationTimeline({
           ? ("pending" as const)
           : ("active" as const),
       action:
-        !isSaleActive && !isSaleEnded ? (
+        !isSaleActive && !isSaleEnded && (absenteeAnchorId || telephoneAnchorId) ? (
           <div className="flex flex-col gap-2">
             <Button size="sm" variant="outline" className="mt-2" asChild>
               <Link href={absenteeAnchorId ? `#${absenteeAnchorId}` : "#plan-visit"}>

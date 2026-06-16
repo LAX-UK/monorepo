@@ -94,6 +94,26 @@ describe("CheckoutPurchasePanel", () => {
     expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
   });
 
+  it("shows finance release block when manual review has no specific reason", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[]}
+        openPaymentStatus="requires_manual_review"
+        openPaymentManualReviewReason={null}
+      />,
+    );
+    expect(screen.getByText("Finance review")).toBeInTheDocument();
+    expect(screen.getByText(/settlements for release/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
+  });
+
   it("shows payment complete state without purchase form", () => {
     render(
       <CheckoutPurchasePanel

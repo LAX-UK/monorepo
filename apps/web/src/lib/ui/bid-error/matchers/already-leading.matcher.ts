@@ -1,20 +1,9 @@
-import type { BidErrorMatcher, BidErrorPresentation, MapBidErrorOptions } from "../types";
+import { BID_ERROR_CODES, matchesAlreadyLeadingError, presentationForBidCode } from "../codes";
+import type { BidErrorMatcher, MapBidErrorOptions } from "../types";
 
 export const alreadyLeadingBidErrorMatcher: BidErrorMatcher = {
-  match(raw: string, options?: MapBidErrorOptions): BidErrorPresentation | null {
-    const code = options?.code;
-    if (
-      code !== "already_leading" &&
-      raw !== "already_leading" &&
-      !raw.includes("already the highest")
-    ) {
-      return null;
-    }
-    return {
-      title: "You are leading",
-      message:
-        "You are already the highest bidder. Raise your auto-bid max instead of bidding again.",
-      severity: "info",
-    };
+  match(raw: string, options?: MapBidErrorOptions) {
+    if (!matchesAlreadyLeadingError(raw, options?.code)) return null;
+    return presentationForBidCode(BID_ERROR_CODES.already_leading);
   },
 };

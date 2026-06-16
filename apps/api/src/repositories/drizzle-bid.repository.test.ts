@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DrizzleBidRepository } from "./drizzle-bid.repository.js";
 
 describe("DrizzleBidRepository.markWinningBid", () => {
-  it("updates only the current winner and new winner in one execute call", async () => {
+  it("clears the current winner then promotes the new bid in two execute calls", async () => {
     const execute = vi.fn().mockResolvedValue(undefined);
     const db = { execute } as unknown as import("@auction/db").Database;
 
@@ -11,10 +11,13 @@ describe("DrizzleBidRepository.markWinningBid", () => {
 
     await new DrizzleBidRepository(db).markWinningBid(lotId, bidId);
 
-    expect(execute).toHaveBeenCalledOnce();
-    const serialized = JSON.stringify(execute.mock.calls[0]?.[0]);
-    expect(serialized).toContain("is_winning");
-    expect(serialized).toContain(lotId);
-    expect(serialized).toContain(bidId);
+    expect(execute).toHaveBeenCalledTimes(2);
+    const clearSql = JSON.stringify(execute.mock.calls[0]?.[0]);
+    const promoteSql = JSON.stringify(execute.mock.calls[1]?.[0]);
+    expect(clearSql).toContain("is_winning = false");
+    expect(clearSql).toContain(lotId);
+    expect(promoteSql).toContain("is_winning = true");
+    expect(promoteSql).toContain(lotId);
+    expect(promoteSql).toContain(bidId);
   });
 });

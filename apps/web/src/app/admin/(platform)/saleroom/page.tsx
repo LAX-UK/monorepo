@@ -5,32 +5,37 @@ import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
+import { SaleroomHubLiveGrid } from "@/components/admin/saleroom-hub-board/saleroom-hub-live-grid";
 import { saleroomHubController } from "@/lib/admin/saleroom-hub-controller";
+import { buildSaleroomHubViewData } from "@/lib/admin/saleroom-hub-page-data";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = metadataForPrivate(
   "Saleroom console",
-  "Pick a live or upcoming sale to open the clerk console.",
+  "Monitor live rooms and open the clerk console for each sale.",
 );
 
 export default async function AdminSaleroomHubPage() {
-  let liveOrUpcoming: Awaited<ReturnType<typeof saleroomHubController.fetch>>["rows"] = [];
   let liveCount = 0;
   let scheduledCount = 0;
+  let availableCount = 0;
   let loadError: string | null = null;
+  let hubView: Awaited<ReturnType<typeof buildSaleroomHubViewData>> | null = null;
+
   try {
     const result = await saleroomHubController.fetch();
-    liveOrUpcoming = result.rows;
     liveCount = result.summary.liveCount;
     scheduledCount = result.summary.scheduledCount;
+    availableCount = result.summary.availableCount;
+    hubView = await buildSaleroomHubViewData(result.rows);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load sales.";
   }
 
   const empty =
-    !loadError && liveOrUpcoming.length === 0 ? (
+    !loadError && availableCount === 0 ? (
       <AdminEmptyState
         title="No live or upcoming sales"
         description="Schedule or activate a sale to open the clerk console."
@@ -49,7 +54,7 @@ export default async function AdminSaleroomHubPage() {
     <AdminListShell
       layout="hub"
       title="Saleroom console"
-      description="Pick a live or upcoming sale to open the clerk console."
+      description="Monitor all live rooms or open a clerk console to run the floor."
       kpiStrip={
         !loadError ? (
           <AdminListKpiStrip
@@ -57,7 +62,7 @@ export default async function AdminSaleroomHubPage() {
             tiles={[
               { label: "Live sales", value: liveCount },
               { label: "Scheduled", value: scheduledCount },
-              { label: "Available", value: liveOrUpcoming.length },
+              { label: "Available", value: availableCount },
             ]}
           />
         ) : null
@@ -68,7 +73,7 @@ export default async function AdminSaleroomHubPage() {
             metrics={[
               { id: "live", label: "Live", value: String(liveCount) },
               { id: "scheduled", label: "Scheduled", value: String(scheduledCount) },
-              { id: "total", label: "Available", value: String(liveOrUpcoming.length) },
+              { id: "total", label: "Available", value: String(availableCount) },
             ]}
           />
         ) : null
@@ -82,12 +87,28 @@ export default async function AdminSaleroomHubPage() {
             ariaLabel="Saleroom quick links"
             links={[
               { href: "/admin/sales", label: "All sales" },
-              { href: "/admin/onsite-events", label: "Onsite events" },
+              { href: "/admin/event-rsvps", label: "Event RSVPs" },
               { href: "/admin/lots?lens=attention", label: "Lots attention" },
             ]}
           />
-          {!loadError && liveOrUpcoming.length > 0 ? (
-            <AdminSaleroomHubBoard rows={liveOrUpcoming} />
+          {!loadError && hubView && hubView.summaries.length > 0 ? (
+            <SaleroomHubLiveGrid
+              rows={hubView.summaries}
+              initialSessions={hubView.initialSessions}
+            />
+          ) : null}
+          {!loadError && hubView && hubView.scheduledOnlyRows.length > 0 ? (
+            <div className="space-y-3">
+              <h2 className="font-headline text-lg text-on-surface">Scheduled</h2>
+              <AdminSaleroomHubBoard rows={hubView.scheduledOnlyRows} />
+            </div>
+          ) : null}
+          {!loadError &&
+          hubView &&
+          hubView.summaries.length === 0 &&
+          hubView.scheduledOnlyRows.length === 0 &&
+          availableCount > 0 ? (
+            <AdminSaleroomHubBoard rows={hubView.rows} />
           ) : null}
         </div>
       }

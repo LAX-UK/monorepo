@@ -6,16 +6,30 @@ import Link from "next/link";
 type Props = {
   bidsPerMinute: number;
   activeLotIds: readonly string[];
+  activeSaleroomSessions?: number;
 };
 
-export function SaleroomLiveWidget({ bidsPerMinute, activeLotIds }: Props) {
+export function SaleroomLiveWidget({
+  bidsPerMinute,
+  activeLotIds,
+  activeSaleroomSessions = 0,
+}: Props) {
   return (
     <Surface variant="section" padding="md" className="space-y-4 border-border-hairline">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h3 className="font-headline text-lg font-semibold text-on-surface">Saleroom live</h3>
           <p className="font-body text-sm text-on-surface-variant">
-            Live bid velocity and room pulse from active lots.
+            Live bid velocity and saleroom sessions on the floor.
+            {activeSaleroomSessions > 0 ? (
+              <>
+                {" "}
+                <span className="font-medium text-on-surface">
+                  {activeSaleroomSessions} active session
+                  {activeSaleroomSessions === 1 ? "" : "s"}
+                </span>
+              </>
+            ) : null}
           </p>
         </div>
         <Link

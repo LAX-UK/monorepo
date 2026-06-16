@@ -126,6 +126,17 @@ export type AdminSourceOfFundsDetail = {
     uploadedAt: string;
     uploadedByUserId: string;
     downloadUrl: string | null;
+    staffReview: {
+      checks: {
+        matchesDeclaredSource?: boolean;
+        coversExposure?: boolean;
+        recentEnough?: boolean;
+        legibleComplete?: boolean;
+      };
+      note: string | null;
+      reviewedAt: string;
+      reviewedBy: { id: string; label: string | null };
+    } | null;
   }>;
 };
 
@@ -371,6 +382,34 @@ function parseDocumentRequest(raw: unknown): AdminSourceOfFundsDetail["documentR
   };
 }
 
+function parseStaffReview(
+  raw: unknown,
+): AdminSourceOfFundsDetail["submittedDocuments"][number]["staffReview"] {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const reviewedByRaw = o.reviewedBy;
+  if (!reviewedByRaw || typeof reviewedByRaw !== "object") return null;
+  const rb = reviewedByRaw as Record<string, unknown>;
+  const reviewedById = str(rb.id);
+  if (!reviewedById) return null;
+  const checksRaw = o.checks;
+  const checks =
+    checksRaw && typeof checksRaw === "object" && !Array.isArray(checksRaw)
+      ? (checksRaw as Record<string, unknown>)
+      : {};
+  return {
+    checks: {
+      matchesDeclaredSource: Boolean(checks.matchesDeclaredSource),
+      coversExposure: Boolean(checks.coversExposure),
+      recentEnough: Boolean(checks.recentEnough),
+      legibleComplete: Boolean(checks.legibleComplete),
+    },
+    note: o.note == null ? null : str(o.note),
+    reviewedAt: String(o.reviewedAt ?? ""),
+    reviewedBy: { id: reviewedById, label: rb.label == null ? null : str(rb.label) },
+  };
+}
+
 function parseSubmittedDocuments(raw: unknown): AdminSourceOfFundsDetail["submittedDocuments"] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -388,6 +427,7 @@ function parseSubmittedDocuments(raw: unknown): AdminSourceOfFundsDetail["submit
         uploadedAt: String(o.uploadedAt ?? ""),
         uploadedByUserId: str(o.uploadedByUserId),
         downloadUrl: o.downloadUrl == null ? null : str(o.downloadUrl),
+        staffReview: parseStaffReview(o.staffReview),
       };
     })
     .filter((d): d is NonNullable<typeof d> => d != null);
@@ -562,4 +602,20 @@ export async function getAdminSourceOfFundsDetail(
   }
   const json = (await res.json()) as { data?: unknown };
   return sofDetailFromJson(json.data);
+}
+
+export async function getAdminUserSourceOfFunds(userId: string): Promise<AdminSourceOfFundsRow[]> {
+  const res = await authedServerFetch(`/admin/users/${encodeURIComponent(userId)}/source-of-funds`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      normalizeApiErrorMessage(
+        (body as { error?: unknown }).error,
+        "Could not load Source of Funds cases for user",
+      ),
+    );
+  }
+  const json = (await res.json()) as { data?: unknown };
+  const rows = Array.isArray(json.data) ? json.data : [];
+  return rows.map(sofFromJson).filter((r): r is AdminSourceOfFundsRow => r != null);
 }

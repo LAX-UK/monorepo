@@ -44,6 +44,7 @@ export async function resolveManualReviewReason(
     if (tierReason) {
       return { manualReviewReason: tierReason, complianceHold: false };
     }
+    return { manualReviewReason: "finance_release_required", complianceHold: false };
   }
 
   return { manualReviewReason: null, complianceHold: false };

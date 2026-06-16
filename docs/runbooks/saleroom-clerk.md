@@ -48,9 +48,30 @@ For buyer-agent approvals or reassign after check-in:
 
 1. Open **Admin → Saleroom → [sale] → Clerk console**.
 2. **Go live** (suspends lot auto-close timers for active lots).
-3. **Advance** the lot on the block.
-4. In **Paddle bid**, enter paddle # and amount, press Enter or **Place paddle bid**.
-5. If a **channel warning** appears (bidder also active online), confirm with the bidder they are not double-bidding — warn-only, not blocked.
+3. **Advance** the lot on the block (lot runway shows next lots; use **Advance next** for speed).
+4. In **Paddle bid**, enter paddle # and amount (separate from telephone amount).
+5. Use **Min bid / +1 inc / +2 inc / +5 inc** increment chips or press **Enter** in the amount field to place quickly.
+6. If a **channel warning** appears (bidder also active online), confirm with the bidder they are not double-bidding — warn-only, not blocked.
+
+### Keyboard flow
+
+| Step | Key |
+|------|-----|
+| Focus paddle # | Tab to `Paddle #` field |
+| Enter amount | Tab to `Amount` |
+| Place bid | **Enter** (submits paddle bid) |
+
+## Operations command center
+
+**Admin → Sale → Operations** shows live session status, current lot, leader channel, and pending telephone work. Updates over Socket.IO without refreshing the page.
+
+## Hybrid day-of checklist
+
+1. Confirm sale delivery mode is **Hybrid**.
+2. Check in walk-in bidders and assign paddles (**Registrations → Check in**).
+3. Confirm telephone requests for opening lots.
+4. Open **Saleroom console** → **Go live** → advance first lot.
+5. Monitor **Activity log** (unified socket + DB events) during the session.
 
 ## Telephone bids (same console)
 
@@ -84,7 +105,8 @@ Use the telephone line selector when a confirmed/in-progress booking exists for 
 
 1. Check Redis/WebSocket bridge health.
 2. Refresh the clerk console; bids still land in DB if API succeeded.
-3. Compare **Recent events (DB)** vs **Live feed (socket)** panels.
+3. Review the unified **Activity log** panel (socket events merged with recent DB events).
+4. Watch the **Connection** chip — `Reconnecting` or `Stale` means hydration may be needed.
 
 ## Rollback
 

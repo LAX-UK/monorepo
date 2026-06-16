@@ -4,6 +4,12 @@ import type { PublicUser } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
+import {
+  type PublicSaleroomSessionStatus,
+  isSaleroomSessionActive,
+} from "@/lib/saleroom/public-session-status";
+import { sortLotsForRunList } from "@/lib/saleroom/sort-lots-for-run-list";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Bid, Lot, LotMarketingDetails, Sale } from "@auction/types";
 import { normalizeAuctionTime } from "@auction/validators";
@@ -480,6 +486,48 @@ export function mapSaleLotsToQueueVMs(
       ),
     );
   return { current, upNext, queue };
+}
+
+/** Live hybrid saleroom queue — anchored on floor on-block lot, not the viewed lot. */
+export function mapSaleLotsToSaleroomQueueVMs(
+  saleLots: Lot[],
+  currentLotId: string | null,
+  sessionStatus: PublicSaleroomSessionStatus["status"],
+  resolveArtistName: (l: Lot) => string,
+  catalogLinkParams?: CatalogLinkParams,
+): { upNext: LotQueueCardVM | null; queue: LotQueueCardVM[] } | null {
+  if (!isSaleroomSessionActive(sessionStatus) || saleLots.length === 0) return null;
+
+  const ordered = sortLotsForRunList(saleLots);
+  const afterOnBlock =
+    currentLotId != null
+      ? (() => {
+          const idx = ordered.findIndex((l) => l.id === currentLotId);
+          return idx >= 0 ? ordered.slice(idx + 1) : ordered;
+        })()
+      : ordered;
+
+  const upcoming = afterOnBlock.filter((l) => isLotAdvanceable(l));
+  const nextLot = upcoming[0] ?? null;
+  const upNext = nextLot
+    ? lotToQueueCardVM(
+        nextLot,
+        resolveArtistName(nextLot),
+        { isCurrentLot: false, isUpNext: true },
+        catalogLinkParams,
+      )
+    : null;
+  const queue = upcoming
+    .slice(1)
+    .map((l) =>
+      lotToQueueCardVM(
+        l,
+        resolveArtistName(l),
+        { isCurrentLot: false, isUpNext: false },
+        catalogLinkParams,
+      ),
+    );
+  return { upNext, queue };
 }
 
 export function maskPaddleFromBidderId(bidderId: string): string {

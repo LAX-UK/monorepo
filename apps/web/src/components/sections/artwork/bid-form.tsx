@@ -20,6 +20,8 @@ type Props = {
   onReview: () => void;
   onUseMinimum: () => void;
   error: BidErrorPresentation | null;
+  /** Proactive block before review (shown inline; banner may also display). */
+  manualBidBlockedReason?: BidErrorPresentation | null;
   /** When false, max auto-bid is captured elsewhere (e.g. `LotAutoBidPanel`). */
   showMaxAutoField?: boolean;
   className?: string;
@@ -46,6 +48,7 @@ export function BidForm({
   onReview,
   onUseMinimum,
   error,
+  manualBidBlockedReason = null,
   showMaxAutoField = true,
   className,
   reviewButtonClassName,
@@ -187,11 +190,23 @@ export function BidForm({
         </p>
       ) : null}
       <BidErrorView error={error} />
+      {manualBidBlockedReason ? (
+        <p className="rounded-md border border-lot-orange/30 bg-lot-orange/10 px-4 py-3 font-body text-sm text-on-surface">
+          {manualBidBlockedReason.title ? (
+            <span className="block font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
+              {manualBidBlockedReason.title}
+            </span>
+          ) : null}
+          <span className={manualBidBlockedReason.title ? "mt-1 block" : ""}>
+            {manualBidBlockedReason.message}
+          </span>
+        </p>
+      ) : null}
       <div className="space-y-2">
         <Button
           type="button"
           className={cn("h-auto w-full py-6", reviewButtonClassName)}
-          disabled={biddingDisabled}
+          disabled={biddingDisabled || Boolean(manualBidBlockedReason)}
           onClick={onReview}
         >
           {step1ButtonLabel}

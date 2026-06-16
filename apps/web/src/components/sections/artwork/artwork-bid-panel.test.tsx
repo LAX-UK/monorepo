@@ -1,6 +1,6 @@
 import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
 import type { Lot } from "@auction/types";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ArtworkBidPanel } from "./artwork-bid-panel";
@@ -104,6 +104,10 @@ function selectManualBidMode() {
   fireEvent.click(screen.getByRole("button", { name: /place one bid now/i }));
 }
 
+function selectAutoBidMode() {
+  fireEvent.click(screen.getByRole("button", { name: /^Auto-bid/i }));
+}
+
 function renderArtworkBidPanel(props: ComponentProps<typeof ArtworkBidPanel>) {
   return render(
     <LotBidHistoryProvider
@@ -122,6 +126,8 @@ describe("ArtworkBidPanel", () => {
   beforeEach(() => {
     placeBidMock.mockReset();
     setAutoBidMock.mockReset();
+    clearAutoBidMock.mockReset();
+    Element.prototype.scrollIntoView = vi.fn();
   });
 
   it("shows seller notice instead of bid form when user is the seller", () => {
@@ -387,5 +393,215 @@ describe("ArtworkBidPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
     expect(screen.getByText(/approved limit for this sale is/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /place bid/i })).not.toBeInTheDocument();
+  });
+
+  it("hides auto-bid controls when isOwnLot is true", () => {
+    renderArtworkBidPanel({
+      auction: {
+        ...lot("other-seller"),
+        sellerLegalEntityId: "le-seller",
+      },
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      isOwnLot: true,
+    });
+    expect(screen.queryByText(/save auto-bid/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /place one bid now/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/your listing/i).length).toBeGreaterThan(0);
+  });
+
+  it("blocks manual review when user is already leading", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [
+        {
+          id: "b1",
+          bidderId: "buyer-1",
+          amount: "110",
+          at: Date.now(),
+        },
+      ],
+      initialLeadingBidderId: "buyer-1",
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
+    selectManualBidMode();
+    expect(screen.getAllByText(/already the highest bidder/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /review bid/i })).toBeDisabled();
+  });
+
+  it("preserves unsaved auto-bid draft when toggling modes", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
+
+    fireEvent.change(screen.getByLabelText(/max amount/i), { target: { value: "750" } });
+    selectManualBidMode();
+    selectAutoBidMode();
+
+    expect(screen.getByLabelText(/max amount/i)).toHaveValue("750");
+    expect(screen.getByText(/changed your auto-bid/i)).toBeInTheDocument();
+  });
+
+  it("preserves manual bid amount when toggling modes", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
+
+    selectManualBidMode();
+    fireEvent.click(screen.getByRole("button", { name: /increase bid/i }));
+    selectAutoBidMode();
+    selectManualBidMode();
+
+    expect(screen.getAllByText(/£120\.00/i).length).toBeGreaterThan(0);
+  });
+
+  it("does not attach unsaved auto-bid draft to manual placeBid", async () => {
+    placeBidMock.mockResolvedValueOnce({
+      ok: true,
+      bid: {
+        id: "bid-ok",
+        lotId: "lot-x",
+        amount: "110",
+        bidderId: "buyer-1",
+        placedByUserId: "buyer-1",
+        isWinning: true,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: new Date(),
+      },
+    });
+
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
+
+    fireEvent.change(screen.getByLabelText(/max amount/i), { target: { value: "500" } });
+    selectManualBidMode();
+    fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
+    fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
+
+    await waitFor(() => expect(placeBidMock).toHaveBeenCalled());
+    expect(placeBidMock.mock.calls[0]?.[0]).not.toHaveProperty("maxAutoBidAmount");
+  });
+
+  it("includes saved active auto-bid on manual placeBid", async () => {
+    placeBidMock.mockResolvedValueOnce({
+      ok: true,
+      bid: {
+        id: "bid-ok",
+        lotId: "lot-x",
+        amount: "110",
+        bidderId: "buyer-1",
+        placedByUserId: "buyer-1",
+        isWinning: true,
+        isAutoBid: false,
+        maxAutoBidAmount: "500",
+        createdAt: new Date(),
+      },
+    });
+
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: {
+        maxAutoBidAmount: "500",
+        autoBidStepAmount: "10",
+        isActive: true,
+      },
+      omitPricingHeader: true,
+    });
+
+    selectManualBidMode();
+    fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
+    fireEvent.click(screen.getByRole("button", { name: /place bid/i }));
+
+    await waitFor(() => expect(placeBidMock).toHaveBeenCalled());
+    expect(placeBidMock.mock.calls[0]?.[0]).toMatchObject({
+      maxAutoBidAmount: 500,
+      autoBidStepAmount: 10,
+    });
+  });
+
+  it("resets manual confirm step when switching modes", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
+
+    selectManualBidMode();
+    fireEvent.click(screen.getByRole("button", { name: /review bid/i }));
+    expect(screen.getByRole("button", { name: /place bid/i })).toBeInTheDocument();
+
+    selectAutoBidMode();
+    selectManualBidMode();
+    expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /place bid/i })).not.toBeInTheDocument();
+  });
+
+  it("stays in manual mode after saving auto-bid when user chose manual", async () => {
+    setAutoBidMock.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        maxAutoBidAmount: "500",
+        autoBidStepAmount: "10",
+        isActive: true,
+      },
+      placedBid: {
+        id: "bid-auto-1",
+        amount: "110",
+        placedByUserId: "buyer-1",
+        maxAutoBidAmount: "500",
+        autoBidStepAmount: "10",
+      },
+    });
+
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+      omitPricingHeader: true,
+    });
+
+    selectManualBidMode();
+    const autoPanel = document.getElementById("lot-auto-bid-panel");
+    expect(autoPanel).not.toBeNull();
+    const autoPanelQueries = within(autoPanel as HTMLElement);
+    // Hidden panel is intentionally aria-hidden while manual mode is active.
+    fireEvent.change(autoPanelQueries.getByLabelText(/max amount/i, { hidden: true } as never), {
+      target: { value: "500" },
+    });
+    fireEvent.click(
+      autoPanelQueries.getByRole("button", { name: /save auto-bid/i, hidden: true } as never),
+    );
+
+    await waitFor(() => expect(setAutoBidMock).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
   });
 });

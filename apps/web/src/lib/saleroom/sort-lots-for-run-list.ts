@@ -15,8 +15,10 @@ export function formatLotRunListLabel(lot: Lot): string {
   return title ? `${number} · ${title}` : `${number} · ${lot.id.slice(0, 8)}…`;
 }
 
+import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
+
 export function findNextRunListLot(lots: readonly Lot[], currentLotId: string | null): Lot | null {
-  const ordered = sortLotsForRunList(lots);
+  const ordered = sortLotsForRunList(lots).filter(isLotAdvanceable);
   if (ordered.length === 0) return null;
   if (!currentLotId) return ordered[0] ?? null;
   const currentIndex = ordered.findIndex((lot) => lot.id === currentLotId);

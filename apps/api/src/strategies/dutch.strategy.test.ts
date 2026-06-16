@@ -53,6 +53,7 @@ describe("DutchAuctionStrategy", () => {
     const r = strategy.validateBid(a, { bidderId: "s1", amount: 75 });
     expect(r.isErr()).toBe(true);
     if (r.isErr()) expect(r.error.message).toContain("Seller cannot bid");
+    if (r.isErr()) expect(r.error.code).toBe("seller_cannot_bid");
   });
 
   it("determines winner as first acceptance by createdAt", () => {

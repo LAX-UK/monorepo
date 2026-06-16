@@ -95,16 +95,11 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
         aria-live="polite"
       >
         <div className="mx-auto flex max-w-lg items-center justify-between gap-4">
-          <div>
-            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-              Combined total
-            </p>
-            <p className="font-headline text-lg tabular-nums text-on-surface">
-              {formatMoney(grandTotal.toFixed(2))}
-            </p>
-          </div>
-          <p className="max-w-[10rem] text-right font-body text-xs text-on-surface-variant">
-            Pay each lot individually below
+          <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+            Combined total
+          </p>
+          <p className="font-headline text-lg tabular-nums text-on-surface">
+            {formatMoney(grandTotal.toFixed(2))}
           </p>
         </div>
       </div>

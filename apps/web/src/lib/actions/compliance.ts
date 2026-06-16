@@ -1,12 +1,13 @@
 "use server";
 
 import { complianceErrorMessage } from "@/lib/admin/compliance-error-messages";
+import {
+  type SofListStatus,
+  buildSofCaseDetailHref,
+  buildSofListHref,
+} from "@/lib/admin/sof-list-query";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import {
-  type AdminSourceOfFundsDetail,
-  getAdminSourceOfFundsDetail,
-} from "@/lib/data/http/compliance.server";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { normalizeApiErrorMessage } from "@auction/validators";
@@ -31,12 +32,23 @@ function redirectAml(success?: string, error?: string): never {
   redirect(q ? `/admin/compliance/aml?${q}` : "/admin/compliance/aml");
 }
 
-function redirectSof(success?: string, error?: string): never {
+function redirectSof(
+  success?: string,
+  error?: string,
+  caseId?: string,
+  listStatus: SofListStatus = "pending",
+): never {
   const params = new URLSearchParams();
   if (success) params.set("success", success);
   if (error) params.set("error", error);
-  const q = params.toString();
-  redirect(q ? `/admin/compliance/source-of-funds?${q}` : "/admin/compliance/source-of-funds");
+  const extra = params.toString();
+
+  if (caseId) {
+    const base = buildSofCaseDetailHref(caseId, listStatus);
+    redirect(extra ? `${base}&${extra}` : base);
+  }
+  const listBase = buildSofListHref(listStatus);
+  redirect(extra ? `${listBase}&${extra}` : listBase);
 }
 
 export async function amlTriageAction(formData: FormData): Promise<void> {
@@ -116,11 +128,12 @@ export async function sofTriageAction(formData: FormData): Promise<void> {
         body: JSON.stringify({ recommendation, notes: notes || undefined }),
       },
     );
-    if (!res.ok) redirectSof(undefined, await apiError(res, "Triage failed"));
+    if (!res.ok) redirectSof(undefined, await apiError(res, "Triage failed"), caseId);
 
     revalidatePath("/admin/compliance/source-of-funds");
+    revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
     revalidatePath("/admin");
-    redirectSof("Triage recorded — awaiting MLRO decision");
+    redirectSof("Triage recorded — awaiting MLRO decision", undefined, caseId);
   });
 }
 
@@ -144,12 +157,18 @@ export async function sofDecideAction(formData: FormData): Promise<void> {
         body: JSON.stringify({ decision, notes: notes || undefined }),
       },
     );
-    if (!res.ok) redirectSof(undefined, await apiError(res, "Decision failed"));
+    if (!res.ok) redirectSof(undefined, await apiError(res, "Decision failed"), caseId);
 
     revalidatePath("/admin/compliance/source-of-funds");
+    revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
-    redirectSof(decision === "approve" ? "Source of Funds approved" : "Source of Funds rejected");
+    redirectSof(
+      decision === "approve" ? "Source of Funds approved" : "Source of Funds rejected",
+      undefined,
+      caseId,
+      decision === "approve" ? "approved" : "rejected",
+    );
   });
 }
 
@@ -165,46 +184,13 @@ export async function sofReopenAction(formData: FormData): Promise<void> {
       `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}/reopen`,
       { method: "POST" },
     );
-    if (!res.ok) redirectSof(undefined, await apiError(res, "Reopen failed"));
+    if (!res.ok) redirectSof(undefined, await apiError(res, "Reopen failed"), caseId);
 
     revalidatePath("/admin/compliance/source-of-funds");
+    revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
-    redirectSof("Rejected case reopened for review");
-  });
-}
-
-export type FetchAdminSofCaseDetailResult =
-  | { ok: true; data: AdminSourceOfFundsDetail }
-  | { ok: false; error: string };
-
-/** Read-only detail fetch for the SoF review drawer (no redirect). */
-export async function fetchAdminSofCaseDetailAction(
-  caseId: string,
-): Promise<FetchAdminSofCaseDetailResult> {
-  return instrumentServerAction("fetchAdminSofCaseDetailAction", async () => {
-    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
-    if (denied && !denied.ok) {
-      return { ok: false as const, error: denied.error };
-    }
-
-    const id = caseId.trim();
-    if (!id) {
-      return { ok: false as const, error: "Case id is required" };
-    }
-
-    try {
-      const data = await getAdminSourceOfFundsDetail(id);
-      if (!data) {
-        return { ok: false as const, error: "Source of Funds case not found" };
-      }
-      return { ok: true as const, data };
-    } catch (e) {
-      return {
-        ok: false as const,
-        error: e instanceof Error ? e.message : "Could not load case detail",
-      };
-    }
+    redirectSof("Rejected case reopened for review", undefined, caseId);
   });
 }
 
@@ -314,6 +300,50 @@ export async function requestSofDocumentsAction(
       return { ok: false as const, error: await apiError(res, "Request failed") };
     }
 
+    revalidatePath("/admin/compliance/source-of-funds");
+    revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
+    return { ok: true as const };
+  });
+}
+
+export type ReviewSofDocumentResult = { ok: true } | { ok: false; error: string };
+
+export async function reviewSofDocumentAction(
+  caseId: string,
+  documentId: string,
+  checks: {
+    matchesDeclaredSource?: boolean;
+    coversExposure?: boolean;
+    recentEnough?: boolean;
+    legibleComplete?: boolean;
+  },
+  note: string,
+): Promise<ReviewSofDocumentResult> {
+  return instrumentServerAction("reviewSofDocumentAction", async () => {
+    const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
+    if (denied && !denied.ok) {
+      return { ok: false as const, error: denied.error };
+    }
+
+    const id = caseId.trim();
+    const docId = documentId.trim();
+    if (!id || !docId) {
+      return { ok: false as const, error: "Document id is required" };
+    }
+
+    const res = await authedServerFetch(
+      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/${encodeURIComponent(docId)}/review`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checks, note: note.trim() || undefined }),
+      },
+    );
+    if (!res.ok) {
+      return { ok: false as const, error: await apiError(res, "Review save failed") };
+    }
+
+    revalidatePath(`/admin/compliance/source-of-funds/${id}`);
     revalidatePath("/admin/compliance/source-of-funds");
     return { ok: true as const };
   });

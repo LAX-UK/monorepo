@@ -4,7 +4,7 @@ import { mapOperationsSnapshotToRadarRow } from "./onsite-sales-radar-widget";
 
 function snapshot(
   deliveryMode: "online" | "onsite" | "hybrid",
-  overrides: Partial<AdminSaleOperationsSnapshot["registrations"]> = {},
+  overrides: Partial<AdminSaleOperationsSnapshot> = {},
 ): AdminSaleOperationsSnapshot {
   return {
     sale: {
@@ -18,7 +18,7 @@ function snapshot(
     },
     saleroomSession: null,
     currentLotBidding: null,
-    registrations: { pending: 2, approved: 0, rejected: 0, ...overrides },
+    registrations: { pending: 2, approved: 0, rejected: 0 },
     telephoneBookings: {
       requested: 0,
       confirmed: 0,
@@ -26,6 +26,7 @@ function snapshot(
       completed: 0,
     },
     pendingActions: { registrations: [], telephone: [] },
+    ...overrides,
   };
 }
 
@@ -35,6 +36,26 @@ describe("mapOperationsSnapshotToRadarRow", () => {
     expect(row).toMatchObject({
       saleId: "sale-1",
       pendingRegistrations: 2,
+      deliveryMode: "hybrid",
+    });
+  });
+
+  it("includes live hybrid sales with zero pending work", () => {
+    const row = mapOperationsSnapshotToRadarRow(
+      snapshot("hybrid", {
+        registrations: { pending: 0, approved: 2, rejected: 0 },
+        saleroomSession: {
+          status: "live",
+          currentLotId: "lot-1",
+          currentLotNumber: 12,
+          currentLotTitle: "Bronze figure",
+        },
+      }),
+    );
+    expect(row).toMatchObject({
+      saleId: "sale-1",
+      isLiveSession: true,
+      currentLotTitle: "Bronze figure",
     });
   });
 

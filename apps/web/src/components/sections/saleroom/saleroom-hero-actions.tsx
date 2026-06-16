@@ -17,10 +17,15 @@ type Props = {
   registerToBid?: {
     show: boolean;
     buyerEntities: BuyerEntity[];
-    myRegistrations: { buyerLegalEntityId: string; status: string }[];
+    myRegistrations: {
+      buyerLegalEntityId: string;
+      status: string;
+      bidLimit?: string | null;
+    }[];
     kycApproved: boolean;
     kycFeedback?: KycUserFeedbackDto | null;
     orgModuleEnabled?: boolean;
+    saleCurrency?: string;
   };
 };
 
@@ -57,6 +62,7 @@ export function SaleroomHeroActions({
             kycApproved={registerToBid.kycApproved}
             kycFeedback={registerToBid.kycFeedback ?? null}
             orgModuleEnabled={registerToBid.orgModuleEnabled !== false}
+            saleCurrency={registerToBid.saleCurrency ?? "GBP"}
           />
         </div>
       ) : null}

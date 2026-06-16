@@ -56,7 +56,7 @@ describe("admin route guard composition", () => {
 
     expect((await get(app, "/admin/users?limit=1")).status).toBe(200);
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(403);
-    expect((await get(app, "/admin/onsite-events")).status).toBe(403);
+    expect((await get(app, "/admin/event-rsvps")).status).toBe(403);
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(403);
   });
 
@@ -65,7 +65,7 @@ describe("admin route guard composition", () => {
 
     expect((await get(app, "/admin/users?limit=1")).status).toBe(200);
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(200);
-    expect((await get(app, "/admin/onsite-events")).status).toBe(200);
+    expect((await get(app, "/admin/event-rsvps")).status).toBe(200);
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(200);
   });
 

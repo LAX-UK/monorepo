@@ -76,19 +76,19 @@ export class S3ObjectStorage implements IObjectStorage {
     byteSize: number;
     expiresInSec: number;
   }): Promise<{ url: string; requiredHeaders: Record<string, string> }> {
+    // Browser PUT cannot send Cache-Control until Spaces CORS allows that header
+    // (see digitalocean-spaces module). Server-side putObject still sets cache headers.
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: args.key,
       ContentType: args.contentType,
       ContentLength: args.byteSize,
-      CacheControl: IMMUTABLE_CACHE_CONTROL,
     });
     const url = await getSignedUrl(this.client, command, { expiresIn: args.expiresInSec });
     return {
       url,
       requiredHeaders: {
         "content-type": args.contentType,
-        "cache-control": IMMUTABLE_CACHE_CONTROL,
       },
     };
   }
@@ -97,10 +97,16 @@ export class S3ObjectStorage implements IObjectStorage {
     key: string;
     expiresInSec: number;
     signingDate?: Date | undefined;
+    responseContentDisposition?: string;
+    responseContentType?: string;
   }): Promise<{ url: string }> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: args.key,
+      ...(args.responseContentDisposition
+        ? { ResponseContentDisposition: args.responseContentDisposition }
+        : {}),
+      ...(args.responseContentType ? { ResponseContentType: args.responseContentType } : {}),
     });
     return {
       url: await getSignedUrl(this.client, command, {

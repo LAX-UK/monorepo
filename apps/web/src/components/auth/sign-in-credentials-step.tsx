@@ -17,6 +17,7 @@ type SignInCredentialsStepProps = {
   next: string;
   forgotPasswordHref: string;
   loading: boolean;
+  signInSubmitDisabled: boolean;
   showCaptcha: boolean;
   turnstileSiteKey: string | null;
   onTurnstileToken: (token: string) => void;
@@ -41,6 +42,7 @@ export function SignInCredentialsStep({
   next,
   forgotPasswordHref,
   loading,
+  signInSubmitDisabled,
   showCaptcha,
   turnstileSiteKey,
   onTurnstileToken,
@@ -170,7 +172,12 @@ export function SignInCredentialsStep({
       <div className="flex flex-col gap-4">
         {sellIntent ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-            <AuthSubmitButton loading={loading} loadingLabel="Signing in…" className="flex-1">
+            <AuthSubmitButton
+              loading={loading}
+              loadingLabel="Signing in…"
+              className="flex-1"
+              disabled={signInSubmitDisabled}
+            >
               Sign In
             </AuthSubmitButton>
             {sellRegisterHref ? (
@@ -185,7 +192,11 @@ export function SignInCredentialsStep({
             ) : null}
           </div>
         ) : (
-          <AuthSubmitButton loading={loading} loadingLabel="Signing in…">
+          <AuthSubmitButton
+            loading={loading}
+            loadingLabel="Signing in…"
+            disabled={signInSubmitDisabled}
+          >
             Sign In
           </AuthSubmitButton>
         )}

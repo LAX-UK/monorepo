@@ -45,7 +45,9 @@ export function PaddleCheckInControls({ saleId, row }: Props) {
         notify.error(result.ok ? "Unexpected response" : result.error);
         return;
       }
-      notify.success(`Paddle ${result.data.paddleNumber} assigned`);
+      notify.success(`Paddle ${result.data.paddleNumber} assigned`, {
+        description: "Return to the clerk console to place in-room bids.",
+      });
       router.refresh();
     });
   };

@@ -7,14 +7,12 @@ import {
   type CheckoutPaymentActionData,
   createCheckoutPaymentAction,
 } from "@/lib/actions/checkout";
-import {
-  isComplianceManualReviewReason,
-  manualReviewQueueEyebrow,
-} from "@/lib/admin/compliance-manual-review";
+import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics/events";
 import {
   checkoutPaymentErrorMessage,
   manualReviewReasonCopy,
+  resolveCheckoutManualReviewDisplayReason,
 } from "@/lib/checkout/checkout-payment-errors";
 import {
   dashboardCheckoutLotUrl,
@@ -154,7 +152,7 @@ type OrderSummaryProps = {
 
 function OrderSummaryCard({ hammer, buyerPremium, total, premiumPercentLabel }: OrderSummaryProps) {
   return (
-    <Card className="min-w-0 border border-border-hairline bg-surface-container-low shadow-md max-lg:sticky max-lg:top-4 max-lg:z-10 lg:sticky lg:top-4 lg:z-10 lg:shadow-lg">
+    <Card className="min-w-0 border border-border-hairline bg-surface-container-low shadow-md lg:sticky lg:top-4 lg:z-10 lg:shadow-lg">
       <CardContent className="p-6 sm:p-8">
         <h2 className="mb-6 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Order summary
@@ -251,7 +249,6 @@ export function CheckoutPurchasePanel({
   const [redirectingToStripe, setRedirectingToStripe] = useState(false);
   const [redirectFailed, setRedirectFailed] = useState(false);
   const [pendingCheckoutUrl, setPendingCheckoutUrl] = useState<string | null>(null);
-  const [localPaymentComplete, setLocalPaymentComplete] = useState(false);
   const [submittedReviewReason, setSubmittedReviewReason] = useState<ManualReviewReason | null>(
     null,
   );
@@ -278,10 +275,10 @@ export function CheckoutPurchasePanel({
     checkoutAddresses.some((address) => address.id === addressId);
 
   useEffect(() => {
-    if (totalMinor != null && totalMinor > 0 && !paymentComplete && !localPaymentComplete) {
+    if (totalMinor != null && totalMinor > 0 && !paymentComplete) {
       trackBeginCheckout({ lotId, valueMinor: totalMinor, currency });
     }
-  }, [lotId, totalMinor, currency, paymentComplete, localPaymentComplete]);
+  }, [lotId, totalMinor, currency, paymentComplete]);
 
   useEffect(() => {
     if (!redirectingToStripe) return;
@@ -292,21 +289,15 @@ export function CheckoutPurchasePanel({
     return () => window.clearTimeout(timeout);
   }, [redirectingToStripe]);
 
-  const showManualReview =
-    submitted && submittedReviewReason
-      ? submittedReviewReason
-      : !submitted &&
-          (openPaymentStatus === "requires_manual_review" ||
-            isComplianceManualReviewReason(openPaymentManualReviewReason))
-        ? openPaymentManualReviewReason
-        : !submitted &&
-            !openPaymentStatus &&
-            (preflightComplianceGate === "aml_hold" ||
-              preflightComplianceGate === "source_of_funds_required")
-          ? preflightComplianceGate
-          : null;
+  const showManualReview = resolveCheckoutManualReviewDisplayReason({
+    submitted,
+    submittedReviewReason,
+    openPaymentStatus,
+    openPaymentManualReviewReason,
+    preflightComplianceGate,
+  });
 
-  if (paymentComplete || localPaymentComplete) {
+  if (paymentComplete) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28">
         <PaymentCompleteBlock />
@@ -407,11 +398,7 @@ export function CheckoutPurchasePanel({
       });
       return;
     }
-    setLocalPaymentComplete(true);
     router.refresh();
-    notify.success("Payment recorded", {
-      description: "Your payment is on file. Track fulfilment above.",
-    });
   };
 
   return (

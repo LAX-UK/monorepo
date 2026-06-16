@@ -18,6 +18,8 @@ export type FileUploadTriggerProps = {
   inputId?: string;
   /** Accessible name for dropzone mode (required when children are decorative). */
   dropzoneAriaLabel?: string;
+  /** id of element describing constraints (aria-describedby). */
+  describedById?: string;
   className?: string;
   children?: React.ReactNode;
 };
@@ -34,6 +36,7 @@ function FileUploadTrigger({
   helperText,
   inputId,
   dropzoneAriaLabel = "Upload file",
+  describedById,
   className,
   children,
 }: FileUploadTriggerProps) {
@@ -79,13 +82,21 @@ function FileUploadTrigger({
         className="sr-only"
         disabled={disabled || busy}
         onChange={onInputChange}
+        {...(describedById ? { "aria-describedby": describedById } : {})}
       />
       {dropzone ? (
         <button
           type="button"
           aria-label={dropzoneAriaLabel}
+          {...(describedById ? { "aria-describedby": describedById } : {})}
           disabled={disabled || busy}
           onClick={pick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              pick();
+            }
+          }}
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
@@ -93,7 +104,7 @@ function FileUploadTrigger({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           className={cn(
-            "flex min-h-24 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-outline-variant bg-surface-container-lowest px-4 py-6 text-sm text-on-surface-variant transition-colors",
+            "flex min-h-24 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-outline-variant bg-surface-container-lowest px-4 py-6 text-sm text-on-surface-variant transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             dragOver && "border-primary bg-primary/5",
             (disabled || busy) && "cursor-not-allowed opacity-60",
           )}

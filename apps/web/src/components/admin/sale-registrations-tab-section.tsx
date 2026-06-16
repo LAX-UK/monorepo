@@ -5,17 +5,74 @@ import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { PaddleCheckInControls } from "@/components/admin/paddle-check-in-controls";
 import { SaleRegistrationRejectButton } from "@/components/admin/sale-registration-reject-button";
 import { SaleroomCheckInPanel } from "@/components/admin/saleroom-check-in-panel";
-import { adminApproveSaleRegistrationAction } from "@/lib/actions/admin";
+import {
+  adminApproveSaleRegistrationAction,
+  adminUpdateSaleRegistrationBidLimitAction,
+} from "@/lib/actions/admin";
 import { saleStatusLabel } from "@/lib/admin/status-badge-variants";
 import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin.server";
+import {
+  BID_LIMIT_FIELD_LABEL,
+  bidLimitFieldHelp,
+  bidLimitFieldPlaceholder,
+} from "@/lib/saleroom/bid-limit-field-copy";
 import { formatDateTime } from "@/lib/ui/format";
 import type { SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type RegistrationFilter = "all" | "pending" | "checked_in" | "awaiting_paddle";
+type RegistrationFilter = "all" | "pending" | "approved" | "checked_in" | "awaiting_paddle";
+
+function RegistrationBidLimitEdit({
+  saleId,
+  registrationId,
+  bidLimit,
+  saleCurrency = "GBP",
+}: {
+  saleId: string;
+  registrationId: string;
+  bidLimit: string | null;
+  saleCurrency?: string;
+}) {
+  const [value, setValue] = useState(bidLimit?.replace(/\.00$/, "") ?? "");
+
+  return (
+    <form
+      action={adminUpdateSaleRegistrationBidLimitAction}
+      className="mt-2 flex flex-wrap items-end gap-2"
+    >
+      <input type="hidden" name="saleId" value={saleId} />
+      <input type="hidden" name="registrationId" value={registrationId} />
+      <div className="space-y-1">
+        <label
+          htmlFor={`bid-limit-${registrationId}`}
+          className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
+        >
+          {BID_LIMIT_FIELD_LABEL}
+        </label>
+        <input
+          id={`bid-limit-${registrationId}`}
+          name="bidLimit"
+          type="number"
+          min={1}
+          step="any"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={bidLimitFieldPlaceholder(saleCurrency)}
+          className="h-9 w-32 rounded-md border border-border-hairline bg-surface px-2 font-body text-sm tabular-nums"
+        />
+        <p className="font-body text-[10px] text-on-surface-variant">
+          {bidLimitFieldHelp(saleCurrency)}
+        </p>
+      </div>
+      <Button type="submit" size="sm" variant="outline" className="min-h-9">
+        Save limit
+      </Button>
+    </form>
+  );
+}
 
 function RegistrationRow({
   saleId,
@@ -43,12 +100,19 @@ function RegistrationRow({
           {row.memberRole ? (
             <p className="font-body text-xs text-on-surface-variant">Role: {row.memberRole}</p>
           ) : null}
-          {row.bidLimit ? (
+          {row.bidLimit && row.status !== "approved" ? (
             <p className="font-body text-xs text-on-surface-variant">Limit: {row.bidLimit}</p>
           ) : null}
+          {row.status === "approved" ? (
+            <RegistrationBidLimitEdit
+              saleId={saleId}
+              registrationId={row.id}
+              bidLimit={row.bidLimit}
+            />
+          ) : null}
           {row.paddleNumber != null ? (
-            <p className="font-body text-xs text-on-surface-variant">
-              Paddle: <span className="tabular-nums">{row.paddleNumber}</span>
+            <p className="font-headline text-lg tabular-nums text-on-surface">
+              Paddle {row.paddleNumber}
             </p>
           ) : null}
           {row.checkedInAt ? (
@@ -93,6 +157,7 @@ function RegistrationRow({
 function matchesFilter(row: AdminSaleRegistrationRow, filter: RegistrationFilter): boolean {
   if (filter === "all") return true;
   if (filter === "pending") return row.status === "pending";
+  if (filter === "approved") return row.status === "approved";
   if (filter === "checked_in") return row.checkedInAt != null;
   if (filter === "awaiting_paddle") return row.status === "approved" && row.paddleNumber == null;
   return true;
@@ -129,15 +194,31 @@ export function SaleRegistrationsTabSection({
   actionError = null,
 }: Props) {
   const showSaleroomCheckIn = isSaleroomDeliveryMode(deliveryMode);
-  const [filter, setFilter] = useState<RegistrationFilter>("all");
+  const pendingApprovals = rows.filter((r) => r.status === "pending");
+  const defaultFilter: RegistrationFilter =
+    showSaleroomCheckIn && saleStatus === "active" && pendingApprovals.length === 0
+      ? "awaiting_paddle"
+      : "all";
+  const [filter, setFilter] = useState<RegistrationFilter>(defaultFilter);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#check-in") return;
+    const el = document.getElementById("check-in");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    el?.classList.add("ring-2", "ring-primary/40");
+    const timer = window.setTimeout(() => {
+      el?.classList.remove("ring-2", "ring-primary/40");
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const filteredRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return rows.filter((r) => matchesFilter(r, filter) && matchesSearch(r, needle));
   }, [rows, filter, search]);
 
-  const pending = rows.filter((r) => r.status === "pending");
   const checkedInCount = rows.filter((r) => r.checkedInAt != null).length;
   const paddleRosterCount = rows.filter((r) => r.paddleNumber != null).length;
 
@@ -152,7 +233,7 @@ export function SaleRegistrationsTabSection({
 
   return (
     <div className="space-y-6">
-      {showSaleroomCheckIn ? <SaleroomCheckInPanel saleId={saleId} /> : null}
+      {showSaleroomCheckIn ? <SaleroomCheckInPanel saleId={saleId} saleCurrency="GBP" /> : null}
 
       {showSaleroomCheckIn ? (
         <div className="flex flex-wrap items-center gap-3 font-body text-xs text-on-surface-variant">
@@ -185,7 +266,8 @@ export function SaleRegistrationsTabSection({
           {(
             [
               ["all", "All"],
-              ["pending", "Pending requests"],
+              ["pending", "Pending"],
+              ["approved", "Approved"],
               ["checked_in", "Checked in"],
               ["awaiting_paddle", "Awaiting paddle"],
             ] as const
@@ -203,7 +285,8 @@ export function SaleRegistrationsTabSection({
         </div>
 
         <p className="font-body text-sm text-on-surface-variant">
-          {rows.length} registration{rows.length === 1 ? "" : "s"} · {pending.length} pending
+          {rows.length} registration{rows.length === 1 ? "" : "s"} · {pendingApprovals.length}{" "}
+          pending
         </p>
 
         {actionError ? (
@@ -221,7 +304,9 @@ export function SaleRegistrationsTabSection({
 
         {filteredRows.length === 0 && !fetchError ? (
           <AdminEmptyState
-            title={pending.length === 0 ? "No matching registrations" : "No pending requests"}
+            title={
+              pendingApprovals.length === 0 ? "No matching registrations" : "No pending requests"
+            }
             description={
               showSaleroomCheckIn
                 ? "No pending requests — use check-in above for walk-ins."

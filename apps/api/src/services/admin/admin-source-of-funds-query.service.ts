@@ -5,6 +5,7 @@ import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,
 } from "../../admin/admin-route-dtos.js";
+import type { ISourceOfFundsDocumentReviewRepository } from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
@@ -35,6 +36,7 @@ export interface IAdminSourceOfFundsQueryService {
     offset: number,
   ): Promise<{ rows: AdminSourceOfFundsListRowDto[]; total: number }>;
   getDetail(caseId: string): Promise<AdminSourceOfFundsDetailDto | null>;
+  listForUser(userId: string, limit?: number): Promise<AdminSourceOfFundsListRowDto[]>;
 }
 
 export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryService {
@@ -43,6 +45,7 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
   constructor(
     private readonly caseRepo: ISourceOfFundsRepository,
     private readonly docRepo: ISourceOfFundsDocumentRepository,
+    private readonly reviewRepo: ISourceOfFundsDocumentReviewRepository,
     private readonly db: Database,
     private readonly mediaUrlResolver: MediaUrlResolver,
   ) {
@@ -92,9 +95,12 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
     if (!caseRecord) return null;
 
     const userId = caseRecord.userId;
-    const staffIds = [caseRecord.triagedByUserId, caseRecord.reviewedByUserId].filter(
-      (id): id is string => typeof id === "string" && id.length > 0,
-    );
+    const reviews = await this.reviewRepo.listForCase(caseId);
+    const staffIds = [
+      caseRecord.triagedByUserId,
+      caseRecord.reviewedByUserId,
+      ...reviews.map((r) => r.reviewedByUserId),
+    ].filter((id): id is string => typeof id === "string" && id.length > 0);
 
     const [buyers, staff, settlementItems, currentActiveExposurePence, blockedPayments, docs] =
       await Promise.all([
@@ -109,7 +115,7 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
     const buyer = buyers.get(userId);
     const evidenceKeys = caseRecord.evidence ?? [];
     const evidenceDownloads = await this.resolveEvidenceDownloads(evidenceKeys);
-    const submittedDocuments = this.resolveSubmittedDocuments(docs);
+    const submittedDocuments = this.resolveSubmittedDocuments(docs, reviews, staff);
 
     const triagedBy =
       caseRecord.triagedByUserId != null
@@ -164,6 +170,35 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
     };
   }
 
+  async listForUser(userId: string, limit = 20): Promise<AdminSourceOfFundsListRowDto[]> {
+    const cases = await this.db
+      .select()
+      .from(sourceOfFunds)
+      .where(eq(sourceOfFunds.userId, userId))
+      .orderBy(sql`${sourceOfFunds.createdAt} DESC`)
+      .limit(limit);
+
+    if (cases.length === 0) return [];
+
+    const [buyers, summaries, pendingCounts] = await Promise.all([
+      this.loadBuyers([userId]),
+      this.settlementRead.summarizeForBuyersBatch([userId]),
+      this.countPendingCasesByUser([userId]),
+    ]);
+
+    const buyer = buyers.get(userId);
+    const summary = summaries.get(userId);
+    return cases.map((c) => ({
+      ...c,
+      buyerEmail: buyer?.email ?? null,
+      buyerName: buyer?.name ?? null,
+      buyerLabel: buyerLabelFrom(buyer?.name ?? null, buyer?.email ?? null) ?? "Unknown buyer",
+      settlementSummary: summary?.settlementSummary ?? null,
+      settlementItemCount: summary?.settlementItemCount ?? 0,
+      pendingCasesForBuyer: pendingCounts.get(userId) ?? 0,
+    }));
+  }
+
   /**
    * Map submitted documents to DTOs WITHOUT embedding presigned URLs. Staff
    * downloads must go through the dedicated, audited download endpoint
@@ -172,17 +207,37 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
    */
   private resolveSubmittedDocuments(
     docs: Awaited<ReturnType<ISourceOfFundsDocumentRepository["listActiveForCase"]>>,
+    reviews: Awaited<ReturnType<ISourceOfFundsDocumentReviewRepository["listForCase"]>>,
+    staff: Map<string, { email: string | null; name: string | null }>,
   ): AdminSourceOfFundsDetailDto["submittedDocuments"] {
-    return docs.map((doc) => ({
-      id: doc.id,
-      requestedType: doc.requestedType,
-      label: doc.label,
-      fileName: doc.fileName ?? null,
-      reviewStatus: doc.reviewStatus,
-      uploadedAt: doc.uploadedAt.toISOString(),
-      uploadedByUserId: doc.uploadedByUserId,
-      downloadUrl: null,
-    }));
+    const reviewByDoc = new Map(reviews.map((r) => [r.documentId, r]));
+    return docs.map((doc) => {
+      const review = reviewByDoc.get(doc.id);
+      const reviewer = review ? staff.get(review.reviewedByUserId) : undefined;
+      return {
+        id: doc.id,
+        requestedType: doc.requestedType,
+        label: doc.label,
+        fileName: doc.fileName ?? null,
+        reviewStatus: doc.reviewStatus,
+        uploadedAt: doc.uploadedAt.toISOString(),
+        uploadedByUserId: doc.uploadedByUserId,
+        downloadUrl: null,
+        staffReview: review
+          ? {
+              checks: review.checks,
+              note: review.note,
+              reviewedAt: review.reviewedAt.toISOString(),
+              reviewedBy: {
+                id: review.reviewedByUserId,
+                label:
+                  staffLabelFrom(reviewer?.name ?? null, reviewer?.email ?? null) ??
+                  review.reviewedByUserId,
+              },
+            }
+          : null,
+      };
+    });
   }
 
   private async loadBuyers(

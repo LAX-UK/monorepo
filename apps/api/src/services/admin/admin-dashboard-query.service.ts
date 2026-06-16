@@ -9,6 +9,7 @@ import {
   lot,
   payment,
   payout,
+  sourceOfFunds,
   user,
 } from "@auction/db/schema";
 import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
@@ -295,8 +296,37 @@ export class AdminDashboardQueryService implements IAdminDashboardQueryService {
         archiveReason: typeof archivePayload?.reason === "string" ? archivePayload.reason : null,
         archiveTimestamp: row.sellerArchivedAt ?? archiveEvent?.occurredAt ?? null,
         manualReviewReason,
+        sourceOfFundsCaseId: null,
         createdAt: row.createdAt,
       });
+    }
+
+    const sofUserIds = [
+      ...new Set(
+        data
+          .filter((d) => d.manualReviewReason === "source_of_funds_required")
+          .map((d) => d.winnerUserId),
+      ),
+    ];
+    if (sofUserIds.length > 0) {
+      const pendingCases = await this.db
+        .select({
+          id: sourceOfFunds.id,
+          userId: sourceOfFunds.userId,
+          createdAt: sourceOfFunds.createdAt,
+        })
+        .from(sourceOfFunds)
+        .where(and(inArray(sourceOfFunds.userId, sofUserIds), eq(sourceOfFunds.status, "pending")))
+        .orderBy(asc(sourceOfFunds.createdAt));
+      const caseByUser = new Map<string, string>();
+      for (const c of pendingCases) {
+        if (!caseByUser.has(c.userId)) caseByUser.set(c.userId, c.id);
+      }
+      for (const row of data) {
+        if (row.manualReviewReason === "source_of_funds_required") {
+          row.sourceOfFundsCaseId = caseByUser.get(row.winnerUserId) ?? null;
+        }
+      }
     }
     return data;
   }

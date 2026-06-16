@@ -5,6 +5,12 @@ import {
   adminSaleroomCheckInResultAction,
 } from "@/lib/actions/admin";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
+import {
+  BID_LIMIT_FIELD_LABEL,
+  bidLimitFieldHelp,
+  bidLimitFieldPlaceholder,
+} from "@/lib/saleroom/bid-limit-field-copy";
+import { formatMoney } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
@@ -18,7 +24,7 @@ import {
 } from "@auction/ui/components/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 const CHECK_IN_ERROR_MESSAGES: Record<string, string> = {
   sale_not_saleroom: "Check-in is only available for onsite or hybrid sales.",
@@ -36,13 +42,14 @@ const CHECK_IN_ERROR_MESSAGES: Record<string, string> = {
 
 type Props = {
   saleId: string;
+  saleCurrency?: string;
 };
 
 function displayName(candidate: AdminCheckInCandidate): string {
   return candidate.name ?? candidate.email;
 }
 
-export function SaleroomCheckInPanel({ saleId }: Props) {
+export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<AdminCheckInCandidate[]>([]);
@@ -55,6 +62,7 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ name: string; paddleNumber: number } | null>(null);
   const [pending, startTransition] = useTransition();
+  const searchGenerationRef = useRef(0);
 
   const selectedCandidate = useMemo(
     () => candidates.find((c) => c.userId === selectedUserId) ?? null,
@@ -66,23 +74,32 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   useEffect(() => {
     if (!selectedCandidate) {
       setEntityId("");
+      setBidLimit("");
       return;
     }
     const personal = eligibleEntities.find((e) => e.kind === "individual");
-    setEntityId(personal?.id ?? eligibleEntities[0]?.id ?? "");
+    const nextEntityId = personal?.id ?? eligibleEntities[0]?.id ?? "";
+    setEntityId(nextEntityId);
+    const ent = eligibleEntities.find((e) => e.id === nextEntityId);
+    const existingLimit = ent?.existingRegistration?.bidLimit;
+    setBidLimit(existingLimit?.replace(/\.00$/, "") ?? "");
   }, [selectedCandidate, eligibleEntities]);
 
   const runSearch = useCallback(
-    async (q: string) => {
+    async (q: string, generation: number) => {
       const trimmed = q.trim();
       if (trimmed.length < 2) {
-        setCandidates([]);
-        setSearchError(null);
+        if (generation === searchGenerationRef.current) {
+          setCandidates([]);
+          setSearchError(null);
+          setSearching(false);
+        }
         return;
       }
       setSearching(true);
       setSearchError(null);
       const result = await adminSaleroomCheckInCandidatesResultAction({ saleId, q: trimmed });
+      if (generation !== searchGenerationRef.current) return;
       setSearching(false);
       if (!result.ok) {
         setSearchError(result.error);
@@ -96,8 +113,9 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   );
 
   useEffect(() => {
+    const generation = ++searchGenerationRef.current;
     const handle = window.setTimeout(() => {
-      void runSearch(query);
+      void runSearch(query, generation);
     }, 300);
     return () => window.clearTimeout(handle);
   }, [query, runSearch]);
@@ -123,6 +141,16 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   const onCheckIn = () => {
     if (!selectedCandidate || !entityId) return;
     setSubmitError(null);
+    const paddleTrimmed = paddleNumber.trim();
+    if (paddleTrimmed !== "") {
+      const paddleN = Number.parseInt(paddleTrimmed, 10);
+      if (!Number.isInteger(paddleN) || paddleN < 100) {
+        setSubmitError(
+          CHECK_IN_ERROR_MESSAGES.invalid_paddle ?? "Paddle number must be at least 100.",
+        );
+        return;
+      }
+    }
     startTransition(async () => {
       const body: {
         saleId: string;
@@ -139,9 +167,8 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
       if (bidLimit.trim() !== "" && Number.isFinite(limitN) && limitN > 0) {
         body.bidLimit = limitN;
       }
-      const paddleN = paddleNumber.trim() === "" ? undefined : Number.parseInt(paddleNumber, 10);
-      if (paddleN != null && Number.isInteger(paddleN)) {
-        body.paddleNumber = paddleN;
+      if (paddleTrimmed !== "") {
+        body.paddleNumber = Number.parseInt(paddleTrimmed, 10);
       }
 
       const result = await adminSaleroomCheckInResultAction(body);
@@ -157,7 +184,9 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
         name: displayName(selectedCandidate),
         paddleNumber: result.data.paddleNumber,
       });
-      notify.success(`Paddle ${result.data.paddleNumber} assigned`);
+      notify.success(`Paddle ${result.data.paddleNumber} assigned`, {
+        description: "Return to the clerk console to place in-room bids.",
+      });
       router.refresh();
     });
   };
@@ -172,6 +201,20 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
     setSubmitError(null);
   };
 
+  useEffect(() => {
+    if (!success) return;
+    const timer = window.setTimeout(() => {
+      setSuccess(null);
+      setQuery("");
+      setCandidates([]);
+      setSelectedUserId(null);
+      setBidLimit("");
+      setPaddleNumber("");
+      setSubmitError(null);
+    }, 3_000);
+    return () => window.clearTimeout(timer);
+  }, [success]);
+
   if (success) {
     return (
       <div
@@ -185,7 +228,7 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild size="sm" variant="default">
-            <Link href={`/admin/saleroom/${saleId}`}>Open clerk console</Link>
+            <Link href={`/admin/saleroom/${saleId}?checkedIn=1`}>Open clerk console</Link>
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={resetForAnother}>
             Check in another
@@ -220,7 +263,9 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
             autoComplete="off"
           />
           {query.trim().length < 2 ? (
-            <p className="font-body text-xs text-on-surface-variant">Type email to search</p>
+            <p className="font-body text-xs text-on-surface-variant">
+              Type email or name (min 2 characters)
+            </p>
           ) : null}
           {searching ? (
             <p className="font-body text-xs text-on-surface-variant">Searching…</p>
@@ -286,7 +331,15 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
 
             <div className="space-y-1">
               <Label htmlFor="check-in-entity">Buying as</Label>
-              <Select value={entityId} onValueChange={setEntityId}>
+              <Select
+                value={entityId}
+                onValueChange={(id) => {
+                  setEntityId(id);
+                  const ent = eligibleEntities.find((e) => e.id === id);
+                  const existingLimit = ent?.existingRegistration?.bidLimit;
+                  setBidLimit(existingLimit?.replace(/\.00$/, "") ?? "");
+                }}
+              >
                 <SelectTrigger id="check-in-entity" className="font-body text-sm">
                   <SelectValue placeholder="Select entity…" />
                 </SelectTrigger>
@@ -302,7 +355,7 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="check-in-bid-limit">Optional bid limit</Label>
+                <Label htmlFor="check-in-bid-limit">{BID_LIMIT_FIELD_LABEL}</Label>
                 <Input
                   id="check-in-bid-limit"
                   type="number"
@@ -310,12 +363,21 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
                   step="0.01"
                   value={bidLimit}
                   onChange={(e) => setBidLimit(e.target.value)}
-                  placeholder="e.g. 50000"
+                  placeholder={bidLimitFieldPlaceholder(saleCurrency)}
                   className="font-body text-sm"
                 />
                 <p className="font-body text-xs text-on-surface-variant">
-                  Caps web and paddle bids on this sale.
+                  {bidLimitFieldHelp(saleCurrency)}
                 </p>
+                {(() => {
+                  const selectedEntity = eligibleEntities.find((e) => e.id === entityId);
+                  const existingLimit = selectedEntity?.existingRegistration?.bidLimit;
+                  return existingLimit && bidLimit.trim() === "" ? (
+                    <p className="font-body text-xs text-secondary">
+                      Current limit: {formatMoney(existingLimit, saleCurrency)}
+                    </p>
+                  ) : null;
+                })()}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="check-in-paddle">Paddle number</Label>

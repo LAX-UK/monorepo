@@ -1540,7 +1540,10 @@ export type AdminManualReviewPaymentRow = {
     | "seller_archived_and_high_value"
     | "aml_hold"
     | "source_of_funds_required"
+    | "finance_release_required"
     | null;
+  /** Pending SoF case id when manualReviewReason is source_of_funds_required. */
+  sourceOfFundsCaseId: string | null;
   createdAt: string;
 };
 

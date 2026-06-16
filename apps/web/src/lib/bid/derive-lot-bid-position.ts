@@ -44,6 +44,8 @@ export type LotBidPosition =
 export type DeriveLotBidPositionInput = {
   sessionUserId: string | null;
   sellerId: string | null;
+  /** Server-resolved seller ownership (acting LE vs lot seller LE). */
+  isOwnLot?: boolean;
   lotStatus: Lot["status"];
   lifecycleKind: LotLifecycleKind;
   leadingBidderId: string | null;
@@ -71,6 +73,7 @@ export function deriveLotBidPosition(input: DeriveLotBidPositionInput): LotBidPo
   const {
     sessionUserId,
     sellerId,
+    isOwnLot = false,
     lotStatus,
     lifecycleKind,
     leadingBidderId,
@@ -81,7 +84,7 @@ export function deriveLotBidPosition(input: DeriveLotBidPositionInput): LotBidPo
     endedBanner,
   } = input;
 
-  if (sellerId && sessionUserId && sessionUserId === sellerId) {
+  if (isOwnLot || (sellerId && sessionUserId && sessionUserId === sellerId)) {
     return { kind: "owner" };
   }
 

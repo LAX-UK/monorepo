@@ -73,6 +73,8 @@ export type AdminManualReviewPaymentRow = {
     | "aml_hold"
     | "source_of_funds_required"
     | null;
+  /** Pending SoF case id when manualReviewReason is source_of_funds_required. */
+  sourceOfFundsCaseId: string | null;
   createdAt: Date;
 };
 
@@ -187,5 +189,16 @@ export type AdminSourceOfFundsDetailDto = {
     uploadedAt: string;
     uploadedByUserId: string;
     downloadUrl: string | null;
+    staffReview: {
+      checks: {
+        matchesDeclaredSource?: boolean;
+        coversExposure?: boolean;
+        recentEnough?: boolean;
+        legibleComplete?: boolean;
+      };
+      note: string | null;
+      reviewedAt: string;
+      reviewedBy: AdminSourceOfFundsStaffActorDto;
+    } | null;
   }>;
 };

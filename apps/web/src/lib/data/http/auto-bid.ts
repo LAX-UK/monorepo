@@ -7,6 +7,7 @@ import type {
 } from "@/lib/data/contracts";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
+import { X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
 
 function parseSettings(raw: unknown): AutoBidSettings | null {
   if (!raw || typeof raw !== "object") return null;
@@ -46,7 +47,9 @@ function parsePlacedBid(raw: unknown, settings: AutoBidSettings): AutoBidPlacedB
   };
 }
 
-export function createHttpAutoBidWriter(): AutoBidWriter {
+/** @param actingEntityId Server-resolved (membership-validated) acting entity.
+ * Sent explicitly so auto-bid mutations never rely on a stale browser cookie. */
+export function createHttpAutoBidWriter(actingEntityId?: string): AutoBidWriter {
   const client = getBrowserHc();
   return {
     async getAutoBid(lotId: string): Promise<AutoBidSettings | null> {
@@ -56,13 +59,16 @@ export function createHttpAutoBidWriter(): AutoBidWriter {
       return parseSettings(json.data);
     },
     async setAutoBid(input): Promise<AutoBidMutationResult> {
+      const header: Record<string, string> = {};
+      if (input.idempotencyKey) header["Idempotency-Key"] = input.idempotencyKey;
+      if (actingEntityId) header[X_LEGAL_ENTITY_ID_HEADER] = actingEntityId;
       const res = await client.lots[":id"]["auto-bid"].$put({
         param: { id: input.lotId },
         json: {
           maxAutoBidAmount: input.maxAutoBidAmount,
           autoBidStepAmount: input.autoBidStepAmount,
         },
-        ...(input.idempotencyKey ? { header: { "Idempotency-Key": input.idempotencyKey } } : {}),
+        ...(Object.keys(header).length > 0 ? { header } : {}),
       });
       const json = (await res.json().catch(() => ({}))) as {
         data?: unknown;
@@ -91,9 +97,22 @@ export function createHttpAutoBidWriter(): AutoBidWriter {
     },
     async clearAutoBid(lotId: string) {
       const res = await client.lots[":id"]["auto-bid"].$delete({ param: { id: lotId } });
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+        summary?: {
+          feedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
+        };
+      };
       if (!res.ok) {
-        return { ok: false, error: json.error ?? "Could not clear auto-bid", status: res.status };
+        notifyAdminCannotBuyIfNeeded(json.error, res.status);
+        return {
+          ok: false,
+          error: json.error ?? "Could not clear auto-bid",
+          status: res.status,
+          code: json.code ?? null,
+          ...(json.summary?.feedback ? { kycFeedback: json.summary.feedback } : {}),
+        };
       }
       return { ok: true };
     },
