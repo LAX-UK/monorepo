@@ -150,7 +150,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
     // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const db = createDb(process.env.DATABASE_URL!);
     const rollback = new Error("rollback_test_tx");
-    const lotId2 = "44444444-4444-4444-8444-444444444444";
+    const lotId2 = "80000000-0000-4000-8000-000000000023";
 
     try {
       await db.transaction(async (tx) => {
@@ -174,7 +174,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
           });
         }
 
-        const leSeller = "55555555-5555-4555-8555-555555555555";
+        const leSeller = "80000000-0000-4000-8000-000000000019";
         await tx.insert(legalEntity).values({
           id: leSeller,
           displayName: "Seller2 LE",
@@ -194,9 +194,9 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
           createdAt: t,
         });
 
-        const buyerLeA = "66666666-6666-4666-8666-666666666666";
-        const buyerLeB = "77777777-7777-4777-8777-777777777777";
-        const buyerLeC = "88888888-8888-4888-8888-888888888888";
+        const buyerLeA = buyerLeId(20);
+        const buyerLeB = buyerLeId(21);
+        const buyerLeC = buyerLeId(22);
 
         const buyers2 = [
           { uid: `${buyerUser(0)}_2`, le: buyerLeA },

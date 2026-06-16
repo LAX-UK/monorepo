@@ -62,6 +62,9 @@ import {
   categoryIdParamSchema,
   conditionReportRequestIdParamSchema,
   declineConditionReportRequestBodySchema,
+  displayApproveBodySchema,
+  displayOverlayBodySchema,
+  displayRevokeBodySchema,
   emailHashParamSchema,
   fulfillConditionReportRequestBodySchema,
   lotFulfilmentCollectBodySchema,
@@ -1130,6 +1133,103 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const result = await container.saleroomService.closeSession({ saleId, actorUserId: userId });
       return result.match(
         (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/display/approve",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    zValidator("json", displayApproveBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const { userCode } = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.displayPairingService.approvePairing({
+        userCode,
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/display/overlay",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    zValidator("json", displayOverlayBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.displayOverlayService.setOverlay({
+        saleId,
+        kind: body.kind,
+        ...(body.message != null ? { message: body.message } : {}),
+        actorUserId: userId,
+      });
+      return result.match(
+        (data) => c.json({ data }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.delete(
+    "/sales/:saleId/saleroom/display/overlay",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.displayOverlayService.clearOverlay({
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        () => c.json({ data: { ok: true } }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/saleroom/display/devices",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const devices = await container.displayPairingService.listDevices(saleId);
+      return c.json({ data: { items: devices } });
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/display/revoke",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    zValidator("json", displayRevokeBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const { pairingId } = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.displayPairingService.revokePairing({
+        pairingId,
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        () => c.json({ data: { ok: true } }),
         (e) =>
           c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
       );
