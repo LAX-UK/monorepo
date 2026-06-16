@@ -8,6 +8,7 @@ import { SaleroomDisplayPairing } from "@/features/saleroom/components/display/s
 import { useDisplayPairing } from "@/features/saleroom/hooks/use-display-pairing";
 import { useDisplayWakeLock } from "@/features/saleroom/hooks/use-display-wake-lock";
 import { useSaleroomDisplayLive } from "@/features/saleroom/hooks/use-saleroom-display-live";
+import { buildDisplayBoardVM } from "@/features/saleroom/lib/display-bid-ticks";
 
 type Props = {
   saleId: string;
@@ -73,10 +74,13 @@ function SaleroomDisplayConnected({
   }
 
   const betweenLots = live.snapshot.sessionStatus === "live" && live.snapshot.currentLotId == null;
+  const boardVm = buildDisplayBoardVM(live.snapshot, live.bidLive, live.connectionStatus, {
+    suppressPriceFlash: live.flash === "sold" || live.flash === "passed",
+  });
 
   return (
     <>
-      <SaleroomDisplayBoard snapshot={live.snapshot} connectionStatus={live.connectionStatus} />
+      <SaleroomDisplayBoard {...boardVm} />
       <SaleroomDisplayOverlay overlay={live.overlay} flash={live.flash} betweenLots={betweenLots} />
       <button
         type="button"
