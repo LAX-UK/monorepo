@@ -114,6 +114,33 @@ describe("useSaleroomDisplayLive", () => {
     expect(adapter.getJoinedLotId()).toBe("lot-1");
   });
 
+  it("does not refetch snapshot on unrelated rerenders", async () => {
+    const fetchSnapshot = vi.fn().mockResolvedValue({ ok: true, snapshot: snapshot() });
+    const dataClient = createMockDataClient(fetchSnapshot);
+    const adapter = createMockSaleroomSocketAdapter();
+
+    const { result, rerender } = renderHook(
+      (props: { saleId: string; displayToken: string }) =>
+        useSaleroomDisplayLive({
+          ...props,
+          dataClient,
+          socketAdapter: adapter,
+        }),
+      { initialProps: { saleId: "sale-1", displayToken: "token-1" } },
+    );
+
+    await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+    expect(fetchSnapshot).toHaveBeenCalledTimes(1);
+
+    rerender({ saleId: "sale-1", displayToken: "token-1" });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(fetchSnapshot).toHaveBeenCalledTimes(1);
+  });
+
   it("updates price, feed, and priceFlash on bidUpdate", async () => {
     const dataClient = createMockDataClient();
     const adapter = createMockSaleroomSocketAdapter();

@@ -23,7 +23,7 @@ import type {
   SaleroomDisplaySnapshot,
   SaleroomRealtimePayload,
 } from "@auction/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type DisplayFlashKind = "sold" | "passed" | null;
 
@@ -92,8 +92,8 @@ export function resolveOverlayAfterFullHydrate(
 export function useSaleroomDisplayLive({
   saleId,
   displayToken,
-  dataClient = createDisplayDataClient(),
-  socketAdapter = createSaleroomSocketAdapter(),
+  dataClient: dataClientProp,
+  socketAdapter: socketAdapterProp,
   onUnauthorized,
 }: {
   saleId: string;
@@ -102,6 +102,11 @@ export function useSaleroomDisplayLive({
   socketAdapter?: SaleroomSocketAdapter;
   onUnauthorized?: () => void;
 }) {
+  const dataClient = useMemo(() => dataClientProp ?? createDisplayDataClient(), [dataClientProp]);
+  const socketAdapter = useMemo(
+    () => socketAdapterProp ?? createSaleroomSocketAdapter(),
+    [socketAdapterProp],
+  );
   const [state, setState] = useState<SaleroomDisplayLiveState>(EMPTY);
   const currentLotIdRef = useRef<string | null>(null);
   const soldFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,6 +115,7 @@ export function useSaleroomDisplayLive({
   const hydrateGenerationRef = useRef(0);
   const overlayGenerationRef = useRef(0);
   const overlayControlEmittedAtRef = useRef<string | null>(null);
+  const hydratingRef = useRef(false);
   const snapshotRef = useRef<SaleroomDisplaySnapshot | null>(null);
   snapshotRef.current = state.snapshot;
   const syncJoinedLotRef = useRef<(lotId: string | null) => void>(() => {});
@@ -147,75 +153,88 @@ export function useSaleroomDisplayLive({
 
   const hydrate = useCallback(
     async (mode: HydrateMode = "full") => {
-      const generation = hydrateGenerationRef.current;
-      const overlayGenerationAtStart = overlayGenerationRef.current;
-      const result = await dataClient.fetchSnapshot(saleId, displayToken);
-      if (generation !== hydrateGenerationRef.current) {
-        return false;
-      }
-      if (!result.ok) {
-        if (result.unauthorized) {
-          handleUnauthorized();
-        } else {
-          setState((prev) => ({ ...prev, connectionStatus: "disconnected" }));
+      if (hydratingRef.current) return false;
+      hydratingRef.current = true;
+
+      try {
+        const generation = hydrateGenerationRef.current;
+        const overlayGenerationAtStart = overlayGenerationRef.current;
+        const result = await dataClient.fetchSnapshot(saleId, displayToken);
+        if (generation !== hydrateGenerationRef.current) {
+          return false;
         }
-        return false;
-      }
-      const { snapshot } = result;
-
-      if (mode === "merge") {
-        setState((prev) => {
-          const liveSnapshot = prev.snapshot;
-          if (!liveSnapshot?.currentLot) return prev;
-          if (snapshot.currentLotId !== currentLotIdRef.current) return prev;
-          if (!snapshot.currentLot || snapshot.currentLot.id !== liveSnapshot.currentLot.id) {
-            return prev;
+        if (!result.ok) {
+          if (result.unauthorized) {
+            handleUnauthorized();
+          } else {
+            setState((prev) => ({ ...prev, connectionStatus: "disconnected" }));
           }
+          return false;
+        }
+        const { snapshot } = result;
 
-          return {
-            ...prev,
-            snapshot: {
-              ...liveSnapshot,
-              currentLot: {
-                ...liveSnapshot.currentLot,
-                leaderPaddleNumber: snapshot.currentLot.leaderPaddleNumber,
+        if (mode === "merge") {
+          setState((prev) => {
+            const liveSnapshot = prev.snapshot;
+            if (!liveSnapshot?.currentLot) return prev;
+            if (snapshot.currentLotId !== currentLotIdRef.current) return prev;
+            if (!snapshot.currentLot || snapshot.currentLot.id !== liveSnapshot.currentLot.id) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+              snapshot: {
+                ...liveSnapshot,
+                currentLot: {
+                  ...liveSnapshot.currentLot,
+                  leaderPaddleNumber: snapshot.currentLot.leaderPaddleNumber,
+                },
               },
-            },
-            connectionStatus: "connected",
-          };
-        });
+              connectionStatus: "connected",
+            };
+          });
+          return true;
+        }
+
+        const previousLotId = currentLotIdRef.current;
+        currentLotIdRef.current = snapshot.currentLotId;
+        const wsChangedDuringFetch = overlayGenerationRef.current !== overlayGenerationAtStart;
+
+        setState((prev) => ({
+          snapshot,
+          overlay: resolveOverlayAfterFullHydrate(
+            prev.overlay,
+            snapshot.overlay,
+            overlayControlEmittedAtRef.current,
+            wsChangedDuringFetch,
+          ),
+          flash: prev.flash,
+          connectionStatus: "connected",
+          bidLive: mergeSnapshotAfterHydrate(prev.bidLive, previousLotId, snapshot.currentLotId),
+        }));
+        syncJoinedLotRef.current(snapshot.currentLotId);
         return true;
+      } finally {
+        hydratingRef.current = false;
       }
-
-      const previousLotId = currentLotIdRef.current;
-      currentLotIdRef.current = snapshot.currentLotId;
-      const wsChangedDuringFetch = overlayGenerationRef.current !== overlayGenerationAtStart;
-
-      setState((prev) => ({
-        snapshot,
-        overlay: resolveOverlayAfterFullHydrate(
-          prev.overlay,
-          snapshot.overlay,
-          overlayControlEmittedAtRef.current,
-          wsChangedDuringFetch,
-        ),
-        flash: prev.flash,
-        connectionStatus: "connected",
-        bidLive: mergeSnapshotAfterHydrate(prev.bidLive, previousLotId, snapshot.currentLotId),
-      }));
-      syncJoinedLotRef.current(snapshot.currentLotId);
-      return true;
     },
     [dataClient, displayToken, handleUnauthorized, saleId],
   );
+
+  const hydrateRef = useRef(hydrate);
+  hydrateRef.current = hydrate;
 
   const scheduleHydrate = useCallback(() => {
     clearHydrateDebounce();
     hydrateDebounceRef.current = setTimeout(() => {
       hydrateDebounceRef.current = null;
-      void hydrate("merge");
+      void hydrateRef.current("merge");
     }, HYDRATE_DEBOUNCE_MS);
-  }, [clearHydrateDebounce, hydrate]);
+  }, [clearHydrateDebounce]);
+
+  const scheduleHydrateRef = useRef(scheduleHydrate);
+  scheduleHydrateRef.current = scheduleHydrate;
 
   useEffect(() => {
     void hydrate();
@@ -252,14 +271,15 @@ export function useSaleroomDisplayLive({
       clearHydrateDebounce();
       clearPriceFlashTimer();
 
-      if (nextLotId !== currentLotIdRef.current) {
+      const lotIdChanged = nextLotId !== currentLotIdRef.current;
+      if (lotIdChanged) {
         currentLotIdRef.current = nextLotId;
         hydrateGenerationRef.current += 1;
         joinLot(nextLotId);
       }
 
-      if (nextLotId) {
-        void hydrate("full");
+      if (lotIdChanged && nextLotId) {
+        void hydrateRef.current("full");
       }
     };
 
@@ -354,7 +374,7 @@ export function useSaleroomDisplayLive({
 
       if (parsed) {
         schedulePriceFlashClear();
-        scheduleHydrate();
+        scheduleHydrateRef.current();
       }
     };
 
@@ -363,7 +383,7 @@ export function useSaleroomDisplayLive({
       socketAdapter.joinDisplay(saleId, displayToken);
       joinLot(currentLotIdRef.current);
       setState((prev) => ({ ...prev, connectionStatus: "reconnecting" }));
-      void hydrate();
+      void hydrateRef.current();
     };
 
     const onDisconnect = () => {
@@ -397,9 +417,7 @@ export function useSaleroomDisplayLive({
     clearHydrateDebounce,
     clearPriceFlashTimer,
     displayToken,
-    hydrate,
     saleId,
-    scheduleHydrate,
     schedulePriceFlashClear,
     socketAdapter,
   ]);
