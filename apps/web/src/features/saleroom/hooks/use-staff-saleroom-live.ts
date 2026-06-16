@@ -19,7 +19,7 @@ import {
 } from "@/lib/saleroom/public-session-status";
 import { notify } from "@/lib/ui/notify";
 import type { SaleroomRealtimePayload } from "@auction/types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Options = {
   saleId: string;
@@ -63,9 +63,13 @@ export function useStaffSaleroomLive({
   const [connectionStatus, setConnectionStatus] =
     useState<StaffSaleroomSessionVM["connectionStatus"]>("connected");
   const [lastEventAt, setLastEventAt] = useState<string | null>(null);
+  const connectionStatusRef = useRef(connectionStatus);
+  connectionStatusRef.current = connectionStatus;
 
   useEffect(() => {
-    setSession(initial);
+    if (connectionStatusRef.current === "disconnected") {
+      setSession(initial);
+    }
   }, [initial]);
 
   useEffect(() => {
@@ -123,13 +127,19 @@ export function useStaffSaleroomLive({
       hadConnected = true;
     };
 
+    const onDisconnect = () => {
+      setConnectionStatus("disconnected");
+    };
+
     join();
     socketAdapter.onSaleroomEvent(onSaleroom);
     socketAdapter.onConnect(onConnect);
+    socketAdapter.onDisconnect(onDisconnect);
 
     return () => {
       socketAdapter.offSaleroomEvent(onSaleroom);
       socketAdapter.offConnect(onConnect);
+      socketAdapter.offDisconnect(onDisconnect);
       socketAdapter.leaveSaleroom(saleId);
     };
   }, [liveFeedLimit, notifyOnReconnect, saleId, socketAdapter, trackLiveFeed]);

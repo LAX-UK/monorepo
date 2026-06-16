@@ -7,6 +7,8 @@ export type SaleroomSocketAdapter = {
   offSaleroomEvent(handler: (raw: unknown) => void): void;
   onConnect(handler: () => void): void;
   offConnect(handler: () => void): void;
+  onDisconnect(handler: () => void): void;
+  offDisconnect(handler: () => void): void;
   isConnected(): boolean;
 };
 
@@ -31,6 +33,12 @@ export function createSaleroomSocketAdapter(): SaleroomSocketAdapter {
     offConnect(handler) {
       socket.off("connect", handler);
     },
+    onDisconnect(handler) {
+      socket.on("disconnect", handler);
+    },
+    offDisconnect(handler) {
+      socket.off("disconnect", handler);
+    },
     isConnected() {
       return socket.connected;
     },
@@ -41,9 +49,11 @@ export function createSaleroomSocketAdapter(): SaleroomSocketAdapter {
 export function createMockSaleroomSocketAdapter(): SaleroomSocketAdapter & {
   emit(event: unknown): void;
   simulateConnect(): void;
+  simulateDisconnect(): void;
 } {
   let saleroomHandler: ((raw: unknown) => void) | null = null;
   let connectHandler: (() => void) | null = null;
+  let disconnectHandler: (() => void) | null = null;
   let connected = false;
 
   return {
@@ -61,6 +71,12 @@ export function createMockSaleroomSocketAdapter(): SaleroomSocketAdapter & {
     offConnect() {
       connectHandler = null;
     },
+    onDisconnect(handler) {
+      disconnectHandler = handler;
+    },
+    offDisconnect() {
+      disconnectHandler = null;
+    },
     isConnected() {
       return connected;
     },
@@ -70,6 +86,10 @@ export function createMockSaleroomSocketAdapter(): SaleroomSocketAdapter & {
     simulateConnect() {
       connected = true;
       connectHandler?.();
+    },
+    simulateDisconnect() {
+      connected = false;
+      disconnectHandler?.();
     },
   };
 }

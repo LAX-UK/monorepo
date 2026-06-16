@@ -31,11 +31,13 @@ type Props = {
   liveBid: ClerkLotLiveBidState;
 };
 
+const INCREMENT_MULTIPLIERS = [1, 2, 5] as const;
+
 function incrementChipLabel(index: number, amount: number): string {
   const formatted = formatMoney(amount.toFixed(2));
   if (index === 0) return `Min bid (${formatted})`;
-  if (index === 1) return `+1 inc (${formatted})`;
-  return `+4 inc (${formatted})`;
+  const multiplier = INCREMENT_MULTIPLIERS[index] ?? index + 1;
+  return `+${multiplier} inc (${formatted})`;
 }
 
 export function LotOnBlockPanel({

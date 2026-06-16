@@ -18,7 +18,7 @@ import {
 } from "@auction/ui/components/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 const CHECK_IN_ERROR_MESSAGES: Record<string, string> = {
   sale_not_saleroom: "Check-in is only available for onsite or hybrid sales.",
@@ -55,6 +55,7 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ name: string; paddleNumber: number } | null>(null);
   const [pending, startTransition] = useTransition();
+  const searchGenerationRef = useRef(0);
 
   const selectedCandidate = useMemo(
     () => candidates.find((c) => c.userId === selectedUserId) ?? null,
@@ -73,16 +74,20 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   }, [selectedCandidate, eligibleEntities]);
 
   const runSearch = useCallback(
-    async (q: string) => {
+    async (q: string, generation: number) => {
       const trimmed = q.trim();
       if (trimmed.length < 2) {
-        setCandidates([]);
-        setSearchError(null);
+        if (generation === searchGenerationRef.current) {
+          setCandidates([]);
+          setSearchError(null);
+          setSearching(false);
+        }
         return;
       }
       setSearching(true);
       setSearchError(null);
       const result = await adminSaleroomCheckInCandidatesResultAction({ saleId, q: trimmed });
+      if (generation !== searchGenerationRef.current) return;
       setSearching(false);
       if (!result.ok) {
         setSearchError(result.error);
@@ -96,8 +101,9 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   );
 
   useEffect(() => {
+    const generation = ++searchGenerationRef.current;
     const handle = window.setTimeout(() => {
-      void runSearch(query);
+      void runSearch(query, generation);
     }, 300);
     return () => window.clearTimeout(handle);
   }, [query, runSearch]);
@@ -123,6 +129,16 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
   const onCheckIn = () => {
     if (!selectedCandidate || !entityId) return;
     setSubmitError(null);
+    const paddleTrimmed = paddleNumber.trim();
+    if (paddleTrimmed !== "") {
+      const paddleN = Number.parseInt(paddleTrimmed, 10);
+      if (!Number.isInteger(paddleN) || paddleN < 100) {
+        setSubmitError(
+          CHECK_IN_ERROR_MESSAGES.invalid_paddle ?? "Paddle number must be at least 100.",
+        );
+        return;
+      }
+    }
     startTransition(async () => {
       const body: {
         saleId: string;
@@ -139,9 +155,8 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
       if (bidLimit.trim() !== "" && Number.isFinite(limitN) && limitN > 0) {
         body.bidLimit = limitN;
       }
-      const paddleN = paddleNumber.trim() === "" ? undefined : Number.parseInt(paddleNumber, 10);
-      if (paddleN != null && Number.isInteger(paddleN)) {
-        body.paddleNumber = paddleN;
+      if (paddleTrimmed !== "") {
+        body.paddleNumber = Number.parseInt(paddleTrimmed, 10);
       }
 
       const result = await adminSaleroomCheckInResultAction(body);
@@ -173,6 +188,20 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
     setPaddleNumber("");
     setSubmitError(null);
   };
+
+  useEffect(() => {
+    if (!success) return;
+    const timer = window.setTimeout(() => {
+      setSuccess(null);
+      setQuery("");
+      setCandidates([]);
+      setSelectedUserId(null);
+      setBidLimit("");
+      setPaddleNumber("");
+      setSubmitError(null);
+    }, 3_000);
+    return () => window.clearTimeout(timer);
+  }, [success]);
 
   if (success) {
     return (
@@ -222,7 +251,9 @@ export function SaleroomCheckInPanel({ saleId }: Props) {
             autoComplete="off"
           />
           {query.trim().length < 2 ? (
-            <p className="font-body text-xs text-on-surface-variant">Type email to search</p>
+            <p className="font-body text-xs text-on-surface-variant">
+              Type email or name (min 2 characters)
+            </p>
           ) : null}
           {searching ? (
             <p className="font-body text-xs text-on-surface-variant">Searching…</p>
