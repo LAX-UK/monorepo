@@ -1,6 +1,11 @@
 "use server";
 
 import { complianceErrorMessage } from "@/lib/admin/compliance-error-messages";
+import {
+  type SofListStatus,
+  buildSofCaseDetailHref,
+  buildSofListHref,
+} from "@/lib/admin/sof-list-query";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -27,15 +32,23 @@ function redirectAml(success?: string, error?: string): never {
   redirect(q ? `/admin/compliance/aml?${q}` : "/admin/compliance/aml");
 }
 
-function redirectSof(success?: string, error?: string, caseId?: string): never {
+function redirectSof(
+  success?: string,
+  error?: string,
+  caseId?: string,
+  listStatus: SofListStatus = "pending",
+): never {
   const params = new URLSearchParams();
   if (success) params.set("success", success);
   if (error) params.set("error", error);
-  const q = params.toString();
-  const base = caseId
-    ? `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}`
-    : "/admin/compliance/source-of-funds";
-  redirect(q ? `${base}?${q}` : base);
+  const extra = params.toString();
+
+  if (caseId) {
+    const base = buildSofCaseDetailHref(caseId, listStatus);
+    redirect(extra ? `${base}&${extra}` : base);
+  }
+  const listBase = buildSofListHref(listStatus);
+  redirect(extra ? `${listBase}&${extra}` : listBase);
 }
 
 export async function amlTriageAction(formData: FormData): Promise<void> {
@@ -154,6 +167,7 @@ export async function sofDecideAction(formData: FormData): Promise<void> {
       decision === "approve" ? "Source of Funds approved" : "Source of Funds rejected",
       undefined,
       caseId,
+      decision === "approve" ? "approved" : "rejected",
     );
   });
 }

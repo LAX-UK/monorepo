@@ -4,6 +4,7 @@ import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-i
 import { ManualReviewPaymentActions } from "@/components/admin/manual-review-payment-actions";
 import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-review";
 import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
+import { buildSofCaseDetailHref } from "@/lib/admin/sof-list-query";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -46,7 +47,7 @@ export function ManualReviewDrawerContent({
               {payment.manualReviewReason === "source_of_funds_required" &&
               payment.sourceOfFundsCaseId ? (
                 <Link
-                  href={`/admin/compliance/source-of-funds/${payment.sourceOfFundsCaseId}`}
+                  href={buildSofCaseDetailHref(payment.sourceOfFundsCaseId, "pending")}
                   className="text-link underline"
                 >
                   Open Source of Funds case
@@ -110,7 +111,7 @@ export function ManualReviewDrawerContent({
               <>
                 {" "}
                 <Link
-                  href={`/admin/compliance/source-of-funds/${payment.sourceOfFundsCaseId}`}
+                  href={buildSofCaseDetailHref(payment.sourceOfFundsCaseId, "pending")}
                   className="text-link underline"
                 >
                   Review the case

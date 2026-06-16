@@ -57,6 +57,8 @@ describe("ManualReviewDrawerContent", () => {
       />,
     );
     const link = screen.getByRole("link", { name: /open source of funds case/i });
-    expect(link.getAttribute("href")).toBe("/admin/compliance/source-of-funds/sof-case-uuid");
+    expect(link.getAttribute("href")).toBe(
+      "/admin/compliance/source-of-funds/sof-case-uuid?listStatus=pending",
+    );
   });
 });
