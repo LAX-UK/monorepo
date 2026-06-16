@@ -1,16 +1,14 @@
 "use client";
 
+import { SaleroomDisplayBidFeed } from "@/features/saleroom/components/display/saleroom-display-bid-feed";
+import type { DisplayBoardVM } from "@/features/saleroom/lib/display-bid-ticks";
 import { formatMoney } from "@/lib/ui/format";
-import type { SaleroomDisplaySnapshot } from "@auction/types";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-type Props = {
-  snapshot: SaleroomDisplaySnapshot;
-  connectionStatus: "connected" | "reconnecting" | "disconnected";
-};
+type Props = DisplayBoardVM;
 
-function StatusBadge({ status }: { status: SaleroomDisplaySnapshot["sessionStatus"] }) {
+function StatusBadge({ status }: { status: DisplayBoardVM["snapshot"]["sessionStatus"] }) {
   const label =
     status === "live"
       ? "LIVE"
@@ -50,9 +48,16 @@ function LotImage({ imageUrl, title }: { imageUrl: string; title: string }) {
   );
 }
 
-export function SaleroomDisplayBoard({ snapshot, connectionStatus }: Props) {
+export function SaleroomDisplayBoard({
+  snapshot,
+  connectionStatus,
+  recentBids,
+  priceFlash,
+  leaderLabel,
+}: Props) {
   const lot = snapshot.currentLot;
   const betweenLots = snapshot.sessionStatus === "live" && !snapshot.currentLotId;
+  const showFeed = Boolean(lot && snapshot.sessionStatus === "live");
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-950 text-white">
@@ -76,7 +81,7 @@ export function SaleroomDisplayBoard({ snapshot, connectionStatus }: Props) {
             <p className="mt-4 text-xl text-white/50">Stand by for the next lot</p>
           </div>
         ) : lot ? (
-          <div className="grid w-full max-w-7xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
+          <div className="grid w-full max-w-7xl grid-cols-1 items-start gap-10 lg:grid-cols-2">
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl">
               {lot.imageUrl ? (
                 <LotImage imageUrl={lot.imageUrl} title={lot.title} />
@@ -90,19 +95,30 @@ export function SaleroomDisplayBoard({ snapshot, connectionStatus }: Props) {
               <p className="text-lg uppercase tracking-[0.25em] text-white/50">
                 Lot {lot.lotNumber}
               </p>
-              <h2 className="text-4xl font-semibold leading-tight md:text-5xl">{lot.title}</h2>
+              <h2 className="line-clamp-3 text-4xl font-semibold leading-tight md:text-5xl">
+                {lot.title}
+              </h2>
               <div>
                 <p className="text-sm uppercase tracking-widest text-white/50">Current bid</p>
-                <p className="text-6xl font-bold tabular-nums md:text-7xl">
+                <p
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className={`text-6xl font-bold tabular-nums md:text-7xl ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
+                >
                   {formatMoney(lot.currentPrice)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-8 text-lg text-white/70">
                 <Stat label="Bids" value={String(lot.bidCount)} />
-                {lot.leaderPaddleNumber != null ? (
-                  <Stat label="Leading paddle" value={String(lot.leaderPaddleNumber)} />
-                ) : null}
+                {leaderLabel ? <Stat label="Leading" value={leaderLabel} /> : null}
               </div>
+              {showFeed ? (
+                <SaleroomDisplayBidFeed
+                  recentBids={recentBids}
+                  leaderPaddleNumber={lot.leaderPaddleNumber}
+                  bidCount={lot.bidCount}
+                />
+              ) : null}
             </div>
           </div>
         ) : (
