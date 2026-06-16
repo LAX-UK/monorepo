@@ -15,18 +15,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = metadataForPrivate(
-  "Onsite events",
-  "Manage RSVPs for onsite events.",
+  "Event RSVPs",
+  "Manage guest lists, passes, and check-in for invitation-only events.",
 );
 
-export default async function AdminOnsiteEventsPage() {
+export default async function AdminEventRsvpsPage() {
   let events: Awaited<ReturnType<typeof getAdminOnsiteEvents>> = [];
   let loadError: string | null = null;
 
   try {
     events = await getAdminOnsiteEvents();
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load onsite events.";
+    loadError = e instanceof Error ? e.message : "Could not load event RSVPs.";
   }
 
   const totalRsvps = events.reduce((sum, event) => sum + event.rsvpCount, 0);
@@ -35,20 +35,20 @@ export default async function AdminOnsiteEventsPage() {
   const empty =
     !loadError && events.length === 0 ? (
       <AdminEmptyState
-        title="No onsite events"
-        description="Events appear here once they are registered in the platform."
+        title="No events yet"
+        description="Invitation-only events appear here once they are registered in the platform."
       />
     ) : null;
 
   return (
     <AdminListShell
       layout="hub"
-      title="Onsite events"
-      description="RSVP operations for invitation-only onsite events."
+      title="Event RSVPs"
+      description="Manage guest lists, passes, and check-in for invitation-only events. For live bidding, use Saleroom."
       kpiStrip={
         !loadError ? (
           <AdminListKpiStrip
-            ariaLabel="Onsite events summary"
+            ariaLabel="Event RSVPs summary"
             tiles={[
               { label: "Events", value: events.length },
               { label: "Published", value: publishedCount },
@@ -76,7 +76,7 @@ export default async function AdminOnsiteEventsPage() {
       view={
         <div className="space-y-8">
           <AdminHubQuickLinks
-            ariaLabel="Onsite events quick links"
+            ariaLabel="Event RSVPs quick links"
             links={[
               { href: "/admin/saleroom", label: "Saleroom console" },
               { href: "/admin/sales", label: "Sales" },
@@ -91,7 +91,7 @@ export default async function AdminOnsiteEventsPage() {
                   className="flex flex-wrap items-center justify-between gap-4 p-4"
                 >
                   <Link
-                    href={`/admin/onsite-events/${encodeURIComponent(event.slug)}`}
+                    href={`/admin/event-rsvps/${encodeURIComponent(event.slug)}`}
                     className="min-w-0 flex-1 space-y-1 transition-colors hover:text-on-surface"
                   >
                     <p className="font-medium">{event.title}</p>
@@ -108,9 +108,7 @@ export default async function AdminOnsiteEventsPage() {
                       {event.rsvpCount} RSVP{event.rsvpCount === 1 ? "" : "s"}
                     </span>
                     <Button type="button" variant="outline" size="sm" asChild>
-                      <Link
-                        href={`/admin/onsite-events/${encodeURIComponent(event.slug)}/check-in`}
-                      >
+                      <Link href={`/admin/event-rsvps/${encodeURIComponent(event.slug)}/check-in`}>
                         <ScanLine className="mr-2 size-4" />
                         Check-in
                       </Link>
