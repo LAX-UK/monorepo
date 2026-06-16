@@ -5,7 +5,7 @@ import type { SaleroomDisplayPairingStart } from "@auction/types";
 type Props = {
   saleId: string;
   start: SaleroomDisplayPairingStart | null;
-  phase: "starting" | "waiting" | "expired" | "error";
+  phase: "idle" | "starting" | "waiting" | "expired" | "error";
   message?: string | undefined;
   onBegin: () => void;
 };
