@@ -1,5 +1,8 @@
 import { createMockSaleroomSocketAdapter } from "@/features/saleroom/adapters/saleroom-socket.adapter";
-import { useSaleroomDisplayLive } from "@/features/saleroom/hooks/use-saleroom-display-live";
+import {
+  resolveOverlayAfterFullHydrate,
+  useSaleroomDisplayLive,
+} from "@/features/saleroom/hooks/use-saleroom-display-live";
 import type { DisplayDataClient } from "@/features/saleroom/lib/display-data-client";
 import type { SaleroomDisplaySnapshot } from "@auction/types";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -55,6 +58,40 @@ function createMockDataClient(
     sendHeartbeat: vi.fn().mockResolvedValue("ok"),
   };
 }
+
+describe("resolveOverlayAfterFullHydrate", () => {
+  const staleOverlay = {
+    kind: "fair_warning" as const,
+    emittedAt: "2026-06-17T09:00:00.000Z",
+  };
+  const liveOverlay = {
+    kind: "announcement" as const,
+    message: "Break in 5",
+    emittedAt: "2026-06-17T10:00:00.000Z",
+  };
+
+  it("returns live overlay when WS changed during fetch", () => {
+    expect(
+      resolveOverlayAfterFullHydrate(liveOverlay, staleOverlay, "2026-06-17T10:00:00.000Z", true),
+    ).toEqual(liveOverlay);
+  });
+
+  it("keeps cleared overlay when snapshot is stale", () => {
+    expect(
+      resolveOverlayAfterFullHydrate(null, staleOverlay, "2026-06-17T10:00:00.000Z", false),
+    ).toBeNull();
+  });
+
+  it("applies snapshot overlay on initial hydrate", () => {
+    expect(resolveOverlayAfterFullHydrate(null, staleOverlay, null, false)).toEqual(staleOverlay);
+  });
+
+  it("prefers newer live overlay by emittedAt", () => {
+    expect(resolveOverlayAfterFullHydrate(liveOverlay, staleOverlay, null, false)).toEqual(
+      liveOverlay,
+    );
+  });
+});
 
 describe("useSaleroomDisplayLive", () => {
   it("hydrates snapshot on mount", async () => {
@@ -133,24 +170,26 @@ describe("useSaleroomDisplayLive", () => {
   });
 
   it("clears bid feed when lot advances", async () => {
-    const fetchSnapshot = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, snapshot: snapshot() })
-      .mockResolvedValueOnce({
-        ok: true,
-        snapshot: snapshot({
-          currentLotId: "lot-2",
-          currentLot: {
-            id: "lot-2",
-            lotNumber: 2,
-            title: "Lot two",
-            imageUrl: null,
-            currentPrice: "200.00",
-            bidCount: 0,
-            leaderPaddleNumber: null,
-          },
-        }),
-      });
+    const lot2Snapshot = snapshot({
+      currentLotId: "lot-2",
+      currentLot: {
+        id: "lot-2",
+        lotNumber: 2,
+        title: "Lot two",
+        imageUrl: null,
+        currentPrice: "200.00",
+        bidCount: 0,
+        leaderPaddleNumber: null,
+      },
+    });
+    let fetchCalls = 0;
+    const fetchSnapshot = vi.fn().mockImplementation(async () => {
+      fetchCalls += 1;
+      return {
+        ok: true as const,
+        snapshot: fetchCalls === 1 ? snapshot() : lot2Snapshot,
+      };
+    });
     const dataClient = createMockDataClient(fetchSnapshot);
     const adapter = createMockSaleroomSocketAdapter();
 
@@ -181,10 +220,66 @@ describe("useSaleroomDisplayLive", () => {
 
     expect(result.current.bidLive.recentBids).toHaveLength(0);
     expect(result.current.snapshot?.currentLotId).toBe("lot-2");
+    expect(result.current.snapshot?.currentLot).toBeNull();
 
     await waitFor(() => {
+      expect(result.current.snapshot?.currentLot?.id).toBe("lot-2");
       expect(result.current.snapshot?.currentLot?.currentPrice).toBe("200.00");
     });
+  });
+
+  it("does not resurrect overlay when stale full hydrate completes after WS clear", async () => {
+    const staleOverlay = {
+      kind: "fair_warning" as const,
+      emittedAt: "2026-06-17T09:00:00.000Z",
+    };
+    let resolveReconnect:
+      | ((value: { ok: true; snapshot: SaleroomDisplaySnapshot }) => void)
+      | undefined;
+    const reconnectSnapshot = snapshot({ overlay: staleOverlay });
+    const reconnectPromise = new Promise<{ ok: true; snapshot: SaleroomDisplaySnapshot }>(
+      (resolve) => {
+        resolveReconnect = resolve;
+      },
+    );
+    const fetchSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, snapshot: snapshot({ overlay: staleOverlay }) })
+      .mockImplementationOnce(() => reconnectPromise);
+
+    const dataClient = createMockDataClient(fetchSnapshot);
+    const adapter = createMockSaleroomSocketAdapter();
+
+    const { result } = renderHook(() =>
+      useSaleroomDisplayLive({
+        saleId: "sale-1",
+        displayToken: "token-1",
+        dataClient,
+        socketAdapter: adapter,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+    expect(result.current.overlay?.kind).toBe("fair_warning");
+
+    act(() => {
+      adapter.simulateConnect();
+    });
+
+    act(() => {
+      adapter.emitDisplayControl({
+        kind: "clear",
+        emittedAt: "2026-06-17T10:00:00.000Z",
+      });
+    });
+    expect(result.current.overlay).toBeNull();
+
+    await act(async () => {
+      resolveReconnect?.({ ok: true, snapshot: reconnectSnapshot });
+      await reconnectPromise;
+    });
+
+    expect(result.current.overlay).toBeNull();
   });
 
   it("rehydrates on reconnect", async () => {
@@ -227,5 +322,186 @@ describe("useSaleroomDisplayLive", () => {
       expect(result.current.snapshot?.currentLot?.currentPrice).toBe("175.00");
     });
     expect(result.current.connectionStatus).toBe("connected");
+  });
+
+  describe("merge hydrate (per-bid)", () => {
+    async function advanceMergeHydrate() {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 450));
+      });
+    }
+
+    it("does not overwrite WS overlay when merge-hydrate returns stale snapshot", async () => {
+      let mergeHydrateEnabled = false;
+      const fetchSnapshot = vi.fn().mockImplementation(async () => {
+        if (mergeHydrateEnabled) {
+          return { ok: true as const, snapshot: snapshot({ overlay: null }) };
+        }
+        return { ok: true as const, snapshot: snapshot() };
+      });
+      const dataClient = createMockDataClient(fetchSnapshot);
+      const adapter = createMockSaleroomSocketAdapter();
+
+      const { result } = renderHook(() =>
+        useSaleroomDisplayLive({
+          saleId: "sale-1",
+          displayToken: "token-1",
+          dataClient,
+          socketAdapter: adapter,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+
+      act(() => {
+        adapter.emitDisplayControl({
+          kind: "fair_warning",
+          emittedAt: "2026-06-17T10:00:00.000Z",
+        });
+      });
+      expect(result.current.overlay?.kind).toBe("fair_warning");
+
+      mergeHydrateEnabled = true;
+      act(() => {
+        adapter.emitBidUpdate(bidPayload());
+      });
+      await advanceMergeHydrate();
+
+      expect(result.current.overlay?.kind).toBe("fair_warning");
+    });
+
+    it("does not resurrect overlay after WS clear when merge-hydrate is stale", async () => {
+      const staleOverlay = {
+        kind: "fair_warning" as const,
+        emittedAt: "2026-06-17T09:00:00.000Z",
+      };
+      let mergeHydrateEnabled = false;
+      const fetchSnapshot = vi.fn().mockImplementation(async () => {
+        if (mergeHydrateEnabled) {
+          return {
+            ok: true as const,
+            snapshot: snapshot({ overlay: staleOverlay }),
+          };
+        }
+        return {
+          ok: true as const,
+          snapshot: snapshot({ overlay: staleOverlay }),
+        };
+      });
+      const dataClient = createMockDataClient(fetchSnapshot);
+      const adapter = createMockSaleroomSocketAdapter();
+
+      const { result } = renderHook(() =>
+        useSaleroomDisplayLive({
+          saleId: "sale-1",
+          displayToken: "token-1",
+          dataClient,
+          socketAdapter: adapter,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+      expect(result.current.overlay?.kind).toBe("fair_warning");
+
+      act(() => {
+        adapter.emitDisplayControl({
+          kind: "clear",
+          emittedAt: "2026-06-17T10:00:00.000Z",
+        });
+      });
+      expect(result.current.overlay).toBeNull();
+
+      mergeHydrateEnabled = true;
+      act(() => {
+        adapter.emitBidUpdate(bidPayload());
+      });
+      await advanceMergeHydrate();
+
+      expect(result.current.overlay).toBeNull();
+    });
+
+    it("does not revert realtime price when merge-hydrate returns stale snapshot", async () => {
+      const staleLot = {
+        id: "lot-1",
+        lotNumber: 1,
+        title: "Lot one",
+        imageUrl: null,
+        currentPrice: "100.00",
+        bidCount: 1,
+        leaderPaddleNumber: 205,
+      };
+      let mergeHydrateEnabled = false;
+      const fetchSnapshot = vi.fn().mockImplementation(async () => {
+        if (mergeHydrateEnabled) {
+          return { ok: true as const, snapshot: snapshot({ currentLot: staleLot }) };
+        }
+        return { ok: true as const, snapshot: snapshot() };
+      });
+      const dataClient = createMockDataClient(fetchSnapshot);
+      const adapter = createMockSaleroomSocketAdapter();
+
+      const { result } = renderHook(() =>
+        useSaleroomDisplayLive({
+          saleId: "sale-1",
+          displayToken: "token-1",
+          dataClient,
+          socketAdapter: adapter,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+
+      mergeHydrateEnabled = true;
+      act(() => {
+        adapter.emitBidUpdate(bidPayload({ currentPrice: "150.00", bidCount: 2 }));
+      });
+      expect(result.current.snapshot?.currentLot?.currentPrice).toBe("150.00");
+
+      await advanceMergeHydrate();
+
+      expect(result.current.snapshot?.currentLot?.currentPrice).toBe("150.00");
+      expect(result.current.snapshot?.currentLot?.bidCount).toBe(2);
+    });
+
+    it("merges leaderPaddleNumber from snapshot on per-bid hydrate", async () => {
+      const mergedLot = {
+        id: "lot-1",
+        lotNumber: 1,
+        title: "Lot one",
+        imageUrl: null,
+        currentPrice: "100.00",
+        bidCount: 1,
+        leaderPaddleNumber: 210,
+      };
+      let mergeHydrateEnabled = false;
+      const fetchSnapshot = vi.fn().mockImplementation(async () => {
+        if (mergeHydrateEnabled) {
+          return { ok: true as const, snapshot: snapshot({ currentLot: mergedLot }) };
+        }
+        return { ok: true as const, snapshot: snapshot() };
+      });
+      const dataClient = createMockDataClient(fetchSnapshot);
+      const adapter = createMockSaleroomSocketAdapter();
+
+      const { result } = renderHook(() =>
+        useSaleroomDisplayLive({
+          saleId: "sale-1",
+          displayToken: "token-1",
+          dataClient,
+          socketAdapter: adapter,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+      expect(result.current.snapshot?.currentLot?.leaderPaddleNumber).toBe(205);
+
+      mergeHydrateEnabled = true;
+      act(() => {
+        adapter.emitBidUpdate(bidPayload());
+      });
+      await advanceMergeHydrate();
+
+      expect(result.current.snapshot?.currentLot?.leaderPaddleNumber).toBe(210);
+    });
   });
 });

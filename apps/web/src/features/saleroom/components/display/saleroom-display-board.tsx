@@ -57,6 +57,8 @@ export function SaleroomDisplayBoard({
 }: Props) {
   const lot = snapshot.currentLot;
   const betweenLots = snapshot.sessionStatus === "live" && !snapshot.currentLotId;
+  const lotTransitioning =
+    snapshot.sessionStatus === "live" && Boolean(snapshot.currentLotId) && !lot;
   const showFeed = Boolean(lot && snapshot.sessionStatus === "live");
 
   return (
@@ -79,6 +81,11 @@ export function SaleroomDisplayBoard({
           <div className="text-center">
             <p className="text-5xl font-light tracking-tight text-white/80">Between lots</p>
             <p className="mt-4 text-xl text-white/50">Stand by for the next lot</p>
+          </div>
+        ) : lotTransitioning ? (
+          <div className="text-center">
+            <p className="text-5xl font-light tracking-tight text-white/80">Next lot</p>
+            <p className="mt-4 text-xl text-white/50">Loading…</p>
           </div>
         ) : lot ? (
           <div className="grid w-full max-w-7xl grid-cols-1 items-start gap-10 lg:grid-cols-2">

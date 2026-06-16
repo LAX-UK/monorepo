@@ -46,6 +46,8 @@ const EMPTY: SaleroomDisplayLiveState = {
 const PRICE_FLASH_MS = 450;
 const HYDRATE_DEBOUNCE_MS = 400;
 
+type HydrateMode = "full" | "merge";
+
 function applyOverlayEvent(
   prev: SaleroomDisplayOverlay | null,
   event: SaleroomDisplayControlPayload,
@@ -58,6 +60,33 @@ function applyOverlayEvent(
     ...(event.message ? { message: event.message } : {}),
     emittedAt,
   };
+}
+
+/** Keeps WS overlay authoritative when a stale in-flight full hydrate completes. */
+export function resolveOverlayAfterFullHydrate(
+  live: SaleroomDisplayOverlay | null,
+  fromSnapshot: SaleroomDisplayOverlay | null,
+  wsEmittedAt: string | null,
+  wsChangedDuringFetch: boolean,
+): SaleroomDisplayOverlay | null {
+  if (wsChangedDuringFetch) return live;
+
+  if (!fromSnapshot) {
+    return null;
+  }
+
+  if (!live) {
+    if (wsEmittedAt && wsEmittedAt > fromSnapshot.emittedAt) {
+      return null;
+    }
+    return fromSnapshot;
+  }
+
+  if (live.emittedAt >= fromSnapshot.emittedAt) {
+    return live;
+  }
+
+  return fromSnapshot;
 }
 
 export function useSaleroomDisplayLive({
@@ -79,6 +108,10 @@ export function useSaleroomDisplayLive({
   const priceFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydrateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydrateGenerationRef = useRef(0);
+  const overlayGenerationRef = useRef(0);
+  const overlayControlEmittedAtRef = useRef<string | null>(null);
+  const snapshotRef = useRef<SaleroomDisplaySnapshot | null>(null);
+  snapshotRef.current = state.snapshot;
   const syncJoinedLotRef = useRef<(lotId: string | null) => void>(() => {});
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
@@ -112,40 +145,75 @@ export function useSaleroomDisplayLive({
     onUnauthorizedRef.current?.();
   }, []);
 
-  const hydrate = useCallback(async () => {
-    const generation = hydrateGenerationRef.current;
-    const result = await dataClient.fetchSnapshot(saleId, displayToken);
-    if (generation !== hydrateGenerationRef.current) {
-      return false;
-    }
-    if (!result.ok) {
-      if (result.unauthorized) {
-        handleUnauthorized();
-      } else {
-        setState((prev) => ({ ...prev, connectionStatus: "disconnected" }));
+  const hydrate = useCallback(
+    async (mode: HydrateMode = "full") => {
+      const generation = hydrateGenerationRef.current;
+      const overlayGenerationAtStart = overlayGenerationRef.current;
+      const result = await dataClient.fetchSnapshot(saleId, displayToken);
+      if (generation !== hydrateGenerationRef.current) {
+        return false;
       }
-      return false;
-    }
-    const { snapshot } = result;
-    const previousLotId = currentLotIdRef.current;
-    currentLotIdRef.current = snapshot.currentLotId;
+      if (!result.ok) {
+        if (result.unauthorized) {
+          handleUnauthorized();
+        } else {
+          setState((prev) => ({ ...prev, connectionStatus: "disconnected" }));
+        }
+        return false;
+      }
+      const { snapshot } = result;
 
-    setState((prev) => ({
-      snapshot,
-      overlay: snapshot.overlay,
-      flash: prev.flash,
-      connectionStatus: "connected",
-      bidLive: mergeSnapshotAfterHydrate(prev.bidLive, previousLotId, snapshot.currentLotId),
-    }));
-    syncJoinedLotRef.current(snapshot.currentLotId);
-    return true;
-  }, [dataClient, displayToken, handleUnauthorized, saleId]);
+      if (mode === "merge") {
+        setState((prev) => {
+          const liveSnapshot = prev.snapshot;
+          if (!liveSnapshot?.currentLot) return prev;
+          if (snapshot.currentLotId !== currentLotIdRef.current) return prev;
+          if (!snapshot.currentLot || snapshot.currentLot.id !== liveSnapshot.currentLot.id) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            snapshot: {
+              ...liveSnapshot,
+              currentLot: {
+                ...liveSnapshot.currentLot,
+                leaderPaddleNumber: snapshot.currentLot.leaderPaddleNumber,
+              },
+            },
+            connectionStatus: "connected",
+          };
+        });
+        return true;
+      }
+
+      const previousLotId = currentLotIdRef.current;
+      currentLotIdRef.current = snapshot.currentLotId;
+      const wsChangedDuringFetch = overlayGenerationRef.current !== overlayGenerationAtStart;
+
+      setState((prev) => ({
+        snapshot,
+        overlay: resolveOverlayAfterFullHydrate(
+          prev.overlay,
+          snapshot.overlay,
+          overlayControlEmittedAtRef.current,
+          wsChangedDuringFetch,
+        ),
+        flash: prev.flash,
+        connectionStatus: "connected",
+        bidLive: mergeSnapshotAfterHydrate(prev.bidLive, previousLotId, snapshot.currentLotId),
+      }));
+      syncJoinedLotRef.current(snapshot.currentLotId);
+      return true;
+    },
+    [dataClient, displayToken, handleUnauthorized, saleId],
+  );
 
   const scheduleHydrate = useCallback(() => {
     clearHydrateDebounce();
     hydrateDebounceRef.current = setTimeout(() => {
       hydrateDebounceRef.current = null;
-      void hydrate();
+      void hydrate("merge");
     }, HYDRATE_DEBOUNCE_MS);
   }, [clearHydrateDebounce, hydrate]);
 
@@ -181,14 +249,17 @@ export function useSaleroomDisplayLive({
     syncJoinedLotRef.current = joinLot;
 
     const handleLotTransition = (nextLotId: string | null) => {
-      if (nextLotId === currentLotIdRef.current) return;
-      currentLotIdRef.current = nextLotId;
-      hydrateGenerationRef.current += 1;
       clearHydrateDebounce();
       clearPriceFlashTimer();
-      joinLot(nextLotId);
+
+      if (nextLotId !== currentLotIdRef.current) {
+        currentLotIdRef.current = nextLotId;
+        hydrateGenerationRef.current += 1;
+        joinLot(nextLotId);
+      }
+
       if (nextLotId) {
-        void hydrate();
+        void hydrate("full");
       }
     };
 
@@ -196,24 +267,24 @@ export function useSaleroomDisplayLive({
       const event = raw as SaleroomRealtimePayload;
       if (!event || event.saleId !== saleId) return;
 
-      let nextLotId: string | null | undefined;
-      let lotChanged = false;
+      const liveSnapshot = snapshotRef.current;
+      if (!liveSnapshot) return;
+
+      const sessionStatus = applySaleroomEvent(
+        {
+          status: liveSnapshot.sessionStatus === "none" ? "none" : liveSnapshot.sessionStatus,
+          currentLotId: liveSnapshot.currentLotId,
+        },
+        event,
+      );
+      const lotChanged = sessionStatus.currentLotId !== liveSnapshot.currentLotId;
+      const nextLotId = sessionStatus.currentLotId;
 
       setState((prev) => {
         if (!prev.snapshot) return prev;
-        const sessionStatus = applySaleroomEvent(
-          {
-            status: prev.snapshot.sessionStatus === "none" ? "none" : prev.snapshot.sessionStatus,
-            currentLotId: prev.snapshot.currentLotId,
-          },
-          event,
-        );
         let flash = prev.flash;
         if (event.kind === "hammer") flash = "sold";
         if (event.kind === "no_sale") flash = "passed";
-
-        nextLotId = sessionStatus.currentLotId;
-        lotChanged = nextLotId !== currentLotIdRef.current;
 
         return {
           ...prev,
@@ -222,13 +293,14 @@ export function useSaleroomDisplayLive({
             ...prev.snapshot,
             sessionStatus: sessionStatus.status,
             currentLotId: sessionStatus.currentLotId,
+            currentLot: lotChanged ? null : prev.snapshot.currentLot,
           },
           connectionStatus: "connected",
           bidLive: lotChanged ? resetDisplayBidLiveState() : prev.bidLive,
         };
       });
 
-      if (lotChanged && nextLotId !== undefined) {
+      if (lotChanged) {
         handleLotTransition(nextLotId);
       }
 
@@ -243,6 +315,8 @@ export function useSaleroomDisplayLive({
     const onDisplayControl = (raw: unknown) => {
       const event = raw as SaleroomDisplayControlPayload;
       if (!event || typeof event.kind !== "string") return;
+      overlayGenerationRef.current += 1;
+      overlayControlEmittedAtRef.current = event.emittedAt;
       setState((prev) => ({
         ...prev,
         overlay: applyOverlayEvent(prev.overlay, event),
