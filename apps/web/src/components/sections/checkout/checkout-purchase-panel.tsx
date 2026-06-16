@@ -152,7 +152,7 @@ type OrderSummaryProps = {
 
 function OrderSummaryCard({ hammer, buyerPremium, total, premiumPercentLabel }: OrderSummaryProps) {
   return (
-    <Card className="min-w-0 border border-border-hairline bg-surface-container-low shadow-md max-lg:sticky max-lg:top-4 max-lg:z-10 lg:sticky lg:top-4 lg:z-10 lg:shadow-lg">
+    <Card className="min-w-0 border border-border-hairline bg-surface-container-low shadow-md lg:sticky lg:top-4 lg:z-10 lg:shadow-lg">
       <CardContent className="p-6 sm:p-8">
         <h2 className="mb-6 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Order summary
