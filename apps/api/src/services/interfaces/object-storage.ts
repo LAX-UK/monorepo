@@ -12,6 +12,8 @@ export interface IObjectStorage {
     key: string;
     expiresInSec: number;
     signingDate?: Date | undefined;
+    responseContentDisposition?: string;
+    responseContentType?: string;
   }): Promise<{ url: string }>;
   /** Returns an object key when the value belongs to this storage backend. */
   extractKey(value: string): string | null;

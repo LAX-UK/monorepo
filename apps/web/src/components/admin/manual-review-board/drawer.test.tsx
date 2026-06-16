@@ -27,6 +27,7 @@ const payment = {
   archiveTimestamp: "2024-06-01T12:00:00Z",
   sellerArchivedAt: "2024-06-01T12:00:00Z",
   createdAt: "2024-06-01T10:00:00Z",
+  sourceOfFundsCaseId: null,
 };
 
 describe("ManualReviewDrawerContent", () => {
@@ -42,5 +43,20 @@ describe("ManualReviewDrawerContent", () => {
     expect(screen.getByText("Vintage Chronograph")).toBeTruthy();
     expect(screen.getByText("buyer@example.com")).toBeTruthy();
     expect(screen.getByText("Lot 42")).toBeTruthy();
+  });
+
+  it("shows Source of Funds case link when case id is present", () => {
+    render(
+      <ManualReviewDrawerContent
+        payment={{
+          ...payment,
+          manualReviewReason: "source_of_funds_required",
+          sourceOfFundsCaseId: "sof-case-uuid",
+        }}
+        canOpenComplianceQueues
+      />,
+    );
+    const link = screen.getByRole("link", { name: /open source of funds case/i });
+    expect(link.getAttribute("href")).toBe("/admin/compliance/source-of-funds/sof-case-uuid");
   });
 });

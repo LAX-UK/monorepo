@@ -58,8 +58,8 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
     // absent so we fall back to localhost ports to avoid CSP violations.
     // DigitalOcean Spaces presigned PUTs go directly to *.digitaloceanspaces.com
     `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3001"} ${process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3002"} https://*.digitaloceanspaces.com https://challenges.cloudflare.com https://www.googletagmanager.com https://gtm.lax.bid https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://stats.g.doubleclick.net https://*.facebook.com https://*.facebook.net https://*.veriff.com https://*.veriff.me https://*.probity.io https://api.stripe.com https://m.stripe.network https://r.stripe.com`.trim(),
-    // Cloudflare Turnstile + YouTube + Veriff + Stripe Connect embedded components.
-    "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://*.veriff.com https://*.veriff.me https://*.hotjar.com https://js.stripe.com https://hooks.stripe.com",
+    // Cloudflare Turnstile + YouTube + Veriff + Stripe + audited SoF document preview (API origin).
+    `frame-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://*.veriff.com https://*.veriff.me https://*.hotjar.com https://js.stripe.com https://hooks.stripe.com`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

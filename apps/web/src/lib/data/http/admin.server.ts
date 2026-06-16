@@ -1542,6 +1542,8 @@ export type AdminManualReviewPaymentRow = {
     | "source_of_funds_required"
     | "finance_release_required"
     | null;
+  /** Pending SoF case id when manualReviewReason is source_of_funds_required. */
+  sourceOfFundsCaseId: string | null;
   createdAt: string;
 };
 

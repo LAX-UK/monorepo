@@ -84,6 +84,7 @@ import { mapAdminUserListQuery } from "../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { presentLotImages } from "../lib/media-presenters.js";
 import { checkPaddleAssignRateLimit } from "../lib/paddle-assign-rate-limit.js";
+import { applyStaffPreviewFramingHeaders } from "../lib/staff-preview-framing.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
@@ -211,6 +212,20 @@ const sourceOfFundsRequestDocumentsBodySchema = z.object({
 const sourceOfFundsDocumentIdParamSchema = z.object({
   id: z.string().uuid(),
   docId: z.string().uuid(),
+});
+
+const sourceOfFundsDocumentReviewBodySchema = z.object({
+  checks: z.object({
+    matchesDeclaredSource: z.boolean().optional(),
+    coversExposure: z.boolean().optional(),
+    recentEnough: z.boolean().optional(),
+    legibleComplete: z.boolean().optional(),
+  }),
+  note: z.string().max(2000).optional(),
+});
+
+const adminUserIdParamSchema = z.object({
+  userId: z.string().min(1),
 });
 
 /** Only match UUID segments so static routes (`search`, `stats`, …) are never captured. */
@@ -2034,6 +2049,9 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
           err instanceof Error ? err.message : "source_of_funds_request_documents_failed";
         if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
         if (message === "source_of_funds_not_pending") return c.json({ error: message }, 409);
+        if (message === "source_of_funds_documents_already_requested") {
+          return c.json({ error: message }, 409);
+        }
         if (message === "source_of_funds_document_types_required") {
           return c.json({ error: message }, 400);
         }
@@ -2082,6 +2100,83 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       c.header("Content-Type", "application/zip");
       c.header("Content-Disposition", `attachment; filename="${result.fileName}"`);
       return c.body(new Uint8Array(result.buffer));
+    },
+  );
+
+  platform.get(
+    "/compliance/source-of-funds/:id/documents/:docId/preview",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsDocumentIdParamSchema),
+    async (c) => {
+      const { id, docId } = c.req.valid("param");
+      const staffUserId = c.get("userId") as string;
+      const clientIp =
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const result = await container.sourceOfFundsDocumentCollectionService.getStaffPreviewBytes({
+        caseId: id,
+        documentId: docId,
+        staffUserId,
+        clientIp,
+      });
+      if (!result) return c.json({ error: "document_not_found" }, 404);
+      c.header("Content-Type", result.contentType);
+      c.header("X-Content-Type-Options", "nosniff");
+      applyStaffPreviewFramingHeaders(c, container.env);
+      c.header(
+        "Content-Disposition",
+        `inline; filename="${result.fileName.replace(/[^\w\s.-]/g, "_")}"`,
+      );
+      return c.body(new Uint8Array(result.buffer));
+    },
+  );
+
+  platform.post(
+    "/compliance/source-of-funds/:id/documents/:docId/review",
+    requireAmlReview,
+    zValidator("param", sourceOfFundsDocumentIdParamSchema),
+    zValidator("json", sourceOfFundsDocumentReviewBodySchema),
+    async (c) => {
+      const { id, docId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const staffUserId = c.get("userId") as string;
+      try {
+        const row = await container.sourceOfFundsDocumentReviewService.reviewDocument({
+          caseId: id,
+          documentId: docId,
+          staffUserId,
+          checks: {
+            matchesDeclaredSource: body.checks.matchesDeclaredSource ?? false,
+            coversExposure: body.checks.coversExposure ?? false,
+            recentEnough: body.checks.recentEnough ?? false,
+            legibleComplete: body.checks.legibleComplete ?? false,
+          },
+          note: body.note ?? null,
+        });
+        return c.json({ ok: true, data: row });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "source_of_funds_document_review_failed";
+        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
+        if (message === "source_of_funds_not_pending") return c.json({ error: message }, 409);
+        if (
+          message === "source_of_funds_document_not_found" ||
+          message === "source_of_funds_document_superseded"
+        ) {
+          return c.json({ error: message }, 409);
+        }
+        throw err;
+      }
+    },
+  );
+
+  platform.get(
+    "/users/:userId/source-of-funds",
+    requireAmlReview,
+    zValidator("param", adminUserIdParamSchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const rows = await container.adminSourceOfFundsQueryService.listForUser(userId, 20);
+      return c.json({ data: rows });
     },
   );
 

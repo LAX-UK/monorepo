@@ -12,6 +12,10 @@ import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./noti
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
 import {
+  SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
+  processSourceOfFundsDocumentReview,
+} from "./source-of-funds-document-review.js";
+import {
   SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR,
   processSourceOfFundsDocuments,
 } from "./source-of-funds-documents.js";
@@ -320,6 +324,11 @@ export function createProjectorRunner(options: {
       supportContactEmail: options.supportContactEmail,
       webOrigin: options.webOrigin,
       adminEmailAddress: options.adminEmailAddress,
+    });
+    await ensureCursor(SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR);
+    await processSourceOfFundsDocumentReview({
+      db: options.db,
+      log: options.log,
     });
     await options.heartbeat();
   }

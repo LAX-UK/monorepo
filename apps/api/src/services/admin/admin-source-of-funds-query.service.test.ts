@@ -59,10 +59,19 @@ describe("AdminSourceOfFundsQueryService", () => {
   let docRepo: {
     listActiveForCase: ReturnType<typeof vi.fn>;
   } & Record<string, ReturnType<typeof vi.fn>>;
+  let reviewRepo: {
+    listForCase: ReturnType<typeof vi.fn>;
+  };
   let media: MediaUrlResolver;
 
   function makeSvc() {
-    return new AdminSourceOfFundsQueryService(repo, docRepo as never, mockDb as never, media);
+    return new AdminSourceOfFundsQueryService(
+      repo,
+      docRepo as never,
+      reviewRepo as never,
+      mockDb as never,
+      media,
+    );
   }
 
   beforeEach(() => {
@@ -96,6 +105,9 @@ describe("AdminSourceOfFundsQueryService", () => {
       listForCase: vi.fn(),
       findById: vi.fn(),
       countActiveForCase: vi.fn(),
+    };
+    reviewRepo = {
+      listForCase: vi.fn().mockResolvedValue([]),
     };
     media = {
       resolve: vi.fn(),

@@ -43,16 +43,26 @@ export function ManualReviewDrawerContent({
           {compliance && canOpenComplianceQueues ? (
             <>
               {" · "}
-              <Link
-                href={
-                  payment.manualReviewReason === "aml_hold"
-                    ? "/admin/compliance/aml"
-                    : "/admin/compliance/source-of-funds"
-                }
-                className="text-link underline"
-              >
-                Open compliance queue
-              </Link>
+              {payment.manualReviewReason === "source_of_funds_required" &&
+              payment.sourceOfFundsCaseId ? (
+                <Link
+                  href={`/admin/compliance/source-of-funds/${payment.sourceOfFundsCaseId}`}
+                  className="text-link underline"
+                >
+                  Open Source of Funds case
+                </Link>
+              ) : (
+                <Link
+                  href={
+                    payment.manualReviewReason === "aml_hold"
+                      ? "/admin/compliance/aml"
+                      : "/admin/compliance/source-of-funds"
+                  }
+                  className="text-link underline"
+                >
+                  Open compliance queue
+                </Link>
+              )}
             </>
           ) : null}
         </p>
@@ -95,6 +105,19 @@ export function ManualReviewDrawerContent({
           <AlertDescription>
             Settlement is blocked until MLRO clears the{" "}
             {payment.manualReviewReason === "aml_hold" ? "AML screening" : "Source of Funds case"}.
+            {payment.manualReviewReason === "source_of_funds_required" &&
+            payment.sourceOfFundsCaseId ? (
+              <>
+                {" "}
+                <Link
+                  href={`/admin/compliance/source-of-funds/${payment.sourceOfFundsCaseId}`}
+                  className="text-link underline"
+                >
+                  Review the case
+                </Link>{" "}
+                to verify evidence and record triage/decision.
+              </>
+            ) : null}{" "}
             Finance cannot release checkout while the hold is active.
           </AlertDescription>
         </Alert>

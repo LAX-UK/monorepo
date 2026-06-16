@@ -98,9 +98,25 @@ export function useLotBidState({
   const endTimeRef = useRef(endTime);
   endTimeRef.current = endTime;
 
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const triggerPriceFlash = useCallback(() => {
     setPriceFlash(true);
-    window.setTimeout(() => setPriceFlash(false), 500);
+    if (flashTimeoutRef.current != null) {
+      clearTimeout(flashTimeoutRef.current);
+    }
+    flashTimeoutRef.current = setTimeout(() => {
+      setPriceFlash(false);
+      flashTimeoutRef.current = null;
+    }, 500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimeoutRef.current != null) {
+        clearTimeout(flashTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleAutoBidSaved = useCallback((settings: AutoBidSettings | null) => {

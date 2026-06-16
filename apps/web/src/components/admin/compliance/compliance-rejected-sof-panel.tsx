@@ -5,7 +5,6 @@ import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { sofReopenAction } from "@/lib/actions/compliance";
 import type { AdminSourceOfFundsRow } from "@/lib/data/http/compliance.server";
 import { buildAdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
-import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 type Props = {
@@ -45,24 +44,35 @@ export function ComplianceRejectedSofPanel({ rows, canReopen }: Props) {
                 </span>
               </div>
               {canReopen ? (
-                <form id={formId} action={sofReopenAction}>
-                  <input type="hidden" name="caseId" value={row.id} />
-                  <ConfirmFormSubmit
-                    formId={formId}
-                    variant="outline"
-                    size="sm"
-                    confirmTitle="Reopen rejected case?"
-                    confirmBody="Maker-checker fields will be cleared and the case returns to pending review."
-                    confirmLabel="Reopen"
-                    tone="warning"
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/admin/compliance/source-of-funds/${row.id}`}
+                    className="text-sm text-link underline"
                   >
-                    Reopen for review
-                  </ConfirmFormSubmit>
-                </form>
+                    View case
+                  </Link>
+                  <form id={formId} action={sofReopenAction}>
+                    <input type="hidden" name="caseId" value={row.id} />
+                    <ConfirmFormSubmit
+                      formId={formId}
+                      variant="outline"
+                      size="sm"
+                      confirmTitle="Reopen rejected case?"
+                      confirmBody="Maker-checker fields will be cleared and the case returns to pending review."
+                      confirmLabel="Reopen"
+                      tone="warning"
+                    >
+                      Reopen for review
+                    </ConfirmFormSubmit>
+                  </form>
+                </div>
               ) : (
-                <Button type="button" variant="outline" size="sm" disabled>
-                  Reopen (MLRO only)
-                </Button>
+                <Link
+                  href={`/admin/compliance/source-of-funds/${row.id}`}
+                  className="text-sm text-link underline"
+                >
+                  View case
+                </Link>
               )}
             </li>
           );

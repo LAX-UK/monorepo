@@ -33,7 +33,6 @@ export default async function AdminComplianceSourceOfFundsPage({
   const user = await requireAdminCapability(AML_REVIEW_ACCESS, "/admin/compliance/source-of-funds");
   const role = user.role as UserRole;
   const staffRole = user.staffRole ?? null;
-  const canTriage = userHasAccessTo(role, staffRole, AML_REVIEW_ACCESS);
   const canDecide = userHasAccessTo(role, staffRole, MLRO_DECISION_ACCESS);
   const query = sofListController.parseQuery(sp);
 
@@ -139,14 +138,7 @@ export default async function AdminComplianceSourceOfFundsPage({
             </p>
             <ComplianceApprovedSofPanel rows={approvedRows} />
             <ComplianceRejectedSofPanel rows={rejectedRows} canReopen={canDecide} />
-            {rows.length > 0 ? (
-              <ComplianceSofBoard
-                rows={rows}
-                canTriage={canTriage}
-                canDecide={canDecide}
-                currentUserId={user.id}
-              />
-            ) : null}
+            {rows.length > 0 ? <ComplianceSofBoard rows={rows} /> : null}
           </div>
         ) : null
       }

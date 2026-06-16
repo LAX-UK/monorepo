@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { uploadObject } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import { zipSync } from "fflate";
+import type { ISourceOfFundsDocumentReviewRepository } from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
@@ -17,6 +18,20 @@ export const SOURCE_OF_FUNDS_DOCUMENTS_REQUESTED_EVENT = "source_of_funds.docume
 export const SOURCE_OF_FUNDS_DOCUMENTS_SUBMITTED_EVENT = "source_of_funds.documents_submitted";
 export const SOURCE_OF_FUNDS_DOCUMENT_UPLOADED_EVENT = "source_of_funds.document_uploaded";
 export const SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT = "source_of_funds.document_downloaded";
+
+const STAFF_PREVIEW_CONTENT_TYPES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+
+/** Defense-in-depth: only serve inline preview for PDF/images. */
+export function clampStaffPreviewContentType(raw: string): string {
+  const normalized = raw.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (normalized === "image/jpg") return "image/jpeg";
+  return STAFF_PREVIEW_CONTENT_TYPES.has(normalized) ? normalized : "application/octet-stream";
+}
 
 export type BuyerSourceOfFundsDocumentDto = {
   id: string;
@@ -59,6 +74,7 @@ export class SourceOfFundsDocumentCollectionService {
   constructor(
     private readonly caseRepo: ISourceOfFundsRepository,
     private readonly docRepo: ISourceOfFundsDocumentRepository,
+    private readonly reviewRepo: ISourceOfFundsDocumentReviewRepository,
     private readonly db: Database,
     private readonly events: DomainEventPublisher | null,
     private readonly storage: IObjectStorage,
@@ -80,6 +96,9 @@ export class SourceOfFundsDocumentCollectionService {
       const existing = await this.caseRepo.findById(command.caseId, conn);
       if (!existing) throw new Error("source_of_funds_not_found");
       if (existing.status !== "pending") throw new Error("source_of_funds_not_pending");
+      if (existing.documentsRequestedAt && !existing.documentsSubmittedAt) {
+        throw new Error("source_of_funds_documents_already_requested");
+      }
 
       const updated = await this.caseRepo.setDocumentRequest(
         {
@@ -154,7 +173,14 @@ export class SourceOfFundsDocumentCollectionService {
         throw new Error("upload_kind_mismatch");
       }
 
-      await this.docRepo.supersedeActiveForType(command.caseId, requestedType, conn);
+      const supersededIds = await this.docRepo.supersedeActiveForType(
+        command.caseId,
+        requestedType,
+        conn,
+      );
+      if (supersededIds.length > 0) {
+        await this.reviewRepo.deleteForDocuments(supersededIds, conn);
+      }
       const doc = await this.docRepo.attach(
         {
           sourceOfFundsId: command.caseId,
@@ -242,12 +268,14 @@ export class SourceOfFundsDocumentCollectionService {
     documentId: string;
     staffUserId: string;
     clientIp?: string | null;
+    preview?: boolean;
   }): Promise<{ url: string; fileName: string } | null> {
     const caseRecord = await this.caseRepo.findById(command.caseId);
     if (!caseRecord) return null;
 
     const doc = await this.docRepo.findById(command.documentId);
     if (!doc || doc.sourceOfFundsId !== command.caseId) return null;
+    if (doc.reviewStatus === "superseded") return null;
 
     const [upload] = await this.db
       .select({ key: uploadObject.key })
@@ -259,6 +287,9 @@ export class SourceOfFundsDocumentCollectionService {
     const signed = await this.storage.createPresignedGet({
       key: upload.key,
       expiresInSec: this.downloadSigningPolicy.expiresInSec,
+      responseContentDisposition: command.preview
+        ? `inline; filename="${sanitizeFilename(doc.fileName ?? "document")}"`
+        : `attachment; filename="${sanitizeFilename(doc.fileName ?? "document")}"`,
     });
 
     const events = this.events;
@@ -273,12 +304,67 @@ export class SourceOfFundsDocumentCollectionService {
             sourceOfFundsId: command.caseId,
             documentId: command.documentId,
             clientIp: command.clientIp ?? null,
+            ...(command.preview ? { preview: true } : {}),
           },
         });
       });
     }
 
     return { url: signed.url, fileName: doc.fileName ?? "document" };
+  }
+
+  /** Stream document bytes for inline staff preview (audited, no presigned URL in browser). */
+  async getStaffPreviewBytes(command: {
+    caseId: string;
+    documentId: string;
+    staffUserId: string;
+    clientIp?: string | null;
+    maxBytes?: number;
+  }): Promise<{ buffer: Buffer; contentType: string; fileName: string } | null> {
+    const caseRecord = await this.caseRepo.findById(command.caseId);
+    if (!caseRecord) return null;
+
+    const doc = await this.docRepo.findById(command.documentId);
+    if (!doc || doc.sourceOfFundsId !== command.caseId) return null;
+    if (doc.reviewStatus === "superseded") return null;
+
+    const [upload] = await this.db
+      .select({ key: uploadObject.key })
+      .from(uploadObject)
+      .where(eq(uploadObject.id, doc.uploadObjectId))
+      .limit(1);
+    if (!upload) return null;
+
+    const head = await this.storage.headObject(upload.key);
+    if (!head) return null;
+
+    const maxBytes = command.maxBytes ?? 25 * 1024 * 1024;
+    const bytes = await this.storage.getObjectBytes(upload.key, maxBytes);
+    if (!bytes) return null;
+
+    const events = this.events;
+    if (events) {
+      await this.db.transaction(async (tx) => {
+        await events.publish(tx, {
+          aggregateType: "source_of_funds",
+          aggregateId: command.caseId,
+          eventType: SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT,
+          actorUserId: command.staffUserId,
+          payload: {
+            sourceOfFundsId: command.caseId,
+            documentId: command.documentId,
+            clientIp: command.clientIp ?? null,
+            preview: true,
+          },
+        });
+      });
+    }
+
+    return {
+      buffer: bytes,
+      contentType: clampStaffPreviewContentType(head.contentType),
+      fileName: doc.fileName ?? "document",
+    };
   }
 
   /** Bundle all active case documents into a zip for staff download (audited per file). */
@@ -342,33 +428,16 @@ export class SourceOfFundsDocumentCollectionService {
 
   async listDocumentsForCase(caseId: string): Promise<AdminSourceOfFundsDocumentDto[]> {
     const docs = await this.docRepo.listActiveForCase(caseId);
-    const out: AdminSourceOfFundsDocumentDto[] = [];
-    for (const doc of docs) {
-      const [upload] = await this.db
-        .select({ key: uploadObject.key })
-        .from(uploadObject)
-        .where(eq(uploadObject.id, doc.uploadObjectId))
-        .limit(1);
-      let downloadUrl: string | null = null;
-      if (upload) {
-        const signed = await this.storage.createPresignedGet({
-          key: upload.key,
-          expiresInSec: this.downloadSigningPolicy.expiresInSec,
-        });
-        downloadUrl = signed.url;
-      }
-      out.push({
-        id: doc.id,
-        requestedType: doc.requestedType,
-        label: doc.label,
-        fileName: doc.fileName ?? null,
-        reviewStatus: doc.reviewStatus,
-        uploadedAt: doc.uploadedAt.toISOString(),
-        uploadedByUserId: doc.uploadedByUserId,
-        downloadUrl,
-      });
-    }
-    return out;
+    return docs.map((doc) => ({
+      id: doc.id,
+      requestedType: doc.requestedType,
+      label: doc.label,
+      fileName: doc.fileName ?? null,
+      reviewStatus: doc.reviewStatus,
+      uploadedAt: doc.uploadedAt.toISOString(),
+      uploadedByUserId: doc.uploadedByUserId,
+      downloadUrl: null,
+    }));
   }
 
   private async buildBuyerView(
@@ -401,4 +470,8 @@ export class SourceOfFundsDocumentCollectionService {
       decisionOutcome,
     };
   }
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[^\w\s.-]/g, "_").slice(0, 200) || "document";
 }
