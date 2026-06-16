@@ -13,7 +13,7 @@ import type { SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type RegistrationFilter = "all" | "pending" | "checked_in" | "awaiting_paddle";
 
@@ -47,8 +47,8 @@ function RegistrationRow({
             <p className="font-body text-xs text-on-surface-variant">Limit: {row.bidLimit}</p>
           ) : null}
           {row.paddleNumber != null ? (
-            <p className="font-body text-xs text-on-surface-variant">
-              Paddle: <span className="tabular-nums">{row.paddleNumber}</span>
+            <p className="font-headline text-lg tabular-nums text-on-surface">
+              Paddle {row.paddleNumber}
             </p>
           ) : null}
           {row.checkedInAt ? (
@@ -129,8 +129,22 @@ export function SaleRegistrationsTabSection({
   actionError = null,
 }: Props) {
   const showSaleroomCheckIn = isSaleroomDeliveryMode(deliveryMode);
-  const [filter, setFilter] = useState<RegistrationFilter>("all");
+  const defaultFilter: RegistrationFilter =
+    showSaleroomCheckIn && saleStatus === "active" ? "awaiting_paddle" : "all";
+  const [filter, setFilter] = useState<RegistrationFilter>(defaultFilter);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#check-in") return;
+    const el = document.getElementById("check-in");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    el?.classList.add("ring-2", "ring-primary/40");
+    const timer = window.setTimeout(() => {
+      el?.classList.remove("ring-2", "ring-primary/40");
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const filteredRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
