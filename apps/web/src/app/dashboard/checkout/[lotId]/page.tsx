@@ -101,7 +101,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
             alt={`${auction.title} — artwork for checkout`}
             label="Lot artwork"
             priority
-            imgClassName="lg:object-contain"
+            imgClassName="object-contain"
             sizes="(max-width: 1024px) 100vw, 50vw"
           />
         </div>

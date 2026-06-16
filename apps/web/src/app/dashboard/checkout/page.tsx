@@ -186,7 +186,8 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           <KpiRow
             variant="hero"
             columns={4}
-            className="hidden lg:grid xl:grid-cols-1"
+            className="hidden lg:block"
+            stripClassName="lg:grid-cols-1 xl:grid-cols-1"
             aria-label="Basket total"
             tiles={[
               {
