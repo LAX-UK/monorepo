@@ -71,9 +71,23 @@ function putFileWithProgress(
     }
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error("Object storage rejected the upload"));
+      else {
+        const detail = xhr.responseText?.trim().slice(0, 200);
+        reject(
+          new Error(
+            detail
+              ? `Object storage rejected the upload (${xhr.status}: ${detail})`
+              : `Object storage rejected the upload (${xhr.status})`,
+          ),
+        );
+      }
     };
-    xhr.onerror = () => reject(new Error("Object storage rejected the upload"));
+    xhr.onerror = () =>
+      reject(
+        new Error(
+          "Object storage rejected the upload (network or CORS error — check browser devtools)",
+        ),
+      );
     xhr.send(file);
   });
 }

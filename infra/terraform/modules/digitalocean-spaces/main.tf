@@ -46,7 +46,7 @@ resource "digitalocean_spaces_bucket_cors_configuration" "this" {
   bucket = digitalocean_spaces_bucket.this.name
   region = digitalocean_spaces_bucket.this.region
   cors_rule {
-    allowed_headers = ["Content-Type", "x-amz-*"]
+    allowed_headers = ["Content-Type", "Cache-Control", "Content-Length", "x-amz-*"]
     allowed_methods = ["GET", "HEAD", "PUT"]
     allowed_origins = var.cors_allowed_origins
     expose_headers  = ["ETag"]
