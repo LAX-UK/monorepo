@@ -1,8 +1,6 @@
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { SofCaseDetailClient } from "@/components/admin/compliance-sof-board/sof-case-detail-client";
+import { SofCaseDetailShell } from "@/components/admin/compliance-sof-board/sof-case-detail-shell";
 import { loadAdminSofCaseDetail } from "@/lib/admin/load-admin-sof-case-detail";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -22,35 +20,15 @@ export default async function AdminSofCaseDetailPage({ params, searchParams }: P
   const buyerLabel = detail.buyer.label ?? detail.buyer.email ?? "Buyer";
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-sm">
-          <Link href="/admin/compliance/source-of-funds" className="text-link underline">
-            ← Source of Funds
-          </Link>
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="font-headline text-xl font-semibold text-on-surface">
-            <Link href={`/admin/clients/${row.userId}`} className="text-link hover:underline">
-              {buyerLabel}
-            </Link>
-          </h1>
-          <AdminStatusBadge domain="sofCase" status={row.displayStatus} />
-        </div>
-        <p className="text-sm text-on-surface-variant">
-          {row.triggerLabel} · {row.exposureLabel} · Opened {row.openedLabel}
-        </p>
-      </div>
-
-      <SofCaseDetailClient
-        row={row}
-        detail={detail}
-        canTriage={canTriage}
-        canDecide={canDecide}
-        currentUserId={currentUserId}
-        success={success}
-        error={error}
-      />
-    </div>
+    <SofCaseDetailShell
+      row={row}
+      detail={detail}
+      buyerLabel={buyerLabel}
+      canTriage={canTriage}
+      canDecide={canDecide}
+      currentUserId={currentUserId}
+      success={success}
+      error={error}
+    />
   );
 }

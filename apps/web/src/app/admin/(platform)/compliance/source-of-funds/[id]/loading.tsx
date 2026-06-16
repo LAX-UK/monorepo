@@ -1,12 +1,5 @@
-import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { SofCaseDetailSkeleton } from "@/components/admin/compliance-sof-board/sof-case-detail-skeleton";
 
 export default function AdminSofCaseLoading() {
-  return (
-    <AdminListShell
-      variant="queue"
-      title="Source of Funds"
-      description="Loading case…"
-      view={null}
-    />
-  );
+  return <SofCaseDetailSkeleton />;
 }

@@ -1,6 +1,11 @@
 import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
+import {
+  buildSofCaseDetailHref,
+  buildSofListHref,
+  normalizeSofListStatus,
+} from "@/lib/admin/sof-list-query";
 import type { AdminSourceOfFundsRow } from "@/lib/data/http/compliance.server";
 import { buildAdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { Surface } from "@auction/ui/components/surface";
@@ -14,8 +19,8 @@ export function AdminUserSofPanel({ cases }: Props) {
   const pending = cases.filter((c) => c.status === "pending");
   const latest = cases[0] ?? null;
   const queueHref = latest
-    ? `/admin/compliance/source-of-funds/${latest.id}`
-    : "/admin/compliance/source-of-funds";
+    ? buildSofCaseDetailHref(latest.id, normalizeSofListStatus(latest.status))
+    : buildSofListHref("pending");
 
   return (
     <Surface variant="quiet" padding="md" className="space-y-3">
@@ -45,7 +50,7 @@ export function AdminUserSofPanel({ cases }: Props) {
                   </span>
                 </div>
                 <Link
-                  href={`/admin/compliance/source-of-funds/${row.id}`}
+                  href={buildSofCaseDetailHref(row.id, normalizeSofListStatus(row.status))}
                   className="text-xs text-link underline"
                 >
                   Open
@@ -58,7 +63,7 @@ export function AdminUserSofPanel({ cases }: Props) {
       {cases.length > 5 ? (
         <p className="text-xs text-on-surface-variant">
           Showing 5 of {cases.length} cases.{" "}
-          <Link href="/admin/compliance/source-of-funds" className="text-link underline">
+          <Link href={buildSofListHref("pending")} className="text-link underline">
             Open queue
           </Link>
         </p>
