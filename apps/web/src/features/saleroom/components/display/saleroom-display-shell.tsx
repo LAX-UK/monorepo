@@ -35,7 +35,7 @@ export function SaleroomDisplayShell({ saleId }: Props) {
           ? "expired"
           : pairingState.phase === "error"
             ? "error"
-            : "starting";
+            : "idle";
 
   return (
     <SaleroomDisplayPairing
