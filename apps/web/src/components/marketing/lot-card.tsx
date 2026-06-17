@@ -87,13 +87,13 @@ export function LotCardGrid({
 }: LotCardGridProps) {
   const article = (
     <article
-      className={cn(cardShell, className)}
+      className={cn(cardShell, "flex h-full min-h-0 flex-col", className)}
       {...(lotId ? { [LOT_TRANSITION_ROOT_ATTR]: lotId } : {})}
     >
-      <LotCardNavLink lotId={lotId} href={href} className="block">
+      <LotCardNavLink lotId={lotId} href={href} className="flex min-h-0 flex-1 flex-col">
         <AdaptiveMediaFrameContainer
           {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
-          className="relative aspect-[4/5] bg-surface-container-low"
+          className="relative aspect-[4/5] shrink-0 bg-surface-container-low"
         >
           <div
             key={lotId ? `${lotId}-media` : "media"}
@@ -137,9 +137,9 @@ export function LotCardGrid({
             </Fragment>
           ) : null}
         </AdaptiveMediaFrameContainer>
-        <div className="p-3 md:p-5">
-          {title}
-          {meta}
+        <div className="flex flex-1 flex-col p-3 md:p-5">
+          <div className="min-h-[4.25rem] md:min-h-[5.75rem]">{title}</div>
+          {meta ? <div className="mt-auto">{meta}</div> : null}
         </div>
       </LotCardNavLink>
       {topRight ? (
@@ -157,6 +157,7 @@ export function LotCardGrid({
       src={adaptiveMedia.src}
       objectFit={adaptiveMedia.objectFit}
       slots={adaptiveMedia.slots}
+      className="flex h-full min-w-0 flex-col"
     >
       {article}
     </AdaptiveMediaFrame>

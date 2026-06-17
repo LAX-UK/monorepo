@@ -1,7 +1,6 @@
+import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
-import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
-import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";
 import type { SaleLotCardVM } from "./view-models";
@@ -35,30 +34,25 @@ export function SaleroomLotsGrid({
     );
   }
   return (
-    <ul
-      className={cn(
-        "list-none auto-rows-fr items-stretch justify-items-stretch gap-x-3 gap-y-6 p-0 md:gap-x-7 md:gap-y-10",
-        sparseGridClasses(lots.length, {
-          multi:
-            "grid grid-cols-1 gap-x-3 gap-y-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-        }),
-      )}
+    <MarketingCatalogGrid
+      count={lots.length}
+      gridClassName="gap-x-3 gap-y-6 md:gap-x-7 md:gap-y-10"
+      multi="grid grid-cols-1 gap-x-3 gap-y-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       {lots.map((lot, index) => (
-        <li key={lot.id} className="flex h-full min-w-0 flex-col">
-          <MarketingCardReveal
-            index={index}
-            className="h-full w-full"
-            innerClassName="flex h-full min-w-0 flex-col"
-          >
-            <SaleroomLotCard
-              lot={lot}
-              cornerAction={renderCorner?.(lot)}
-              actions={renderActions?.(lot)}
-            />
-          </MarketingCardReveal>
-        </li>
+        <MarketingCardReveal
+          key={lot.id}
+          index={index}
+          className="h-full w-full"
+          innerClassName="flex h-full min-w-0 flex-col"
+        >
+          <SaleroomLotCard
+            lot={lot}
+            cornerAction={renderCorner?.(lot)}
+            actions={renderActions?.(lot)}
+          />
+        </MarketingCardReveal>
       ))}
-    </ul>
+    </MarketingCatalogGrid>
   );
 }

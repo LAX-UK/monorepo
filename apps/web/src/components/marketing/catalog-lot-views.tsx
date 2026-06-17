@@ -2,6 +2,7 @@ import { CatalogLotEditorialCalmCaption } from "@/components/marketing/catalog-l
 import { LotCardEditorialCalm, LotCardGrid, LotCardList } from "@/components/marketing/lot-card";
 import { CatalogLotQuickLookCorner } from "@/components/marketing/lot-quick-look/catalog-lot-quick-look-corner";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
+import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { MediaImage } from "@/components/ui/media-image";
@@ -15,9 +16,7 @@ import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
 import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotPath } from "@/lib/seo/url";
 import type { OverlaySurface } from "@/lib/ui/overlay-tone-classes";
-import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import type { CatalogLotVM } from "@auction/types";
-import { cn } from "@auction/ui";
 
 export type CatalogLotViewsProps = {
   lots: CatalogLotVM[];
@@ -79,14 +78,10 @@ export function CatalogLotGridView({
   catalogLinkParams,
 }: CatalogLotViewsProps) {
   return (
-    <ul
-      className={cn(
-        "gap-3 sm:gap-4 md:gap-8",
-        sparseGridClasses(lots.length, {
-          multi:
-            "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3",
-        }),
-      )}
+    <MarketingCatalogGrid
+      count={lots.length}
+      gridClassName="gap-3 sm:gap-4 md:gap-8"
+      multi="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3"
     >
       {lots.map((a) => {
         const img = a.images[0];
@@ -94,57 +89,53 @@ export function CatalogLotGridView({
         const subtitle = lotSubtitle(a);
         const owned = Boolean(currentUserId && a.sellerId === currentUserId);
         return (
-          <li key={a.id} className="min-w-0">
-            <LotCardGrid
-              lotId={a.id}
-              href={resolveLotHref(a, catalogLinkParams)}
-              topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
-              imageOverlays={
-                <CatalogLotQuickLookCorner
-                  lot={a}
-                  isAuthenticated={isAuthenticated}
-                  watchedLotIds={watchedLotIds}
-                  loginNextPath={loginNextPath}
-                  bottomLeftAddon={<LotStatusOverlay lot={a} />}
-                />
-              }
-              adaptiveMedia={{
-                src: img,
-                objectFit: "contain",
-                slots: LOT_CARD_GRID_SLOTS,
-                alt: a.title,
-                sizes: "(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw",
-                label: "Lot artwork",
-              }}
-              title={
-                <>
-                  <h2 className="font-headline line-clamp-2 text-sm font-light text-on-surface group-hover:text-link md:text-xl">
-                    {a.title}
-                  </h2>
-                  {subtitle ? (
-                    <p className="mt-0.5 line-clamp-1 font-body text-xs text-on-surface-variant md:mt-1 md:text-sm">
-                      {subtitle}
-                    </p>
-                  ) : null}
-                </>
-              }
-              meta={
-                <>
-                  <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary md:mt-2 md:text-xs">
-                    {formatMoney(a.currentPrice)}
-                  </p>
-                  {est ? (
-                    <p className="mt-0.5 hidden font-label text-[length:var(--text-label-2)] uppercase tracking-wider text-on-surface-variant md:mt-1 md:block">
-                      Est. {est}
-                    </p>
-                  ) : null}
-                </>
-              }
-            />
-          </li>
+          <LotCardGrid
+            key={a.id}
+            className="h-full"
+            lotId={a.id}
+            href={resolveLotHref(a, catalogLinkParams)}
+            topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
+            imageOverlays={
+              <CatalogLotQuickLookCorner
+                lot={a}
+                isAuthenticated={isAuthenticated}
+                watchedLotIds={watchedLotIds}
+                loginNextPath={loginNextPath}
+                bottomLeftAddon={<LotStatusOverlay lot={a} />}
+              />
+            }
+            adaptiveMedia={{
+              src: img,
+              objectFit: "contain",
+              slots: LOT_CARD_GRID_SLOTS,
+              alt: a.title,
+              sizes: "(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw",
+              label: "Lot artwork",
+            }}
+            title={
+              <>
+                <h2 className="font-headline line-clamp-2 text-sm font-light text-on-surface group-hover:text-link md:text-xl">
+                  {a.title}
+                </h2>
+                <p className="mt-0.5 line-clamp-1 min-h-4 font-body text-xs text-on-surface-variant md:mt-1 md:text-sm">
+                  {subtitle ?? "\u00a0"}
+                </p>
+              </>
+            }
+            meta={
+              <>
+                <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary md:mt-2 md:text-xs">
+                  {formatMoney(a.currentPrice)}
+                </p>
+                <p className="mt-0.5 hidden min-h-4 font-label text-[length:var(--text-label-2)] uppercase tracking-wider text-on-surface-variant md:mt-1 md:block">
+                  {est ? `Est. ${est}` : "\u00a0"}
+                </p>
+              </>
+            }
+          />
         );
       })}
-    </ul>
+    </MarketingCatalogGrid>
   );
 }
 

@@ -16,7 +16,7 @@ export type SearchCategoryChipsProps = {
   status?: LotStatus;
   ending?: SearchEndingWindow;
   /** Horizontal strip (toolbar / below bar) or vertical list (filter sheet). */
-  layout?: "strip" | "list";
+  layout?: "strip" | "list" | "bare";
   className?: string;
 };
 
@@ -77,6 +77,10 @@ export function SearchCategoryChips({
         {links}
       </nav>
     );
+  }
+
+  if (layout === "bare") {
+    return <>{links}</>;
   }
 
   return (
