@@ -5,6 +5,7 @@ import {
   ConsolePanel,
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
+import { useDisplayOverlayState } from "@/features/saleroom/hooks/use-display-overlay-state";
 import {
   adminSaleroomDisplayApproveAction,
   adminSaleroomDisplayClearOverlayAction,
@@ -12,7 +13,7 @@ import {
   adminSaleroomDisplayRevokeAction,
 } from "@/lib/actions/admin";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
-import type { SaleroomDisplayDeviceRow } from "@auction/types";
+import type { SaleroomDisplayDeviceRow, SaleroomDisplayOverlay } from "@auction/types";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
@@ -24,19 +25,21 @@ import { useCallback, useEffect, useState } from "react";
 
 type Props = {
   saleId: string;
+  initialOverlay?: SaleroomDisplayOverlay | null;
 };
 
-type ActiveOverlay = {
-  kind: "fair_warning" | "announcement";
-  message?: string;
-};
-
-export function DisplayControlPanel({ saleId }: Props) {
+export function DisplayControlPanel({ saleId, initialOverlay = null }: Props) {
   const [devices, setDevices] = useState<SaleroomDisplayDeviceRow[]>([]);
   const [announcement, setAnnouncement] = useState("");
-  const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay | null>(null);
   const [copied, setCopied] = useState(false);
   const [displayUrl, setDisplayUrl] = useState(`/display/${saleId}`);
+  const {
+    activeOverlay,
+    hasActiveOverlay,
+    setOptimisticOverlay,
+    clearOptimisticOverlay,
+    refreshOverlay,
+  } = useDisplayOverlayState({ saleId, initialOverlay });
 
   const approveFormId = `saleroom-display-approve-${saleId}`;
   const fairWarningFormId = `saleroom-display-fw-${saleId}`;
@@ -92,9 +95,8 @@ export function DisplayControlPanel({ saleId }: Props) {
           <p className="mt-2 font-body text-sm text-secondary">
             Pair a TV at{" "}
             <Link href={`/display/${saleId}`} className="font-medium text-link underline">
-              /display/{saleId.slice(0, 8)}…
+              /display/{saleId}
             </Link>
-            . SOLD and PASSED flash automatically from the clerk console.
           </p>
         </div>
         <Button
@@ -160,7 +162,10 @@ export function DisplayControlPanel({ saleId }: Props) {
         <form
           id={fairWarningFormId}
           action={adminSaleroomDisplayOverlayAction}
-          onSubmit={() => setActiveOverlay({ kind: "fair_warning" })}
+          onSubmit={() => {
+            setOptimisticOverlay({ kind: "fair_warning" });
+            void refreshOverlay();
+          }}
         >
           <input type="hidden" name="saleId" value={saleId} />
           <input type="hidden" name="kind" value="fair_warning" />
@@ -183,10 +188,11 @@ export function DisplayControlPanel({ saleId }: Props) {
           className="flex min-w-[12rem] flex-1 flex-wrap items-end gap-2"
           onSubmit={() => {
             const message = announcement.trim();
-            setActiveOverlay(
+            setOptimisticOverlay(
               message ? { kind: "announcement", message } : { kind: "announcement" },
             );
             setAnnouncement("");
+            void refreshOverlay();
           }}
         >
           <input type="hidden" name="saleId" value={saleId} />
@@ -221,7 +227,10 @@ export function DisplayControlPanel({ saleId }: Props) {
         <form
           id={clearFormId}
           action={adminSaleroomDisplayClearOverlayAction}
-          onSubmit={() => setActiveOverlay(null)}
+          onSubmit={() => {
+            clearOptimisticOverlay();
+            void refreshOverlay();
+          }}
         >
           <input type="hidden" name="saleId" value={saleId} />
           <SaleroomPendingSubmit
@@ -229,8 +238,8 @@ export function DisplayControlPanel({ saleId }: Props) {
             pendingLabel="Clearing…"
             variant="ghost"
             className="min-h-11 text-secondary"
-            disabled={!activeOverlay}
-            aria-disabled={!activeOverlay}
+            disabled={!hasActiveOverlay}
+            aria-disabled={!hasActiveOverlay}
           >
             Clear overlay
           </SaleroomPendingSubmit>

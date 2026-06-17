@@ -1,4 +1,5 @@
 import type { lotFulfilment } from "@auction/db/schema";
+import { bid } from "@auction/db/schema";
 
 type LotFulfilmentStatusCol = (typeof lotFulfilment.$inferSelect)["status"];
 import {
@@ -48,6 +49,7 @@ import {
   adminSaleroomCheckInBodySchema,
   adminSaleroomCheckInCandidatesQuerySchema,
   adminSaleroomSaleIdParamSchema,
+  adminSaleroomSessionBatchQuerySchema,
   adminSetRoleBodySchema,
   adminSubmissionCountBySellersQuerySchema,
   adminSubmissionCountQuerySchema,
@@ -79,6 +81,7 @@ import {
   updateProfileNameFormSchema,
   userIdParamSchema,
 } from "@auction/validators";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
@@ -124,6 +127,7 @@ import {
   requireVenuesAccess,
 } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { paddleBidPlacedTotal } from "../services/paddle.service.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
@@ -875,6 +879,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       };
       const out = await container.bidService.placeBidWithIdempotency(bidInput);
       if (out.type === "replay") {
+        paddleBidPlacedTotal.inc({ outcome: "replay" });
         console.info(
           JSON.stringify({
             action: "paddle_bid_placed",
@@ -888,6 +893,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         return c.json(out.body, 201);
       }
       if (out.type === "err") {
+        paddleBidPlacedTotal.inc({ outcome: "error" });
         console.info(
           JSON.stringify({
             action: "paddle_bid_placed",
@@ -906,6 +912,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         );
       }
       container.adminMetricsService.recordBidPlaced();
+      paddleBidPlacedTotal.inc({ outcome: "ok" });
+      const [countRow] = await container.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(bid)
+        .where(eq(bid.lotId, body.lotId));
+      void container.saleroomService.publishClerkPaddleBidSummary({
+        saleId: body.saleId,
+        lotId: body.lotId,
+        currentPrice: out.body.data.amount,
+        bidCount: countRow?.count ?? 0,
+        leaderPaddleNumber: body.paddleNumber,
+      });
       console.info(
         JSON.stringify({
           action: "paddle_bid_placed",
@@ -1003,6 +1021,17 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.use("/event-rsvps", requireAuctionManage);
   platform.use("/event-rsvps/*", requireAuctionManage);
   platform.route("/event-rsvps", createAdminOnsiteEventRoutes(container));
+
+  platform.get(
+    "/saleroom/sessions",
+    requireAuctionManage,
+    zValidator("query", adminSaleroomSessionBatchQuerySchema),
+    async (c) => {
+      const { saleIds } = c.req.valid("query");
+      const sessions = await container.saleroomService.getSessionStatuses(saleIds);
+      return c.json({ sessions });
+    },
+  );
 
   platform.get(
     "/sales/:saleId/saleroom/session",

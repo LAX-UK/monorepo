@@ -5,6 +5,7 @@ import {
   parseAdminTelephoneBookingRow,
 } from "@/lib/telephone/telephone-booking-types";
 
+import { parseSessionDisplayOverlay } from "@/features/saleroom/lib/display-overlay-state";
 import type { ListLotsParams } from "@/lib/data/contracts";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type AdminAmlScreeningRow, screeningFromJson } from "@/lib/data/http/compliance.server";
@@ -29,6 +30,7 @@ import type {
   LotStatus,
   PayoutStatus,
   Sale,
+  SaleroomDisplayOverlay,
 } from "@auction/types";
 import {
   artistKinds,
@@ -2116,6 +2118,7 @@ export type AdminSaleroomSessionRow = {
   auctioneerUserId: string | null;
   createdAt: string;
   updatedAt: string;
+  displayOverlay: SaleroomDisplayOverlay | null;
 };
 
 export type AdminSaleroomEventRow = {
@@ -2155,6 +2158,7 @@ function parseAdminSaleroomSessionSnapshot(raw: unknown): AdminSaleroomSessionSn
           sessionRaw.auctioneerUserId == null ? null : String(sessionRaw.auctioneerUserId),
         createdAt: parseIsoOrNull(sessionRaw.createdAt) ?? "",
         updatedAt: parseIsoOrNull(sessionRaw.updatedAt) ?? "",
+        displayOverlay: parseSessionDisplayOverlay(sessionRaw.displayOverlay),
       }
     : null;
   const eventsRaw = Array.isArray(o.events) ? o.events : [];
@@ -2182,6 +2186,25 @@ export async function getAdminSaleroomSession(
   if (!res.ok) throw new Error(`Failed to load saleroom session: ${res.status}`);
   const body = (await res.json()) as { data: unknown };
   return parseAdminSaleroomSessionSnapshot(body.data);
+}
+
+export type AdminSaleroomSessionStatusRow = {
+  saleId: string;
+  status: "none" | "pending" | "live" | "paused" | "ended";
+  currentLotId: string | null;
+};
+
+export async function getAdminSaleroomSessions(
+  saleIds: string[],
+): Promise<AdminSaleroomSessionStatusRow[]> {
+  if (saleIds.length === 0) return [];
+  const res = await authedServerFetch(
+    `/admin/saleroom/sessions?saleIds=${saleIds.map(encodeURIComponent).join(",")}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`Failed to load saleroom sessions: ${res.status}`);
+  const body = (await res.json()) as { sessions: AdminSaleroomSessionStatusRow[] };
+  return body.sessions ?? [];
 }
 
 export type { AdminSaleOperationsSnapshot, AdminTelephoneBookingRow };

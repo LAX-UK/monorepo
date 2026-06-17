@@ -531,4 +531,65 @@ describe("useSaleroomDisplayLive", () => {
       expect(result.current.snapshot?.currentLot?.leaderPaddleNumber).toBe(210);
     });
   });
+
+  it("applies display bid summary and keeps price ahead of stale hydrate", async () => {
+    let resolveStale:
+      | ((value: { ok: true; snapshot: SaleroomDisplaySnapshot }) => void)
+      | undefined;
+    const stalePromise = new Promise<{ ok: true; snapshot: SaleroomDisplaySnapshot }>((resolve) => {
+      resolveStale = resolve;
+    });
+    const fetchSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, snapshot: snapshot() })
+      .mockImplementationOnce(() => stalePromise);
+
+    const dataClient = createMockDataClient(fetchSnapshot);
+    const adapter = createMockSaleroomSocketAdapter();
+
+    const { result } = renderHook(() =>
+      useSaleroomDisplayLive({
+        saleId: "sale-1",
+        displayToken: "token-1",
+        dataClient,
+        socketAdapter: adapter,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+
+    act(() => {
+      adapter.emitDisplayControl({
+        kind: "bid_summary",
+        lotId: "lot-1",
+        currentPrice: "200.00",
+        bidCount: 4,
+        leaderPaddleNumber: 220,
+        emittedAt: "2026-06-17T10:05:00.000Z",
+      });
+    });
+
+    expect(result.current.snapshot?.currentLot?.currentPrice).toBe("200.00");
+    expect(result.current.snapshot?.currentLot?.bidCount).toBe(4);
+
+    act(() => {
+      adapter.simulateConnect();
+    });
+
+    const base = snapshot();
+    const staleSnapshot = {
+      ...base,
+      currentLot: base.currentLot ? { ...base.currentLot, currentPrice: "100.00" } : null,
+    };
+
+    await act(async () => {
+      resolveStale?.({
+        ok: true,
+        snapshot: staleSnapshot,
+      });
+      await stalePromise;
+    });
+
+    expect(result.current.snapshot?.currentLot?.currentPrice).toBe("200.00");
+  });
 });

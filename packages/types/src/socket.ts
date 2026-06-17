@@ -57,12 +57,25 @@ export type SaleroomRealtimePayload = {
 };
 
 /** Fan-out on `display:{saleId}` via Socket.IO event `displayControl` (Redis `sale:{id}:display`). */
-export type SaleroomDisplayControlPayload = {
-  kind: "fair_warning" | "announcement" | "clear";
-  message?: string;
+export type SaleroomDisplayBidSummary = {
+  kind: "bid_summary";
+  lotId: string;
+  currentPrice: string;
+  bidCount: number;
+  leaderPaddleNumber: number | null;
   emittedAt: string;
   saleId?: string;
 };
+
+export type SaleroomDisplayControlPayload =
+  | {
+      kind: "fair_warning" | "announcement";
+      message?: string;
+      emittedAt: string;
+      saleId?: string;
+    }
+  | { kind: "clear"; emittedAt: string; saleId?: string }
+  | SaleroomDisplayBidSummary;
 
 export type SaleroomDisplayOverlay = {
   kind: "fair_warning" | "announcement";

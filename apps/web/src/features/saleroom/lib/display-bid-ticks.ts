@@ -109,6 +109,57 @@ export function mergeSnapshotAfterHydrate(
   return resetDisplayBidLiveState();
 }
 
+export function applyDisplayBidSummaryToSnapshot(
+  snapshot: SaleroomDisplaySnapshot,
+  summary: {
+    lotId: string;
+    currentPrice: string;
+    bidCount: number;
+    leaderPaddleNumber: number | null;
+  },
+): SaleroomDisplaySnapshot {
+  if (!snapshot.currentLot || snapshot.currentLot.id !== summary.lotId) {
+    return snapshot;
+  }
+  return {
+    ...snapshot,
+    currentLot: {
+      ...snapshot.currentLot,
+      currentPrice: summary.currentPrice,
+      bidCount: summary.bidCount,
+      leaderPaddleNumber: summary.leaderPaddleNumber,
+    },
+  };
+}
+
+/** Prefer live display-channel bid summary when a stale HTTP snapshot completes later. */
+export function resolveBidSummaryAfterFullHydrate(
+  liveSnapshot: SaleroomDisplaySnapshot | null,
+  fromSnapshot: SaleroomDisplaySnapshot,
+  wsBidSummaryEmittedAt: string | null,
+): SaleroomDisplaySnapshot {
+  if (!wsBidSummaryEmittedAt || !liveSnapshot?.currentLot || !fromSnapshot.currentLot) {
+    return fromSnapshot;
+  }
+  if (liveSnapshot.currentLot.id !== fromSnapshot.currentLot.id) {
+    return fromSnapshot;
+  }
+  const livePrice = Number.parseFloat(liveSnapshot.currentLot.currentPrice);
+  const snapshotPrice = Number.parseFloat(fromSnapshot.currentLot.currentPrice);
+  if (Number.isFinite(livePrice) && livePrice >= snapshotPrice) {
+    return {
+      ...fromSnapshot,
+      currentLot: {
+        ...fromSnapshot.currentLot,
+        currentPrice: liveSnapshot.currentLot.currentPrice,
+        bidCount: Math.max(liveSnapshot.currentLot.bidCount, fromSnapshot.currentLot.bidCount),
+        leaderPaddleNumber: liveSnapshot.currentLot.leaderPaddleNumber,
+      },
+    };
+  }
+  return fromSnapshot;
+}
+
 export function buildDisplayBoardVM(
   snapshot: SaleroomDisplaySnapshot,
   bidLive: DisplayBidLiveState,
