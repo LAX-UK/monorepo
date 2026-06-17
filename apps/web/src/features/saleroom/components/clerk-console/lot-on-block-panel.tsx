@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 type Props = {
   saleId: string;
@@ -70,19 +70,14 @@ export function LotOnBlockPanel({
   const paddleInputRef = useRef<HTMLInputElement>(null);
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
 
-  const bidEntry = useClerkBidEntry({
+  const bidEntry = useClerkBidEntry<AdminPaddleRosterEntry>({
     saleId,
     currentLotId: currentLotId ?? "",
     liveCurrentPrice: liveBid.currentPrice,
     minBidIncrement: currentLot?.minBidIncrement ?? "0.01",
     telephoneBookings,
+    paddleRoster,
   });
-
-  const parsedPaddle = Number.parseInt(bidEntry.state.paddleNumber, 10);
-  const matchedPaddle = useMemo(() => {
-    if (!Number.isInteger(parsedPaddle)) return null;
-    return paddleRoster.find((p) => p.paddleNumber === parsedPaddle) ?? null;
-  }, [paddleRoster, parsedPaddle]);
 
   useEffect(() => {
     if (currentLotId) {
@@ -185,7 +180,25 @@ export function LotOnBlockPanel({
               className="h-11 w-28 font-body text-base tabular-nums"
               autoComplete="off"
               inputMode="numeric"
+              aria-invalid={bidEntry.paddleRegistrationError != null}
+              aria-describedby={
+                bidEntry.paddleRegistrationError ? `paddle-num-error-${saleId}` : undefined
+              }
             />
+            {bidEntry.paddleRegistrationError ? (
+              <p
+                id={`paddle-num-error-${saleId}`}
+                className="font-body text-xs text-destructive"
+                role="alert"
+              >
+                {bidEntry.paddleRegistrationError}
+              </p>
+            ) : null}
+            {bidEntry.registeredPaddle && !bidEntry.paddleRegistrationError ? (
+              <p className="font-body text-xs text-secondary">
+                {bidEntry.registeredPaddle.displayName ?? "Checked-in bidder"}
+              </p>
+            ) : null}
           </div>
           <div className="min-w-[140px] flex-1 space-y-1">
             <Label htmlFor={`paddle-bid-amount-${saleId}`}>Amount</Label>
@@ -201,7 +214,7 @@ export function LotOnBlockPanel({
           </div>
           <Button
             type="button"
-            disabled={bidEntry.pending}
+            disabled={!bidEntry.canPlacePaddleBid}
             className="min-h-11"
             onClick={bidEntry.placePaddleBid}
           >
@@ -222,17 +235,18 @@ export function LotOnBlockPanel({
             </Button>
           ))}
         </div>
-        {matchedPaddle?.hasActiveSelfServiceSession ? (
+        {bidEntry.registeredPaddle?.hasActiveSelfServiceSession ? (
           <Alert variant="default" className="py-2">
             <AlertDescription className="font-body text-xs">
-              Warning: paddle {matchedPaddle.paddleNumber} ({matchedPaddle.displayName}) has recent
-              self-service activity — confirm the bidder is not also bidding online.
+              Warning: paddle {bidEntry.registeredPaddle.paddleNumber} (
+              {bidEntry.registeredPaddle.displayName}) has recent self-service activity — confirm
+              the bidder is not also bidding online.
             </AlertDescription>
           </Alert>
         ) : null}
-        {matchedPaddle?.bidLimit ? (
+        {bidEntry.registeredPaddle?.bidLimit ? (
           <p className="font-body text-xs text-secondary">
-            Authorised limit: {formatMoney(matchedPaddle.bidLimit)}
+            Authorised limit: {formatMoney(bidEntry.registeredPaddle.bidLimit)}
           </p>
         ) : null}
       </div>
