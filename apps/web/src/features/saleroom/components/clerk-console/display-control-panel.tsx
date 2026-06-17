@@ -1,5 +1,10 @@
 "use client";
 
+import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
+import {
+  ConsolePanel,
+  PanelHeading,
+} from "@/features/saleroom/components/clerk-console/console-panel";
 import {
   adminSaleroomDisplayApproveAction,
   adminSaleroomDisplayClearOverlayAction,
@@ -8,6 +13,12 @@ import {
 } from "@/lib/actions/admin";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 import type { SaleroomDisplayDeviceRow } from "@auction/types";
+import { Badge } from "@auction/ui/components/badge";
+import { Button } from "@auction/ui/components/button";
+import { Input } from "@auction/ui/components/input";
+import { Label } from "@auction/ui/components/label";
+import { cn } from "@auction/ui/lib/utils";
+import { Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -15,13 +26,26 @@ type Props = {
   saleId: string;
 };
 
+type ActiveOverlay = {
+  kind: "fair_warning" | "announcement";
+  message?: string;
+};
+
 export function DisplayControlPanel({ saleId }: Props) {
   const [devices, setDevices] = useState<SaleroomDisplayDeviceRow[]>([]);
   const [announcement, setAnnouncement] = useState("");
-  const displayUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/display/${saleId}`
-      : `/display/${saleId}`;
+  const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [displayUrl, setDisplayUrl] = useState(`/display/${saleId}`);
+
+  const approveFormId = `saleroom-display-approve-${saleId}`;
+  const fairWarningFormId = `saleroom-display-fw-${saleId}`;
+  const announceFormId = `saleroom-display-announce-${saleId}`;
+  const clearFormId = `saleroom-display-clear-${saleId}`;
+
+  useEffect(() => {
+    setDisplayUrl(`${window.location.origin}/display/${saleId}`);
+  }, [saleId]);
 
   const loadDevices = useCallback(async () => {
     try {
@@ -43,109 +67,211 @@ export function DisplayControlPanel({ saleId }: Props) {
     return () => clearInterval(timer);
   }, [loadDevices]);
 
+  const copyDisplayUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(displayUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const activeOverlayLabel =
+    activeOverlay?.kind === "fair_warning"
+      ? "Fair warning"
+      : activeOverlay?.kind === "announcement"
+        ? `Announcement${activeOverlay.message ? `: ${activeOverlay.message}` : ""}`
+        : null;
+
   return (
-    <section className="rounded-lg border bg-card p-4">
+    <ConsolePanel>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">Venue display</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
+        <div className="min-w-0 flex-1">
+          <PanelHeading>Venue display</PanelHeading>
+          <p className="mt-2 font-body text-sm text-secondary">
             Pair a TV at{" "}
-            <Link href={`/display/${saleId}`} className="underline underline-offset-2">
+            <Link href={`/display/${saleId}`} className="font-medium text-link underline">
               /display/{saleId.slice(0, 8)}…
             </Link>
             . SOLD and PASSED flash automatically from the clerk console.
           </p>
         </div>
-        <code className="max-w-full truncate rounded bg-muted px-2 py-1 text-xs">{displayUrl}</code>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-11 shrink-0 font-mono text-xs"
+          onClick={() => void copyDisplayUrl()}
+        >
+          {copied ? (
+            <>
+              <Check className="mr-1.5 size-3.5" aria-hidden />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="mr-1.5 size-3.5" aria-hidden />
+              Copy URL
+            </>
+          )}
+        </Button>
       </div>
 
-      <form action={adminSaleroomDisplayApproveAction} className="mt-4 flex flex-wrap gap-2">
+      <form
+        id={approveFormId}
+        action={adminSaleroomDisplayApproveAction}
+        className="mt-4 flex flex-wrap items-end gap-2"
+      >
         <input type="hidden" name="saleId" value={saleId} />
-        <input
-          name="userCode"
-          placeholder="Display code from TV"
-          className="min-w-[10rem] flex-1 rounded-md border bg-background px-3 py-2 text-sm uppercase tracking-widest"
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        <div className="min-w-[10rem] flex-1 space-y-1">
+          <Label htmlFor={`display-code-${saleId}`}>Display code from TV</Label>
+          <Input
+            id={`display-code-${saleId}`}
+            name="userCode"
+            placeholder="ABCD-1234"
+            className="h-11 font-body text-sm uppercase tracking-widest"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+        <SaleroomPendingSubmit
+          formId={approveFormId}
+          pendingLabel="Approving…"
+          className="min-h-11"
         >
           Approve display
-        </button>
+        </SaleroomPendingSubmit>
       </form>
 
+      {activeOverlayLabel ? (
+        <div
+          className="mt-4 rounded-md border border-primary/25 bg-primary/5 px-3 py-2 font-body text-sm text-foreground"
+          aria-live="polite"
+        >
+          <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            Active overlay
+          </span>
+          <p className="mt-1 font-medium">{activeOverlayLabel}</p>
+        </div>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap gap-2">
-        <form action={adminSaleroomDisplayOverlayAction}>
+        <form
+          id={fairWarningFormId}
+          action={adminSaleroomDisplayOverlayAction}
+          onSubmit={() => setActiveOverlay({ kind: "fair_warning" })}
+        >
           <input type="hidden" name="saleId" value={saleId} />
           <input type="hidden" name="kind" value="fair_warning" />
-          <button type="submit" className="rounded-md border px-3 py-2 text-sm font-medium">
+          <SaleroomPendingSubmit
+            formId={fairWarningFormId}
+            pendingLabel="Sending…"
+            variant={activeOverlay?.kind === "fair_warning" ? "default" : "outline"}
+            className={cn(
+              "min-h-11",
+              activeOverlay?.kind === "fair_warning" && "ring-2 ring-primary/30",
+            )}
+          >
             Fair warning
-          </button>
+          </SaleroomPendingSubmit>
         </form>
+
         <form
+          id={announceFormId}
           action={adminSaleroomDisplayOverlayAction}
-          className="flex min-w-[12rem] flex-1 gap-2"
+          className="flex min-w-[12rem] flex-1 flex-wrap items-end gap-2"
+          onSubmit={() => {
+            const message = announcement.trim();
+            setActiveOverlay(
+              message ? { kind: "announcement", message } : { kind: "announcement" },
+            );
+            setAnnouncement("");
+          }}
         >
           <input type="hidden" name="saleId" value={saleId} />
           <input type="hidden" name="kind" value="announcement" />
-          <input
-            name="message"
-            value={announcement}
-            onChange={(e) => setAnnouncement(e.target.value)}
-            placeholder="Announcement text"
-            className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-            maxLength={500}
-          />
-          <button type="submit" className="rounded-md border px-3 py-2 text-sm font-medium">
+          <div className="min-w-[10rem] flex-1 space-y-1">
+            <Label htmlFor={`display-announce-${saleId}`} className="sr-only">
+              Announcement text
+            </Label>
+            <Input
+              id={`display-announce-${saleId}`}
+              name="message"
+              value={announcement}
+              onChange={(e) => setAnnouncement(e.target.value)}
+              placeholder="Announcement text"
+              className="h-11 font-body text-sm"
+              maxLength={500}
+            />
+          </div>
+          <SaleroomPendingSubmit
+            formId={announceFormId}
+            pendingLabel="Sending…"
+            variant={activeOverlay?.kind === "announcement" ? "default" : "outline"}
+            className={cn(
+              "min-h-11",
+              activeOverlay?.kind === "announcement" && "ring-2 ring-primary/30",
+            )}
+          >
             Announce
-          </button>
+          </SaleroomPendingSubmit>
         </form>
-        <form action={adminSaleroomDisplayClearOverlayAction}>
+
+        <form
+          id={clearFormId}
+          action={adminSaleroomDisplayClearOverlayAction}
+          onSubmit={() => setActiveOverlay(null)}
+        >
           <input type="hidden" name="saleId" value={saleId} />
-          <button
-            type="submit"
-            className="rounded-md border px-3 py-2 text-sm text-muted-foreground"
+          <SaleroomPendingSubmit
+            formId={clearFormId}
+            pendingLabel="Clearing…"
+            variant="ghost"
+            className="min-h-11 text-secondary"
+            disabled={!activeOverlay}
+            aria-disabled={!activeOverlay}
           >
             Clear overlay
-          </button>
+          </SaleroomPendingSubmit>
         </form>
       </div>
 
       {devices.length > 0 ? (
-        <ul className="mt-4 space-y-2 text-sm">
+        <ul className="mt-4 space-y-2">
           {devices
             .filter((d) => d.status === "paired" || d.status === "pending")
             .map((device) => (
               <li
                 key={device.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-outline-variant/20 bg-surface-container-low/30 px-3 py-2"
               >
-                <div>
-                  <span className="font-mono tracking-widest">{device.userCode}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">{device.status}</span>
+                <div className="flex flex-wrap items-center gap-2 font-body text-sm">
+                  <span className="font-mono tracking-widest text-foreground">
+                    {device.userCode}
+                  </span>
+                  <Badge variant="secondary">{device.status}</Badge>
                   {device.isOnline ? (
-                    <span className="ml-2 text-xs text-emerald-600">online</span>
+                    <span className="text-xs text-success">online</span>
                   ) : device.status === "paired" ? (
-                    <span className="ml-2 text-xs text-muted-foreground">offline</span>
+                    <span className="text-xs text-secondary">offline</span>
                   ) : null}
                 </div>
                 {device.status === "paired" ? (
                   <form action={adminSaleroomDisplayRevokeAction}>
                     <input type="hidden" name="saleId" value={saleId} />
                     <input type="hidden" name="pairingId" value={device.id} />
-                    <button type="submit" className="text-xs text-destructive underline">
+                    <Button type="submit" variant="ghost" size="sm" className="text-error">
                       Revoke
-                    </button>
+                    </Button>
                   </form>
                 ) : null}
               </li>
             ))}
         </ul>
       ) : (
-        <p className="mt-4 text-xs text-muted-foreground">No paired displays yet.</p>
+        <p className="mt-4 font-body text-sm text-secondary">No paired displays yet.</p>
       )}
-    </section>
+    </ConsolePanel>
   );
 }

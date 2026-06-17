@@ -14,6 +14,7 @@ type Props = {
   progress: LotRunProgress;
   leaderLabel?: string | null;
   leaderAmount?: string | null;
+  variant?: "full" | "compact";
 };
 
 export function ClerkSessionBar({
@@ -24,24 +25,32 @@ export function ClerkSessionBar({
   progress,
   leaderLabel,
   leaderAmount,
+  variant = "full",
 }: Props) {
   const progressPercent =
     progress.totalLots > 0 ? Math.round((progress.completedLots / progress.totalLots) * 100) : 0;
+  const showLeadingBid = variant === "full" && leaderLabel;
 
   return (
-    <div className="sticky top-0 z-10 space-y-3 rounded-lg border border-outline-variant/25 bg-surface-container-low/95 p-4 shadow-sm backdrop-blur-sm">
+    <div className="space-y-4 rounded-lg border border-outline-variant/25 bg-surface-container-low p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         {deliveryMode ? <SaleDeliveryModeBadge mode={deliveryMode} /> : null}
         {session.isSessionLive ? (
-          <span className="rounded-full bg-error/10 px-2 py-0.5 font-label text-[10px] uppercase tracking-wide text-error">
+          <span className="rounded-full bg-error/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-error">
             Live
           </span>
         ) : session.status === "paused" ? (
-          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-label text-[10px] uppercase tracking-wide text-amber-800 dark:text-amber-300">
+          <span className="rounded-full bg-warning/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-warning">
             Paused
           </span>
+        ) : (
+          <span className="rounded-full bg-surface-container-high px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-secondary capitalize">
+            {session.status}
+          </span>
+        )}
+        {progress.sessionStatusLabel ? (
+          <span className="font-body text-xs text-secondary">{progress.sessionStatusLabel}</span>
         ) : null}
-        <span className="font-body text-sm text-secondary capitalize">{session.status}</span>
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -77,15 +86,18 @@ export function ClerkSessionBar({
             ) : null}
           </div>
         </div>
-        {leaderLabel ? (
-          <div className="text-right font-body text-sm">
-            <span className="text-secondary">Leading </span>
-            <span className="font-medium">{leaderLabel}</span>
-            {leaderAmount ? (
-              <span className="ml-1 tabular-nums text-secondary">
-                at {formatMoney(leaderAmount)}
-              </span>
-            ) : null}
+
+        {showLeadingBid ? (
+          <div className="rounded-md border border-outline-variant/20 bg-surface-container-high/50 px-3 py-2 text-right">
+            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Leading bid
+            </p>
+            <p className="mt-1 font-headline text-xl tabular-nums text-foreground">
+              {leaderAmount ? formatMoney(leaderAmount) : "—"}
+            </p>
+            <p className="font-body text-sm text-secondary">
+              <span className="font-medium text-foreground">{leaderLabel}</span>
+            </p>
           </div>
         ) : null}
       </div>

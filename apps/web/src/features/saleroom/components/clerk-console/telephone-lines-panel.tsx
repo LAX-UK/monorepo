@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  ConsolePanel,
+  PanelHeading,
+} from "@/features/saleroom/components/clerk-console/console-panel";
+import {
   adminTelephoneBookingCompleteLineAction,
   adminTelephoneBookingStartLineAction,
 } from "@/lib/actions/admin";
@@ -22,10 +26,8 @@ export function TelephoneLinesPanel({ saleId, currentLotId, rows }: Props) {
   );
 
   return (
-    <div className="rounded-lg border border-outline-variant/25 p-4">
-      <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Telephone lines
-      </h2>
+    <ConsolePanel>
+      <PanelHeading>Telephone lines</PanelHeading>
       {active.length === 0 ? (
         <p className="mt-2 font-body text-sm text-secondary">No active telephone bookings.</p>
       ) : (
@@ -75,6 +77,6 @@ export function TelephoneLinesPanel({ saleId, currentLotId, rows }: Props) {
           ))}
         </ul>
       )}
-    </div>
+    </ConsolePanel>
   );
 }

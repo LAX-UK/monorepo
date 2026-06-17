@@ -18,6 +18,18 @@ const baseOptions = {
 };
 
 describe("useClerkBidEntry", () => {
+  it("persists paddle number in sessionStorage", () => {
+    sessionStorage.clear();
+    const { result } = renderHook(() => useClerkBidEntry(baseOptions));
+
+    act(() => {
+      result.current.setPaddleNumber("142");
+    });
+
+    expect(sessionStorage.getItem("saleroom-clerk-paddle:sale-1")).toBe("142");
+    expect(result.current.state.paddleNumber).toBe("142");
+  });
+
   it("clears bid amounts when currentLotId changes", () => {
     const { result, rerender } = renderHook(
       ({ currentLotId }) =>
