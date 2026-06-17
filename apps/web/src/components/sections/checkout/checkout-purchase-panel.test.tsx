@@ -13,7 +13,6 @@ vi.mock("@/lib/actions/checkout", () => ({
 
 vi.mock("@/lib/analytics/events", () => ({
   trackBeginCheckout: vi.fn(),
-  trackPurchase: vi.fn(),
 }));
 
 vi.mock("@/lib/shell/shell-chrome-context", () => ({

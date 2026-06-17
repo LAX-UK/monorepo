@@ -361,6 +361,11 @@ variable "xero_invoice_due_days" {
   type    = string
   default = "14"
 }
+variable "xero_invoice_blocking" {
+  type        = string
+  default     = "false"
+  description = "When \"true\", a Xero invoice failure blocks buyer checkout (503). Default false: checkout proceeds and invoices backfill via retry-xero-invoice-creation cron."
+}
 variable "xero_post_connect_web_redirect" {
   type        = string
   default     = ""

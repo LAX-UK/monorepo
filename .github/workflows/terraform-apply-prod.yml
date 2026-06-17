@@ -72,6 +72,7 @@ jobs:
       TF_VAR_xero_default_revenue_account_code: "200"
       TF_VAR_xero_default_tax_type: "NONE"
       TF_VAR_xero_invoice_due_days: "14"
+      TF_VAR_xero_invoice_blocking: "false"
       TF_VAR_xero_post_connect_web_redirect: ${{ secrets.XERO_POST_CONNECT_WEB_REDIRECT }}
       TF_VAR_xero_use_legal_entity_contact: "false"
       TF_VAR_xero_payout_bill_account_code: "400"

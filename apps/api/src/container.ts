@@ -1410,6 +1410,7 @@ export function createContainer(env: Env): Container {
     xeroPaymentRecorder,
     addressRepo,
     settlementCompliancePolicy,
+    env.XERO_INVOICE_BLOCKING,
   );
 
   const stripePaymentWebhookServiceResolved: StripePaymentWebhookService | null =

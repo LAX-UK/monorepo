@@ -2,7 +2,10 @@ import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.server";
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
 import type { PaymentStatus } from "@auction/types";
 
-const PAID_PAYMENT_STATUSES = new Set<PaymentStatus>(["captured", "authorized"]);
+// Only a captured payment (or a post-payment fulfilment state) marks checkout complete.
+// `authorized` (bank transfer in flight) must stay an open payment so the page renders
+// the "Bank transfer processing" in-flight block instead of "Payment recorded".
+const PAID_PAYMENT_STATUSES = new Set<PaymentStatus>(["captured"]);
 
 const POST_PAY_FULFILMENT = new Set([
   "awaiting_release",
