@@ -78,6 +78,7 @@ function ClerkConsoleInner({
   const { roster: paddleRoster, refreshRoster } = useClerkPaddleRoster({
     saleId,
     initialRoster: initialPaddleRoster,
+    pollIntervalMs: 45_000,
   });
 
   useEffect(() => {

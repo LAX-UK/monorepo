@@ -11,6 +11,7 @@ type Props = {
   rows: AdminSaleRegistrationRow[];
   fetchError: string | null;
   actionError: string | null;
+  saleCurrency?: string;
 };
 
 export function SaleRegistrationsTab({
@@ -20,6 +21,7 @@ export function SaleRegistrationsTab({
   rows,
   fetchError,
   actionError,
+  saleCurrency = "GBP",
 }: Props) {
   const showPaddleCheckIn = isSaleroomDeliveryMode(sale.deliveryMode);
   return (
@@ -41,6 +43,7 @@ export function SaleRegistrationsTab({
           rows={rows}
           fetchError={fetchError}
           actionError={actionError}
+          saleCurrency={saleCurrency}
         />
       </div>
     </CatalogDetailTabPanel>

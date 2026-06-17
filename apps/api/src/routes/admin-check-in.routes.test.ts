@@ -6,7 +6,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminRoutes } from "./admin.js";
 
 const SALE_ID = "00000000-0000-4000-8000-000000000002";
-const USER_ID = "00000000-0000-4000-8000-000000000003";
+const USER_ID = "usr_8sK2xQ1aB9c";
 const ENTITY_ID = "00000000-0000-4000-8000-0000000000e1";
 
 function buildCheckInApp() {
@@ -69,6 +69,7 @@ describe("saleroom check-in admin routes", () => {
         userId: USER_ID,
         buyerLegalEntityId: ENTITY_ID,
         bidLimit: 50000,
+        paddleNumber: 205,
       }),
     });
 
@@ -80,6 +81,7 @@ describe("saleroom check-in admin routes", () => {
         buyerLegalEntityId: ENTITY_ID,
         decidedByUserId: "clerk-1",
         bidLimit: 50000,
+        paddleNumber: 205,
       }),
     );
   });
