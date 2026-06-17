@@ -6,6 +6,7 @@ import {
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
 import { type LotRunwayRow, useLotRunway } from "@/features/saleroom/hooks/use-lot-runway";
+import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
 import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
@@ -30,6 +31,9 @@ type Props = {
   currentLotId: string | null;
   sessionLive?: boolean;
   sessionStatus?: PublicSaleroomSessionStatus["status"];
+  policy: ClerkActionPolicy;
+  betweenLots?: boolean;
+  nextLot?: Lot | null;
 };
 
 function RunwayRow({ row }: { row: LotRunwayRow }) {
@@ -79,12 +83,21 @@ export function LotRunwayPanel({
   currentLotId,
   sessionLive = false,
   sessionStatus = "none",
+  policy,
+  betweenLots = false,
+  nextLot: nextLotProp = null,
 }: Props) {
-  const { orderedLots, nextLot, runway, progress } = useLotRunway({
+  const {
+    orderedLots,
+    nextLot: nextLotFromHook,
+    runway,
+    progress,
+  } = useLotRunway({
     lots,
     currentLotId,
     sessionStatus,
   });
+  const nextLot = nextLotProp ?? nextLotFromHook;
   const [advanceLotId, setAdvanceLotId] = useState(
     () => currentLotId ?? nextLot?.id ?? orderedLots.find(isLotAdvanceable)?.id ?? "",
   );
@@ -126,7 +139,7 @@ export function LotRunwayPanel({
             ))}
           </ul>
 
-          {nextLot && sessionLive && !progress.betweenLots ? (
+          {policy.advanceInRunway && nextLot && !betweenLots ? (
             <form
               id={`saleroom-advance-next-${saleId}`}
               action={adminSaleroomAdvanceAction}
@@ -147,54 +160,56 @@ export function LotRunwayPanel({
             </form>
           ) : null}
 
-          <form
-            id={`saleroom-advance-${saleId}`}
-            action={adminSaleroomAdvanceAction}
-            className="mt-3 flex flex-wrap items-end gap-3"
-          >
-            <input type="hidden" name="saleId" value={saleId} />
-            <input type="hidden" name="lotId" value={advanceLotId} />
-            <div className="flex flex-col gap-1 font-body text-xs text-secondary">
-              <Label htmlFor={`saleroom-advance-lot-${saleId}`}>Jump to lot</Label>
-              <Select value={advanceLotId} onValueChange={setAdvanceLotId}>
-                <SelectTrigger
-                  id={`saleroom-advance-lot-${saleId}`}
-                  className="min-w-[240px] font-body text-sm"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {advanceableLots.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {formatLotRunListLabel(l)}
-                      {l.id === currentLotId ? " (on block)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <SaleroomPendingSubmit
-              formId={`saleroom-advance-${saleId}`}
-              pendingLabel="Advancing…"
-              variant="outline"
-              className="min-h-11"
-              disabled={!sessionLive || advanceableLots.length === 0}
-              aria-disabled={!sessionLive}
+          {policy.jumpToLotInRunway ? (
+            <form
+              id={`saleroom-advance-${saleId}`}
+              action={adminSaleroomAdvanceAction}
+              className="mt-3 flex flex-wrap items-end gap-3"
             >
-              On the block
-            </SaleroomPendingSubmit>
-            {nextLot ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-11"
-                disabled={!sessionLive}
-                onClick={() => setAdvanceLotId(nextLot.id)}
+              <input type="hidden" name="saleId" value={saleId} />
+              <input type="hidden" name="lotId" value={advanceLotId} />
+              <div className="flex w-full flex-col gap-1 font-body text-xs text-secondary sm:w-auto">
+                <Label htmlFor={`saleroom-advance-lot-${saleId}`}>Jump to lot</Label>
+                <Select value={advanceLotId} onValueChange={setAdvanceLotId}>
+                  <SelectTrigger
+                    id={`saleroom-advance-lot-${saleId}`}
+                    className="w-full font-body text-sm sm:min-w-[240px]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {advanceableLots.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {formatLotRunListLabel(l)}
+                        {l.id === currentLotId ? " (on block)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <SaleroomPendingSubmit
+                formId={`saleroom-advance-${saleId}`}
+                pendingLabel="Advancing…"
+                variant="outline"
+                className="min-h-11 w-full sm:w-auto"
+                disabled={!sessionLive || advanceableLots.length === 0}
+                aria-disabled={!sessionLive}
               >
-                Select next
-              </Button>
-            ) : null}
-          </form>
+                On the block
+              </SaleroomPendingSubmit>
+              {nextLot ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="min-h-11 w-full sm:w-auto"
+                  disabled={!sessionLive}
+                  onClick={() => setAdvanceLotId(nextLot.id)}
+                >
+                  Select next
+                </Button>
+              ) : null}
+            </form>
+          ) : null}
         </>
       )}
     </ConsolePanel>

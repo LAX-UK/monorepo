@@ -1,5 +1,6 @@
 "use client";
 
+import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import {
   ConsolePanel,
   PanelHeading,
@@ -12,21 +13,26 @@ import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
 import { formatMoney } from "@/lib/ui/format";
 import { Badge } from "@auction/ui/components/badge";
-import { Button } from "@auction/ui/components/button";
 
 type Props = {
   saleId: string;
   currentLotId: string | null;
   rows: AdminTelephoneBookingRow[];
+  panelVariant?: "bordered" | "plain";
 };
 
-export function TelephoneLinesPanel({ saleId, currentLotId, rows }: Props) {
+export function TelephoneLinesPanel({
+  saleId,
+  currentLotId,
+  rows,
+  panelVariant = "bordered",
+}: Props) {
   const active = rows.filter(
     (r) => r.status === "confirmed" || r.status === "in_progress" || r.status === "requested",
   );
 
   return (
-    <ConsolePanel>
+    <ConsolePanel variant={panelVariant}>
       <PanelHeading>Telephone lines</PanelHeading>
       {active.length === 0 ? (
         <p className="mt-2 font-body text-sm text-secondary">No active telephone bookings.</p>
@@ -55,21 +61,34 @@ export function TelephoneLinesPanel({ saleId, currentLotId, rows }: Props) {
               </div>
               {currentLotId ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <form action={adminTelephoneBookingStartLineAction}>
+                  <form id={`tel-start-${row.id}`} action={adminTelephoneBookingStartLineAction}>
                     <input type="hidden" name="saleId" value={saleId} />
                     <input type="hidden" name="bookingId" value={row.id} />
                     <input type="hidden" name="lotId" value={currentLotId} />
-                    <Button type="submit" size="sm" variant="secondary">
+                    <SaleroomPendingSubmit
+                      formId={`tel-start-${row.id}`}
+                      pendingLabel="Starting…"
+                      variant="secondary"
+                      className="min-h-11"
+                    >
                       Start line
-                    </Button>
+                    </SaleroomPendingSubmit>
                   </form>
-                  <form action={adminTelephoneBookingCompleteLineAction}>
+                  <form
+                    id={`tel-complete-${row.id}`}
+                    action={adminTelephoneBookingCompleteLineAction}
+                  >
                     <input type="hidden" name="saleId" value={saleId} />
                     <input type="hidden" name="bookingId" value={row.id} />
                     <input type="hidden" name="lotId" value={currentLotId} />
-                    <Button type="submit" size="sm" variant="outline">
+                    <SaleroomPendingSubmit
+                      formId={`tel-complete-${row.id}`}
+                      pendingLabel="Completing…"
+                      variant="outline"
+                      className="min-h-11"
+                    >
                       Complete line
-                    </Button>
+                    </SaleroomPendingSubmit>
                   </form>
                 </div>
               ) : null}

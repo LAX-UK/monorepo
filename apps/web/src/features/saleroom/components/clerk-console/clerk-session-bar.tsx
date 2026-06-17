@@ -14,7 +14,7 @@ type Props = {
   progress: LotRunProgress;
   leaderLabel?: string | null;
   leaderAmount?: string | null;
-  variant?: "full" | "compact";
+  mode?: "full" | "live";
 };
 
 export function ClerkSessionBar({
@@ -25,45 +25,50 @@ export function ClerkSessionBar({
   progress,
   leaderLabel,
   leaderAmount,
-  variant = "full",
+  mode = "full",
 }: Props) {
   const progressPercent =
     progress.totalLots > 0 ? Math.round((progress.completedLots / progress.totalLots) * 100) : 0;
-  const showLeadingBid = variant === "full" && leaderLabel;
+  const showFullChrome = mode === "full";
+  const showLeadingBid = showFullChrome && Boolean(leaderLabel);
 
   return (
     <div className="space-y-4 rounded-lg border border-outline-variant/25 bg-surface-container-low p-4 shadow-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        {deliveryMode ? <SaleDeliveryModeBadge mode={deliveryMode} /> : null}
-        {session.isSessionLive ? (
-          <span className="rounded-full bg-error/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-error">
-            Live
-          </span>
-        ) : session.status === "paused" ? (
-          <span className="rounded-full bg-warning/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-warning">
-            Paused
-          </span>
-        ) : (
-          <span className="rounded-full bg-surface-container-high px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-secondary capitalize">
-            {session.status}
-          </span>
-        )}
-        {progress.sessionStatusLabel ? (
-          <span className="font-body text-xs text-secondary">{progress.sessionStatusLabel}</span>
-        ) : null}
-      </div>
+      {showFullChrome ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {deliveryMode ? <SaleDeliveryModeBadge mode={deliveryMode} /> : null}
+          {session.isSessionLive ? (
+            <span className="rounded-full bg-error/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-error">
+              Live
+            </span>
+          ) : session.status === "paused" ? (
+            <span className="rounded-full bg-warning/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-warning">
+              Paused
+            </span>
+          ) : (
+            <span className="rounded-full bg-surface-container-high px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-secondary capitalize">
+              {session.status}
+            </span>
+          )}
+          {progress.sessionStatusLabel ? (
+            <span className="font-body text-xs text-secondary">{progress.sessionStatusLabel}</span>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="font-body text-sm text-foreground">
-            <span className="font-medium">{saleTitle}</span>
-            {currentLot && !progress.betweenLots ? (
-              <>
-                {" "}
-                · <span className="font-medium">{formatLotRunListLabel(currentLot)}</span>
-              </>
-            ) : null}
-          </p>
+          {showFullChrome ? (
+            <p className="font-body text-sm text-foreground">
+              <span className="font-medium">{saleTitle}</span>
+              {currentLot && !progress.betweenLots ? (
+                <>
+                  {" "}
+                  · <span className="font-medium">{formatLotRunListLabel(currentLot)}</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
           <div className="space-y-1" aria-live="polite">
             <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
               {progress.progressLabel}
