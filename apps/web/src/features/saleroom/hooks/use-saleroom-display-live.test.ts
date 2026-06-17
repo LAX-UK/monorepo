@@ -8,21 +8,32 @@ import type { SaleroomDisplaySnapshot } from "@auction/types";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+function currentLot(overrides: Partial<NonNullable<SaleroomDisplaySnapshot["currentLot"]>> = {}) {
+  return {
+    id: "lot-1",
+    lotNumber: 1,
+    title: "Lot one",
+    imageUrl: null,
+    currentPrice: "100.00",
+    bidCount: 1,
+    leaderPaddleNumber: 205,
+    estimate: null,
+    minBidIncrement: "10.00",
+    ...overrides,
+  };
+}
+
 function snapshot(overrides: Partial<SaleroomDisplaySnapshot> = {}): SaleroomDisplaySnapshot {
   return {
     saleId: "sale-1",
     saleTitle: "Hybrid Room A",
     sessionStatus: "live",
     currentLotId: "lot-1",
-    currentLot: {
-      id: "lot-1",
-      lotNumber: 1,
-      title: "Lot one",
-      imageUrl: null,
-      currentPrice: "100.00",
-      bidCount: 1,
-      leaderPaddleNumber: 205,
-    },
+    currentLot: currentLot(),
+    nextLot: null,
+    saleProgress: null,
+    saleCoverImageUrl: null,
+    sessionStartedAt: null,
     overlay: null,
     ...overrides,
   };
@@ -199,15 +210,14 @@ describe("useSaleroomDisplayLive", () => {
   it("clears bid feed when lot advances", async () => {
     const lot2Snapshot = snapshot({
       currentLotId: "lot-2",
-      currentLot: {
+      currentLot: currentLot({
         id: "lot-2",
         lotNumber: 2,
         title: "Lot two",
-        imageUrl: null,
         currentPrice: "200.00",
         bidCount: 0,
         leaderPaddleNumber: null,
-      },
+      }),
     });
     let fetchCalls = 0;
     const fetchSnapshot = vi.fn().mockImplementation(async () => {
@@ -316,15 +326,11 @@ describe("useSaleroomDisplayLive", () => {
       .mockResolvedValueOnce({
         ok: true,
         snapshot: snapshot({
-          currentLot: {
-            id: "lot-1",
-            lotNumber: 1,
-            title: "Lot one",
-            imageUrl: null,
+          currentLot: currentLot({
             currentPrice: "175.00",
             bidCount: 3,
             leaderPaddleNumber: 210,
-          },
+          }),
         }),
       });
     const dataClient = createMockDataClient(fetchSnapshot);
@@ -448,15 +454,11 @@ describe("useSaleroomDisplayLive", () => {
     });
 
     it("does not revert realtime price when merge-hydrate returns stale snapshot", async () => {
-      const staleLot = {
-        id: "lot-1",
-        lotNumber: 1,
-        title: "Lot one",
-        imageUrl: null,
+      const staleLot = currentLot({
         currentPrice: "100.00",
         bidCount: 1,
         leaderPaddleNumber: 205,
-      };
+      });
       let mergeHydrateEnabled = false;
       const fetchSnapshot = vi.fn().mockImplementation(async () => {
         if (mergeHydrateEnabled) {
@@ -491,15 +493,9 @@ describe("useSaleroomDisplayLive", () => {
     });
 
     it("merges leaderPaddleNumber from snapshot on per-bid hydrate", async () => {
-      const mergedLot = {
-        id: "lot-1",
-        lotNumber: 1,
-        title: "Lot one",
-        imageUrl: null,
-        currentPrice: "100.00",
-        bidCount: 1,
+      const mergedLot = currentLot({
         leaderPaddleNumber: 210,
-      };
+      });
       let mergeHydrateEnabled = false;
       const fetchSnapshot = vi.fn().mockImplementation(async () => {
         if (mergeHydrateEnabled) {
@@ -591,5 +587,36 @@ describe("useSaleroomDisplayLive", () => {
     });
 
     expect(result.current.snapshot?.currentLot?.currentPrice).toBe("200.00");
+  });
+
+  it("captures lastHammer on sold flash", async () => {
+    const dataClient = createMockDataClient();
+    const adapter = createMockSaleroomSocketAdapter();
+
+    const { result } = renderHook(() =>
+      useSaleroomDisplayLive({
+        saleId: "sale-1",
+        displayToken: "token-1",
+        dataClient,
+        socketAdapter: adapter,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.snapshot).not.toBeNull());
+
+    act(() => {
+      adapter.emit({
+        kind: "hammer",
+        saleId: "sale-1",
+        emittedAt: "2026-06-17T10:00:00.000Z",
+        lotId: "lot-1",
+      });
+    });
+
+    expect(result.current.flash).toBe("sold");
+    expect(result.current.lastHammer).toEqual({
+      price: "100.00",
+      paddleLabel: "Paddle 205",
+    });
   });
 });
