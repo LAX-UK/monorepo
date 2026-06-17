@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { bulkBarBottomOffset } from "@/lib/layout/bottom-chrome";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
@@ -57,8 +57,9 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
                     {row.lot.title}
                   </Link>
                   <p className="mt-1 text-xs text-on-surface-variant">
-                    Hammer {formatMoney(row.hammer.toFixed(2))} · Premium {row.premiumPercentLabel}{" "}
-                    ({formatMoney(row.premium.toFixed(2))})
+                    Hammer {formatMoney(row.hammer.toFixed(2), PLATFORM_DEFAULT_CURRENCY)} · Premium{" "}
+                    {row.premiumPercentLabel} (
+                    {formatMoney(row.premium.toFixed(2), PLATFORM_DEFAULT_CURRENCY)})
                   </p>
                 </div>
                 <div className="flex items-center justify-between gap-3 lg:justify-end">
@@ -67,7 +68,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
                       Lot total
                     </p>
                     <p className="font-headline text-base tabular-nums text-on-surface">
-                      {formatMoney(row.total.toFixed(2))}
+                      {formatMoney(row.total.toFixed(2), PLATFORM_DEFAULT_CURRENCY)}
                     </p>
                   </div>
                   <Button variant="secondaryOutline" asChild className="shrink-0">
@@ -99,7 +100,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
             Combined total
           </p>
           <p className="font-headline text-lg tabular-nums text-on-surface">
-            {formatMoney(grandTotal.toFixed(2))}
+            {formatMoney(grandTotal.toFixed(2), PLATFORM_DEFAULT_CURRENCY)}
           </p>
         </div>
       </div>

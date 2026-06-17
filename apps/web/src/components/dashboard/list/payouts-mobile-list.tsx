@@ -7,17 +7,9 @@ import {
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { getPayoutStatusView } from "@/lib/presenters/payment-status";
+import { formatMoney } from "@/lib/ui/format";
 import type { Payout } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
-
-function formatMoney(amount: string, currency: string): string {
-  const value = Number.parseFloat(amount);
-  if (Number.isNaN(value)) return `${amount} ${currency}`;
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency,
-  }).format(value);
-}
 
 type PayoutRowProps = {
   payout: Payout;

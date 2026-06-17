@@ -9,7 +9,7 @@ import {
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -47,7 +47,9 @@ export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
             <li key={row.bid.id}>
               <Surface variant="card" padding="md">
                 <p className="text-sm text-on-surface-variant">Removed lot</p>
-                <p className="mt-1 text-sm tabular-nums">{formatMoney(row.bid.amount)}</p>
+                <p className="mt-1 text-sm tabular-nums">
+                  {formatMoney(row.bid.amount, PLATFORM_DEFAULT_CURRENCY)}
+                </p>
               </Surface>
             </li>
           );
@@ -90,7 +92,7 @@ export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
                         : "text-sm font-semibold tabular-nums text-on-surface"
                     }
                   >
-                    {formatMoney(row.bid.amount)}
+                    {formatMoney(row.bid.amount, resolveLotCurrency(lot))}
                   </span>
                 </>
               }

@@ -29,6 +29,7 @@ import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.
 import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { formatMoney } from "@/lib/ui/format";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Payout } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
@@ -36,15 +37,6 @@ import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { WalletCards } from "lucide-react";
 import Link from "next/link";
-
-function formatMoney(amount: string, currency: string): string {
-  const value = Number.parseFloat(amount);
-  if (Number.isNaN(value)) return `${amount} ${currency}`;
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency,
-  }).format(value);
-}
 
 export default async function SellerPayoutsPage() {
   const user = await requireAuthenticatedUser({

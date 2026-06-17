@@ -3,7 +3,7 @@ import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard
 import { lotStatusLabel } from "@/lib/admin/status-badge-variants";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -73,7 +73,7 @@ export function WatchlistPreviewCard({
                         {lot.title}
                       </span>
                       <span className="mt-1 block font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        Est. {formatMoney(lot.currentPrice)}
+                        Est. {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
                       </span>
                     </span>
                     <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
@@ -106,7 +106,7 @@ export function WatchlistPreviewCard({
                         {lot.title}
                       </span>
                       <span className="mt-1 block font-label text-xs uppercase tracking-wider text-secondary">
-                        Est. {formatMoney(lot.currentPrice)}
+                        Est. {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
                       </span>
                     </span>
                     <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>

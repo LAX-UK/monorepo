@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import {
   cancelTelephoneBooking,
   fetchTelephoneBookingDetail,
@@ -153,7 +154,9 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
               Authorized max
             </dt>
             <dd className="mt-1 text-on-surface">
-              {booking.authorizedMax ? formatMoney(booking.authorizedMax) : "Not set"}
+              {booking.authorizedMax
+                ? formatMoney(booking.authorizedMax, PLATFORM_DEFAULT_CURRENCY)
+                : "Not set"}
             </dd>
           </div>
           {booking.limitIncreaseRequestedAt ? (
@@ -163,7 +166,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
               </dt>
               <dd className="mt-1 text-on-surface">
                 {booking.limitIncreaseAmount
-                  ? formatMoney(booking.limitIncreaseAmount)
+                  ? formatMoney(booking.limitIncreaseAmount, PLATFORM_DEFAULT_CURRENCY)
                   : "Awaiting staff approval"}
               </dd>
             </div>
@@ -193,7 +196,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
               <li key={bid.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                 <div>
                   <p className="font-body text-sm text-on-surface tabular-nums">
-                    {formatMoney(bid.amount)}
+                    {formatMoney(bid.amount, PLATFORM_DEFAULT_CURRENCY)}
                   </p>
                   <p className="font-body text-xs text-on-surface-variant">
                     {formatDateTime(bid.createdAt)}

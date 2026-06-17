@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReviewStepProps } from "@/components/dashboard/submission-wizard/step-props";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { type WIZARD_STEPS, wizardStepIndex } from "@/lib/forms/submission/step-validation";
 import {
   SUBMISSION_AFTER_SUBMIT_HINTS,
@@ -84,8 +85,8 @@ export function ReviewStep({
       stepId: "pricing",
       title: "Pricing & notes",
       body: [
-        v.askingPrice ? `Asking £${v.askingPrice}` : null,
-        v.reservePrice ? `Reserve £${v.reservePrice}` : null,
+        v.askingPrice ? `Asking ${formatMoney(v.askingPrice, PLATFORM_DEFAULT_CURRENCY)}` : null,
+        v.reservePrice ? `Reserve ${formatMoney(v.reservePrice, PLATFORM_DEFAULT_CURRENCY)}` : null,
         v.conditionSelfReport ? "Condition noted" : null,
       ]
         .filter(Boolean)

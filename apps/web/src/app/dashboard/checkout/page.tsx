@@ -10,7 +10,7 @@ import { CheckoutBasketPanel } from "@/components/sections/checkout/checkout-bas
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -193,7 +193,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
               {
                 id: "total",
                 label: "Combined total",
-                value: formatMoney(grandTotal.toFixed(2)),
+                value: formatMoney(grandTotal.toFixed(2), PLATFORM_DEFAULT_CURRENCY),
                 semanticTone: "emphasis",
                 icon: <ShoppingBag className="size-5" aria-hidden />,
               },
