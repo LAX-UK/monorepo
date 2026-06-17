@@ -3,16 +3,15 @@ import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { SaleroomClerkConsole } from "@/components/admin/saleroom-clerk-console";
 import { SaleroomSaleSwitcher } from "@/features/saleroom/components/clerk-console/saleroom-sale-switcher";
 import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
-import { saleroomHubController } from "@/lib/admin/saleroom-hub-controller";
 import {
   type AdminSaleroomSessionSnapshot,
   getAdminSaleById,
   getAdminSalePaddleRoster,
   getAdminSaleroomSession,
-  getAdminSaleroomSessions,
   getAdminTelephoneBookings,
 } from "@/lib/data/http/admin.server";
 import type { SaleDeliveryMode } from "@auction/types";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -20,44 +19,40 @@ type Props = {
   searchParams: Promise<{ error?: string; checkedIn?: string }>;
 };
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { saleId } = await params;
+  const saleRow = await getAdminSaleById(saleId);
+  if (!saleRow) {
+    return { title: "Saleroom clerk" };
+  }
+  return {
+    title: `${saleRow.sale.title ?? "Sale"} · Saleroom clerk`,
+  };
+}
+
 export default async function AdminSaleroomSalePage({ params, searchParams }: Props) {
   const { saleId } = await params;
-  const { error, checkedIn } = await searchParams;
+  const { error: actionError, checkedIn } = await searchParams;
   let saleroomLoadError: string | null = null;
+  const loadWarnings: string[] = [];
 
-  const [saleRow, saleroomResult, telephoneBookings, paddleRoster, hubRows] = await Promise.all([
+  const [saleRow, saleroomResult, telephoneBookings, paddleRoster] = await Promise.all([
     getAdminSaleById(saleId),
     getAdminSaleroomSession(saleId).catch((e): AdminSaleroomSessionSnapshot => {
       saleroomLoadError = e instanceof Error ? e.message : "Could not load the saleroom session.";
       return { session: null, events: [] };
     }),
-    getAdminTelephoneBookings(saleId).catch(() => []),
-    getAdminSalePaddleRoster(saleId).catch(() => []),
-    saleroomHubController
-      .fetch()
-      .catch(() => ({ rows: [], summary: { liveCount: 0, scheduledCount: 0, availableCount: 0 } })),
+    getAdminTelephoneBookings(saleId).catch(() => {
+      loadWarnings.push("Telephone bookings could not be loaded.");
+      return [];
+    }),
+    getAdminSalePaddleRoster(saleId).catch(() => {
+      loadWarnings.push("Paddle roster could not be loaded.");
+      return [];
+    }),
   ]);
   if (!saleRow) notFound();
   const saleroom = saleroomResult;
-
-  const sessionStatuses = await getAdminSaleroomSessions(hubRows.rows.map((row) => row.sale.id))
-    .then((sessions) =>
-      hubRows.rows.map((row) => {
-        const match = sessions.find((session) => session.saleId === row.sale.id);
-        return {
-          id: row.sale.id,
-          title: row.sale.title ?? "Sale",
-          sessionStatus: match?.status ?? ("none" as const),
-        };
-      }),
-    )
-    .catch(() =>
-      hubRows.rows.map((row) => ({
-        id: row.sale.id,
-        title: row.sale.title ?? "Sale",
-        sessionStatus: "none" as const,
-      })),
-    );
 
   const sessionStatus = saleroom.session?.status ?? "none";
 
@@ -76,7 +71,10 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
             <SaleDeliveryModeBadge mode={saleRow.sale.deliveryMode as SaleDeliveryMode} />
             <AdminStatusBadge domain="saleroomSession" status={sessionStatus} size="sm" />
           </div>
-          <SaleroomSaleSwitcher currentSaleId={saleId} options={sessionStatuses} />
+          <SaleroomSaleSwitcher
+            currentSaleId={saleId}
+            currentSaleTitle={saleRow.sale.title ?? "Sale"}
+          />
         </div>
       }
     >
@@ -89,7 +87,9 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         lots={saleRow.lots}
         telephoneBookings={telephoneBookings}
         paddleRoster={paddleRoster}
-        error={error ?? saleroomLoadError}
+        actionError={actionError ?? null}
+        error={saleroomLoadError}
+        loadWarnings={loadWarnings}
         registrationsHref={`/admin/sales/${saleId}/registrations#check-in`}
         paddleRosterEmpty={paddleRoster.length === 0}
         checkedInRefresh={checkedIn === "1"}
