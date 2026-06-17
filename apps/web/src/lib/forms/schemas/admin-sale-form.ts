@@ -44,6 +44,8 @@ export const adminSaleFormValuesSchema = z
     coverImages: z.array(mediaReferenceSchema).max(20),
     categoryId: z.string(),
     deliveryMode: z.enum(saleDeliveryModes),
+    /** UI-only: true = gated (allowOnlineBidsBeforeGoLive false). Hybrid sales only. */
+    requireSaleroomGoLiveBeforeOnlineBids: z.boolean(),
     streamUrl: z.string().max(500),
     locationName: z.string().max(500),
     locationAddress: z.string().max(500),
@@ -223,6 +225,9 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
     coverImages: values.coverImages.length > 0 ? values.coverImages : undefined,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
+    ...(values.deliveryMode === "hybrid"
+      ? { allowOnlineBidsBeforeGoLive: !values.requireSaleroomGoLiveBeforeOnlineBids }
+      : {}),
     streamUrl: isSaleroom ? values.streamUrl.trim() || undefined : undefined,
     venueId: isSaleroom ? values.venueId.trim() || undefined : undefined,
     ...pickLocationCreate(values, isSaleroom),
@@ -259,6 +264,9 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
     coverImages: values.coverImages,
     categoryId: parseCategoryId(values.categoryId),
     deliveryMode: values.deliveryMode,
+    ...(values.deliveryMode === "hybrid"
+      ? { allowOnlineBidsBeforeGoLive: !values.requireSaleroomGoLiveBeforeOnlineBids }
+      : {}),
     streamUrl: isSaleroom ? (streamRaw === "" ? null : streamRaw) : null,
     venueId: isSaleroom ? values.venueId.trim() || null : null,
     ...pickLocationUpdate(values, isSaleroom),

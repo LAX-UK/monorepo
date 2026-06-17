@@ -18,6 +18,11 @@ export type Sale = {
   /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string | null;
   deliveryMode: SaleDeliveryMode;
+  /**
+   * Hybrid only: when true, online web bids are allowed before clerk Go Live.
+   * Default false = gated behind saleroom session + on-block lot.
+   */
+  allowOnlineBidsBeforeGoLive: boolean;
   streamUrl: string | null;
   /** Onsite venue name (free-form). */
   locationName: string | null;
@@ -101,6 +106,7 @@ export type CreateSaleInput = {
   /** @deprecated Prefer categoryIds. Accepted during the migration window. */
   categoryId?: string | undefined;
   deliveryMode?: SaleDeliveryMode | undefined;
+  allowOnlineBidsBeforeGoLive?: boolean | undefined;
   streamUrl?: string | null | undefined;
   locationName?: string | null | undefined;
   locationAddress?: string | null | undefined;

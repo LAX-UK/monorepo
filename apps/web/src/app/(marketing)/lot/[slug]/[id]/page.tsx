@@ -319,7 +319,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   });
 
   const saleLifecyclePick = saleBundle?.sale
-    ? { status: saleBundle.sale.status, deliveryMode: saleBundle.sale.deliveryMode }
+    ? {
+        status: saleBundle.sale.status,
+        deliveryMode: saleBundle.sale.deliveryMode,
+        allowOnlineBidsBeforeGoLive: saleBundle.sale.allowOnlineBidsBeforeGoLive,
+      }
     : null;
 
   const lifecycleLotPick = {

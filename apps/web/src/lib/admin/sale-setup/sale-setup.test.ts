@@ -27,6 +27,7 @@ function draftSale(overrides: Partial<Sale> = {}): Sale {
     description: null,
     status: "draft",
     deliveryMode: "online",
+    allowOnlineBidsBeforeGoLive: false,
     startTime: start,
     endTime: end,
     previewStartTime: null,
@@ -320,6 +321,7 @@ describe("buildSaleSetupReadiness", () => {
       saleId,
       sale: draftSale({
         deliveryMode: "onsite",
+        allowOnlineBidsBeforeGoLive: false,
         venueId: "venue-1",
         locationName: null,
         locationAddressLine1: null,
@@ -335,6 +337,7 @@ describe("buildSaleSetupReadiness", () => {
       saleId,
       sale: draftSale({
         deliveryMode: "onsite",
+        allowOnlineBidsBeforeGoLive: false,
         locationName: null,
         locationAddressLine1: null,
       }),

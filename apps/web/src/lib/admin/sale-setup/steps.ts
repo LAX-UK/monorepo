@@ -80,6 +80,7 @@ export const SALE_SETUP_SALE_STEP_FIELDS = {
   identity: ["title", "description", "coverImages", "categoryId"],
   schedule: [
     "deliveryMode",
+    "requireSaleroomGoLiveBeforeOnlineBids",
     "startTime",
     "endTime",
     "previewStartTime",

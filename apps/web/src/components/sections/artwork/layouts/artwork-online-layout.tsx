@@ -27,7 +27,9 @@ import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
-type SalePick = Pick<Sale, "status" | "deliveryMode"> | null;
+type SalePick =
+  | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
+  | null;
 
 type Props = {
   auction: Lot;

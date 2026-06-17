@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   jsonb,
@@ -44,6 +45,13 @@ export const sale = pgTable(
     description: text("description"),
     coverImages: text("cover_images").array().notNull().default([]),
     deliveryMode: saleDeliveryModeEnum("delivery_mode").notNull().default("onsite"),
+    /**
+     * When false (default), hybrid online bids require clerk Go Live + lot on block.
+     * When true, online bids follow the catalog window before Go Live (legacy open mode).
+     */
+    allowOnlineBidsBeforeGoLive: boolean("allow_online_bids_before_go_live")
+      .notNull()
+      .default(false),
     streamUrl: text("stream_url"),
     locationName: text("location_name"),
     locationAddress: text("location_address"),
