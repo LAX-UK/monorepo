@@ -31,6 +31,7 @@ export default async function AdminSaleRegistrationsPage({ params, searchParams 
       rows={registrationsResult.rows}
       fetchError={registrationsResult.error}
       actionError={sp.error ? safeDecodeAdminErrorParam(sp.error) : null}
+      saleCurrency={bundle.lots[0]?.marketingDetails?.estimate?.currency ?? "GBP"}
     />
   );
 }

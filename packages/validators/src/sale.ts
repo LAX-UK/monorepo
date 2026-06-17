@@ -349,7 +349,8 @@ export type AdminUpdateSaleRegistrationBidLimitBody = z.infer<
 
 /** Staff in-room check-in: approved registration + optional paddle assignment. */
 export const adminSaleroomCheckInBodySchema = z.object({
-  userId: z.string().uuid(),
+  /** Better Auth user ids are opaque strings (not always UUID). */
+  userId: z.string().min(1).max(191),
   buyerLegalEntityId: z.string().uuid(),
   bidLimit: z.coerce.number().finite().positive().max(1e12).optional(),
   paddleNumber: z.coerce.number().int().min(PADDLE_NUMBER_MIN).optional(),
