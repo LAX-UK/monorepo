@@ -240,6 +240,7 @@ locals {
         { key = "XERO_DEFAULT_REVENUE_ACCOUNT_CODE", value = var.xero_default_revenue_account_code, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_DEFAULT_TAX_TYPE", value = var.xero_default_tax_type, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_INVOICE_DUE_DAYS", value = var.xero_invoice_due_days, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "XERO_INVOICE_BLOCKING", value = var.xero_invoice_blocking, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_POST_CONNECT_WEB_REDIRECT", value = var.xero_post_connect_web_redirect, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_USE_LEGAL_ENTITY_CONTACT", value = var.xero_use_legal_entity_contact, type = "GENERAL", scope = "RUN_TIME" },
         { key = "XERO_PAYOUT_BILL_ACCOUNT_CODE", value = var.xero_payout_bill_account_code, type = "GENERAL", scope = "RUN_TIME" },

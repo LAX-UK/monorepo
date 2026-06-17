@@ -8,7 +8,7 @@ import {
   createCheckoutPaymentAction,
 } from "@/lib/actions/checkout";
 import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
-import { trackBeginCheckout, trackPurchase } from "@/lib/analytics/events";
+import { trackBeginCheckout } from "@/lib/analytics/events";
 import {
   checkoutPaymentErrorMessage,
   manualReviewReasonCopy,
@@ -275,10 +275,17 @@ export function CheckoutPurchasePanel({
     checkoutAddresses.some((address) => address.id === addressId);
 
   useEffect(() => {
-    if (totalMinor != null && totalMinor > 0 && !paymentComplete) {
+    // Don't fire begin_checkout when there's nothing left to start: payment already
+    // complete, or a bank transfer is in flight (authorized) awaiting confirmation.
+    if (
+      totalMinor != null &&
+      totalMinor > 0 &&
+      !paymentComplete &&
+      openPaymentStatus !== "authorized"
+    ) {
       trackBeginCheckout({ lotId, valueMinor: totalMinor, currency });
     }
-  }, [lotId, totalMinor, currency, paymentComplete]);
+  }, [lotId, totalMinor, currency, paymentComplete, openPaymentStatus]);
 
   useEffect(() => {
     if (!redirectingToStripe) return;
@@ -376,14 +383,8 @@ export function CheckoutPurchasePanel({
 
   const handlePaymentResult = (data: CheckoutPaymentActionData) => {
     if (data.checkoutUrl) {
-      if (totalMinor != null && totalMinor > 0) {
-        trackPurchase({
-          lotId,
-          valueMinor: totalMinor,
-          currency,
-          transactionId: data.paymentId,
-        });
-      }
+      // Purchase conversion is recorded server-side when Stripe capture succeeds
+      // (payment-capture.service → marketing events). Do not fire GA4 purchase on redirect.
       setPendingCheckoutUrl(data.checkoutUrl);
       setRedirectFailed(false);
       setRedirectingToStripe(true);
