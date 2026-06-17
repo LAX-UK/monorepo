@@ -1,3 +1,4 @@
+import { BidPlacementBadge } from "@/components/dashboard/bid-placement-badge";
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
@@ -18,7 +19,7 @@ function bidHintBadge(hint: "high" | "outbid" | "none") {
 }
 
 export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
-  const activeBidLots = vm.activeLots.filter((lot) => vm.activeLotBidHints[lot.id] !== "none");
+  const activeBidLots = vm.activeBidLots;
 
   return (
     <Surface variant="section" padding="md" className="space-y-4 border-border-hairline">
@@ -52,8 +53,8 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
           />
         ) : (
           <ul className="divide-y divide-outline-variant/10">
-            {activeBidLots.slice(0, 5).map((lot) => {
-              const hint = vm.activeLotBidHints[lot.id] ?? "none";
+            {activeBidLots.slice(0, 5).map((entry) => {
+              const { lot, bid, hint } = entry;
               return (
                 <li key={lot.id}>
                   <Link
@@ -77,13 +78,17 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                         </span>
                         <span className="mt-1 flex flex-wrap items-center gap-2">
                           <span
-                            key={lot.currentPrice}
+                            key={hint === "high" ? bid.amount : lot.currentPrice}
                             className="tick-value font-label text-xs uppercase tracking-wider text-secondary"
                           >
                             {hint === "high" ? "My bid" : "Current"}{" "}
-                            {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
+                            {formatMoney(
+                              hint === "high" ? bid.amount : lot.currentPrice,
+                              resolveLotCurrency(lot),
+                            )}
                           </span>
                           {bidHintBadge(hint)}
+                          <BidPlacementBadge bid={bid} />
                         </span>
                       </span>
                     </span>

@@ -33,6 +33,7 @@ const sampleActive: BidBoardRow[] = [
     statusClassName: "text-primary",
     outbid: false,
     timeLeft: "1h 0m",
+    placement: { onBehalf: false, channelLabel: null },
   },
 ];
 

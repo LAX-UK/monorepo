@@ -1,3 +1,4 @@
+import { type BidPlacement, getBidPlacement } from "@/lib/bid/bid-placement-presenter";
 import type { Bid, Lot } from "@auction/types";
 
 export const bidTabs = ["active", "won", "lost"] as const;
@@ -15,7 +16,12 @@ export type BidBoardRow = {
   statusClassName: string;
   outbid: boolean;
   timeLeft: string;
+  placement: BidPlacement;
 };
+
+function boardRowPlacement(bid: Bid): BidPlacement {
+  return getBidPlacement(bid);
+}
 
 export function formatRemaining(endMs: number, now: number): string {
   const ms = endMs - now;
@@ -47,6 +53,7 @@ export function buildBidBoardRows(
         statusClassName: "text-secondary",
         outbid: false,
         timeLeft: "—",
+        placement: boardRowPlacement(row.bid),
       });
       continue;
     }
@@ -61,6 +68,7 @@ export function buildBidBoardRows(
           statusClassName: "text-primary",
           outbid: false,
           timeLeft: "—",
+          placement: boardRowPlacement(row.bid),
         });
       } else {
         lost.push({
@@ -70,6 +78,7 @@ export function buildBidBoardRows(
           statusClassName: "text-secondary",
           outbid: false,
           timeLeft: "—",
+          placement: boardRowPlacement(row.bid),
         });
       }
       continue;
@@ -89,6 +98,7 @@ export function buildBidBoardRows(
         statusClassName,
         outbid: !winning,
         timeLeft,
+        placement: boardRowPlacement(row.bid),
       });
       continue;
     }
@@ -100,6 +110,7 @@ export function buildBidBoardRows(
       statusClassName: "text-secondary",
       outbid: false,
       timeLeft: "—",
+      placement: boardRowPlacement(row.bid),
     });
   }
 
