@@ -7,7 +7,7 @@ import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { MediaImage } from "@/components/ui/media-image";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotCardTimingToTimerInputs } from "@/lib/lot/to-lot-timer-inputs";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -125,7 +125,7 @@ export function CatalogLotGridView({
             meta={
               <>
                 <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary md:mt-2 md:text-xs">
-                  {formatMoney(a.currentPrice)}
+                  {formatMoney(a.currentPrice, resolveLotCurrency(a))}
                 </p>
                 <p className="mt-0.5 hidden min-h-4 font-label text-[length:var(--text-label-2)] uppercase tracking-wider text-on-surface-variant md:mt-1 md:block">
                   {est ? `Est. ${est}` : "\u00a0"}
@@ -261,7 +261,7 @@ export function CatalogLotListView({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-label text-[length:var(--text-label-1)] uppercase tracking-wider text-secondary">
-                        {formatMoney(a.currentPrice)}
+                        {formatMoney(a.currentPrice, resolveLotCurrency(a))}
                       </p>
                       {est ? (
                         <p className="mt-0.5 font-label text-[length:var(--text-label-2)] uppercase tracking-wider text-on-surface-variant">

@@ -1,3 +1,4 @@
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import type { SaleDeliveryMode } from "@auction/types";
 
@@ -272,17 +273,15 @@ export function calendarMonthLabel(month: number): string {
   return MONTH_LABELS[month - 1] ?? String(month);
 }
 
-const CALENDAR_PRICE_LOCALE = "en-GB";
-
 export function calendarPriceRangeLabel(state: CalendarSalesUrlState): string | null {
   if (state.minPrice != null && state.maxPrice != null) {
-    return `£${state.minPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}–£${state.maxPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}`;
+    return `${formatMoney(state.minPrice, PLATFORM_DEFAULT_CURRENCY)}–${formatMoney(state.maxPrice, PLATFORM_DEFAULT_CURRENCY)}`;
   }
   if (state.minPrice != null) {
-    return `From £${state.minPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}`;
+    return `From ${formatMoney(state.minPrice, PLATFORM_DEFAULT_CURRENCY)}`;
   }
   if (state.maxPrice != null) {
-    return `Up to £${state.maxPrice.toLocaleString(CALENDAR_PRICE_LOCALE)}`;
+    return `Up to ${formatMoney(state.maxPrice, PLATFORM_DEFAULT_CURRENCY)}`;
   }
   return null;
 }

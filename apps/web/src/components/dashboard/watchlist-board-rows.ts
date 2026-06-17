@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/format-currency";
+import { formatEstimateRange, formatMoney } from "@/lib/format-currency";
 import type { LotCardTimingVM } from "@auction/types";
 
 export type WatchlistBoardRow = {
@@ -17,5 +17,5 @@ export function estimateLabel(row: {
   fallback: string;
 }): string {
   if (!row.estimate) return formatMoney(row.fallback);
-  return `${row.estimate.currency} ${row.estimate.low} – ${row.estimate.high}`;
+  return formatEstimateRange(row.estimate);
 }

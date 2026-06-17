@@ -14,6 +14,7 @@ import type {
   AdminPaddleRosterEntry,
   AdminTelephoneBookingRow,
 } from "@/lib/data/http/admin.server";
+import { PLATFORM_DEFAULT_CURRENCY, resolveLotCurrency } from "@/lib/money/currency";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import { formatMoney } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
@@ -47,8 +48,8 @@ type Props = {
 
 const INCREMENT_MULTIPLIERS = [1, 2, 5] as const;
 
-function incrementChipLabel(index: number, amount: number): string {
-  const formatted = formatMoney(amount.toFixed(2));
+function incrementChipLabel(index: number, amount: number, currency: string): string {
+  const formatted = formatMoney(amount.toFixed(2), currency);
   if (index === 0) return `Min bid (${formatted})`;
   const multiplier = INCREMENT_MULTIPLIERS[index] ?? index + 1;
   return `+${multiplier} inc (${formatted})`;
@@ -70,6 +71,7 @@ export function LotOnBlockPanel({
 }: Props) {
   const paddleInputRef = useRef<HTMLInputElement>(null);
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
+  const lotCurrency = currentLot ? resolveLotCurrency(currentLot) : PLATFORM_DEFAULT_CURRENCY;
 
   const bidEntry = useClerkBidEntry<AdminPaddleRosterEntry>({
     saleId,
@@ -141,11 +143,11 @@ export function LotOnBlockPanel({
       <div>
         <PanelHeading>Lot on block</PanelHeading>
         <p className="mt-2 font-headline text-2xl tabular-nums text-foreground transition-all duration-200">
-          {formatMoney(liveBid.currentPrice)}
+          {formatMoney(liveBid.currentPrice, lotCurrency)}
         </p>
         <p className="font-body text-sm text-foreground">{formatLotRunListLabel(currentLot)}</p>
         <p className="font-body text-xs text-secondary tabular-nums">
-          Min next {formatMoney(bidEntry.incrementOptions[0]?.toFixed(2) ?? "0.00")}
+          Min next {formatMoney(bidEntry.incrementOptions[0]?.toFixed(2) ?? "0.00", lotCurrency)}
           {liveBid.bidCount != null ? (
             <span className="ml-2">
               · {liveBid.bidCount} bid{liveBid.bidCount === 1 ? "" : "s"}
@@ -157,7 +159,7 @@ export function LotOnBlockPanel({
             Leading: <span className="font-medium">{liveBid.leaderLabel}</span>
             {liveBid.leaderAmount ? (
               <span className="ml-2 tabular-nums text-secondary">
-                at {formatMoney(liveBid.leaderAmount)}
+                at {formatMoney(liveBid.leaderAmount, lotCurrency)}
               </span>
             ) : null}
           </p>
@@ -232,7 +234,7 @@ export function LotOnBlockPanel({
               className="min-h-11 tabular-nums"
               onClick={() => bidEntry.applyIncrement(amount, "paddle")}
             >
-              {incrementChipLabel(index, amount)}
+              {incrementChipLabel(index, amount, lotCurrency)}
             </Button>
           ))}
         </div>
@@ -247,7 +249,7 @@ export function LotOnBlockPanel({
         ) : null}
         {bidEntry.registeredPaddle?.bidLimit ? (
           <p className="font-body text-xs text-secondary">
-            Authorised limit: {formatMoney(bidEntry.registeredPaddle.bidLimit)}
+            Authorised limit: {formatMoney(bidEntry.registeredPaddle.bidLimit, lotCurrency)}
           </p>
         ) : null}
       </div>
@@ -307,7 +309,7 @@ export function LotOnBlockPanel({
                 className="min-h-11 tabular-nums"
                 onClick={() => bidEntry.applyIncrement(amount, "telephone")}
               >
-                {incrementChipLabel(index, amount)}
+                {incrementChipLabel(index, amount, lotCurrency)}
               </Button>
             ))}
           </div>

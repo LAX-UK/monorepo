@@ -14,7 +14,7 @@ import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-e
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerBuyerComplianceGate } from "@/lib/data/http/payments.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -85,11 +85,13 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
   const totalsVm = checkoutPricing ? buildCheckoutTotalsVm(checkoutPricing) : null;
 
   const img = auction.images[0];
-  const hammerLabel = totalsVm ? formatMoney(totalsVm.hammer.toFixed(2)) : "";
+  const hammerLabel = totalsVm
+    ? formatMoney(totalsVm.hammer.toFixed(2), PLATFORM_DEFAULT_CURRENCY)
+    : "";
   const premium = totalsVm?.premium ?? 0;
   const total = totalsVm?.total ?? 0;
   const premiumPercentLabel = totalsVm?.premiumPercentLabel ?? "";
-  const totalLabel = formatMoney(total.toFixed(2));
+  const totalLabel = formatMoney(total.toFixed(2), PLATFORM_DEFAULT_CURRENCY);
 
   return (
     <DashboardPage className="mx-auto max-w-[var(--container-inner,1376px)] space-y-0">
@@ -160,7 +162,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                       lotId={auction.id}
                       lotTitle={auction.title}
                       hammer={hammerLabel}
-                      buyerPremium={formatMoney(premium.toFixed(2))}
+                      buyerPremium={formatMoney(premium.toFixed(2), PLATFORM_DEFAULT_CURRENCY)}
                       total={totalLabel}
                       totalMinor={Math.round(total * 100)}
                       premiumPercentLabel={premiumPercentLabel}

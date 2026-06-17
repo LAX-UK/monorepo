@@ -29,6 +29,7 @@ import {
 } from "@/lib/admin/compute-lot-detail-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import type { AdminDomainEventRow, AdminLotLifecyclePayload } from "@/lib/data/http/admin.server";
+import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath } from "@/lib/seo/url";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { Badge } from "@auction/ui";
@@ -294,7 +295,11 @@ export function LotDetailShell({
                   label: "Ends",
                   value: formatDateTime(auction.endTime),
                 },
-                { id: "hammer", label: "Hammer", value: formatMoney(auction.currentPrice) },
+                {
+                  id: "hammer",
+                  label: "Hammer",
+                  value: formatMoney(auction.currentPrice, resolveLotCurrency(auction)),
+                },
               ]}
             />
           </>

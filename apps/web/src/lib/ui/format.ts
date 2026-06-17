@@ -3,7 +3,9 @@
  * Prefer these over raw `Intl` / `toLocaleString` in admin code.
  */
 
-const DEFAULT_MONEY_LOCALE = "en-US";
+import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
+
+const DEFAULT_MONEY_LOCALE = "en-GB";
 const DEFAULT_DATE_LOCALE = "en-GB";
 
 const moneyFormatters = new Map<string, Intl.NumberFormat>();
@@ -39,15 +41,26 @@ function toDate(value: Date | string | number | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Format currency for display (defaults USD). */
+/** Format currency for display (defaults platform GBP). */
 export function formatMoney(
   amount: string | number,
-  currency = "USD",
+  currency = PLATFORM_DEFAULT_CURRENCY,
   locale = DEFAULT_MONEY_LOCALE,
 ): string {
+  if (amount === "undefined" || amount === "null") return "—";
   const n = typeof amount === "string" ? Number.parseFloat(amount) : amount;
-  if (Number.isNaN(n)) return String(amount);
-  return moneyFormatter(currency, locale).format(n);
+  if (Number.isNaN(n)) {
+    if (typeof amount === "string" && amount.trim() !== "" && !/^-?\d/.test(amount.trim())) {
+      return amount;
+    }
+    return "—";
+  }
+  return moneyFormatter(normalizeCurrencyCode(currency), locale).format(n);
+}
+
+function normalizeCurrencyCode(raw: string): string {
+  const code = raw.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : PLATFORM_DEFAULT_CURRENCY;
 }
 
 /** Short date, e.g. 19 May 2026 */

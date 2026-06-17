@@ -21,7 +21,7 @@ import {
   hasBidsActiveFilters,
   parseBidsParams,
 } from "@/lib/dashboard/filters/bids/bids-filters";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
@@ -116,11 +116,15 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
       id: "yourBid",
       header: "My bid",
       accessorFn: (r) => r.bid.amount,
-      cell: ({ row }) => (
-        <span className={row.original.outbid ? "line-through tabular-nums" : "tabular-nums"}>
-          {formatMoney(row.original.bid.amount)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const lot = row.original.lot;
+        const currency = lot ? resolveLotCurrency(lot) : PLATFORM_DEFAULT_CURRENCY;
+        return (
+          <span className={row.original.outbid ? "line-through tabular-nums" : "tabular-nums"}>
+            {formatMoney(row.original.bid.amount, currency)}
+          </span>
+        );
+      },
     },
     {
       id: "status",

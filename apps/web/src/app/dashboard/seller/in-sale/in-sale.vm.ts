@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, LotStatus } from "@auction/types";
 import { toDisplayDate, toRequiredIsoString } from "@auction/validators";
@@ -100,7 +100,7 @@ export function toInSaleDisplayRows(
       statusTone: view.tone,
       reserveMet: reserve.met,
       reserveLabel: reserve.label,
-      currentPriceLabel: formatMoney(lot.currentPrice),
+      currentPriceLabel: formatMoney(lot.currentPrice, resolveLotCurrency(lot)),
       endTimeIso: toRequiredIsoString(lot.endTime),
       endTimeLabel: formatDateTime(toDisplayDate(lot.endTime)),
       startTimeIso: toRequiredIsoString(lot.startTime),
