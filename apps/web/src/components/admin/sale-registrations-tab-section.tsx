@@ -78,10 +78,12 @@ function RegistrationRow({
   saleId,
   row,
   showPaddleCheckIn,
+  saleCurrency = "GBP",
 }: {
   saleId: string;
   row: AdminSaleRegistrationRow;
   showPaddleCheckIn: boolean;
+  saleCurrency?: string;
 }) {
   const pending = row.status === "pending";
   return (
@@ -108,6 +110,7 @@ function RegistrationRow({
               saleId={saleId}
               registrationId={row.id}
               bidLimit={row.bidLimit}
+              saleCurrency={saleCurrency}
             />
           ) : null}
           {row.paddleNumber != null ? (
@@ -182,6 +185,7 @@ type Props = {
   rows: AdminSaleRegistrationRow[];
   fetchError?: string | null;
   actionError?: string | null;
+  saleCurrency?: string;
 };
 
 export function SaleRegistrationsTabSection({
@@ -192,6 +196,7 @@ export function SaleRegistrationsTabSection({
   rows,
   fetchError = null,
   actionError = null,
+  saleCurrency = "GBP",
 }: Props) {
   const showSaleroomCheckIn = isSaleroomDeliveryMode(deliveryMode);
   const pendingApprovals = rows.filter((r) => r.status === "pending");
@@ -233,7 +238,9 @@ export function SaleRegistrationsTabSection({
 
   return (
     <div className="space-y-6">
-      {showSaleroomCheckIn ? <SaleroomCheckInPanel saleId={saleId} saleCurrency="GBP" /> : null}
+      {showSaleroomCheckIn ? (
+        <SaleroomCheckInPanel saleId={saleId} saleCurrency={saleCurrency} />
+      ) : null}
 
       {showSaleroomCheckIn ? (
         <div className="flex flex-wrap items-center gap-3 font-body text-xs text-on-surface-variant">
@@ -323,6 +330,7 @@ export function SaleRegistrationsTabSection({
                 saleId={saleId}
                 row={row}
                 showPaddleCheckIn={showSaleroomCheckIn}
+                saleCurrency={saleCurrency}
               />
             ))}
           </section>
