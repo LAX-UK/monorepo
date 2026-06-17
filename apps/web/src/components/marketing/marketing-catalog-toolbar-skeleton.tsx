@@ -25,18 +25,18 @@ export function MarketingCatalogToolbarSkeleton({
     <>
       <div
         className={cn(
-          "-mx-8 border-b border-border-hairline bg-surface/85 py-3 md:-mx-10 lg:-mx-14",
+          "-mx-8 border-b border-border-hairline bg-surface/85 py-1.5 md:-mx-10 md:py-2 lg:-mx-14",
           className,
         )}
       >
         <div
           className={cn(
-            "mx-auto max-w-[var(--container-max,1440px)] py-2 md:py-3",
+            "mx-auto max-w-[var(--container-max,1440px)] py-1.5 md:py-2",
             MARKETING_CATALOG_GUTTER,
           )}
         >
           <div className="flex flex-col gap-2 lg:gap-0">
-            <div className="flex h-12 min-h-12 items-center gap-2 md:h-14 md:min-h-14 md:gap-3">
+            <div className="flex h-11 min-h-11 items-center gap-2 md:gap-3">
               <div className={cn(pulse, "h-4 w-20 shrink-0")} />
               {showDesktopFilters ? (
                 <div className="hidden min-w-0 flex-1 gap-2 lg:flex">
@@ -65,7 +65,7 @@ export function MarketingCatalogToolbarSkeleton({
               </div>
             </div>
             {showMobileTrailing ? (
-              <div className="flex items-center justify-end gap-2 border-t border-border-hairline pt-2 lg:hidden">
+              <div className="flex items-center justify-end gap-2 pt-1 lg:hidden">
                 <div className={cn(pulse, "h-10 w-28 shrink-0")} />
               </div>
             ) : null}

@@ -47,7 +47,7 @@ export function MarketingToolbarRow({
 
   return (
     <div className="flex flex-col gap-2 md:gap-0">
-      <div className="flex min-w-0 min-h-12 items-center gap-2 md:min-h-14 md:gap-3">
+      <div className="flex min-w-0 min-h-11 items-center gap-2 md:gap-3">
         {countLabel ? <p className={countClassName}>{countLabel}</p> : null}
         {filters ? (
           <div
@@ -84,17 +84,17 @@ export function MarketingToolbarRow({
       {stackTrailing ? (
         <div
           data-testid="mobile-trailing-row"
-          className="flex items-center justify-end gap-2 border-t border-border-hairline pt-2 lg:hidden"
+          className="flex items-center justify-end gap-2 pt-1 lg:hidden"
         >
           {trailing}
         </div>
       ) : null}
       {secondaryRow ? (
-        <div className="hidden border-t border-border-hairline/60 pt-2 lg:block">
+        <div className="hidden border-t border-border-hairline/60 pt-1.5 lg:block">
           {secondaryRow}
         </div>
       ) : null}
-      {activeFiltersRow ? <div className="pt-2">{activeFiltersRow}</div> : null}
+      {activeFiltersRow ? <div className="pt-1.5">{activeFiltersRow}</div> : null}
     </div>
   );
 }

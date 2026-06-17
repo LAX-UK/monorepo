@@ -51,7 +51,7 @@ describe("ArchivePageToolbar", () => {
     expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
   });
 
-  it("keeps desktop filter rows and active chips inside the sticky shell", () => {
+  it("keeps desktop filter rows inside sticky and active chips below it", () => {
     const { container } = render(
       <ArchivePageToolbar
         {...baseProps}
@@ -61,8 +61,9 @@ describe("ArchivePageToolbar", () => {
 
     const sticky = container.querySelector(".sticky");
     expect(sticky).not.toBeNull();
-    expect(sticky).toContainElement(screen.getByLabelText("Active filters"));
+    expect(sticky).not.toContainElement(screen.getByLabelText("Active filters"));
     expect(sticky).toContainElement(screen.getByLabelText("Lot year"));
     expect(sticky).toContainElement(screen.getByLabelText("Medium"));
+    expect(screen.getByLabelText("Active filters")).toBeInTheDocument();
   });
 });

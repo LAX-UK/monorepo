@@ -4,10 +4,9 @@ import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switche
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { SaveSearchButton } from "@/components/marketing/save-search-button";
 import { SearchActiveFilters } from "@/components/marketing/search-active-filters";
-import { SearchCategoryChips } from "@/components/marketing/search-category-chips";
+import { SearchCatalogFilterChips } from "@/components/marketing/search-catalog-filter-chips";
 import { SearchFilterSheet } from "@/components/marketing/search-filter-sheet";
 import { SearchSortSelect, type SearchSortValue } from "@/components/marketing/search-sort-select";
-import { SearchStatusChips } from "@/components/marketing/search-status-chips";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { Category, LotStatus } from "@auction/types";
@@ -41,65 +40,56 @@ export function SearchPageToolbar({
   ending,
 }: SearchPageToolbarProps) {
   return (
-    <MarketingListToolbar
-      className="-mx-8 md:-mx-10 lg:-mx-14"
-      stackTrailingOnMobile
-      {...(countLabel ? { countLabel } : {})}
-      mobileFilterTrigger={
-        <SearchFilterSheet
-          activeCount={activeCount}
-          initialQ={initialQ}
-          sort={sort}
-          categoryId={categoryId}
-          view={layoutView}
-          categories={categories}
-          trimmed={trimmed}
-          resultCountLabel={resultCountLabel}
-          {...(status ? { status } : {})}
-          {...(ending ? { ending } : {})}
-        />
-      }
-      filters={
-        <SearchCategoryChips
-          categories={categories}
-          categoryId={categoryId}
-          trimmed={trimmed}
-          sort={sort}
-          view={layoutView}
-          {...(status ? { status } : {})}
-          {...(ending ? { ending } : {})}
-        />
-      }
-      sort={
-        <div className="flex shrink-0 items-center gap-2">
-          <SaveSearchButton
-            compact
-            className="hidden lg:inline-flex"
-            label={trimmed ? `Search: ${trimmed}` : "Catalogue search"}
-            query={{
-              ...(trimmed ? { q: trimmed } : {}),
-              sort,
-              view: layoutView,
-              ...(categoryId ? { categoryId } : {}),
-              ...(status ? { status } : {}),
-              ...(ending ? { ending } : {}),
-            }}
+    <>
+      <MarketingListToolbar
+        className="-mx-8 md:-mx-10 lg:-mx-14"
+        {...(countLabel ? { countLabel } : {})}
+        mobileFilterTrigger={
+          <SearchFilterSheet
+            activeCount={activeCount}
+            initialQ={initialQ}
+            sort={sort}
+            categoryId={categoryId}
+            view={layoutView}
+            categories={categories}
+            trimmed={trimmed}
+            resultCountLabel={resultCountLabel}
+            {...(status ? { status } : {})}
+            {...(ending ? { ending } : {})}
           />
-          <SearchSortSelect value={sort} />
-        </div>
-      }
-      trailing={<CatalogViewSwitcher routeKey="search" value={layoutView} />}
-      secondaryRow={
-        <SearchStatusChips
-          trimmed={trimmed}
-          sort={sort}
-          view={layoutView}
-          categoryId={categoryId}
-          {...(status ? { status } : {})}
-          {...(ending ? { ending } : {})}
-        />
-      }
-      activeFiltersRow={<SearchActiveFilters categories={categories} sort={sort} />}
-    />
+        }
+        filters={
+          <SearchCatalogFilterChips
+            categories={categories}
+            categoryId={categoryId}
+            trimmed={trimmed}
+            sort={sort}
+            view={layoutView}
+            {...(status ? { status } : {})}
+            {...(ending ? { ending } : {})}
+          />
+        }
+        sort={
+          <div className="flex shrink-0 items-center gap-2">
+            <SaveSearchButton
+              compact
+              className="hidden lg:inline-flex"
+              label={trimmed ? `Search: ${trimmed}` : "Catalogue search"}
+              query={{
+                ...(trimmed ? { q: trimmed } : {}),
+                sort,
+                view: layoutView,
+                ...(categoryId ? { categoryId } : {}),
+                ...(status ? { status } : {}),
+                ...(ending ? { ending } : {}),
+              }}
+            />
+            <SearchSortSelect value={sort} />
+          </div>
+        }
+        trailing={<CatalogViewSwitcher routeKey="search" value={layoutView} />}
+      />
+      <SearchActiveFilters categories={categories} sort={sort} className="mb-4 md:mb-6" />
+    </>
   );
 }
