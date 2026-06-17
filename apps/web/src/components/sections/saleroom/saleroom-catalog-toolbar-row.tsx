@@ -47,7 +47,6 @@ export function SaleroomCatalogToolbarRow({
       </div>
       <MarketingListToolbar
         countLabel={countLabel}
-        stackTrailingOnMobile
         mobileFilterTrigger={
           <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>
             <SaleroomCatalogFilterSheet basePath={basePath} resultCountLabel={resultCountLabel} />
