@@ -59,6 +59,7 @@ function bidRow(id: string, title: string): BidBoardRow {
     statusClassName: "text-primary",
     outbid: false,
     timeLeft: "12h",
+    placement: { onBehalf: false, channelLabel: null },
   };
 }
 
