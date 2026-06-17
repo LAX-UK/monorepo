@@ -6,9 +6,11 @@ import {
 } from "@/features/saleroom/adapters/saleroom-socket.adapter";
 import {
   type DisplayBidLiveState,
+  type DisplayLastHammer,
   EMPTY_DISPLAY_BID_LIVE_STATE,
   applyDisplayBidSummaryToSnapshot,
   applyDisplayBidUpdate,
+  formatDisplayLeaderLabel,
   mergeSnapshotAfterHydrate,
   resetDisplayBidLiveState,
   resolveBidSummaryAfterFullHydrate,
@@ -38,6 +40,7 @@ export type SaleroomDisplayLiveState = {
   snapshot: SaleroomDisplaySnapshot | null;
   overlay: SaleroomDisplayOverlay | null;
   flash: DisplayFlashKind;
+  lastHammer: DisplayLastHammer | null;
   connectionStatus: "connected" | "reconnecting" | "disconnected";
   bidLive: DisplayBidLiveState;
 };
@@ -46,6 +49,7 @@ const EMPTY: SaleroomDisplayLiveState = {
   snapshot: null,
   overlay: null,
   flash: null,
+  lastHammer: null,
   connectionStatus: "disconnected",
   bidLive: EMPTY_DISPLAY_BID_LIVE_STATE,
 };
@@ -183,6 +187,7 @@ export function useSaleroomDisplayLive({
             wsChangedDuringFetch,
           ),
           flash: prev.flash,
+          lastHammer: previousLotId !== snapshot.currentLotId ? null : prev.lastHammer,
           connectionStatus: "connected",
           bidLive: mergeSnapshotAfterHydrate(prev.bidLive, previousLotId, snapshot.currentLotId),
         }));
@@ -276,12 +281,26 @@ export function useSaleroomDisplayLive({
       setState((prev) => {
         if (!prev.snapshot) return prev;
         let flash = prev.flash;
-        if (event.kind === "hammer") flash = "sold";
+        let lastHammer = prev.lastHammer;
+        if (event.kind === "hammer") {
+          flash = "sold";
+          const lot = prev.snapshot.currentLot;
+          if (lot) {
+            lastHammer = {
+              price: lot.currentPrice,
+              paddleLabel: formatDisplayLeaderLabel(
+                prev.bidLive.leaderPlacedVia,
+                lot.leaderPaddleNumber,
+              ),
+            };
+          }
+        }
         if (event.kind === "no_sale") flash = "passed";
 
         return {
           ...prev,
           flash,
+          lastHammer,
           snapshot: {
             ...prev.snapshot,
             sessionStatus: sessionStatus.status,
@@ -300,7 +319,7 @@ export function useSaleroomDisplayLive({
       if (event.kind === "hammer" || event.kind === "no_sale") {
         if (soldFlashTimerRef.current) clearTimeout(soldFlashTimerRef.current);
         soldFlashTimerRef.current = setTimeout(() => {
-          setState((prev) => ({ ...prev, flash: null }));
+          setState((prev) => ({ ...prev, flash: null, lastHammer: null }));
         }, 4000);
       }
     };
