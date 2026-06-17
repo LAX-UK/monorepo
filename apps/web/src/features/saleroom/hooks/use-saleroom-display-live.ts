@@ -7,17 +7,24 @@ import {
 import {
   type DisplayBidLiveState,
   EMPTY_DISPLAY_BID_LIVE_STATE,
+  applyDisplayBidSummaryToSnapshot,
   applyDisplayBidUpdate,
   mergeSnapshotAfterHydrate,
   resetDisplayBidLiveState,
+  resolveBidSummaryAfterFullHydrate,
 } from "@/features/saleroom/lib/display-bid-ticks";
 import {
   type DisplayDataClient,
   createDisplayDataClient,
 } from "@/features/saleroom/lib/display-data-client";
+import {
+  applyDisplayControlEvent,
+  resolveOverlayAfterFullHydrate,
+} from "@/features/saleroom/lib/display-overlay-state";
 import { parseBidUpdateEvent } from "@/lib/realtime/parse-bid-update";
 import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
 import type {
+  SaleroomDisplayBidSummary,
   SaleroomDisplayControlPayload,
   SaleroomDisplayOverlay,
   SaleroomDisplaySnapshot,
@@ -48,46 +55,7 @@ const HYDRATE_DEBOUNCE_MS = 400;
 
 type HydrateMode = "full" | "merge";
 
-function applyOverlayEvent(
-  prev: SaleroomDisplayOverlay | null,
-  event: SaleroomDisplayControlPayload,
-): SaleroomDisplayOverlay | null {
-  if (event.kind === "clear") return null;
-  const emittedAt = event.emittedAt;
-  if (prev && prev.emittedAt > emittedAt) return prev;
-  return {
-    kind: event.kind,
-    ...(event.message ? { message: event.message } : {}),
-    emittedAt,
-  };
-}
-
-/** Keeps WS overlay authoritative when a stale in-flight full hydrate completes. */
-export function resolveOverlayAfterFullHydrate(
-  live: SaleroomDisplayOverlay | null,
-  fromSnapshot: SaleroomDisplayOverlay | null,
-  wsEmittedAt: string | null,
-  wsChangedDuringFetch: boolean,
-): SaleroomDisplayOverlay | null {
-  if (wsChangedDuringFetch) return live;
-
-  if (!fromSnapshot) {
-    return null;
-  }
-
-  if (!live) {
-    if (wsEmittedAt && wsEmittedAt > fromSnapshot.emittedAt) {
-      return null;
-    }
-    return fromSnapshot;
-  }
-
-  if (live.emittedAt >= fromSnapshot.emittedAt) {
-    return live;
-  }
-
-  return fromSnapshot;
-}
+export { resolveOverlayAfterFullHydrate } from "@/features/saleroom/lib/display-overlay-state";
 
 export function useSaleroomDisplayLive({
   saleId,
@@ -115,6 +83,7 @@ export function useSaleroomDisplayLive({
   const hydrateGenerationRef = useRef(0);
   const overlayGenerationRef = useRef(0);
   const overlayControlEmittedAtRef = useRef<string | null>(null);
+  const bidSummaryEmittedAtRef = useRef<string | null>(null);
   const hydratingRef = useRef(false);
   const snapshotRef = useRef<SaleroomDisplaySnapshot | null>(null);
   snapshotRef.current = state.snapshot;
@@ -202,7 +171,11 @@ export function useSaleroomDisplayLive({
         const wsChangedDuringFetch = overlayGenerationRef.current !== overlayGenerationAtStart;
 
         setState((prev) => ({
-          snapshot,
+          snapshot: resolveBidSummaryAfterFullHydrate(
+            prev.snapshot,
+            snapshot,
+            bidSummaryEmittedAtRef.current,
+          ),
           overlay: resolveOverlayAfterFullHydrate(
             prev.overlay,
             snapshot.overlay,
@@ -335,11 +308,31 @@ export function useSaleroomDisplayLive({
     const onDisplayControl = (raw: unknown) => {
       const event = raw as SaleroomDisplayControlPayload;
       if (!event || typeof event.kind !== "string") return;
+
+      if (event.kind === "bid_summary") {
+        const summary = event as SaleroomDisplayBidSummary;
+        bidSummaryEmittedAtRef.current = summary.emittedAt;
+        setState((prev) => {
+          if (!prev.snapshot) return prev;
+          const suppressFlash = prev.flash === "sold" || prev.flash === "passed";
+          return {
+            ...prev,
+            snapshot: applyDisplayBidSummaryToSnapshot(prev.snapshot, summary),
+            bidLive: suppressFlash
+              ? prev.bidLive
+              : { ...prev.bidLive, priceFlash: true, leaderPlacedVia: "saleroom" },
+            connectionStatus: "connected",
+          };
+        });
+        schedulePriceFlashClear();
+        return;
+      }
+
       overlayGenerationRef.current += 1;
       overlayControlEmittedAtRef.current = event.emittedAt;
       setState((prev) => ({
         ...prev,
-        overlay: applyOverlayEvent(prev.overlay, event),
+        overlay: applyDisplayControlEvent(prev.overlay, event),
         connectionStatus: "connected",
       }));
     };
