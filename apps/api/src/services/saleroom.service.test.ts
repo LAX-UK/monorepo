@@ -40,6 +40,7 @@ describe("SaleroomService.goLive", () => {
       findById: vi.fn().mockResolvedValue({
         id: "sale-online",
         deliveryMode: "online",
+        allowOnlineBidsBeforeGoLive: false,
         status: "active",
       }),
     };

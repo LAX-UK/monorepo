@@ -76,6 +76,7 @@ const saleCreateBodySchema = z.object({
   categoryIds: optionalCategoryIdsSchema,
   categoryId: z.string().uuid().optional(),
   deliveryMode: z.enum(saleDeliveryModes).optional(),
+  allowOnlineBidsBeforeGoLive: z.coerce.boolean().optional(),
   streamUrl: streamUrlField,
   locationName: locationTextField,
   locationAddress: locationTextField,

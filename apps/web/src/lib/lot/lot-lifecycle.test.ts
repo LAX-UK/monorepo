@@ -102,10 +102,44 @@ describe("classifyLotLifecycle", () => {
       startTime: new Date(t - hour),
       endTime: new Date(t + hour),
     });
-    const hybridSale = { status: "active" as const, deliveryMode: "hybrid" as const };
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: false,
+    };
     const r = classifyLotLifecycle(l, hybridSale, t, { saleroomSessionActive: true });
     expect(r.kind).toBe("liveSaleroom");
     expect(r.msLeft).toBeNull();
+  });
+
+  it("returns liveSaleroom for gated hybrid before Go Live", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - hour),
+      endTime: new Date(t + hour),
+    });
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: false,
+    };
+    const r = classifyLotLifecycle(l, hybridSale, t);
+    expect(r.kind).toBe("liveSaleroom");
+  });
+
+  it("returns live for open hybrid before Go Live", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - hour),
+      endTime: new Date(t + hour),
+    });
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: true,
+    };
+    const r = classifyLotLifecycle(l, hybridSale, t);
+    expect(r.kind).toBe("live");
   });
 
   it("returns endedSold when ended with winner", () => {

@@ -59,6 +59,7 @@ function draftSale(window: ReturnType<typeof saleWindow>, overrides: Partial<Sal
     coverImages: [],
     categoryId: null,
     deliveryMode: "online",
+    allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
     locationName: null,
     locationAddress: null,

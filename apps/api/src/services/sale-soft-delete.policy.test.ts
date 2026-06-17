@@ -11,6 +11,7 @@ function sale(overrides: Partial<Sale> = {}): Sale {
     coverImages: [],
     categoryId: null,
     deliveryMode: "onsite",
+    allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
     locationName: null,
     locationAddress: null,

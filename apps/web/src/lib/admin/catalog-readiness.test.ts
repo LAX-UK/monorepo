@@ -10,6 +10,7 @@ function mkSale(overrides: Partial<Sale> = {}): Sale {
     coverImages: [],
     categoryId: null,
     deliveryMode: "onsite",
+    allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
     locationName: "Venue",
     locationAddress: null,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getSaleModeCapabilities,
   isSaleroomDeliveryMode,
+  isSaleroomGatedForOnlineBids,
   saleModeAllowsBidding,
   saleModeAllowsOperatorBidding,
   saleModeInheritsLotTiming,
@@ -32,5 +33,15 @@ describe("sale-mode-policy", () => {
   it("online does not inherit lot timing or saleroom delivery", () => {
     expect(saleModeInheritsLotTiming("online")).toBe(false);
     expect(isSaleroomDeliveryMode("online")).toBe(false);
+  });
+
+  it("gates hybrid online bids by default and allows opt-out", () => {
+    expect(
+      isSaleroomGatedForOnlineBids({ deliveryMode: "hybrid", allowOnlineBidsBeforeGoLive: false }),
+    ).toBe(true);
+    expect(
+      isSaleroomGatedForOnlineBids({ deliveryMode: "hybrid", allowOnlineBidsBeforeGoLive: true }),
+    ).toBe(false);
+    expect(isSaleroomGatedForOnlineBids({ deliveryMode: "online" })).toBe(false);
   });
 });

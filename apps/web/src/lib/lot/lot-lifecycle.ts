@@ -1,6 +1,6 @@
 import { classifyLotTimerState } from "@/components/lot-timer";
 import type { Lot, Sale } from "@auction/types";
-import { toLotCardTimingVM } from "@auction/validators";
+import { isSaleroomGatedForOnlineBids, toLotCardTimingVM } from "@auction/validators";
 
 export type LotLifecycleKind =
   | "preLaunch"
@@ -34,7 +34,9 @@ type LotLifecycleLot = Pick<
   "status" | "startTime" | "endTime" | "winnerId" | "reservePrice" | "currentPrice" | "id"
 >;
 
-type LotLifecycleSale = Pick<Sale, "status" | "deliveryMode"> | null;
+type LotLifecycleSale =
+  | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
+  | null;
 
 /**
  * Single source of truth for lot UX state (badges, banners, bid gating copy).
@@ -49,6 +51,8 @@ export function classifyLotLifecycle(
     saleroomSessionActive?: boolean;
     saleroomSessionPaused?: boolean;
     isOnBlock?: boolean;
+    /** When true, treat active lots as saleroom-gated even before Go Live. */
+    saleroomGated?: boolean;
   },
 ): LotLifecycle {
   if (lot.status === "voided") {
@@ -72,6 +76,8 @@ export function classifyLotLifecycle(
   }
 
   const timer = classifyLotTimerState(toLotCardTimingVM(lot), nowMs);
+  const saleroomGated =
+    opts?.saleroomGated ?? (sale != null ? isSaleroomGatedForOnlineBids(sale) : false);
 
   if (timer.kind === "opensSoon") {
     return { kind: "scheduled", msLeft: timer.msLeft };
@@ -80,7 +86,7 @@ export function classifyLotLifecycle(
     if (opts?.saleroomSessionPaused) {
       return { kind: "saleroomPaused", msLeft: null };
     }
-    if (opts?.saleroomSessionActive) {
+    if (saleroomGated || opts?.saleroomSessionActive) {
       return { kind: "liveSaleroom", msLeft: null };
     }
     if (opts?.recentlyExtended) {

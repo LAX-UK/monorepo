@@ -53,7 +53,9 @@ type Props = {
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
   saleRegistrationPath?: string | null;
   orgModuleEnabled?: boolean;
-  saleForLifecycle?: Pick<Sale, "status" | "deliveryMode"> | null;
+  saleForLifecycle?:
+    | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
+    | null;
   isOwnLot?: boolean;
   actingLegalEntityId?: string | null;
 };
