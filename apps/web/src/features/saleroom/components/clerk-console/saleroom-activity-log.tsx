@@ -7,11 +7,12 @@ import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
 
 type Props = {
   entries: SaleroomActivityEntry[];
+  panelVariant?: "bordered" | "plain";
 };
 
-export function SaleroomActivityLog({ entries }: Props) {
+export function SaleroomActivityLog({ entries, panelVariant = "bordered" }: Props) {
   return (
-    <ConsolePanel>
+    <ConsolePanel variant={panelVariant}>
       <PanelHeading>Activity log</PanelHeading>
       <ul
         className="mt-3 max-h-64 space-y-2 overflow-y-auto font-body text-xs text-secondary transition-opacity duration-200"

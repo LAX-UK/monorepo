@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { sofListController } from "./admin-list-controllers";
 import {
   buildSofCaseDetailHref,
   buildSofListHref,
@@ -35,26 +36,22 @@ describe("sof-list-query", () => {
 });
 
 describe("sofListController.parseQuery", () => {
-  it("caps page size at 100", async () => {
-    const { sofListController } = await import("./admin-list-controllers");
+  it("caps page size at 100", () => {
     const q = sofListController.parseQuery({ limit: "200" });
     expect(q.limit).toBe(100);
   });
 
-  it("parses offset from search params", async () => {
-    const { sofListController } = await import("./admin-list-controllers");
+  it("parses offset from search params", () => {
     const q = sofListController.parseQuery({ offset: "50" });
     expect(q.offset).toBe(50);
   });
 
-  it("defaults status to pending", async () => {
-    const { sofListController } = await import("./admin-list-controllers");
+  it("defaults status to pending", () => {
     const q = sofListController.parseQuery({});
     expect(q.status).toBe("pending");
   });
 
-  it("parses status from search params", async () => {
-    const { sofListController } = await import("./admin-list-controllers");
+  it("parses status from search params", () => {
     expect(sofListController.parseQuery({ status: "rejected" }).status).toBe("rejected");
     expect(sofListController.parseQuery({ status: "approved" }).status).toBe("approved");
     expect(sofListController.parseQuery({ status: "invalid" }).status).toBe("pending");

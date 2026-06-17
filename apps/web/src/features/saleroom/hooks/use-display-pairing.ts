@@ -20,12 +20,17 @@ export function useDisplayPairing(
   saleId: string,
   dataClient: DisplayDataClient = createDisplayDataClient(),
 ) {
-  const [state, setState] = useState<PairingState>(() => {
-    if (typeof window === "undefined") return { phase: "idle" };
-    const stored = window.localStorage.getItem(DISPLAY_TOKEN_STORAGE_KEY(saleId));
-    return stored ? { phase: "authorized", displayToken: stored } : { phase: "idle" };
-  });
+  const [state, setState] = useState<PairingState>({ phase: "idle" });
+  const [isRestored, setIsRestored] = useState(false);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(DISPLAY_TOKEN_STORAGE_KEY(saleId));
+    if (stored) {
+      setState({ phase: "authorized", displayToken: stored });
+    }
+    setIsRestored(true);
+  }, [saleId]);
 
   const clearPoll = useCallback(() => {
     if (pollTimerRef.current) {
@@ -85,5 +90,5 @@ export function useDisplayPairing(
     setState({ phase: "idle" });
   }, [clearPoll, saleId]);
 
-  return { state, beginPairing, disconnect };
+  return { state, beginPairing, disconnect, isRestored };
 }

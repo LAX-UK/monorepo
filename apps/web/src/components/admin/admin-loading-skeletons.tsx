@@ -147,15 +147,31 @@ export function IntegrationPanelSkeleton() {
 }
 
 /** Saleroom clerk console blocks. */
+/** Matches saleroom clerk console: header meta, session bar, 2-col grid, dock space. */
 export function ClerkConsoleSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Loading saleroom console">
-      <AdminDetailSkeleton />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Skeleton className="h-32 rounded-lg" />
-        <Skeleton className="h-32 rounded-lg" />
+      <div className="space-y-4 rounded-lg border border-outline-variant/25 bg-surface-container-low p-4">
+        <div className="flex gap-2">
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-6 w-16 rounded-full" />
+        </div>
+        <Skeleton className="h-5 w-2/3 max-w-md" />
+        <Skeleton className="h-1.5 w-full max-w-xs rounded-full" />
       </div>
-      <Skeleton className="h-48 w-full rounded-lg" />
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-16" />
+        <div className="flex gap-2">
+          <Skeleton className="h-11 w-28 rounded-md" />
+          <Skeleton className="h-11 w-28 rounded-md" />
+        </div>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-64 rounded-lg" />
+        <Skeleton className="h-64 rounded-lg" />
+      </div>
+      <Skeleton className="h-40 w-full rounded-lg" />
+      <Skeleton className="fixed inset-x-0 bottom-0 h-16 rounded-none" />
     </div>
   );
 }

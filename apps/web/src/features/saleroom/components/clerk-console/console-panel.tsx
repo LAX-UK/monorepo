@@ -19,12 +19,19 @@ export function PanelHeading({
 export function ConsolePanel({
   children,
   className,
+  variant = "bordered",
 }: {
   children: ReactNode;
   className?: string;
+  variant?: "bordered" | "plain";
 }) {
   return (
-    <div className={cn("rounded-lg border border-outline-variant/25 p-4", className)}>
+    <div
+      className={cn(
+        variant === "bordered" && "rounded-lg border border-outline-variant/25 p-4",
+        className,
+      )}
+    >
       {children}
     </div>
   );
