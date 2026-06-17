@@ -121,6 +121,7 @@ function saleRow(
     description: null,
     coverImages: [],
     deliveryMode: "online",
+    allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
     locationName: null,
     locationAddress: null,

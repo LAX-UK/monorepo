@@ -15,7 +15,9 @@ import type { OwnBidEchoGuard } from "@/lib/bid/own-bid-echo-guard";
 
 export type { OwnBidEchoGuard };
 
-type SalePick = Pick<Sale, "status" | "deliveryMode"> | null;
+type SalePick =
+  | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
+  | null;
 
 type Ctx = {
   lot: Pick<

@@ -105,6 +105,7 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
       title: "Tel integration sale",
       status: "scheduled",
       deliveryMode: "onsite",
+      allowOnlineBidsBeforeGoLive: false,
       startTime: new Date(t.getTime() + 86_400_000),
       endTime: new Date(t.getTime() + 172_800_000),
       createdByLegalEntityId: sellerLeId,

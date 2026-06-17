@@ -69,3 +69,13 @@ export function saleModeInheritsLotTiming(mode: SaleDeliveryMode): boolean {
 export function isSaleroomDeliveryMode(mode: SaleDeliveryMode): boolean {
   return mode === "onsite" || mode === "hybrid";
 }
+
+type SaleroomOnlineBidGatePick = {
+  deliveryMode: SaleDeliveryMode;
+  allowOnlineBidsBeforeGoLive?: boolean | undefined;
+};
+
+/** Hybrid sales gated behind clerk Go Live + on-block lot (default). */
+export function isSaleroomGatedForOnlineBids(sale: SaleroomOnlineBidGatePick): boolean {
+  return sale.deliveryMode === "hybrid" && !sale.allowOnlineBidsBeforeGoLive;
+}
