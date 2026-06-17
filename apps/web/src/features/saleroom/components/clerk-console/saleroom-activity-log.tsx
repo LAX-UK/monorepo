@@ -1,3 +1,7 @@
+import {
+  ConsolePanel,
+  PanelHeading,
+} from "@/features/saleroom/components/clerk-console/console-panel";
 import type { SaleroomActivityEntry } from "@/features/saleroom/types/staff-saleroom.vm";
 import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
 
@@ -7,10 +11,8 @@ type Props = {
 
 export function SaleroomActivityLog({ entries }: Props) {
   return (
-    <div className="rounded-lg border border-outline-variant/25 p-4">
-      <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Activity log
-      </h2>
+    <ConsolePanel>
+      <PanelHeading>Activity log</PanelHeading>
       <ul
         className="mt-3 max-h-64 space-y-2 overflow-y-auto font-body text-xs text-secondary transition-opacity duration-200"
         role="log"
@@ -32,6 +34,6 @@ export function SaleroomActivityLog({ entries }: Props) {
           ))
         )}
       </ul>
-    </div>
+    </ConsolePanel>
   );
 }

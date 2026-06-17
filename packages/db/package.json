@@ -33,6 +33,7 @@
     "db:backfill-qr-code": "tsx src/scripts/backfill-qr-code.ts"
   },
   "dependencies": {
+    "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
     "@better-auth/utils": "0.4.0",
     "drizzle-orm": "^0.41.0",

@@ -54,6 +54,7 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
 import { runBulkPayoutSettlementJob } from "./jobs/bulk-payout-settlement.js";
+import { runCleanupDisplayPairingsJob } from "./jobs/cleanup-display-pairings.js";
 import { dataExportJob } from "./jobs/data-export.js";
 import {
   type GeneratePayoutStatementJobData,
@@ -941,6 +942,14 @@ if (env.CRON_INTERNAL_SECRET) {
     everyMs: 60 * 1000,
     sentrySlug: "process-notification-outbox",
     run: () => runProcessNotificationOutboxJob(apiCronBase),
+  });
+  registerPaymentOpsCron({
+    queueName: "cleanup-display-pairings",
+    jobName: "cleanup-display-pairings",
+    jobId: "cleanup-display-pairings-1h",
+    everyMs: 60 * 60 * 1000,
+    sentrySlug: "cleanup-display-pairings",
+    run: () => runCleanupDisplayPairingsJob(apiCronBase),
   });
 }
 

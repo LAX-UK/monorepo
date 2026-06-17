@@ -1,10 +1,12 @@
 "use client";
 
+import { bidIncrementOptions, validateBidAmount } from "@/features/saleroom/lib/bid-entry";
 import {
-  bidIncrementOptions,
-  validateBidAmount,
-  validatePaddleNumber,
-} from "@/features/saleroom/lib/bid-entry";
+  type PaddleRegistrationValidator,
+  type SaleroomRegisteredPaddle,
+  createPaddleRegistrationValidator,
+  createPaddleRosterLookup,
+} from "@/features/saleroom/lib/paddle-roster-validation";
 import type { ClerkBidEntryState } from "@/features/saleroom/types/staff-saleroom.vm";
 import {
   adminPaddlePlaceBidResultAction,
@@ -31,12 +33,14 @@ export type PlaceTelephoneBidFn = (input: {
   telephoneBookingId: string;
 }) => Promise<ClerkBidActionResult>;
 
-type Options = {
+type Options<T extends SaleroomRegisteredPaddle = SaleroomRegisteredPaddle> = {
   saleId: string;
   currentLotId: string;
   liveCurrentPrice: string;
   minBidIncrement: string;
   telephoneBookings: AdminTelephoneBookingRow[];
+  paddleRoster?: readonly T[];
+  validatePaddleRegistration?: PaddleRegistrationValidator;
   placePaddleBid?: PlacePaddleBidFn;
   placeTelephoneBid?: PlaceTelephoneBidFn;
 };
@@ -53,15 +57,21 @@ const defaultPlaceTelephoneBid: PlaceTelephoneBidFn = async (input) => {
   return { ok: true };
 };
 
-export function useClerkBidEntry({
+function clerkPaddleStorageKey(saleId: string) {
+  return `saleroom-clerk-paddle:${saleId}`;
+}
+
+export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRegisteredPaddle>({
   saleId,
   currentLotId,
   liveCurrentPrice,
   minBidIncrement,
   telephoneBookings,
+  paddleRoster = [],
+  validatePaddleRegistration: validatePaddleRegistrationOverride,
   placePaddleBid = defaultPlacePaddleBid,
   placeTelephoneBid = defaultPlaceTelephoneBid,
-}: Options) {
+}: Options<T>) {
   const [state, setState] = useState<ClerkBidEntryState>({
     paddleNumber: "",
     paddleAmount: "",
@@ -69,6 +79,17 @@ export function useClerkBidEntry({
     bookingId: "",
   });
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(clerkPaddleStorageKey(saleId));
+      if (stored) {
+        setState((prev) => ({ ...prev, paddleNumber: stored }));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [saleId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset bid fields when the on-block lot changes
   useEffect(() => {
@@ -79,6 +100,32 @@ export function useClerkBidEntry({
       bookingId: "",
     }));
   }, [currentLotId]);
+
+  const paddleLookup = useMemo(() => createPaddleRosterLookup(paddleRoster), [paddleRoster]);
+
+  const validateRegistration = useMemo((): PaddleRegistrationValidator => {
+    if (validatePaddleRegistrationOverride) {
+      return validatePaddleRegistrationOverride;
+    }
+    return createPaddleRegistrationValidator(paddleRoster);
+  }, [paddleRoster, validatePaddleRegistrationOverride]);
+
+  const registeredPaddle = useMemo(() => {
+    const parsed = Number.parseInt(state.paddleNumber, 10);
+    if (!Number.isInteger(parsed)) return null;
+    return paddleLookup.findByPaddleNumber(parsed);
+  }, [paddleLookup, state.paddleNumber]);
+
+  const paddleRegistrationError = useMemo(() => {
+    if (!state.paddleNumber.trim()) return null;
+    return validateRegistration(state.paddleNumber);
+  }, [state.paddleNumber, validateRegistration]);
+
+  const canPlacePaddleBid =
+    !pending &&
+    state.paddleNumber.trim() !== "" &&
+    state.paddleAmount.trim() !== "" &&
+    paddleRegistrationError == null;
 
   const incrementOptions = useMemo(
     () => bidIncrementOptions(liveCurrentPrice, minBidIncrement),
@@ -94,9 +141,21 @@ export function useClerkBidEntry({
 
   const selectedBooking = inProgressBookings.find((b) => b.id === state.bookingId) ?? null;
 
-  const setPaddleNumber = useCallback((value: string) => {
-    setState((prev) => ({ ...prev, paddleNumber: value }));
-  }, []);
+  const setPaddleNumber = useCallback(
+    (value: string) => {
+      setState((prev) => ({ ...prev, paddleNumber: value }));
+      try {
+        if (value.trim()) {
+          sessionStorage.setItem(clerkPaddleStorageKey(saleId), value);
+        } else {
+          sessionStorage.removeItem(clerkPaddleStorageKey(saleId));
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [saleId],
+  );
 
   const setPaddleAmount = useCallback((value: string) => {
     setState((prev) => ({ ...prev, paddleAmount: value }));
@@ -120,9 +179,9 @@ export function useClerkBidEntry({
   }, []);
 
   const placePaddleBidHandler = useCallback(() => {
-    const paddleError = validatePaddleNumber(state.paddleNumber);
-    if (paddleError) {
-      notify.error(paddleError);
+    const registrationError = validateRegistration(state.paddleNumber);
+    if (registrationError) {
+      notify.error(registrationError);
       return;
     }
     const parsedAmount = Number.parseFloat(state.paddleAmount);
@@ -154,6 +213,7 @@ export function useClerkBidEntry({
     saleId,
     state.paddleAmount,
     state.paddleNumber,
+    validateRegistration,
   ]);
 
   const placeTelephoneBidHandler = useCallback(() => {
@@ -197,6 +257,9 @@ export function useClerkBidEntry({
     incrementOptions,
     inProgressBookings,
     selectedBooking,
+    registeredPaddle,
+    paddleRegistrationError,
+    canPlacePaddleBid,
     setPaddleNumber,
     setPaddleAmount,
     setTelephoneAmount,

@@ -1,4 +1,5 @@
 import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import { notify } from "@/lib/ui/notify";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -9,15 +10,30 @@ vi.mock("@/lib/ui/notify", () => ({
   },
 }));
 
+const baseRoster = [{ paddleNumber: 142, displayName: "Jane Doe" }] as const;
+
 const baseOptions = {
   saleId: "sale-1",
   currentLotId: "lot-1",
   liveCurrentPrice: "100.00",
   minBidIncrement: "10.00",
   telephoneBookings: [],
+  paddleRoster: baseRoster,
 };
 
 describe("useClerkBidEntry", () => {
+  it("persists paddle number in sessionStorage", () => {
+    sessionStorage.clear();
+    const { result } = renderHook(() => useClerkBidEntry(baseOptions));
+
+    act(() => {
+      result.current.setPaddleNumber("142");
+    });
+
+    expect(sessionStorage.getItem("saleroom-clerk-paddle:sale-1")).toBe("142");
+    expect(result.current.state.paddleNumber).toBe("142");
+  });
+
   it("clears bid amounts when currentLotId changes", () => {
     const { result, rerender } = renderHook(
       ({ currentLotId }) =>
@@ -74,5 +90,30 @@ describe("useClerkBidEntry", () => {
       paddleNumber: 142,
       amount: 150,
     });
+  });
+
+  it("blocks paddle bids for unchecked-in paddle numbers", async () => {
+    const placePaddleBid = vi.fn().mockResolvedValue({ ok: true as const });
+
+    const { result } = renderHook(() =>
+      useClerkBidEntry({
+        ...baseOptions,
+        placePaddleBid,
+      }),
+    );
+
+    act(() => {
+      result.current.setPaddleNumber("999");
+      result.current.setPaddleAmount("150");
+    });
+
+    await act(async () => {
+      result.current.placePaddleBid();
+      await Promise.resolve();
+    });
+
+    expect(placePaddleBid).not.toHaveBeenCalled();
+    expect(notify.error).toHaveBeenCalledWith("Paddle not checked in for this sale");
+    expect(result.current.canPlacePaddleBid).toBe(false);
   });
 });
