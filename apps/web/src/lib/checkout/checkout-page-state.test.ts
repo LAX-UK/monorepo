@@ -37,4 +37,30 @@ describe("resolveCheckoutPagePaymentState", () => {
     } as never);
     expect(state.paymentComplete).toBe(true);
   });
+
+  it("keeps an authorized bank transfer as an open (in-flight) payment, not complete", () => {
+    const state = resolveCheckoutPagePaymentState(
+      [
+        {
+          id: "p1",
+          lotId: "lot-1",
+          lotTitle: "Lot",
+          lotImageUrl: null,
+          amount: "15000",
+          platformFee: "750",
+          currency: "GBP",
+          status: "authorized",
+          createdAt: new Date().toISOString(),
+          invoiceUrl: null,
+          invoiceNumber: null,
+          checkoutRail: "gb_bank_transfer",
+          manualReviewReason: null,
+        },
+      ],
+      "lot-1",
+      { id: "f1", lotId: "lot-1", status: "awaiting_payment", paymentId: "p1" } as never,
+    );
+    expect(state.paymentComplete).toBe(false);
+    expect(state.openPayment?.status).toBe("authorized");
+  });
 });

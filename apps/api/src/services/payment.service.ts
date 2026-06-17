@@ -100,6 +100,12 @@ export class PaymentService {
     private readonly addresses: IAddressRepository | null = null,
     /** Pre-settlement AML/SoF compliance gate (CDD Sections 5 & 6). */
     private readonly settlementCompliance: ISettlementCompliancePolicy | null = null,
+    /**
+     * When true, a Xero invoice failure blocks checkout (503). When false, checkout proceeds
+     * and the invoice is reconciled later by the `retry-xero-invoice-creation` cron. Defaults
+     * to true to preserve strict behaviour for callers/fixtures that don't pass the env flag.
+     */
+    private readonly xeroInvoiceBlocking: boolean = true,
   ) {}
 
   /** Winning bidder initiates Stripe checkout (card or UK bank transfer by amount tier). */
@@ -740,13 +746,19 @@ export class PaymentService {
 
     const invoiceResult = await this.ensureXeroInvoiceForPayment(paymentId, lot, buyerId, amount);
     if (!invoiceResult.ok) {
-      return err(
-        new PaymentProviderError(
-          invoiceResult.error ?? "Accounting invoice unavailable",
-          503,
-          "accounting_unavailable",
-        ),
-      );
+      if (this.xeroInvoiceBlocking) {
+        return err(
+          new PaymentProviderError(
+            invoiceResult.error ?? "Accounting invoice unavailable",
+            503,
+            "accounting_unavailable",
+          ),
+        );
+      }
+      // Non-blocking: the payment is the source of truth. The `payment_external_ref` row is left
+      // pending/error and the `retry-xero-invoice-creation` cron creates the invoice once Xero is
+      // healthy. Buyers are never blocked by a stale Xero connection.
+      recordMoneyPathEvent("xero_invoice_deferred");
     }
 
     if (!this.stripeCheckout?.isAvailable()) {
@@ -823,6 +835,32 @@ export class PaymentService {
       amount,
       buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
     });
+  }
+
+  /**
+   * Backfill the Xero ACCREC invoice for a settleable payment that has none yet (created while
+   * Xero was unavailable in non-blocking mode). Idempotent: `ensureInvoiceForPayment` early-returns
+   * when an invoice already exists, and is a no-op while Xero is still disconnected. Drained by the
+   * `retry-xero-invoice-creation` cron; the existing capture-sync cron then records the bank payment.
+   */
+  async backfillXeroInvoiceForPayment(paymentId: string): Promise<{ ok: boolean; error?: string }> {
+    if (!this.accounting.isConfigured()) {
+      return { ok: false, error: "accounting_not_configured" };
+    }
+    const p = await this.payments.findById(paymentId);
+    if (!p) return { ok: false, error: "payment_not_found" };
+    if (p.status !== "pending" && p.status !== "authorized" && p.status !== "captured") {
+      return { ok: false, error: "payment_not_settleable" };
+    }
+    const lot = await this.lots.findById(p.lotId);
+    if (!lot) return { ok: false, error: "lot_not_found" };
+    const buyerId = p.buyerId ?? p.paidByUserId;
+    if (!buyerId) return { ok: false, error: "buyer_not_found" };
+    const result = await this.ensureXeroInvoiceForPayment(paymentId, lot, buyerId, p.amount);
+    if (result.ok) {
+      recordMoneyPathEvent("xero_invoice_backfilled");
+    }
+    return result;
   }
 
   private async recordXeroRefundCreditNote(
@@ -1140,6 +1178,9 @@ export class PaymentService {
       return err(new LotError("Only pending payments can be cancelled", 409));
     }
     await this.payments.updateStatus(paymentId, "cancelled");
+    // Best-effort: expire the open Stripe Checkout session / cancel the PaymentIntent so a
+    // buyer cannot still complete payment on a stale tab after cancelling (charge-but-not-captured).
+    await this.revokeOpenStripeCheckoutForPayment(paymentId);
     if (this.db && this.domainEventPublisher) {
       await this.domainEventPublisher.publish(this.db, {
         aggregateType: "payment",
@@ -1184,6 +1225,8 @@ export class PaymentService {
     reason: string,
   ): Promise<void> {
     await this.payments.updateStatus(row.id, "cancelled");
+    // Best-effort: revoke any open Stripe Checkout session for the expired payment.
+    await this.revokeOpenStripeCheckoutForPayment(row.id);
     if (this.db && this.domainEventPublisher) {
       await this.domainEventPublisher.publish(this.db, {
         aggregateType: "payment",
