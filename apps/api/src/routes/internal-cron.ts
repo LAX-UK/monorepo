@@ -226,6 +226,33 @@ export function createInternalCronRoutes(container: Container, env: Env) {
   });
 
   /**
+   * Create missing Xero ACCREC invoices for settleable payments (checkout proceeded while Xero was
+   * down — XERO_INVOICE_BLOCKING=false). Idempotent; no-op while Xero is still disconnected.
+   */
+  r.post("/retry-xero-invoice-creation", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    if (!container.accountingProvider.isConfigured()) {
+      return c.json({ error: "xero_not_configured" }, 503);
+    }
+    const { listPaymentsMissingXeroInvoice } = await import(
+      "../repositories/drizzle-payment-refund-reconcile.repository.js"
+    );
+    const rows = await listPaymentsMissingXeroInvoice(container.db, 25);
+    let created = 0;
+    for (const row of rows) {
+      const result = await container.paymentService.backfillXeroInvoiceForPayment(row.paymentId);
+      if (result.ok) created += 1;
+    }
+    return c.json({ data: { attempted: rows.length, created } });
+  });
+
+  /**
    * Purge expired Better Auth `verification` rows (email links, OTP artifacts).
    *
    * Deletes in batches of 500 via a subquery to avoid long table locks on large tables.

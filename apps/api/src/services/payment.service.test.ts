@@ -1220,6 +1220,55 @@ describe("PaymentService", () => {
     expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
   });
 
+  it("proceeds to Stripe checkout when Xero invoice fails and blocking is disabled", async () => {
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ ...payment, id: "pay-xero-defer", status: "pending" }),
+    } as unknown as IPaymentWriteRepository;
+    const accounting = mockAccounting({
+      isConfigured: vi.fn().mockReturnValue(true),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: false, error: "xero down" }),
+    });
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      accounting,
+      defaultTierPolicy,
+      {
+        findById: vi.fn().mockResolvedValue({ status: "active" }),
+      } as unknown as ILegalEntityRepository,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+      undefined,
+      false,
+    );
+    const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.checkoutUrl).toBe("https://checkout.stripe.com/test");
+    }
+    expect(stripeCheckout.createCheckout).toHaveBeenCalled();
+  });
+
   it("issues bank transfer checkout for released manual-review pending payment", async () => {
     const highAmount = "600000.00";
     const pendingPayment: PaymentRecord = {
@@ -1411,5 +1460,136 @@ describe("PaymentService", () => {
       expect((result.error as LotError).status).toBe(409);
     }
     expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
+  });
+
+  function mockRevokableStripe(): IStripePaymentGateway {
+    return {
+      isConfigured: () => true,
+      capturePaymentIntent: vi.fn(),
+      createRefund: vi.fn(),
+      createCardCheckoutSession: vi.fn(),
+      createBankTransferCheckoutSession: vi.fn(),
+      retrievePaymentIntent: vi.fn(),
+      retrieveCheckoutSession: vi.fn(),
+      findChargeIdForPayment: vi.fn(),
+      revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  it("revokes the open Stripe checkout session when a buyer cancels a pending payment", async () => {
+    const pendingPay: PaymentRecord = {
+      ...payment,
+      paidByUserId: "buyer-1",
+      stripePaymentIntentId: "pi_cancel",
+      status: "pending",
+    };
+    const payments = {
+      findById: vi.fn().mockResolvedValue(pendingPay),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as IPaymentWriteRepository;
+    const stripe = mockRevokableStripe();
+    const service = new PaymentService(
+      {} as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {} as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      stripe,
+    );
+
+    const result = await service.cancelPendingAsBuyer("buyer-1", pendingPay.id);
+
+    expect(result.isOk()).toBe(true);
+    expect(payments.updateStatus).toHaveBeenCalledWith(pendingPay.id, "cancelled");
+    expect(stripe.revokeOpenCheckoutForPayment).toHaveBeenCalledWith(pendingPay.id, "pi_cancel");
+  });
+
+  it("revokes the open Stripe checkout session when a stale payment expires", async () => {
+    const stalePay: PaymentRecord = {
+      ...payment,
+      id: "pay-stale",
+      stripePaymentIntentId: "pi_stale",
+      status: "pending",
+    };
+    const payments = {
+      listStalePendingBefore: vi
+        .fn()
+        .mockResolvedValue([{ id: stalePay.id, lotId: lot.id, buyerId: "buyer-1" }]),
+      listStaleAuthorizedBefore: vi.fn().mockResolvedValue([]),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(stalePay),
+    } as unknown as IPaymentWriteRepository;
+    const stripe = mockRevokableStripe();
+    const service = new PaymentService(
+      {} as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {} as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      stripe,
+    );
+
+    const expired = await service.expireStalePendingPayments(14, 30);
+
+    expect(expired).toBe(1);
+    expect(payments.updateStatus).toHaveBeenCalledWith(stalePay.id, "cancelled");
+    expect(stripe.revokeOpenCheckoutForPayment).toHaveBeenCalledWith(stalePay.id, "pi_stale");
+  });
+
+  it("backfills a missing Xero invoice for a settleable payment", async () => {
+    const accounting = mockAccounting({
+      isConfigured: vi.fn().mockReturnValue(true),
+      ensureInvoiceForPayment: vi.fn().mockResolvedValue({ ok: true }),
+    });
+    const pendingPay: PaymentRecord = { ...payment, buyerId: "buyer-1", status: "pending" };
+    const payments = {
+      findById: vi.fn().mockResolvedValue(pendingPay),
+    } as unknown as IPaymentWriteRepository;
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Bob", email: "bob@test.com" }),
+      } as unknown as IUserRepository,
+      accounting,
+      defaultTierPolicy,
+    );
+
+    const res = await service.backfillXeroInvoiceForPayment(pendingPay.id);
+
+    expect(res.ok).toBe(true);
+    expect(accounting.ensureInvoiceForPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentId: pendingPay.id, amount: pendingPay.amount }),
+    );
+  });
+
+  it("does not backfill a Xero invoice when accounting is not configured", async () => {
+    const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(false) });
+    const service = new PaymentService(
+      {} as ILotRepository,
+      {} as IPaymentWriteRepository,
+      null,
+      new NotificationFactory(),
+      {} as IUserRepository,
+      accounting,
+      defaultTierPolicy,
+    );
+
+    const res = await service.backfillXeroInvoiceForPayment("pay-x");
+
+    expect(res.ok).toBe(false);
+    expect(accounting.ensureInvoiceForPayment).not.toHaveBeenCalled();
   });
 });

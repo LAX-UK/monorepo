@@ -28,6 +28,13 @@ export async function runRetryXeroStripeCaptureSyncJob(opts: JobOpts): Promise<v
   });
 }
 
+export async function runRetryXeroInvoiceCreationJob(opts: JobOpts): Promise<void> {
+  await postInternalCronJob({
+    ...opts,
+    path: "retry-xero-invoice-creation",
+  });
+}
+
 export async function runRetryRefundReconcilesJob(opts: JobOpts): Promise<void> {
   await postInternalCronJob({
     ...opts,

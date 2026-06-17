@@ -164,6 +164,14 @@ const envSchema = z
     XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),
     /** Days after invoice date for due date. */
     XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
+    /**
+     * When true, a Xero invoice failure blocks buyer checkout (503). When false (default),
+     * checkout proceeds and the invoice is created later by the `retry-xero-invoice-creation`
+     * cron — the payment is the source of truth, the ledger is eventually consistent.
+     */
+    XERO_INVOICE_BLOCKING: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
     /** use one Xero Contact per buyer `legal_entity` (stored on `legal_entity.xero_contact_id`)
      * instead of creating contacts from winner email only.
      */
