@@ -2,7 +2,7 @@ import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { kpiCompareHint } from "@/lib/dashboard/kpi-slot-conventions";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { lotTotalMajorUnits } from "@/lib/data/view-models/lot-pricing-helpers";
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 
@@ -21,7 +21,7 @@ export const accountEssentialLinks: readonly AccountEssentialLink[] = [
 ];
 
 export function formatSettlementTotal(row: SettlementRow): string {
-  return formatMoney(lotTotalMajorUnits(row.lot).toFixed(2));
+  return formatMoney(lotTotalMajorUnits(row.lot).toFixed(2), resolveLotCurrency(row.lot));
 }
 
 export function settlementStageIndex(row: SettlementRow): number {

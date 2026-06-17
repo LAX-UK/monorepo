@@ -102,7 +102,7 @@ export function toPaymentDisplayRows(rows: MyPaymentRow[]): PaymentDisplayRow[] 
       lotId: row.lotId,
       lotTitle: row.lotTitle,
       lotImageUrl: row.lotImageUrl,
-      amountLabel: formatMoney(row.amount),
+      amountLabel: formatMoney(row.amount, row.currency),
       createdAtLabel,
       createdAtIso,
       status: row.status,

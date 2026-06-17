@@ -10,8 +10,11 @@ type Props = {
 
 export function KycVerificationBanner({ summary }: Props) {
   if (!summary.requiresKyc) return null;
-  const exposure = formatMoney(summary.pendingExposure.total.toFixed(2));
-  const threshold = formatMoney(summary.thresholdAmount.toFixed(2));
+  const exposure = formatMoney(
+    summary.pendingExposure.total.toFixed(2),
+    summary.pendingExposure.currency,
+  );
+  const threshold = formatMoney(summary.thresholdAmount.toFixed(2), summary.thresholdCurrency);
   return (
     <Alert className="border-outline-variant/40 bg-surface-container-low" data-testid="kyc-banner">
       <AlertTitle>Identity verification required</AlertTitle>

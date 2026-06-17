@@ -8,6 +8,7 @@ import {
 import { type LotRunwayRow, useLotRunway } from "@/features/saleroom/hooks/use-lot-runway";
 import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
 import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
+import { resolveLotCurrency } from "@/lib/money/currency";
 import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
@@ -64,7 +65,7 @@ function RunwayRow({ row }: { row: LotRunwayRow }) {
         {outcome === "sold" ? (
           <span className="flex items-center gap-1 text-xs tabular-nums">
             <Check className="size-3.5 shrink-0" aria-hidden />
-            {formatMoney(lot.currentPrice)}
+            {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
           </span>
         ) : outcome === "no_sale" ? (
           <span className="flex items-center gap-1 text-xs">

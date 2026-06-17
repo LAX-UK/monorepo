@@ -12,7 +12,7 @@ import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import type { Lot, LotEndedEvent } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   lotId: string;
-  lot: Pick<Lot, "status" | "winnerId">;
+  lot: Pick<Lot, "status" | "winnerId"> & { marketingDetails?: Lot["marketingDetails"] };
   currentUserId: string | null;
   watcherCount?: number | null;
   /** Omit duplicate countdown in feed header (pricing header owns the clock). */
@@ -71,8 +71,9 @@ export function OnlineBidsView({
       mapUserBidsHistoryVM(entries, currentUserId, {
         status: lotSnap.status,
         winnerId: lotSnap.winnerId,
+        ...(lot.marketingDetails != null ? { marketingDetails: lot.marketingDetails } : {}),
       }),
-    [entries, currentUserId, lotSnap.status, lotSnap.winnerId],
+    [entries, currentUserId, lotSnap.status, lotSnap.winnerId, lot.marketingDetails],
   );
 
   const userBidsVm = useMemo((): UserBidsHistoryVM | null => {
@@ -80,11 +81,12 @@ export function OnlineBidsView({
     if (!initialOutbid || !currentUserId) return userBidsVmBase;
     const myLatest = entries.find((e) => e.bidderId === currentUserId);
     if (!myLatest) return userBidsVmBase;
+    const currency = resolveLotCurrency(lot);
     return {
       ...userBidsVmBase,
-      contextLine: `Your last bid ${formatMoney(myLatest.amount)} — current high ${formatMoney(liveCurrentPrice)}`,
+      contextLine: `Your last bid ${formatMoney(myLatest.amount, currency)} — current high ${formatMoney(liveCurrentPrice, currency)}`,
     };
-  }, [userBidsVmBase, initialOutbid, currentUserId, entries, liveCurrentPrice]);
+  }, [userBidsVmBase, initialOutbid, currentUserId, entries, liveCurrentPrice, lot]);
 
   const lifecycle = useMemo(() => {
     if (!onlineCtx) {
@@ -136,6 +138,7 @@ export function OnlineBidsView({
       <LiveBidFeed
         entries={entries}
         currentUserId={currentUserId}
+        bidCurrency={resolveLotCurrency(lot)}
         headerMode="watching"
         watcherCount={watcherCount}
         lifecycleKind={lifecycle.kind}

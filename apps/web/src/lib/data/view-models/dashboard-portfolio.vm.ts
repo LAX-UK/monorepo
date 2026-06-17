@@ -1,7 +1,7 @@
 import type { PortfolioLotCardVm } from "@/components/dashboard/portfolio-lot-grid";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason, portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
@@ -75,8 +75,8 @@ export function buildPortfolioAnalytics(
   }
   return {
     totalRows: rows.length,
-    totalSpentFormatted: formatMoney(totalSpent.toFixed(2)),
-    outstandingFormatted: formatMoney(outstanding.toFixed(2)),
+    totalSpentFormatted: formatMoney(totalSpent.toFixed(2), PLATFORM_DEFAULT_CURRENCY),
+    outstandingFormatted: formatMoney(outstanding.toFixed(2), PLATFORM_DEFAULT_CURRENCY),
     hasOutstanding: outstanding > 0,
     wonThisYear,
     years: Array.from(yearsSet).sort((a, b) => b - a),
@@ -127,14 +127,17 @@ export function toPortfolioLotCards(
       typeof a.marketingDetails?.conditionReport?.downloadUrl === "string"
         ? a.marketingDetails.conditionReport.downloadUrl
         : null;
+    const currency = resolveLotCurrency(a);
     return {
       id: a.id,
       title: a.title,
       artistName,
       image: img ?? null,
-      hammerLabel: cp ? formatMoney(cp.hammerMajor) : formatMoney(a.currentPrice),
-      premiumLabel: formatMoney((Number.isFinite(premium) ? premium : 0).toFixed(2)),
-      totalLabel: Number.isFinite(total) ? formatMoney(total.toFixed(2)) : "—",
+      hammerLabel: cp
+        ? formatMoney(cp.hammerMajor, currency)
+        : formatMoney(a.currentPrice, currency),
+      premiumLabel: formatMoney((Number.isFinite(premium) ? premium : 0).toFixed(2), currency),
+      totalLabel: Number.isFinite(total) ? formatMoney(total.toFixed(2), currency) : "—",
       dueLabel: row.payment?.status === "captured" ? "Paid" : "Due now",
       settlementLabel,
       settlementStageIndex,

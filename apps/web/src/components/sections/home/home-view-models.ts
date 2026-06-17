@@ -1,6 +1,6 @@
 import type { SaleListRow } from "@/lib/data/http/sales.server";
 import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-date";
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
@@ -282,7 +282,7 @@ export function toHeroLotVM(
     artistName,
     priceLabel: primary.label,
     priceFormatted: primary.value,
-    currentBidFormatted: formatMoney(lot.currentPrice),
+    currentBidFormatted: formatMoney(lot.currentPrice, resolveLotCurrency(lot)),
     bidCountDisplay: "—",
     heroImageUrl: lot.images[0] ?? null,
     imageAlt: heroImageAlt(lot.title, artistName),

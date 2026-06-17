@@ -44,7 +44,7 @@ describe("toEditorsPickLotCardVM", () => {
         },
       }),
     );
-    expect(vm.estimateValue).toMatch(/£50,000\.00.*£75,000\.00.*GBP/);
+    expect(vm.estimateValue).toMatch(/£50,000\.00.*£75,000\.00/);
   });
 
   it("falls back to starting bid instead of rendering undefined", () => {
@@ -88,7 +88,7 @@ describe("toEditorsPickLotCardVM", () => {
       },
     });
     const vm = toEditorsPickLotCardVM(lot);
-    expect(vm.estimateValue).toMatch(/£180,000\.00.*£220,000\.00.*GBP/);
+    expect(vm.estimateValue).toMatch(/£180,000\.00.*£220,000\.00/);
     expect(vm.estimateValue).not.toBe("£0.00");
   });
 });

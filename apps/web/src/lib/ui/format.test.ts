@@ -9,12 +9,12 @@ import {
 } from "./format";
 
 describe("format", () => {
-  it("formats money in USD", () => {
-    expect(formatMoney(1234.5)).toMatch(/\$1,234\.50/);
+  it("formats money in GBP by default", () => {
+    expect(formatMoney(1234.5)).toMatch(/£1,234\.50/);
   });
 
   it("formats money with currency", () => {
-    expect(formatMoney(100, "GBP", "en-GB")).toMatch(/£100/);
+    expect(formatMoney(100, "USD", "en-GB")).toMatch(/\$100/);
   });
 
   it("formats dates", () => {

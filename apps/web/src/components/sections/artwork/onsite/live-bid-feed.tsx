@@ -11,6 +11,7 @@ import {
   getLiveFeedHeaderMeta,
 } from "@/components/sections/artwork/onsite/live-feed-header";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
+import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import { cn } from "@auction/ui";
 import { Gavel } from "lucide-react";
 import type { CSSProperties } from "react";
@@ -31,6 +32,7 @@ type Props = {
   /** Bid history owned by parent (e.g. `OnlineBidsView` + single realtime subscription). */
   entries: BidHistoryEntry[];
   currentUserId: string | null;
+  bidCurrency?: string;
   className?: string;
   headerMode?: "bids" | "watching" | "none";
   watcherCount?: number | null;
@@ -52,10 +54,11 @@ export function LiveBidFeed({
   countdownClock = "",
   compactHeader = false,
   listMaxHeightClass = "max-h-[min(55vh,520px)]",
+  bidCurrency = PLATFORM_DEFAULT_CURRENCY,
 }: Props) {
   const rows: BidFeedEntryVM[] = useMemo(
-    () => mapBidHistoryToFeedEntries(entries, currentUserId),
-    [entries, currentUserId],
+    () => mapBidHistoryToFeedEntries(entries, currentUserId, bidCurrency),
+    [entries, currentUserId, bidCurrency],
   );
 
   const bidCountLabel =
