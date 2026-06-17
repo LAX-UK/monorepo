@@ -1,5 +1,10 @@
 import { formatBidChannelLabel } from "@/lib/bid/bid-channel-label";
-import type { BidUpdateEvent, SaleroomDisplaySnapshot } from "@auction/types";
+import { formatMoney } from "@/lib/ui/format";
+import type {
+  BidUpdateEvent,
+  SaleroomDisplayLotEstimate,
+  SaleroomDisplaySnapshot,
+} from "@auction/types";
 
 export type DisplayBidTick = {
   id: string;
@@ -15,12 +20,19 @@ export type DisplayBidLiveState = {
   leaderPlacedVia: string | null;
 };
 
+export type DisplayLastHammer = {
+  price: string;
+  paddleLabel: string | null;
+};
+
 export type DisplayBoardVM = {
   snapshot: SaleroomDisplaySnapshot;
   connectionStatus: "connected" | "reconnecting" | "disconnected";
   recentBids: DisplayBidTick[];
   priceFlash: boolean;
   leaderLabel: string | null;
+  nextRequiredBid: string | null;
+  nextRequiredBidCurrency: string;
 };
 
 export const DISPLAY_BID_TICK_CAP = 5;
@@ -62,6 +74,33 @@ export function formatDisplayBidRowLabel(
   paddleNumber: number | null,
 ): string {
   return formatDisplayLeaderLabel(placedVia, paddleNumber) ?? "Bidder";
+}
+
+export function formatDisplayEstimate(
+  estimate: SaleroomDisplayLotEstimate | null | undefined,
+): string | null {
+  if (!estimate) {
+    return null;
+  }
+  return `${formatMoney(estimate.low, estimate.currency)} – ${formatMoney(estimate.high, estimate.currency)}`;
+}
+
+export function computeNextRequiredBid(
+  currentPrice: string,
+  minBidIncrement: string,
+): string | null {
+  const current = Number.parseFloat(currentPrice);
+  const increment = Number.parseFloat(minBidIncrement);
+  if (!Number.isFinite(current) || !Number.isFinite(increment)) {
+    return null;
+  }
+  return (current + increment).toFixed(2);
+}
+
+export function defaultDisplayBidCurrency(
+  estimate: SaleroomDisplayLotEstimate | null | undefined,
+): string {
+  return estimate?.currency ?? "USD";
 }
 
 function tickFromEvent(event: BidUpdateEvent): DisplayBidTick {
@@ -171,6 +210,9 @@ export function buildDisplayBoardVM(
     lot && lot.bidCount > 0
       ? formatDisplayLeaderLabel(bidLive.leaderPlacedVia, lot.leaderPaddleNumber)
       : null;
+  const nextRequiredBidCurrency = defaultDisplayBidCurrency(lot?.estimate);
+  const nextRequiredBid =
+    lot != null ? computeNextRequiredBid(lot.currentPrice, lot.minBidIncrement ?? "1.00") : null;
 
   return {
     snapshot,
@@ -178,5 +220,7 @@ export function buildDisplayBoardVM(
     recentBids: bidLive.recentBids,
     priceFlash: opts?.suppressPriceFlash ? false : bidLive.priceFlash,
     leaderLabel,
+    nextRequiredBid,
+    nextRequiredBidCurrency,
   };
 }

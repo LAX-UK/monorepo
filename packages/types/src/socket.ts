@@ -83,6 +83,19 @@ export type SaleroomDisplayOverlay = {
   emittedAt: string;
 };
 
+export type SaleroomDisplayLotEstimate = {
+  low: string;
+  high: string;
+  currency: string;
+};
+
+export type SaleroomDisplayNextLot = {
+  lotNumber: number;
+  title: string;
+  imageUrl: string | null;
+  estimate: SaleroomDisplayLotEstimate | null;
+};
+
 export type SaleroomDisplaySnapshot = {
   saleId: string;
   saleTitle: string;
@@ -96,7 +109,14 @@ export type SaleroomDisplaySnapshot = {
     currentPrice: string;
     bidCount: number;
     leaderPaddleNumber: number | null;
+    estimate: SaleroomDisplayLotEstimate | null;
+    minBidIncrement: string;
   } | null;
+  nextLot: SaleroomDisplayNextLot | null;
+  saleProgress: { position: number; total: number } | null;
+  saleCoverImageUrl: string | null;
+  /** ISO timestamp when the saleroom session went live (for "Live since" on the display). */
+  sessionStartedAt: string | null;
   overlay: SaleroomDisplayOverlay | null;
 };
 
