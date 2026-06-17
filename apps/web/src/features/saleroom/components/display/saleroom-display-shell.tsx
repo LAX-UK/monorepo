@@ -14,8 +14,20 @@ type Props = {
   saleId: string;
 };
 
+function DisplayLoadingShell() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-neutral-950 text-white/60">
+      Loading display…
+    </div>
+  );
+}
+
 export function SaleroomDisplayShell({ saleId }: Props) {
-  const { state: pairingState, beginPairing, disconnect } = useDisplayPairing(saleId);
+  const { state: pairingState, beginPairing, disconnect, isRestored } = useDisplayPairing(saleId);
+
+  if (!isRestored) {
+    return <DisplayLoadingShell />;
+  }
 
   if (pairingState.phase === "authorized") {
     return (
@@ -66,11 +78,7 @@ function SaleroomDisplayConnected({
   });
 
   if (!live.snapshot) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-neutral-950 text-white/60">
-        Loading display…
-      </div>
-    );
+    return <DisplayLoadingShell />;
   }
 
   const betweenLots = live.snapshot.sessionStatus === "live" && live.snapshot.currentLotId == null;

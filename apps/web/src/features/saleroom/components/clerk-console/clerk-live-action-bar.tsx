@@ -2,6 +2,7 @@
 
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import { LotOutcomeControls } from "@/features/saleroom/components/clerk-console/lot-outcome-controls";
+import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
 import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import type { Lot } from "@auction/types";
@@ -12,10 +13,11 @@ type Props = {
   canHammer: boolean;
   sessionLive: boolean;
   nextLot: Lot | null;
+  policy: ClerkActionPolicy;
 };
 
-export function ClerkLiveActionBar({ saleId, canHammer, sessionLive, nextLot }: Props) {
-  if (!sessionLive || (!canHammer && !nextLot)) return null;
+export function ClerkLiveActionBar({ saleId, canHammer, sessionLive, nextLot, policy }: Props) {
+  if (!sessionLive || (!policy.advanceInDock && !policy.hammerInDock)) return null;
 
   const advanceFormId = `saleroom-advance-next-bar-${saleId}`;
 
@@ -29,14 +31,14 @@ export function ClerkLiveActionBar({ saleId, canHammer, sessionLive, nextLot }: 
       <div
         className={cn(
           "mx-auto flex max-w-4xl gap-2",
-          "flex-col md:flex-row md:items-center md:justify-end",
+          "flex-col lg:flex-row lg:items-center lg:justify-end",
         )}
       >
-        {nextLot ? (
+        {policy.advanceInDock && nextLot ? (
           <form
             id={advanceFormId}
             action={adminSaleroomAdvanceAction}
-            className="md:flex-1 md:max-w-sm"
+            className="lg:flex-1 lg:max-w-sm"
           >
             <input type="hidden" name="saleId" value={saleId} />
             <input type="hidden" name="lotId" value={nextLot.id} />
@@ -52,12 +54,12 @@ export function ClerkLiveActionBar({ saleId, canHammer, sessionLive, nextLot }: 
             </SaleroomPendingSubmit>
           </form>
         ) : null}
-        {canHammer ? (
+        {policy.hammerInDock && canHammer ? (
           <LotOutcomeControls
             saleId={saleId}
             canHammer={canHammer}
             compact
-            className="md:shrink-0"
+            className="lg:shrink-0"
           />
         ) : null}
       </div>

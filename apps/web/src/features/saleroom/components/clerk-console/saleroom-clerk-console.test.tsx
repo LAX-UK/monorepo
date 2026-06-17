@@ -31,6 +31,34 @@ vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
     }),
 }));
 
+vi.mock("@/features/saleroom/components/clerk-console/clerk-session-toolbar", () => ({
+  ClerkSessionToolbar: () => <div data-testid="session-toolbar" />,
+}));
+vi.mock("@/features/saleroom/components/clerk-console/clerk-console-layout", () => ({
+  ClerkConsoleLayout: ({ slots }: { slots: Record<string, React.ReactNode> }) => (
+    <div>
+      {slots.alerts}
+      {slots.sessionBar}
+      {slots.sessionToolbar}
+      {slots.runway}
+      {slots.onBlock}
+      {slots.tools}
+      {slots.liveDock}
+    </div>
+  ),
+}));
+vi.mock("@/features/saleroom/components/clerk-console/clerk-secondary-tools-rail", () => ({
+  ClerkSecondaryToolsRail: ({ slots }: { slots: Record<string, React.ReactNode> }) => (
+    <div data-testid="tools-rail">
+      {slots.display}
+      {slots.telephone}
+      {slots.activity}
+    </div>
+  ),
+}));
+vi.mock("@/features/saleroom/components/clerk-console/clerk-console-alerts-panel", () => ({
+  ClerkConsoleAlertsPanel: () => null,
+}));
 vi.mock("@/features/saleroom/components/clerk-console/clerk-session-bar", () => ({
   ClerkSessionBar: () => <div data-testid="session-bar" />,
 }));
@@ -107,7 +135,7 @@ function sessionSnapshot(
 }
 
 describe("SaleroomClerkConsole phase layout", () => {
-  it("shows setup controls before the session is live", () => {
+  it("shows setup session toolbar before the session is live", () => {
     render(
       <SaleroomClerkConsole
         saleId="sale-1"
@@ -117,8 +145,8 @@ describe("SaleroomClerkConsole phase layout", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Go live" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("session-toolbar")).toBeInTheDocument();
+    expect(screen.getByTestId("tools-rail")).toBeInTheDocument();
   });
 
   it("shows selling panels when live with a lot on block", () => {
@@ -136,7 +164,7 @@ describe("SaleroomClerkConsole phase layout", () => {
     expect(screen.getByTestId("live-action-bar")).toBeInTheDocument();
   });
 
-  it("shows resume control when session is paused", () => {
+  it("shows session toolbar when session is paused", () => {
     render(
       <SaleroomClerkConsole
         saleId="sale-1"
@@ -146,6 +174,20 @@ describe("SaleroomClerkConsole phase layout", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument();
+    expect(screen.getByTestId("session-toolbar")).toBeInTheDocument();
+  });
+
+  it("shows tools rail when live with a lot on block", () => {
+    render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+      />,
+    );
+
+    expect(screen.getByTestId("tools-rail")).toBeInTheDocument();
+    expect(screen.getByTestId("display-control-panel")).toBeInTheDocument();
   });
 });

@@ -7,6 +7,7 @@ import {
 } from "@/features/saleroom/components/clerk-console/console-panel";
 import { LotOutcomeControls } from "@/features/saleroom/components/clerk-console/lot-outcome-controls";
 import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
 import type { ClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
 import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import type {
@@ -37,7 +38,7 @@ type Props = {
   paddleRoster?: AdminPaddleRosterEntry[];
   liveBid: ClerkLotLiveBidState;
   canHammer?: boolean;
-  showOutcomeControls?: boolean;
+  policy: ClerkActionPolicy;
   nextLot?: Lot | null;
   sessionLive?: boolean;
   betweenLots?: boolean;
@@ -61,7 +62,7 @@ export function LotOnBlockPanel({
   paddleRoster = [],
   liveBid,
   canHammer = false,
-  showOutcomeControls = false,
+  policy,
   nextLot = null,
   sessionLive = false,
   betweenLots = false,
@@ -85,7 +86,7 @@ export function LotOnBlockPanel({
     }
   }, [currentLotId]);
 
-  if (betweenLots && sessionLive && nextLot) {
+  if (betweenLots && sessionLive && nextLot && policy.advanceInOnBlock) {
     const advanceFormId = `saleroom-advance-hero-${saleId}`;
     return (
       <ConsolePanel className="space-y-4">
@@ -313,11 +314,11 @@ export function LotOnBlockPanel({
         </div>
       )}
 
-      {showOutcomeControls ? (
+      {policy.hammerInOnBlock ? (
         <LotOutcomeControls
           saleId={saleId}
           canHammer={canHammer}
-          className="hidden border-t border-outline-variant/20 pt-4 md:block"
+          className="hidden border-t border-outline-variant/20 pt-4 lg:block"
         />
       ) : null}
     </ConsolePanel>

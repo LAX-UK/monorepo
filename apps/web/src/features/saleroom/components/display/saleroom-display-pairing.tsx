@@ -11,10 +11,7 @@ type Props = {
 };
 
 export function SaleroomDisplayPairing({ saleId, start, phase, message, onBegin }: Props) {
-  const approveUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/admin/saleroom/${saleId}`
-      : `/admin/saleroom/${saleId}`;
+  const approveUrl = `/admin/saleroom/${saleId}`;
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-neutral-950 px-6 text-white">

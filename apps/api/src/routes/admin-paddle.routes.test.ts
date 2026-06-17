@@ -61,6 +61,16 @@ function buildPaddleApp() {
     saleroomOnBlockPolicy: {
       assertLotOnBlock: vi.fn().mockResolvedValue(ok(undefined)),
     },
+    saleroomService: {
+      publishClerkPaddleBidSummary: vi.fn().mockResolvedValue(undefined),
+    },
+    db: {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn().mockResolvedValue([{ count: 1 }]),
+        })),
+      })),
+    },
     redis: {
       incr: vi.fn().mockResolvedValue(1),
       expire: vi.fn().mockResolvedValue(1),
