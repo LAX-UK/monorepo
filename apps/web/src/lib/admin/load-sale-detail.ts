@@ -17,15 +17,19 @@ export const loadAdminSaleDetail = cache(async (saleId: string): Promise<AdminSa
 
 /** Cached registrations list for layout count + registrations tab. */
 export const loadAdminSaleRegistrations = cache(async (saleId: string) =>
-  getAdminSaleRegistrations(saleId).catch(() => []),
+  getAdminSaleRegistrations(saleId),
 );
 
 /** Registration count for sale detail shell (null when sale is not liveish). */
 export const loadAdminSaleRegistrationCount = cache(
   async (saleId: string, sale: Sale): Promise<number | null> => {
     if (!isSaleLiveish(sale)) return null;
-    const registrations = await loadAdminSaleRegistrations(saleId);
-    return registrations.length;
+    try {
+      const registrations = await loadAdminSaleRegistrations(saleId);
+      return registrations.length;
+    } catch {
+      return null;
+    }
   },
 );
 
@@ -33,7 +37,11 @@ export const loadAdminSaleRegistrationCount = cache(
 export const loadAdminSalePendingRegistrationCount = cache(
   async (saleId: string, sale: Sale): Promise<number | null> => {
     if (!isSaleLiveish(sale)) return null;
-    const registrations = await loadAdminSaleRegistrations(saleId);
-    return registrations.filter((registration) => registration.status === "pending").length;
+    try {
+      const registrations = await loadAdminSaleRegistrations(saleId);
+      return registrations.filter((registration) => registration.status === "pending").length;
+    } catch {
+      return null;
+    }
   },
 );

@@ -2430,7 +2430,7 @@ const saleroomCheckInCandidatesForm = z.object({
 
 const saleroomCheckInForm = z.object({
   saleId: z.string().uuid(),
-  userId: z.string().uuid(),
+  userId: z.string().min(1).max(191),
   buyerLegalEntityId: z.string().uuid(),
   bidLimit: z.coerce.number().finite().positive().max(1e12).optional(),
   paddleNumber: z.coerce.number().int().min(100).optional(),
