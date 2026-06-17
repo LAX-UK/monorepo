@@ -34,6 +34,22 @@ describe("parseBid", () => {
     expect(bid.bidderId).toBe("user-1");
     expect(bid.autoBidStepAmount).toBe("10.00");
   });
+
+  it("maps placedVia and clerkUserId from API rows", () => {
+    const bid = parseBid({
+      id: "bid-2",
+      lotId: "lot-1",
+      placedByUserId: "user-1",
+      amount: "1700.00",
+      isWinning: true,
+      isAutoBid: false,
+      placedVia: "saleroom",
+      clerkUserId: "clerk-staff-uuid",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(bid.placedVia).toBe("saleroom");
+    expect(bid.clerkUserId).toBe("clerk-staff-uuid");
+  });
 });
 
 describe("parseItemSubmission", () => {

@@ -2,6 +2,7 @@
 
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
+import { BidPlacementBadge } from "@/components/dashboard/bid-placement-badge";
 import { BidsListToolbar } from "@/components/dashboard/bids/bids-list-toolbar";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
@@ -87,6 +88,11 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
               </span>
               {a.medium ? (
                 <span className="block truncate text-xs text-on-surface-variant">{a.medium}</span>
+              ) : null}
+              {row.original.placement.onBehalf ? (
+                <span className="mt-1 block">
+                  <BidPlacementBadge bid={row.original.bid} />
+                </span>
               ) : null}
             </span>
           </Link>
@@ -243,6 +249,7 @@ function exportRowsToCsv(rows: BidBoardRow[], artistNameById: Record<string, str
     "status",
     "my_bid",
     "current_price",
+    "placed_via",
     "ended_at",
   ];
   const lines = [header.join(",")];
@@ -257,6 +264,7 @@ function exportRowsToCsv(rows: BidBoardRow[], artistNameById: Record<string, str
       r.statusLabel,
       r.bid.amount,
       a?.currentPrice ?? "",
+      r.bid.placedVia ?? "",
       toRequiredIsoString(a?.endTime),
     ].map((v) => csvCell(String(v)));
     lines.push(cells.join(","));

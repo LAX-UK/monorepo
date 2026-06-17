@@ -5,6 +5,7 @@ import { buildAttentionItems } from "./build-attention-items";
 const emptyVm = {
   activeLots: [],
   activeLotBidHints: {},
+  activeBidLots: [],
   settlementsDue: [],
   endingSoonWatchlist: [],
 } as unknown as DashboardOverviewVm;

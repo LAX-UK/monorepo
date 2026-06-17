@@ -1,6 +1,7 @@
 "use client";
 
 import type { BidBoardRow } from "@/components/dashboard/bid-board-rows";
+import { BidPlacementBadge } from "@/components/dashboard/bid-placement-badge";
 import { DashboardMobileLotThumbnail } from "@/components/dashboard/list/dashboard-mobile-lot-thumbnail";
 import {
   DashboardListRowCard,
@@ -85,6 +86,7 @@ export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
                   <StatusBadge variant={statusVariant(row)} size="sm">
                     {row.statusLabel}
                   </StatusBadge>
+                  {row.placement.onBehalf ? <BidPlacementBadge bid={row.bid} /> : null}
                   <span
                     className={
                       row.outbid

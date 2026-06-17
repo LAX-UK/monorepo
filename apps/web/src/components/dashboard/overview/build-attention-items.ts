@@ -104,8 +104,9 @@ export function buildAttentionItems({
     });
   }
 
-  const outbidLots = vm.activeLots.filter((lot) => vm.activeLotBidHints[lot.id] === "outbid");
-  for (const lot of outbidLots.slice(0, 3)) {
+  const outbidEntries = vm.activeBidLots.filter((entry) => entry.hint === "outbid");
+  for (const entry of outbidEntries.slice(0, 3)) {
+    const lot = entry.lot;
     items.push({
       id: `outbid-${lot.id}`,
       title: `Outbid on ${lot.title}`,
