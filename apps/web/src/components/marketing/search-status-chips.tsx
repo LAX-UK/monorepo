@@ -15,7 +15,7 @@ export type SearchStatusChipsProps = {
   status?: LotStatus;
   ending?: SearchEndingWindow;
   /** Horizontal strip (toolbar) or vertical list (filter sheet). */
-  layout?: "strip" | "list";
+  layout?: "strip" | "list" | "bare";
   className?: string;
 };
 
@@ -83,6 +83,10 @@ export function SearchStatusChips({
         {links}
       </nav>
     );
+  }
+
+  if (layout === "bare") {
+    return <>{links}</>;
   }
 
   return (

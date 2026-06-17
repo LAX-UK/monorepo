@@ -83,15 +83,26 @@ const minimalLot = (overrides: Partial<Lot> = {}): Lot => ({
 });
 
 describe("CatalogLotGridView", () => {
-  it("uses a 2-column grid on the default (mobile-first) breakpoint", () => {
+  it("uses equal-height marketing catalog grid with 2-column sparse layout", () => {
     const { container } = render(
       <CatalogLotGridView
         lots={[toCatalogLotVM(minimalLot()), toCatalogLotVM(minimalLot({ id: "lot-2" }))]}
         {...viewProps}
       />,
     );
-    const ul = container.querySelector("ul");
-    expect(ul?.className).toMatch(/grid-cols-2/);
+    const grid = container.querySelector("ul");
+    expect(grid?.className).toMatch(/auto-rows-fr/);
+    expect(grid?.className).toMatch(/items-stretch/);
+    expect(grid?.className).toMatch(/grid-cols-2/);
+
+    const card = container.querySelector("article");
+    expect(card?.className).toMatch(/h-full/);
+
+    const frame = container.querySelector("[data-overlay-resolved]");
+    expect(frame?.className).toMatch(/h-full/);
+
+    const item = container.querySelector("li");
+    expect(item?.className).toMatch(/h-full/);
   });
 
   it("renders a watchlist heart per lot with initial state from watchedLotIds", () => {

@@ -107,7 +107,8 @@ Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and
 | `MarketingPageShell` | Max width, horizontal padding, optional `bg-page-bg` (see `pageBackground` note under Global chrome). |
 | `MarketingPageHero` | Slots: `breadcrumb`, `eyebrow`, `title`, `description`, `meta`, `actions`, `media`. |
 | `MarketingBreadcrumb` | Visible trail + optional JSON-LD via builders. |
-| `MarketingListToolbar` | Sticky glass bar: count, filters, sort, trailing (switcher + copy). |
+| `MarketingListToolbar` | Sticky glass bar: count, filters, sort, trailing (switcher + copy). Active filter chips render **below** the sticky shell (non-sticky). |
+| `MarketingCatalogGrid` | Canonical catalogue grid: sparse columns + `auto-rows-fr` equal row heights. All lot/sale catalog grids use this — do not hand-roll grid stretch classes. |
 | `MarketingFilterSidebar` | Accordion / link lists for faceted surfaces. |
 | `MarketingPagination` | Numbered prev/next + window (from `@auction/ui` `MarketingPagination`). |
 | `MarketingLoadMore` | Saleroom infinite / progress pattern. |
@@ -171,7 +172,8 @@ Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and
 - **Hydration:** prefer CSS visibility (`lg:hidden` / `hidden lg:block`) over JS breakpoint hooks for layout forks; reserve `useIsLg()`-style hooks for controlled overlay routing only.
 - **Catalogue hubs:** use `MarketingCatalogHubShell` for `/search`, `/archive`, `/artists`, `/sales` — do not hand-compose `<main>` + `MARKETING_CATALOG_PT` + `MARKETING_PAGE_SHELL`.
 - **Detail pages:** use `MarketingDetailShell` for artist profile, sale detail, and lot detail — wayfinding/hero slots plus optional `wrapChildren={false}` for multi-band saleroom layouts.
-- **Toolbar rows:** shared count/filter/sort layout lives in `MarketingToolbarRow`; sticky chrome in `MarketingListToolbar`, inset home chrome in `HomeSectionToolbar`.
+- **Toolbar rows:** shared count/filter/sort layout lives in `MarketingToolbarRow`; sticky chrome in `MarketingListToolbar`, inset home chrome in `HomeSectionToolbar`. Removable active-filter chips (`CatalogActiveFilterChips`) render **below** the sticky toolbar band — not inside it — so they scroll away with results.
+- **Catalogue grids:** use `MarketingCatalogGrid` for equal-height tile rows; cards inside must be `h-full` with caption `mt-auto` (see `LotCardGrid`).
 - **Bottom chrome:** fixed mobile bars use `bottom-[var(--sticky-bid-bar-bottom,0px)]` and safe-area padding — not bare `bottom-0`.
 
 ### PR checklist (marketing UI)
@@ -414,6 +416,8 @@ Marketing overlays on photos resolve **light** or **dark** chrome from pixels be
 | `bottomLeft` | Live timer pill, sale status badge |
 | `bottomRight` | Gallery expand control |
 | `contentBlock` | Hero copy column, editorial-bold title on image |
+
+On the **mobile lot PDP** hero, navigation uses the counter pill (`topRight`), swipe, filmstrip, and Expand only — no dot pile on the hero.
 
 Callers pass **`objectFit: "contain" | "cover"`** explicitly (catalog grid uses contain; sale/editorial tiles use cover). Provider wraps the full card `<article>` when overlays sit outside the image div (e.g. grid watchlist heart).
 

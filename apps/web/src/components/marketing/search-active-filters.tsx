@@ -29,9 +29,11 @@ function buildRemoveHref(
 export function SearchActiveFilters({
   categories,
   sort,
+  className,
 }: {
   categories: Category[];
   sort: SearchSortValue;
+  className?: string;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -86,6 +88,7 @@ export function SearchActiveFilters({
       clearHref="/search"
       pending={pending}
       onNavigate={navigate}
+      {...(className ? { className } : {})}
     />
   );
 }

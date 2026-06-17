@@ -72,7 +72,7 @@ export function MarketingListToolbar({
       >
         <div
           className={cn(
-            "mx-auto max-w-[var(--container-max,1440px)] py-2 md:py-3",
+            "mx-auto max-w-[var(--container-max,1440px)] py-1.5 md:py-2",
             MARKETING_CATALOG_GUTTER,
           )}
         >

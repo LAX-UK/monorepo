@@ -17,6 +17,6 @@ describe("MarketingCatalogToolbarSkeleton", () => {
   it("can render a mobile trailing row placeholder", () => {
     const { container } = render(<MarketingCatalogToolbarSkeleton showMobileTrailing />);
 
-    expect(container.querySelector(".lg\\:hidden.border-t")).not.toBeNull();
+    expect(container.querySelector(".lg\\:hidden.pt-1")).not.toBeNull();
   });
 });

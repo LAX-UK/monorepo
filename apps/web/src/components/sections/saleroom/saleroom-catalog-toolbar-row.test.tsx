@@ -1,5 +1,5 @@
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 let searchParams = new URLSearchParams();
@@ -19,16 +19,14 @@ const baseProps = {
 };
 
 describe("SaleroomCatalogToolbarRow", () => {
-  it("renders mobile filter trigger and stacks the view switcher on a second mobile row", () => {
+  it("renders mobile filter trigger and view switcher on one row", () => {
     searchParams = new URLSearchParams();
 
     render(<SaleroomCatalogToolbarRow {...baseProps} />);
 
     expect(screen.getAllByRole("button", { name: /Filters/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("radiogroup", { name: "View" }).length).toBe(2);
-
-    const mobileRow = screen.getByTestId("mobile-trailing-row");
-    expect(within(mobileRow).getByRole("radiogroup", { name: "View" })).toBeInTheDocument();
+    expect(screen.getAllByRole("radiogroup", { name: "View" }).length).toBe(1);
+    expect(screen.queryByTestId("mobile-trailing-row")).not.toBeInTheDocument();
 
     const allLink = screen.getByRole("link", { name: "All" });
     expect(allLink.closest(".hidden.lg\\:flex")).toBeTruthy();
