@@ -125,6 +125,72 @@ describe("useSaleroomDisplayLive", () => {
     expect(adapter.getJoinedLotId()).toBe("lot-1");
   });
 
+  it("seeds recent bids from snapshot on hydrate and merges live updates without duplicates", async () => {
+    const snapshotWithHistory = snapshot({
+      currentLot: currentLot({
+        recentBids: [
+          {
+            id: "bid-1",
+            amount: "100.00",
+            placedVia: "web",
+            isAutoBid: false,
+            at: "2026-06-17T14:00:00.000Z",
+          },
+        ],
+      }),
+    });
+    const dataClient = createMockDataClient(
+      vi.fn().mockResolvedValue({ ok: true, snapshot: snapshotWithHistory }),
+    );
+    const adapter = createMockSaleroomSocketAdapter();
+
+    const { result } = renderHook(() =>
+      useSaleroomDisplayLive({
+        saleId: "sale-1",
+        displayToken: "token-1",
+        dataClient,
+        socketAdapter: adapter,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.bidLive.recentBids).toHaveLength(1));
+    expect(result.current.bidLive.recentBids[0]?.id).toBe("bid-1");
+    expect(result.current.bidLive.leaderPlacedVia).toBe("web");
+
+    act(() => {
+      adapter.emitBidUpdate(
+        bidPayload({
+          bid: {
+            id: "bid-2",
+            bidderId: "user-2",
+            placedByUserId: "user-2",
+            amount: "150.00",
+            placedVia: "saleroom",
+          },
+        }),
+      );
+    });
+
+    expect(result.current.bidLive.recentBids).toHaveLength(2);
+    expect(result.current.bidLive.recentBids.map((tick) => tick.id)).toEqual(["bid-2", "bid-1"]);
+
+    act(() => {
+      adapter.emitBidUpdate(
+        bidPayload({
+          bid: {
+            id: "bid-2",
+            bidderId: "user-2",
+            placedByUserId: "user-2",
+            amount: "150.00",
+            placedVia: "saleroom",
+          },
+        }),
+      );
+    });
+
+    expect(result.current.bidLive.recentBids).toHaveLength(2);
+  });
+
   it("does not refetch snapshot on unrelated rerenders", async () => {
     const fetchSnapshot = vi.fn().mockResolvedValue({ ok: true, snapshot: snapshot() });
     const dataClient = createMockDataClient(fetchSnapshot);

@@ -78,6 +78,24 @@ describe("DisplaySnapshotReader", () => {
         if (selectCall === 7) {
           return chain([
             {
+              id: "bid-2",
+              amount: "500.00",
+              placedVia: "saleroom",
+              isAutoBid: false,
+              createdAt: new Date("2026-06-17T15:00:00.000Z"),
+            },
+            {
+              id: "bid-1",
+              amount: "475.00",
+              placedVia: "web",
+              isAutoBid: false,
+              createdAt: new Date("2026-06-17T14:55:00.000Z"),
+            },
+          ]);
+        }
+        if (selectCall === 8) {
+          return chain([
+            {
               id: "lot-1",
               lotNumber: 1,
               title: "Meridian Drift",
@@ -118,6 +136,22 @@ describe("DisplaySnapshotReader", () => {
       minBidIncrement: "25.00",
       estimate: { low: "400.00", high: "600.00", currency: "GBP" },
     });
+    expect(snap?.currentLot?.recentBids).toEqual([
+      {
+        id: "bid-2",
+        amount: "500.00",
+        placedVia: "saleroom",
+        isAutoBid: false,
+        at: "2026-06-17T15:00:00.000Z",
+      },
+      {
+        id: "bid-1",
+        amount: "475.00",
+        placedVia: "web",
+        isAutoBid: false,
+        at: "2026-06-17T14:55:00.000Z",
+      },
+    ]);
     expect(snap?.currentLot).not.toHaveProperty("reserveMet");
     expect(snap?.saleProgress).toEqual({ position: 1, total: 2 });
     expect(snap?.nextLot).toMatchObject({
@@ -164,7 +198,8 @@ describe("DisplaySnapshotReader", () => {
         }
         if (selectCall === 4) return chain([{ count: 0 }]);
         if (selectCall === 5) return chain([]);
-        if (selectCall === 6) {
+        if (selectCall === 6) return chain([]);
+        if (selectCall === 7) {
           return chain([
             { id: "lot-1", lotNumber: 1, title: "First", images: [], marketingDetails: null },
             { id: "lot-2", lotNumber: 2, title: "Final lot", images: [], marketingDetails: null },
