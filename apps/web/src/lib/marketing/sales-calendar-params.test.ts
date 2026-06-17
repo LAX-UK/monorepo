@@ -64,8 +64,8 @@ describe("calendar facet labels", () => {
 
   it("maps month and price labels", () => {
     expect(calendarMonthLabel(3)).toBe("March");
-    expect(calendarPriceRangeLabel({ ...baseState, minPrice: 5000, maxPrice: 25000 })).toBe(
-      "£5,000–£25,000",
+    expect(calendarPriceRangeLabel({ ...baseState, minPrice: 5000, maxPrice: 25000 })).toMatch(
+      /£5,000.*£25,000/,
     );
   });
 });

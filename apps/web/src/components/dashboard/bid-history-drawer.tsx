@@ -1,7 +1,7 @@
 "use client";
 
 import { clientApiBase } from "@/lib/api/client-api-base";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { Skeleton } from "@auction/ui";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
 import { useEffect, useState } from "react";
@@ -145,7 +145,7 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
                     </span>
                   </span>
                   <span className="font-headline text-base font-semibold tabular-nums">
-                    {formatMoney(row.amount)}
+                    {formatMoney(row.amount, PLATFORM_DEFAULT_CURRENCY)}
                   </span>
                 </li>
               ))}

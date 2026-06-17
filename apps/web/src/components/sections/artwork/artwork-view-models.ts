@@ -1,7 +1,12 @@
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { formatBidChannelLabel } from "@/lib/bid/bid-channel-label";
 import type { PublicUser } from "@/lib/data/contracts";
-import { formatMoney } from "@/lib/format-currency";
+import {
+  PLATFORM_DEFAULT_CURRENCY,
+  formatEstimateRange,
+  formatMoney,
+  resolveLotCurrency,
+} from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
@@ -165,9 +170,7 @@ export function mapLotToSummarySeed(
   sellerImageUrl: string | null = null,
 ): LotSummarySeedVM {
   const est = lot.marketingDetails.estimate;
-  const estimateLine = est
-    ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}`
-    : null;
+  const estimateLine = est ? formatEstimateRange(est) : null;
   return {
     title: lot.title,
     kicker: null,
@@ -211,10 +214,7 @@ export function aboutArtistBlockContent(lot: Lot, artist: PublicUser | null): st
 export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): AccordionBlock[] {
   const md = lot.marketingDetails;
   const est = md.estimate;
-  const estimateText =
-    est?.low != null && est?.high != null
-      ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}`.trim()
-      : "";
+  const estimateText = est?.low != null && est?.high != null ? formatEstimateRange(est) : "";
   const cr = md.conditionReport;
   const crText = [cr?.summary, cr?.details, cr?.downloadUrl ? `Download: ${cr.downloadUrl}` : ""]
     .filter(Boolean)
@@ -272,7 +272,7 @@ function lotToRailCard(
     lotNumber: lot.lotNumber,
     title: lot.title,
     artistOrSellerName: artistName,
-    estimateLine: est ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}` : null,
+    estimateLine: est ? formatEstimateRange(est) : null,
     currentPrice: lot.currentPrice,
     endTime: normalizeAuctionTime(lot.endTime),
     status: lot.status,
@@ -407,8 +407,8 @@ function lotToQueueCardVM(
     title: lot.title,
     artistName,
     imageUrl: lot.images[0] ?? null,
-    estimateLine: est ? `${formatMoney(est.low)} – ${formatMoney(est.high)} ${est.currency}` : null,
-    currentBid: lot.currentPrice ? formatMoney(lot.currentPrice) : null,
+    estimateLine: est ? formatEstimateRange(est) : null,
+    currentBid: lot.currentPrice ? formatMoney(lot.currentPrice, resolveLotCurrency(lot)) : null,
     isCurrentLot: flags.isCurrentLot,
     isUpNext: flags.isUpNext,
   };
@@ -555,11 +555,12 @@ export type UserBidsHistoryVM = {
 export function mapUserBidsHistoryVM(
   entries: BidHistoryEntry[],
   userId: string | null,
-  lot: Pick<Lot, "status" | "winnerId">,
+  lot: Pick<Lot, "status" | "winnerId"> & { marketingDetails?: Lot["marketingDetails"] },
 ): UserBidsHistoryVM | null {
   if (!userId || entries.length === 0) return null;
   const userBids = entries.filter((e) => e.bidderId === userId);
   if (userBids.length === 0) return null;
+  const currency = resolveLotCurrency(lot);
 
   const sortedByAmount = [...entries].sort((a, b) => {
     const na = Number.parseFloat(a.amount);
@@ -581,7 +582,7 @@ export function mapUserBidsHistoryVM(
       }
       return {
         id: e.id,
-        amount: formatMoney(e.amount),
+        amount: formatMoney(e.amount, currency),
         status,
         ...(e.isAutoBid && isLeadingBid ? { isAutoBid: true } : {}),
       };
@@ -598,6 +599,7 @@ export function mapUserBidsHistoryVM(
 export function mapBidHistoryToFeedEntries(
   entries: BidHistoryEntry[],
   currentUserId: string | null,
+  currency = PLATFORM_DEFAULT_CURRENCY,
 ): BidFeedEntryVM[] {
   if (entries.length === 0) return [];
   const sorted = [...entries].sort((a, b) => {
@@ -609,7 +611,7 @@ export function mapBidHistoryToFeedEntries(
   return sorted.map((e, i) => ({
     id: e.id,
     paddleNumber: maskPaddleFromBidderId(e.bidderId),
-    amount: formatMoney(e.amount),
+    amount: formatMoney(e.amount, currency),
     rank: i + 1,
     isHighest: i === 0,
     isYourBid: Boolean(currentUserId && e.bidderId === currentUserId),

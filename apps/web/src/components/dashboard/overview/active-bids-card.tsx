@@ -3,7 +3,7 @@ import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -80,7 +80,8 @@ export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {
                             key={lot.currentPrice}
                             className="tick-value font-label text-xs uppercase tracking-wider text-secondary"
                           >
-                            {hint === "high" ? "My bid" : "Current"} {formatMoney(lot.currentPrice)}
+                            {hint === "high" ? "My bid" : "Current"}{" "}
+                            {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
                           </span>
                           {bidHintBadge(hint)}
                         </span>

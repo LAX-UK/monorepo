@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import type { TelephoneBookingListItem } from "@/lib/telephone/telephone-booking-types";
 import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
@@ -41,7 +42,7 @@ export function TelephoneBidsBoard({ rows }: Props) {
             <div className="flex flex-wrap items-center gap-2">
               {row.authorizedMax ? (
                 <span className="font-body text-xs tabular-nums text-on-surface-variant">
-                  Max {formatMoney(row.authorizedMax)}
+                  Max {formatMoney(row.authorizedMax, PLATFORM_DEFAULT_CURRENCY)}
                 </span>
               ) : null}
               <Badge variant="secondary">{telephoneBookingStatusLabel(row.status)}</Badge>
