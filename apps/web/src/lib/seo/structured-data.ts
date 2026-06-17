@@ -7,16 +7,11 @@ import {
   SITE_TELEPHONE_SCHEMA,
 } from "@/lib/brand";
 import { coerceToIsoString } from "@/lib/data/http/parse";
+import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { type ArtistKind, getCreatorKindConfig } from "@auction/types";
 import type { Lot, Sale } from "@auction/types";
-
-function lotCurrency(auction: Lot): string {
-  const explicit = auction.marketingDetails?.estimate?.currency;
-  if (explicit && /^[A-Z]{3}$/.test(explicit)) return explicit;
-  return "GBP";
-}
 
 export function lotProductJsonLd(
   auction: Lot,
@@ -41,7 +36,7 @@ export function lotProductJsonLd(
     offers: {
       "@type": "Offer",
       url,
-      priceCurrency: lotCurrency(auction),
+      priceCurrency: resolveLotCurrency(auction),
       price: auction.currentPrice,
       availability,
       ...(priceValidUntil ? { priceValidUntil } : {}),

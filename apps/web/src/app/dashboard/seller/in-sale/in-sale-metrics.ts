@@ -1,3 +1,4 @@
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import type { InSaleDisplayRow } from "./in-sale.vm";
 
 function parseMoneyLabel(label: string): number {
@@ -24,7 +25,8 @@ export function buildInSaleKpiTiles(rows: readonly InSaleDisplayRow[]) {
     {
       id: "avg",
       label: "Avg current bid",
-      value: avgBid > 0 ? `£${Math.round(avgBid).toLocaleString("en-GB")}` : "—",
+      value:
+        avgBid > 0 ? formatMoney(Math.round(avgBid).toFixed(0), PLATFORM_DEFAULT_CURRENCY) : "—",
     },
   ];
 }

@@ -1,6 +1,6 @@
 import { DashboardEmptyState } from "@/components/dashboard/primitives";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { Surface } from "@auction/ui/components/surface";
 import { ArrowRight, CalendarDays, WalletCards } from "lucide-react";
 import Link from "next/link";
@@ -80,7 +80,7 @@ export function SellerOverviewActivityBand({ upcomingSales, forecast }: Props) {
                 Reserved floor
               </dt>
               <dd className="mt-1 break-words font-headline text-xl tabular-nums text-primary">
-                {formatMoney(forecast.reservedFloor)}
+                {formatMoney(forecast.reservedFloor, PLATFORM_DEFAULT_CURRENCY)}
               </dd>
               <p className="mt-1 text-xs text-on-surface-variant dark:text-on-surface-variant">
                 Hammer floor if every reserved lot just meets reserve.
@@ -91,7 +91,7 @@ export function SellerOverviewActivityBand({ upcomingSales, forecast }: Props) {
                 Current best case
               </dt>
               <dd className="mt-1 break-words font-headline text-xl tabular-nums text-primary">
-                {formatMoney(forecast.bestCaseHammer)}
+                {formatMoney(forecast.bestCaseHammer, PLATFORM_DEFAULT_CURRENCY)}
               </dd>
               <p className="mt-1 text-xs text-on-surface-variant dark:text-on-surface-variant">
                 Sum of current prices across {forecast.liveLots} live/scheduled lot

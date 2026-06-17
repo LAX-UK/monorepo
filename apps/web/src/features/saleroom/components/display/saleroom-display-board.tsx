@@ -9,6 +9,7 @@ import {
   type DisplayLastHammer,
   formatDisplayEstimate,
 } from "@/features/saleroom/lib/display-bid-ticks";
+import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import { formatMoney } from "@/lib/ui/format";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -189,6 +190,7 @@ export function SaleroomDisplayBoard({
                   recentBids={recentBids}
                   leaderPaddleNumber={lot.leaderPaddleNumber}
                   bidCount={lot.bidCount}
+                  bidCurrency={nextRequiredBidCurrency}
                 />
               ) : null}
             </div>
@@ -252,7 +254,10 @@ const overlayRenderers: Record<OverlayKind, (props: OverlayProps) => ReactNode> 
         {props.lastHammer ? (
           <div className="mt-8 text-center">
             <p className="text-4xl font-bold tabular-nums text-white md:text-5xl">
-              {formatMoney(props.lastHammer.price, props.priceCurrency ?? "USD")}
+              {formatMoney(
+                props.lastHammer.price,
+                props.priceCurrency ?? PLATFORM_DEFAULT_CURRENCY,
+              )}
             </p>
             {props.lastHammer.paddleLabel ? (
               <p className="mt-3 text-xl uppercase tracking-widest text-white/80">
@@ -284,7 +289,7 @@ export function SaleroomDisplayOverlay({
   flash,
   betweenLots,
   lastHammer,
-  priceCurrency = "USD",
+  priceCurrency = PLATFORM_DEFAULT_CURRENCY,
 }: OverlayProps) {
   return (
     <>

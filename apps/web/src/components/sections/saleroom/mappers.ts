@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/format-currency";
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
@@ -198,7 +198,7 @@ export function mapLotToCardVM(
     imageAlt: lot.title,
     estimateValue: estimate,
     currentBidLabel: lot.status === "ended" ? "Final bid" : "Current bid",
-    currentBidValue: formatMoney(lot.currentPrice),
+    currentBidValue: formatMoney(lot.currentPrice, resolveLotCurrency(lot)),
     bidsCountLabel: null,
     closingLabel: lot.status === "active" ? formatLongDateTime(lot.endTime) : null,
     closingShort,

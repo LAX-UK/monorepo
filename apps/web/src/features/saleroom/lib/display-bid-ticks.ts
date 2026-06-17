@@ -1,4 +1,5 @@
 import { formatBidChannelLabel } from "@/lib/bid/bid-channel-label";
+import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import { formatMoney } from "@/lib/ui/format";
 import type {
   BidUpdateEvent,
@@ -100,7 +101,7 @@ export function computeNextRequiredBid(
 export function defaultDisplayBidCurrency(
   estimate: SaleroomDisplayLotEstimate | null | undefined,
 ): string {
-  return estimate?.currency ?? "USD";
+  return estimate?.currency ?? PLATFORM_DEFAULT_CURRENCY;
 }
 
 function tickFromEvent(event: BidUpdateEvent): DisplayBidTick {

@@ -10,6 +10,7 @@ type Props = {
   recentBids: DisplayBidTick[];
   leaderPaddleNumber: number | null;
   bidCount: number;
+  bidCurrency: string;
 };
 
 function rowLabel(tick: DisplayBidTick, leaderPaddleNumber: number | null, isLeading: boolean) {
@@ -19,7 +20,12 @@ function rowLabel(tick: DisplayBidTick, leaderPaddleNumber: number | null, isLea
   return formatDisplayLeaderLabel(tick.placedVia, null) ?? "Bidder";
 }
 
-export function SaleroomDisplayBidFeed({ recentBids, leaderPaddleNumber, bidCount }: Props) {
+export function SaleroomDisplayBidFeed({
+  recentBids,
+  leaderPaddleNumber,
+  bidCount,
+  bidCurrency,
+}: Props) {
   return (
     <section
       className="min-h-[280px] rounded-2xl border border-white/10 bg-neutral-900/60 p-6"
@@ -60,7 +66,7 @@ export function SaleroomDisplayBidFeed({ recentBids, leaderPaddleNumber, bidCoun
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold tabular-nums text-white">
-                    {formatMoney(tick.amount)}
+                    {formatMoney(tick.amount, bidCurrency)}
                   </p>
                   {tick.isAutoBid ? (
                     <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-emerald-200/80">
