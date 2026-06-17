@@ -53,6 +53,10 @@ const defaultPlaceTelephoneBid: PlaceTelephoneBidFn = async (input) => {
   return { ok: true };
 };
 
+function clerkPaddleStorageKey(saleId: string) {
+  return `saleroom-clerk-paddle:${saleId}`;
+}
+
 export function useClerkBidEntry({
   saleId,
   currentLotId,
@@ -69,6 +73,17 @@ export function useClerkBidEntry({
     bookingId: "",
   });
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(clerkPaddleStorageKey(saleId));
+      if (stored) {
+        setState((prev) => ({ ...prev, paddleNumber: stored }));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [saleId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset bid fields when the on-block lot changes
   useEffect(() => {
@@ -94,9 +109,21 @@ export function useClerkBidEntry({
 
   const selectedBooking = inProgressBookings.find((b) => b.id === state.bookingId) ?? null;
 
-  const setPaddleNumber = useCallback((value: string) => {
-    setState((prev) => ({ ...prev, paddleNumber: value }));
-  }, []);
+  const setPaddleNumber = useCallback(
+    (value: string) => {
+      setState((prev) => ({ ...prev, paddleNumber: value }));
+      try {
+        if (value.trim()) {
+          sessionStorage.setItem(clerkPaddleStorageKey(saleId), value);
+        } else {
+          sessionStorage.removeItem(clerkPaddleStorageKey(saleId));
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [saleId],
+  );
 
   const setPaddleAmount = useCallback((value: string) => {
     setState((prev) => ({ ...prev, paddleAmount: value }));
