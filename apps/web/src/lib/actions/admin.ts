@@ -1997,6 +1997,136 @@ export async function adminSaleroomCloseAction(formData: FormData): Promise<void
   );
 }
 
+const displayApproveForm = z.object({
+  saleId: z.string().uuid(),
+  userCode: z.string().trim().min(4).max(12),
+});
+
+const displayOverlayForm = z.object({
+  saleId: z.string().uuid(),
+  kind: z.enum(["fair_warning", "announcement"]),
+  message: z.string().trim().max(500).optional(),
+});
+
+const displayRevokeForm = z.object({
+  saleId: z.string().uuid(),
+  pairingId: z.string().uuid(),
+});
+
+export async function adminSaleroomDisplayApproveAction(formData: FormData): Promise<void> {
+  return instrumentServerAction(
+    "adminSaleroomDisplayApproveAction",
+    async () => {
+      const parsed = displayApproveForm.safeParse({
+        saleId: String(formData.get("saleId") ?? "").trim(),
+        userCode: String(formData.get("userCode") ?? "").trim(),
+      });
+      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid code")}`);
+      const { saleId, userCode } = parsed.data;
+      await assertSaleroomAccess(saleId);
+      const res = await authedServerFetch(
+        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/approve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userCode: userCode.toUpperCase() }),
+        },
+      );
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        redirectSaleroomError(saleId, payload.error ?? "Display approve failed");
+      }
+      revalidatePath(`/admin/saleroom/${saleId}`);
+    },
+    { formData },
+  );
+}
+
+export async function adminSaleroomDisplayOverlayAction(formData: FormData): Promise<void> {
+  return instrumentServerAction(
+    "adminSaleroomDisplayOverlayAction",
+    async () => {
+      const parsed = displayOverlayForm.safeParse({
+        saleId: String(formData.get("saleId") ?? "").trim(),
+        kind: String(formData.get("kind") ?? "").trim(),
+        message: String(formData.get("message") ?? "").trim() || undefined,
+      });
+      if (!parsed.success)
+        redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid overlay")}`);
+      const { saleId, kind, message } = parsed.data;
+      await assertSaleroomAccess(saleId);
+      const res = await authedServerFetch(
+        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/overlay`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind, ...(message ? { message } : {}) }),
+        },
+      );
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        redirectSaleroomError(saleId, payload.error ?? "Overlay failed");
+      }
+      revalidatePath(`/admin/saleroom/${saleId}`);
+    },
+    { formData },
+  );
+}
+
+export async function adminSaleroomDisplayClearOverlayAction(formData: FormData): Promise<void> {
+  return instrumentServerAction(
+    "adminSaleroomDisplayClearOverlayAction",
+    async () => {
+      const parsed = saleroomSaleIdForm.safeParse({
+        saleId: String(formData.get("saleId") ?? "").trim(),
+      });
+      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
+      const { saleId } = parsed.data;
+      await assertSaleroomAccess(saleId);
+      const res = await authedServerFetch(
+        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/overlay`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        redirectSaleroomError(saleId, payload.error ?? "Clear overlay failed");
+      }
+      revalidatePath(`/admin/saleroom/${saleId}`);
+    },
+    { formData },
+  );
+}
+
+export async function adminSaleroomDisplayRevokeAction(formData: FormData): Promise<void> {
+  return instrumentServerAction(
+    "adminSaleroomDisplayRevokeAction",
+    async () => {
+      const parsed = displayRevokeForm.safeParse({
+        saleId: String(formData.get("saleId") ?? "").trim(),
+        pairingId: String(formData.get("pairingId") ?? "").trim(),
+      });
+      if (!parsed.success)
+        redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid revoke")}`);
+      const { saleId, pairingId } = parsed.data;
+      await assertSaleroomAccess(saleId);
+      const res = await authedServerFetch(
+        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/revoke`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pairingId }),
+        },
+      );
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        redirectSaleroomError(saleId, payload.error ?? "Revoke failed");
+      }
+      revalidatePath(`/admin/saleroom/${saleId}`);
+    },
+    { formData },
+  );
+}
+
 const telephoneBookingActionForm = z.object({
   saleId: z.string().uuid(),
   bookingId: z.string().uuid(),

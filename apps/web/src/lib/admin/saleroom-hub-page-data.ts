@@ -1,12 +1,11 @@
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
 import { SaleroomHubLiveGrid } from "@/components/admin/saleroom-hub-board/saleroom-hub-live-grid";
 import type { saleroomHubController } from "@/lib/admin/saleroom-hub-controller";
-import { getAdminSaleroomSession } from "@/lib/data/http/admin.server";
+import { getAdminSaleroomSessions } from "@/lib/data/http/admin.server";
 import {
   enrichHubRowWithCurrentLot,
   mapSaleroomHubRowSummary,
 } from "@/lib/data/view-models/admin-saleroom-hub.vm";
-import { mapAdminSaleroomSnapshotToSessionStatus } from "@/lib/saleroom/map-admin-saleroom-snapshot";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -28,26 +27,34 @@ export async function buildSaleroomHubViewData(
 ): Promise<SaleroomHubViewProps> {
   const summaries = rows.map(mapSaleroomHubRowSummary);
 
-  const sessionResults = await Promise.all(
-    rows.map(async (row) => {
-      try {
-        const snap = await getAdminSaleroomSession(row.sale.id);
-        const status = mapAdminSaleroomSnapshotToSessionStatus(snap);
-        const summary = enrichHubRowWithCurrentLot(
-          mapSaleroomHubRowSummary(row),
-          row.lots,
-          status.currentLotId,
-        );
-        return { saleId: row.sale.id, status, summary };
-      } catch {
-        return {
-          saleId: row.sale.id,
-          status: { status: "none" as const, currentLotId: null },
-          summary: mapSaleroomHubRowSummary(row),
-        };
-      }
-    }),
-  );
+  let sessionResults: {
+    saleId: string;
+    status: PublicSaleroomSessionStatus;
+    summary: ReturnType<typeof mapSaleroomHubRowSummary>;
+  }[] = [];
+
+  try {
+    const batch = await getAdminSaleroomSessions(rows.map((row) => row.sale.id));
+    const statusBySaleId = new Map(batch.map((row) => [row.saleId, row]));
+    sessionResults = rows.map((row) => {
+      const rowStatus = statusBySaleId.get(row.sale.id);
+      const status: PublicSaleroomSessionStatus = rowStatus
+        ? { status: rowStatus.status, currentLotId: rowStatus.currentLotId }
+        : { status: "none", currentLotId: null };
+      const summary = enrichHubRowWithCurrentLot(
+        mapSaleroomHubRowSummary(row),
+        row.lots,
+        status.currentLotId,
+      );
+      return { saleId: row.sale.id, status, summary };
+    });
+  } catch {
+    sessionResults = rows.map((row) => ({
+      saleId: row.sale.id,
+      status: { status: "none" as const, currentLotId: null },
+      summary: mapSaleroomHubRowSummary(row),
+    }));
+  }
 
   const initialSessions: Record<string, PublicSaleroomSessionStatus> = {};
   const enrichedSummaries = summaries.map((s) => {

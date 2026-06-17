@@ -28,6 +28,10 @@ function roomForSale(saleId: string): string {
   return `sale:${saleId}`;
 }
 
+function roomForDisplay(saleId: string): string {
+  return `display:${saleId}`;
+}
+
 type AckFn = ((result: unknown) => void) | undefined;
 
 async function resolveSessionUser(
@@ -103,7 +107,16 @@ function handleLeaveLot(
 
 function handleJoinSaleroom(
   socket: Socket,
-  _ctx: HandlerContext,
+  ctx: HandlerContext,
+  payload: { saleId?: string },
+  ack: AckFn,
+) {
+  void handleJoinSaleroomAsync(socket, ctx, payload, ack);
+}
+
+async function handleJoinSaleroomAsync(
+  socket: Socket,
+  ctx: HandlerContext,
   payload: { saleId?: string },
   ack: AckFn,
 ) {
@@ -112,11 +125,86 @@ function handleJoinSaleroom(
     ack?.({ ok: false, error: "saleId required" });
     return;
   }
-  void socket.join(roomForSale(saleId));
+  const me = await resolveSessionUser(socket, ctx.env);
+  socket.data.userId = me?.id;
+  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
+  const staff = me ? normalizeUserStaffRole(me.staff_role) : null;
+  const canManageSaleroom = role != null && roleHasCapability(role, "auction.manage", staff);
+  await socket.join(roomForSale(saleId));
+  if (canManageSaleroom) {
+    await socket.join(roomForDisplay(saleId));
+  }
   ack?.({ ok: true });
 }
 
 function handleLeaveSaleroom(
+  socket: Socket,
+  ctx: HandlerContext,
+  payload: { saleId?: string },
+  ack: AckFn,
+) {
+  void handleLeaveSaleroomAsync(socket, ctx, payload, ack);
+}
+
+async function handleLeaveSaleroomAsync(
+  socket: Socket,
+  ctx: HandlerContext,
+  payload: { saleId?: string },
+  ack: AckFn,
+) {
+  const saleId = payload?.saleId;
+  if (!saleId) {
+    ack?.({ ok: false, error: "saleId required" });
+    return;
+  }
+  const me = await resolveSessionUser(socket, ctx.env);
+  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
+  const staff = me ? normalizeUserStaffRole(me.staff_role) : null;
+  const canManageSaleroom = role != null && roleHasCapability(role, "auction.manage", staff);
+  await socket.leave(roomForSale(saleId));
+  if (canManageSaleroom) {
+    await socket.leave(roomForDisplay(saleId));
+  }
+  ack?.({ ok: true });
+}
+
+async function verifyDisplayTokenForJoin(
+  env: WsEnv,
+  saleId: string,
+  displayToken: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${env.API_URL}/display/${encodeURIComponent(saleId)}/verify`, {
+      headers: { Authorization: `Bearer ${displayToken}`, accept: "application/json" },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function handleJoinDisplay(
+  socket: Socket,
+  ctx: HandlerContext,
+  payload: { saleId?: string; displayToken?: string },
+  ack: AckFn,
+) {
+  const saleId = payload?.saleId;
+  const displayToken = payload?.displayToken;
+  if (!saleId || !displayToken) {
+    ack?.({ ok: false, error: "saleId and displayToken required" });
+    return;
+  }
+  const valid = await verifyDisplayTokenForJoin(ctx.env, saleId, displayToken);
+  if (!valid) {
+    ack?.({ ok: false, error: "invalid_display_token" });
+    return;
+  }
+  await socket.join(roomForDisplay(saleId));
+  ack?.({ ok: true });
+}
+
+function handleLeaveDisplay(
   socket: Socket,
   _ctx: HandlerContext,
   payload: { saleId?: string },
@@ -127,7 +215,7 @@ function handleLeaveSaleroom(
     ack?.({ ok: false, error: "saleId required" });
     return;
   }
-  void socket.leave(roomForSale(saleId));
+  void socket.leave(roomForDisplay(saleId));
   ack?.({ ok: true });
 }
 
@@ -175,6 +263,10 @@ const handlers: Record<
     handleJoinSaleroom(socket, ctx, payload as { saleId?: string }, ack),
   leaveSaleroom: (socket, ctx, payload, ack) =>
     handleLeaveSaleroom(socket, ctx, payload as { saleId?: string }, ack),
+  joinDisplay: (socket, ctx, payload, ack) =>
+    handleJoinDisplay(socket, ctx, payload as { saleId?: string; displayToken?: string }, ack),
+  leaveDisplay: (socket, ctx, payload, ack) =>
+    handleLeaveDisplay(socket, ctx, payload as { saleId?: string }, ack),
   joinUser: (socket, ctx, payload, ack) => void handleJoinUser(socket, ctx, payload, ack),
   leaveUser: (socket, ctx, payload, ack) => void handleLeaveUser(socket, ctx, payload, ack),
   latencyProbe: (socket, ctx, payload, ack) => handleLatencyProbe(socket, ctx, payload, ack),

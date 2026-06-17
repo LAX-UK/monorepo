@@ -13,6 +13,7 @@ describe("mapAdminSaleroomSnapshotToSessionStatus", () => {
         endedAt: null,
         clerkUserId: null,
         auctioneerUserId: null,
+        displayOverlay: null,
         createdAt: "",
         updatedAt: "",
       },

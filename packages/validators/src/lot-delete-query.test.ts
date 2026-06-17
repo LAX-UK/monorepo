@@ -1,5 +1,5 @@
-import { bulkLotsBodySchema, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { describe, expect, it } from "vitest";
+import { bulkLotsBodySchema, lotDeleteConfirmationPhrase } from "./lot.js";
 
 describe("lotDeleteConfirmationPhrase", () => {
   it("prefixes lot title with DELETE", () => {

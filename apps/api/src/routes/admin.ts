@@ -1,4 +1,5 @@
 import type { lotFulfilment } from "@auction/db/schema";
+import { bid } from "@auction/db/schema";
 
 type LotFulfilmentStatusCol = (typeof lotFulfilment.$inferSelect)["status"];
 import {
@@ -48,6 +49,7 @@ import {
   adminSaleroomCheckInBodySchema,
   adminSaleroomCheckInCandidatesQuerySchema,
   adminSaleroomSaleIdParamSchema,
+  adminSaleroomSessionBatchQuerySchema,
   adminSetRoleBodySchema,
   adminSubmissionCountBySellersQuerySchema,
   adminSubmissionCountQuerySchema,
@@ -62,6 +64,9 @@ import {
   categoryIdParamSchema,
   conditionReportRequestIdParamSchema,
   declineConditionReportRequestBodySchema,
+  displayApproveBodySchema,
+  displayOverlayBodySchema,
+  displayRevokeBodySchema,
   emailHashParamSchema,
   fulfillConditionReportRequestBodySchema,
   lotFulfilmentCollectBodySchema,
@@ -76,6 +81,7 @@ import {
   updateProfileNameFormSchema,
   userIdParamSchema,
 } from "@auction/validators";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
@@ -121,6 +127,7 @@ import {
   requireVenuesAccess,
 } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { paddleBidPlacedTotal } from "../services/paddle.service.js";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 import { attachAdminMarketingEventsRoutes } from "./admin-marketing-events.js";
@@ -872,6 +879,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       };
       const out = await container.bidService.placeBidWithIdempotency(bidInput);
       if (out.type === "replay") {
+        paddleBidPlacedTotal.inc({ outcome: "replay" });
         console.info(
           JSON.stringify({
             action: "paddle_bid_placed",
@@ -885,6 +893,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         return c.json(out.body, 201);
       }
       if (out.type === "err") {
+        paddleBidPlacedTotal.inc({ outcome: "error" });
         console.info(
           JSON.stringify({
             action: "paddle_bid_placed",
@@ -903,6 +912,18 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         );
       }
       container.adminMetricsService.recordBidPlaced();
+      paddleBidPlacedTotal.inc({ outcome: "ok" });
+      const [countRow] = await container.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(bid)
+        .where(eq(bid.lotId, body.lotId));
+      void container.saleroomService.publishClerkPaddleBidSummary({
+        saleId: body.saleId,
+        lotId: body.lotId,
+        currentPrice: out.body.data.amount,
+        bidCount: countRow?.count ?? 0,
+        leaderPaddleNumber: body.paddleNumber,
+      });
       console.info(
         JSON.stringify({
           action: "paddle_bid_placed",
@@ -1000,6 +1021,17 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   platform.use("/event-rsvps", requireAuctionManage);
   platform.use("/event-rsvps/*", requireAuctionManage);
   platform.route("/event-rsvps", createAdminOnsiteEventRoutes(container));
+
+  platform.get(
+    "/saleroom/sessions",
+    requireAuctionManage,
+    zValidator("query", adminSaleroomSessionBatchQuerySchema),
+    async (c) => {
+      const { saleIds } = c.req.valid("query");
+      const sessions = await container.saleroomService.getSessionStatuses(saleIds);
+      return c.json({ sessions });
+    },
+  );
 
   platform.get(
     "/sales/:saleId/saleroom/session",
@@ -1130,6 +1162,103 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const result = await container.saleroomService.closeSession({ saleId, actorUserId: userId });
       return result.match(
         (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/display/approve",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    zValidator("json", displayApproveBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const { userCode } = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.displayPairingService.approvePairing({
+        userCode,
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        (body) => c.json({ data: body }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/display/overlay",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    zValidator("json", displayOverlayBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.displayOverlayService.setOverlay({
+        saleId,
+        kind: body.kind,
+        ...(body.message != null ? { message: body.message } : {}),
+        actorUserId: userId,
+      });
+      return result.match(
+        (data) => c.json({ data }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.delete(
+    "/sales/:saleId/saleroom/display/overlay",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const result = await container.displayOverlayService.clearOverlay({
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        () => c.json({ data: { ok: true } }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/saleroom/display/devices",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const devices = await container.displayPairingService.listDevices(saleId);
+      return c.json({ data: { items: devices } });
+    },
+  );
+
+  platform.post(
+    "/sales/:saleId/saleroom/display/revoke",
+    requireAuctionManage,
+    zValidator("param", adminSaleroomSaleIdParamSchema),
+    zValidator("json", displayRevokeBodySchema),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const { pairingId } = c.req.valid("json");
+      const userId = c.get("userId") as string;
+      const result = await container.displayPairingService.revokePairing({
+        pairingId,
+        saleId,
+        actorUserId: userId,
+      });
+      return result.match(
+        () => c.json({ data: { ok: true } }),
         (e) =>
           c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
       );

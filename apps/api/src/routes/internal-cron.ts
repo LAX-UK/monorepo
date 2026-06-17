@@ -353,5 +353,18 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     return c.json({ data });
   });
 
+  /** Expire abandoned display pairing rows and purge old terminal records. */
+  r.post("/cleanup-display-pairings", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const data = await container.displayPairingService.cleanupStalePairings();
+    return c.json({ data });
+  });
+
   return r;
 }

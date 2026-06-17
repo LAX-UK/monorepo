@@ -70,6 +70,7 @@ import { RedisClickIdStore } from "./infrastructure/redis-click-id.store.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
 import { RedisLuaRateLimitStore } from "./infrastructure/redis-lua-rate-limit.store.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
+import { RedisSaleroomRealtimePublisher } from "./infrastructure/redis-saleroom-realtime.publisher.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
 import { SentryErrorReporter } from "./infrastructure/sentry-error.reporter.js";
@@ -79,6 +80,7 @@ import { WebPushSender } from "./infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "./infrastructure/whatsapp-notification.channel.js";
 import { ZodRegistrationValidator } from "./infrastructure/zod-registration.validator.js";
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
+import { DisplayTokenIssuer } from "./lib/display-token.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
 import { enqueueOrgSubmittedAdminNotice } from "./lib/org-lifecycle-notifications.js";
@@ -119,6 +121,7 @@ import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-pr
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleConveyorPipelineReader } from "./repositories/drizzle-conveyor-pipeline.reader.js";
+import { DrizzleDisplayPairingRepository } from "./repositories/drizzle-display-pairing.repository.js";
 import { DrizzleEmailObservabilityRepository } from "./repositories/drizzle-email-observability.repository.js";
 import { DrizzleUserInvitationRepository } from "./repositories/drizzle-invitation.repository.js";
 import { DrizzleItemSubmissionRepository } from "./repositories/drizzle-item-submission.repository.js";
@@ -213,6 +216,9 @@ import { CategoryService } from "./services/category.service.js";
 import { ConditionReportService } from "./services/condition-report.service.js";
 import { DashboardQueryService } from "./services/dashboard-query.service.js";
 import { DefaultMetricsAggregator } from "./services/default-metrics.aggregator.js";
+import { DisplayOverlayService } from "./services/display-overlay.service.js";
+import { DisplayPairingService } from "./services/display-pairing.service.js";
+import { DisplaySnapshotReader } from "./services/display-snapshot-reader.service.js";
 import { DomainEventPublisher } from "./services/domain-event.publisher.js";
 import { EntityDocumentService } from "./services/entity-document.service.js";
 import { ErrorHandlerService } from "./services/error-handler.service.js";
@@ -226,6 +232,9 @@ import type { IArtistRegistryService } from "./services/interfaces/artist-regist
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 import type { IConditionReportService } from "./services/interfaces/condition-report.js";
+import type { IDisplayOverlayService } from "./services/interfaces/display-overlay-service.js";
+import type { IDisplayPairingService } from "./services/interfaces/display-pairing-service.js";
+import type { IDisplaySnapshotReader } from "./services/interfaces/display-snapshot-reader.js";
 import type { IEmailObservabilityRepository } from "./services/interfaces/email-observability.js";
 import type { IInvitationLifecycleService } from "./services/interfaces/invitation-lifecycle.js";
 import type { IInvoiceAccountingProvider } from "./services/interfaces/invoice-accounting.js";
@@ -390,6 +399,9 @@ export type Container = {
   onsiteEventCheckInService: IOnsiteEventCheckInService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomService: SaleroomService;
+  displayPairingService: IDisplayPairingService;
+  displayOverlayService: IDisplayOverlayService;
+  displaySnapshotReader: IDisplaySnapshotReader;
   saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   lotFulfilmentService: LotFulfilmentService;
   saleLifecycleService: SaleLifecycleService;
@@ -1467,6 +1479,9 @@ export function createContainer(env: Env): Container {
     notifications: notificationService,
   });
   lotLifecycleHooks.onLotActivated = (lotId) => absenteeBidService.replayScheduledForLot(lotId);
+  const displayTokenIssuer = new DisplayTokenIssuer();
+  const displayPairingRepository = new DrizzleDisplayPairingRepository(db);
+  const saleroomRealtimePublisher = new RedisSaleroomRealtimePublisher(redis);
   const saleroomService = new SaleroomService({
     db,
     redis,
@@ -1475,6 +1490,24 @@ export function createContainer(env: Env): Container {
     lotRepo,
     lotJobs: lotJobScheduler,
     telephoneBidBookingService,
+    displayPublisher: saleroomRealtimePublisher,
+  });
+  const displayPairingService = new DisplayPairingService({
+    pairingRepo: displayPairingRepository,
+    saleRepo,
+    tokenIssuer: displayTokenIssuer,
+    redis,
+    domainEvents: domainEventPublisher,
+    db,
+  });
+  const displayOverlayService = new DisplayOverlayService({
+    db,
+    publisher: saleroomRealtimePublisher,
+    domainEvents: domainEventPublisher,
+  });
+  const displaySnapshotReader = new DisplaySnapshotReader({
+    db,
+    mediaUrlResolver,
   });
   const saleroomOnBlockPolicy = new SaleroomOnBlockPolicy(db);
   const userService = new UserService(userRepo);
@@ -1682,6 +1715,9 @@ export function createContainer(env: Env): Container {
     onsiteEventCheckInService,
     adminSaleOperationsSnapshotService,
     saleroomService,
+    displayPairingService,
+    displayOverlayService,
+    displaySnapshotReader,
     saleroomOnBlockPolicy,
     lotFulfilmentService,
     saleLifecycleService,

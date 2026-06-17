@@ -9,11 +9,10 @@ import {
   getAdminSaleById,
   getAdminSalePaddleRoster,
   getAdminSaleroomSession,
+  getAdminSaleroomSessions,
   getAdminTelephoneBookings,
 } from "@/lib/data/http/admin.server";
-import { mapAdminSaleroomSnapshotToSessionStatus } from "@/lib/saleroom/map-admin-saleroom-snapshot";
 import type { SaleDeliveryMode } from "@auction/types";
-import { LiveBadge } from "@auction/ui/components/live-badge";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -41,24 +40,26 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
   if (!saleRow) notFound();
   const saleroom = saleroomResult;
 
-  const sessionStatuses = await Promise.all(
-    hubRows.rows.map(async (row) => {
-      try {
-        const snap = await getAdminSaleroomSession(row.sale.id);
-        const status = mapAdminSaleroomSnapshotToSessionStatus(snap);
-        return { id: row.sale.id, title: row.sale.title ?? "Sale", sessionStatus: status.status };
-      } catch {
+  const sessionStatuses = await getAdminSaleroomSessions(hubRows.rows.map((row) => row.sale.id))
+    .then((sessions) =>
+      hubRows.rows.map((row) => {
+        const match = sessions.find((session) => session.saleId === row.sale.id);
         return {
           id: row.sale.id,
           title: row.sale.title ?? "Sale",
-          sessionStatus: "none" as const,
+          sessionStatus: match?.status ?? ("none" as const),
         };
-      }
-    }),
-  );
+      }),
+    )
+    .catch(() =>
+      hubRows.rows.map((row) => ({
+        id: row.sale.id,
+        title: row.sale.title ?? "Sale",
+        sessionStatus: "none" as const,
+      })),
+    );
 
   const sessionStatus = saleroom.session?.status ?? "none";
-  const isLive = sessionStatus.toLowerCase() === "live" || sessionStatus.toLowerCase() === "active";
 
   return (
     <AdminEntityDetailShell
@@ -73,7 +74,6 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <SaleDeliveryModeBadge mode={saleRow.sale.deliveryMode as SaleDeliveryMode} />
-            {isLive ? <LiveBadge /> : null}
             <AdminStatusBadge domain="saleroomSession" status={sessionStatus} size="sm" />
           </div>
           <SaleroomSaleSwitcher currentSaleId={saleId} options={sessionStatuses} />

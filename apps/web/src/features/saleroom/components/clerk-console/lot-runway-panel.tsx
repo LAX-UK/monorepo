@@ -1,6 +1,10 @@
 "use client";
 
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
+import {
+  ConsolePanel,
+  PanelHeading,
+} from "@/features/saleroom/components/clerk-console/console-panel";
 import { type LotRunwayRow, useLotRunway } from "@/features/saleroom/hooks/use-lot-runway";
 import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
@@ -101,11 +105,9 @@ export function LotRunwayPanel({
   const advanceableLots = orderedLots.filter(isLotAdvanceable);
 
   return (
-    <div className="rounded-lg border border-outline-variant/25 p-4">
+    <ConsolePanel>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Lot runway
-        </h2>
+        <PanelHeading>Lot runway</PanelHeading>
         {progress.totalLots > 0 ? (
           <p className="font-body text-xs text-secondary">
             {progress.completedLots} of {progress.totalLots} complete · {progress.remainingLots}{" "}
@@ -124,7 +126,7 @@ export function LotRunwayPanel({
             ))}
           </ul>
 
-          {nextLot && sessionLive ? (
+          {nextLot && sessionLive && !progress.betweenLots ? (
             <form
               id={`saleroom-advance-next-${saleId}`}
               action={adminSaleroomAdvanceAction}
@@ -195,6 +197,6 @@ export function LotRunwayPanel({
           </form>
         </>
       )}
-    </div>
+    </ConsolePanel>
   );
 }

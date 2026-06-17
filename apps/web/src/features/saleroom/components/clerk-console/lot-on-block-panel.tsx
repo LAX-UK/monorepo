@@ -1,7 +1,14 @@
 "use client";
 
+import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
+import {
+  ConsolePanel,
+  PanelHeading,
+} from "@/features/saleroom/components/clerk-console/console-panel";
+import { LotOutcomeControls } from "@/features/saleroom/components/clerk-console/lot-outcome-controls";
 import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
 import type { ClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
+import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import type {
   AdminPaddleRosterEntry,
   AdminTelephoneBookingRow,
@@ -20,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
-import { useMemo } from "react";
+import { useEffect, useRef } from "react";
 
 type Props = {
   saleId: string;
@@ -29,6 +36,12 @@ type Props = {
   telephoneBookings: AdminTelephoneBookingRow[];
   paddleRoster?: AdminPaddleRosterEntry[];
   liveBid: ClerkLotLiveBidState;
+  canHammer?: boolean;
+  showOutcomeControls?: boolean;
+  nextLot?: Lot | null;
+  sessionLive?: boolean;
+  betweenLots?: boolean;
+  progressLabel?: string;
 };
 
 const INCREMENT_MULTIPLIERS = [1, 2, 5] as const;
@@ -47,33 +60,71 @@ export function LotOnBlockPanel({
   telephoneBookings,
   paddleRoster = [],
   liveBid,
+  canHammer = false,
+  showOutcomeControls = false,
+  nextLot = null,
+  sessionLive = false,
+  betweenLots = false,
+  progressLabel,
 }: Props) {
+  const paddleInputRef = useRef<HTMLInputElement>(null);
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
 
-  const bidEntry = useClerkBidEntry({
+  const bidEntry = useClerkBidEntry<AdminPaddleRosterEntry>({
     saleId,
     currentLotId: currentLotId ?? "",
     liveCurrentPrice: liveBid.currentPrice,
     minBidIncrement: currentLot?.minBidIncrement ?? "0.01",
     telephoneBookings,
+    paddleRoster,
   });
 
-  const parsedPaddle = Number.parseInt(bidEntry.state.paddleNumber, 10);
-  const matchedPaddle = useMemo(() => {
-    if (!Number.isInteger(parsedPaddle)) return null;
-    return paddleRoster.find((p) => p.paddleNumber === parsedPaddle) ?? null;
-  }, [paddleRoster, parsedPaddle]);
+  useEffect(() => {
+    if (currentLotId) {
+      paddleInputRef.current?.focus();
+    }
+  }, [currentLotId]);
+
+  if (betweenLots && sessionLive && nextLot) {
+    const advanceFormId = `saleroom-advance-hero-${saleId}`;
+    return (
+      <ConsolePanel className="space-y-4">
+        <PanelHeading>Lot on block</PanelHeading>
+        <p className="font-body text-sm text-secondary">
+          {progressLabel ?? "Between lots — advance the next lot to continue."}
+        </p>
+        <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+          <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            Up next
+          </p>
+          <p className="mt-2 font-headline text-lg text-foreground">
+            {formatLotRunListLabel(nextLot)}
+          </p>
+        </div>
+        <form id={advanceFormId} action={adminSaleroomAdvanceAction}>
+          <input type="hidden" name="saleId" value={saleId} />
+          <input type="hidden" name="lotId" value={nextLot.id} />
+          <SaleroomPendingSubmit
+            formId={advanceFormId}
+            pendingLabel="Advancing…"
+            variant="default"
+            className="min-h-11 w-full"
+          >
+            Advance next ({formatLotRunListLabel(nextLot)})
+          </SaleroomPendingSubmit>
+        </form>
+      </ConsolePanel>
+    );
+  }
 
   if (!currentLotId || !currentLot) {
     return (
-      <div className="rounded-lg border border-outline-variant/25 p-4">
-        <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Lot on block
-        </h2>
+      <ConsolePanel>
+        <PanelHeading>Lot on block</PanelHeading>
         <p className="mt-2 font-body text-sm text-secondary">
           Advance a lot to the block before placing telephone or paddle bids.
         </p>
-      </div>
+      </ConsolePanel>
     );
   }
 
@@ -85,12 +136,10 @@ export function LotOnBlockPanel({
   };
 
   return (
-    <div className="space-y-6 rounded-lg border border-outline-variant/25 p-4">
+    <ConsolePanel className="space-y-6">
       <div>
-        <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Lot on block
-        </h2>
-        <p className="mt-2 font-headline text-lg text-foreground transition-all duration-200">
+        <PanelHeading>Lot on block</PanelHeading>
+        <p className="mt-2 font-headline text-2xl tabular-nums text-foreground transition-all duration-200">
           {formatMoney(liveBid.currentPrice)}
         </p>
         <p className="font-body text-sm text-foreground">{formatLotRunListLabel(currentLot)}</p>
@@ -114,7 +163,7 @@ export function LotOnBlockPanel({
         ) : null}
       </div>
 
-      <div className="space-y-3 max-md:sticky max-md:bottom-0 max-md:z-10 max-md:-mx-4 max-md:px-4 max-md:pb-4 max-md:pt-3 max-md:border-t max-md:border-outline-variant/25 max-md:bg-surface-container-low/95 max-md:backdrop-blur-sm">
+      <div className="space-y-3">
         <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Paddle bid
         </p>
@@ -122,6 +171,7 @@ export function LotOnBlockPanel({
           <div className="space-y-1">
             <Label htmlFor={`paddle-num-${saleId}`}>Paddle #</Label>
             <Input
+              ref={paddleInputRef}
               id={`paddle-num-${saleId}`}
               value={bidEntry.state.paddleNumber}
               onChange={(e) => bidEntry.setPaddleNumber(e.target.value)}
@@ -130,7 +180,25 @@ export function LotOnBlockPanel({
               className="h-11 w-28 font-body text-base tabular-nums"
               autoComplete="off"
               inputMode="numeric"
+              aria-invalid={bidEntry.paddleRegistrationError != null}
+              aria-describedby={
+                bidEntry.paddleRegistrationError ? `paddle-num-error-${saleId}` : undefined
+              }
             />
+            {bidEntry.paddleRegistrationError ? (
+              <p
+                id={`paddle-num-error-${saleId}`}
+                className="font-body text-xs text-destructive"
+                role="alert"
+              >
+                {bidEntry.paddleRegistrationError}
+              </p>
+            ) : null}
+            {bidEntry.registeredPaddle && !bidEntry.paddleRegistrationError ? (
+              <p className="font-body text-xs text-secondary">
+                {bidEntry.registeredPaddle.displayName ?? "Checked-in bidder"}
+              </p>
+            ) : null}
           </div>
           <div className="min-w-[140px] flex-1 space-y-1">
             <Label htmlFor={`paddle-bid-amount-${saleId}`}>Amount</Label>
@@ -146,7 +214,7 @@ export function LotOnBlockPanel({
           </div>
           <Button
             type="button"
-            disabled={bidEntry.pending}
+            disabled={!bidEntry.canPlacePaddleBid}
             className="min-h-11"
             onClick={bidEntry.placePaddleBid}
           >
@@ -167,17 +235,18 @@ export function LotOnBlockPanel({
             </Button>
           ))}
         </div>
-        {matchedPaddle?.hasActiveSelfServiceSession ? (
+        {bidEntry.registeredPaddle?.hasActiveSelfServiceSession ? (
           <Alert variant="default" className="py-2">
             <AlertDescription className="font-body text-xs">
-              Warning: paddle {matchedPaddle.paddleNumber} ({matchedPaddle.displayName}) has recent
-              self-service activity — confirm the bidder is not also bidding online.
+              Warning: paddle {bidEntry.registeredPaddle.paddleNumber} (
+              {bidEntry.registeredPaddle.displayName}) has recent self-service activity — confirm
+              the bidder is not also bidding online.
             </AlertDescription>
           </Alert>
         ) : null}
-        {matchedPaddle?.bidLimit ? (
+        {bidEntry.registeredPaddle?.bidLimit ? (
           <p className="font-body text-xs text-secondary">
-            Authorised limit: {formatMoney(matchedPaddle.bidLimit)}
+            Authorised limit: {formatMoney(bidEntry.registeredPaddle.bidLimit)}
           </p>
         ) : null}
       </div>
@@ -243,6 +312,14 @@ export function LotOnBlockPanel({
           </div>
         </div>
       )}
-    </div>
+
+      {showOutcomeControls ? (
+        <LotOutcomeControls
+          saleId={saleId}
+          canHammer={canHammer}
+          className="hidden border-t border-outline-variant/20 pt-4 md:block"
+        />
+      ) : null}
+    </ConsolePanel>
   );
 }

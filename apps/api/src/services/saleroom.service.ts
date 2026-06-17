@@ -1,12 +1,17 @@
 import type { Database } from "@auction/db";
 import { saleroomEvent, saleroomSession } from "@auction/db/schema";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import { type Result, err, ok } from "neverthrow";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import type { ISaleroomService, SaleroomServiceError } from "./interfaces/saleroom-service.js";
+import type { ISaleroomRealtimePublisher } from "./interfaces/saleroom-realtime-publisher.js";
+import type {
+  ISaleroomService,
+  SaleroomServiceError,
+  SaleroomSessionStatusRow,
+} from "./interfaces/saleroom-service.js";
 import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotLifecycleService } from "./lot-lifecycle.service.js";
 
@@ -22,6 +27,7 @@ export type SaleroomServiceOptions = {
   lotRepo: ILotRepository;
   lotJobs: ILotJobScheduler | null;
   telephoneBidBookingService?: ITelephoneBidBookingService | null;
+  displayPublisher?: ISaleroomRealtimePublisher | null;
 };
 
 export class SaleroomService implements ISaleroomService {
@@ -32,6 +38,7 @@ export class SaleroomService implements ISaleroomService {
   private readonly lotRepo: ILotRepository;
   private readonly lotJobs: ILotJobScheduler | null;
   private readonly telephoneBidBookingService: ITelephoneBidBookingService | null;
+  private readonly displayPublisher: ISaleroomRealtimePublisher | null;
 
   constructor(opts: SaleroomServiceOptions) {
     this.db = opts.db;
@@ -41,6 +48,7 @@ export class SaleroomService implements ISaleroomService {
     this.lotRepo = opts.lotRepo;
     this.lotJobs = opts.lotJobs;
     this.telephoneBidBookingService = opts.telephoneBidBookingService ?? null;
+    this.displayPublisher = opts.displayPublisher ?? null;
   }
 
   private async completeTelephoneLinesForLot(saleId: string, lotId: string): Promise<void> {
@@ -52,6 +60,53 @@ export class SaleroomService implements ISaleroomService {
       SALEROOM_CHANNEL(saleId),
       JSON.stringify({ ...body, saleId, emittedAt: new Date().toISOString() }),
     );
+  }
+
+  private async clearDisplayOverlayIfAny(saleId: string): Promise<void> {
+    const [updated] = await this.db
+      .update(saleroomSession)
+      .set({
+        displayOverlay: null,
+        displayOverlayAt: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(saleroomSession.saleId, saleId), isNotNull(saleroomSession.displayOverlay)))
+      .returning({ id: saleroomSession.id });
+
+    if (updated && this.displayPublisher) {
+      await this.displayPublisher.publishDisplayControl(saleId, {
+        kind: "clear",
+        emittedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  private async publishDisplayBidSummary(input: {
+    saleId: string;
+    lotId: string;
+    currentPrice: string;
+    bidCount: number;
+    leaderPaddleNumber: number | null;
+  }): Promise<void> {
+    if (!this.displayPublisher) return;
+    await this.displayPublisher.publishDisplayControl(input.saleId, {
+      kind: "bid_summary",
+      lotId: input.lotId,
+      currentPrice: input.currentPrice,
+      bidCount: input.bidCount,
+      leaderPaddleNumber: input.leaderPaddleNumber,
+      emittedAt: new Date().toISOString(),
+    });
+  }
+
+  async publishClerkPaddleBidSummary(input: {
+    saleId: string;
+    lotId: string;
+    currentPrice: string;
+    bidCount: number;
+    leaderPaddleNumber: number | null;
+  }): Promise<void> {
+    await this.publishDisplayBidSummary(input);
   }
 
   private async insertEvent(
@@ -87,6 +142,33 @@ export class SaleroomService implements ISaleroomService {
       status: session.status,
       currentLotId: session.currentLotId ?? null,
     };
+  }
+
+  async getSessionStatuses(saleIds: readonly string[]): Promise<SaleroomSessionStatusRow[]> {
+    const uniqueIds = [...new Set(saleIds.filter(Boolean))];
+    if (uniqueIds.length === 0) return [];
+
+    const rows = await this.db
+      .select({
+        saleId: saleroomSession.saleId,
+        status: saleroomSession.status,
+        currentLotId: saleroomSession.currentLotId,
+      })
+      .from(saleroomSession)
+      .where(inArray(saleroomSession.saleId, uniqueIds));
+
+    const bySaleId = new Map(rows.map((row) => [row.saleId, row]));
+    return uniqueIds.map((saleId) => {
+      const row = bySaleId.get(saleId);
+      if (!row) {
+        return { saleId, status: "none" as const, currentLotId: null };
+      }
+      return {
+        saleId,
+        status: row.status,
+        currentLotId: row.currentLotId ?? null,
+      };
+    });
   }
 
   async getSessionWithRecentEvents(saleId: string): Promise<{
@@ -248,6 +330,8 @@ export class SaleroomService implements ISaleroomService {
       .set({ currentLotId: input.lotId, updatedAt: new Date() })
       .where(eq(saleroomSession.id, session.id));
 
+    await this.clearDisplayOverlayIfAny(input.saleId);
+
     await this.insertEvent(
       session.id,
       "advanced_to_lot",
@@ -291,6 +375,8 @@ export class SaleroomService implements ISaleroomService {
       .set({ currentLotId: null, updatedAt: new Date() })
       .where(eq(saleroomSession.id, session.id));
 
+    await this.clearDisplayOverlayIfAny(input.saleId);
+
     await this.completeTelephoneLinesForLot(input.saleId, lotId);
     await this.insertEvent(session.id, "hammer", { lotId }, input.actorUserId);
     await this.publish(input.saleId, { kind: "hammer", lotId });
@@ -326,6 +412,8 @@ export class SaleroomService implements ISaleroomService {
       .update(saleroomSession)
       .set({ currentLotId: null, updatedAt: new Date() })
       .where(eq(saleroomSession.id, session.id));
+
+    await this.clearDisplayOverlayIfAny(input.saleId);
 
     await this.completeTelephoneLinesForLot(input.saleId, lotId);
     await this.insertEvent(session.id, "no_sale", { lotId }, input.actorUserId);
