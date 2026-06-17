@@ -1,7 +1,14 @@
 "use client";
 
 import { SaleroomDisplayBidFeed } from "@/features/saleroom/components/display/saleroom-display-bid-feed";
-import type { DisplayBoardVM } from "@/features/saleroom/lib/display-bid-ticks";
+import { SaleroomDisplayClock } from "@/features/saleroom/components/display/saleroom-display-clock";
+import { SaleroomDisplayNextLotCard } from "@/features/saleroom/components/display/saleroom-display-next-lot";
+import { SaleroomDisplayStandby } from "@/features/saleroom/components/display/saleroom-display-standby";
+import {
+  type DisplayBoardVM,
+  type DisplayLastHammer,
+  formatDisplayEstimate,
+} from "@/features/saleroom/lib/display-bid-ticks";
 import { formatMoney } from "@/lib/ui/format";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -30,6 +37,21 @@ function StatusBadge({ status }: { status: DisplayBoardVM["snapshot"]["sessionSt
   );
 }
 
+function LotProgressChip({
+  saleProgress,
+}: {
+  saleProgress: DisplayBoardVM["snapshot"]["saleProgress"];
+}) {
+  if (!saleProgress) {
+    return null;
+  }
+  return (
+    <span className="rounded-full border border-white/15 bg-white/5 dark:bg-white/5 px-4 py-1 text-sm font-medium tracking-wide text-white/70">
+      Lot {saleProgress.position} of {saleProgress.total}
+    </span>
+  );
+}
+
 function LotImage({ imageUrl, title }: { imageUrl: string; title: string }) {
   const [failed, setFailed] = useState(false);
 
@@ -54,49 +76,81 @@ export function SaleroomDisplayBoard({
   recentBids,
   priceFlash,
   leaderLabel,
+  nextRequiredBid,
+  nextRequiredBidCurrency,
 }: Props) {
   const lot = snapshot.currentLot;
   const betweenLots = snapshot.sessionStatus === "live" && !snapshot.currentLotId;
   const lotTransitioning =
     snapshot.sessionStatus === "live" && Boolean(snapshot.currentLotId) && !lot;
   const showFeed = Boolean(lot && snapshot.sessionStatus === "live");
+  const showNextLot =
+    snapshot.sessionStatus === "live" &&
+    snapshot.nextLot != null &&
+    !betweenLots &&
+    !lotTransitioning;
+  const estimateLabel = lot ? formatDisplayEstimate(lot.estimate) : null;
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-950 text-white">
-      <header className="flex items-center justify-between px-8 py-6">
+      <header className="flex items-start justify-between gap-6 px-8 py-6">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-white/50">Saleroom display</p>
-          <h1 className="text-2xl font-medium">{snapshot.saleTitle}</h1>
+          <h1 className="text-2xl font-medium md:text-3xl">{snapshot.saleTitle}</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <StatusBadge status={snapshot.sessionStatus} />
-          {connectionStatus !== "connected" ? (
-            <span className="text-xs uppercase tracking-wider text-amber-300">Reconnecting…</span>
-          ) : null}
+        <div className="flex shrink-0 flex-col items-end gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <LotProgressChip saleProgress={snapshot.saleProgress} />
+            <StatusBadge status={snapshot.sessionStatus} />
+            {connectionStatus !== "connected" ? (
+              <span className="text-xs uppercase tracking-wider text-amber-300">Reconnecting…</span>
+            ) : null}
+          </div>
+          <SaleroomDisplayClock
+            sessionStartedAt={snapshot.sessionStartedAt}
+            sessionStatus={snapshot.sessionStatus}
+          />
         </div>
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-8 pb-12">
         {betweenLots ? (
-          <div className="text-center">
-            <p className="text-5xl font-light tracking-tight text-white/80">Between lots</p>
-            <p className="mt-4 text-xl text-white/50">Stand by for the next lot</p>
-          </div>
+          <SaleroomDisplayStandby
+            saleId={snapshot.saleId}
+            saleTitle={snapshot.saleTitle}
+            coverImageUrl={snapshot.saleCoverImageUrl}
+            headline="Between lots"
+            subline={
+              snapshot.nextLot
+                ? `Up next — Lot ${snapshot.nextLot.lotNumber}: ${snapshot.nextLot.title}`
+                : "Stand by for the next lot"
+            }
+          />
         ) : lotTransitioning ? (
           <div className="text-center">
             <p className="text-5xl font-light tracking-tight text-white/80">Next lot</p>
             <p className="mt-4 text-xl text-white/50">Loading…</p>
+            {snapshot.nextLot ? (
+              <div className="mx-auto mt-10 max-w-md">
+                <SaleroomDisplayNextLotCard nextLot={snapshot.nextLot} />
+              </div>
+            ) : null}
           </div>
         ) : lot ? (
           <div className="grid w-full max-w-7xl grid-cols-1 items-start gap-10 lg:grid-cols-2">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl">
-              {lot.imageUrl ? (
-                <LotImage imageUrl={lot.imageUrl} title={lot.title} />
-              ) : (
-                <div className="flex h-full items-center justify-center text-white/30">
-                  No image
-                </div>
-              )}
+            <div className="space-y-4">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl ring-1 ring-white/10">
+                {lot.imageUrl ? (
+                  <LotImage imageUrl={lot.imageUrl} title={lot.title} />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-white/30">
+                    No image
+                  </div>
+                )}
+              </div>
+              {showNextLot && snapshot.nextLot ? (
+                <SaleroomDisplayNextLotCard nextLot={snapshot.nextLot} variant="compact" />
+              ) : null}
             </div>
             <div className="space-y-6">
               <p className="text-lg uppercase tracking-[0.25em] text-white/50">
@@ -105,15 +159,26 @@ export function SaleroomDisplayBoard({
               <h2 className="line-clamp-3 text-4xl font-semibold leading-tight md:text-5xl">
                 {lot.title}
               </h2>
+              {estimateLabel ? (
+                <p className="text-lg text-white/55">Estimate {estimateLabel}</p>
+              ) : null}
               <div>
                 <p className="text-sm uppercase tracking-widest text-white/50">Current bid</p>
                 <p
                   aria-live="polite"
                   aria-atomic="true"
-                  className={`text-6xl font-bold tabular-nums md:text-7xl ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
+                  className={`text-6xl font-bold tabular-nums tracking-tight md:text-7xl ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
                 >
-                  {formatMoney(lot.currentPrice)}
+                  {formatMoney(lot.currentPrice, nextRequiredBidCurrency)}
                 </p>
+                {nextRequiredBid ? (
+                  <p className="mt-2 text-lg text-white/45">
+                    Next bid{" "}
+                    <span className="font-semibold tabular-nums text-white/70">
+                      {formatMoney(nextRequiredBid, nextRequiredBidCurrency)}
+                    </span>
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-8 text-lg text-white/70">
                 <Stat label="Bids" value={String(lot.bidCount)} />
@@ -129,10 +194,13 @@ export function SaleroomDisplayBoard({
             </div>
           </div>
         ) : (
-          <div className="text-center">
-            <p className="text-4xl font-light text-white/70">Awaiting session</p>
-            <p className="mt-3 text-lg text-white/40">The saleroom will appear here when live</p>
-          </div>
+          <SaleroomDisplayStandby
+            saleId={snapshot.saleId}
+            saleTitle={snapshot.saleTitle}
+            coverImageUrl={snapshot.saleCoverImageUrl}
+            headline="Awaiting session"
+            subline="The saleroom will appear here when live"
+          />
         )}
       </main>
     </div>
@@ -154,6 +222,8 @@ type OverlayProps = {
   overlay: { kind: "fair_warning" | "announcement"; message?: string } | null;
   flash: "sold" | "passed" | null;
   betweenLots: boolean;
+  lastHammer: DisplayLastHammer | null;
+  priceCurrency?: string;
 };
 
 const overlayRenderers: Record<OverlayKind, (props: OverlayProps) => ReactNode> = {
@@ -175,10 +245,22 @@ const overlayRenderers: Record<OverlayKind, (props: OverlayProps) => ReactNode> 
     ) : null,
   sold: (props) =>
     props.flash === "sold" ? (
-      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-emerald-600/30">
+      <div className="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center bg-emerald-600/30 backdrop-blur-[2px]">
         <p className="text-7xl font-black uppercase tracking-[0.2em] text-white md:text-9xl">
           Sold
         </p>
+        {props.lastHammer ? (
+          <div className="mt-8 text-center">
+            <p className="text-4xl font-bold tabular-nums text-white md:text-5xl">
+              {formatMoney(props.lastHammer.price, props.priceCurrency ?? "USD")}
+            </p>
+            {props.lastHammer.paddleLabel ? (
+              <p className="mt-3 text-xl uppercase tracking-widest text-white/80">
+                {props.lastHammer.paddleLabel}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     ) : null,
   passed: (props) =>
@@ -197,14 +279,20 @@ const overlayRenderers: Record<OverlayKind, (props: OverlayProps) => ReactNode> 
     ) : null,
 };
 
-export function SaleroomDisplayOverlay({ overlay, flash, betweenLots }: OverlayProps) {
+export function SaleroomDisplayOverlay({
+  overlay,
+  flash,
+  betweenLots,
+  lastHammer,
+  priceCurrency = "USD",
+}: OverlayProps) {
   return (
     <>
-      {overlayRenderers.fair_warning({ overlay, flash, betweenLots })}
-      {overlayRenderers.announcement({ overlay, flash, betweenLots })}
-      {overlayRenderers.sold({ overlay, flash, betweenLots })}
-      {overlayRenderers.passed({ overlay, flash, betweenLots })}
-      {overlayRenderers.idle({ overlay, flash, betweenLots })}
+      {overlayRenderers.fair_warning({ overlay, flash, betweenLots, lastHammer, priceCurrency })}
+      {overlayRenderers.announcement({ overlay, flash, betweenLots, lastHammer, priceCurrency })}
+      {overlayRenderers.sold({ overlay, flash, betweenLots, lastHammer, priceCurrency })}
+      {overlayRenderers.passed({ overlay, flash, betweenLots, lastHammer, priceCurrency })}
+      {overlayRenderers.idle({ overlay, flash, betweenLots, lastHammer, priceCurrency })}
     </>
   );
 }
