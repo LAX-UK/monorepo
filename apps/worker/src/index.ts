@@ -79,6 +79,7 @@ import {
   runProcessNotificationOutboxJob,
   runRefreshXeroTokensJob,
   runRetryRefundReconcilesJob,
+  runRetryXeroInvoiceCreationJob,
   runRetryXeroStripeCaptureSyncJob,
   runRetryXeroWebhookFailuresJob,
 } from "./jobs/payment-ops-cron.js";
@@ -920,6 +921,14 @@ if (env.CRON_INTERNAL_SECRET) {
     run: () => runRetryXeroStripeCaptureSyncJob(apiCronBase),
   });
   registerPaymentOpsCron({
+    queueName: "retry-xero-invoice-creation",
+    jobName: "retry-xero-invoice-creation",
+    jobId: "retry-xero-invoice-creation-15m",
+    everyMs: 15 * 60 * 1000,
+    sentrySlug: "retry-xero-invoice-creation",
+    run: () => runRetryXeroInvoiceCreationJob(apiCronBase),
+  });
+  registerPaymentOpsCron({
     queueName: "retry-refund-reconciles",
     jobName: "retry-refund-reconciles",
     jobId: "retry-refund-reconciles-15m",
@@ -1082,6 +1091,7 @@ void Promise.all([
         heartbeat("expire-stale-payments"),
         heartbeat("retry-xero-webhook-failures"),
         heartbeat("retry-xero-stripe-capture-sync"),
+        heartbeat("retry-xero-invoice-creation"),
         heartbeat("retry-refund-reconciles"),
         heartbeat("refresh-xero-tokens"),
         heartbeat("process-notification-outbox"),

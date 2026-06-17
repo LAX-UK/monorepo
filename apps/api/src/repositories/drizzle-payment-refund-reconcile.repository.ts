@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { payment, paymentExternalRef, paymentRefundReconcile } from "@auction/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 export type PaymentRefundReconcilePayload = {
   sellerLegalEntityId: string | null;
@@ -135,4 +135,48 @@ export async function listPendingStripeCaptureSync(
     .orderBy(paymentExternalRef.updatedAt)
     .limit(limit);
   return rows.map((r) => ({ paymentId: r.paymentId, amount: String(r.amount) }));
+}
+
+export type MissingXeroInvoiceRow = {
+  paymentId: string;
+  lotId: string;
+  buyerId: string;
+  amount: string;
+};
+
+/**
+ * Settleable payments (pending / authorized / captured) that have no Xero ACCREC invoice yet —
+ * either no `payment_external_ref` row at all (Xero was disconnected when checkout ran, so the
+ * provider returned before inserting a pending row) or a row without an `xeroInvoiceId`.
+ *
+ * Payment-driven LEFT JOIN (not external-ref-driven) so payments created while Xero was fully
+ * down are still picked up. Drained by the `retry-xero-invoice-creation` cron.
+ */
+export async function listPaymentsMissingXeroInvoice(
+  db: Database,
+  limit: number,
+): Promise<MissingXeroInvoiceRow[]> {
+  const rows = await db
+    .select({
+      paymentId: payment.id,
+      lotId: payment.lotId,
+      buyerId: payment.buyerId,
+      amount: payment.amount,
+    })
+    .from(payment)
+    .leftJoin(paymentExternalRef, eq(paymentExternalRef.paymentId, payment.id))
+    .where(
+      and(
+        inArray(payment.status, ["pending", "authorized", "captured"]),
+        isNull(paymentExternalRef.xeroInvoiceId),
+      ),
+    )
+    .orderBy(payment.createdAt)
+    .limit(limit);
+  return rows.map((r) => ({
+    paymentId: r.paymentId,
+    lotId: r.lotId,
+    buyerId: r.buyerId,
+    amount: String(r.amount),
+  }));
 }
