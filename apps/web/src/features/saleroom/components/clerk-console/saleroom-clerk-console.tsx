@@ -15,6 +15,7 @@ import { SaleroomActivityLog } from "@/features/saleroom/components/clerk-consol
 import { TelephoneLinesPanel } from "@/features/saleroom/components/clerk-console/telephone-lines-panel";
 import { SaleroomLiveShell } from "@/features/saleroom/components/saleroom-live-shell";
 import { useClerkLotRosterSync } from "@/features/saleroom/hooks/use-clerk-lot-roster-sync";
+import { useClerkPaddleRoster } from "@/features/saleroom/hooks/use-clerk-paddle-roster";
 import { useLotRunway } from "@/features/saleroom/hooks/use-lot-runway";
 import { deriveClerkLivePhase } from "@/features/saleroom/lib/clerk-live-phase";
 import { useClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
@@ -31,7 +32,7 @@ import type {
 } from "@/lib/data/http/admin.server";
 import { mapAdminSaleroomSnapshotToSessionStatus } from "@/lib/saleroom/map-admin-saleroom-snapshot";
 import { sortLotsForRunList } from "@/lib/saleroom/sort-lots-for-run-list";
-import type { Lot, SaleDeliveryMode } from "@auction/types";
+import type { Lot, SaleDeliveryMode, SaleroomDisplayOverlay } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { cn } from "@auction/ui/lib/utils";
@@ -61,11 +62,12 @@ function ClerkConsoleInner({
   saleStatus,
   lots: initialLots,
   telephoneBookings = [],
-  paddleRoster = [],
+  paddleRoster: initialPaddleRoster = [],
   error,
   registrationsHref,
   paddleRosterEmpty = false,
   checkedInRefresh = false,
+  initialDisplayOverlay = null,
   session,
   activityLog,
   liveFeed,
@@ -79,17 +81,24 @@ function ClerkConsoleInner({
   liveFeed: ReturnType<
     typeof import("@/features/saleroom/hooks/use-staff-saleroom-live").useStaffSaleroomLive
   >["liveFeed"];
+  initialDisplayOverlay?: SaleroomDisplayOverlay | null;
 }) {
   const router = useRouter();
   const [secondaryTab, setSecondaryTab] = useState<"telephone" | "activity">("telephone");
   const [showAllAlerts, setShowAllAlerts] = useState(false);
+  const [telephonePanelOpen, setTelephonePanelOpen] = useState(false);
   const syncedLots = useClerkLotRosterSync({ initialLots, liveFeed });
+  const { roster: paddleRoster, refreshRoster } = useClerkPaddleRoster({
+    saleId,
+    initialRoster: initialPaddleRoster,
+  });
 
   useEffect(() => {
-    if (checkedInRefresh) {
-      router.refresh();
-    }
-  }, [checkedInRefresh, router]);
+    if (!checkedInRefresh) return;
+    void refreshRoster().finally(() => {
+      router.replace(`/admin/saleroom/${saleId}`, { scroll: false });
+    });
+  }, [checkedInRefresh, refreshRoster, router, saleId]);
 
   const sessionStatus = session.status;
   const currentLotId = session.currentLotId;
@@ -187,6 +196,13 @@ function ClerkConsoleInner({
   const isLiveSession = sessionStatus === "live" || sessionStatus === "paused";
   const sessionBarVariant = livePhase === "selling" ? "compact" : "full";
   const showActionBar = sessionLive && (canHammer || nextLot != null);
+  const autoOpenTelephone = isLiveSession && pendingTelForLot > 0;
+
+  useEffect(() => {
+    if (autoOpenTelephone) {
+      setTelephonePanelOpen(true);
+    }
+  }, [autoOpenTelephone]);
 
   const sessionControls = (
     <div className="flex flex-wrap items-center gap-2" aria-label="Saleroom session controls">
@@ -271,7 +287,9 @@ function ClerkConsoleInner({
     </div>
   );
 
-  const displayPanel = <DisplayControlPanel saleId={saleId} />;
+  const displayPanel = (
+    <DisplayControlPanel saleId={saleId} initialOverlay={initialDisplayOverlay} />
+  );
   const telephonePanel = (
     <TelephoneLinesPanel saleId={saleId} currentLotId={currentLotId} rows={telephoneBookings} />
   );
@@ -342,7 +360,11 @@ function ClerkConsoleInner({
           <CollapsibleConsoleSection title="Venue display" defaultOpen={false}>
             {displayPanel}
           </CollapsibleConsoleSection>
-          <CollapsibleConsoleSection title="Telephone lines" defaultOpen={false}>
+          <CollapsibleConsoleSection
+            title="Telephone lines"
+            open={telephonePanelOpen || autoOpenTelephone}
+            onOpenChange={setTelephonePanelOpen}
+          >
             {telephonePanel}
           </CollapsibleConsoleSection>
           <CollapsibleConsoleSection title="Activity log" defaultOpen={false}>
@@ -406,6 +428,7 @@ export function SaleroomClerkConsole(props: Props) {
     () => mapAdminSaleroomSnapshotToSessionStatus(props.initial),
     [props.initial],
   );
+  const initialDisplayOverlay = props.initial.session?.displayOverlay ?? null;
 
   return (
     <SaleroomLiveShell
@@ -417,6 +440,7 @@ export function SaleroomClerkConsole(props: Props) {
       {({ session, activityLog, liveFeed }) => (
         <ClerkConsoleInner
           {...props}
+          initialDisplayOverlay={initialDisplayOverlay}
           session={session}
           activityLog={activityLog}
           liveFeed={liveFeed}

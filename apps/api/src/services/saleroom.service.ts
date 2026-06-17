@@ -1,13 +1,17 @@
 import type { Database } from "@auction/db";
 import { saleroomEvent, saleroomSession } from "@auction/db/schema";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import { type Result, err, ok } from "neverthrow";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleroomRealtimePublisher } from "./interfaces/saleroom-realtime-publisher.js";
-import type { ISaleroomService, SaleroomServiceError } from "./interfaces/saleroom-service.js";
+import type {
+  ISaleroomService,
+  SaleroomServiceError,
+  SaleroomSessionStatusRow,
+} from "./interfaces/saleroom-service.js";
 import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotLifecycleService } from "./lot-lifecycle.service.js";
 
@@ -77,6 +81,34 @@ export class SaleroomService implements ISaleroomService {
     }
   }
 
+  private async publishDisplayBidSummary(input: {
+    saleId: string;
+    lotId: string;
+    currentPrice: string;
+    bidCount: number;
+    leaderPaddleNumber: number | null;
+  }): Promise<void> {
+    if (!this.displayPublisher) return;
+    await this.displayPublisher.publishDisplayControl(input.saleId, {
+      kind: "bid_summary",
+      lotId: input.lotId,
+      currentPrice: input.currentPrice,
+      bidCount: input.bidCount,
+      leaderPaddleNumber: input.leaderPaddleNumber,
+      emittedAt: new Date().toISOString(),
+    });
+  }
+
+  async publishClerkPaddleBidSummary(input: {
+    saleId: string;
+    lotId: string;
+    currentPrice: string;
+    bidCount: number;
+    leaderPaddleNumber: number | null;
+  }): Promise<void> {
+    await this.publishDisplayBidSummary(input);
+  }
+
   private async insertEvent(
     sessionId: string,
     kind: "opened" | "advanced_to_lot" | "hammer" | "no_sale" | "paused" | "resumed" | "closed",
@@ -110,6 +142,33 @@ export class SaleroomService implements ISaleroomService {
       status: session.status,
       currentLotId: session.currentLotId ?? null,
     };
+  }
+
+  async getSessionStatuses(saleIds: readonly string[]): Promise<SaleroomSessionStatusRow[]> {
+    const uniqueIds = [...new Set(saleIds.filter(Boolean))];
+    if (uniqueIds.length === 0) return [];
+
+    const rows = await this.db
+      .select({
+        saleId: saleroomSession.saleId,
+        status: saleroomSession.status,
+        currentLotId: saleroomSession.currentLotId,
+      })
+      .from(saleroomSession)
+      .where(inArray(saleroomSession.saleId, uniqueIds));
+
+    const bySaleId = new Map(rows.map((row) => [row.saleId, row]));
+    return uniqueIds.map((saleId) => {
+      const row = bySaleId.get(saleId);
+      if (!row) {
+        return { saleId, status: "none" as const, currentLotId: null };
+      }
+      return {
+        saleId,
+        status: row.status,
+        currentLotId: row.currentLotId ?? null,
+      };
+    });
   }
 
   async getSessionWithRecentEvents(saleId: string): Promise<{

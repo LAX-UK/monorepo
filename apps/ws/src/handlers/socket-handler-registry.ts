@@ -107,7 +107,16 @@ function handleLeaveLot(
 
 function handleJoinSaleroom(
   socket: Socket,
-  _ctx: HandlerContext,
+  ctx: HandlerContext,
+  payload: { saleId?: string },
+  ack: AckFn,
+) {
+  void handleJoinSaleroomAsync(socket, ctx, payload, ack);
+}
+
+async function handleJoinSaleroomAsync(
+  socket: Socket,
+  ctx: HandlerContext,
   payload: { saleId?: string },
   ack: AckFn,
 ) {
@@ -116,13 +125,30 @@ function handleJoinSaleroom(
     ack?.({ ok: false, error: "saleId required" });
     return;
   }
-  void socket.join(roomForSale(saleId));
+  const me = await resolveSessionUser(socket, ctx.env);
+  socket.data.userId = me?.id;
+  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
+  const staff = me ? normalizeUserStaffRole(me.staff_role) : null;
+  const canManageSaleroom = role != null && roleHasCapability(role, "auction.manage", staff);
+  await socket.join(roomForSale(saleId));
+  if (canManageSaleroom) {
+    await socket.join(roomForDisplay(saleId));
+  }
   ack?.({ ok: true });
 }
 
 function handleLeaveSaleroom(
   socket: Socket,
-  _ctx: HandlerContext,
+  ctx: HandlerContext,
+  payload: { saleId?: string },
+  ack: AckFn,
+) {
+  void handleLeaveSaleroomAsync(socket, ctx, payload, ack);
+}
+
+async function handleLeaveSaleroomAsync(
+  socket: Socket,
+  ctx: HandlerContext,
   payload: { saleId?: string },
   ack: AckFn,
 ) {
@@ -131,7 +157,14 @@ function handleLeaveSaleroom(
     ack?.({ ok: false, error: "saleId required" });
     return;
   }
-  void socket.leave(roomForSale(saleId));
+  const me = await resolveSessionUser(socket, ctx.env);
+  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
+  const staff = me ? normalizeUserStaffRole(me.staff_role) : null;
+  const canManageSaleroom = role != null && roleHasCapability(role, "auction.manage", staff);
+  await socket.leave(roomForSale(saleId));
+  if (canManageSaleroom) {
+    await socket.leave(roomForDisplay(saleId));
+  }
   ack?.({ ok: true });
 }
 

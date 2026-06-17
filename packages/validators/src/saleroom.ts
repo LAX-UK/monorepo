@@ -47,3 +47,17 @@ export const displaySnapshotParamSchema = z.object({
 });
 
 export type DisplaySnapshotParams = z.infer<typeof displaySnapshotParamSchema>;
+
+export const adminSaleroomSessionBatchQuerySchema = z.object({
+  saleIds: z
+    .string()
+    .transform((value) =>
+      value
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().uuid()).min(1).max(50)),
+});
+
+export type AdminSaleroomSessionBatchQuery = z.infer<typeof adminSaleroomSessionBatchQuerySchema>;
