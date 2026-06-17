@@ -20,6 +20,7 @@ import type { Lot, Venue } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
+import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   FormControl,
   FormField,
@@ -181,6 +182,37 @@ export function SaleScheduleStep({
             </FormItem>
           )}
         />
+
+        {deliveryMode === "hybrid" ? (
+          <FormField
+            control={form.control}
+            name="requireSaleroomGoLiveBeforeOnlineBids"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start gap-3 rounded-lg border border-outline-variant/25 bg-surface-container-lowest/40 p-4">
+                <FormControl>
+                  <Checkbox
+                    id="requireSaleroomGoLiveBeforeOnlineBids"
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      if (isDraft) field.onChange(checked === true);
+                    }}
+                    disabled={!isDraft}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel htmlFor="requireSaleroomGoLiveBeforeOnlineBids" className="font-body">
+                    Require Go Live before online bidding
+                  </FormLabel>
+                  <p className="font-body text-xs text-on-surface-variant">
+                    When enabled (default), online buyers can only bid after the clerk opens the
+                    saleroom and puts a lot on the block. Disable to allow early online bidding
+                    during the sale window before Go Live.
+                  </p>
+                </div>
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         {isSaleroom ? (
           <>

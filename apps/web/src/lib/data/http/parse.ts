@@ -61,6 +61,7 @@ export function parseSale(raw: unknown): Sale {
     coverImages: Array.isArray(o.coverImages) ? (o.coverImages as unknown[]).map(String) : [],
     categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
     deliveryMode: parseSaleDeliveryMode(o.deliveryMode),
+    allowOnlineBidsBeforeGoLive: o.allowOnlineBidsBeforeGoLive === true,
     streamUrl: o.streamUrl == null || o.streamUrl === "" ? null : String(o.streamUrl),
     locationName: o.locationName == null || o.locationName === "" ? null : String(o.locationName),
     locationAddress:

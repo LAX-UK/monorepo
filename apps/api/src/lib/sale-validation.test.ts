@@ -48,6 +48,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "onsite",
+      allowOnlineBidsBeforeGoLive: false,
       streamUrl: "https://www.youtube.com/watch?v=abc12345678",
       locationName: "Main Hall",
       locationAddress: "1 Auction Way",
@@ -60,6 +61,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "online",
+      allowOnlineBidsBeforeGoLive: false,
       streamUrl: "https://www.youtube.com/watch?v=abc12345678",
     });
     expect(result.success).toBe(false);
@@ -73,6 +75,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "online",
+      allowOnlineBidsBeforeGoLive: false,
       locationName: "Main Hall",
     });
     expect(result.success).toBe(false);
@@ -86,6 +89,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "online",
+      allowOnlineBidsBeforeGoLive: false,
       locationAddressLine1: "1 Bond St",
       locationCity: "London",
       locationCounty: "Greater London",
@@ -111,6 +115,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "onsite",
+      allowOnlineBidsBeforeGoLive: false,
       locationAddressLine1: "34 New Bond Street",
       locationCity: "London",
       locationPostcode: "sw1y6qu",
@@ -126,6 +131,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "onsite",
+      allowOnlineBidsBeforeGoLive: false,
       locationPostcode: "not-a-postcode",
     });
     expect(result.success).toBe(false);
@@ -139,6 +145,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "hybrid",
+      allowOnlineBidsBeforeGoLive: false,
       streamUrl: "https://www.youtube.com/watch?v=abc12345678",
       locationName: "Main hall",
     });
@@ -149,6 +156,7 @@ describe("createSaleSchema", () => {
     const result = createSaleSchema.safeParse({
       ...baseInput,
       deliveryMode: "online",
+      allowOnlineBidsBeforeGoLive: false,
       venueId: "30000000-0000-4000-9000-000000000001",
     });
     expect(result.success).toBe(false);
@@ -173,6 +181,7 @@ describe("updateSaleSchema", () => {
   it("rejects stream URL when explicitly switching to online", () => {
     const result = updateSaleSchema.safeParse({
       deliveryMode: "online",
+      allowOnlineBidsBeforeGoLive: false,
       streamUrl: "https://www.youtube.com/watch?v=abc12345678",
     });
     expect(result.success).toBe(false);

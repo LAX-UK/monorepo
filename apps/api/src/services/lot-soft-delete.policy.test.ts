@@ -43,6 +43,7 @@ function sale(overrides: Partial<Sale> = {}): Sale {
     coverImages: [],
     categoryId: null,
     deliveryMode: "online",
+    allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
     locationName: null,
     locationAddress: null,

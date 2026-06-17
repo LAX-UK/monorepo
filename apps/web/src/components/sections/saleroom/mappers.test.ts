@@ -14,6 +14,7 @@ const baseSale: Sale = {
   coverImages: ["https://cdn/image.jpg"],
   categoryId: null,
   deliveryMode: "onsite",
+  allowOnlineBidsBeforeGoLive: false,
   streamUrl: "https://example.com/stream",
   locationName: "TheLax Saleroom",
   locationAddress: "12 King Street, London",
@@ -194,6 +195,7 @@ describe("mapSaleToOverviewVM", () => {
     const sale: Sale = {
       ...baseSale,
       deliveryMode: "online",
+      allowOnlineBidsBeforeGoLive: false,
       locationAddressLine1: "Should not show",
     };
     const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });

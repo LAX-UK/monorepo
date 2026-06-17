@@ -222,6 +222,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     categoryIds,
     categoryId: categoryIds[0] ?? null,
     deliveryMode: (row.deliveryMode ?? "onsite") as SaleDeliveryMode,
+    allowOnlineBidsBeforeGoLive: row.allowOnlineBidsBeforeGoLive ?? false,
     streamUrl: row.streamUrl ?? null,
     locationName: row.locationName ?? null,
     locationAddress: row.locationAddress ?? null,

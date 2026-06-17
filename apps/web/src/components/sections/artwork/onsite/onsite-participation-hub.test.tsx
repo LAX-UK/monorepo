@@ -22,6 +22,7 @@ const baseSale: Sale = {
   coverImages: [],
   categoryId: null,
   deliveryMode: "onsite",
+  allowOnlineBidsBeforeGoLive: false,
   streamUrl: null,
   locationName: "London Gallery",
   locationAddress: null,

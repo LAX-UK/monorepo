@@ -15,6 +15,7 @@ function mkSale(overrides: Partial<Sale> = {}): Sale {
     coverImages: [],
     categoryId,
     deliveryMode: "online",
+    allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
     locationName: null,
     locationAddress: null,
