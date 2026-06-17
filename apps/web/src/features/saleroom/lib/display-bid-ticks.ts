@@ -3,6 +3,7 @@ import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import { formatMoney } from "@/lib/ui/format";
 import type {
   BidUpdateEvent,
+  SaleroomDisplayBidTick,
   SaleroomDisplayLotEstimate,
   SaleroomDisplaySnapshot,
 } from "@auction/types";
@@ -117,6 +118,50 @@ function tickFromEvent(event: BidUpdateEvent): DisplayBidTick {
 function prependTick(ticks: DisplayBidTick[], tick: DisplayBidTick, cap: number): DisplayBidTick[] {
   const withoutDup = ticks.filter((entry) => entry.id !== tick.id);
   return [tick, ...withoutDup].slice(0, cap);
+}
+
+export function displayBidTickFromSnapshot(tick: SaleroomDisplayBidTick): DisplayBidTick {
+  return {
+    id: tick.id,
+    amount: tick.amount,
+    placedVia: tick.placedVia,
+    isAutoBid: tick.isAutoBid,
+    at: Date.parse(tick.at) || 0,
+  };
+}
+
+function mergeDisplayBidTicks(
+  liveTicks: DisplayBidTick[],
+  snapshotTicks: DisplayBidTick[],
+  cap: number,
+): DisplayBidTick[] {
+  const byId = new Map<string, DisplayBidTick>();
+  for (const tick of snapshotTicks) {
+    byId.set(tick.id, tick);
+  }
+  for (const tick of liveTicks) {
+    byId.set(tick.id, tick);
+  }
+  return [...byId.values()].sort((a, b) => b.at - a.at).slice(0, cap);
+}
+
+export function seedDisplayBidLiveFromSnapshot(
+  bidLive: DisplayBidLiveState,
+  snapshot: SaleroomDisplaySnapshot,
+  cap = DISPLAY_BID_TICK_CAP,
+): DisplayBidLiveState {
+  if (!snapshot.currentLot) {
+    return resetDisplayBidLiveState();
+  }
+
+  const snapshotTicks = (snapshot.currentLot.recentBids ?? []).map(displayBidTickFromSnapshot);
+  const recentBids = mergeDisplayBidTicks(bidLive.recentBids, snapshotTicks, cap);
+
+  return {
+    recentBids,
+    priceFlash: false,
+    leaderPlacedVia: recentBids[0]?.placedVia ?? bidLive.leaderPlacedVia,
+  };
 }
 
 export function applyDisplayBidUpdate(
