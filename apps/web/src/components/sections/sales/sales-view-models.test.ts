@@ -12,6 +12,7 @@ function makeSale(overrides: Partial<Sale> = {}): Sale {
     coverImages: [],
     categoryId: null,
     deliveryMode: "online",
+    allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
     locationName: "London",
     locationAddress: null,

@@ -17,7 +17,9 @@ type LotPick = Pick<
   Lot,
   "status" | "startTime" | "endTime" | "winnerId" | "reservePrice" | "currentPrice" | "id"
 >;
-type SalePick = Pick<Sale, "status" | "deliveryMode"> | null;
+type SalePick =
+  | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
+  | null;
 
 type Props = {
   lot: LotPick;

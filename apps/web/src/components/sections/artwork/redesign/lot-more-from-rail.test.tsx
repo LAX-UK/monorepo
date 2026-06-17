@@ -101,6 +101,7 @@ describe("LotMoreFromRail", () => {
         {
           ...rail.cards[0],
           deliveryMode: "onsite",
+          allowOnlineBidsBeforeGoLive: false,
         } as LotRailCardVM,
       ],
     };

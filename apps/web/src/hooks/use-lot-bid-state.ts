@@ -23,7 +23,9 @@ export type UseLotBidStateParams = {
   initialAutoBidSettings?: AutoBidSettings | null;
   initialOutbid?: boolean;
   initialUserHasBid?: boolean;
-  saleForLifecycle?: Pick<Sale, "status" | "deliveryMode"> | null;
+  saleForLifecycle?:
+    | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
+    | null;
   isOwnLot?: boolean;
 };
 

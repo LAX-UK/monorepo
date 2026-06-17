@@ -181,6 +181,9 @@ export class BidService implements IBidPlacer {
           if (lotRow.status !== "active") {
             throw new BidError("Lot is not accepting bids", 400);
           }
+          const enforceOnBlock =
+            this.saleroomSessionLookup != null &&
+            (await this.saleroomSessionLookup.shouldEnforceOnBlockGateForLot(lotId));
           const skipCatalogEndTime =
             this.saleroomSessionLookup != null &&
             (await this.saleroomSessionLookup.shouldSkipAntiSnipeForLot(lotId));
@@ -188,7 +191,7 @@ export class BidService implements IBidPlacer {
             throw new BidError("Lot has ended", 400);
           }
 
-          if (skipCatalogEndTime && lotRow.saleId) {
+          if (enforceOnBlock && lotRow.saleId) {
             const [session] = await tx
               .select({
                 status: saleroomSession.status,
