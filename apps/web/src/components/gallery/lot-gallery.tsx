@@ -53,7 +53,6 @@ function LotGalleryRoot({ title, images, imageAssets, imageAlts }: LotGalleryPro
 export const LotGallery = Object.assign(LotGalleryRoot, {
   Hero: GalleryHero,
   CounterPill: GalleryHeroOverlays,
-  ThumbPile: GalleryHeroOverlays,
   Filmstrip,
   Lightbox: GalleryLightboxSlot,
   ViewAll: ViewAllSheet,
