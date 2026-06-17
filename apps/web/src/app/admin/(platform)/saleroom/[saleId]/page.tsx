@@ -13,7 +13,6 @@ import {
 } from "@/lib/data/http/admin.server";
 import { mapAdminSaleroomSnapshotToSessionStatus } from "@/lib/saleroom/map-admin-saleroom-snapshot";
 import type { SaleDeliveryMode } from "@auction/types";
-import { LiveBadge } from "@auction/ui/components/live-badge";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -58,7 +57,6 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
   );
 
   const sessionStatus = saleroom.session?.status ?? "none";
-  const isLive = sessionStatus.toLowerCase() === "live" || sessionStatus.toLowerCase() === "active";
 
   return (
     <AdminEntityDetailShell
@@ -73,7 +71,6 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <SaleDeliveryModeBadge mode={saleRow.sale.deliveryMode as SaleDeliveryMode} />
-            {isLive ? <LiveBadge /> : null}
             <AdminStatusBadge domain="saleroomSession" status={sessionStatus} size="sm" />
           </div>
           <SaleroomSaleSwitcher currentSaleId={saleId} options={sessionStatuses} />
