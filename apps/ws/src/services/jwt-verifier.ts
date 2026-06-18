@@ -20,16 +20,20 @@ export async function verifySocketToken(options: {
   jwksUrl: string;
 }): Promise<{ id: string; role: UserRole; staff_role?: string } | null> {
   if (!options.token) return null;
-  const result = await jwtVerify(options.token, getJwks(options.jwksUrl), {
-    issuer: options.issuer,
-  });
-  if (!result.payload.sub) return null;
-  const role = normalizeUserRoleOrClient(String(result.payload.role ?? "client"));
-  const staff =
-    typeof result.payload.staff_role === "string" && result.payload.staff_role.length > 0
-      ? result.payload.staff_role
-      : null;
-  return staff != null
-    ? { id: result.payload.sub, role, staff_role: staff }
-    : { id: result.payload.sub, role };
+  try {
+    const result = await jwtVerify(options.token, getJwks(options.jwksUrl), {
+      issuer: options.issuer,
+    });
+    if (!result.payload.sub) return null;
+    const role = normalizeUserRoleOrClient(String(result.payload.role ?? "client"));
+    const staff =
+      typeof result.payload.staff_role === "string" && result.payload.staff_role.length > 0
+        ? result.payload.staff_role
+        : null;
+    return staff != null
+      ? { id: result.payload.sub, role, staff_role: staff }
+      : { id: result.payload.sub, role };
+  } catch {
+    return null;
+  }
 }
