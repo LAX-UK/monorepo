@@ -43,9 +43,9 @@ export function DeferredLiveIframe({
         src={iframeSrc}
         className={className}
         loading="eager"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; web-share"
         allowFullScreen
-        referrerPolicy="no-referrer-when-downgrade"
+        referrerPolicy="strict-origin-when-cross-origin"
       />
     );
   }
