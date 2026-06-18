@@ -8,6 +8,11 @@ import {
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import {
+  FOCUS_WITHIN_RING,
+  MARKETING_CARD_LIFT,
+  MARKETING_CARD_MEDIA_HOVER,
+} from "@/lib/marketing/chrome";
 import { toneAwareScrimStops } from "@/lib/media/tone-aware-scrim";
 import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
 import { cn } from "@auction/ui";
@@ -27,8 +32,7 @@ function LotCardNavLink({ lotId, href, ...rest }: NavLinkProps & { lotId?: strin
   return <Link href={href} {...rest} />;
 }
 
-const mediaHover =
-  "transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100";
+const mediaHover = MARKETING_CARD_MEDIA_HOVER;
 
 /** Default `sizes` for catalogue grid tiles (`4/5` aspect). */
 const LOT_CARD_GRID_SIZES = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px";
@@ -36,8 +40,11 @@ const LOT_CARD_GRID_SIZES = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 
 /** Default `sizes` for editorial `aspect-video` lot cards. */
 const LOT_CARD_EDITORIAL_SIZES = "(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px";
 
-const cardShell =
-  "group relative block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-px motion-safe:hover:ring-primary/20 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary";
+const cardShell = cn(
+  "group relative block overflow-hidden rounded-lg bg-surface-container-low ring-1 ring-outline-variant/10",
+  MARKETING_CARD_LIFT,
+  FOCUS_WITHIN_RING,
+);
 
 export type { AdaptiveMediaConfig };
 
@@ -189,7 +196,8 @@ export function LotCardList({
   return (
     <article
       className={cn(
-        "group relative flex gap-4 rounded-lg p-4 transition-colors hover:bg-surface-container-low/50 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary sm:gap-5 sm:p-5",
+        "group relative flex gap-4 rounded-lg p-4 transition-colors hover:bg-surface-container-low/50 sm:gap-5 sm:p-5",
+        FOCUS_WITHIN_RING,
         className,
       )}
       {...(lotId ? { [LOT_TRANSITION_ROOT_ATTR]: lotId } : {})}

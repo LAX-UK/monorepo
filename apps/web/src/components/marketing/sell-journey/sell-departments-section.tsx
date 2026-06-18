@@ -1,5 +1,5 @@
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_CARD_LIFT } from "@/lib/marketing/chrome";
 import { sellDepartmentIcon } from "@/lib/marketing/sell-department-icons";
 import {
   type SellDepartment,
@@ -9,8 +9,11 @@ import {
 import { SELL_PAGE_ACCEPTANCE } from "@/lib/marketing/sell-flow-copy";
 import { cn } from "@auction/ui";
 
-const DEPT_CARD_CLASS =
-  "group relative block rounded-lg border border-border-hairline bg-surface-container-lowest p-4 motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none motion-safe:hover:-translate-y-px motion-safe:hover:ring-1 motion-safe:hover:ring-primary/20";
+const DEPT_CARD_CLASS = cn(
+  "group relative block rounded-lg border border-border-hairline bg-surface-container-lowest p-4",
+  MARKETING_CARD_LIFT,
+  FOCUS_RING,
+);
 
 function departmentAffordance(): string {
   return "Start submission →";
@@ -28,7 +31,7 @@ function DepartmentCard({ dept }: { dept: SellDepartment }) {
         source={`sell_dept_${dept.id}`}
         data-testid={`sell-department-${dept.id}`}
         aria-label={`${dept.label}: start submission`}
-        className={cn(DEPT_CARD_CLASS, FOCUS_RING)}
+        className={cn(DEPT_CARD_CLASS)}
       >
         <div className="flex items-start gap-3">
           <span

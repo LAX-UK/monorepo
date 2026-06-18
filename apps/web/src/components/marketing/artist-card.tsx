@@ -1,4 +1,5 @@
 import { MarketingLinkCard } from "@/components/marketing/marketing-link-card";
+import { MARKETING_CARD_MEDIA_HOVER } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -52,7 +53,12 @@ export function ArtistCardGrid({
           isCompact ? "rounded-t-lg" : "rounded-t-xl",
         )}
       >
-        <div className="relative aspect-[4/5] overflow-hidden bg-surface-container-low">
+        <div
+          className={cn(
+            "relative aspect-[4/5] overflow-hidden bg-surface-container-low",
+            MARKETING_CARD_MEDIA_HOVER,
+          )}
+        >
           {portrait}
           <div
             className={cn(

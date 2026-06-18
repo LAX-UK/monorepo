@@ -3,6 +3,7 @@ import {
   MARKETING_HUB_BREADCRUMB_CLASS,
   MarketingBreadcrumb,
 } from "@/components/marketing/marketing-breadcrumb";
+import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { SellDepartmentsSection } from "@/components/marketing/sell-journey/sell-departments-section";
@@ -17,6 +18,7 @@ import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { SELL_PAGE_TOC } from "@/lib/marketing/sell-page-toc";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { Button } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -51,23 +53,27 @@ export default function SellPage() {
             className={MARKETING_HUB_BREADCRUMB_CLASS}
           />
         }
-        lastUpdated="21 April 2026"
         kicker="Consign with LAX"
-        dividerUnderDate
         embedded
         toc={SELL_PAGE_TOC}
       >
         <p>{SELL_PAGE_INTRO}</p>
         <p>{SELL_TIME_EXPECTATIONS}</p>
-        <p>
-          Ready to begin?{" "}
-          <SellCtaLink href={sellIntakeHref()} source="sell_intro" className={MARKETING_PROSE_LINK}>
-            Start your submission
-          </SellCtaLink>{" "}
-          — create an account and complete the wizard in about 3 minutes.
-        </p>
 
-        <LegalH2 id="departments" className="scroll-mt-28">
+        <MarketingPromoCta
+          className="mt-8"
+          title="Start your submission"
+          description="Create an account and complete the consignment wizard in about 3 minutes."
+          actions={
+            <Button variant="cta" asChild>
+              <SellCtaLink href={sellIntakeHref()} source="sell_intro">
+                Start your submission
+              </SellCtaLink>
+            </Button>
+          }
+        />
+
+        <LegalH2 id="departments" className="scroll-mt-28 mt-10">
           What we accept
         </LegalH2>
         <SellDepartmentsSection />
