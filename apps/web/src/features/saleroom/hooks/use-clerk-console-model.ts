@@ -28,6 +28,7 @@ type Input = {
   telephoneBookings: AdminTelephoneBookingRow[];
   paddleRoster: AdminPaddleRosterEntry[];
   paddleRosterEmpty: boolean;
+  hammeredLotIds: ReadonlySet<string>;
   registrationsHref?: string;
   loadWarnings?: string[];
   error?: string | null;
@@ -46,6 +47,7 @@ export function useClerkConsoleModel(input: Input): ClerkConsoleModel {
     telephoneBookings,
     paddleRoster,
     paddleRosterEmpty,
+    hammeredLotIds,
     registrationsHref,
     loadWarnings = [],
     error,
@@ -60,6 +62,7 @@ export function useClerkConsoleModel(input: Input): ClerkConsoleModel {
     lots,
     currentLotId,
     sessionStatus,
+    hammeredLotIds,
   });
 
   const orderedLots = useMemo(() => sortLotsForRunList(lots), [lots]);

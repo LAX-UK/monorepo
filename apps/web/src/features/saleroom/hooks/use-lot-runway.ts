@@ -18,6 +18,7 @@ type Options = {
   lots: readonly Lot[];
   currentLotId: string | null;
   sessionStatus?: PublicSaleroomSessionStatus["status"];
+  hammeredLotIds: ReadonlySet<string>;
 };
 
 export type LotRunwayRow = {
@@ -28,7 +29,12 @@ export type LotRunwayRow = {
   isNext: boolean;
 };
 
-export function useLotRunway({ lots, currentLotId, sessionStatus = "none" }: Options) {
+export function useLotRunway({
+  lots,
+  currentLotId,
+  sessionStatus = "none",
+  hammeredLotIds,
+}: Options) {
   const orderedLots = useMemo(() => sortLotsForRunList(lots), [lots]);
   const nextLot = useMemo(
     () => findNextRunListLot(orderedLots, currentLotId),
@@ -44,11 +50,11 @@ export function useLotRunway({ lots, currentLotId, sessionStatus = "none" }: Opt
     return orderedLots.map((lot) => ({
       lot,
       label: formatLotRunListLabel(lot),
-      outcome: deriveLotRunOutcome(lot, currentLotId),
+      outcome: deriveLotRunOutcome(lot, currentLotId, hammeredLotIds),
       isCurrent: lot.id === currentLotId,
       isNext: nextLot?.id === lot.id,
     }));
-  }, [currentLotId, nextLot?.id, orderedLots]);
+  }, [currentLotId, hammeredLotIds, nextLot?.id, orderedLots]);
 
   return { orderedLots, nextLot, runway, progress };
 }
