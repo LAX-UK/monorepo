@@ -39,6 +39,7 @@ import { SaleDocumentsStep } from "./steps/documents-step";
 import { SaleFormReviewStep } from "./steps/form-review-step";
 import { SaleIdentityStep } from "./steps/identity-step";
 import { SaleScheduleStep } from "./steps/schedule-step";
+import type { StreamUrlVerificationGate } from "./stream-url-verify-control";
 import {
   SALE_STEP_FIELDS,
   submitSaleForm,
@@ -87,6 +88,8 @@ export function AdminSaleForm({
   venues = [],
 }: Props) {
   const isDraft = !saleStatus || saleStatus === "draft";
+  const streamUrlEditable = isDraft || saleStatus === "scheduled" || saleStatus === "active";
+  const streamUrlGateRef = useRef<StreamUrlVerificationGate | null>(null);
   const formSchema = useMemo(
     () => (isDraft ? adminSaleDraftScheduleSchema() : adminSaleFormValuesSchema),
     [isDraft],
@@ -170,6 +173,7 @@ export function AdminSaleForm({
                     setValidationStepIndex(stepIndex ?? null);
                   },
                   router,
+                  streamUrlGateRef,
                 });
               });
             },
@@ -306,6 +310,9 @@ export function AdminSaleForm({
                       lots={lots}
                       venues={venues}
                       lotsSetupHref={saleSetupHref(saleId, "lots")}
+                      streamUrlEditable={streamUrlEditable}
+                      initialStreamUrl={defaultValues.streamUrl}
+                      streamUrlGateRef={streamUrlGateRef}
                     />
                   ) : null}
                   {stepIndex === 2 ? (

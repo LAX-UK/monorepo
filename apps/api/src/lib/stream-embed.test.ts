@@ -1,4 +1,8 @@
-import { isAllowedStreamUrl, parseStreamEmbedUrl } from "@auction/validators";
+import {
+  buildStreamOEmbedEndpoint,
+  isAllowedStreamUrl,
+  parseStreamEmbedUrl,
+} from "@auction/validators";
 import { describe, expect, it } from "vitest";
 
 describe("parseStreamEmbedUrl", () => {
@@ -87,5 +91,35 @@ describe("parseStreamEmbedUrl", () => {
   it("allows known hosts for storage validation", () => {
     expect(isAllowedStreamUrl("https://www.youtube.com/watch?v=jNQXAC9IVRw")).toBe(true);
     expect(isAllowedStreamUrl("https://player.vimeo.com/video/1")).toBe(true);
+  });
+
+  it("builds youtube oembed endpoint from parsed result", () => {
+    const parsed = parseStreamEmbedUrl("https://www.youtube.com/watch?v=jNQXAC9IVRw");
+    expect(parsed).not.toBeNull();
+    if (!parsed) return;
+    const endpoint = buildStreamOEmbedEndpoint(
+      parsed,
+      "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    );
+    expect(endpoint).toContain("youtube.com/oembed");
+    expect(endpoint).toContain(encodeURIComponent("https://www.youtube.com/watch?v=jNQXAC9IVRw"));
+  });
+
+  it("builds vimeo oembed endpoint using original event URL", () => {
+    const url = "https://vimeo.com/event/6005027/53b2f6d9ec";
+    const parsed = parseStreamEmbedUrl(url);
+    expect(parsed?.provider).toBe("vimeo");
+    if (!parsed) return;
+    const endpoint = buildStreamOEmbedEndpoint(parsed, url);
+    expect(endpoint).toBe(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
+  });
+
+  it("returns null oembed endpoint for twitch", () => {
+    const parsed = parseStreamEmbedUrl("https://www.twitch.tv/monstercat");
+    if (!parsed) {
+      expect(parsed).not.toBeNull();
+      return;
+    }
+    expect(buildStreamOEmbedEndpoint(parsed, "https://www.twitch.tv/monstercat")).toBeNull();
   });
 });
