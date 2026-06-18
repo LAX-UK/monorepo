@@ -180,6 +180,7 @@ function ClerkConsoleInner({
             liveBid={model.lot.liveBid}
             nextLot={model.lot.nextLot}
             sessionLive={model.action.sessionLive}
+            sessionStatus={model.action.sessionStatus}
             betweenLots={model.lot.progress.betweenLots}
             progressLabel={model.lot.progress.progressLabel}
           />

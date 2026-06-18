@@ -74,6 +74,7 @@ function repos(overrides: {
     findWinningBid: vi.fn().mockResolvedValue(null),
     listDistinctBidderIds: vi.fn(),
     markWinningBid: vi.fn(),
+    clearWinningBid: vi.fn(),
     aggregateBidderCeilings: vi.fn(),
     listBidderCeilingStates: vi.fn(),
     updateProxySettingsForBidderOnLot: vi.fn(),

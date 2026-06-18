@@ -1,4 +1,5 @@
 import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { notify } from "@/lib/ui/notify";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -115,5 +116,53 @@ describe("useClerkBidEntry", () => {
     expect(placePaddleBid).not.toHaveBeenCalled();
     expect(notify.error).toHaveBeenCalledWith("Paddle not checked in for this sale");
     expect(result.current.canPlacePaddleBid).toBe(false);
+  });
+
+  it("requires booking and amount before telephone bid is enabled", () => {
+    const telephoneBookings: AdminTelephoneBookingRow[] = [
+      {
+        id: "booking-1",
+        saleId: "sale-1",
+        userId: "user-1",
+        buyerLegalEntityId: "le-1",
+        userName: "Tel buyer",
+        userEmail: null,
+        buyerLegalEntityDisplayName: null,
+        phoneDisplay: null,
+        phoneE164: "+447700900123",
+        lotIds: ["lot-1"],
+        authorizedMax: "5000.00",
+        status: "confirmed",
+        clerkUserId: null,
+        notes: null,
+        buyerNotes: null,
+        approvedByUserId: null,
+        completedLotIds: [],
+        limitIncreaseRequestedAt: null,
+        limitIncreaseAmount: null,
+        cancelledAt: null,
+        cancelledByUserId: null,
+        cancellationReason: null,
+        createdAt: new Date("2026-06-17T09:00:00.000Z"),
+        confirmedAt: null,
+        updatedAt: new Date("2026-06-17T09:00:00.000Z"),
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useClerkBidEntry({
+        ...baseOptions,
+        telephoneBookings,
+      }),
+    );
+
+    expect(result.current.canPlaceTelephoneBid).toBe(false);
+
+    act(() => {
+      result.current.setBookingId("booking-1");
+      result.current.setTelephoneAmount("150");
+    });
+
+    expect(result.current.canPlaceTelephoneBid).toBe(true);
   });
 });
