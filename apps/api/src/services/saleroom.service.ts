@@ -325,6 +325,25 @@ export class SaleroomService implements ISaleroomService {
       return err({ message: "Lot not found on this sale", status: 404 });
     }
 
+    if (lotRow.status === "ended" || lotRow.status === "cancelled") {
+      return err({
+        message: "This lot has already closed and cannot be put on the block",
+        status: 400,
+      });
+    }
+
+    if (lotRow.status === "scheduled") {
+      await this.lotLifecycle.processActivateJob(input.lotId);
+    }
+
+    const activeLot = await this.lotRepo.findById(input.lotId);
+    if (!activeLot || activeLot.status !== "active") {
+      return err({
+        message: "Lot must be active before it can be put on the block",
+        status: 400,
+      });
+    }
+
     await this.db
       .update(saleroomSession)
       .set({ currentLotId: input.lotId, updatedAt: new Date() })

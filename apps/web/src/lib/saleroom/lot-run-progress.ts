@@ -16,7 +16,8 @@ export function isLotRunCompleted(status: LotStatus): boolean {
 
 /** Lots clerks can still advance onto the block. */
 export function isLotAdvanceable(lot: Pick<Lot, "status">): boolean {
-  return !isLotRunCompleted(lot.status) && !isLotRunSkipped(lot.status);
+  if (isLotRunSkipped(lot.status) || isLotRunCompleted(lot.status)) return false;
+  return lot.status === "active" || lot.status === "scheduled";
 }
 
 export function deriveLotRunOutcome(lot: LotRunPick, currentLotId: string | null): LotRunOutcome {

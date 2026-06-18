@@ -1,15 +1,11 @@
 "use client";
 
-import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import {
   ConsolePanel,
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
-import { LotOutcomeControls } from "@/features/saleroom/components/clerk-console/lot-outcome-controls";
 import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
-import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
 import type { ClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
-import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import type {
   AdminPaddleRosterEntry,
   AdminTelephoneBookingRow,
@@ -38,8 +34,6 @@ type Props = {
   telephoneBookings: AdminTelephoneBookingRow[];
   paddleRoster?: AdminPaddleRosterEntry[];
   liveBid: ClerkLotLiveBidState;
-  canHammer?: boolean;
-  policy: ClerkActionPolicy;
   nextLot?: Lot | null;
   sessionLive?: boolean;
   betweenLots?: boolean;
@@ -62,8 +56,6 @@ export function LotOnBlockPanel({
   telephoneBookings,
   paddleRoster = [],
   liveBid,
-  canHammer = false,
-  policy,
   nextLot = null,
   sessionLive = false,
   betweenLots = false,
@@ -88,34 +80,23 @@ export function LotOnBlockPanel({
     }
   }, [currentLotId]);
 
-  if (betweenLots && sessionLive && nextLot && policy.advanceInOnBlock) {
-    const advanceFormId = `saleroom-advance-hero-${saleId}`;
+  if (betweenLots && sessionLive) {
     return (
       <ConsolePanel className="space-y-4">
         <PanelHeading>Lot on block</PanelHeading>
         <p className="font-body text-sm text-secondary">
-          {progressLabel ?? "Between lots — advance the next lot to continue."}
+          {progressLabel ?? "Between lots — use Advance next in the action bar below."}
         </p>
-        <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
-          <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Up next
-          </p>
-          <p className="mt-2 font-headline text-lg text-foreground">
-            {formatLotRunListLabel(nextLot)}
-          </p>
-        </div>
-        <form id={advanceFormId} action={adminSaleroomAdvanceAction}>
-          <input type="hidden" name="saleId" value={saleId} />
-          <input type="hidden" name="lotId" value={nextLot.id} />
-          <SaleroomPendingSubmit
-            formId={advanceFormId}
-            pendingLabel="Advancing…"
-            variant="default"
-            className="min-h-11 w-full"
-          >
-            Advance next ({formatLotRunListLabel(nextLot)})
-          </SaleroomPendingSubmit>
-        </form>
+        {nextLot ? (
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+              Up next
+            </p>
+            <p className="mt-2 font-headline text-lg text-foreground">
+              {formatLotRunListLabel(nextLot)}
+            </p>
+          </div>
+        ) : null}
       </ConsolePanel>
     );
   }
@@ -315,14 +296,6 @@ export function LotOnBlockPanel({
           </div>
         </div>
       )}
-
-      {policy.hammerInOnBlock ? (
-        <LotOutcomeControls
-          saleId={saleId}
-          canHammer={canHammer}
-          className="hidden border-t border-outline-variant/20 pt-4 lg:block"
-        />
-      ) : null}
     </ConsolePanel>
   );
 }
