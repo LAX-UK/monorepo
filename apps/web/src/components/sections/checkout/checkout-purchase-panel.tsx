@@ -9,11 +9,17 @@ import {
 } from "@/lib/actions/checkout";
 import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
 import { trackBeginCheckout } from "@/lib/analytics/events";
+import { isAwaitingCaptureConfirmation } from "@/lib/checkout/checkout-page-state";
 import {
   checkoutPaymentErrorMessage,
   manualReviewReasonCopy,
   resolveCheckoutManualReviewDisplayReason,
 } from "@/lib/checkout/checkout-payment-errors";
+import {
+  formatSettlementsContactLine,
+  settlementsEmailDisplay,
+  settlementsPhone,
+} from "@/lib/checkout/settlements-contact";
 import {
   dashboardCheckoutLotUrl,
   dashboardSofRequirementsUrl,
@@ -60,24 +66,15 @@ type Props = {
   paymentComplete?: boolean;
   openPaymentStatus?: PaymentStatus | null;
   openPaymentManualReviewReason?: ManualReviewReason | null;
+  /** Rail of the open payment — gates the post-return "confirming" state to card only. */
+  openPaymentCheckoutRail?: "card" | "gb_bank_transfer" | null;
   /** When true, hide pay form — payment history failed to load (may already be paid). */
   paymentsLoadFailed?: boolean;
-  /**
-   * Pre-flight user-level compliance gate — set before any payment row exists.
-   * When non-null and no `openPaymentManualReviewReason` is available, the
-   * panel shows the ManualReviewBlock proactively so the buyer is informed
-   * before attempting to submit.
-   */
+  /** Pre-flight user-level compliance gate — set before any payment row exists. */
   preflightComplianceGate?: "clear" | "aml_hold" | "source_of_funds_required" | null;
+  /** True when buyer returned from Stripe with ?payment=success (webhook capture may lag). */
+  stripeReturnSuccess?: boolean;
 };
-
-function settlementsEmail(): string {
-  return process.env.NEXT_PUBLIC_SETTLEMENTS_EMAIL?.trim() || "settlements@example.com";
-}
-
-function settlementsPhone(): string {
-  return process.env.NEXT_PUBLIC_SETTLEMENTS_PHONE?.trim() || "+1 (000) 000-0000";
-}
 
 function parseAddress(raw: unknown): ProfileAddressRow {
   const row = raw as Record<string, unknown>;
@@ -143,6 +140,83 @@ function PaymentInFlightBlock() {
   );
 }
 
+function PaymentConfirmingBlock({
+  lotTitle,
+  timedOut,
+  onRefresh,
+}: {
+  lotTitle: string;
+  timedOut: boolean;
+  onRefresh: () => void;
+}) {
+  if (timedOut) {
+    return (
+      <output
+        className="block rounded-xl border border-warning/40 bg-warning-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10"
+        aria-live="polite"
+      >
+        <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          Still confirming
+        </p>
+        <p className="font-headline text-2xl text-on-surface">
+          Your payment is taking longer than expected
+        </p>
+        <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
+          Stripe received your payment for {lotTitle} but confirmation has not arrived yet. This can
+          take a few minutes. Refresh to check again, or contact settlements if it persists — please
+          do not pay again.
+        </p>
+        <p className="mt-3 break-all font-body text-sm text-on-surface">
+          {formatSettlementsContactLine()}
+        </p>
+        <Button type="button" variant="secondaryOutline" className="mt-6" onClick={onRefresh}>
+          Refresh status
+        </Button>
+      </output>
+    );
+  }
+  return (
+    <output
+      className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8 sm:py-10"
+      aria-live="polite"
+    >
+      <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        Confirming payment
+      </p>
+      <p className="font-headline text-2xl text-on-surface">Thank you — processing your payment</p>
+      <p className="mx-auto mt-4 max-w-md font-body text-sm text-on-surface-variant">
+        Stripe has received your payment for {lotTitle}. This page updates automatically when
+        confirmation is complete — please do not pay again.
+      </p>
+    </output>
+  );
+}
+
+function BankTransferInstructionsBlock({ lotTitle }: { lotTitle: string }) {
+  return (
+    <output
+      className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 shadow-sm sm:px-8 sm:py-10"
+      aria-live="polite"
+    >
+      <p className="mb-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+        Bank transfer requested
+      </p>
+      <p className="font-headline text-2xl text-on-surface">
+        Send your transfer to complete payment
+      </p>
+      <p className="mt-4 font-body text-sm leading-relaxed text-on-surface-variant">
+        We&apos;ve set up a UK bank transfer for {lotTitle}. Use the account details and unique
+        reference shown by Stripe (also sent to your email) to make the transfer from your bank.
+        Payment is not complete until the funds arrive — this page updates automatically when they
+        do.
+      </p>
+      <p className="mt-4 break-all font-body text-sm text-on-surface">
+        Need the details again? {formatSettlementsContactLine()}
+      </p>
+    </output>
+  );
+}
+
 type OrderSummaryProps = {
   hammer: string;
   buyerPremium: string;
@@ -179,6 +253,10 @@ function OrderSummaryCard({ hammer, buyerPremium, total, premiumPercentLabel }: 
               Quoted after payment
             </dd>
           </div>
+          <p className="font-body text-xs leading-relaxed text-on-surface-variant">
+            The total below covers the hammer price and buyer&apos;s premium only. Shipping and
+            logistics are quoted and invoiced separately once your lot is released.
+          </p>
           <Separator className="bg-outline-variant/15" />
           <div className="flex min-w-0 justify-between gap-4 pt-2">
             <dt className="min-w-0 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
@@ -220,8 +298,7 @@ function ManualReviewBlock({ reason }: { reason: ManualReviewReason | null }) {
       ) : null}
       <p className="mt-4 break-all font-body text-sm text-on-surface">
         {compliance ? "Support: " : "Settlements: "}
-        {settlementsEmail()}
-        {settlementsPhone() ? ` · ${settlementsPhone()}` : ""}
+        {formatSettlementsContactLine()}
       </p>
     </output>
   );
@@ -241,8 +318,10 @@ export function CheckoutPurchasePanel({
   paymentComplete = false,
   openPaymentStatus = null,
   openPaymentManualReviewReason = null,
+  openPaymentCheckoutRail = null,
   paymentsLoadFailed = false,
   preflightComplianceGate = null,
+  stripeReturnSuccess = false,
 }: Props) {
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
@@ -304,10 +383,75 @@ export function CheckoutPurchasePanel({
     preflightComplianceGate,
   });
 
+  const awaitingCaptureConfirmation = isAwaitingCaptureConfirmation({
+    stripeReturnSuccess,
+    paymentComplete,
+    openPaymentStatus,
+    openPaymentCheckoutRail,
+  });
+
+  const bankTransferInstructions =
+    stripeReturnSuccess &&
+    !paymentComplete &&
+    openPaymentCheckoutRail === "gb_bank_transfer" &&
+    openPaymentStatus === "pending";
+
+  const [confirmationTimedOut, setConfirmationTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!awaitingCaptureConfirmation) {
+      setConfirmationTimedOut(false);
+      return;
+    }
+    // Cap the poll so a lost/delayed webhook can't refresh the tab forever.
+    const deadline = Date.now() + 3 * 60 * 1000;
+    const id = window.setInterval(() => {
+      if (Date.now() > deadline) {
+        setConfirmationTimedOut(true);
+        window.clearInterval(id);
+        return;
+      }
+      if (!document.hidden) router.refresh();
+    }, 8000);
+    return () => window.clearInterval(id);
+  }, [awaitingCaptureConfirmation, router]);
+
   if (paymentComplete) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28">
         <PaymentCompleteBlock />
+      </div>
+    );
+  }
+
+  if (bankTransferInstructions) {
+    return (
+      <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
+        <OrderSummaryCard
+          hammer={hammer}
+          buyerPremium={buyerPremium}
+          total={total}
+          premiumPercentLabel={premiumPercentLabel}
+        />
+        <BankTransferInstructionsBlock lotTitle={lotTitle} />
+      </div>
+    );
+  }
+
+  if (awaitingCaptureConfirmation) {
+    return (
+      <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
+        <OrderSummaryCard
+          hammer={hammer}
+          buyerPremium={buyerPremium}
+          total={total}
+          premiumPercentLabel={premiumPercentLabel}
+        />
+        <PaymentConfirmingBlock
+          lotTitle={lotTitle}
+          timedOut={confirmationTimedOut}
+          onRefresh={() => router.refresh()}
+        />
       </div>
     );
   }
@@ -423,17 +567,24 @@ export function CheckoutPurchasePanel({
                 Payment
               </h2>
               <p className="mb-6 font-body text-sm leading-relaxed text-on-surface-variant">
-                Pay by card (up to £10,000) or UK bank transfer via secure Stripe Checkout.
-                High-value purchases may require finance review before checkout is issued.
+                {openPaymentCheckoutRail === "gb_bank_transfer"
+                  ? "This purchase settles by UK bank transfer via secure Stripe Checkout — card is not available above our card limit. High-value purchases may require finance review before checkout is issued."
+                  : openPaymentCheckoutRail === "card"
+                    ? "Pay by card via secure Stripe Checkout."
+                    : "Pay by card or UK bank transfer via secure Stripe Checkout, depending on the amount. High-value purchases may require finance review before checkout is issued."}
               </p>
               <p className="font-body text-sm text-on-surface">
                 <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
                   Concierge
                 </span>
                 <br />
-                <span className="break-all">{settlementsEmail()}</span>
-                <br />
-                <span className="text-on-surface-variant">{settlementsPhone()}</span>
+                <span className="break-all">{settlementsEmailDisplay()}</span>
+                {settlementsPhone() ? (
+                  <>
+                    <br />
+                    <span className="text-on-surface-variant">{settlementsPhone()}</span>
+                  </>
+                ) : null}
               </p>
             </CardContent>
           </Card>

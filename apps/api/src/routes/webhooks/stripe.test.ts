@@ -112,4 +112,40 @@ describe("POST /webhooks/stripe/payments", () => {
     expect(res.status).toBe(500);
     expect(await res.json()).toMatchObject({ ok: false, reason: "missing_charge_id" });
   });
+
+  it("delegates payment_intent.succeeded to StripePaymentWebhookService", async () => {
+    const handlePaymentIntentSucceeded = vi.fn().mockResolvedValue({
+      processed: true,
+      action: "payment_intent_succeeded",
+    });
+    const container = makeContainer({
+      stripePaymentWebhookService: {
+        handlePaymentIntentSucceeded,
+      } as unknown as Container["stripePaymentWebhookService"],
+    });
+    const event = {
+      id: "evt_pi_ok",
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: "pi_1",
+          amount: 10000,
+          metadata: { paymentId: "pay_1" },
+          latest_charge: "ch_1",
+        },
+      },
+    } as unknown as Stripe.Event;
+    vi.mocked(container.stripeWebhookVerifier.verify).mockReturnValue(event);
+    const app = createStripeWebhookRoutes(container);
+
+    const res = await app.request("/payments", {
+      method: "POST",
+      body: "{}",
+      headers: { "stripe-signature": "sig" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(handlePaymentIntentSucceeded).toHaveBeenCalledWith(event, event.data.object);
+    expect(await res.json()).toMatchObject({ ok: true, action: "payment_intent_succeeded" });
+  });
 });
