@@ -30,9 +30,12 @@ type Ctx = {
   /** Authoritative end time after anti-snipe extend or reconnect hydrate. */
   liveEndTimeMs: number | null;
   setLiveEndTimeMs: (ms: number) => void;
-  /** Lot status after reconnect hydrate (null until first server sync). */
+  /** Lot status after reconnect hydrate or realtime lotEnded (null until first sync). */
   liveLotStatus: Lot["status"] | null;
   setLiveLotStatus: (status: Lot["status"]) => void;
+  /** Winner after realtime lotEnded; null when passed unsold or unknown. */
+  liveWinnerId: string | null;
+  setLiveLotEnded: (result: { winnerId: string | null; noSale: boolean }) => void;
   /** Mobile sticky coordination: bid card intersects viewport. */
   bidCardInView: boolean;
   setBidCardInView: (inView: boolean) => void;
@@ -51,11 +54,17 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
   const [extendedByMs, setExtendedByMs] = useState<number | null>(null);
   const [liveEndTimeMs, setLiveEndTimeMs] = useState<number | null>(null);
   const [liveLotStatus, setLiveLotStatus] = useState<Lot["status"] | null>(null);
+  const [liveWinnerId, setLiveWinnerId] = useState<string | null>(null);
   const [bidCardInView, setBidCardInView] = useState(true);
   const ownBidEchoGuardRef = useRef<OwnBidEchoGuard | null>(null);
 
   const setExtendedDeltaMs = useCallback((deltaMs: number | null) => {
     setExtendedByMs(deltaMs);
+  }, []);
+
+  const setLiveLotEnded = useCallback((result: { winnerId: string | null; noSale: boolean }) => {
+    setLiveLotStatus("ended");
+    setLiveWinnerId(result.noSale ? null : result.winnerId);
   }, []);
 
   const value = useMemo(
@@ -68,11 +77,23 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       setLiveEndTimeMs,
       liveLotStatus,
       setLiveLotStatus,
+      liveWinnerId,
+      setLiveLotEnded,
       bidCardInView,
       setBidCardInView,
       ownBidEchoGuardRef,
     }),
-    [lot, sale, extendedByMs, setExtendedDeltaMs, liveEndTimeMs, liveLotStatus, bidCardInView],
+    [
+      lot,
+      sale,
+      extendedByMs,
+      setExtendedDeltaMs,
+      liveEndTimeMs,
+      liveLotStatus,
+      liveWinnerId,
+      setLiveLotEnded,
+      bidCardInView,
+    ],
   );
 
   return (
