@@ -120,7 +120,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           variant="hero"
           icon={<Gavel aria-hidden />}
           title="Your basket is empty"
-          description="Add lots to a basket by visiting your collection and selecting multiple settlements, or open each checkout directly."
+          description="Open your collection and start checkout on any won lot — each lot is settled through its own invoice."
           action={
             <Button variant="primary" asChild>
               <Link href="/dashboard/portfolio">Open collection</Link>

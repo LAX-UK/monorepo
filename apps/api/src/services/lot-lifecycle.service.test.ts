@@ -63,8 +63,12 @@ function baseLot(overrides: Partial<Lot> = {}): Lot {
   };
 }
 
-function createFactory(lots: ILotRepository, bids: IBidRepository): IRepositoryFactory {
-  const root = { lot: lots, bid: bids };
+function createFactory(lots: ILotRepository, bids: Partial<IBidRepository>): IRepositoryFactory {
+  const bidRepo = {
+    clearWinningBid: vi.fn(),
+    ...bids,
+  } as unknown as IBidRepository;
+  const root = { lot: lots, bid: bidRepo };
   return {
     root,
     forConnection: () => root,
@@ -465,8 +469,10 @@ describe("LotLifecycleService", () => {
       voidLotAntiShillingClose: vi.fn(),
     } as unknown as ILotRepository;
 
+    const clearWinningBid = vi.fn();
     const bids: IBidRepository = {
       listDistinctBidderIds: vi.fn().mockResolvedValue(["bidder-a"]),
+      clearWinningBid,
     } as unknown as IBidRepository;
 
     const stageDispatch = vi.fn().mockResolvedValue(undefined);
@@ -487,6 +493,7 @@ describe("LotLifecycleService", () => {
     );
 
     await expect(svc.noSaleEndActiveLotFromClerk("a1")).resolves.toBe(true);
+    expect(clearWinningBid).toHaveBeenCalledWith("a1");
     expect(stageDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "bidder-a",
@@ -516,6 +523,7 @@ describe("LotLifecycleService", () => {
       voidLotAntiShillingClose: vi.fn(),
     } as unknown as ILotRepository;
 
+    const clearWinningBid = vi.fn();
     const bids: IBidRepository = {
       findEligibleBidsForLotClose: vi
         .fn()
@@ -524,6 +532,7 @@ describe("LotLifecycleService", () => {
         .fn()
         .mockResolvedValue([bid({ amount: "500.00", buyerLegalEntityId: "le-1" })]),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+      clearWinningBid,
     } as unknown as IBidRepository;
 
     const svc = new LotLifecycleService(
@@ -540,6 +549,7 @@ describe("LotLifecycleService", () => {
     const outcome = await svc.finalizeActiveLotFromClerkHammer("a1");
     expect(outcome?.winnerId).toBeNull();
     expect(lots.setWinner).not.toHaveBeenCalled();
+    expect(clearWinningBid).toHaveBeenCalledWith("a1");
   });
 
   it("skips timed close when lot is under a live clerk session", async () => {

@@ -20,6 +20,30 @@ export type CheckoutPagePaymentState = {
   openPayment: MyPaymentRow | null;
 };
 
+/**
+ * After a Stripe success redirect, webhook capture may lag — keep the buyer off the pay form
+ * with a "confirming" state.
+ *
+ * IMPORTANT: this only applies to the card rail. A `gb_bank_transfer` checkout redirects to
+ * `?payment=success` after merely *displaying* the bank details — the buyer still has to send
+ * the wire, so "confirming / do not pay again" would be misleading and could leave the lot
+ * unpaid. Bank-transfer progress is surfaced separately once the payment becomes `authorized`.
+ */
+export function isAwaitingCaptureConfirmation(input: {
+  stripeReturnSuccess: boolean;
+  paymentComplete: boolean;
+  openPaymentStatus: PaymentStatus | null | undefined;
+  openPaymentCheckoutRail?: "card" | "gb_bank_transfer" | null;
+}): boolean {
+  if (!input.stripeReturnSuccess || input.paymentComplete) return false;
+  if (input.openPaymentCheckoutRail === "gb_bank_transfer") return false;
+  return (
+    input.openPaymentStatus == null ||
+    input.openPaymentStatus === "pending" ||
+    input.openPaymentStatus === "authorized"
+  );
+}
+
 export function resolveCheckoutPagePaymentState(
   payments: MyPaymentRow[],
   lotId: string,

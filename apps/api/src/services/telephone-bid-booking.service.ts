@@ -646,6 +646,9 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
     if (booking.status !== "confirmed" && booking.status !== "in_progress") {
       return this.err("Telephone booking is not active", 400, "invalid_status_transition");
     }
+    if (booking.lotIds.length > 0 && !booking.lotIds.includes(input.lotId)) {
+      return this.err("This lot is not part of the telephone booking", 400, "lot_not_in_booking");
+    }
 
     const cap = parseAuthorizedMaxCap(booking.authorizedMax);
     const effective =
