@@ -15,8 +15,9 @@ type Props = {
   /** `outlined-block` — saleroom lot card: 44px tap target, light border #A3A3A3, 4px radius.
    * `default` — existing card / detail rail (unchanged for LSP).
    * `list-action` — compact outline button for dashboard mobile list cards.
+   * `sticky-bar` — compact CTA aligned with mobile lot sticky bid bar.
    */
-  appearance?: "default" | "outlined-block" | "list-action";
+  appearance?: "default" | "outlined-block" | "list-action" | "sticky-bar";
   loginNextPath: string;
   /** Used for accessible labels when `appearance="list-action"`. */
   lotTitle?: string;
@@ -26,6 +27,12 @@ type Props = {
 
 const lotBtnClass =
   "box-border inline-flex h-11 min-w-0 w-full items-center justify-center gap-2 rounded-[4px] border border-brand-200 bg-transparent px-3 sm:px-6 font-body text-base font-semibold leading-6 tracking-[0.8px] text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-outline-variant/50 dark:text-on-surface";
+
+const stickyBarCtaClass =
+  "h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90 gap-2";
+
+const stickyBarLinkClass =
+  "inline-flex shrink-0 items-center gap-2 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
 
 export function ArtworkWatchToggle({
   lotId,
@@ -76,6 +83,14 @@ export function ArtworkWatchToggle({
   );
 
   if (!isAuthenticated) {
+    if (appearance === "sticky-bar") {
+      return (
+        <Link href={loginHref} className={stickyBarLinkClass}>
+          <LogIn className="size-4 shrink-0" aria-hidden />
+          {signInLabel}
+        </Link>
+      );
+    }
     if (appearance === "list-action") {
       return (
         <Link
@@ -139,6 +154,34 @@ export function ArtworkWatchToggle({
             </span>
           )}
           {watching ? outlinedActiveLabel : outlinedFollowLabel}
+        </Button>
+      </>
+    );
+  }
+
+  if (appearance === "sticky-bar") {
+    return (
+      <>
+        {liveRegion}
+        <Button
+          type="button"
+          disabled={busy}
+          aria-pressed={watching}
+          onClick={handleToggle}
+          className={stickyBarCtaClass}
+        >
+          {busy ? (
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <span
+              key={bumpKey}
+              className="inline-flex motion-safe:[animation:tick_var(--motion-duration-md,_320ms)_var(--motion-ease-emphasize)]"
+              aria-hidden
+            >
+              {watching ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+            </span>
+          )}
+          {watching ? defaultActiveLabel : defaultIdleLabel}
         </Button>
       </>
     );
