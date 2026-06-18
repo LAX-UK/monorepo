@@ -358,17 +358,21 @@ export class DrizzleBidRepository implements IBidRepository {
   async markWinningBid(lotId: string, bidId: string) {
     // Two steps avoid violating bid_one_winner_per_lot_uniq: a single UPDATE that
     // demotes the old winner and promotes the new bid can briefly have two winners.
-    await this.db.execute(sql`
-      UPDATE bid
-      SET is_winning = false
-      WHERE lot_id = ${lotId}::uuid
-        AND is_winning = true
-    `);
+    await this.clearWinningBid(lotId);
     await this.db.execute(sql`
       UPDATE bid
       SET is_winning = true
       WHERE lot_id = ${lotId}::uuid
         AND id = ${bidId}::uuid
+    `);
+  }
+
+  async clearWinningBid(lotId: string) {
+    await this.db.execute(sql`
+      UPDATE bid
+      SET is_winning = false
+      WHERE lot_id = ${lotId}::uuid
+        AND is_winning = true
     `);
   }
 }

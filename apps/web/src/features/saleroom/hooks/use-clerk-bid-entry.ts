@@ -141,6 +141,12 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
 
   const selectedBooking = inProgressBookings.find((b) => b.id === state.bookingId) ?? null;
 
+  const canPlaceTelephoneBid =
+    !pending &&
+    state.bookingId.trim() !== "" &&
+    state.telephoneAmount.trim() !== "" &&
+    selectedBooking != null;
+
   const setPaddleNumber = useCallback(
     (value: string) => {
       setState((prev) => ({ ...prev, paddleNumber: value }));
@@ -260,6 +266,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
     registeredPaddle,
     paddleRegistrationError,
     canPlacePaddleBid,
+    canPlaceTelephoneBid,
     setPaddleNumber,
     setPaddleAmount,
     setTelephoneAmount,

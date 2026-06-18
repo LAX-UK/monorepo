@@ -163,6 +163,7 @@ export class LotLifecycleService {
     const ok = await this.repos.runInTransaction(async ({ lot, bid }, tx) => {
       const row = await lot.findByIdForUpdate(lotId);
       if (!row || row.status !== "active") return false;
+      await bid.clearWinningBid(lotId);
       await lot.updateStatus(lotId, "ended");
       if (this.lotLifecycleRecording) {
         await this.lotLifecycleRecording.recordEnded(tx, {
@@ -275,6 +276,9 @@ export class LotLifecycleService {
       }
 
       if (!voided) {
+        if (!winnerId) {
+          await bid.clearWinningBid(row.id);
+        }
         await lot.updateStatus(row.id, "ended");
         if (this.lotLifecycleRecording) {
           await this.lotLifecycleRecording.recordEnded(tx, {

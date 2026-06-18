@@ -11,6 +11,7 @@ import type {
   AdminTelephoneBookingRow,
 } from "@/lib/data/http/admin.server";
 import { PLATFORM_DEFAULT_CURRENCY, resolveLotCurrency } from "@/lib/money/currency";
+import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import { formatMoney } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
@@ -36,6 +37,7 @@ type Props = {
   liveBid: ClerkLotLiveBidState;
   nextLot?: Lot | null;
   sessionLive?: boolean;
+  sessionStatus?: PublicSaleroomSessionStatus["status"];
   betweenLots?: boolean;
   progressLabel?: string;
 };
@@ -58,6 +60,7 @@ export function LotOnBlockPanel({
   liveBid,
   nextLot = null,
   sessionLive = false,
+  sessionStatus,
   betweenLots = false,
   progressLabel,
 }: Props) {
@@ -73,6 +76,9 @@ export function LotOnBlockPanel({
     telephoneBookings,
     paddleRoster,
   });
+
+  const isPaused = sessionStatus === "paused";
+  const biddingDisabled = isPaused || bidEntry.pending;
 
   useEffect(() => {
     if (currentLotId) {
@@ -147,6 +153,14 @@ export function LotOnBlockPanel({
         ) : null}
       </div>
 
+      {isPaused ? (
+        <Alert variant="default" className="py-2">
+          <AlertDescription className="font-body text-sm">
+            Session paused — resume to place bids.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="space-y-3">
         <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
           Paddle bid
@@ -164,6 +178,7 @@ export function LotOnBlockPanel({
               className="h-11 w-28 font-body text-base tabular-nums"
               autoComplete="off"
               inputMode="numeric"
+              disabled={biddingDisabled}
               aria-invalid={bidEntry.paddleRegistrationError != null}
               aria-describedby={
                 bidEntry.paddleRegistrationError ? `paddle-num-error-${saleId}` : undefined
@@ -194,11 +209,12 @@ export function LotOnBlockPanel({
               placeholder="Hammer bid"
               className="h-11 font-body text-base"
               inputMode="decimal"
+              disabled={biddingDisabled}
             />
           </div>
           <Button
             type="button"
-            disabled={!bidEntry.canPlacePaddleBid}
+            disabled={!bidEntry.canPlacePaddleBid || isPaused}
             className="min-h-11"
             onClick={bidEntry.placePaddleBid}
           >
@@ -213,6 +229,7 @@ export function LotOnBlockPanel({
               size="sm"
               variant="outline"
               className="min-h-11 tabular-nums"
+              disabled={biddingDisabled}
               onClick={() => bidEntry.applyIncrement(amount, "paddle")}
             >
               {incrementChipLabel(index, amount, lotCurrency)}
@@ -246,8 +263,16 @@ export function LotOnBlockPanel({
           </p>
           <div className="space-y-1">
             <Label htmlFor={`telephone-booking-${saleId}`}>Telephone line</Label>
-            <Select value={bidEntry.state.bookingId} onValueChange={bidEntry.setBookingId}>
-              <SelectTrigger id={`telephone-booking-${saleId}`} className="h-11 font-body text-sm">
+            <Select
+              value={bidEntry.state.bookingId}
+              onValueChange={bidEntry.setBookingId}
+              disabled={biddingDisabled}
+            >
+              <SelectTrigger
+                id={`telephone-booking-${saleId}`}
+                className="h-11 font-body text-sm"
+                disabled={biddingDisabled}
+              >
                 <SelectValue placeholder="Select booking" />
               </SelectTrigger>
               <SelectContent>
@@ -269,11 +294,12 @@ export function LotOnBlockPanel({
                 placeholder="Telephone bid"
                 className="h-11 font-body text-base"
                 inputMode="decimal"
+                disabled={biddingDisabled}
               />
             </div>
             <Button
               type="button"
-              disabled={bidEntry.pending}
+              disabled={!bidEntry.canPlaceTelephoneBid || isPaused}
               className="min-h-11"
               onClick={bidEntry.placeTelephoneBid}
             >
@@ -288,6 +314,7 @@ export function LotOnBlockPanel({
                 size="sm"
                 variant="outline"
                 className="min-h-11 tabular-nums"
+                disabled={biddingDisabled}
                 onClick={() => bidEntry.applyIncrement(amount, "telephone")}
               >
                 {incrementChipLabel(index, amount, lotCurrency)}

@@ -205,6 +205,7 @@ export interface IBidRepository {
   /** Latest bids placed by a bidder (for dashboard). */
   listForBidder(bidderId: string, limit: number): Promise<Bid[]>;
   markWinningBid(lotId: string, bidId: string): Promise<void>;
+  clearWinningBid(lotId: string): Promise<void>;
   /** Max effective ceiling per bidder for proxy resolution (English / buy-it-now). */
   aggregateBidderCeilings(lotId: string): Promise<Map<string, number>>;
   /** One row per bidder on the lot: ceiling (max of amount vs max auto) and the
