@@ -3,7 +3,6 @@ import { payment } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PaymentCaptureNotAppliedError } from "../lib/errors.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
@@ -420,34 +419,6 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
   });
 
-  it("claims and captures inside one transaction", async () => {
-    const db = mockDbWithPayment({
-      id: "pay_1",
-      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
-      status: "pending",
-      amount: "100.00",
-    });
-    const capture = vi.fn().mockResolvedValue(undefined);
-    const { svc } = createWebhookService({
-      db,
-      paymentCapture: { capture },
-    });
-    const event = { id: "evt_pi_tx", type: "payment_intent.succeeded" } as Stripe.Event;
-    const pi = {
-      id: "pi_1",
-      amount: 10000,
-      metadata: { paymentId: "pay_1" },
-      latest_charge: "ch_pi",
-    } as unknown as Stripe.PaymentIntent;
-
-    await svc.handlePaymentIntentSucceeded(event, pi);
-
-    expect(db.transaction).toHaveBeenCalled();
-    expect(capture).toHaveBeenCalledWith(
-      expect.objectContaining({ tx: expect.any(Object), paymentId: "pay_1" }),
-    );
-  });
-
   it("captures payment via PaymentCaptureService", async () => {
     const db = mockDbWithPayment({
       id: "pay_1",
@@ -521,24 +492,27 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     );
   });
 
-  it("propagates capture failure so the event claim rolls back", async () => {
+  it("blocks capture and emits reconciliation event when payment is cancelled", async () => {
     const db = mockDbWithPayment({
       id: "pay_1",
       sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
       status: "cancelled",
       amount: "100.00",
     });
-    const capture = vi
-      .fn()
-      .mockRejectedValue(new PaymentCaptureNotAppliedError("pay_1", "cancelled"));
+    const capture = vi.fn().mockResolvedValue({ captured: true });
+    const publish = vi.fn().mockResolvedValue(undefined);
     const { svc } = createWebhookService({
       db,
       paymentCapture: { capture },
+      publisher: { publish } as DomainEventPublisher,
       payments: {
         findById: vi.fn().mockResolvedValue({
           id: "pay_1",
+          lotId: "lot-1",
           amount: "100.00",
           status: "cancelled",
+          paidByUserId: "buyer-1",
+          buyerLegalEntityId: "00000000-0000-4000-8000-000000000002",
         }),
       },
     });
@@ -550,8 +524,20 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
       latest_charge: "ch_pi",
     } as unknown as Stripe.PaymentIntent;
 
-    await expect(svc.handlePaymentIntentSucceeded(event, pi)).rejects.toBeInstanceOf(
-      PaymentCaptureNotAppliedError,
+    const result = await svc.handlePaymentIntentSucceeded(event, pi);
+
+    expect(result).toEqual({
+      processed: true,
+      action: "payment_intent_succeeded_terminal_blocked",
+      reason: "payment_terminal_status",
+    });
+    expect(capture).not.toHaveBeenCalled();
+    expect(publish).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: "payment.capture_blocked_terminal_status",
+        aggregateId: "pay_1",
+      }),
     );
   });
 

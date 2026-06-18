@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveCheckoutPagePaymentState } from "./checkout-page-state";
+import {
+  isAwaitingCaptureConfirmation,
+  resolveCheckoutPagePaymentState,
+} from "./checkout-page-state";
 
 describe("resolveCheckoutPagePaymentState", () => {
   it("marks complete when payment is captured", () => {
@@ -62,5 +65,59 @@ describe("resolveCheckoutPagePaymentState", () => {
     );
     expect(state.paymentComplete).toBe(false);
     expect(state.openPayment?.status).toBe("authorized");
+  });
+});
+
+describe("isAwaitingCaptureConfirmation", () => {
+  it("is true after Stripe success return while payment is still pending", () => {
+    expect(
+      isAwaitingCaptureConfirmation({
+        stripeReturnSuccess: true,
+        paymentComplete: false,
+        openPaymentStatus: "pending",
+      }),
+    ).toBe(true);
+  });
+
+  it("is false once payment is captured", () => {
+    expect(
+      isAwaitingCaptureConfirmation({
+        stripeReturnSuccess: true,
+        paymentComplete: true,
+        openPaymentStatus: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("is false without Stripe success return", () => {
+    expect(
+      isAwaitingCaptureConfirmation({
+        stripeReturnSuccess: false,
+        paymentComplete: false,
+        openPaymentStatus: "pending",
+      }),
+    ).toBe(false);
+  });
+
+  it("is false for a bank transfer return — buyer still has to send the wire", () => {
+    expect(
+      isAwaitingCaptureConfirmation({
+        stripeReturnSuccess: true,
+        paymentComplete: false,
+        openPaymentStatus: "pending",
+        openPaymentCheckoutRail: "gb_bank_transfer",
+      }),
+    ).toBe(false);
+  });
+
+  it("is true for a card return while still pending", () => {
+    expect(
+      isAwaitingCaptureConfirmation({
+        stripeReturnSuccess: true,
+        paymentComplete: false,
+        openPaymentStatus: "pending",
+        openPaymentCheckoutRail: "card",
+      }),
+    ).toBe(true);
   });
 });

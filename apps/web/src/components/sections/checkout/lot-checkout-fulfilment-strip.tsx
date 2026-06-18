@@ -1,5 +1,6 @@
 "use client";
 
+import { clientApiBase } from "@/lib/api/client-api-base";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.server";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -80,15 +81,14 @@ const POLL_INTERVAL_MS = 8000;
 /** Stop polling after this many minutes of foreground time to avoid runaway loops. */
 const POLL_TIMEOUT_MS = 30 * 60 * 1000;
 
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
-
 async function fetchFulfilment(lotId: string): Promise<LotFulfilmentSnapshot | null | "error"> {
-  const res = await fetch(`${apiBase()}/payments/me/lot/${encodeURIComponent(lotId)}/fulfilment`, {
-    credentials: "include",
-    cache: "no-store",
-  });
+  const res = await fetch(
+    `${clientApiBase()}/payments/me/lot/${encodeURIComponent(lotId)}/fulfilment`,
+    {
+      credentials: "include",
+      cache: "no-store",
+    },
+  );
   if (!res.ok) return "error";
   const body = (await res.json()) as { data: LotFulfilmentSnapshot | null };
   return body.data ?? null;

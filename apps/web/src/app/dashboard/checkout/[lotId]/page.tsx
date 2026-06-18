@@ -9,6 +9,7 @@ import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-c
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { resolveCheckoutPagePaymentState } from "@/lib/checkout/checkout-page-state";
+import { settlementsEmail } from "@/lib/checkout/settlements-contact";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -24,12 +25,14 @@ import { z } from "zod";
 
 type PageProps = {
   params: Promise<{ lotId: string }>;
+  searchParams: Promise<{ payment?: string }>;
 };
 
 const lotIdSchema = z.string().uuid();
 
-export default async function DashboardCheckoutPage({ params }: PageProps) {
+export default async function DashboardCheckoutPage({ params, searchParams }: PageProps) {
   const { lotId: rawLotId } = await params;
+  const { payment: paymentReturn } = await searchParams;
   const parsedLotId = lotIdSchema.safeParse(rawLotId);
   if (!parsedLotId.success) {
     notFound();
@@ -79,6 +82,7 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
     lotId,
     fulfilment,
   );
+  const stripeReturnSuccess = paymentReturn === "success";
 
   const checkoutPricing = auction.checkoutPricing;
   const hasPricing = checkoutPricing != null;
@@ -137,7 +141,11 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                       </Button>
                       <Button variant="outline" asChild>
                         <Link
-                          href={`mailto:${process.env.NEXT_PUBLIC_SETTLEMENTS_EMAIL?.trim() || "settlements@example.com"}`}
+                          href={
+                            settlementsEmail()
+                              ? `mailto:${settlementsEmail()}`
+                              : "/dashboard/portfolio"
+                          }
                         >
                           Contact support
                         </Link>
@@ -170,8 +178,10 @@ export default async function DashboardCheckoutPage({ params }: PageProps) {
                       paymentComplete={paymentComplete}
                       openPaymentStatus={openPayment?.status ?? null}
                       openPaymentManualReviewReason={openPayment?.manualReviewReason ?? null}
+                      openPaymentCheckoutRail={openPayment?.checkoutRail ?? null}
                       paymentsLoadFailed={paymentsFailure != null}
                       preflightComplianceGate={complianceGate}
+                      stripeReturnSuccess={stripeReturnSuccess}
                     />
                   </>
                 )}

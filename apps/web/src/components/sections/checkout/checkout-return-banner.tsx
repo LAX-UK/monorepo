@@ -44,8 +44,7 @@ export function CheckoutReturnBanner({ lotTitle }: Props) {
       >
         <p className="font-medium text-on-surface">Returned from Stripe</p>
         <p className="mt-1 text-on-surface-variant">
-          Thank you for paying for {lotLabel}. Payment confirmation may take a moment — this page
-          will update when your lot status changes.
+          Thanks — we&apos;re finishing up {lotLabel}. See the status below for what happens next.
         </p>
       </output>
     );

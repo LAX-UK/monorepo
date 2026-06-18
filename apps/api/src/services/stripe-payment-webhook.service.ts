@@ -21,6 +21,7 @@ type PaymentWebhookResult = {
     | "dispute_closed"
     | "refund_received"
     | "payment_intent_succeeded"
+    | "payment_intent_succeeded_terminal_blocked"
     | "payment_intent_processing"
     | "payment_intent_partially_funded"
     | "payment_intent_failed"
@@ -74,6 +75,41 @@ export class StripePaymentWebhookService {
       );
       if (!claimed) {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      if (paymentRow.status === "cancelled" || paymentRow.status === "refunded") {
+        recordMoneyPathEvent("stripe_succeeded_for_terminal_payment");
+        console.error(
+          JSON.stringify({
+            msg: "stripe_succeeded_for_terminal_payment",
+            paymentId,
+            lotId: paymentRow.lotId,
+            statusBefore: paymentRow.status,
+            stripePaymentIntentId: paymentIntent.id,
+            stripeChargeId: chargeId,
+          }),
+        );
+        await this.domainEventPublisher.publish(tx, {
+          aggregateType: "payment",
+          aggregateId: paymentId,
+          eventType: "payment.capture_blocked_terminal_status",
+          payload: {
+            paymentId,
+            lotId: paymentRow.lotId,
+            buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
+            statusBefore: paymentRow.status,
+            stripePaymentIntentId: paymentIntent.id,
+            stripeChargeId: chargeId,
+            amountCents: expectedPence,
+          },
+          actorUserId: null,
+          actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
+        });
+        return {
+          processed: true,
+          action: "payment_intent_succeeded_terminal_blocked",
+          reason: "payment_terminal_status",
+        };
       }
 
       await this.paymentCapture.capture({
