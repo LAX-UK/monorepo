@@ -1,5 +1,6 @@
 "use client";
 
+import { BidPanelSurfaceProvider } from "@/components/sections/artwork/online/bid-panel-surface";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { ReactNode } from "react";
@@ -58,11 +59,18 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
   );
 
   if (!hasVideoStream) {
-    return <div className={cn("flex w-full flex-col gap-4", className)}>{bidPanel}</div>;
+    return (
+      <div className={cn("flex w-full flex-col gap-4", className)}>
+        <BidPanelSurfaceProvider surface="full">{bidPanel}</BidPanelSurfaceProvider>
+      </div>
+    );
   }
+
+  const onVideoTab = tab === "video";
 
   return (
     <div className={cn("flex w-full flex-col gap-4", className)}>
+      {/* Tab toggle — controls the video region */}
       <div
         className={cn(
           "mx-auto flex w-full max-w-full gap-2 rounded-full border border-outline-variant/50 bg-surface-container-high/30 p-2 sm:max-w-[340px]",
@@ -84,7 +92,7 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
               role="tab"
               id={`${baseId}-tab-${id}`}
               aria-selected={selected}
-              aria-controls={`${baseId}-panel-${id}`}
+              aria-controls={`${baseId}-panel-video`}
               tabIndex={selected ? 0 : -1}
               onClick={() => select(id)}
               className={cn(
@@ -98,25 +106,28 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
         })}
       </div>
 
-      <div
-        id={`${baseId}-panel-bids`}
-        role="tabpanel"
-        aria-labelledby={`${baseId}-tab-bids`}
-        hidden={tab !== "bids"}
-        className="min-w-0"
-      >
-        {bidPanel}
-      </div>
-
+      {/*
+       * Video panel — kept MOUNTED at all times so the stream doesn't reload on
+       * tab switch. Visibility is controlled via the HTML `hidden` attribute.
+       */}
       <div
         id={`${baseId}-panel-video`}
         role="tabpanel"
         aria-labelledby={`${baseId}-tab-video`}
-        hidden={tab !== "video"}
+        hidden={!onVideoTab}
         className="min-w-0"
       >
         {videoPanel}
       </div>
+
+      {/*
+       * Bid panel — always rendered in a stable tree position (never moved between
+       * parent elements) so ArtworkBidPanel is never remounted on tab switch.
+       * The surface context drives whether it shows its full card or the compact bar.
+       */}
+      <BidPanelSurfaceProvider surface={onVideoTab ? "videoCompact" : "full"}>
+        {bidPanel}
+      </BidPanelSurfaceProvider>
     </div>
   );
 }
