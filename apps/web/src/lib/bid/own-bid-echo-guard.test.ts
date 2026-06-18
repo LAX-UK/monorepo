@@ -17,14 +17,24 @@ describe("shouldSkipOwnBidEcho", () => {
     expect(shouldSkipOwnBidEcho({ bidId: "bid-other", amount: "400" }, own, "user-1")).toBe(true);
   });
 
-  it("skips when emittedAt predates own bid", () => {
+  it("skips when emittedAt predates own bid at same or lower amount", () => {
+    expect(
+      shouldSkipOwnBidEcho(
+        { bidId: "bid-other", amount: "500", emittedAt: own.at - 1000 },
+        own,
+        "user-1",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not skip higher competing bid even when emittedAt predates own bid", () => {
     expect(
       shouldSkipOwnBidEcho(
         { bidId: "bid-other", amount: "600", emittedAt: own.at - 1000 },
         own,
         "user-1",
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("does not skip unrelated bid updates", () => {

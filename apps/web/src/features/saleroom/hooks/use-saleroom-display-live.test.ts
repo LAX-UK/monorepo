@@ -6,7 +6,7 @@ import {
 import type { DisplayDataClient } from "@/features/saleroom/lib/display-data-client";
 import type { SaleroomDisplaySnapshot } from "@auction/types";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function currentLot(overrides: Partial<NonNullable<SaleroomDisplaySnapshot["currentLot"]>> = {}) {
   return {
@@ -684,5 +684,78 @@ describe("useSaleroomDisplayLive", () => {
       price: "100.00",
       paddleLabel: "Paddle 205",
     });
+  });
+});
+
+describe("useSaleroomDisplayLive periodic resync", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("full-hydrates on the resync interval", async () => {
+    const fetchSnapshot = vi.fn().mockResolvedValue({ ok: true, snapshot: snapshot() });
+    const dataClient = createMockDataClient(fetchSnapshot);
+    const adapter = createMockSaleroomSocketAdapter();
+
+    renderHook(() =>
+      useSaleroomDisplayLive({
+        saleId: "sale-1",
+        displayToken: "token-1",
+        dataClient,
+        socketAdapter: adapter,
+      }),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    fetchSnapshot.mockClear();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    expect(fetchSnapshot).toHaveBeenCalled();
+  });
+
+  it("full-hydrates when the tab becomes visible", async () => {
+    const fetchSnapshot = vi.fn().mockResolvedValue({ ok: true, snapshot: snapshot() });
+    const dataClient = createMockDataClient(fetchSnapshot);
+    const adapter = createMockSaleroomSocketAdapter();
+
+    renderHook(() =>
+      useSaleroomDisplayLive({
+        saleId: "sale-1",
+        displayToken: "token-1",
+        dataClient,
+        socketAdapter: adapter,
+      }),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    fetchSnapshot.mockClear();
+
+    await act(async () => {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "visible",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(fetchSnapshot).toHaveBeenCalled();
   });
 });
