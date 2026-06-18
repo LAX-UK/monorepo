@@ -2,8 +2,10 @@ import {
   applyDisplayBidSummaryToSnapshot,
   buildDisplayBoardVM,
   computeNextRequiredBid,
+  displayBidTickFromSnapshot,
   formatDisplayEstimate,
   resolveBidSummaryAfterFullHydrate,
+  seedDisplayBidLiveFromSnapshot,
 } from "@/features/saleroom/lib/display-bid-ticks";
 import type { SaleroomDisplaySnapshot } from "@auction/types";
 import { describe, expect, it } from "vitest";
@@ -80,5 +82,119 @@ describe("display board helpers", () => {
     expect(vm.nextRequiredBid).toBe("110.00");
     expect(vm.nextRequiredBidCurrency).toBe("GBP");
     expect(vm.leaderLabel).toBe("Paddle 205");
+  });
+});
+
+describe("display bid tick seeding", () => {
+  it("maps snapshot bid ticks to display ticks", () => {
+    const tick = displayBidTickFromSnapshot({
+      id: "bid-1",
+      amount: "150.00",
+      placedVia: "web",
+      isAutoBid: false,
+      at: "2026-06-17T14:00:00.000Z",
+    });
+    expect(tick).toEqual({
+      id: "bid-1",
+      amount: "150.00",
+      placedVia: "web",
+      isAutoBid: false,
+      at: Date.parse("2026-06-17T14:00:00.000Z"),
+    });
+  });
+
+  it("seeds recent bids from snapshot on hydrate", () => {
+    const snap = snapshot();
+    if (!snap.currentLot) throw new Error("expected current lot");
+    snap.currentLot.recentBids = [
+      {
+        id: "bid-2",
+        amount: "150.00",
+        placedVia: "saleroom",
+        isAutoBid: false,
+        at: "2026-06-17T15:00:00.000Z",
+      },
+      {
+        id: "bid-1",
+        amount: "100.00",
+        placedVia: "web",
+        isAutoBid: false,
+        at: "2026-06-17T14:00:00.000Z",
+      },
+    ];
+
+    const seeded = seedDisplayBidLiveFromSnapshot(
+      { recentBids: [], priceFlash: false, leaderPlacedVia: null },
+      snap,
+    );
+
+    expect(seeded.recentBids).toHaveLength(2);
+    expect(seeded.recentBids[0]?.id).toBe("bid-2");
+    expect(seeded.leaderPlacedVia).toBe("saleroom");
+    expect(seeded.priceFlash).toBe(false);
+  });
+
+  it("merges live ticks with snapshot without duplicates", () => {
+    const snap = snapshot();
+    if (!snap.currentLot) throw new Error("expected current lot");
+    snap.currentLot.recentBids = [
+      {
+        id: "bid-1",
+        amount: "100.00",
+        placedVia: "web",
+        isAutoBid: false,
+        at: "2026-06-17T14:00:00.000Z",
+      },
+    ];
+
+    const seeded = seedDisplayBidLiveFromSnapshot(
+      {
+        recentBids: [
+          {
+            id: "bid-2",
+            amount: "150.00",
+            placedVia: "saleroom",
+            isAutoBid: false,
+            at: Date.parse("2026-06-17T15:00:00.000Z"),
+          },
+          {
+            id: "bid-1",
+            amount: "120.00",
+            placedVia: "web",
+            isAutoBid: false,
+            at: Date.parse("2026-06-17T14:30:00.000Z"),
+          },
+        ],
+        priceFlash: true,
+        leaderPlacedVia: "saleroom",
+      },
+      snap,
+    );
+
+    expect(seeded.recentBids).toHaveLength(2);
+    expect(seeded.recentBids[0]?.id).toBe("bid-2");
+    expect(seeded.recentBids[0]?.amount).toBe("150.00");
+    expect(seeded.recentBids[1]?.id).toBe("bid-1");
+    expect(seeded.recentBids[1]?.amount).toBe("120.00");
+    expect(seeded.priceFlash).toBe(false);
+  });
+
+  it("resets bid live state when snapshot has no current lot", () => {
+    const snap: SaleroomDisplaySnapshot = {
+      ...snapshot(),
+      currentLotId: null,
+      currentLot: null,
+    };
+    const seeded = seedDisplayBidLiveFromSnapshot(
+      {
+        recentBids: [{ id: "bid-1", amount: "100.00", placedVia: "web", isAutoBid: false, at: 1 }],
+        priceFlash: true,
+        leaderPlacedVia: "web",
+      },
+      snap,
+    );
+    expect(seeded.recentBids).toHaveLength(0);
+    expect(seeded.priceFlash).toBe(false);
+    expect(seeded.leaderPlacedVia).toBeNull();
   });
 });

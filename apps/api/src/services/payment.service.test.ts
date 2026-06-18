@@ -1270,6 +1270,75 @@ describe("PaymentService", () => {
     expect(stripeCheckout.createCheckout).toHaveBeenCalled();
   });
 
+  it("allows checkout for hammered saleroom paddle winner and rejects non-winner", async () => {
+    const paddleBuyerId = "paddle-buyer-1";
+    const saleroomWonLot: Lot = {
+      ...lot,
+      winnerId: paddleBuyerId,
+      status: "ended",
+    };
+    const payments: IPaymentWriteRepository = {
+      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({
+        ...payment,
+        id: "pay-saleroom",
+        buyerId: paddleBuyerId,
+        status: "pending",
+      }),
+    } as unknown as IPaymentWriteRepository;
+    const stripeCheckout = mockStripeCheckout();
+    const service = new PaymentService(
+      { findById: vi.fn().mockResolvedValue(saleroomWonLot) } as unknown as ILotRepository,
+      payments,
+      null,
+      new NotificationFactory(),
+      {
+        findById: vi.fn().mockResolvedValue({ name: "Paddle Buyer", email: "buyer@test.com" }),
+      } as unknown as IUserRepository,
+      mockAccounting(),
+      defaultTierPolicy,
+      {
+        findById: vi.fn().mockResolvedValue({ status: "active" }),
+      } as unknown as ILegalEntityRepository,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      stripeCheckout,
+      undefined,
+      undefined,
+      undefined,
+      mockCheckoutAddresses(),
+    );
+
+    const winnerResult = await service.createPendingForWinner(
+      paddleBuyerId,
+      saleroomWonLot.id,
+      CHECKOUT_ADDRESS_ID,
+    );
+    expect(winnerResult.isOk()).toBe(true);
+    if (winnerResult.isOk()) {
+      expect(winnerResult.value.checkoutUrl).toBe("https://checkout.stripe.com/test");
+    }
+    expect(stripeCheckout.createCheckout).toHaveBeenCalled();
+
+    const nonWinnerResult = await service.createPendingForWinner(
+      "other-bidder",
+      saleroomWonLot.id,
+      CHECKOUT_ADDRESS_ID,
+    );
+    expect(nonWinnerResult.isErr()).toBe(true);
+    if (nonWinnerResult.isErr()) {
+      expect(nonWinnerResult.error.message).toBe("Only the winning bidder can initiate payment");
+    }
+  });
+
   it("issues bank transfer checkout for released manual-review pending payment", async () => {
     const highAmount = "600000.00";
     const pendingPayment: PaymentRecord = {

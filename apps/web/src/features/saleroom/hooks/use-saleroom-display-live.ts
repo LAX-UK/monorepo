@@ -11,9 +11,9 @@ import {
   applyDisplayBidSummaryToSnapshot,
   applyDisplayBidUpdate,
   formatDisplayLeaderLabel,
-  mergeSnapshotAfterHydrate,
   resetDisplayBidLiveState,
   resolveBidSummaryAfterFullHydrate,
+  seedDisplayBidLiveFromSnapshot,
 } from "@/features/saleroom/lib/display-bid-ticks";
 import {
   type DisplayDataClient,
@@ -174,23 +174,29 @@ export function useSaleroomDisplayLive({
         currentLotIdRef.current = snapshot.currentLotId;
         const wsChangedDuringFetch = overlayGenerationRef.current !== overlayGenerationAtStart;
 
-        setState((prev) => ({
-          snapshot: resolveBidSummaryAfterFullHydrate(
-            prev.snapshot,
-            snapshot,
-            bidSummaryEmittedAtRef.current,
-          ),
-          overlay: resolveOverlayAfterFullHydrate(
-            prev.overlay,
-            snapshot.overlay,
-            overlayControlEmittedAtRef.current,
-            wsChangedDuringFetch,
-          ),
-          flash: prev.flash,
-          lastHammer: previousLotId !== snapshot.currentLotId ? null : prev.lastHammer,
-          connectionStatus: "connected",
-          bidLive: mergeSnapshotAfterHydrate(prev.bidLive, previousLotId, snapshot.currentLotId),
-        }));
+        setState((prev) => {
+          const lotChangedForSeed =
+            previousLotId !== null && previousLotId !== snapshot.currentLotId;
+          const bidLiveSource = lotChangedForSeed ? resetDisplayBidLiveState() : prev.bidLive;
+
+          return {
+            snapshot: resolveBidSummaryAfterFullHydrate(
+              prev.snapshot,
+              snapshot,
+              bidSummaryEmittedAtRef.current,
+            ),
+            overlay: resolveOverlayAfterFullHydrate(
+              prev.overlay,
+              snapshot.overlay,
+              overlayControlEmittedAtRef.current,
+              wsChangedDuringFetch,
+            ),
+            flash: prev.flash,
+            lastHammer: previousLotId !== snapshot.currentLotId ? null : prev.lastHammer,
+            connectionStatus: "connected",
+            bidLive: seedDisplayBidLiveFromSnapshot(bidLiveSource, snapshot),
+          };
+        });
         syncJoinedLotRef.current(snapshot.currentLotId);
         return true;
       } finally {
