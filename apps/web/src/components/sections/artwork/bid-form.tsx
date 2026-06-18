@@ -77,6 +77,7 @@ export function BidForm({
           type="button"
           variant="secondary"
           size="sm"
+          disabled={biddingDisabled}
           onClick={onUseMinimum}
           className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
         >
@@ -92,6 +93,7 @@ export function BidForm({
                   type="button"
                   variant="secondary"
                   size="sm"
+                  disabled={biddingDisabled}
                   onClick={() => onAmountChange(v.toFixed(2))}
                   className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
                 >
@@ -121,6 +123,7 @@ export function BidForm({
             amount={amount.trim() === "" ? minStr : amount}
             minNumeric={minNumeric}
             stepNumeric={stepNumeric}
+            disabled={biddingDisabled}
             onAmountChange={onAmountChange}
           />
         </div>
