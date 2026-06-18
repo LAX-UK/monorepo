@@ -30,7 +30,6 @@ Operational procedures for things that go wrong or need to happen on a schedule.
 - [Email provider incident](./runbooks/email-provider-incident.md) — Postmark outage / sender-reputation incident, including the `REQUIRE_EMAIL_VERIFICATION` kill-switch
 - [Deletion request](./runbooks/deletion-request.md) — GDPR Article 17 manual procedure
 - [Deploy checklist](./runbooks/deploy-checklist.md) — what to verify before, during, and after every production deploy
-- [Hybrid sale go-live checklist](./runbooks/hybrid-sale-go-live-checklist.md) — day-of hybrid saleroom readiness
 - [Saleroom clerk](./runbooks/saleroom-clerk.md) — paddle bidding and clerk console operations
 - [Production rollback](./runbooks/prod-rollback.md) — Terraform-driven rollback for infrastructure regressions
 - [Cost overrun](./runbooks/cost-overrun.md) — what to check when the monthly cost alert fires

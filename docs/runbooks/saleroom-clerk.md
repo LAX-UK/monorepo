@@ -2,7 +2,7 @@
 
 Operational guide for in-room paddle bidding and the clerk console.
 
-See also [Sale delivery modes](../SALE_DELIVERY_MODES.md) (online · hybrid · onsite) and the [Hybrid sale go-live checklist](./hybrid-sale-go-live-checklist.md).
+See also [Sale delivery modes](../SALE_DELIVERY_MODES.md) (online · hybrid · onsite).
 
 | Variable | Service | Notes |
 |----------|---------|-------|
