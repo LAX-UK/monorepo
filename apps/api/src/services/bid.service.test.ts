@@ -172,6 +172,7 @@ function createSaleroomSessionLookupMock(
   return {
     shouldSkipAntiSnipeForLot: vi.fn().mockResolvedValue(opts.skipAntiSnipe ?? false),
     shouldEnforceOnBlockGateForLot: vi.fn().mockResolvedValue(opts.enforceOnBlock ?? false),
+    isLotUnderLiveClerkSession: vi.fn().mockResolvedValue(opts.skipAntiSnipe ?? false),
   };
 }
 

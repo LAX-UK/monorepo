@@ -40,7 +40,7 @@ flowchart TB
     API -->|"cache, idempotency,<br/>pub/sub"| REDIS
     API -->|"schedule lot-lifecycle jobs"| REDIS
     AUTH -->|"enqueue email outbox"| REDIS
-    WS -->|"PSUBSCRIBE<br/>lot:*:events<br/>user:*:notifications"| REDIS
+    WS -->|"PSUBSCRIBE<br/>lot:*:events<br/>sale:*:saleroom<br/>sale:*:display<br/>user:*:notifications"| REDIS
     WORKER -->|"BullMQ consumers"| REDIS
     WORKER -->|"projector polling"| PG
     API <-->|"hosted invoice checkout<br/>sync paid invoices"| XERO

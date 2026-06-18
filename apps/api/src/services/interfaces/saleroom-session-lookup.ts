@@ -4,4 +4,6 @@ export interface ISaleroomSessionLookup {
   shouldSkipAntiSnipeForLot(lotId: string): Promise<boolean>;
   /** When true, web bids must pass saleroom live + on-block checks. */
   shouldEnforceOnBlockGateForLot(lotId: string): Promise<boolean>;
+  /** When true, timed lot-close jobs must defer — clerk session drives close. */
+  isLotUnderLiveClerkSession(lotId: string): Promise<boolean>;
 }

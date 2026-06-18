@@ -163,7 +163,7 @@ A few things that have surprised engineers in the past:
 
 **Cross-registrable-suffix domains do not share cookies, period.** lax.art and lax.shop are different registrable domains than lax.bid. There is no browser configuration that makes them share cookies — this is a fundamental limitation of the cookie spec to prevent supercookie tracking. Hence OIDC. The handshake from Flow 2 is the only way to recognize a user across registrable-suffix boundaries.
 
-**`apps/ws` is hybrid today.** Socket.IO clients on `lax.bid` send the `.lax.bid` cookie to `apps/ws` because they share the parent domain. `apps/ws` first attempts JWT verification on the handshake, then — if `LEGACY_WS_COOKIE_RELAY` is enabled — falls back to a cookie relay against `apps/api/users/me`. Once web traffic has been observed not to need the relay, we'll flip the flag off and remove the fallback. Until then, both paths are valid.
+**`apps/ws` uses JWT on handshake (Phase 2 complete on web).** Socket.IO clients on `lax.bid` fetch a short-lived JWT from `GET /api/auth/token` (better-auth jwt plugin) and pass it as `handshake.auth.token`. The WS server verifies via JWKS (`OIDC_ISSUER`, `JWKS_URL`). `LEGACY_WS_COOKIE_RELAY=false` in production — cookies alone are not used for identity. Anonymous visitors still join public rooms (`joinLot`, `joinSaleroom`) without a token.
 
 ## What you need to know about the JWT
 
