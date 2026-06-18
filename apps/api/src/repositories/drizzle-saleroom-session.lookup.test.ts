@@ -75,4 +75,11 @@ describe("DrizzleSaleroomSessionLookup", () => {
     );
     await expect(lookup.shouldEnforceOnBlockGateForLot("lot-1")).resolves.toBe(true);
   });
+
+  it("isLotUnderLiveClerkSession mirrors anti-snipe skip for live saleroom", async () => {
+    const lookup = new DrizzleSaleroomSessionLookup(
+      mockDb({ deliveryMode: "hybrid", sessionStatus: "paused" }) as never,
+    );
+    await expect(lookup.isLotUnderLiveClerkSession("lot-1")).resolves.toBe(true);
+  });
 });
