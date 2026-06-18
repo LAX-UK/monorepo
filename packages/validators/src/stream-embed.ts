@@ -199,3 +199,21 @@ export function parseStreamEmbedUrl(raw: string): StreamEmbedResult | null {
 
   return null;
 }
+
+/** Provider oEmbed endpoint for server-side live validation. Returns null for providers
+ * without a key-free oEmbed check (Twitch, Cloudflare). Vimeo uses the original URL so
+ * event/unlisted hashes resolve correctly.
+ */
+export function buildStreamOEmbedEndpoint(
+  parsed: StreamEmbedResult,
+  originalUrl: string,
+): string | null {
+  const trimmed = originalUrl.trim();
+  if (parsed.provider === "youtube") {
+    return `https://www.youtube.com/oembed?url=${encodeURIComponent(trimmed)}&format=json`;
+  }
+  if (parsed.provider === "vimeo") {
+    return `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(trimmed)}`;
+  }
+  return null;
+}

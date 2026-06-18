@@ -30,13 +30,18 @@ import {
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
 import { normalizeUkPostcode } from "@auction/validators";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import type { RefObject } from "react";
 import type {
   FieldArrayWithId,
   UseFieldArrayAppend,
   UseFieldArrayRemove,
   UseFormReturn,
 } from "react-hook-form";
+import {
+  type StreamUrlVerificationGate,
+  StreamUrlVerifyControl,
+} from "../stream-url-verify-control";
 
 type TierPreview =
   | { ok: false }
@@ -63,6 +68,10 @@ type Props = {
   lots?: readonly Lot[];
   lotsSetupHref?: string;
   venues?: readonly Venue[];
+  /** When true, staff can edit the live stream URL (draft or scheduled/active). */
+  streamUrlEditable?: boolean;
+  initialStreamUrl?: string;
+  streamUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
 };
 
 const MANUAL_VENUE_VALUE = "__manual__";
@@ -83,7 +92,12 @@ export function SaleScheduleStep({
   lots = [],
   lotsSetupHref,
   venues = [],
+  streamUrlEditable,
+  initialStreamUrl = "",
+  streamUrlGateRef,
 }: Props) {
+  const streamFieldEnabled = isSaleroom && (streamUrlEditable ?? isDraft);
+  const streamBlurRef = useRef<(() => void) | null>(null);
   const deliveryMode = form.watch("deliveryMode");
   const startTime = form.watch("startTime");
   const endTime = form.watch("endTime");
@@ -142,8 +156,8 @@ export function SaleScheduleStep({
       {!isDraft ? (
         <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-3 font-body text-sm text-on-surface-variant">
           <strong className="text-warning">Read-only fields:</strong> Schedule, delivery mode, and
-          buyer premium are locked after publish. Title, description, and cover images are still
-          editable.
+          buyer premium are locked after publish. Title, description, cover images, and the live
+          stream URL (on scheduled/active sales) are still editable.
         </div>
       ) : null}
 
@@ -227,14 +241,28 @@ export function SaleScheduleStep({
                   <FormControl>
                     <UnderlineInput
                       id="streamUrl"
-                      placeholder="https://www.youtube.com/watch?v=…"
+                      placeholder="https://www.youtube.com/watch?v=… or https://vimeo.com/event/…"
+                      disabled={!streamFieldEnabled}
                       {...field}
+                      onBlur={() => {
+                        field.onBlur();
+                        streamBlurRef.current?.();
+                      }}
                     />
                   </FormControl>
                   <p className="mt-2 font-body text-xs text-on-surface-variant">
-                    Optional livestream for the onsite event. Allowed: YouTube, Vimeo, Twitch,
-                    Cloudflare Stream.
+                    Optional livestream for the onsite event. Allowed: YouTube, Vimeo (including
+                    live event links), Twitch, Cloudflare Stream.
                   </p>
+                  {streamFieldEnabled ? (
+                    <StreamUrlVerifyControl
+                      value={field.value}
+                      initialValue={initialStreamUrl}
+                      disabled={!streamFieldEnabled}
+                      {...(streamUrlGateRef ? { gateRef: streamUrlGateRef } : {})}
+                      blurHandlerRef={streamBlurRef}
+                    />
+                  ) : null}
                   <FormMessage />
                 </FormItem>
               )}
