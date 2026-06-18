@@ -7,6 +7,7 @@ import type { ICacheProvider } from "./interfaces/cache.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
 import type { ILotNotificationSender } from "./interfaces/notifications.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
+import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import { notificationRowToPayload } from "./notification-payload.js";
@@ -38,7 +39,13 @@ export class LotLifecycleService {
     /** Realtime lot channel (`lot:{id}:events` → WebSocket `lotEnded`). */
     private readonly lotNotifications: ILotNotificationSender | null = null,
     private readonly notificationOutbox: INotificationOutboxService | null = null,
+    private readonly saleroomSessionLookup: ISaleroomSessionLookup | null = null,
   ) {}
+
+  private async shouldSkipTimedCloseForLot(lotId: string): Promise<boolean> {
+    if (!this.saleroomSessionLookup) return false;
+    return this.saleroomSessionLookup.isLotUnderLiveClerkSession(lotId);
+  }
 
   async runDutchDecrements(now: Date = new Date()): Promise<void> {
     const lots = this.repos.root.lot;
@@ -347,6 +354,7 @@ export class LotLifecycleService {
   }
 
   private async finalizeLotEnding(a: Lot, now: Date): Promise<void> {
+    if (await this.shouldSkipTimedCloseForLot(a.id)) return;
     const outcome = await this.runFinalizeLotTransaction(a, now, false);
     if (!outcome) return;
     await this.notifyBiddersAfterLotClose(a, outcome);
@@ -377,6 +385,7 @@ export class LotLifecycleService {
     const lots = this.repos.root.lot;
     const a = await lots.findById(lotId);
     if (!a || a.status !== "active" || a.endTime > now) return;
+    if (await this.shouldSkipTimedCloseForLot(lotId)) return;
     await this.finalizeLotEnding(a, now);
   }
 }

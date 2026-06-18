@@ -47,4 +47,8 @@ export class DrizzleSaleroomSessionLookup implements ISaleroomSessionLookup {
     }
     return row.sessionStatus === "live" || row.sessionStatus === "paused";
   }
+
+  async isLotUnderLiveClerkSession(lotId: string): Promise<boolean> {
+    return this.shouldSkipAntiSnipeForLot(lotId);
+  }
 }

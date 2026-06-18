@@ -16,9 +16,7 @@ export type ClerkToolsTab = "display" | "telephone" | "activity";
 
 export type ClerkActionPolicy = {
   advanceInRunway: boolean;
-  advanceInOnBlock: boolean;
   advanceInDock: boolean;
-  hammerInOnBlock: boolean;
   hammerInDock: boolean;
   jumpToLotInRunway: boolean;
 };

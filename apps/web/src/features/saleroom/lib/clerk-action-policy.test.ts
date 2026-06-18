@@ -15,9 +15,7 @@ describe("resolveClerkActionPolicy", () => {
       }),
     ).toEqual({
       advanceInRunway: false,
-      advanceInOnBlock: false,
       advanceInDock: false,
-      hammerInOnBlock: false,
       hammerInDock: false,
       jumpToLotInRunway: false,
     });
@@ -34,9 +32,7 @@ describe("resolveClerkActionPolicy", () => {
       }),
     ).toMatchObject({
       advanceInRunway: false,
-      advanceInOnBlock: false,
       advanceInDock: true,
-      hammerInOnBlock: false,
       hammerInDock: true,
       jumpToLotInRunway: true,
     });
@@ -53,7 +49,6 @@ describe("resolveClerkActionPolicy", () => {
       }),
     ).toMatchObject({
       advanceInRunway: false,
-      advanceInOnBlock: false,
       advanceInDock: true,
       jumpToLotInRunway: true,
     });
@@ -70,8 +65,6 @@ describe("resolveClerkActionPolicy", () => {
       }),
     ).toMatchObject({
       advanceInDock: true,
-      advanceInOnBlock: false,
-      hammerInOnBlock: false,
       jumpToLotInRunway: true,
     });
   });

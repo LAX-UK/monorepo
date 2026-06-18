@@ -160,7 +160,7 @@ describe("SaleroomService.advanceToLot", () => {
     const insert = vi.fn().mockReturnValue({ values });
 
     const lotRepo = {
-      findById: vi.fn().mockResolvedValue({ id: "lot-2", saleId: "sale-1" }),
+      findById: vi.fn().mockResolvedValue({ id: "lot-2", saleId: "sale-1", status: "active" }),
       findBySaleId: vi.fn(),
     };
 
@@ -184,6 +184,83 @@ describe("SaleroomService.advanceToLot", () => {
       "sale:sale-1:saleroom",
       expect.stringContaining('"kind":"advanced_to_lot"'),
     );
+  });
+
+  it("activates a scheduled lot before advancing", async () => {
+    const session = {
+      id: "session-1",
+      saleId: "sale-1",
+      status: "live",
+      currentLotId: null,
+      displayOverlay: null,
+    };
+    const limit = vi.fn().mockResolvedValue([session]);
+    const whereSelect = vi.fn().mockReturnValue({ limit });
+    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
+    const select = vi.fn().mockReturnValue({ from: fromSelect });
+
+    const returning = vi.fn().mockResolvedValue([]);
+    const whereUpdate = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where: whereUpdate });
+    const update = vi.fn().mockReturnValue({ set });
+
+    const values = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockReturnValue({ values });
+
+    const processActivateJob = vi.fn().mockResolvedValue(undefined);
+    const lotRepo = {
+      findById: vi
+        .fn()
+        .mockResolvedValueOnce({ id: "lot-2", saleId: "sale-1", status: "scheduled" })
+        .mockResolvedValueOnce({ id: "lot-2", saleId: "sale-1", status: "active" }),
+      findBySaleId: vi.fn(),
+    };
+
+    const { service } = createService({
+      db: { select, update, insert },
+      lotRepo,
+      lotLifecycle: { processActivateJob },
+    });
+
+    const result = await service.advanceToLot({
+      saleId: "sale-1",
+      lotId: "lot-2",
+      actorUserId: "staff-1",
+    });
+
+    expect(processActivateJob).toHaveBeenCalledWith("lot-2");
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects ended lots", async () => {
+    const session = {
+      id: "session-1",
+      saleId: "sale-1",
+      status: "live",
+      currentLotId: null,
+    };
+    const limit = vi.fn().mockResolvedValue([session]);
+    const whereSelect = vi.fn().mockReturnValue({ limit });
+    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
+    const select = vi.fn().mockReturnValue({ from: fromSelect });
+
+    const lotRepo = {
+      findById: vi.fn().mockResolvedValue({ id: "lot-2", saleId: "sale-1", status: "ended" }),
+      findBySaleId: vi.fn(),
+    };
+
+    const { service } = createService({ db: { select }, lotRepo });
+    const result = await service.advanceToLot({
+      saleId: "sale-1",
+      lotId: "lot-2",
+      actorUserId: "staff-1",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status).toBe(400);
+      expect(result.error.message).toContain("already closed");
+    }
   });
 });
 
