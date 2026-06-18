@@ -1,7 +1,8 @@
 import { SaleroomClerkConsole } from "@/features/saleroom/components/clerk-console/saleroom-clerk-console";
 import type { AdminSaleroomSessionSnapshot } from "@/lib/data/http/admin.server";
+import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
@@ -92,8 +93,15 @@ vi.mock("@/hooks/use-clerk-lot-live-price", () => ({
     placeBid: vi.fn(),
   }),
 }));
+const { replace } = vi.hoisted(() => ({
+  replace: vi.fn(),
+}));
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace }),
+}));
+vi.mock("@/lib/ui/notify", () => ({
+  notify: { error: vi.fn(), success: vi.fn() },
 }));
 
 const lots: Lot[] = [
@@ -189,5 +197,25 @@ describe("SaleroomClerkConsole phase layout", () => {
 
     expect(screen.getByTestId("tools-rail")).toBeInTheDocument();
     expect(screen.getByTestId("display-control-panel")).toBeInTheDocument();
+  });
+
+  it("toasts action errors and clears the query param", async () => {
+    replace.mockClear();
+    vi.mocked(notify.error).mockClear();
+
+    render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+        actionError="Saleroom%20must%20be%20live%20to%20advance%20lots"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith("Saleroom must be live to advance lots");
+      expect(replace).toHaveBeenCalledWith("/admin/saleroom/sale-1", { scroll: false });
+    });
   });
 });
