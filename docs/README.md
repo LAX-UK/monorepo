@@ -30,6 +30,7 @@ Operational procedures for things that go wrong or need to happen on a schedule.
 - [Email provider incident](./runbooks/email-provider-incident.md) — Postmark outage / sender-reputation incident, including the `REQUIRE_EMAIL_VERIFICATION` kill-switch
 - [Deletion request](./runbooks/deletion-request.md) — GDPR Article 17 manual procedure
 - [Deploy checklist](./runbooks/deploy-checklist.md) — what to verify before, during, and after every production deploy
+- [Saleroom clerk](./runbooks/saleroom-clerk.md) — paddle bidding and clerk console operations
 - [Production rollback](./runbooks/prod-rollback.md) — Terraform-driven rollback for infrastructure regressions
 - [Cost overrun](./runbooks/cost-overrun.md) — what to check when the monthly cost alert fires
 - [Drift remediation](./runbooks/drift-remediation.md) — handling Terraform drift surfaced by the weekly workflow
@@ -79,6 +80,7 @@ How each external system talks to TheAlx and what to configure on the external s
 ## Auction-domain reference
 
 - [System analysis](./SYSTEM_ANALYSIS.md) — current auction-domain runtime (sales, lots, bids, payments, Xero)
+- [Sale delivery modes](./SALE_DELIVERY_MODES.md) — online vs hybrid vs onsite (capability map reference)
 - [V1 product spec](./V1_PRODUCT_SPEC.md) — the V1 role model, auction strategy scope, and acceptance criteria
 - [Diagrams](./DIAGRAMS.md) — system, ERD, lifecycle, bid-placement, realtime, payment, public API
 - [OpenAPI](./openapi.yaml) — REST surface for `apps/api`
@@ -101,6 +103,7 @@ Code paths in docs use the form `apps/api/src/services/bid.service.ts` — alway
 
 | Change | Update |
 |---|---|
+| Sale delivery mode behavior | Update `SALE_DELIVERY_MODES.md` and `packages/validators/src/sale-mode-policy.ts` |
 | New external integration | Add `integrations/<name>.md`, link from this README |
 | New database table | Update `architecture/03-data-model.md` and the ERD diagram, plus the role-grant lists in `packages/db/src/migrate-roles.ts` |
 | New domain event type | Update `architecture/04-domain-events.md` event catalog |

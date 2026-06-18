@@ -92,9 +92,10 @@ describe("computeLotRunProgress", () => {
 });
 
 describe("isLotAdvanceable", () => {
-  it("excludes ended, cancelled, and voided lots", () => {
+  it("includes active and scheduled lots only", () => {
     expect(isLotAdvanceable(lot("l1", 1, "active"))).toBe(true);
     expect(isLotAdvanceable(lot("l1", 1, "scheduled"))).toBe(true);
+    expect(isLotAdvanceable(lot("l1", 1, "draft"))).toBe(false);
     expect(isLotAdvanceable(lot("l1", 1, "ended"))).toBe(false);
     expect(isLotAdvanceable(lot("l1", 1, "cancelled"))).toBe(false);
     expect(isLotAdvanceable(lot("l1", 1, "voided"))).toBe(false);
