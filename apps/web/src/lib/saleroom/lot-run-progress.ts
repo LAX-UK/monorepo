@@ -20,9 +20,16 @@ export function isLotAdvanceable(lot: Pick<Lot, "status">): boolean {
   return lot.status === "active" || lot.status === "scheduled";
 }
 
-export function deriveLotRunOutcome(lot: LotRunPick, currentLotId: string | null): LotRunOutcome {
+export function deriveLotRunOutcome(
+  lot: LotRunPick,
+  currentLotId: string | null,
+  hammeredLotIds?: ReadonlySet<string>,
+): LotRunOutcome {
   if (lot.id === currentLotId) return "on_block";
-  if (lot.status === "ended") return lot.winnerId ? "sold" : "no_sale";
+  if (lot.status === "ended") {
+    if (lot.winnerId || hammeredLotIds?.has(lot.id)) return "sold";
+    return "no_sale";
+  }
   if (isLotRunSkipped(lot.status)) return "skipped";
   return "upcoming";
 }

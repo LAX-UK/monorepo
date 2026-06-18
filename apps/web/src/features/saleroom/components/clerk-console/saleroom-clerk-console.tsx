@@ -57,7 +57,6 @@ function ClerkConsoleInner({
   actionError,
   loadWarnings = [],
   registrationsHref,
-  paddleRosterEmpty = false,
   checkedInRefresh = false,
   initialDisplayOverlay = null,
   session,
@@ -76,11 +75,11 @@ function ClerkConsoleInner({
   initialDisplayOverlay?: SaleroomDisplayOverlay | null;
 }) {
   const router = useRouter();
-  const syncedLots = useClerkLotRosterSync({ initialLots, liveFeed });
+  const { lots: syncedLots, hammeredLotIds } = useClerkLotRosterSync({ initialLots, liveFeed });
   const { roster: paddleRoster, refreshRoster } = useClerkPaddleRoster({
     saleId,
     initialRoster: initialPaddleRoster,
-    pollIntervalMs: 45_000,
+    pollIntervalMs: 15_000,
   });
 
   useEffect(() => {
@@ -114,7 +113,8 @@ function ClerkConsoleInner({
     lots: syncedLots,
     telephoneBookings,
     paddleRoster,
-    paddleRosterEmpty,
+    paddleRosterEmpty: paddleRoster.length === 0,
+    hammeredLotIds,
     ...(registrationsHref ? { registrationsHref } : {}),
     loadWarnings,
     ...(error != null ? { error } : {}),
@@ -168,6 +168,7 @@ function ClerkConsoleInner({
             policy={model.action.policy}
             betweenLots={model.lot.progress.betweenLots}
             nextLot={model.lot.nextLot}
+            hammeredLotIds={hammeredLotIds}
           />
         ),
         onBlock: (
