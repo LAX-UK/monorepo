@@ -53,10 +53,10 @@ function copyForStatus(acting: LegalEntitySummary): {
       };
     case "connect_pending":
       return {
-        title: "Finish payout setup",
+        title: "Finish payout setup to sell",
         body: (
           <>
-            Add bank details and verification in your dashboard.{" "}
+            You can bid now. To sell or receive payouts, add your bank details and verification.{" "}
             <Link
               className="font-medium underline underline-offset-2"
               href={

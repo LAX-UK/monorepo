@@ -270,6 +270,116 @@ describe("BidService.placeBid", () => {
     });
   });
 
+  it("allows connect_pending buyer entity to place a bid", async () => {
+    const active = lot({ currentPrice: "100.00" });
+    const created = createBid({ amount: "150.00", buyerLegalEntityId: "le-collector" });
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn().mockResolvedValue(active),
+    });
+    const bidRepo = baseBidRepo({
+      create: vi.fn().mockResolvedValue(created),
+      markWinningBid: vi.fn().mockResolvedValue(undefined),
+    });
+    const legalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "le-collector", status: "connect_pending" }),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, bidRepo),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      legalEntityRepository: legalEntityRepository as never,
+    });
+
+    const result = await service.placeBid({
+      placedByUserId: "u1",
+      buyerLegalEntityId: "le-collector",
+      lotId: "auc-1",
+      amount: 150,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(bidRepo.create).toHaveBeenCalledOnce();
+  });
+
+  it("rejects under_review buyer entity before bid transaction", async () => {
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn(),
+    });
+    const legalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "le-collector", status: "under_review" }),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, baseBidRepo()),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      legalEntityRepository: legalEntityRepository as never,
+    });
+
+    const result = await service.placeBid({
+      placedByUserId: "u1",
+      buyerLegalEntityId: "le-collector",
+      lotId: "auc-1",
+      amount: 150,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("entity_not_authorised_to_bid");
+    }
+    expect(lotRepo.findByIdForUpdate).not.toHaveBeenCalled();
+  });
+
+  it("still enforces KYC when buyer entity is connect_pending", async () => {
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn(),
+    });
+    const bidEligibility: IBidEligibility = {
+      assertCanPlaceBid: vi
+        .fn()
+        .mockResolvedValue(
+          err(new BidError("Complete identity verification before bidding", 402, "kyc_required")),
+        ),
+    };
+    const legalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "le-collector", status: "connect_pending" }),
+    };
+    const service = new BidService({
+      repos: createMockFactory(lotRepo, baseBidRepo()),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      bidEligibility,
+      legalEntityRepository: legalEntityRepository as never,
+    });
+
+    const result = await service.placeBid({
+      placedByUserId: "u1",
+      buyerLegalEntityId: "le-collector",
+      lotId: "auc-1",
+      amount: 150,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("kyc_required");
+    }
+    expect(lotRepo.findByIdForUpdate).not.toHaveBeenCalled();
+  });
+
   it("returns Err when lot is not active", async () => {
     const lotRepo = baseLotRepo({
       findByIdForUpdate: vi.fn().mockResolvedValue(lot({ status: "ended" })),

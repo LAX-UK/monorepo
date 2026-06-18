@@ -205,6 +205,111 @@ describe("SaleroomCheckInService", () => {
     }
   });
 
+  it("allows connect_pending buyer entity to check in", async () => {
+    const svc = new SaleroomCheckInService(
+      mockDb(
+        { deliveryMode: "hybrid", status: "active" },
+        {
+          emailVerified: true,
+          kycStatus: "approved",
+          suspendedAt: null,
+        },
+      ),
+      mockRepo(),
+      mockLegalEntityRepo({
+        findById: vi.fn().mockResolvedValue({
+          id: entityId,
+          displayName: "Jane Collector",
+          legalName: null,
+          slug: "jane",
+          kind: "individual" as const,
+          subkind: "private_collector" as const,
+          createdByUserId: userId,
+          status: "connect_pending" as const,
+          statusChangedAt: null,
+          statusChangedByUserId: null,
+          stripeConnectAccountId: null,
+          stripeCustomerId: null,
+          stripeConnectChargesEnabled: false,
+          stripeConnectPayoutsEnabled: false,
+          stripeConnectRequirementsCurrentlyDue: [],
+          stripeConnectDisabledReason: null,
+          xeroContactId: null,
+          vatNumber: null,
+          marginSchemeEligible: false,
+          isLaxManaged: false,
+          platformFeeBps: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      }),
+      mockPaddleService(),
+    );
+
+    const result = await svc.checkInBidder({
+      saleId,
+      userId,
+      buyerLegalEntityId: entityId,
+      decidedByUserId: staffId,
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects under_review buyer entity", async () => {
+    const svc = new SaleroomCheckInService(
+      mockDb(
+        { deliveryMode: "hybrid", status: "active" },
+        {
+          emailVerified: true,
+          kycStatus: "approved",
+          suspendedAt: null,
+        },
+      ),
+      mockRepo(),
+      mockLegalEntityRepo({
+        findById: vi.fn().mockResolvedValue({
+          id: entityId,
+          displayName: "Jane Collector",
+          legalName: null,
+          slug: "jane",
+          kind: "individual" as const,
+          subkind: "private_collector" as const,
+          createdByUserId: userId,
+          status: "under_review" as const,
+          statusChangedAt: null,
+          statusChangedByUserId: null,
+          stripeConnectAccountId: null,
+          stripeCustomerId: null,
+          stripeConnectChargesEnabled: false,
+          stripeConnectPayoutsEnabled: false,
+          stripeConnectRequirementsCurrentlyDue: [],
+          stripeConnectDisabledReason: null,
+          xeroContactId: null,
+          vatNumber: null,
+          marginSchemeEligible: false,
+          isLaxManaged: false,
+          platformFeeBps: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      }),
+      mockPaddleService(),
+    );
+
+    const result = await svc.checkInBidder({
+      saleId,
+      userId,
+      buyerLegalEntityId: entityId,
+      decidedByUserId: staffId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("entity_not_authorised");
+    }
+  });
+
   it("forwards an explicit paddle number to the repository", async () => {
     const checkInWithPaddle = vi.fn().mockResolvedValue({
       registrationId,

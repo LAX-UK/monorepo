@@ -183,6 +183,40 @@ describe("TelephoneBidBookingService", () => {
     expect(repo.insert).toHaveBeenCalledOnce();
   });
 
+  it("allows connect_pending buyer entity to request booking", async () => {
+    const service = new TelephoneBidBookingService(mockDb(), repo, {
+      findActiveMembership: vi.fn().mockResolvedValue({ role: "individual" }),
+      findById: vi.fn().mockResolvedValue({ id: "le-1", status: "connect_pending" }),
+    } as never);
+    const result = await service.requestBooking({
+      userId: "user-1",
+      saleId: "sale-1",
+      buyerLegalEntityId: "le-1",
+      lotIds: ["lot-1"],
+      authorizedMax: 5000,
+    });
+    expect(result.isOk()).toBe(true);
+    expect(repo.insert).toHaveBeenCalledOnce();
+  });
+
+  it("rejects under_review buyer entity", async () => {
+    const service = new TelephoneBidBookingService(mockDb(), repo, {
+      findActiveMembership: vi.fn().mockResolvedValue({ role: "individual" }),
+      findById: vi.fn().mockResolvedValue({ id: "le-1", status: "under_review" }),
+    } as never);
+    const result = await service.requestBooking({
+      userId: "user-1",
+      saleId: "sale-1",
+      buyerLegalEntityId: "le-1",
+      lotIds: ["lot-1"],
+      authorizedMax: 5000,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("entity_not_authorised");
+    }
+  });
+
   it("blocks buyer cancel after confirmed", async () => {
     repo = mockRepo({
       findByIdForUser: vi.fn().mockResolvedValue({ ...baseBooking(), status: "confirmed" }),
