@@ -300,7 +300,7 @@ export function LotBidPositionSummary({
           </span>
           <p className="mt-1 text-on-surface-variant">
             Bidding isn&apos;t open yet. Set a watchlist reminder or prepare your auto-bid max for
-            when the lot goes live.
+            when the auctioneer starts the sale.
           </p>
         </>,
       );

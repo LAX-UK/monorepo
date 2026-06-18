@@ -502,7 +502,16 @@ export function ArtworkBidPanel({
     !englishOnlySurfaceLock &&
     supportsAutoBid &&
     !autoBidEligible &&
-    (lifecycle.kind === "scheduled" || lifecycle.kind === "preLaunch");
+    (lifecycle.kind === "scheduled" ||
+      lifecycle.kind === "preLaunch" ||
+      (lifecycle.kind === "liveSaleroom" && !isLotOnBlock));
+  const isHybridSale = saleForLifecycle?.deliveryMode === "hybrid";
+  const autoBidExplainerText =
+    lifecycle.kind === "liveSaleroom" && !isLotOnBlock
+      ? "Auto-bid opens when the auctioneer calls this lot on the block."
+      : isHybridSale && lifecycle.kind === "scheduled"
+        ? `Auto-bid opens when the auctioneer starts the sale${countdownClock ? ` (${countdownClock} until sale start)` : ""}.`
+        : `Auto-bid opens when this lot goes live${countdownClock ? ` in ${countdownClock}` : ""}.`;
 
   const sellerBlocked = isOwnLot;
 
@@ -604,11 +613,17 @@ export function ArtworkBidPanel({
               <LotBidPositionSummary
                 position={position}
                 loginNextPath={loginNext}
-                onIncreaseBid={() => switchEntryMode("manual", { userInitiated: true })}
-                {...(supportsAutoBid
-                  ? { onRaiseAutoBid: () => switchEntryMode("auto", { userInitiated: true }) }
+                {...(decision.kind !== "block"
+                  ? {
+                      onIncreaseBid: () => switchEntryMode("manual", { userInitiated: true }),
+                      ...(supportsAutoBid
+                        ? {
+                            onRaiseAutoBid: () => switchEntryMode("auto", { userInitiated: true }),
+                          }
+                        : {}),
+                      supportsAutoBid,
+                    }
                   : {})}
-                supportsAutoBid={supportsAutoBid}
               />
               {saleRegistrationBidGate?.approvedBidLimit != null ? (
                 <ApprovedBidLimitNotice
@@ -674,8 +689,7 @@ export function ArtworkBidPanel({
                 </div>
               ) : !englishOnlySurfaceLock && showAutoBidExplainer ? (
                 <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
-                  Auto-bid opens when this lot goes live
-                  {countdownClock ? ` in ${countdownClock}` : ""}.
+                  {autoBidExplainerText}
                 </p>
               ) : null}
 
@@ -749,7 +763,9 @@ export function ArtworkBidPanel({
                       <span className="font-medium text-on-surface">
                         {formatMoney(minNumeric.toFixed(2))}
                       </span>
-                      {biddingLive ? (
+                      {biddingLive &&
+                      lifecycle.kind !== "liveSaleroom" &&
+                      lifecycle.kind !== "saleroomPaused" ? (
                         <>
                           {" "}
                           · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer
@@ -782,6 +798,8 @@ export function ArtworkBidPanel({
               msRemaining={msRemaining}
               timerState={timerState}
               countdownClock={countdownClock}
+              lifecycleKind={lifecycle.kind}
+              isOnBlock={isLotOnBlock}
               compact={bidCardInView}
               position={position}
               hasActiveAutoBid={Boolean(activeAutoBid?.isActive)}
