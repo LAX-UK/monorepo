@@ -102,6 +102,7 @@ function baseBidRepo(overrides: Partial<IBidRepository> = {}): IBidRepository {
     findWinningBid: vi.fn().mockResolvedValue(null),
     listDistinctBidderIds: vi.fn(),
     markWinningBid: vi.fn(),
+    clearWinningBid: vi.fn(),
     aggregateBidderCeilings: vi.fn().mockResolvedValue(new Map<string, number>()),
     listBidderCeilingStates: vi.fn().mockResolvedValue([]),
     updateProxySettingsForBidderOnLot: vi.fn().mockResolvedValue(undefined),

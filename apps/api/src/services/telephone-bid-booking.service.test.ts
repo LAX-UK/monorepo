@@ -218,4 +218,61 @@ describe("TelephoneBidBookingService", () => {
       expect(result.error.code).toBe("authorized_max_exceeded");
     }
   });
+
+  it("allows telephone bid when lot is in booking scope", async () => {
+    repo = mockRepo({
+      findById: vi.fn().mockResolvedValue({
+        ...baseBooking(),
+        status: "confirmed",
+        lotIds: ["lot-1"],
+      }),
+    });
+    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const result = await service.assertBookingAllowsTelephoneBid({
+      bookingId: "booking-1",
+      saleId: "sale-1",
+      lotId: "lot-1",
+      amount: 500,
+    });
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("allows telephone bid when booking has no lot scope", async () => {
+    repo = mockRepo({
+      findById: vi.fn().mockResolvedValue({
+        ...baseBooking(),
+        status: "confirmed",
+        lotIds: [],
+      }),
+    });
+    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const result = await service.assertBookingAllowsTelephoneBid({
+      bookingId: "booking-1",
+      saleId: "sale-1",
+      lotId: "lot-99",
+      amount: 500,
+    });
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects telephone bid when lot is outside booking scope", async () => {
+    repo = mockRepo({
+      findById: vi.fn().mockResolvedValue({
+        ...baseBooking(),
+        status: "confirmed",
+        lotIds: ["lot-1"],
+      }),
+    });
+    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const result = await service.assertBookingAllowsTelephoneBid({
+      bookingId: "booking-1",
+      saleId: "sale-1",
+      lotId: "lot-2",
+      amount: 500,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("lot_not_in_booking");
+    }
+  });
 });
