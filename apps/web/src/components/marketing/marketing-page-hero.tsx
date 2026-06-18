@@ -1,4 +1,4 @@
-import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
+import { MARKETING_PAGE_GUTTER_X, MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { DisplayHeading, cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -74,14 +74,15 @@ export function MarketingPageHero(props: MarketingPageHeroProps) {
       >
         {backdrop}
         <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to right, rgba(5,5,5,.85) 0%, rgba(5,5,5,.5) 55%, transparent 100%)",
-          }}
+          className="absolute inset-0 bg-gradient-to-r from-[var(--color-scrim-hero-strong)] via-[var(--color-scrim-hero-mid)] to-transparent"
           aria-hidden
         />
-        <div className="relative z-[1] mx-auto flex min-h-[min(60vh,520px)] max-w-[var(--container-max,1440px)] flex-col px-8 pb-12 pt-[calc(var(--header-height)+2rem)] md:px-10 md:pb-14 lg:px-14">
+        <div
+          className={cn(
+            "relative z-[1] mx-auto flex min-h-[min(60vh,520px)] max-w-[var(--container-max,1440px)] flex-col pb-12 pt-[calc(var(--header-height)+2rem)] md:pb-14",
+            MARKETING_PAGE_GUTTER_X,
+          )}
+        >
           <div className="mt-auto max-w-[760px]">
             {eyebrow ? (
               <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.22em] text-white/55">

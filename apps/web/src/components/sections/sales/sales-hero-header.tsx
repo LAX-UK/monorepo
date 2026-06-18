@@ -28,7 +28,7 @@ export function SalesHeroHeader() {
       }
       className="!max-w-[var(--container-inner,1376px)] !px-0"
       description={
-        <div className="max-w-none font-body text-base font-normal leading-relaxed text-on-surface-variant sm:text-lg sm:leading-relaxed lg:max-w-[900px] lg:text-2xl lg:leading-[32.4px] dark:text-on-surface/70">
+        <div className="max-w-2xl font-body text-base text-on-surface-variant md:text-lg dark:text-on-surface/70">
           {SUBTITLE}
         </div>
       }

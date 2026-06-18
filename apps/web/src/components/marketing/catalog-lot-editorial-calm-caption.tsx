@@ -23,7 +23,7 @@ export function CatalogLotEditorialCalmCaption({
   return (
     <div className="space-y-2">
       <div className="space-y-2">
-        <h2 className="font-headline text-2xl font-light leading-tight text-on-surface group-hover:text-link">
+        <h2 className="font-headline text-[length:var(--text-display-sm)] font-light leading-tight text-on-surface group-hover:text-link">
           {title}
         </h2>
         {subtitle ? <p className="font-body text-sm text-on-surface-variant">{subtitle}</p> : null}

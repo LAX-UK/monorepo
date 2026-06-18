@@ -10,7 +10,7 @@ import { LaxLogo } from "@/components/layout/lax-logo";
 import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-preferences-link";
 import { FOOTER_NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
 import { siteCopyrightLine } from "@/lib/brand";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -33,7 +33,12 @@ export function SiteFooter({
 
   return (
     <footer className="w-full bg-footer-bg">
-      <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-12 px-8 py-12 md:px-10 lg:px-14">
+      <div
+        className={cn(
+          "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-12 py-12",
+          MARKETING_PAGE_GUTTER_X,
+        )}
+      >
         <div className="flex flex-wrap items-center justify-between gap-8">
           <LaxLogo variant="footer" />
           {tagline ? (

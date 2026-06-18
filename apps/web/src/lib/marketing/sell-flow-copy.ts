@@ -11,30 +11,6 @@ export const SELLER_SUBMISSION_STATUS_LABELS: Record<ItemSubmissionStatus, strin
   withdrawn: "Withdrawn",
 };
 
-export const SELL_JOURNEY_STEPS = [
-  {
-    id: "discover",
-    label: "Discover",
-    description: "Read what we accept and gather photos & details.",
-  },
-  {
-    id: "account",
-    label: "Account",
-    description: "Sign in with a verified email to save your progress.",
-  },
-  { id: "submit", label: "Submit", description: "Complete the 6-step wizard — about 3 minutes." },
-  {
-    id: "review",
-    label: "Specialist review",
-    description: "Our team vets your object within 24 hours.",
-  },
-  {
-    id: "listed",
-    label: "Listed",
-    description: "Accepted work is catalogued and scheduled for sale.",
-  },
-] as const;
-
 export const SELL_PREREQUISITES = [
   "1+ photos of the item (3+ recommended: overall, detail, signature or markings)",
   "Title, description, dimensions, and medium — include artist or maker in the title or description",
@@ -44,7 +20,7 @@ export const SELL_PREREQUISITES = [
 ] as const;
 
 export const SELL_TIME_EXPECTATIONS =
-  "~3 minutes to submit · Progress saves automatically · Response within 24 hours";
+  "~3 minutes to submit · Progress saves after your first save · Response within 24 hours";
 
 /** Opening paragraph for `/sell` LegalPage intro. */
 export const SELL_PAGE_INTRO =

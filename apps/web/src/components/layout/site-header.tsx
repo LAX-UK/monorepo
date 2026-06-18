@@ -5,7 +5,7 @@ import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
 import { cn } from "@auction/ui";
@@ -133,7 +133,12 @@ function SiteHeaderShell({
               ),
         )}
       >
-        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 px-8 py-2 md:px-10 lg:gap-4 lg:px-14 lg:pt-3 lg:pb-4">
+        <div
+          className={cn(
+            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-3 lg:pb-4",
+            MARKETING_PAGE_GUTTER_X,
+          )}
+        >
           <div className="hidden lg:block">
             <HeaderUtilityBar headerTone={headerTone} />
           </div>
