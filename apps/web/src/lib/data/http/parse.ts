@@ -297,6 +297,8 @@ export function parseBid(raw: unknown): Bid {
   const placedByUserId =
     o.placedByUserId == null || o.placedByUserId === "" ? undefined : String(o.placedByUserId);
   const bidderId = o.bidderId == null || o.bidderId === "" ? placedByUserId : String(o.bidderId);
+  const placedVia = o.placedVia == null || o.placedVia === "" ? null : String(o.placedVia);
+  const clerkUserId = o.clerkUserId == null || o.clerkUserId === "" ? null : String(o.clerkUserId);
   return {
     id: String(o.id),
     lotId: String(o.lotId ?? o.auctionId),
@@ -307,6 +309,8 @@ export function parseBid(raw: unknown): Bid {
     isAutoBid: Boolean(o.isAutoBid),
     maxAutoBidAmount: o.maxAutoBidAmount == null ? null : String(o.maxAutoBidAmount),
     autoBidStepAmount: o.autoBidStepAmount == null ? null : String(o.autoBidStepAmount),
+    placedVia,
+    clerkUserId,
     createdAt: toDate(o.createdAt),
   };
 }

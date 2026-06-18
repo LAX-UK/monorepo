@@ -96,6 +96,14 @@ export type SaleroomDisplayNextLot = {
   estimate: SaleroomDisplayLotEstimate | null;
 };
 
+export type SaleroomDisplayBidTick = {
+  id: string;
+  amount: string;
+  placedVia: string | null;
+  isAutoBid: boolean;
+  at: string;
+};
+
 export type SaleroomDisplaySnapshot = {
   saleId: string;
   saleTitle: string;
@@ -111,6 +119,7 @@ export type SaleroomDisplaySnapshot = {
     leaderPaddleNumber: number | null;
     estimate: SaleroomDisplayLotEstimate | null;
     minBidIncrement: string;
+    recentBids?: SaleroomDisplayBidTick[];
   } | null;
   nextLot: SaleroomDisplayNextLot | null;
   saleProgress: { position: number; total: number } | null;

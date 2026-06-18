@@ -7,7 +7,7 @@ import type {
   SaleroomDisplaySnapshot,
 } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";
 import {
   type CatalogLotRow,
@@ -15,6 +15,8 @@ import {
   parseDisplayLotEstimate,
 } from "./display-snapshot-reader.helpers.js";
 import type { IDisplaySnapshotReader } from "./interfaces/display-snapshot-reader.js";
+
+const DISPLAY_RECENT_BID_LIMIT = 10;
 
 export type DisplaySnapshotReaderOptions = {
   db: Database;
@@ -129,6 +131,19 @@ export class DisplaySnapshotReader implements IDisplaySnapshotReader {
           leaderPaddleNumber = reg?.paddleNumber ?? null;
         }
 
+        const recentBidRows = await this.db
+          .select({
+            id: bid.id,
+            amount: bid.amount,
+            placedVia: bid.placedVia,
+            isAutoBid: bid.isAutoBid,
+            createdAt: bid.createdAt,
+          })
+          .from(bid)
+          .where(eq(bid.lotId, currentLotId))
+          .orderBy(desc(bid.createdAt))
+          .limit(DISPLAY_RECENT_BID_LIMIT);
+
         const imageUrl = await resolveFirstImageUrl(lotRow.images, this.mediaUrlResolver);
 
         currentLot = {
@@ -141,6 +156,13 @@ export class DisplaySnapshotReader implements IDisplaySnapshotReader {
           leaderPaddleNumber,
           estimate: parseDisplayLotEstimate(lotRow.marketingDetails),
           minBidIncrement: String(lotRow.minBidIncrement ?? "1.00"),
+          recentBids: recentBidRows.map((r) => ({
+            id: r.id,
+            amount: String(r.amount),
+            placedVia: r.placedVia ?? null,
+            isAutoBid: r.isAutoBid === true,
+            at: r.createdAt.toISOString(),
+          })),
         };
       }
     }

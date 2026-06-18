@@ -10,7 +10,7 @@ import type {
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
-import type { Lot } from "@auction/types";
+import type { Bid, Lot } from "@auction/types";
 import type { PortfolioRow } from "@auction/types";
 import { portfolioRowTotalMajorUnits } from "./lot-pricing-helpers";
 
@@ -24,6 +24,12 @@ export type DashboardOverviewErrors = {
   submissions: string | null;
   notifications: string | null;
   addresses: string | null;
+};
+
+export type ActiveBidLotEntry = {
+  lot: Lot;
+  bid: Bid;
+  hint: "high" | "outbid";
 };
 
 export type DashboardOverviewVm = {
@@ -40,6 +46,7 @@ export type DashboardOverviewVm = {
   };
   activeLots: Lot[];
   activeLotBidHints: Record<string, "high" | "outbid" | "none">;
+  activeBidLots: ActiveBidLotEntry[];
   wonLotsSidebar: PortfolioRow[];
   watchPreview: WatchlistWithLotRow[];
   /** Full watchlist size (not just preview). */
@@ -60,6 +67,15 @@ export type DashboardOverviewVm = {
 };
 
 const ENDING_SOON_MS = 24 * 60 * 60 * 1000;
+
+function computeActiveBidHint(bidAmount: string, lotCurrentPrice: string): "high" | "outbid" {
+  const yours = Number.parseFloat(bidAmount);
+  const current = Number.parseFloat(lotCurrentPrice);
+  if (!Number.isFinite(yours) || !Number.isFinite(current)) {
+    return "outbid";
+  }
+  return yours >= current ? "high" : "outbid";
+}
 
 export function buildDashboardOverviewVm(input: {
   user: { id: string; name: string; role?: string } | null;
@@ -118,9 +134,23 @@ export function buildDashboardOverviewVm(input: {
       latestByLot.set(row.bid.lotId, row);
     }
   }
-  const activeBidsCount = [...latestByLot.values()].filter(
-    (r) => r.lot?.status === "active",
-  ).length;
+  const activeBidLots: ActiveBidLotEntry[] = [...latestByLot.values()]
+    .filter((r): r is BidWithLot & { lot: Lot } => r.lot?.status === "active")
+    .map((r) => ({
+      lot: r.lot,
+      bid: r.bid,
+      hint: computeActiveBidHint(r.bid.amount, r.lot.currentPrice),
+    }))
+    .sort((a, b) => {
+      const ae = a.lot.endTime.getTime();
+      const be = b.lot.endTime.getTime();
+      if (ae !== be) return ae - be;
+      const an = a.lot.lotNumber ?? Number.MAX_SAFE_INTEGER;
+      const bn = b.lot.lotNumber ?? Number.MAX_SAFE_INTEGER;
+      return an - bn;
+    });
+
+  const activeBidsCount = activeBidLots.length;
 
   const activeLotBidHints: Record<string, "high" | "outbid" | "none"> = {};
   if (user) {
@@ -156,7 +186,7 @@ export function buildDashboardOverviewVm(input: {
     if (row.lot.status !== "ended") return false;
     return portfolioSettlementLabel(row) !== "Paid";
   });
-  const outbidCount = activeLots.filter((lot) => activeLotBidHints[lot.id] === "outbid").length;
+  const outbidCount = activeBidLots.filter((entry) => entry.hint === "outbid").length;
 
   let primaryCta: { label: string; href: string } | null = null;
   const firstSettlement = settlementsDue[0];
@@ -174,11 +204,11 @@ export function buildDashboardOverviewVm(input: {
       };
     }
   } else {
-    const outbidLot = activeLots.find((lot) => activeLotBidHints[lot.id] === "outbid");
-    if (outbidLot) {
+    const outbidEntry = activeBidLots.find((entry) => entry.hint === "outbid");
+    if (outbidEntry) {
       primaryCta = {
-        label: `Re-bid on “${outbidLot.title}”`,
-        href: lotPath(outbidLot),
+        label: `Re-bid on “${outbidEntry.lot.title}”`,
+        href: lotPath(outbidEntry.lot),
       };
     } else {
       const w = watchlist.find((x) => x.lot && x.lot.status === "active")?.lot;
@@ -204,6 +234,7 @@ export function buildDashboardOverviewVm(input: {
     },
     activeLots,
     activeLotBidHints,
+    activeBidLots,
     wonLotsSidebar,
     watchPreview,
     watchlistTotalCount,
