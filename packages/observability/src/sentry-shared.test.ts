@@ -281,6 +281,23 @@ describe("shouldDropInfrastructureNoise", () => {
     expect(shouldDropInfrastructureNoise(event)).toBe(true);
   });
 
+  it("drops Node 22 TransformStream client-disconnect race", () => {
+    const event = errorEvent({
+      message: "TypeError: controller[kState].transformAlgorithm is not a function",
+    });
+    expect(shouldDropInfrastructureNoise(event)).toBe(true);
+    expect(scrubSentryEvent(event)).toBeNull();
+  });
+
+  it("drops Sentry tunnel proxy failures to ingest", () => {
+    const event = errorEvent({
+      message:
+        "Failed to proxy https://o4511337229975552.ingest.de.sentry.io/api/4511436343672912/envelope/?o=4511337229975552",
+    });
+    expect(shouldDropInfrastructureNoise(event)).toBe(true);
+    expect(scrubSentryEvent(event)).toBeNull();
+  });
+
   it("keeps unexpected application errors", () => {
     const event = errorEvent({ message: "Error: lot not found" });
     expect(shouldDropInfrastructureNoise(event)).toBe(false);
