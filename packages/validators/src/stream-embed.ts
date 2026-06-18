@@ -74,6 +74,27 @@ function extractVimeoId(pathname: string): string | null {
   return id && /^\d+$/.test(id) ? id : null;
 }
 
+/** Vimeo Live event URLs require the event embed iframe, not player.vimeo.com/video/{id}. */
+function parseVimeoEventEmbedSrc(pathname: string): string | null {
+  const embedWithHash = pathname.match(/^\/event\/(\d+)\/embed\/([a-f0-9]+)$/i);
+  if (embedWithHash) {
+    return `https://vimeo.com/event/${embedWithHash[1]}/embed/${embedWithHash[2]}`;
+  }
+  const pageWithHash = pathname.match(/^\/event\/(\d+)\/([a-f0-9]+)$/i);
+  if (pageWithHash) {
+    return `https://vimeo.com/event/${pageWithHash[1]}/embed/${pageWithHash[2]}`;
+  }
+  const embedOnly = pathname.match(/^\/event\/(\d+)\/embed\/?$/);
+  if (embedOnly) {
+    return `https://vimeo.com/event/${embedOnly[1]}/embed`;
+  }
+  const eventOnly = pathname.match(/^\/event\/(\d+)\/?$/);
+  if (eventOnly) {
+    return `https://vimeo.com/event/${eventOnly[1]}/embed`;
+  }
+  return null;
+}
+
 function extractTwitchChannel(pathname: string): string | null {
   const seg = pathname.split("/").filter(Boolean)[0];
   if (
@@ -145,6 +166,10 @@ export function parseStreamEmbedUrl(raw: string): StreamEmbedResult | null {
   }
 
   if (VIMEO_HOSTS.has(host)) {
+    const eventEmbedSrc = parseVimeoEventEmbedSrc(pathname);
+    if (eventEmbedSrc) {
+      return { provider: "vimeo", src: eventEmbedSrc };
+    }
     const id = extractVimeoId(pathname);
     if (!id) return null;
     return { provider: "vimeo", src: `https://player.vimeo.com/video/${id}` };
