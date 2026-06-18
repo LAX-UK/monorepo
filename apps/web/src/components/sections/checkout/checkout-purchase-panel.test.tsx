@@ -149,6 +149,73 @@ describe("CheckoutPurchasePanel", () => {
     expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
   });
 
+  it("shows confirming payment block after Stripe success return without purchase form", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[
+          {
+            id: "00000000-0000-4000-8000-0000000000a1",
+            label: "Home",
+            line1: "1 Test St",
+            line2: null,
+            city: "London",
+            state: null,
+            postalCode: "SW1A 1AA",
+            country: "United Kingdom",
+            addressType: "both",
+            isDefault: true,
+          },
+        ]}
+        openPaymentStatus="pending"
+        stripeReturnSuccess
+      />,
+    );
+    expect(screen.getByText(/confirming payment/i)).toBeInTheDocument();
+    expect(screen.getByText(/please do not pay again/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
+  });
+
+  it("shows bank transfer instructions (not 'do not pay again') for a bank transfer return", () => {
+    render(
+      <CheckoutPurchasePanel
+        sessionUser={user}
+        lotId="00000000-0000-4000-8000-000000000001"
+        lotTitle="Blue Canvas Study"
+        hammer="£100"
+        buyerPremium="£25"
+        total="£125"
+        premiumPercentLabel="25%"
+        addresses={[
+          {
+            id: "00000000-0000-4000-8000-0000000000a1",
+            label: "Home",
+            line1: "1 Test St",
+            line2: null,
+            city: "London",
+            state: null,
+            postalCode: "SW1A 1AA",
+            country: "United Kingdom",
+            addressType: "both",
+            isDefault: true,
+          },
+        ]}
+        openPaymentStatus="pending"
+        openPaymentCheckoutRail="gb_bank_transfer"
+        stripeReturnSuccess
+      />,
+    );
+    expect(screen.getByText(/send your transfer to complete payment/i)).toBeInTheDocument();
+    expect(screen.queryByText(/please do not pay again/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
+  });
+
   it("blocks checkout when payments history failed to load", () => {
     render(
       <CheckoutPurchasePanel
