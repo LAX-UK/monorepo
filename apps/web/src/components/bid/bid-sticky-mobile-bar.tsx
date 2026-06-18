@@ -55,6 +55,8 @@ type Props = {
   onFocusAutoBid?: () => void;
   /** When true, sticky primary action routes to auto-bid instead of manual review. */
   isLeading?: boolean;
+  /** Auth-aware CTA for opens-soon state (e.g. watch / notify toggle). */
+  upcomingSlot?: ReactNode;
 };
 
 function saleRegistrationStickyAction(
@@ -120,6 +122,7 @@ export function BidStickyMobileBar({
   onFocusManualBid,
   onFocusAutoBid,
   isLeading = false,
+  upcomingSlot = null,
 }: Props) {
   const outbid = position ? lotBidPositionShowOutbidCta(position) : false;
   const autoBidLabel = position ? lotBidPositionAutoStickyLabel(position, formatMoney) : null;
@@ -134,7 +137,7 @@ export function BidStickyMobileBar({
   }
 
   if (timerState.kind === "opensSoon" && !saleroomMode) {
-    return <UpcomingBar countdownClock={countdownClock} loginNextPath={loginNextPath} />;
+    return <UpcomingBar countdownClock={countdownClock} upcomingSlot={upcomingSlot} />;
   }
 
   if (!saleroomMode && (timerState.kind === "closed" || timerState.kind === "cancelled")) {
@@ -325,14 +328,11 @@ export function BidStickyMobileBar({
   );
 }
 
-/** Pre-sale variant — invites visitors to register so they can bid the moment
- * the lot opens. Bidding controls are intentionally absent (no live bid yet).
- */
+/** Pre-sale variant — countdown plus auth-aware notify/watch CTA when provided. */
 function UpcomingBar({
   countdownClock,
-  loginNextPath,
-}: { countdownClock: string; loginNextPath: string }) {
-  const next = encodeURIComponent(loginNextPath);
+  upcomingSlot,
+}: { countdownClock: string; upcomingSlot?: ReactNode | null }) {
   return (
     <MarketingStickyBidBar>
       <div className="min-w-0">
@@ -343,12 +343,7 @@ function UpcomingBar({
           {countdownClock || "Soon"}
         </p>
       </div>
-      <Link
-        href={`/register?next=${next}`}
-        className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
-      >
-        Register
-      </Link>
+      {upcomingSlot ? <div className="shrink-0">{upcomingSlot}</div> : null}
     </MarketingStickyBidBar>
   );
 }
