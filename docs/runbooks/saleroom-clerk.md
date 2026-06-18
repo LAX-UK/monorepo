@@ -2,6 +2,8 @@
 
 Operational guide for in-room paddle bidding and the clerk console.
 
+See also [Sale delivery modes](../SALE_DELIVERY_MODES.md) (online · hybrid · onsite).
+
 | Variable | Service | Notes |
 |----------|---------|-------|
 | `NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS` | **Web** | `true` (default) for English-only V1; set `false` only if non-English lot types are enabled |
@@ -47,7 +49,7 @@ For buyer-agent approvals or reassign after check-in:
 ## Place a paddle bid (clerk console)
 
 1. Open **Admin → Saleroom → [sale] → Clerk console**.
-2. **Go live** (suspends lot auto-close timers for active lots).
+2. **Go live** (suspends lot auto-close timers for active lots; timed close is also skipped while the session is live or paused — the sale can run past its scheduled `endTime`).
 3. **Advance** the lot on the block (lot runway shows next lots; use **Advance next** for speed).
 4. In **Paddle bid**, enter paddle # and amount (separate from telephone amount).
 5. Use **Min bid / +1 inc / +2 inc / +5 inc** increment chips or press **Enter** in the amount field to place quickly.

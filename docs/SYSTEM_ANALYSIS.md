@@ -19,7 +19,7 @@ Browser / Next.js app (apps/web, port 3000)
   │         └─ Inbound webhooks: Shopify, WordPress, Xero, Postmark
   ├─ Socket.IO client
   │    └─ WebSocket gateway (apps/ws, port 3002)
-  │         └─ Redis PSUBSCRIBE: lot:*:events and user:*:notifications
+  │         └─ Redis PSUBSCRIBE: lot:*:events, sale:*:saleroom, sale:*:display, user:*:notifications
   └─ OIDC sign-in
        └─ Auth issuer (apps/auth, port 3003)
             └─ /.well-known/openid-configuration, /.well-known/jwks.json, /api/auth/*
@@ -131,17 +131,19 @@ The API:
 
 ### Realtime Events
 
-The API publishes to Redis channels named `lot:{lotId}:events` and `user:{userId}:notifications`.
+The API publishes to Redis channels `lot:{lotId}:events`, `sale:{saleId}:saleroom`, `sale:{saleId}:display`, and `user:{userId}:notifications`.
 
-The WebSocket app subscribes to `lot:*:events` and `user:*:notifications` and emits:
+The WebSocket app subscribes to `lot:*:events`, `sale:*:saleroom`, `sale:*:display`, and `user:*:notifications` and emits:
 
-| Redis event type | Socket event |
-|------------------|--------------|
-| `bid_placed` | `bidUpdate` |
-| `lot_extended` | `lotExtended` |
-| `lot_ended` | `lotEnded` |
-| other lot events | `lotEvent` |
-| user notifications | `userNotification` |
+| Redis channel / event | Socket event |
+|-----------------------|--------------|
+| `lot:*:events` → `bid_placed` | `bidUpdate` |
+| `lot:*:events` → `lot_extended` | `lotExtended` |
+| `lot:*:events` → `lot_ended` | `lotEnded` |
+| `lot:*:events` → other | `lotEvent` |
+| `sale:*:saleroom` | `saleroomEvent` |
+| `sale:*:display` | `displayControl` |
+| `user:*:notifications` | `userNotification` |
 
 Active sealed-lot bid payloads are redacted for non-admin sockets.
 

@@ -849,6 +849,7 @@ export function createContainer(env: Env): Container {
   const lotLifecycleHooks: { onLotActivated: ((lotId: string) => Promise<void>) | null } = {
     onLotActivated: null,
   };
+  const saleroomSessionLookup = new DrizzleSaleroomSessionLookup(db);
   const lotLifecycleService = new LotLifecycleService(
     repoFactory,
     watchlistRepo,
@@ -863,6 +864,7 @@ export function createContainer(env: Env): Container {
     lotLifecycleRecording,
     notificationService,
     notificationOutboxService,
+    saleroomSessionLookup,
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
@@ -1435,7 +1437,6 @@ export function createContainer(env: Env): Container {
   );
 
   const saleModeLookup = new DrizzleSaleModeLookup(db);
-  const saleroomSessionLookup = new DrizzleSaleroomSessionLookup(db);
 
   const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
   const bidEligibilityService = new BidEligibilityService(db, kycService, amlHoldStore);
