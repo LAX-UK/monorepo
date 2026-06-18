@@ -38,6 +38,11 @@ describe("deriveLotRunOutcome", () => {
     expect(deriveLotRunOutcome(l, null)).toBe("no_sale");
   });
 
+  it("returns sold for hammered lot before winnerId arrives from server", () => {
+    const l = lot("l1", 1, "ended", null);
+    expect(deriveLotRunOutcome(l, null, new Set(["l1"]))).toBe("sold");
+  });
+
   it("returns skipped for cancelled and voided", () => {
     expect(deriveLotRunOutcome(lot("l1", 1, "cancelled"), null)).toBe("skipped");
     expect(deriveLotRunOutcome(lot("l1", 1, "voided"), null)).toBe("skipped");

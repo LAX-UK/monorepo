@@ -35,6 +35,7 @@ type Props = {
   policy: ClerkActionPolicy;
   betweenLots?: boolean;
   nextLot?: Lot | null;
+  hammeredLotIds: ReadonlySet<string>;
 };
 
 function RunwayRow({ row }: { row: LotRunwayRow }) {
@@ -87,6 +88,7 @@ export function LotRunwayPanel({
   policy,
   betweenLots = false,
   nextLot: nextLotProp = null,
+  hammeredLotIds,
 }: Props) {
   const {
     orderedLots,
@@ -97,6 +99,7 @@ export function LotRunwayPanel({
     lots,
     currentLotId,
     sessionStatus,
+    hammeredLotIds,
   });
   const nextLot = nextLotProp ?? nextLotFromHook;
   const [advanceLotId, setAdvanceLotId] = useState(

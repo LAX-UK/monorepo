@@ -168,6 +168,18 @@ export function shouldDropInfrastructureNoise(event: ErrorEvent): boolean {
     return true;
   }
 
+  // Node 22 web-streams regression (nodejs/node#62036): when a client disconnects
+  // mid-stream during RSC/HTML streaming, the TransformStream controller is cleared
+  // while a write is still pending, leaking an internal TypeError. It is unactionable
+  // and harmless (the response was already being torn down). Drop until the upstream
+  // fix (nodejs/node#62040) lands in the Node 22 LTS line.
+  if (/transformAlgorithm is not a function/i.test(message)) return true;
+
+  // Sentry envelope tunnel (`tunnelRoute`) failing to reach Sentry ingest from the
+  // server — typically a browser beacon that disconnected on page unload or a
+  // transient egress timeout to ingest. Not an application fault.
+  if (/Failed to proxy\b.*ingest\.[^\s]*sentry\.io/i.test(message)) return true;
+
   return false;
 }
 

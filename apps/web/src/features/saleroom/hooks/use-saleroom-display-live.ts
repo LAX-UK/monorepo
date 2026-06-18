@@ -56,6 +56,8 @@ const EMPTY: SaleroomDisplayLiveState = {
 
 const PRICE_FLASH_MS = 450;
 const HYDRATE_DEBOUNCE_MS = 400;
+/** Periodic full snapshot resync while the display is mounted (mirrors public saleroom providers). */
+const RESYNC_INTERVAL_MS = 15_000;
 
 type HydrateMode = "full" | "merge";
 
@@ -234,6 +236,26 @@ export function useSaleroomDisplayLive({
     }, 30_000);
     return () => clearInterval(interval);
   }, [dataClient, displayToken, handleUnauthorized]);
+
+  useEffect(() => {
+    const silentHydrate = () => {
+      void hydrateRef.current("full");
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        silentHydrate();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const intervalId = setInterval(silentHydrate, RESYNC_INTERVAL_MS);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     let joinedLotId: string | null = null;
