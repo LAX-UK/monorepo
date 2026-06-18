@@ -4,6 +4,7 @@ import type { Bid, Lot } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
 import { BidError } from "../lib/errors.js";
 import type { AdminMetricsService } from "./admin-metrics.service.js";
 import { numberToMoneyString } from "./bid/bid-money.js";
@@ -138,7 +139,7 @@ export class BidService implements IBidPlacer {
         if (!ent) {
           return err(new BidError("Buyer legal entity not found", 404));
         }
-        if (ent.status !== "approved" && ent.status !== "restricted") {
+        if (!buyerEntityCanBid(ent.status)) {
           return err(
             new BidError(
               "Buyer legal entity is not authorised to bid",
