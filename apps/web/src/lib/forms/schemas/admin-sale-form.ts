@@ -242,12 +242,15 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
   });
 }
 
-/** Minimal patch for published sales (title, description, cover images only). */
+/** Minimal patch for published sales (title, description, cover images, stream URL on live sales). */
 export function safeParseUpdatePublishedSaleFromForm(values: AdminSaleFormValues) {
+  const streamRaw = values.streamUrl.trim();
+  const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
   return updateSaleSchema.safeParse({
     title: values.title.trim() || undefined,
     description: values.description.trim() || undefined,
     coverImages: values.coverImages,
+    ...(isSaleroom ? { streamUrl: streamRaw === "" ? null : streamRaw } : {}),
   });
 }
 
