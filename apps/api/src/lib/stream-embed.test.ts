@@ -43,6 +43,18 @@ describe("parseStreamEmbedUrl", () => {
     expect(r?.src).toBe("https://player.vimeo.com/video/99");
   });
 
+  it("parses vimeo live event page URL with unlisted hash", () => {
+    const r = parseStreamEmbedUrl("https://vimeo.com/event/6005027/53b2f6d9ec");
+    expect(r?.provider).toBe("vimeo");
+    expect(r?.src).toBe("https://vimeo.com/event/6005027/embed/53b2f6d9ec");
+  });
+
+  it("parses vimeo live event embed URL", () => {
+    const r = parseStreamEmbedUrl("https://vimeo.com/event/6005027/embed/53b2f6d9ec");
+    expect(r?.provider).toBe("vimeo");
+    expect(r?.src).toBe("https://vimeo.com/event/6005027/embed/53b2f6d9ec");
+  });
+
   it("parses twitch channel", () => {
     const r = parseStreamEmbedUrl("https://www.twitch.tv/monstercat");
     expect(r?.provider).toBe("twitch");
