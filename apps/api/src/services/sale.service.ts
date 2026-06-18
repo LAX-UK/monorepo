@@ -987,6 +987,14 @@ export class SaleService {
       if (patch.coverImages !== undefined) publishedPatch.coverImages = patch.coverImages;
       if (patch.title !== undefined) publishedPatch.title = patch.title;
       if (patch.description !== undefined) publishedPatch.description = patch.description;
+      const caps = getSaleModeCapabilities(sale.deliveryMode);
+      const canEditStreamUrl =
+        caps.allowsStreamUrl &&
+        (sale.status === "scheduled" || sale.status === "active") &&
+        patch.streamUrl !== undefined;
+      if (canEditStreamUrl) {
+        publishedPatch.streamUrl = patch.streamUrl ?? null;
+      }
       if (Object.keys(publishedPatch).length === 0) {
         return err(new LotError("Only draft sales can be edited"));
       }
