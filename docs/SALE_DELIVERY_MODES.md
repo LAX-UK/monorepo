@@ -65,6 +65,6 @@ Web clients pass a better-auth JWT on the Socket.IO handshake so staff join `dis
 
 ---
 
-## Operational checklist (hybrid day-of)
+## Operations
 
-See [Saleroom clerk runbook](./runbooks/saleroom-clerk.md) and [Hybrid sale go-live checklist](./runbooks/hybrid-sale-go-live-checklist.md).
+See [Saleroom clerk runbook](./runbooks/saleroom-clerk.md) for hybrid day-of procedures.
