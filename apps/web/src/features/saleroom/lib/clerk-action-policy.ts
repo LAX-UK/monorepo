@@ -18,9 +18,7 @@ export function resolveClerkActionPolicy(input: ResolveClerkActionPolicyInput): 
   if (!sessionActive) {
     return {
       advanceInRunway: false,
-      advanceInOnBlock: false,
       advanceInDock: false,
-      hammerInOnBlock: false,
       hammerInDock: false,
       jumpToLotInRunway: false,
     };
@@ -29,9 +27,7 @@ export function resolveClerkActionPolicy(input: ResolveClerkActionPolicyInput): 
   if (phase === "selling") {
     return {
       advanceInRunway: false,
-      advanceInOnBlock: false,
       advanceInDock: hasNextLot,
-      hammerInOnBlock: false,
       hammerInDock: canHammer,
       jumpToLotInRunway: true,
     };
@@ -40,9 +36,7 @@ export function resolveClerkActionPolicy(input: ResolveClerkActionPolicyInput): 
   if (phase === "betweenLots" || phase === "paused") {
     return {
       advanceInRunway: hasNextLot && !betweenLots,
-      advanceInOnBlock: false,
       advanceInDock: hasNextLot,
-      hammerInOnBlock: false,
       hammerInDock: canHammer,
       jumpToLotInRunway: true,
     };
@@ -50,9 +44,7 @@ export function resolveClerkActionPolicy(input: ResolveClerkActionPolicyInput): 
 
   return {
     advanceInRunway: hasNextLot,
-    advanceInOnBlock: hasNextLot,
     advanceInDock: false,
-    hammerInOnBlock: false,
     hammerInDock: false,
     jumpToLotInRunway: sessionActive,
   };

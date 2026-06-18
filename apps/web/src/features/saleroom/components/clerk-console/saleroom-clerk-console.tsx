@@ -176,8 +176,6 @@ function ClerkConsoleInner({
             telephoneBookings={model.roster.telephoneBookings}
             paddleRoster={model.roster.paddleRoster}
             liveBid={model.lot.liveBid}
-            canHammer={model.action.canHammer}
-            policy={model.action.policy}
             nextLot={model.lot.nextLot}
             sessionLive={model.action.sessionLive}
             betweenLots={model.lot.progress.betweenLots}

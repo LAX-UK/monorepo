@@ -541,4 +541,55 @@ describe("LotLifecycleService", () => {
     expect(outcome?.winnerId).toBeNull();
     expect(lots.setWinner).not.toHaveBeenCalled();
   });
+
+  it("skips timed close when lot is under a live clerk session", async () => {
+    const lot = baseLot({
+      endTime: new Date(Date.now() - 60_000),
+    });
+
+    const lots: ILotRepository = {
+      findScheduledToActivate: vi.fn().mockResolvedValue([]),
+      findActivePastEnd: vi.fn().mockResolvedValue([lot]),
+      findActiveByEndTimeBetween: vi.fn().mockResolvedValue([]),
+      findByIdForUpdate: vi.fn(),
+      updateStatus: vi.fn(),
+      setWinner: vi.fn(),
+      findActiveDutchLots: vi.fn().mockResolvedValue([]),
+      setDutchLastDecrementAt: vi.fn(),
+      updateDutchCurrentPrice: vi.fn(),
+      updateDutchCurrentPriceIfMatch: vi.fn().mockResolvedValue(true),
+      voidLotAntiShillingClose: vi.fn(),
+    } as unknown as ILotRepository;
+
+    const bids: IBidRepository = {
+      listForLotSettlement: vi.fn(),
+      findEligibleBidsForLotClose: vi.fn(),
+      listDistinctBidderIds: vi.fn(),
+    } as unknown as IBidRepository;
+
+    const saleroomSessionLookup = {
+      shouldSkipAntiSnipeForLot: vi.fn(),
+      shouldEnforceOnBlockGateForLot: vi.fn(),
+      isLotUnderLiveClerkSession: vi.fn().mockResolvedValue(true),
+    };
+
+    const svc = new LotLifecycleService(
+      createFactory(lots, bids),
+      null,
+      null,
+      null,
+      new NotificationFactory(),
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      saleroomSessionLookup,
+    );
+
+    await svc.runTransitions(new Date());
+    expect(lots.updateStatus).not.toHaveBeenCalled();
+    expect(saleroomSessionLookup.isLotUnderLiveClerkSession).toHaveBeenCalledWith("a1");
+  });
 });
