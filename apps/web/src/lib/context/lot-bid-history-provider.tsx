@@ -15,16 +15,20 @@ import type { OwnBidEchoGuard } from "@/lib/bid/own-bid-echo-guard";
 import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { notify } from "@/lib/ui/notify";
-import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
+import type { BidUpdateEvent, Lot, LotEndedEvent } from "@auction/types";
 import {
   type ReactNode,
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+
+/** How often to silently re-sync lot bid state while the tab is mounted. */
+const RESYNC_INTERVAL_MS = 15_000;
 
 type LotBidHistoryContextValue = {
   entries: BidHistoryEntry[];
@@ -32,7 +36,7 @@ type LotBidHistoryContextValue = {
   leadingBidderId: string | null;
   applyOwnBid: (bid: OwnBidInput) => void;
   setEndedWinner: (winnerId: string | null, currentPrice: string) => void;
-  refreshFromServer: (opts?: { fromReconnect?: boolean }) => Promise<{
+  refreshFromServer: (opts?: { fromReconnect?: boolean; silent?: boolean }) => Promise<{
     ok: boolean;
     snapshot?: LotBidSnapshot;
   }>;
@@ -78,6 +82,7 @@ export function LotBidHistoryProvider({
     currentPrice: initialCurrentPrice,
     leadingBidderId: initialLeadingBidderId,
   }));
+  const lotStatusRef = useRef<Lot["status"] | null>(null);
 
   const applyOwnBid = useCallback(
     (bid: OwnBidInput) => {
@@ -102,7 +107,7 @@ export function LotBidHistoryProvider({
   }, []);
 
   const hydrateFromServer = useCallback(
-    async (opts?: { fromReconnect?: boolean }): Promise<{
+    async (opts?: { fromReconnect?: boolean; silent?: boolean }): Promise<{
       ok: boolean;
       snapshot?: LotBidSnapshot;
     }> => {
@@ -111,13 +116,16 @@ export function LotBidHistoryProvider({
         fetchLotBidHistory(lotId),
       ]);
       if (!lotSnap || !bidEntries) {
-        notify.warning("Could not refresh live prices", {
-          id: `lot-hydrate-failed-${lotId}`,
-          description: "Showing last known bids until the connection recovers.",
-          duration: 7000,
-        });
+        if (!opts?.silent) {
+          notify.warning("Could not refresh live prices", {
+            id: `lot-hydrate-failed-${lotId}`,
+            description: "Showing last known bids until the connection recovers.",
+            duration: 7000,
+          });
+        }
         return { ok: false };
       }
+      lotStatusRef.current = lotSnap.status;
       const leadingBidderId =
         lotSnap.status === "ended"
           ? (lotSnap.winnerId ?? deriveLeadingBidderId(bidEntries))
@@ -154,6 +162,7 @@ export function LotBidHistoryProvider({
     },
     onLotEnded: (p) => {
       const ev = p as LotEndedEvent;
+      lotStatusRef.current = "ended";
       setState((prev) => ({
         ...prev,
         currentPrice: ev.currentPrice,
@@ -164,6 +173,27 @@ export function LotBidHistoryProvider({
       void hydrateFromServer({ fromReconnect: true });
     },
   });
+
+  useEffect(() => {
+    const silentHydrate = () => {
+      if (lotStatusRef.current === "ended") return;
+      void hydrateFromServer({ silent: true });
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        silentHydrate();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const intervalId = setInterval(silentHydrate, RESYNC_INTERVAL_MS);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [hydrateFromServer]);
 
   const value = useMemo(
     (): LotBidHistoryContextValue => ({

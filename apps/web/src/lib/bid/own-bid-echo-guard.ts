@@ -27,6 +27,12 @@ export function shouldSkipOwnBidEcho(
   ) {
     return true;
   }
-  if (event.emittedAt != null && event.emittedAt < own.at) return true;
+  if (
+    event.emittedAt != null &&
+    event.emittedAt < own.at &&
+    Number.parseFloat(event.amount) <= Number.parseFloat(own.amount)
+  ) {
+    return true;
+  }
   return false;
 }
