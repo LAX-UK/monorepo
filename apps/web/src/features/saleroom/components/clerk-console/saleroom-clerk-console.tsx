@@ -16,12 +16,14 @@ import { useClerkConsoleModel } from "@/features/saleroom/hooks/use-clerk-consol
 import { useClerkLotRosterSync } from "@/features/saleroom/hooks/use-clerk-lot-roster-sync";
 import { useClerkPaddleRoster } from "@/features/saleroom/hooks/use-clerk-paddle-roster";
 import { useClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import type {
   AdminPaddleRosterEntry,
   AdminSaleroomSessionSnapshot,
   AdminTelephoneBookingRow,
 } from "@/lib/data/http/admin.server";
 import { mapAdminSaleroomSnapshotToSessionStatus } from "@/lib/saleroom/map-admin-saleroom-snapshot";
+import { notify } from "@/lib/ui/notify";
 import type { Lot, SaleDeliveryMode, SaleroomDisplayOverlay } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
@@ -90,10 +92,10 @@ function ClerkConsoleInner({
 
   useEffect(() => {
     if (!actionError) return;
+    const message = safeDecodeAdminErrorParam(actionError);
+    if (message) notify.error(message);
     router.replace(`/admin/saleroom/${saleId}`, { scroll: false });
   }, [actionError, router, saleId]);
-
-  const displayError = actionError ?? error;
 
   const currentLotId = session.currentLotId;
   const currentLotForBid = syncedLots.find((lot) => lot.id === currentLotId) ?? null;
@@ -115,7 +117,7 @@ function ClerkConsoleInner({
     paddleRosterEmpty,
     ...(registrationsHref ? { registrationsHref } : {}),
     loadWarnings,
-    ...(displayError != null ? { error: displayError } : {}),
+    ...(error != null ? { error } : {}),
     session,
     activityLog,
     liveBid,
