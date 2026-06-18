@@ -5,6 +5,7 @@ import type { TelephoneBidBooking, TelephoneBidBookingStatus } from "@auction/ty
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { and, eq, inArray } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
 import { moneyToDbString, parseAuthorizedMaxCap } from "../lib/telephone-booking.mapper.js";
 import type { ITelephoneBidBookingRepository } from "../repositories/interfaces/telephone-bid-booking.repository.js";
 import type { IAmlHoldStore } from "./aml/ports.js";
@@ -142,7 +143,7 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
     if (!entity) {
       return this.err("Legal entity not found", 404);
     }
-    if (entity.status !== "approved" && entity.status !== "restricted") {
+    if (!buyerEntityCanBid(entity.status)) {
       return this.err("Legal entity is not authorised", 403, "entity_not_authorised");
     }
     return ok(undefined);

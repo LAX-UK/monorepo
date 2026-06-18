@@ -95,7 +95,7 @@ Use the telephone line selector when a confirmed/in-progress booking exists for 
 | `kyc_required` | Bidder not verified | Complete KYC before assign/bid |
 | `email_not_verified` | Email not verified | Client must verify email |
 | `membership_required` | Not member of entity | Fix entity membership |
-| `entity_not_authorised` | Entity not approved/restricted | Complete org onboarding |
+| `entity_not_authorised` | Entity not bid-eligible (still in early onboarding/review, rejected, or archived). `connect_pending` is bid-eligible — payout setup is not required to bid. | Complete KYC/onboarding to reach `connect_pending`+ |
 | `not_eligible_for_check_in` | Wrong role/entity kind | Use personal owner or org buyer agent |
 | `paddle_not_found` | No approved registration with that paddle | Re-check paddle # or check in at desk |
 | `paddle_taken` | Paddle # already assigned | Pick another number |
