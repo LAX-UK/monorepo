@@ -45,7 +45,8 @@ describe("useClerkLotRosterSync", () => {
       ] satisfies SaleroomRealtimePayload[],
     });
 
-    expect(result.current.find((lot) => lot.id === "lot-1")?.status).toBe("ended");
+    expect(result.current.lots.find((lot) => lot.id === "lot-1")?.status).toBe("ended");
+    expect(result.current.hammeredLotIds.has("lot-1")).toBe(true);
   });
 
   it("activates advanced lot and clears winner on no sale", () => {
@@ -74,10 +75,59 @@ describe("useClerkLotRosterSync", () => {
       });
     });
 
-    expect(result.current.find((lot) => lot.id === "lot-1")).toMatchObject({
+    expect(result.current.lots.find((lot) => lot.id === "lot-1")).toMatchObject({
       status: "ended",
       winnerId: null,
     });
-    expect(result.current.find((lot) => lot.id === "lot-2")?.status).toBe("active");
+    expect(result.current.lots.find((lot) => lot.id === "lot-2")?.status).toBe("active");
+    expect(result.current.hammeredLotIds.has("lot-1")).toBe(false);
+  });
+
+  it("clears hammeredLotIds when initialLots refresh from the server", () => {
+    const { result, rerender } = renderHook(
+      ({
+        initialLots,
+        liveFeed,
+      }: {
+        initialLots: Lot[];
+        liveFeed: SaleroomRealtimePayload[];
+      }) => useClerkLotRosterSync({ initialLots, liveFeed }),
+      {
+        initialProps: {
+          initialLots: baseLots,
+          liveFeed: [] as SaleroomRealtimePayload[],
+        },
+      },
+    );
+
+    rerender({
+      initialLots: baseLots,
+      liveFeed: [
+        {
+          kind: "hammer",
+          saleId: "sale-1",
+          lotId: "lot-1",
+          emittedAt: "2026-06-17T10:00:00.000Z",
+        },
+      ] satisfies SaleroomRealtimePayload[],
+    });
+
+    expect(result.current.hammeredLotIds.has("lot-1")).toBe(true);
+
+    rerender({
+      initialLots: baseLots.map((lot) =>
+        lot.id === "lot-1" ? { ...lot, status: "ended", winnerId: "user-1" } : lot,
+      ) as Lot[],
+      liveFeed: [
+        {
+          kind: "hammer",
+          saleId: "sale-1",
+          lotId: "lot-1",
+          emittedAt: "2026-06-17T10:00:00.000Z",
+        },
+      ] satisfies SaleroomRealtimePayload[],
+    });
+
+    expect(result.current.hammeredLotIds.size).toBe(0);
   });
 });
