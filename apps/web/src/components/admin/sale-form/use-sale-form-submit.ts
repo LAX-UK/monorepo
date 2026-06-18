@@ -24,8 +24,10 @@ import {
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { Lot } from "@auction/types";
+import type { RefObject } from "react";
 import type { FieldValues, UseFormReturn } from "react-hook-form";
 import type { z as zod } from "zod";
+import type { StreamUrlVerificationGate } from "./stream-url-verify-control";
 
 export const SALE_STEP_FIELDS = SALE_FORM_WIZARD_STEP_FIELDS.map((fields) => [
   ...fields,
@@ -57,6 +59,7 @@ type SubmitArgs = {
   onSaveNotice: (message: string | null) => void;
   onValidationBanner?: (message: string | null, stepIndex?: number) => void;
   router: { push: (href: string) => void };
+  streamUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
 };
 
 export async function validateAllSaleWizardSteps(
@@ -105,6 +108,14 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
     : safeParseUpdatePublishedSaleFromForm(values);
   if (!api.success) {
     reportSaleFormZodFailure(args.form, api.error.issues, args);
+    return;
+  }
+  const streamBlockMsg = args.streamUrlGateRef?.current?.assertCanSubmit(values.streamUrl);
+  if (streamBlockMsg) {
+    args.form.setError("streamUrl", { type: "manual", message: streamBlockMsg });
+    args.onValidationBanner?.(streamBlockMsg, 1);
+    args.wizardGoTo(1);
+    notifyAdminFormValidationFailure({});
     return;
   }
   if (args.isDraft && args.lots.length > 0) {

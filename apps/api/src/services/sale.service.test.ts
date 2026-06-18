@@ -442,6 +442,122 @@ describe("SaleService.updateDraft", () => {
     expect(saleRepo.update).not.toHaveBeenCalled();
   });
 
+  it("allows streamUrl patch on scheduled hybrid sale", async () => {
+    const sale = baseSale({
+      status: "scheduled",
+      deliveryMode: "hybrid",
+      streamUrl: null,
+    });
+    const streamUrl = "https://vimeo.com/event/6005027/embed/53b2f6d9ec";
+    const updated = { ...sale, streamUrl };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue(updated),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft("staff", sale.id, { streamUrl }, "catalogue_manager");
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { streamUrl });
+  });
+
+  it("allows clearing streamUrl on active onsite sale", async () => {
+    const sale = baseSale({
+      status: "active",
+      deliveryMode: "onsite",
+      streamUrl: "https://vimeo.com/123",
+    });
+    const updated = { ...sale, streamUrl: null };
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue(updated),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { streamUrl: null },
+      "catalogue_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { streamUrl: null });
+  });
+
+  it("ignores streamUrl patch on ended sale", async () => {
+    const sale = baseSale({
+      status: "ended",
+      deliveryMode: "hybrid",
+      streamUrl: "https://vimeo.com/123",
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn(),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { streamUrl: "https://vimeo.com/event/1/embed/x" },
+      "catalogue_manager",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) return;
+    expect(result.error.message).toBe("Only draft sales can be edited");
+    expect(saleRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("ignores streamUrl patch on online sale", async () => {
+    const sale = baseSale({
+      status: "active",
+      deliveryMode: "online",
+      streamUrl: null,
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn(),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw" },
+      "catalogue_manager",
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(saleRepo.update).not.toHaveBeenCalled();
+  });
+
   it("rejects catalogue.write staff without auction.manage when patch is not image-only", async () => {
     const sale = baseSale({ status: "draft" });
     const saleRepo: ISaleRepository = {
