@@ -9,7 +9,9 @@ type LotPick = Pick<
   Lot,
   "status" | "startTime" | "endTime" | "winnerId" | "reservePrice" | "currentPrice" | "id"
 >;
-type SalePick = Pick<Sale, "status" | "deliveryMode"> | null;
+type SalePick =
+  | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
+  | null;
 
 type Props = {
   lot: LotPick;
@@ -21,9 +23,26 @@ type Props = {
 export function LotSessionStatePill({ lot, sale, initialNowMs }: Props) {
   const onlineLifecycle = useOnlineLotLifecycle();
   const effectiveLot = useMemo(() => {
-    if (onlineLifecycle?.liveEndTimeMs == null) return lot;
-    return { ...lot, endTime: new Date(onlineLifecycle.liveEndTimeMs) };
-  }, [lot, onlineLifecycle?.liveEndTimeMs]);
+    let effective = lot;
+    if (onlineLifecycle?.liveEndTimeMs != null) {
+      effective = { ...effective, endTime: new Date(onlineLifecycle.liveEndTimeMs) };
+    }
+    if (onlineLifecycle?.liveLotStatus != null) {
+      effective = {
+        ...effective,
+        status: onlineLifecycle.liveLotStatus,
+        ...(onlineLifecycle.liveLotStatus === "ended"
+          ? { winnerId: onlineLifecycle.liveWinnerId ?? null }
+          : {}),
+      };
+    }
+    return effective;
+  }, [
+    lot,
+    onlineLifecycle?.liveEndTimeMs,
+    onlineLifecycle?.liveLotStatus,
+    onlineLifecycle?.liveWinnerId,
+  ]);
 
   return (
     <LotStatePill

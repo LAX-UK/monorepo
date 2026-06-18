@@ -166,6 +166,10 @@ export function useLotBidState({
       setLotStatus("ended");
       setEndedWinner(p.winnerId ?? null, p.currentPrice);
       const noSale = Boolean(p.noSale) || !p.winnerId;
+      onlineLifecycle?.setLiveLotEnded({
+        winnerId: p.winnerId ?? null,
+        noSale,
+      });
       if (noSale) {
         setEndedBanner("Reserve not met — this lot passed unsold.");
       } else if (sessionUser?.id && p.winnerId === sessionUser.id) {

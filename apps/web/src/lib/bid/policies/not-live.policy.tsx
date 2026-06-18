@@ -6,7 +6,7 @@ function lifecycleBlockMessage(kind: LotLifecycleKind): string | null {
     case "preLaunch":
       return "Bidding is not open yet — this is a catalogue preview.";
     case "scheduled":
-      return "Bidding has not started — you can place bids once this lot goes live.";
+      return "Bidding has not started — you can place bids once the auctioneer starts the sale.";
     case "endedSold":
       return "This lot has sold — bidding is closed.";
     case "endedNoSale":

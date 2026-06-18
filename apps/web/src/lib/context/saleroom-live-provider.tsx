@@ -17,6 +17,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -37,16 +38,28 @@ type Props = {
 /** Subscribes to saleroom session events for hybrid/onsite buyer awareness. */
 export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
   const [state, setState] = useState<PublicSaleroomSessionStatus>(initial);
+  /** After first socket event or HTTP hydrate, ignore SSR `initial` re-seeds. */
+  const hasAuthoritativeStateRef = useRef(false);
 
   useEffect(() => {
-    setState(initial);
+    if (!hasAuthoritativeStateRef.current) {
+      setState(initial);
+    }
   }, [initial]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribe when sale changes; `initial` is applied once per saleId transition
   useEffect(() => {
+    hasAuthoritativeStateRef.current = false;
+    setState(initial);
+
     const socket = getSocket();
     let hadConnected = socket.connected;
 
-    const hydrateFromServer = async (): Promise<boolean> => {
+    const markAuthoritative = () => {
+      hasAuthoritativeStateRef.current = true;
+    };
+
+    const hydrateFromServer = async (opts?: { notifyOnSuccess?: boolean }): Promise<boolean> => {
       const snap = await fetchSaleroomStatus(saleId);
       if (!snap) {
         notify.warning("Could not refresh saleroom status", {
@@ -57,6 +70,13 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
         return false;
       }
       setState(snap);
+      markAuthoritative();
+      if (opts?.notifyOnSuccess) {
+        notify.success("Reconnected — saleroom status refreshed", {
+          id: `saleroom-reconnect-${saleId}`,
+          duration: 5000,
+        });
+      }
       return true;
     };
 
@@ -64,6 +84,7 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
       const event = raw as SaleroomRealtimePayload;
       if (!event || typeof event.kind !== "string" || event.saleId !== saleId) return;
       setState((prev) => applySaleroomEvent(prev, event));
+      markAuthoritative();
     };
 
     const join = () => {
@@ -73,19 +94,13 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
     const onConnect = () => {
       join();
       if (hadConnected) {
-        void hydrateFromServer().then((ok) => {
-          if (ok) {
-            notify.success("Reconnected — saleroom status refreshed", {
-              id: `saleroom-reconnect-${saleId}`,
-              duration: 5000,
-            });
-          }
-        });
+        void hydrateFromServer({ notifyOnSuccess: true });
       }
       hadConnected = true;
     };
 
     join();
+    void hydrateFromServer();
     socket.on("saleroomEvent", onSaleroom);
     socket.on("connect", onConnect);
 
