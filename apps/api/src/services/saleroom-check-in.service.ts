@@ -5,6 +5,7 @@ import { PADDLE_NUMBER_MIN, saleAllowsInRoomCheckIn } from "@auction/validators"
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { Counter } from "prom-client";
+import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
 import { memberEligibleForStaffInRoomCheckIn } from "../lib/sale-registration-policy.js";
 import {
   type CheckInCandidateRow,
@@ -133,7 +134,7 @@ export class SaleroomCheckInService implements ISaleroomCheckInService {
     if (!entity) {
       return this.serviceErr("Legal entity not found", 404);
     }
-    if (entity.status !== "approved" && entity.status !== "restricted") {
+    if (!buyerEntityCanBid(entity.status)) {
       saleroomCheckInTotal.inc({ outcome: "entity_not_authorised" });
       return this.serviceErr("Legal entity is not authorised to bid", 403, "entity_not_authorised");
     }
