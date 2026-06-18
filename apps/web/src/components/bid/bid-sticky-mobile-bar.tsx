@@ -12,10 +12,17 @@ import {
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import { countdownTier } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import {
+  canShowBidCta,
+  isSaleroomLifecycle,
+  isTerminalLifecycle,
+  saleroomStatusLine,
+} from "./bid-sticky-mobile-bar.logic";
 
 type Props = {
   live: boolean;
@@ -35,6 +42,10 @@ type Props = {
   timerState: LotTimerState;
   /** Pre-formatted clock for the countdown (HH:MM:SS or `Nd HH:MM:SS`). */
   countdownClock: string;
+  /** Lot lifecycle kind — saleroom states bypass catalogue countdown. */
+  lifecycleKind?: LotLifecycleKind;
+  /** Whether this lot is the clerk's on-block lot (hybrid saleroom). */
+  isOnBlock?: boolean;
   /** When true, slim bar (countdown only) when bid card is in view. */
   compact?: boolean;
   /** Unified bidder position — drives outbid CTA and auto badge. */
@@ -101,6 +112,8 @@ export function BidStickyMobileBar({
   msRemaining,
   timerState,
   countdownClock,
+  lifecycleKind,
+  isOnBlock = false,
   compact = false,
   position = null,
   hasActiveAutoBid = false,
@@ -111,20 +124,33 @@ export function BidStickyMobileBar({
   const outbid = position ? lotBidPositionShowOutbidCta(position) : false;
   const autoBidLabel = position ? lotBidPositionAutoStickyLabel(position, formatMoney) : null;
   const positionLabel = position ? lotBidPositionStickyLabel(position) : null;
-  if (timerState.kind === "opensSoon") {
+  const saleroomMode = isSaleroomLifecycle(lifecycleKind);
+  const showBidCta = canShowBidCta(decision);
+
+  if (isTerminalLifecycle(lifecycleKind)) {
+    const terminalLabel =
+      lifecycleKind === "cancelled" || lifecycleKind === "withdrawn" ? "Cancelled" : "Closed";
+    return <ClosedBar terminalLabel={terminalLabel} />;
+  }
+
+  if (timerState.kind === "opensSoon" && !saleroomMode) {
     return <UpcomingBar countdownClock={countdownClock} loginNextPath={loginNextPath} />;
   }
-  if (timerState.kind === "closed" || timerState.kind === "cancelled") {
+
+  if (!saleroomMode && (timerState.kind === "closed" || timerState.kind === "cancelled")) {
     return <ClosedBar terminalLabel={timerState.kind === "closed" ? "Closed" : "Cancelled"} />;
   }
+
   if (!live) return null;
 
+  const statusLine = saleroomMode
+    ? saleroomStatusLine(lifecycleKind, isOnBlock)
+    : countdownClock || remainingLabel
+      ? `Closes ${countdownClock || remainingLabel}`
+      : "Closing soon";
+
   if (compact) {
-    const closeUrgent = msRemaining > 0 && countdownTier(msRemaining) !== "normal";
-    const closingLine =
-      countdownClock || remainingLabel
-        ? `Closes ${countdownClock || remainingLabel}`
-        : "Closing soon";
+    const closeUrgent = !saleroomMode && msRemaining > 0 && countdownTier(msRemaining) !== "normal";
     const next = encodeURIComponent(loginNextPath);
     const kycBlocked = decision.kind === "block" && decision.viewId === "kyc-threshold";
     const regBlocked =
@@ -143,7 +169,7 @@ export function BidStickyMobileBar({
             closeUrgent ? "text-error" : "text-on-surface-variant",
           )}
         >
-          {closingLine}
+          {statusLine}
         </p>
         {kycBlocked ? (
           <Link
@@ -154,7 +180,7 @@ export function BidStickyMobileBar({
           </Link>
         ) : null}
         {!kycBlocked && regAction}
-        {!kycBlocked && !regAction && outbid ? (
+        {!kycBlocked && !regAction && showBidCta && outbid ? (
           <Button
             type="button"
             onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
@@ -173,7 +199,7 @@ export function BidStickyMobileBar({
   }
 
   const next = encodeURIComponent(loginNextPath);
-  const closeUrgent = countdownTier(msRemaining) !== "normal";
+  const closeUrgent = !saleroomMode && countdownTier(msRemaining) !== "normal";
 
   let right: ReactNode;
   if (decision.kind === "block") {
@@ -291,7 +317,7 @@ export function BidStickyMobileBar({
             closeUrgent ? "text-error" : "text-on-surface-variant",
           )}
         >
-          Closes {remainingLabel || "soon"}
+          {statusLine}
         </p>
       </div>
       {right}

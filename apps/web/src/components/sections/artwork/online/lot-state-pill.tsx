@@ -50,16 +50,25 @@ function toneClasses(tone: LifecycleBadgeTone): string {
   }
 }
 
-function lifecycleDetail(lifecycle: LotLifecycle, isOnBlock?: boolean): string | null {
+function lifecycleDetail(
+  lifecycle: LotLifecycle,
+  opts?: { isOnBlock?: boolean; isSessionLive?: boolean },
+): string | null {
+  const isOnBlock = opts?.isOnBlock ?? false;
+  const isSessionLive = opts?.isSessionLive ?? false;
   switch (lifecycle.kind) {
     case "preLaunch":
       return "This lot is in preview — bidding has not opened yet.";
     case "scheduled":
-      return "Bidding opens soon — register to bid before the lot goes live.";
+      return "Bidding opens soon — register to bid before the auctioneer starts the sale.";
     case "liveSaleroom":
-      return isOnBlock
-        ? "This lot is on the block in the saleroom — bidding closes when the auctioneer hammers."
-        : "The saleroom session is live — lots close when the auctioneer hammers, not on a countdown timer.";
+      if (isOnBlock) {
+        return "This lot is on the block in the saleroom — bidding closes when the auctioneer hammers.";
+      }
+      if (!isSessionLive) {
+        return "This lot is sold live in the saleroom — online bidding opens when the auctioneer starts the sale.";
+      }
+      return "The saleroom session is live — lots close when the auctioneer hammers, not on a countdown timer.";
     case "saleroomPaused":
       return "The auction is paused — bidding will resume when the auctioneer continues.";
     case "endedSold":
@@ -88,6 +97,7 @@ export function LotStatePill({
   const onlineCtx = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
   const isOnBlock = saleroomLive?.isLotOnBlock(lot.id) ?? false;
+  const isSessionLive = saleroomLive?.isSessionLive ?? false;
 
   useEffect(() => {
     setNow((cur) => cur ?? Date.now());
@@ -118,9 +128,15 @@ export function LotStatePill({
     if (lifecycle.kind === "liveSaleroom" && isOnBlock) {
       return { label: "On the block", tone: "live" as const, pulse: true };
     }
+    if (lifecycle.kind === "liveSaleroom" && !isSessionLive) {
+      return { label: "Saleroom lot", tone: "upcoming" as const, pulse: false };
+    }
     return lifecycleBadge(lifecycle);
-  }, [lifecycle, isOnBlock]);
-  const detail = useMemo(() => lifecycleDetail(lifecycle, isOnBlock), [lifecycle, isOnBlock]);
+  }, [lifecycle, isOnBlock, isSessionLive]);
+  const detail = useMemo(
+    () => lifecycleDetail(lifecycle, { isOnBlock, isSessionLive }),
+    [lifecycle, isOnBlock, isSessionLive],
+  );
 
   const countdown =
     now != null &&
