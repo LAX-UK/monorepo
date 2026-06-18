@@ -806,6 +806,16 @@ export function ArtworkBidPanel({
               onFocusManualBid={() => switchEntryMode("manual", { userInitiated: true })}
               onFocusAutoBid={() => switchEntryMode("auto", { userInitiated: true })}
               isLeading={position.kind === "winning" || position.kind === "winningByAuto"}
+              upcomingSlot={
+                <ArtworkWatchToggle
+                  lotId={auction.id}
+                  initialWatching={initialWatching}
+                  isAuthenticated={Boolean(sessionUser)}
+                  loginNextPath={loginNext}
+                  appearance="sticky-bar"
+                  marketingCta="notifyWhenOpens"
+                />
+              }
             />
           ) : null}
         </div>
