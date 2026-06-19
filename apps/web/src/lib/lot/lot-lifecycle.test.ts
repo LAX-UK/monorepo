@@ -1,6 +1,11 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { classifyLotLifecycle, lifecycleBadge, saleroomOnBlockBadge } from "./lot-lifecycle";
+import {
+  classifyLotLifecycle,
+  lifecycleBadge,
+  saleroomOnBlockBadge,
+  saleroomOnBlockRingClass,
+} from "./lot-lifecycle";
 
 const hour = 60 * 60 * 1000;
 
@@ -179,5 +184,11 @@ describe("saleroomOnBlockBadge", () => {
       tone: "live",
       pulse: true,
     });
+  });
+});
+
+describe("saleroomOnBlockRingClass", () => {
+  it("uses live-red ring accent", () => {
+    expect(saleroomOnBlockRingClass).toContain("ring-live-red");
   });
 });

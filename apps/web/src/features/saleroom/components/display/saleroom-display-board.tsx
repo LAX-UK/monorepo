@@ -9,31 +9,25 @@ import {
   type DisplayLastHammer,
   formatDisplayEstimate,
 } from "@/features/saleroom/lib/display-bid-ticks";
+import {
+  type DisplayBoardSessionStatus,
+  displaySessionStatusPresentation,
+} from "@/features/saleroom/lib/display-session-status-presentation";
 import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import { formatMoney } from "@/lib/ui/format";
+
 import type { ReactNode } from "react";
 import { useState } from "react";
 
 type Props = DisplayBoardVM;
 
-function StatusBadge({ status }: { status: DisplayBoardVM["snapshot"]["sessionStatus"] }) {
-  const label =
-    status === "live"
-      ? "LIVE"
-      : status === "paused"
-        ? "PAUSED"
-        : status === "ended"
-          ? "ENDED"
-          : "STANDBY";
-  const tone =
-    status === "live"
-      ? "bg-emerald-500/20 text-emerald-100 border-emerald-400/40"
-      : status === "paused"
-        ? "bg-amber-500/20 text-amber-100 border-amber-400/40"
-        : "bg-white/10 text-white/70 border-white/20";
+function DisplaySessionStatusBadge({ status }: { status: DisplayBoardSessionStatus }) {
+  const presentation = displaySessionStatusPresentation(status);
   return (
-    <span className={`rounded-full border px-4 py-1 text-sm font-semibold tracking-widest ${tone}`}>
-      {label}
+    <span
+      className={`rounded-full border px-4 py-1 text-sm font-semibold tracking-widest ${presentation.className}`}
+    >
+      {presentation.label}
     </span>
   );
 }
@@ -102,7 +96,7 @@ export function SaleroomDisplayBoard({
         <div className="flex shrink-0 flex-col items-end gap-3">
           <div className="flex flex-wrap items-center justify-end gap-3">
             <LotProgressChip saleProgress={snapshot.saleProgress} />
-            <StatusBadge status={snapshot.sessionStatus} />
+            <DisplaySessionStatusBadge status={snapshot.sessionStatus} />
             {connectionStatus !== "connected" ? (
               <span className="text-xs uppercase tracking-wider text-amber-300">Reconnecting…</span>
             ) : null}

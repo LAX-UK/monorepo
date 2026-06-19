@@ -17,6 +17,24 @@ export type AdminStatusBadgeVariant = StatusBadgeVariant;
 export const liveStatusCountdownClassName =
   "font-label text-[length:var(--text-label-1)] tabular-nums font-medium normal-case text-live-red";
 
+/** Urgency tier for live countdown digits (catalog + onsite). */
+export type LiveCountdownUrgency = "normal" | "soon" | "imminent" | "live";
+
+/** Text color for countdown by urgency — `live` is always live-red (during event). */
+export function liveUrgencyTextClass(urgency: LiveCountdownUrgency): string {
+  switch (urgency) {
+    case "live":
+    case "imminent":
+    case "soon":
+      return "text-live-red";
+    default:
+      return "text-on-surface";
+  }
+}
+
+/** Pulse class for critical countdown segments (respects motion-reduce via caller). */
+export const liveUrgencyPulseClass = "live-dot-pulse";
+
 // ---------------------------------------------------------------------------
 // Human-readable labels – single source of truth for all catalog statuses
 // ---------------------------------------------------------------------------

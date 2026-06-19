@@ -1,6 +1,7 @@
 "use client";
 
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
+import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { cn } from "@auction/ui";
@@ -99,9 +100,11 @@ export function LotPricingStatusHeader({
               {countdownClock || "—"}
             </p>
             {extendedByMs != null && extendedByMs > 0 ? (
-              <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-200">
-                +{Math.max(1, Math.round(extendedByMs / 1000))}s anti-snipe
-              </p>
+              <ParticipationWarningBadge
+                kind="antiSnipeExtended"
+                extendedSeconds={Math.round(extendedByMs / 1000)}
+                className="mt-1 normal-case"
+              />
             ) : null}
           </div>
         ) : (
