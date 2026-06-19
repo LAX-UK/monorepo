@@ -130,6 +130,8 @@ export type LotCardVM = {
   /** Alt text when `imageUrl` is set */
   imageAlt: string;
   sellerId: string;
+  /** Drives Sold vs Unsold on status badges when lot has ended. */
+  winnerId?: string | null;
   /** Visual emphasis hint for marketing cards. The card always renders
    * `priceLabel` + `priceFormatted`; emphasis tells it which line to make
    * dominant. Defaults to `estimate` when omitted (current behaviour).
@@ -318,6 +320,7 @@ export function toLotCardVM(lot: Lot): LotCardVM {
     imageUrl: lot.images[0] ?? null,
     imageAlt: `${lot.title} — artwork by ${artistName}`,
     sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
+    winnerId: lot.winnerId,
     ...timing,
     priceEmphasis: priceEmphasisFromStatus(lot),
   };

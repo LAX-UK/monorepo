@@ -1,11 +1,12 @@
 import { LotQuickLookTrigger } from "@/components/marketing/lot-quick-look/lot-quick-look-trigger";
 import { lotQuickLookFromLotCardVM } from "@/components/marketing/lot-quick-look/mappers";
-import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { HOME_LOT_TILE_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 
 type Props = {
   item: LotCardVM;
@@ -36,14 +37,7 @@ export function UrgencyLotCard({ item, isAuthenticated, watchedLotIds, loginNext
         sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw",
         label: "Lot artwork",
       }}
-      topOverlay={
-        <LotStatusTimer
-          variant="endingSoon"
-          status={item.status}
-          startTime={item.startTime}
-          endTime={item.endTime}
-        />
-      }
+      topOverlay={<LotStatusBadge {...lotStatusBadgeProps(item)} />}
       cornerAction={
         <div className="pointer-events-auto absolute right-3 top-3 z-10">
           <MarketingWatchlistHeart

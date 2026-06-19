@@ -27,8 +27,31 @@ export const statusBadgeVariants = cva(
 );
 
 export type StatusBadgeProps = React.HTMLAttributes<HTMLSpanElement> &
-  VariantProps<typeof statusBadgeVariants>;
+  VariantProps<typeof statusBadgeVariants> & {
+    /** Pulse dot before label (e.g. live auctions). */
+    dot?: boolean;
+  };
 
-export function StatusBadge({ className, variant, size, ...props }: StatusBadgeProps) {
-  return <span className={cn(statusBadgeVariants({ variant, size }), className)} {...props} />;
+export function StatusBadge({
+  className,
+  variant,
+  size,
+  dot,
+  children,
+  ...props
+}: StatusBadgeProps) {
+  return (
+    <span
+      className={cn(statusBadgeVariants({ variant, size }), dot && "gap-1.5", className)}
+      {...props}
+    >
+      {dot ? (
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-current motion-safe:animate-pulse"
+          aria-hidden
+        />
+      ) : null}
+      {children}
+    </span>
+  );
 }

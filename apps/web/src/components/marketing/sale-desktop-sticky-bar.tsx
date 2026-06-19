@@ -1,5 +1,6 @@
 "use client";
 
+import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot, cn } from "@auction/ui";
@@ -125,6 +126,7 @@ export function SaleDesktopStickyBar({
             <p className="truncate font-headline text-base font-semibold text-on-surface">
               {saleTitle}
             </p>
+            <SaleLifecycleBadge status={status} size="sm" />
             {!isEnded ? (
               <div className="flex shrink-0 items-baseline gap-2">
                 <span className="font-label text-[0.65rem] font-bold uppercase tracking-[0.18em] text-on-surface-variant">

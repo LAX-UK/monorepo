@@ -1,3 +1,4 @@
+import { lotStatusFilterLabel } from "@/lib/marketing/marketing-status-filters";
 import type { LotStatus } from "@auction/types";
 
 export type SearchEndingWindow = "24h";
@@ -14,16 +15,7 @@ export function parseSearchEnding(raw: string | undefined): SearchEndingWindow |
 }
 
 export function searchStatusLabel(status: LotStatus): string {
-  switch (status) {
-    case "active":
-      return "Live now";
-    case "scheduled":
-      return "Upcoming";
-    case "ended":
-      return "Ended";
-    default:
-      return status;
-  }
+  return lotStatusFilterLabel(status);
 }
 
 export function searchEndingLabel(window: SearchEndingWindow): string {

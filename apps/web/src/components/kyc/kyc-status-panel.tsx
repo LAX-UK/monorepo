@@ -39,7 +39,7 @@ export function KycStatusPanel({ summary, phase = "idle", className }: Props) {
 
   const tone =
     status === "approved"
-      ? "border-emerald-500/30 bg-emerald-500/5 text-on-surface"
+      ? "border-success/30 bg-success/5 text-on-surface"
       : status === "rejected" || feedback.action === "retry"
         ? "border-live-red/30 bg-live-red/5 text-on-surface"
         : feedback.needsResubmit ||

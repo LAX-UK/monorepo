@@ -1,4 +1,5 @@
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
+import { salesCalendarTabLabel } from "@/lib/marketing/marketing-status-filters";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import type { SaleDeliveryMode } from "@auction/types";
 
@@ -17,13 +18,11 @@ export type CalendarPrimaryTabDefinition = {
   label: string;
 };
 
-const CALENDAR_PRIMARY_TAB_DEFINITIONS: readonly CalendarPrimaryTabDefinition[] = [
-  { id: "upcoming", label: "Upcoming" },
-  { id: "live", label: "Live Now" },
-  { id: "results", label: "Auction Results" },
-  { id: "newLots", label: "New Lots" },
-  { id: "privateSales", label: "Private Sales" },
-];
+const CALENDAR_PRIMARY_TAB_DEFINITIONS: readonly CalendarPrimaryTabDefinition[] =
+  CALENDAR_PRIMARY_TABS.map((id) => ({
+    id,
+    label: salesCalendarTabLabel(id),
+  }));
 
 export type CalendarSalesUrlParams = {
   tab?: CalendarPrimaryTab;

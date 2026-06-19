@@ -1,16 +1,17 @@
 "use client";
 
+import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { SaleCalendarCountdown } from "@/components/sections/sales/sale-calendar-countdown";
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
-import { LiveBadge, StatusBadge, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
 
 type SaleStatusBadgeProps = {
   countdownEndIso: string;
   className?: string;
 };
 
-/** Live overlay on sale media — countdown until sale end. */
+/** Live overlay on sale media — registry live badge + countdown until sale end. */
 export function SaleStatusBadge({ countdownEndIso, className }: SaleStatusBadgeProps) {
   const tone = useOverlayTone("bottomLeft");
 
@@ -24,9 +25,9 @@ export function SaleStatusBadge({ countdownEndIso, className }: SaleStatusBadgeP
       {...overlayToneProps(tone)}
       aria-label="Live auction, time remaining"
     >
-      <LiveBadge
-        label="Live"
-        className="border-transparent bg-transparent px-0 py-0 text-[color:var(--overlay-fg)] ring-0"
+      <SaleLifecycleBadge
+        status="active"
+        className="border-transparent bg-transparent px-0 py-0 ring-0 text-[color:var(--overlay-fg)] [&_span]:bg-[color:var(--overlay-fg)]"
       />
       <SaleCalendarCountdown endIso={countdownEndIso} className="text-[color:var(--overlay-fg)]" />
     </div>
@@ -38,17 +39,13 @@ type SaleScheduleBadgesProps = {
   startsSoon: boolean;
 };
 
-/** Inline live / starts-soon pills for upcoming auction tiles (no media overlay). */
+/** Inline live / scheduled pills for upcoming auction tiles (no media overlay). */
 export function SaleScheduleBadges({ isLive, startsSoon }: SaleScheduleBadgesProps) {
   if (!isLive && !startsSoon) return null;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {isLive ? <LiveBadge /> : null}
-      {startsSoon && !isLive ? (
-        <StatusBadge variant="info" size="sm">
-          Starts soon
-        </StatusBadge>
-      ) : null}
+      {isLive ? <SaleLifecycleBadge status="active" /> : null}
+      {startsSoon && !isLive ? <SaleLifecycleBadge status="scheduled" label="Starts soon" /> : null}
     </div>
   );
 }
