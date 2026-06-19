@@ -16,7 +16,7 @@ import { SaleroomCatalogLiveShell } from "@/components/sections/saleroom/saleroo
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
-import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
+import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-hero-action-row";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomRelatedAuctionsSection } from "@/components/sections/saleroom/saleroom-related-auctions-section";
@@ -306,6 +306,14 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     title: lot.title,
   }));
 
+  const saleroomLotRefs = lotVMs.map((lot) => ({
+    id: lot.id,
+    lotNumber: lot.lotNumber ?? null,
+    title: lot.title,
+    href: lot.href,
+    status: lot.status,
+  }));
+
   return (
     <SaleroomCatalogLiveShell
       saleId={isHybridSaleroom ? bundle.sale.id : null}
@@ -331,6 +339,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             sale={bundle.sale}
             locationLine={locationLine}
             {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
+            {...(isHybridSaleroom ? { saleroomLotRefs } : {})}
           />
         }
         wayfinding={
@@ -349,18 +358,19 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         hero={
           <SaleroomHero
             hero={heroVM}
-            isAuthenticated={isAuthenticated}
             backHref={calendarBackHref}
             deliveryMode={bundle.sale.deliveryMode}
-            streamUrl={bundle.sale.streamUrl}
             catalogLotRefs={catalogLotRefs}
             saleroomSession={isHybridSaleroom ? initialSaleroomStatus : null}
             toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
             actions={
-              <SaleroomHeroActions
+              <SaleroomHeroActionRow
+                hero={heroVM}
+                isAuthenticated={isAuthenticated}
+                deliveryMode={bundle.sale.deliveryMode}
+                streamUrl={bundle.sale.streamUrl}
                 saleId={bundle.sale.id}
                 saleHref={basePath}
-                isAuthenticated={isAuthenticated}
                 initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
                 sale={bundle.sale}
                 registerToBid={{

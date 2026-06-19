@@ -7,6 +7,8 @@ import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
+import { cn } from "@auction/ui";
 
 type Props = {
   view: CatalogLayoutView;
@@ -43,9 +45,14 @@ export function SaleroomCatalogLotsLive({
     status: lot.status,
   }));
 
+  const hideBannerOnMobile = live != null && isSaleroomSessionActive(live.status);
+
   return (
     <>
-      <SaleroomLiveLotBanner lots={bannerLots} />
+      <SaleroomLiveLotBanner
+        lots={bannerLots}
+        className={cn(hideBannerOnMobile && "max-lg:hidden")}
+      />
       <SaleroomCatalogLotsByView
         view={view}
         isAuthenticated={isAuthenticated}
