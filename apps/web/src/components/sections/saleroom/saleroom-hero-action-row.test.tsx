@@ -38,6 +38,38 @@ const hero = {
 } satisfies SaleHeroVM;
 
 describe("SaleroomHeroActionRow", () => {
+  it("shows a single register CTA for guests on online sales", () => {
+    render(
+      <OverlayToneProvider
+        value={{ tones: { contentBlock: DEFAULT_OVERLAY_TONE }, resolved: true }}
+      >
+        <SaleroomHeroActionRow
+          hero={hero}
+          isAuthenticated={false}
+          deliveryMode="online"
+          streamUrl={null}
+          saleId="sale-1"
+          saleHref="/sales/test/sale-1"
+          initialFollowing={false}
+          registerToBid={{
+            show: true,
+            buyerEntities: [],
+            myRegistrations: [],
+            kycApproved: false,
+            orgModuleEnabled: true,
+            saleCurrency: "GBP",
+          }}
+        />
+      </OverlayToneProvider>,
+    );
+
+    expect(screen.getAllByRole("link", { name: /register to bid/i })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /register to bid/i })).toHaveAttribute(
+      "href",
+      "/register",
+    );
+  });
+
   it("renders button band and caption below when KYC is not approved", () => {
     const { container } = render(
       <OverlayToneProvider

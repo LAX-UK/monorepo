@@ -1,3 +1,4 @@
+import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { StickyBidBar, cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -16,7 +17,11 @@ export function MarketingStickyBidBar({
   return (
     <StickyBidBar
       className={cn("lg:hidden", className)}
-      {...(innerClassName ? { innerClassName } : {})}
+      innerClassName={cn(
+        MARKETING_PAGE_INNER,
+        "flex w-full items-center justify-between gap-3",
+        innerClassName,
+      )}
     >
       {children}
     </StickyBidBar>
