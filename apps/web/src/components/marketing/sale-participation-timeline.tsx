@@ -41,6 +41,8 @@ type Props = {
   kycApproved?: boolean;
   myRegistrations?: RegistrationItem[];
   buyerEntities?: EntityItem[];
+  /** When false (staff viewers), hide the entire guide. Defaults to true. */
+  canParticipate?: boolean;
   previewStartTime?: Date | string | null;
   startTime: Date | string;
   endTime: Date | string;
@@ -64,6 +66,7 @@ export function SaleParticipationTimeline({
   kycApproved = false,
   myRegistrations = [],
   buyerEntities = [],
+  canParticipate = true,
   previewStartTime,
   startTime,
   endTime,
@@ -353,6 +356,8 @@ export function SaleParticipationTimeline({
     withNext,
     registerActionHref,
   ]);
+
+  if (!canParticipate) return null;
 
   return (
     <div className={cn("space-y-6", className)}>

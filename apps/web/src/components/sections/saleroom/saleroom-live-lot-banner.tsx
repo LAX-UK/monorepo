@@ -28,10 +28,17 @@ type Props = {
   lots: SaleroomLotRef[];
   /** When set, banner only shows if viewed lot differs from on-block lot. */
   viewedLotId?: string | null;
+  /** When false (staff viewers), hide the bid-now CTA. Defaults to true. */
+  canParticipate?: boolean;
   className?: string;
 };
 
-export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: Props) {
+export function SaleroomLiveLotBanner({
+  lots,
+  viewedLotId = null,
+  canParticipate = true,
+  className,
+}: Props) {
   const live = useSaleroomLive();
   if (!live || !isSaleroomSessionActive(live.status)) return null;
 
@@ -92,9 +99,11 @@ export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: P
           <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} size="sm" />
           <SaleroomSessionCaption caption={saleroomOnBlockCaption(onBlockLot, progressLabel)} />
         </div>
-        <Link href={onBlockLot.href} className={saleroomBidNowCtaClassName}>
-          Bid now →
-        </Link>
+        {canParticipate ? (
+          <Link href={onBlockLot.href} className={saleroomBidNowCtaClassName}>
+            Bid now →
+          </Link>
+        ) : null}
       </div>
     </div>
   );

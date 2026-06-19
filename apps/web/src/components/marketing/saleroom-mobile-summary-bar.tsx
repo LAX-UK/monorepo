@@ -20,10 +20,12 @@ const viewLotsCtaClassName =
 type Props = {
   mode: Exclude<SaleroomMobileSummaryBarMode, { kind: "live_no_lot" }>;
   saleTitle: string;
+  /** When false (staff viewers), hide bid-now and show view-lots instead. Defaults to true. */
+  canParticipate?: boolean;
 };
 
 /** Hybrid saleroom sticky bottom bar for on-block and paused session states. */
-export function SaleroomMobileSummaryBar({ mode, saleTitle }: Props) {
+export function SaleroomMobileSummaryBar({ mode, saleTitle, canParticipate = true }: Props) {
   if (mode.kind === "on_block") {
     return (
       <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
@@ -32,9 +34,15 @@ export function SaleroomMobileSummaryBar({ mode, saleTitle }: Props) {
           <span className="sr-only">{saleTitle}</span>
           <SaleroomSessionCaption caption={saleroomOnBlockCaption(mode.lot, mode.progressLabel)} />
         </div>
-        <Link href={mode.lot.href} className={saleroomBidNowCtaClassName}>
-          Bid now →
-        </Link>
+        {canParticipate ? (
+          <Link href={mode.lot.href} className={saleroomBidNowCtaClassName}>
+            Bid now →
+          </Link>
+        ) : (
+          <Link href="#catalog" className={viewLotsCtaClassName}>
+            View lots
+          </Link>
+        )}
       </MarketingStickyBidBar>
     );
   }

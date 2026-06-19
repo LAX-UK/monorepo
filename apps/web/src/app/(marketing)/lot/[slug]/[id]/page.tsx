@@ -59,6 +59,7 @@ import {
   lotCatalogBackHref,
   lotCatalogBackLabel,
 } from "@/lib/marketing/catalog-links";
+import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
@@ -362,6 +363,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     : null;
 
   const kycApprovedForBid = session?.kycStatus === "approved";
+  const viewer = resolveViewerParticipation(session);
   const saleRegistrationBidGate = buildSaleRegistrationBidGate({
     saleId: auction.saleId,
     saleDeliveryMode: saleBundle?.sale?.deliveryMode,
@@ -507,6 +509,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
               saleForLifecycle={saleLifecyclePick}
               overview={onsiteOverviewVM}
               kycApproved={kycApprovedForBid}
+              canParticipate={viewer.canParticipateAsBuyer}
               myRegistrations={myRegistrationsForTimeline}
               buyerEntities={buyerEntities}
               loginNextPath={lotPath(auction)}
@@ -550,6 +553,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                           lotId={auction.id}
                           loginNextPath={lotPath(auction)}
                           isAuthenticated={Boolean(session)}
+                          canParticipate={viewer.canParticipateAsBuyer}
                           show={conditionReportCtaShow}
                           lotEligible={conditionReportCtaShow}
                           kycApproved={kycApprovedForCr}

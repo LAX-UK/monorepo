@@ -21,6 +21,8 @@ type Props = {
   /** Register affordance target for signed-in buyers (defaults to /register). */
   registerHref?: string;
   isAuthenticated?: boolean;
+  /** When false (staff viewers), suppress register CTAs. Defaults to true. */
+  canParticipate?: boolean;
 };
 
 /** Desktop (`lg+`) sticky action bar for the sale page. Reveals after the hero
@@ -35,6 +37,7 @@ export function SaleDesktopStickyBar({
   liveLotsCount,
   registerHref = "/register",
   isAuthenticated = false,
+  canParticipate = true,
 }: Props) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [pinned, setPinned] = useState(false);
@@ -92,6 +95,16 @@ export function SaleDesktopStickyBar({
       );
     }
     if (isUpcoming) {
+      if (!canParticipate) {
+        return (
+          <Link
+            href="#catalog"
+            className="inline-flex items-center rounded-sm bg-cta-bg px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[0.22em] text-cta-on"
+          >
+            Browse lots
+          </Link>
+        );
+      }
       return (
         <Link
           href={isAuthenticated ? registerHref : "/register"}
