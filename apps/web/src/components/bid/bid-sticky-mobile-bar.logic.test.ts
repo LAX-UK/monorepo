@@ -4,6 +4,7 @@ import {
   isSaleroomLifecycle,
   isTerminalLifecycle,
   saleroomStatusLine,
+  shouldShowBidStickyMobileBar,
 } from "./bid-sticky-mobile-bar.logic";
 
 describe("bid-sticky-mobile-bar.logic", () => {
@@ -29,5 +30,47 @@ describe("bid-sticky-mobile-bar.logic", () => {
     expect(canShowBidCta({ kind: "block", viewId: "not-live:off-block", render: () => null })).toBe(
       false,
     );
+  });
+
+  describe("shouldShowBidStickyMobileBar", () => {
+    it("hides on terminal lifecycle kinds", () => {
+      expect(
+        shouldShowBidStickyMobileBar({
+          live: true,
+          lifecycleKind: "endedNoSale",
+          timerState: { kind: "closed" },
+        }),
+      ).toBe(false);
+    });
+
+    it("shows opens-soon bar before live bidding starts", () => {
+      expect(
+        shouldShowBidStickyMobileBar({
+          live: false,
+          lifecycleKind: "scheduled",
+          timerState: { kind: "opensSoon", msLeft: 60_000 },
+        }),
+      ).toBe(true);
+    });
+
+    it("hides when timer is closed and not saleroom", () => {
+      expect(
+        shouldShowBidStickyMobileBar({
+          live: false,
+          lifecycleKind: "scheduled",
+          timerState: { kind: "closed" },
+        }),
+      ).toBe(false);
+    });
+
+    it("shows when live bidding is active", () => {
+      expect(
+        shouldShowBidStickyMobileBar({
+          live: true,
+          lifecycleKind: "live",
+          timerState: { kind: "live", msLeft: 60_000 },
+        }),
+      ).toBe(true);
+    });
   });
 });

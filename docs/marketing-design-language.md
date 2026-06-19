@@ -118,7 +118,7 @@ Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and
 | `PolicyNotice` | `error` \| `primary` \| `warning` policy alerts (suspended, staff, own lot). |
 | `MarketingEmptyState` | Unified empty / error copy + CTA on catalog surfaces. |
 | `MarketingSectionHeader` | Section title + subtitle + trailing action (home rails). |
-| `MarketingStickyBidBar` | Mobile sticky bid / sale summary (`lg:hidden`). |
+| `MarketingStickyBidBar` | Mobile sticky bid / sale summary (`lg:hidden`); inner gutters match `MARKETING_PAGE_GUTTER_X`. |
 | `ChromeIconButton` | 44×44 header icon button with `FOCUS_RING`. |
 | `ChromePopoverPanel` | Shared account / notification dropdown shell. |
 | `NavLabel` | Uppercase utility / nav label (`NAV_LABEL_CLASSES`, etc.). |
@@ -167,9 +167,9 @@ Shared UI: `SaleroomSessionCaption`, `SaleroomSessionStatusBadge`, `SaleroomMobi
 
 **Staff viewer participation:** staff accounts lack `bid.place`; derive flags once via [`resolveViewerParticipation`](apps/web/src/lib/presenters/viewer-participation.ts) on marketing pages. Pass `canParticipate={viewer.canParticipateAsBuyer}` to participation surfaces (sticky bars, catalogue bid CTAs, condition-report request). Fold into `registerToBid.show` on sale pages so hero register/verify bands disappear for staff. Keep Follow (sale) and Watchlist (lot) for staff browsing. Lot bid panel gates via `BidGate` → `adminPolicy`.
 
-**Sale participation UX:** no multi-card “How to participate” guide grid — hero CTAs (Browse / Verify / Register / Follow) and mobile/desktop sticky bars drive registration and bidding. Saleroom sales that offer telephone booking expose a dedicated **Telephone bidding** section ([`SaleTelephoneBiddingSection`](apps/web/src/components/marketing/sale-telephone-bidding-section.tsx); panel owns card chrome) and matching anchor tab via [`buildSaleAnchorTabs`](apps/web/src/lib/marketing/sale-anchor-tab-list.ts). When telephone booking does not apply, tabs collapse to Catalogue + Overview only.
+**Sale participation UX:** no multi-card “How to participate” guide grid — hero CTAs (Browse / Verify / Register / Follow) and the **mobile** sticky bar drive registration and bidding on `lg+`; desktop relies on hero CTAs and in-page chrome (e.g. **`SaleroomLiveLotBanner`** on hybrid catalog). Saleroom sales that offer telephone booking expose a dedicated **Telephone bidding** section ([`SaleTelephoneBiddingSection`](apps/web/src/components/marketing/sale-telephone-bidding-section.tsx); panel owns card chrome) and matching anchor tab via [`buildSaleAnchorTabs`](apps/web/src/lib/marketing/sale-anchor-tab-list.ts). When telephone booking does not apply, tabs collapse to Catalogue + Overview only.
 
-Bottom reserve: `--bottom-chrome-bid` (5rem) via [`bottom-chrome.ts`](apps/web/src/lib/layout/bottom-chrome.ts) for the taller on-block summary bar.
+Bottom reserve: `--bottom-chrome-bid` (5rem) via [`bottom-chrome.ts`](apps/web/src/lib/layout/bottom-chrome.ts) for the taller on-block summary bar. On **terminal/closed lots**, the mobile bid bar is hidden and bottom padding collapses to the standard page inset (via [`MarketingBidBarChromeProvider`](apps/web/src/lib/context/marketing-bid-bar-chrome.tsx) + [`shouldShowBidStickyMobileBar`](apps/web/src/components/bid/bid-sticky-mobile-bar.logic.ts)).
 
 ### Participation warnings (bid flow)
 

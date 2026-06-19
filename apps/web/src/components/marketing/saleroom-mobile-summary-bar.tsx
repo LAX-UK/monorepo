@@ -5,7 +5,6 @@ import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-b
 import { SaleroomSessionCaption } from "@/components/marketing/saleroom-session-caption";
 import { SaleroomSessionStatusBadge } from "@/components/marketing/saleroom-session-status-badge";
 import { saleroomOnBlockBadge } from "@/lib/lot/lot-lifecycle";
-import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import {
   type SaleroomMobileSummaryBarMode,
   saleroomBidNowCtaClassName,
@@ -28,7 +27,7 @@ type Props = {
 export function SaleroomMobileSummaryBar({ mode, saleTitle, canParticipate = true }: Props) {
   if (mode.kind === "on_block") {
     return (
-      <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
+      <MarketingStickyBidBar>
         <div className="min-w-0 flex flex-col gap-1">
           <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} size="sm" />
           <span className="sr-only">{saleTitle}</span>
@@ -48,7 +47,7 @@ export function SaleroomMobileSummaryBar({ mode, saleTitle, canParticipate = tru
   }
 
   return (
-    <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
+    <MarketingStickyBidBar>
       <div className="min-w-0 flex flex-col gap-1">
         <SaleroomSessionStatusBadge status="paused" />
         <span className="sr-only">{saleTitle}</span>

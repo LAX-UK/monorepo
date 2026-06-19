@@ -3,7 +3,6 @@ import { MarketingDetailShell } from "@/components/marketing/marketing-detail-sh
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPaginationControls } from "@/components/marketing/marketing-pagination-controls";
 import { SaleAnchorTabs } from "@/components/marketing/sale-anchor-tabs";
-import { SaleDesktopStickyBar } from "@/components/marketing/sale-desktop-sticky-bar";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import { SaleTelephoneBiddingSection } from "@/components/marketing/sale-telephone-bidding-section";
 import {
@@ -327,7 +326,6 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       initial={initialSaleroomStatus}
     >
       <MarketingDetailShell
-        className="lg:pb-24"
         wrapChildren={false}
         jsonLd={
           <script type="application/ld+json" suppressHydrationWarning>
@@ -395,18 +393,6 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           />
         }
       >
-        <SaleDesktopStickyBar
-          start={bundle.sale.startTime}
-          end={bundle.sale.endTime}
-          status={bundle.sale.status}
-          saleTitle={bundle.sale.title}
-          deliveryMode={bundle.sale.deliveryMode}
-          streamUrl={bundle.sale.streamUrl}
-          isAuthenticated={isAuthenticated}
-          canParticipate={viewer.canParticipateAsBuyer}
-          {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
-        />
-
         <SaleAnchorTabs tabs={buildSaleAnchorTabs({ showTelephone: showTelephoneBooking })} />
 
         <section
