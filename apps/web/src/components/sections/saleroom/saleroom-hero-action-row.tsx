@@ -141,7 +141,7 @@ export function SaleroomHeroActionRow({
           deliveryMode={deliveryMode}
           streamUrl={streamUrl}
         />
-        {registerToBid?.show ? (
+        {registerToBid?.show && isAuthenticated ? (
           <SaleroomRegisterToBid
             saleId={saleId}
             loginNextPath={saleHref}

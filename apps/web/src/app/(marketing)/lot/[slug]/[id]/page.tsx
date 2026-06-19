@@ -1,6 +1,8 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
+import { shouldShowBidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar.logic";
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
 import { ActingEntityCookieReconciler } from "@/components/legal-entity/acting-entity-cookie-reconciler";
+import { classifyLotTimerState } from "@/components/lot-timer";
 import { LotPager } from "@/components/marketing/lot-pager";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
@@ -33,6 +35,7 @@ import {
 import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
+import { MarketingBidBarChromeProvider } from "@/lib/context/marketing-bid-bar-chrome";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -65,6 +68,7 @@ import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory"
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { toLotCardTimingVM } from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -340,6 +344,17 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const previewLife = classifyLotLifecycle(lifecycleLotPick, saleLifecyclePick, serverNow);
   const showPreviewRibbon = previewLife.kind === "preLaunch";
   const isSaleQueueLoading = Boolean(auction.saleId && saleBundle === null);
+  const lotTimerState = classifyLotTimerState(toLotCardTimingVM(lifecycleLotPick), serverNow);
+  const biddingLiveAtSsr =
+    previewLife.kind === "live" ||
+    previewLife.kind === "extended" ||
+    previewLife.kind === "liveSaleroom" ||
+    previewLife.kind === "saleroomPaused";
+  const initialMarketingBidBarActive = shouldShowBidStickyMobileBar({
+    live: biddingLiveAtSsr,
+    lifecycleKind: previewLife.kind,
+    timerState: lotTimerState,
+  });
 
   const onsiteOverviewVM = saleBundle
     ? mapSaleToOverviewVM(saleBundle.sale, {
@@ -503,62 +518,64 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                 saleId={isHybridSale ? auction.saleId : null}
                 initial={initialSaleroomStatus}
               >
-                <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
-                  <LotBidHistoryProvider
-                    lotId={auction.id}
-                    initialHistory={initialHistory}
-                    initialCurrentPrice={auction.currentPrice}
-                    initialLeadingBidderId={initialLeadingBidderId}
-                    currentUserId={session?.id ?? null}
-                  >
-                    <ArtworkOnlineLayout
-                      auction={auction}
-                      saleForLifecycle={saleLifecyclePick}
-                      showPreviewRibbon={showPreviewRibbon}
-                      isSaleQueueLoading={isSaleQueueLoading}
-                      serverClockMs={serverNow}
-                      sessionHeader={sessionHeaderVM}
-                      queueCurrent={queueVMs.current}
-                      queueUpNext={queueVMs.upNext}
-                      queueRest={queueVMs.queue}
-                      marketingAccordionBlocks={marketingBlocks}
-                      rail={rail}
-                      isAuthenticated={Boolean(session)}
-                      watchedLotIds={watchedLotIds}
+                <MarketingBidBarChromeProvider initialActive={initialMarketingBidBarActive}>
+                  <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
+                    <LotBidHistoryProvider
+                      lotId={auction.id}
+                      initialHistory={initialHistory}
+                      initialCurrentPrice={auction.currentPrice}
+                      initialLeadingBidderId={initialLeadingBidderId}
                       currentUserId={session?.id ?? null}
-                      shareUrl={shareUrl}
-                      followSlot={followSlot}
-                      bidPanel={onlineBidPanel}
-                      bidPanelTop={
-                        <ArtworkConditionReportCta
-                          lotId={auction.id}
-                          loginNextPath={lotPath(auction)}
-                          isAuthenticated={Boolean(session)}
-                          canParticipate={viewer.canParticipateAsBuyer}
-                          show={conditionReportCtaShow}
-                          lotEligible={conditionReportCtaShow}
-                          kycApproved={kycApprovedForCr}
-                          kycFeedback={kycFeedbackForCr}
-                          publishedConditionReport={publishedConditionReport}
-                          buyerRequest={buyerConditionReportRequest}
-                          userId={session?.id ?? null}
-                        />
-                      }
-                      hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
-                      streamUrl={saleBundle?.sale?.streamUrl ?? null}
-                      streamSaleTitle={
-                        saleBundle?.sale?.title ?? parentSale?.title ?? auction.title
-                      }
-                      streamPosterUrl={
-                        auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null
-                      }
-                      saleroomLotRefs={saleroomLotRefs}
-                      saleLots={saleLots}
-                      artistNameByLotId={artistNameByLotId}
-                      {...(catalogLinkParams !== undefined ? { catalogLinkParams } : {})}
-                    />
-                  </LotBidHistoryProvider>
-                </OnlineLotLifecycleProvider>
+                    >
+                      <ArtworkOnlineLayout
+                        auction={auction}
+                        saleForLifecycle={saleLifecyclePick}
+                        showPreviewRibbon={showPreviewRibbon}
+                        isSaleQueueLoading={isSaleQueueLoading}
+                        serverClockMs={serverNow}
+                        sessionHeader={sessionHeaderVM}
+                        queueCurrent={queueVMs.current}
+                        queueUpNext={queueVMs.upNext}
+                        queueRest={queueVMs.queue}
+                        marketingAccordionBlocks={marketingBlocks}
+                        rail={rail}
+                        isAuthenticated={Boolean(session)}
+                        watchedLotIds={watchedLotIds}
+                        currentUserId={session?.id ?? null}
+                        shareUrl={shareUrl}
+                        followSlot={followSlot}
+                        bidPanel={onlineBidPanel}
+                        bidPanelTop={
+                          <ArtworkConditionReportCta
+                            lotId={auction.id}
+                            loginNextPath={lotPath(auction)}
+                            isAuthenticated={Boolean(session)}
+                            canParticipate={viewer.canParticipateAsBuyer}
+                            show={conditionReportCtaShow}
+                            lotEligible={conditionReportCtaShow}
+                            kycApproved={kycApprovedForCr}
+                            kycFeedback={kycFeedbackForCr}
+                            publishedConditionReport={publishedConditionReport}
+                            buyerRequest={buyerConditionReportRequest}
+                            userId={session?.id ?? null}
+                          />
+                        }
+                        hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
+                        streamUrl={saleBundle?.sale?.streamUrl ?? null}
+                        streamSaleTitle={
+                          saleBundle?.sale?.title ?? parentSale?.title ?? auction.title
+                        }
+                        streamPosterUrl={
+                          auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null
+                        }
+                        saleroomLotRefs={saleroomLotRefs}
+                        saleLots={saleLots}
+                        artistNameByLotId={artistNameByLotId}
+                        {...(catalogLinkParams !== undefined ? { catalogLinkParams } : {})}
+                      />
+                    </LotBidHistoryProvider>
+                  </OnlineLotLifecycleProvider>
+                </MarketingBidBarChromeProvider>
               </MaybeSaleroomLiveProvider>
             </LotRealtimeProvider>
           )}

@@ -46,6 +46,7 @@ export function SaleroomCatalogToolbarRow({
         </span>
       </div>
       <MarketingListToolbar
+        className="-mx-8 md:-mx-10 lg:-mx-14"
         countLabel={countLabel}
         mobileFilterTrigger={
           <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>

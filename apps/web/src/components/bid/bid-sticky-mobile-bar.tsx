@@ -10,6 +10,7 @@ import {
   lotBidPositionStickyLabel,
 } from "@/lib/bid/derive-lot-bid-position";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
+import { useMarketingBidBarChromeRegistration } from "@/lib/context/marketing-bid-bar-chrome";
 import { countdownTier } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
@@ -21,8 +22,8 @@ import type { ReactNode } from "react";
 import {
   canShowBidCta,
   isSaleroomLifecycle,
-  isTerminalLifecycle,
   saleroomStatusLine,
+  shouldShowBidStickyMobileBar,
 } from "./bid-sticky-mobile-bar.logic";
 
 type Props = {
@@ -130,22 +131,15 @@ export function BidStickyMobileBar({
   const positionLabel = position ? lotBidPositionStickyLabel(position) : null;
   const saleroomMode = isSaleroomLifecycle(lifecycleKind);
   const showBidCta = canShowBidCta(decision);
+  const showBar = shouldShowBidStickyMobileBar({ live, lifecycleKind, timerState });
 
-  if (isTerminalLifecycle(lifecycleKind)) {
-    const terminalLabel =
-      lifecycleKind === "cancelled" || lifecycleKind === "withdrawn" ? "Cancelled" : "Closed";
-    return <ClosedBar terminalLabel={terminalLabel} />;
-  }
+  useMarketingBidBarChromeRegistration(showBar);
+
+  if (!showBar) return null;
 
   if (timerState.kind === "opensSoon" && !saleroomMode) {
     return <UpcomingBar countdownClock={countdownClock} upcomingSlot={upcomingSlot} />;
   }
-
-  if (!saleroomMode && (timerState.kind === "closed" || timerState.kind === "cancelled")) {
-    return <ClosedBar terminalLabel={timerState.kind === "closed" ? "Closed" : "Cancelled"} />;
-  }
-
-  if (!live) return null;
 
   const closeUrgent = !saleroomMode && msRemaining > 0 && countdownTier(msRemaining) !== "normal";
 
@@ -353,22 +347,6 @@ function UpcomingBar({
         </p>
       </div>
       {upcomingSlot ? <div className="shrink-0">{upcomingSlot}</div> : null}
-    </MarketingStickyBidBar>
-  );
-}
-
-function ClosedBar({ terminalLabel }: { terminalLabel: "Closed" | "Cancelled" }) {
-  return (
-    <MarketingStickyBidBar>
-      <div className="min-w-0">
-        <p className="font-label text-[0.7rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-          Auction
-        </p>
-        <p className="truncate font-headline text-lg text-on-surface">{terminalLabel}</p>
-      </div>
-      <span className="font-label text-[0.7rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-        Bidding ended
-      </span>
     </MarketingStickyBidBar>
   );
 }
