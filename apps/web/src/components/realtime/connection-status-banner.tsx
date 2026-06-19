@@ -24,15 +24,12 @@ export function ConnectionStatusBanner({ state, message, className }: Props) {
         "flex items-start gap-3 rounded-md border px-4 py-3 font-body text-sm",
         isOffline
           ? "border-error/30 bg-error/10 text-on-surface"
-          : "border-amber-500/40 bg-amber-500/10 text-on-surface",
+          : "border-warning/40 bg-warning/10 text-on-surface",
         className,
       )}
     >
       <WifiOff
-        className={cn(
-          "mt-0.5 size-4 shrink-0",
-          isOffline ? "text-error" : "text-amber-700 dark:text-amber-200",
-        )}
+        className={cn("mt-0.5 size-4 shrink-0", isOffline ? "text-error" : "text-warning")}
         aria-hidden
       />
       <p>{message}</p>

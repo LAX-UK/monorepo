@@ -1,12 +1,15 @@
 "use client";
 
+import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
 import { LotStatusBadge, LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
+import { saleroomOnBlockBadge } from "@/lib/lot/lot-lifecycle";
 import { LOT_CARD_GRID_SLOTS, LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
@@ -88,17 +91,8 @@ export function SaleroomLotCard({
                 {lot.lotLabel}
               </p>
             ) : null}
-            {lot.isOnBlock ? (
-              <span className="inline-flex self-start rounded-full bg-error/10 px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-error">
-                On the block
-              </span>
-            ) : null}
-            <LotStatusBadge
-              status={lot.status}
-              startTime={lot.startTime}
-              endTime={lot.endTime}
-              closingShort={lot.closingShort}
-            />
+            {lot.isOnBlock ? <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} /> : null}
+            <LotStatusBadge {...lotStatusBadgeProps(lot)} />
           </div>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
@@ -191,9 +185,7 @@ export function SaleroomLotCard({
           {lot.lotLabel ?? "Lot"}
         </p>
         {lot.isOnBlock ? (
-          <span className="inline-flex self-start rounded-full bg-error/10 px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-error">
-            On the block
-          </span>
+          <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} className="self-start" />
         ) : null}
         <div>
           <Link

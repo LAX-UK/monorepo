@@ -1,5 +1,6 @@
 import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { SaleCardGrid } from "@/components/marketing/sale-card";
+import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media";
 import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
@@ -33,6 +34,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
 
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
+              <SaleLifecycleBadge status={vm.status} size="sm" />
               <SaleTypeBadge deliveryMode={vm.deliveryMode} size="sm" isLive={isLive} />
               <div className="flex min-h-[1em] items-center self-stretch border-l border-on-surface-variant pl-2">
                 <span className="font-body text-xs font-normal uppercase leading-snug text-on-surface-variant sm:text-sm">

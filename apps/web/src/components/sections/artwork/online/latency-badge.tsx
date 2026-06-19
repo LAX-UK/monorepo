@@ -5,7 +5,7 @@ function dotClassForRtt(rttMs: number | null, state: ConnectionStatus["state"]):
   if (state === "offline") return "bg-on-surface-variant";
   if (rttMs == null) return "bg-on-surface-variant";
   if (rttMs < 100) return "bg-success";
-  if (rttMs < 300) return "bg-amber-500 dark:bg-amber-400";
+  if (rttMs < 300) return "bg-warning";
   return "bg-error";
 }
 

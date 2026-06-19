@@ -1,6 +1,7 @@
 "use client";
 
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
+import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
@@ -43,11 +44,9 @@ export function SaleMobileSummaryBar({
   if (status === "ended" || status === "cancelled") {
     return (
       <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
-        <div className="min-w-0">
-          <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Sale {status === "ended" ? "ended" : "cancelled"}
-            <span className="sr-only"> · {saleTitle}</span>
-          </p>
+        <div className="min-w-0 flex flex-col gap-1">
+          <SaleLifecycleBadge status={status} size="sm" />
+          <span className="sr-only">{saleTitle}</span>
         </div>
         <Link
           href="#catalog"
@@ -125,11 +124,13 @@ export function SaleMobileSummaryBar({
 
   return (
     <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
-      <div className="min-w-0">
-        <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-          {kicker}
-          <span className="sr-only"> · {saleTitle}</span>
-        </p>
+      <div className="min-w-0 flex flex-col gap-1">
+        <SaleLifecycleBadge
+          status={isUpcoming ? "scheduled" : "active"}
+          {...(!isUpcoming ? { label: kicker } : {})}
+          size="sm"
+        />
+        <span className="sr-only">{saleTitle}</span>
         <Countdown
           end={target}
           announce

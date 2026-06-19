@@ -1,25 +1,17 @@
 "use client";
 
 import { usePrefersHover } from "@/hooks/use-prefers-hover";
-import { submissionStatusToBadgeVariant } from "@/lib/admin/status-badge-variants";
 import {
   SELLER_SUBMISSION_STATUS_LABELS,
   SUBMISSION_STATUS_HINTS,
 } from "@/lib/marketing/sell-flow-copy";
+import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
 import type { ItemSubmissionStatus } from "@auction/types";
+import { StatusBadge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { CircleAlert } from "lucide-react";
 import { useCallback, useState } from "react";
-
-const variantClasses: Record<ReturnType<typeof submissionStatusToBadgeVariant>, string> = {
-  neutral: "bg-outline-variant/20 text-on-surface-variant",
-  info: "bg-secondary-container/40 text-on-secondary-container",
-  warning: "bg-tertiary-container/50 text-on-tertiary-container",
-  success: "bg-primary-container/40 text-on-primary-container",
-  danger: "bg-error/15 text-error",
-  live: "bg-primary/15 text-primary",
-};
 
 type Props = {
   status: ItemSubmissionStatus;
@@ -39,6 +31,7 @@ function StatusHintContent({ label, hint }: { label: string; hint: string }) {
 export function SubmissionStatusBadge({ status, showHint = true }: Props) {
   const label = SELLER_SUBMISSION_STATUS_LABELS[status];
   const hint = SUBMISSION_STATUS_HINTS[status];
+  const presentation = resolveStatusPresentation("submission", status);
   const prefersHover = usePrefersHover();
   const [open, setOpen] = useState(false);
 
@@ -51,10 +44,14 @@ export function SubmissionStatusBadge({ status, showHint = true }: Props) {
   }, [prefersHover]);
 
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] ${variantClasses[submissionStatusToBadgeVariant(status)]}`}
-    >
-      {label}
+    <span className="inline-flex items-center gap-1">
+      <StatusBadge
+        variant={presentation.variant}
+        size="sm"
+        {...(presentation.dot ? { dot: true } : {})}
+      >
+        {label}
+      </StatusBadge>
       {showHint && hint ? (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>

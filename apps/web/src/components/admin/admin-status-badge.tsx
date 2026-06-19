@@ -43,7 +43,7 @@ export function AdminStatusBadge({
   const variant = adminStatusToBadgeVariant(domain, status);
   const text = label ?? adminStatusLabel(domain, status);
   return (
-    <StatusBadge variant={variant} size={size} className={className}>
+    <StatusBadge variant={variant} size={size} dot={variant === "live"} className={className}>
       {text}
     </StatusBadge>
   );

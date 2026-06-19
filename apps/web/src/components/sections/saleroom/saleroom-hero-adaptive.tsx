@@ -1,6 +1,7 @@
 "use client";
 
 import { MarketingMobileBackLink } from "@/components/marketing/marketing-mobile-back-link";
+import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import {
@@ -110,7 +111,9 @@ export function SaleroomHeroAdaptive({
   const saleroomLive = useSaleroomLive();
   const liveSession: PublicSaleroomSessionStatus | null = saleroomLive ?? saleroomSession ?? null;
 
-  const statusLabel = hero.isLive ? "Auction in progress" : (hero.statusBadge?.label ?? "Auction");
+  const showLifecycleBadge =
+    hero.status === "active" || hero.status === "scheduled" || hero.status === "ended";
+  const statusLabel = hero.isLive ? "Auction in progress" : "Auction";
   const onBlockLot =
     liveSession?.currentLotId != null
       ? catalogLotRefs.find((l) => l.id === liveSession.currentLotId)
@@ -176,7 +179,11 @@ export function SaleroomHeroAdaptive({
             ) : null}
             <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.22em]">
               {hero.isLive ? <LiveDot className="live-dot-pulse h-2 w-2" /> : null}
-              <OverlayToneText>{statusLabel}</OverlayToneText>
+              {showLifecycleBadge ? (
+                <SaleLifecycleBadge status={hero.status} className={badgeOverlayClasses} />
+              ) : (
+                <OverlayToneText>{statusLabel}</OverlayToneText>
+              )}
               <OverlayToneText variant="muted" className="opacity-60 mr-1">
                 {liveTrailing}
               </OverlayToneText>

@@ -1,4 +1,5 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { MediaImage } from "@/components/ui/media-image.server";
 import { formatMoney } from "@/lib/format-currency";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
@@ -44,9 +45,17 @@ export function PastAuctionCard({
         </div>
         <div className="flex items-start justify-between gap-2 md:gap-4">
           <div className="min-w-0 space-y-1">
-            <span className="block font-label text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-variant md:text-[0.625rem] md:tracking-[0.2em]">
-              Lot No. {lotNo(auction.id)} · {closingCaption(auction.endTime)}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <DomainStatusBadge
+                domain="lot"
+                status={auction.status}
+                context={{ lot: { winnerId: auction.winnerId } }}
+                size="sm"
+              />
+              <span className="font-label text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-variant md:text-[0.625rem] md:tracking-[0.2em]">
+                Lot No. {lotNo(auction.id)} · {closingCaption(auction.endTime)}
+              </span>
+            </div>
             <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
               <h3 className="font-headline line-clamp-2 text-base tracking-tight text-on-surface transition-colors group-hover:text-link md:text-2xl">
                 {auction.title}

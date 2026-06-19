@@ -5,12 +5,6 @@ import type { LotCardTimingVM } from "@auction/types";
  * `mappers.ts` are the only place raw `Sale` / `Lot` types are read (DIP).
  */
 
-export type SaleHeroStatusBadge =
-  | { kind: "live"; label: string }
-  | { kind: "upcoming"; label: string }
-  | { kind: "ended"; label: string }
-  | null;
-
 export type SaleHeroVM = {
   id: string;
   title: string;
@@ -41,10 +35,6 @@ export type SaleHeroVM = {
   rightColumnLabel: "Bidding" | "Bidding starts" | null;
   /** Subtle one-line: format, buyer’s premium, optional category. */
   overviewMetaLine: string | null;
-  /** Shown next to the live dot in the date row. */
-  liveLabel: string;
-  /** Hero headline pill: live / upcoming / ended (Figma), or null for draft/cancelled. */
-  statusBadge: SaleHeroStatusBadge;
   /** Optional precomputed count of lots that are currently live within this
    * sale. When present and the sale is live, the hero kicker reads
    * "· {liveLotsCount} lots live"; when omitted, the existing
@@ -86,6 +76,8 @@ export type SaleLotCardVM = {
   viewerIsWatching: boolean;
   /** When saleroom session is live and this lot is on the block. */
   isOnBlock?: boolean;
+  /** Drives Sold vs Unsold when status is `ended`. */
+  winnerId?: string | null | undefined;
 } & LotCardTimingVM;
 
 export type RelatedSaleVM = {

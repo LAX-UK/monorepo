@@ -145,3 +145,8 @@ export function lifecycleBadge(lifecycle: LotLifecycle): LifecycleBadgeVM {
     }
   }
 }
+
+/** Saleroom session: lot currently on the auction block. */
+export function saleroomOnBlockBadge(): LifecycleBadgeVM {
+  return { label: "On the block", tone: "live", pulse: true };
+}
