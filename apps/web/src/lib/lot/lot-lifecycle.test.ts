@@ -1,6 +1,6 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { classifyLotLifecycle, lifecycleBadge } from "./lot-lifecycle";
+import { classifyLotLifecycle, lifecycleBadge, saleroomOnBlockBadge } from "./lot-lifecycle";
 
 const hour = 60 * 60 * 1000;
 
@@ -169,5 +169,15 @@ describe("lifecycleBadge", () => {
     expect(b.label).toMatch(/live/i);
     expect(b.pulse).toBe(true);
     expect(b.tone).toBe("live");
+  });
+});
+
+describe("saleroomOnBlockBadge", () => {
+  it("returns live tone with pulse dot", () => {
+    expect(saleroomOnBlockBadge()).toEqual({
+      label: "On the block",
+      tone: "live",
+      pulse: true,
+    });
   });
 });

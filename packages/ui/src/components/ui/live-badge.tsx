@@ -1,21 +1,17 @@
-import { cn } from "../../lib/utils.js";
+import { StatusBadge } from "./status-badge.js";
+import type { StatusBadgeProps } from "./status-badge.js";
 
 export type LiveBadgeProps = {
   className?: string;
   label?: string;
+  size?: StatusBadgeProps["size"];
 };
 
-/** Live / time-critical status pill with optional pulse. */
-export function LiveBadge({ className, label = "Live" }: LiveBadgeProps) {
+/** Live / time-critical status pill with pulse dot — canonical ring style via StatusBadge. */
+export function LiveBadge({ className, label = "Live", size = "sm" }: LiveBadgeProps) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-live-red/30 bg-live-red/10 px-2 py-0.5 font-label text-[10px] font-semibold uppercase tracking-[0.18em] text-live-red",
-        className,
-      )}
-    >
-      <span className="size-1.5 rounded-full bg-live-red motion-safe:animate-pulse" aria-hidden />
+    <StatusBadge variant="live" size={size} dot className={className}>
       {label}
-    </span>
+    </StatusBadge>
   );
 }

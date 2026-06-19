@@ -13,13 +13,7 @@ import {
   hasStructuredAddress,
   resolveOnsiteMapUrl,
 } from "@auction/validators";
-import type {
-  RelatedSaleVM,
-  SaleHeroStatusBadge,
-  SaleHeroVM,
-  SaleLotCardVM,
-  SaleOverviewVM,
-} from "./view-models";
+import type { RelatedSaleVM, SaleHeroVM, SaleLotCardVM, SaleOverviewVM } from "./view-models";
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = {
   day: "2-digit",
@@ -129,15 +123,6 @@ export function mapSaleToHeroVM(
     rightColumnLabel = "Bidding starts";
   }
 
-  const statusBadge: SaleHeroStatusBadge =
-    sale.status === "active"
-      ? { kind: "live", label: "Live Auction" }
-      : sale.status === "scheduled"
-        ? { kind: "upcoming", label: "Upcoming Auction" }
-        : sale.status === "ended"
-          ? { kind: "ended", label: "Ended" }
-          : null;
-
   return {
     id: sale.id,
     title: sale.title,
@@ -158,8 +143,6 @@ export function mapSaleToHeroVM(
     leftColumnLabel,
     rightColumnLabel,
     overviewMetaLine,
-    liveLabel: "Live Auction",
-    statusBadge,
     ...(typeof opts.liveLotsCount === "number" ? { liveLotsCount: opts.liveLotsCount } : {}),
     ...(opts.estimatedTotalLabel ? { estimatedTotalLabel: opts.estimatedTotalLabel } : {}),
   };
@@ -206,6 +189,7 @@ export function mapLotToCardVM(
     viewerOwnsLot: opts.viewerUserId ? lot.sellerId === opts.viewerUserId : false,
     artistOrMedium: lotSubtitle(lot),
     viewerIsWatching: Boolean(opts.initialWatching),
+    winnerId: lot.winnerId,
     ...toLotCardTimingVM(lot),
   };
 }

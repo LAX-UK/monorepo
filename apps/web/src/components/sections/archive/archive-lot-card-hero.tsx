@@ -6,17 +6,15 @@ import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
+import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { HeroVerticalScrim } from "@/components/ui/hero-tone-scrim";
-import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { formatMoney } from "@/lib/format-currency";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { EDITORIAL_BOLD_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-import type { ReactNode } from "react";
 
 function closingSeason(endTime: Date): string {
   return new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" }).format(endTime);
@@ -36,13 +34,11 @@ type Props = {
 function ArchiveHeroCardInner({
   row,
   isOwner,
-  chip,
   img,
   href,
 }: {
   row: ArchiveLotHeroRow;
   isOwner: boolean;
-  chip: string;
   img: string | undefined;
   href: string;
 }) {
@@ -66,7 +62,16 @@ function ArchiveHeroCardInner({
             data-overlay-content-block
           >
             <div className="min-w-0 flex-1">
-              <ArchiveStatusChip>{chip}</ArchiveStatusChip>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <DomainStatusBadge
+                  domain="lot"
+                  status={a.status}
+                  context={{ lot: { winnerId: a.winnerId } }}
+                />
+                <span className="font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                  {closingSeason(a.endTime)}
+                </span>
+              </div>
               <OverlayToneText
                 as="h3"
                 variant="display"
@@ -100,35 +105,12 @@ function ArchiveHeroCardInner({
   );
 }
 
-function ArchiveStatusChip({ children }: { children: ReactNode }) {
-  const tone = useOverlayTone("contentBlock");
-  return (
-    <span
-      className={cn(
-        overlayPillClasses(
-          tone,
-          "mb-2 inline-block px-2.5 py-0.5 font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
-        ),
-      )}
-      {...overlayToneProps(tone)}
-    >
-      {children}
-    </span>
-  );
-}
-
 /** Editorial single-column card — distinct from staggered grid `PastAuctionCard`. */
 export function ArchiveLotCardHero({ row, href, isOwner = false }: Props) {
   const a = row.auction;
   const img = a.images[0];
-  const chip =
-    a.status === "ended"
-      ? `Ended · ${closingSeason(a.endTime)}`
-      : `${a.status.replace(/_/g, " ")} · ${closingSeason(a.endTime)}`;
 
-  const inner = (
-    <ArchiveHeroCardInner row={row} isOwner={isOwner} chip={chip} img={img} href={href} />
-  );
+  const inner = <ArchiveHeroCardInner row={row} isOwner={isOwner} img={img} href={href} />;
 
   if (!img) return inner;
 

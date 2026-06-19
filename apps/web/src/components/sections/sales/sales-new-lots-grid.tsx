@@ -2,11 +2,10 @@ import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MediaImage } from "@/components/ui/media-image";
-import { lotCardTimingToTimerInputs } from "@/lib/lot/to-lot-timer-inputs";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { lotStatusMarketingShortLabel } from "@/lib/marketing/lot-status-labels";
+import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import type { CatalogLotVM } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -63,10 +62,7 @@ export function SalesNewLotsGrid({ lots, catalogLinkParams }: Props) {
           </Link>
           <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
             <div className="flex items-center justify-between gap-2">
-              <LotStatusBadge
-                {...lotCardTimingToTimerInputs(lot)}
-                closingShort={lotStatusMarketingShortLabel(lot.status)}
-              />
+              <LotStatusBadge {...lotStatusBadgeProps(lot)} />
             </div>
             <Link
               href={resolveLotHref(lot, catalogLinkParams)}
