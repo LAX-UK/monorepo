@@ -139,6 +139,18 @@ Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and
 - **`LotStatusBadge`**: replaces scattered timer/status/STATUS_DISPLAY strings.
 - **`SaleStatusBadge`**: replaces `SaleLiveBadge` and duplicate “live” pills.
 
+### AV display exception (`/display/[saleId]`)
+
+The saleroom **projector board** is not a marketing surface. Session status and bid-feed highlights use **high-contrast emerald/amber** on a dark canvas for legibility at distance — not the catalog `StatusBadge` registry (`live-red` / `warning` tokens).
+
+- Map session labels in [`display-session-status-presentation.ts`](apps/web/src/features/saleroom/lib/display-session-status-presentation.ts).
+- Do **not** reuse `SaleLifecycleBadge` / `LotStatusBadge` on the AV board unless product explicitly requests parity.
+- Catalog and lot-detail surfaces remain on the registry in [`status-presentation.ts`](apps/web/src/lib/presenters/status-presentation.ts).
+
+### Participation warnings (bid flow)
+
+Anti-snipe extensions and onsite no-web-bidding callouts are **bid-participation UX**, not API lifecycle status. Use [`participation-warning-presentation.ts`](apps/web/src/lib/presenters/participation-warning-presentation.ts) → `ParticipationWarningBadge` / `ParticipationWarningCallout` (`StatusBadge variant="warning"`). Keep [`sale-participation-timeline.tsx`](apps/web/src/components/marketing/sale-participation-timeline.tsx) step progress colors separate.
+
 ## Forms (marketing-adjacent)
 
 - **Auth:** `FloatingLabelInput` + `AuthSubmitButton` (`variant="cta" size="xl"`).

@@ -178,11 +178,13 @@ export function SaleroomHeroAdaptive({
               </div>
             ) : null}
             <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.22em]">
-              {hero.isLive ? <LiveDot className="live-dot-pulse h-2 w-2" /> : null}
               {showLifecycleBadge ? (
                 <SaleLifecycleBadge status={hero.status} className={badgeOverlayClasses} />
               ) : (
-                <OverlayToneText>{statusLabel}</OverlayToneText>
+                <>
+                  {hero.isLive ? <LiveDot className="live-dot-pulse h-2 w-2" /> : null}
+                  <OverlayToneText>{statusLabel}</OverlayToneText>
+                </>
               )}
               <OverlayToneText variant="muted" className="opacity-60 mr-1">
                 {liveTrailing}
