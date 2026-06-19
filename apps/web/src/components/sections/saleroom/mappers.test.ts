@@ -121,35 +121,35 @@ describe("mapSaleToHeroVM", () => {
     expect(vm.rightColumnLabel).toBe("Bidding starts");
   });
 
-  it("sets statusBadge: scheduled → upcoming, active → live, ended → ended", () => {
+  it("passes sale status on hero VM for registry badges", () => {
     const scheduled = mapSaleToHeroVM(baseSale, { totalLots: 1, ...defaultHeroOpts });
-    expect(scheduled.statusBadge).toEqual({ kind: "upcoming", label: "Upcoming Auction" });
+    expect(scheduled.status).toBe("scheduled");
 
     const active = mapSaleToHeroVM(
       { ...baseSale, status: "active" },
       { totalLots: 1, ...defaultHeroOpts },
     );
-    expect(active.statusBadge).toEqual({ kind: "live", label: "Live Auction" });
+    expect(active.status).toBe("active");
 
     const ended = mapSaleToHeroVM(
       { ...baseSale, status: "ended" },
       { totalLots: 1, ...defaultHeroOpts },
     );
-    expect(ended.statusBadge).toEqual({ kind: "ended", label: "Ended" });
+    expect(ended.status).toBe("ended");
   });
 
-  it("sets statusBadge to null for draft and cancelled", () => {
+  it("maps draft and cancelled sale status on hero VM", () => {
     const draft = mapSaleToHeroVM(
       { ...baseSale, status: "draft" },
       { totalLots: 1, ...defaultHeroOpts },
     );
-    expect(draft.statusBadge).toBeNull();
+    expect(draft.status).toBe("draft");
 
     const cancelled = mapSaleToHeroVM(
       { ...baseSale, status: "cancelled" },
       { totalLots: 1, ...defaultHeroOpts },
     );
-    expect(cancelled.statusBadge).toBeNull();
+    expect(cancelled.status).toBe("cancelled");
   });
 });
 

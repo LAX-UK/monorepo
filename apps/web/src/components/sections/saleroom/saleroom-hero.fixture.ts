@@ -21,7 +21,5 @@ export const saleroomHeroFixture: SaleHeroVM = {
   leftColumnLabel: null,
   rightColumnLabel: "Bidding",
   overviewMetaLine: "Online only",
-  liveLabel: "Live",
-  statusBadge: { kind: "live", label: "Live" },
   liveLotsCount: 8,
 };

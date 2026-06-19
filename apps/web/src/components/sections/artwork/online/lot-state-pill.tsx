@@ -1,13 +1,14 @@
 "use client";
 
+import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import {
-  type LifecycleBadgeTone,
   type LotLifecycle,
   classifyLotLifecycle,
   lifecycleBadge,
+  saleroomOnBlockBadge,
 } from "@/lib/lot/lot-lifecycle";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -34,21 +35,6 @@ type Props = {
   /** First `Date.now()` tick (e.g. from server render) so pill matches SSR lifecycle. */
   initialNowMs?: number;
 };
-
-function toneClasses(tone: LifecycleBadgeTone): string {
-  switch (tone) {
-    case "live":
-      return "border-error/30 bg-error/10 text-error";
-    case "upcoming":
-      return "border-lot-orange/30 bg-lot-orange/10 text-lot-orange";
-    case "warn":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300";
-    case "ended":
-      return "border-outline-variant/40 bg-surface-container-high/80 text-on-surface-variant";
-    case "muted":
-      return "border-outline-variant/40 bg-surface-container-high/60 text-on-surface-variant";
-  }
-}
 
 function lifecycleDetail(
   lifecycle: LotLifecycle,
@@ -91,8 +77,6 @@ export function LotStatePill({
   hideCountdownOnMobile = false,
   initialNowMs,
 }: Props) {
-  // When server passes `initialNowMs`, SSR and CSR start aligned. Otherwise fall
-  // back to `null` until mount to avoid a hydration mismatch on the countdown text.
   const [now, setNow] = useState<number | null>(() => initialNowMs ?? null);
   const onlineCtx = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
@@ -126,7 +110,7 @@ export function LotStatePill({
   );
   const badge = useMemo(() => {
     if (lifecycle.kind === "liveSaleroom" && isOnBlock) {
-      return { label: "On the block", tone: "live" as const, pulse: true };
+      return saleroomOnBlockBadge();
     }
     if (lifecycle.kind === "liveSaleroom" && !isSessionLive) {
       return { label: "Saleroom lot", tone: "upcoming" as const, pulse: false };
@@ -150,24 +134,7 @@ export function LotStatePill({
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-label font-bold uppercase tracking-wide",
-            compact ? "text-[10px]" : "text-xs",
-            toneClasses(badge.tone),
-          )}
-        >
-          {badge.pulse ? (
-            <span
-              className="relative flex h-3 w-3 shrink-0 items-center justify-center"
-              aria-hidden
-            >
-              <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-current/60 motion-reduce:animate-none" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
-            </span>
-          ) : null}
-          <span>{badge.label}</span>
-        </span>
+        <LotLifecycleStatusBadge badge={badge} size={compact ? "sm" : "md"} />
         {countdown && !suppressCountdown ? (
           <span
             className={cn(
