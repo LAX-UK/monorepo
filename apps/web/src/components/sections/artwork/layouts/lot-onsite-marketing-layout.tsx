@@ -63,6 +63,7 @@ type Props = {
   saleForLifecycle: SaleLifecyclePick;
   overview: SaleOverviewVM;
   kycApproved?: boolean;
+  canParticipate?: boolean;
   myRegistrations?: TimelineRegistration[];
   buyerEntities?: TimelineEntity[];
   loginNextPath?: string;
@@ -95,6 +96,7 @@ export function LotOnsiteMarketingLayout({
   saleForLifecycle,
   overview,
   kycApproved = false,
+  canParticipate = true,
   myRegistrations = [],
   buyerEntities = [],
   loginNextPath = "",
@@ -162,6 +164,7 @@ export function LotOnsiteMarketingLayout({
               deliveryMode="onsite"
               isAuthenticated={isAuthenticated}
               kycApproved={kycApproved}
+              canParticipate={canParticipate}
               myRegistrations={myRegistrations}
               buyerEntities={buyerEntities}
               previewStartTime={sale.previewStartTime}

@@ -14,6 +14,8 @@ type Props = {
   view: CatalogLayoutView;
   lots: SaleLotCardVM[];
   isAuthenticated: boolean;
+  /** When false (staff viewers), hide per-lot bid CTAs. Defaults to true. */
+  canParticipate?: boolean;
   emptyMessage?: string;
   clearFiltersHref?: string | null;
 };
@@ -22,6 +24,7 @@ export function SaleroomCatalogLotsLive({
   lots,
   view,
   isAuthenticated,
+  canParticipate = true,
   emptyMessage,
   clearFiltersHref,
 }: Props) {
@@ -51,6 +54,7 @@ export function SaleroomCatalogLotsLive({
     <>
       <SaleroomLiveLotBanner
         lots={bannerLots}
+        canParticipate={canParticipate}
         className={cn(hideBannerOnMobile && "max-lg:hidden")}
       />
       <SaleroomCatalogLotsByView
@@ -65,7 +69,7 @@ export function SaleroomCatalogLotsLive({
         renderCorner={(lot) => (
           <SaleroomLotQuickLookCorner lot={lot} isAuthenticated={isAuthenticated} />
         )}
-        renderActions={(lot) => <SaleroomLotActions lotHref={lot.href} />}
+        renderActions={(lot) => (canParticipate ? <SaleroomLotActions lotHref={lot.href} /> : null)}
       />
     </>
   );
