@@ -16,6 +16,7 @@ import { LotBidModeChooser } from "@/components/sections/artwork/redesign/lot-bi
 import { LotBidPositionSummary } from "@/components/sections/artwork/redesign/lot-bid-position-summary";
 import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
 import { LotPricingStatusHeader } from "@/components/sections/artwork/redesign/lot-pricing-status-header";
+import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
 import { useLotBidState } from "@/hooks/use-lot-bid-state";
 import { lotBidPositionStickyLabel } from "@/lib/bid/derive-lot-bid-position";
 import { evaluateManualBidEligibility } from "@/lib/bid/evaluate-lot-bid-eligibility";
@@ -841,12 +842,11 @@ export function ArtworkBidPanel({
 
               <div className="mt-6 space-y-3">
                 {extendedByMs != null && extendedByMs > 0 ? (
-                  <p
-                    className="inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-amber-900 dark:text-amber-200"
-                    aria-live="polite"
-                  >
-                    Extended +{Math.max(1, Math.round(extendedByMs / 1000))}s
-                  </p>
+                  <ParticipationWarningBadge
+                    kind="antiSnipeExtended"
+                    extendedSeconds={Math.round(extendedByMs / 1000)}
+                    className="normal-case"
+                  />
                 ) : null}
                 <LotBidPositionSummary
                   position={position}
