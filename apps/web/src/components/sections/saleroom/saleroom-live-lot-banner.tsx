@@ -1,24 +1,31 @@
 "use client";
 
+import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
+import { SaleroomSessionCaption } from "@/components/marketing/saleroom-session-caption";
+import { SaleroomSessionStatusBadge } from "@/components/marketing/saleroom-session-status-badge";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
-import { isLotRunCompleted } from "@/lib/saleroom/lot-run-progress";
+import { saleroomOnBlockBadge } from "@/lib/lot/lot-lifecycle";
+import { participationWarningBandClassName } from "@/lib/presenters/participation-warning-presentation";
 import {
   isSaleroomSessionActive,
   isSaleroomSessionLive,
 } from "@/lib/saleroom/public-session-status";
-import { LiveDot, cn } from "@auction/ui";
+import {
+  type SaleroomLotRef,
+  countSaleroomLotProgress,
+  saleroomBidNowCtaClassName,
+  saleroomLiveNoLotCaption,
+  saleroomLiveProgressLabel,
+  saleroomOnBlockCaption,
+  saleroomPausedCaption,
+} from "@/lib/saleroom/saleroom-mobile-chrome";
+import { cn } from "@auction/ui";
 import Link from "next/link";
 
-export type SaleroomLiveLotRef = {
-  id: string;
-  lotNumber: number | null;
-  title: string;
-  href: string;
-  status: string;
-};
+export type { SaleroomLotRef, SaleroomLiveLotRef } from "@/lib/saleroom/saleroom-mobile-chrome";
 
 type Props = {
-  lots: SaleroomLiveLotRef[];
+  lots: SaleroomLotRef[];
   /** When set, banner only shows if viewed lot differs from on-block lot. */
   viewedLotId?: string | null;
   className?: string;
@@ -34,23 +41,21 @@ export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: P
   if (viewedLotId != null && live.currentLotId === viewedLotId) return null;
   if (viewedLotId != null && !onBlockLot) return null;
 
-  const totalLots = lots.length;
-  const completedLots = lots.filter((l) => isLotRunCompleted(l.status as "ended")).length;
+  const { completedLots, totalLots } = countSaleroomLotProgress(lots);
 
   if (live.status === "paused") {
     return (
       <div
-        className={cn("border-b border-outline-variant/25 bg-amber-500/10 px-4 py-3", className)}
+        className={cn(
+          "border-b border-outline-variant/25 px-4 py-3",
+          participationWarningBandClassName,
+          className,
+        )}
       >
-        <p className="font-body text-sm text-on-surface">
-          <span className="font-medium">Auction paused</span>
-          {onBlockLot ? (
-            <span className="text-on-surface-variant">
-              {" "}
-              · Lot {onBlockLot.lotNumber ?? "—"} was on the block
-            </span>
-          ) : null}
-        </p>
+        <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-wrap items-center gap-2">
+          <SaleroomSessionStatusBadge status={live.status} />
+          <SaleroomSessionCaption caption={saleroomPausedCaption(onBlockLot ?? null)} />
+        </div>
       </div>
     );
   }
@@ -66,7 +71,7 @@ export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: P
         )}
       >
         <p className="font-body text-sm text-on-surface-variant">
-          Saleroom live · {completedLots} of {totalLots} lots complete
+          {saleroomLiveNoLotCaption(completedLots, totalLots)}
         </p>
       </div>
     );
@@ -74,27 +79,20 @@ export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: P
 
   if (!onBlockLot) return null;
 
-  const lotLabel = onBlockLot.lotNumber != null ? `Lot ${onBlockLot.lotNumber}` : onBlockLot.title;
+  const progressLabel = saleroomLiveProgressLabel(
+    completedLots,
+    totalLots,
+    Boolean(live.currentLotId),
+  );
 
   return (
     <div className={cn("border-b border-live-red/20 bg-live-red/5 px-4 py-3", className)}>
       <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <LiveDot className="live-dot-pulse h-2 w-2 shrink-0" />
-          <p className="font-body text-sm text-on-surface">
-            <span className="font-medium">{lotLabel} is on the block</span>
-            {totalLots > 0 ? (
-              <span className="text-on-surface-variant">
-                {" "}
-                · {completedLots + (live.currentLotId ? 1 : 0)} of {totalLots} lots
-              </span>
-            ) : null}
-          </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} size="sm" />
+          <SaleroomSessionCaption caption={saleroomOnBlockCaption(onBlockLot, progressLabel)} />
         </div>
-        <Link
-          href={onBlockLot.href}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-primary px-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary"
-        >
+        <Link href={onBlockLot.href} className={saleroomBidNowCtaClassName}>
           Bid now →
         </Link>
       </div>

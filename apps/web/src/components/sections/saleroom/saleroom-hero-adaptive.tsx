@@ -13,14 +13,11 @@ import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import { overlayPillClasses } from "@/lib/ui/overlay-tone-classes";
 import type { SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SaleHeroVM } from "./view-models";
 
@@ -28,78 +25,23 @@ type Props = {
   hero: SaleHeroVM;
   toolbar: ReactNode;
   actions: ReactNode;
-  isAuthenticated?: boolean;
   /** Mobile-only link back to the sales calendar. */
   backHref?: string;
   backLabel?: string;
   deliveryMode?: SaleDeliveryMode;
-  streamUrl?: string | null;
   /** Minimal lot refs for live on-block hero copy (hybrid saleroom). */
   catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
   /** SSR snapshot for hybrid on-block hero copy. */
   saleroomSession?: PublicSaleroomSessionStatus | null;
 };
 
-function SaleroomHeroPrimaryCta({
-  hero,
-  isAuthenticated,
-  deliveryMode,
-  streamUrl,
-}: {
-  hero: SaleHeroVM;
-  isAuthenticated: boolean;
-  deliveryMode: SaleDeliveryMode;
-  streamUrl: string | null;
-}) {
-  if (!saleAllowsWebBidding(deliveryMode)) {
-    if (hero.isLive && streamUrl) {
-      return (
-        <Button variant="cta" size="lg" className="gap-2" asChild>
-          <a href={streamUrl} target="_blank" rel="noopener noreferrer">
-            <LiveDot className="live-dot-pulse h-2 w-2" />
-            Watch live stream
-          </a>
-        </Button>
-      );
-    }
-    if (hero.status === "scheduled" || hero.status === "draft") {
-      return (
-        <Button variant="cta" size="lg" asChild>
-          <Link href="#plan-visit">Plan your visit →</Link>
-        </Button>
-      );
-    }
-    return (
-      <Button variant="cta" size="lg" asChild>
-        <Link href="#catalog">{isAuthenticated ? "Browse Lots →" : "View catalogue →"}</Link>
-      </Button>
-    );
-  }
-
-  if (isAuthenticated) {
-    return (
-      <Button variant="cta" size="lg" asChild>
-        <Link href="#catalog">Browse Lots →</Link>
-      </Button>
-    );
-  }
-
-  return (
-    <Button variant="cta" size="lg" asChild>
-      <Link href="/register">Register to Bid →</Link>
-    </Button>
-  );
-}
-
 export function SaleroomHeroAdaptive({
   hero,
   toolbar,
   actions,
-  isAuthenticated = false,
   backHref,
   backLabel = "Back to calendar",
   deliveryMode = "online",
-  streamUrl = null,
   catalogLotRefs = [],
   saleroomSession = null,
 }: Props) {
@@ -239,15 +181,7 @@ export function SaleroomHeroAdaptive({
                 </div>
               );
             })()}
-            <div className="fade-up-d3 flex flex-wrap gap-3">
-              <SaleroomHeroPrimaryCta
-                hero={hero}
-                isAuthenticated={isAuthenticated}
-                deliveryMode={deliveryMode}
-                streamUrl={streamUrl}
-              />
-              {actions}
-            </div>
+            <div className="fade-up-d3">{actions}</div>
             <div className="fade-up-d4 mt-7">
               <dl className="flex flex-wrap gap-8 md:gap-10">
                 {stats.map(([label, value]) => (

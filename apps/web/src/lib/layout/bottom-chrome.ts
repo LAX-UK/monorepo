@@ -1,6 +1,6 @@
 /** Fixed bottom chrome height tokens (match globals.css). */
 export const BOTTOM_CHROME = {
-  bid: "4.5rem",
+  bid: "5rem",
   tab: "var(--bottom-nav-height, 4rem)",
   consent: "5.5rem",
 } as const;
