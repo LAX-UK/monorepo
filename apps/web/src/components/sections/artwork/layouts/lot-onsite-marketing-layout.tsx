@@ -1,4 +1,3 @@
-import { SaleParticipationTimeline } from "@/components/marketing/sale-participation-timeline";
 import { ShareButton } from "@/components/marketing/share-button";
 import type {
   AccordionBlock,
@@ -21,26 +20,15 @@ import {
 } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
+import { ParticipationWarningCallout } from "@/components/ui/participation-warning-callout";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { formatPostalAddressLines } from "@auction/validators";
-import { Info } from "lucide-react";
 import type { ReactNode } from "react";
 
 type SaleLifecyclePick = Pick<Sale, "status" | "deliveryMode"> | null;
-
-type TimelineRegistration = {
-  buyerLegalEntityId: string;
-  status: string;
-};
-
-type TimelineEntity = {
-  id: string;
-  displayName: string;
-  memberRole: string;
-};
 
 type Props = {
   auction: Lot;
@@ -62,10 +50,6 @@ type Props = {
   isSaleQueueLoading?: boolean;
   saleForLifecycle: SaleLifecyclePick;
   overview: SaleOverviewVM;
-  kycApproved?: boolean;
-  myRegistrations?: TimelineRegistration[];
-  buyerEntities?: TimelineEntity[];
-  loginNextPath?: string;
 };
 
 function locationOneLine(sale: Sale): string {
@@ -94,10 +78,6 @@ export function LotOnsiteMarketingLayout({
   isSaleQueueLoading = false,
   saleForLifecycle,
   overview,
-  kycApproved = false,
-  myRegistrations = [],
-  buyerEntities = [],
-  loginNextPath = "",
 }: Props) {
   const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
   const locationLine = locationOneLine(sale);
@@ -150,37 +130,14 @@ export function LotOnsiteMarketingLayout({
           </div>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-amber-500/10 bg-amber-500/[0.04] p-5 flex items-start gap-3.5">
-          <div className="rounded-full bg-amber-500/10 p-1.5 text-amber-600 dark:text-amber-400">
-            <Info className="size-5 shrink-0" />
-          </div>
-          <div>
-            <h3 className="font-body text-sm font-semibold text-amber-900 dark:text-amber-400">
-              In-Person Saleroom Event
-            </h3>
-            <p className="mt-1 font-body text-xs leading-relaxed text-amber-800/80 dark:text-amber-400/80">
-              {getOnsiteNoWebBiddingNote()}
-            </p>
-          </div>
-        </div>
+        <ParticipationWarningCallout
+          kind="onsiteNoWebBidding"
+          detail={getOnsiteNoWebBiddingNote()}
+          className="mt-8"
+        />
 
         <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:items-start">
           <div className="order-2 space-y-10 lg:order-1">
-            <SaleParticipationTimeline
-              deliveryMode="onsite"
-              isAuthenticated={isAuthenticated}
-              kycApproved={kycApproved}
-              myRegistrations={myRegistrations}
-              buyerEntities={buyerEntities}
-              previewStartTime={sale.previewStartTime}
-              startTime={sale.startTime}
-              endTime={sale.endTime}
-              streamUrl={sale.streamUrl}
-              liveStreamAnchorId="live-stream"
-              {...(loginNextPath ? { registerReturnPath: loginNextPath } : {})}
-              className="rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8"
-            />
-
             {lotDetailsBlock ? (
               <div className="scroll-mt-28 rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8">
                 <LotDetailsSection block={lotDetailsBlock} className="mb-0 border-0 pb-0" />

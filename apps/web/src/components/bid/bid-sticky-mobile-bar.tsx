@@ -13,6 +13,7 @@ import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import { countdownTier } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
+import { liveUrgencyTextClass } from "@/lib/presenters/status-presentation";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -146,14 +147,23 @@ export function BidStickyMobileBar({
 
   if (!live) return null;
 
+  const closeUrgent = !saleroomMode && msRemaining > 0 && countdownTier(msRemaining) !== "normal";
+
   const statusLine = saleroomMode
     ? saleroomStatusLine(lifecycleKind, isOnBlock)
     : countdownClock || remainingLabel
       ? `Closes ${countdownClock || remainingLabel}`
       : "Closing soon";
 
+  const statusLineClass = saleroomMode
+    ? isOnBlock
+      ? liveUrgencyTextClass("live")
+      : "text-on-surface-variant"
+    : closeUrgent
+      ? liveUrgencyTextClass("soon")
+      : "text-on-surface-variant";
+
   if (compact) {
-    const closeUrgent = !saleroomMode && msRemaining > 0 && countdownTier(msRemaining) !== "normal";
     const next = encodeURIComponent(loginNextPath);
     const kycBlocked = decision.kind === "block" && decision.viewId === "kyc-threshold";
     const regBlocked =
@@ -169,7 +179,7 @@ export function BidStickyMobileBar({
         <p
           className={cn(
             "min-w-0 flex-1 text-center font-label text-xs font-semibold uppercase tracking-wider tabular-nums",
-            closeUrgent ? "text-error" : "text-on-surface-variant",
+            statusLineClass,
           )}
         >
           {statusLine}
@@ -202,7 +212,6 @@ export function BidStickyMobileBar({
   }
 
   const next = encodeURIComponent(loginNextPath);
-  const closeUrgent = !saleroomMode && countdownTier(msRemaining) !== "normal";
 
   let right: ReactNode;
   if (decision.kind === "block") {
@@ -317,7 +326,7 @@ export function BidStickyMobileBar({
         <p
           className={cn(
             "mt-0.5 truncate font-label text-[0.7rem] tabular-nums font-semibold uppercase tracking-wider",
-            closeUrgent ? "text-error" : "text-on-surface-variant",
+            statusLineClass,
           )}
         >
           {statusLine}

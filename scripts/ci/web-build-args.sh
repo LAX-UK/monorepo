@@ -71,6 +71,11 @@ cmd_compose_args() {
   emit "NEXT_PUBLIC_SENTRY_DSN_WEB" "${NEXT_PUBLIC_SENTRY_DSN_WEB:-}"
   emit "SENTRY_RELEASE" "${SENTRY_RELEASE:-}"
   emit "SENTRY_PROJECT" "lax-${ENVIRONMENT}-web"
+  if [[ "${ENVIRONMENT}" == "prod" ]]; then
+    emit "NODE_RUNTIME_HEAP_MB" "768"
+  else
+    emit "NODE_RUNTIME_HEAP_MB" "384"
+  fi
 }
 
 usage() {

@@ -150,3 +150,6 @@ export function lifecycleBadge(lifecycle: LotLifecycle): LifecycleBadgeVM {
 export function saleroomOnBlockBadge(): LifecycleBadgeVM {
   return { label: "On the block", tone: "live", pulse: true };
 }
+
+/** Image ring when a catalog lot is on the auction block (matches live-red badge accent). */
+export const saleroomOnBlockRingClass = "ring-2 ring-live-red/40";

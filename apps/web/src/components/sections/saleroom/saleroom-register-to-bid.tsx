@@ -1,13 +1,21 @@
 "use client";
 
 import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
+import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
+import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import {
   BID_LIMIT_FIELD_LABEL,
   bidLimitFieldHelp,
   bidLimitFieldPlaceholder,
 } from "@/lib/saleroom/bid-limit-field-copy";
+import {
+  overlayOutlineButtonClasses,
+  overlayToneProps,
+  saleroomHeroActionSizing,
+} from "@/lib/ui/overlay-tone-classes";
 import type { LegalEntityMemberRole } from "@auction/types";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
@@ -20,11 +28,13 @@ import {
 } from "@auction/ui/components/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 type Entity = { id: string; displayName: string; memberRole: LegalEntityMemberRole };
 
-type Props = {
+export type SaleroomRegisterToBidLayout = "default" | "button" | "form";
+
+type RegisterToBidBaseProps = {
   saleId: string;
   loginNextPath: string;
   isAuthenticated: boolean;
@@ -41,102 +51,122 @@ type Props = {
   saleCurrency?: string;
 };
 
+type Props = RegisterToBidBaseProps & {
+  layout?: SaleroomRegisterToBidLayout;
+};
+
 function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
-export function SaleroomRegisterToBid({
-  saleId,
-  loginNextPath,
-  isAuthenticated,
+function agentEntitiesFrom(buyerEntities: Entity[]) {
+  return buyerEntities.filter((e) => e.memberRole === "buyer_agent");
+}
+
+/** Hero band 2 caption when KYC blocks bidding. */
+export function registerToBidHeroCaption({
   show,
-  buyerEntities,
-  myRegistrations,
+  isAuthenticated,
   kycApproved,
   kycFeedback = null,
-  orgModuleEnabled = true,
-  saleCurrency = "GBP",
-}: Props) {
+}: Pick<RegisterToBidBaseProps, "show" | "isAuthenticated" | "kycApproved" | "kycFeedback">):
+  | string
+  | null {
+  if (!show || !isAuthenticated || kycApproved) return null;
+  return kycFeedback?.detail ?? null;
+}
+
+/** Whether the agent registration form should render in hero band 3. */
+export function registerToBidNeedsAgentFormBand({
+  show,
+  isAuthenticated,
+  kycApproved,
+  buyerEntities,
+}: Pick<
+  RegisterToBidBaseProps,
+  "show" | "isAuthenticated" | "kycApproved" | "buyerEntities"
+>): boolean {
+  if (!show || !isAuthenticated || !kycApproved) return false;
+  if (buyerEntities.length === 0) return false;
+  return agentEntitiesFrom(buyerEntities).length > 0;
+}
+
+export function RegisterHelperText({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  const inFrame = useOverlayToneContext() != null;
+  if (inFrame) {
+    return (
+      <OverlayToneText
+        variant="muted"
+        className={cn("max-w-sm font-body text-xs text-pretty", className)}
+      >
+        {children}
+      </OverlayToneText>
+    );
+  }
+  return (
+    <p className={cn("max-w-sm font-body text-xs text-on-surface-variant text-pretty", className)}>
+      {children}
+    </p>
+  );
+}
+
+function RegisterOutlineLink({ href, children }: { href: string; children: ReactNode }) {
+  const inFrame = useOverlayToneContext() != null;
+  const overlayTone = useOverlayTone("contentBlock");
+  if (inFrame) {
+    return (
+      <Link
+        href={href}
+        className={cn(
+          overlayOutlineButtonClasses(
+            overlayTone,
+            cn(saleroomHeroActionSizing, "shrink-0 justify-center"),
+          ),
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
+        )}
+        {...overlayToneProps(overlayTone)}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <Button
+      asChild
+      variant="outline"
+      size="md"
+      className={cn(saleroomHeroActionSizing, "shrink-0")}
+    >
+      <Link href={href}>{children}</Link>
+    </Button>
+  );
+}
+
+function AgentRegistrationForm({
+  saleId,
+  saleCurrency,
+  agentEntities,
+  myRegistrations,
+  statusByLe,
+}: {
+  saleId: string;
+  saleCurrency: string;
+  agentEntities: Entity[];
+  myRegistrations: RegisterToBidBaseProps["myRegistrations"];
+  statusByLe: Map<string, string>;
+}) {
   const router = useRouter();
   const [entityId, setEntityId] = useState("");
   const [bidLimit, setBidLimit] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const statusByLe = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const r of myRegistrations) {
-      m.set(r.buyerLegalEntityId, r.status);
-    }
-    return m;
-  }, [myRegistrations]);
-
-  const agentEntities = useMemo(
-    () => buyerEntities.filter((e) => e.memberRole === "buyer_agent"),
-    [buyerEntities],
-  );
-
-  if (!show) return null;
-
-  if (!isAuthenticated) {
-    return (
-      <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
-        <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`}>Register to bid</Link>
-      </Button>
-    );
-  }
-
-  if (!kycApproved) {
-    return (
-      <div className="flex min-w-0 max-w-md flex-col gap-2 sm:max-w-sm">
-        {kycFeedback?.detail ? (
-          <p className="font-body text-xs text-secondary">{kycFeedback.detail}</p>
-        ) : null}
-        <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
-          <Link href={`/dashboard/verify-identity?next=${encodeURIComponent(loginNextPath)}`}>
-            {kycFeedback ? kycLinkActionLabel(kycFeedback, "long") : "Verify identity to bid"}
-          </Link>
-        </Button>
-      </div>
-    );
-  }
-
-  if (buyerEntities.length === 0) {
-    if (!orgModuleEnabled) {
-      return (
-        <p className="max-w-sm font-body text-xs text-on-surface-variant">
-          Organisation buyer profiles are coming soon.
-        </p>
-      );
-    }
-    return (
-      <Button asChild variant="outline" size="lg" className="min-h-11 shrink-0">
-        <Link href="/onboarding/organisation">Set up a buyer profile</Link>
-      </Button>
-    );
-  }
-
-  if (agentEntities.length === 0) {
-    if (!orgModuleEnabled) {
-      return (
-        <p className="max-w-sm font-body text-xs text-on-surface-variant">
-          Bidding on this sale needs a buyer-agent profile. Organisation buyer profiles are coming
-          soon.
-        </p>
-      );
-    }
-    return (
-      <p className="max-w-sm font-body text-xs text-on-surface-variant">
-        Bidding online? Sign in and verify your identity — no extra registration needed for private
-        collectors. Buyer agents can{" "}
-        <Link href="/onboarding/organisation" className="text-link underline">
-          set up an organisation profile
-        </Link>{" "}
-        to register here.
-      </p>
-    );
-  }
 
   const selectedStatus = entityId ? statusByLe.get(entityId) : undefined;
 
@@ -251,5 +281,153 @@ export function SaleroomRegisterToBid({
         {loading ? "Submitting…" : "Submit registration"}
       </Button>
     </form>
+  );
+}
+
+export function SaleroomRegisterToBid({
+  saleId,
+  loginNextPath,
+  isAuthenticated,
+  show,
+  buyerEntities,
+  myRegistrations,
+  kycApproved,
+  kycFeedback = null,
+  orgModuleEnabled = true,
+  saleCurrency = "GBP",
+  layout = "default",
+}: Props) {
+  const statusByLe = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of myRegistrations) {
+      m.set(r.buyerLegalEntityId, r.status);
+    }
+    return m;
+  }, [myRegistrations]);
+
+  const agentEntities = useMemo(() => agentEntitiesFrom(buyerEntities), [buyerEntities]);
+
+  const registerProps: RegisterToBidBaseProps = {
+    saleId,
+    loginNextPath,
+    isAuthenticated,
+    show,
+    buyerEntities,
+    myRegistrations,
+    kycApproved,
+    kycFeedback,
+    orgModuleEnabled,
+    saleCurrency,
+  };
+
+  if (!show) return null;
+
+  if (layout === "form") {
+    if (!registerToBidNeedsAgentFormBand(registerProps)) return null;
+    return (
+      <AgentRegistrationForm
+        saleId={saleId}
+        saleCurrency={saleCurrency}
+        agentEntities={agentEntities}
+        myRegistrations={myRegistrations}
+        statusByLe={statusByLe}
+      />
+    );
+  }
+
+  if (layout === "button") {
+    if (!isAuthenticated) {
+      return (
+        <RegisterOutlineLink href={`/login?next=${encodeURIComponent(loginNextPath)}`}>
+          Register to bid
+        </RegisterOutlineLink>
+      );
+    }
+
+    if (!kycApproved) {
+      const verifyHref = `/dashboard/verify-identity?next=${encodeURIComponent(loginNextPath)}`;
+      const verifyLabel = kycFeedback
+        ? kycLinkActionLabel(kycFeedback, "long")
+        : "Verify identity to bid";
+      return <RegisterOutlineLink href={verifyHref}>{verifyLabel}</RegisterOutlineLink>;
+    }
+
+    if (buyerEntities.length === 0) {
+      if (!orgModuleEnabled) return null;
+      return (
+        <RegisterOutlineLink href="/onboarding/organisation">
+          Set up a buyer profile
+        </RegisterOutlineLink>
+      );
+    }
+
+    if (agentEntities.length === 0) return null;
+
+    return <RegisterOutlineLink href="#register-to-bid">Register to bid →</RegisterOutlineLink>;
+  }
+
+  // layout === "default"
+  if (!isAuthenticated) {
+    return (
+      <RegisterOutlineLink href={`/login?next=${encodeURIComponent(loginNextPath)}`}>
+        Register to bid
+      </RegisterOutlineLink>
+    );
+  }
+
+  if (!kycApproved) {
+    const verifyHref = `/dashboard/verify-identity?next=${encodeURIComponent(loginNextPath)}`;
+    const verifyLabel = kycFeedback
+      ? kycLinkActionLabel(kycFeedback, "long")
+      : "Verify identity to bid";
+
+    return (
+      <div className="flex min-w-0 max-w-md flex-col gap-2 sm:max-w-sm">
+        {kycFeedback?.detail ? <RegisterHelperText>{kycFeedback.detail}</RegisterHelperText> : null}
+        <RegisterOutlineLink href={verifyHref}>{verifyLabel}</RegisterOutlineLink>
+      </div>
+    );
+  }
+
+  if (buyerEntities.length === 0) {
+    if (!orgModuleEnabled) {
+      return <RegisterHelperText>Organisation buyer profiles are coming soon.</RegisterHelperText>;
+    }
+    return (
+      <RegisterOutlineLink href="/onboarding/organisation">
+        Set up a buyer profile
+      </RegisterOutlineLink>
+    );
+  }
+
+  if (agentEntities.length === 0) {
+    if (!orgModuleEnabled) {
+      return (
+        <RegisterHelperText>
+          Bidding on this sale needs a buyer-agent profile. Organisation buyer profiles are coming
+          soon.
+        </RegisterHelperText>
+      );
+    }
+    return (
+      <RegisterHelperText>
+        Bidding online? Sign in and verify your identity — no extra registration needed for private
+        collectors. Buyer agents can{" "}
+        <Link href="/onboarding/organisation" className="text-link underline">
+          set up an organisation profile
+        </Link>{" "}
+        to register here.
+      </RegisterHelperText>
+    );
+  }
+
+  return (
+    <AgentRegistrationForm
+      saleId={saleId}
+      saleCurrency={saleCurrency}
+      agentEntities={agentEntities}
+      myRegistrations={myRegistrations}
+      statusByLe={statusByLe}
+    />
   );
 }

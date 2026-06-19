@@ -54,6 +54,8 @@ type Props = {
   orgModuleEnabled?: boolean;
 };
 
+export type SaleTelephoneBookingPanelProps = Props;
+
 export function SaleTelephoneBookingPanel({
   saleId,
   saleTitle,
