@@ -10,7 +10,7 @@ export function PaletteItemBadge({ item }: { item: PaletteItem }) {
 
   if (item.badgeTone === "live") {
     return (
-      <StatusBadge variant="info" size="sm">
+      <StatusBadge variant="live" size="sm" dot>
         Live
       </StatusBadge>
     );

@@ -41,7 +41,7 @@ const TONE_CLASSES: Record<PillTone, string> = {
 };
 
 const TONE_DOT: Record<PillTone, string> = {
-  ok: "bg-emerald-500",
+  ok: "bg-success",
   info: "bg-primary",
   warn: "bg-lot-orange",
   danger: "bg-live-red",

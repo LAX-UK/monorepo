@@ -4,11 +4,11 @@ import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-g
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { lotCatalogStatusPresentation } from "@/lib/marketing/lot-catalog-status";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -97,7 +97,6 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
   const img = lot.images[0];
   const est = lotEstimateLine(lot);
   const price = lotPriceDisplay(lot);
-  const status = lotCatalogStatusPresentation(lot.status);
   const yearMedium = lotYearMedium(lot);
 
   return (
@@ -119,14 +118,11 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col pt-3">
-        <p
-          className={cn(
-            "font-label text-[10px] font-bold uppercase tracking-[0.1em]",
-            status.className,
-          )}
-        >
-          {status.label}
-        </p>
+        <DomainStatusBadge
+          domain="lot"
+          status={lot.status}
+          context={{ lot: { winnerId: lot.winnerId } }}
+        />
         <h3 className="mt-1 line-clamp-2 min-h-10 font-headline text-base font-semibold leading-5 text-on-surface underline-offset-4 group-hover:underline">
           {lot.title}
         </h3>

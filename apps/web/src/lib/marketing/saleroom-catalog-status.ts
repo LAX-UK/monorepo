@@ -1,13 +1,18 @@
-export type SaleroomCatalogStatus = "all" | "live" | "upcoming" | "ended";
+import {
+  type SaleroomCatalogStatus,
+  saleroomCatalogFilterLabel,
+} from "@/lib/marketing/marketing-status-filters";
+
+export type { SaleroomCatalogStatus };
 
 export const SALEROOM_CATALOG_STATUS_OPTIONS: ReadonlyArray<{
   label: string;
   value: SaleroomCatalogStatus;
 }> = [
-  { label: "All", value: "all" },
-  { label: "Live", value: "live" },
-  { label: "Upcoming", value: "upcoming" },
-  { label: "Ended", value: "ended" },
+  { label: saleroomCatalogFilterLabel("all"), value: "all" },
+  { label: saleroomCatalogFilterLabel("live"), value: "live" },
+  { label: saleroomCatalogFilterLabel("upcoming"), value: "upcoming" },
+  { label: saleroomCatalogFilterLabel("ended"), value: "ended" },
 ];
 
 export function parseSaleroomCatalogStatus(raw: string | null | undefined): SaleroomCatalogStatus {

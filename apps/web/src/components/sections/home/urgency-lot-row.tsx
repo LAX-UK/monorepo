@@ -1,6 +1,6 @@
 "use client";
 
-import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { LotStatusBadge, LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { SALE_CARD_SHELL_CLASSNAME } from "@/components/sections/sales/card/sale-card-shell";
@@ -10,6 +10,7 @@ import {
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
 import { HOME_LOT_TILE_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -50,11 +51,7 @@ export function UrgencyLotRow({
     loginNextPath,
   } as const;
 
-  const timerProps = {
-    status: item.status,
-    startTime: item.startTime,
-    endTime: item.endTime,
-  } as const;
+  const timerProps = lotStatusBadgeProps(item);
 
   return (
     <article className={cn(SALE_CARD_SHELL_CLASSNAME, "p-3 sm:p-4 lg:p-5")}>
@@ -95,10 +92,13 @@ export function UrgencyLotRow({
         <div className="flex min-w-0 flex-1 flex-col gap-4 pt-4 lg:flex-row lg:gap-6 lg:pt-0">
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="hidden flex-wrap items-center gap-2 lg:flex">
+              <LotStatusBadge {...timerProps} />
               <LotStatusTimer
                 variant="default"
                 pillSurfaceClassName={INLINE_TIMER_SURFACE}
-                {...timerProps}
+                status={item.status}
+                startTime={item.startTime}
+                endTime={item.endTime}
               />
             </div>
             <Link

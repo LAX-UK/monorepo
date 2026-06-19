@@ -1,5 +1,9 @@
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { marketingFilterChipList, marketingFilterChipStrip } from "@/lib/marketing/chips";
+import {
+  lotStatusFilterLabel,
+  searchEndingFilterLabel,
+} from "@/lib/marketing/marketing-status-filters";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
@@ -28,10 +32,10 @@ type Option = {
 
 const OPTIONS: readonly Option[] = [
   { key: "all", label: "All lots" },
-  { key: "active", label: "Live now", status: "active" },
-  { key: "scheduled", label: "Upcoming", status: "scheduled" },
-  { key: "ending", label: "Ending < 24h", ending: "24h" },
-  { key: "ended", label: "Ended", status: "ended" },
+  { key: "active", label: lotStatusFilterLabel("active"), status: "active" },
+  { key: "scheduled", label: lotStatusFilterLabel("scheduled"), status: "scheduled" },
+  { key: "ending", label: searchEndingFilterLabel("24h"), ending: "24h" },
+  { key: "ended", label: lotStatusFilterLabel("ended"), status: "ended" },
 ];
 
 /** On-page status + ending-window pickers for /search (parity with archive chips). */

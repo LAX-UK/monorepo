@@ -9,11 +9,11 @@ import { MediaImage } from "@/components/ui/media-image";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
-import { lotCardTimingToTimerInputs } from "@/lib/lot/to-lot-timer-inputs";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
 import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import type { OverlaySurface } from "@/lib/ui/overlay-tone-classes";
 import type { CatalogLotVM } from "@auction/types";
@@ -66,7 +66,7 @@ function LotWatchlistHeart({
 
 function LotStatusOverlay({ lot }: { lot: CatalogLotVM }) {
   if (!isPublicLotStatus(lot.status)) return null;
-  return <LotStatusBadge {...lotCardTimingToTimerInputs(lot)} />;
+  return <LotStatusBadge {...lotStatusBadgeProps(lot)} />;
 }
 
 export function CatalogLotGridView({
@@ -271,7 +271,7 @@ export function CatalogLotListView({
                     </div>
                     {isPublicLotStatus(a.status) ? (
                       <div className="tabular-nums">
-                        <LotStatusBadge {...lotCardTimingToTimerInputs(a)} />
+                        <LotStatusBadge {...lotStatusBadgeProps(a)} />
                       </div>
                     ) : null}
                   </div>
