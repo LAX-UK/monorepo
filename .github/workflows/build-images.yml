@@ -88,6 +88,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Web build compiles Next.js + Sentry source maps; add swap so BuildKit does not OOM (exit 137).
+      - name: Add swap for web build
+        if: matrix.component == 'web'
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
       # Guard + compose build args for web (see scripts/ci/web-build-args.sh and
       # infra/web-build/README.md).
       - name: Verify web origin matches Terraform
@@ -126,6 +137,8 @@ jobs:
           push: true
           provenance: false
           build-args: ${{ steps.webargs.outputs.args }}
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.ENVIRONMENT }}
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}

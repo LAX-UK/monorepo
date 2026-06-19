@@ -1,4 +1,3 @@
-import { SaleParticipationTimeline } from "@/components/marketing/sale-participation-timeline";
 import { ShareButton } from "@/components/marketing/share-button";
 import type {
   AccordionBlock,
@@ -31,17 +30,6 @@ import type { ReactNode } from "react";
 
 type SaleLifecyclePick = Pick<Sale, "status" | "deliveryMode"> | null;
 
-type TimelineRegistration = {
-  buyerLegalEntityId: string;
-  status: string;
-};
-
-type TimelineEntity = {
-  id: string;
-  displayName: string;
-  memberRole: string;
-};
-
 type Props = {
   auction: Lot;
   sale: Sale;
@@ -62,11 +50,6 @@ type Props = {
   isSaleQueueLoading?: boolean;
   saleForLifecycle: SaleLifecyclePick;
   overview: SaleOverviewVM;
-  kycApproved?: boolean;
-  canParticipate?: boolean;
-  myRegistrations?: TimelineRegistration[];
-  buyerEntities?: TimelineEntity[];
-  loginNextPath?: string;
 };
 
 function locationOneLine(sale: Sale): string {
@@ -95,11 +78,6 @@ export function LotOnsiteMarketingLayout({
   isSaleQueueLoading = false,
   saleForLifecycle,
   overview,
-  kycApproved = false,
-  canParticipate = true,
-  myRegistrations = [],
-  buyerEntities = [],
-  loginNextPath = "",
 }: Props) {
   const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
   const locationLine = locationOneLine(sale);
@@ -160,22 +138,6 @@ export function LotOnsiteMarketingLayout({
 
         <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:items-start">
           <div className="order-2 space-y-10 lg:order-1">
-            <SaleParticipationTimeline
-              deliveryMode="onsite"
-              isAuthenticated={isAuthenticated}
-              kycApproved={kycApproved}
-              canParticipate={canParticipate}
-              myRegistrations={myRegistrations}
-              buyerEntities={buyerEntities}
-              previewStartTime={sale.previewStartTime}
-              startTime={sale.startTime}
-              endTime={sale.endTime}
-              streamUrl={sale.streamUrl}
-              liveStreamAnchorId="live-stream"
-              {...(loginNextPath ? { registerReturnPath: loginNextPath } : {})}
-              className="rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8"
-            />
-
             {lotDetailsBlock ? (
               <div className="scroll-mt-28 rounded-3xl border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-sm dark:bg-surface-container-low/40 sm:p-8">
                 <LotDetailsSection block={lotDetailsBlock} className="mb-0 border-0 pb-0" />

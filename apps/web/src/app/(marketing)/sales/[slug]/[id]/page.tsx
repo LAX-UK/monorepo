@@ -5,8 +5,7 @@ import { MarketingPaginationControls } from "@/components/marketing/marketing-pa
 import { SaleAnchorTabs } from "@/components/marketing/sale-anchor-tabs";
 import { SaleDesktopStickyBar } from "@/components/marketing/sale-desktop-sticky-bar";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
-import { SaleParticipationTimeline } from "@/components/marketing/sale-participation-timeline";
-import { SaleTelephoneBookingPanel } from "@/components/marketing/sale-telephone-booking-panel";
+import { SaleTelephoneBiddingSection } from "@/components/marketing/sale-telephone-bidding-section";
 import {
   mapLotToCardVM,
   mapSaleToHeroVM,
@@ -35,6 +34,7 @@ import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { buildSaleAnchorTabs } from "@/lib/marketing/sale-anchor-tab-list";
 import { parseSaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
 import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.service";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
@@ -240,7 +240,10 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const viewer = resolveViewerParticipation(session);
   const isAuthenticated = viewer.isAuthenticated;
-  const showParticipateSection = viewer.canParticipateAsBuyer;
+  const showTelephoneBooking =
+    viewer.canParticipateAsBuyer &&
+    isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
+    (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
 
   const buyerEntities =
     actingCtx?.memberships
@@ -404,15 +407,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
         />
 
-        <SaleAnchorTabs
-          tabs={[
-            { id: "catalog", label: "Catalogue" },
-            ...(showParticipateSection
-              ? [{ id: "participate" as const, label: "How to participate" }]
-              : []),
-            { id: "overview", label: "Overview" },
-          ]}
-        />
+        <SaleAnchorTabs tabs={buildSaleAnchorTabs({ showTelephone: showTelephoneBooking })} />
 
         <section
           id="catalog"
@@ -457,51 +452,19 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           )}
         </section>
 
-        {showParticipateSection ? (
-          <section
-            id="participate"
-            className={cn(
-              MARKETING_PAGE_SHELL,
-              "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
-            )}
-            aria-label="How to participate"
-          >
-            <SaleParticipationTimeline
-              deliveryMode={bundle.sale.deliveryMode}
-              isAuthenticated={isAuthenticated}
-              kycApproved={kycApproved}
-              myRegistrations={myRegistrations}
-              buyerEntities={buyerEntities}
-              canParticipate={viewer.canParticipateAsBuyer}
-              previewStartTime={bundle.sale.previewStartTime}
-              startTime={bundle.sale.startTime}
-              endTime={bundle.sale.endTime}
-              streamUrl={bundle.sale.streamUrl}
-              {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
-              {...(isSaleroomDeliveryMode(bundle.sale.deliveryMode)
-                ? { telephoneAnchorId: "bid-onsite-hub" }
-                : {})}
-              registerReturnPath={basePath}
-              className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
-            />
-            {isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
-            (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
-              <div className="mt-8">
-                <SaleTelephoneBookingPanel
-                  saleId={bundle.sale.id}
-                  saleTitle={bundle.sale.title}
-                  loginNextPath={basePath}
-                  isAuthenticated={isAuthenticated}
-                  kycApproved={kycApproved}
-                  mobile={session?.mobile ?? null}
-                  {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
-                  buyerEntities={buyerEntities}
-                  existingBooking={telephoneBooking}
-                  orgModuleEnabled={orgModuleEnabled}
-                />
-              </div>
-            ) : null}
-          </section>
+        {showTelephoneBooking ? (
+          <SaleTelephoneBiddingSection
+            saleId={bundle.sale.id}
+            saleTitle={bundle.sale.title}
+            loginNextPath={basePath}
+            isAuthenticated={isAuthenticated}
+            kycApproved={kycApproved}
+            mobile={session?.mobile ?? null}
+            {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
+            buyerEntities={buyerEntities}
+            existingBooking={telephoneBooking}
+            orgModuleEnabled={orgModuleEnabled}
+          />
         ) : null}
 
         <section

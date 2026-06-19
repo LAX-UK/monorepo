@@ -128,6 +128,8 @@ services:
         NEXT_PUBLIC_SETTLEMENTS_EMAIL: ${NEXT_PUBLIC_SETTLEMENTS_EMAIL:-}
         NEXT_PUBLIC_SETTLEMENTS_PHONE: ${NEXT_PUBLIC_SETTLEMENTS_PHONE:-}
         NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID:-}
+      secrets:
+        - sentry_auth_token
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -161,6 +163,10 @@ services:
       - api
       - ws
       - event
+
+secrets:
+  sentry_auth_token:
+    environment: SENTRY_AUTH_TOKEN
 
 volumes:
   postgres_data:
