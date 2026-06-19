@@ -13,15 +13,28 @@ describe("bottom-chrome", () => {
     expect(consentOffset(false)).toBe("0px");
   });
 
-  it("includes bid bar height on lot routes", () => {
+  it("includes bid bar height on lot routes when bar is active", () => {
     const padding = pageBottomPadding({
       consentBannerVisible: false,
       dashboardTabBarActive: false,
       marketingBidBarRoute: true,
+      marketingBidBarActive: true,
       fixedPayBarRoute: false,
       hideDashboardTabBar: false,
     });
     expect(padding).toContain("5rem");
+  });
+
+  it("omits bid bar height on lot routes when bar is hidden", () => {
+    const padding = pageBottomPadding({
+      consentBannerVisible: false,
+      dashboardTabBarActive: false,
+      marketingBidBarRoute: true,
+      marketingBidBarActive: false,
+      fixedPayBarRoute: false,
+      hideDashboardTabBar: false,
+    });
+    expect(padding).toBe("calc(1.5rem + 0px)");
   });
 
   it("detects lot checkout pay bar routes", () => {

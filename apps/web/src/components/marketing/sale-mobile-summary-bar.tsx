@@ -5,7 +5,6 @@ import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge"
 import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile-summary-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
-import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import {
   type SaleroomLotRef,
@@ -66,7 +65,7 @@ export function SaleMobileSummaryBar({
 
   if (status === "ended" || status === "cancelled") {
     return (
-      <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
+      <MarketingStickyBidBar>
         <div className="min-w-0 flex flex-col gap-1">
           <SaleLifecycleBadge status={status} size="sm" />
           <span className="sr-only">{saleTitle}</span>
@@ -150,7 +149,7 @@ export function SaleMobileSummaryBar({
   };
 
   return (
-    <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
+    <MarketingStickyBidBar>
       <div className="min-w-0 flex flex-col gap-1">
         <SaleLifecycleBadge
           status={isUpcoming ? "scheduled" : "active"}
