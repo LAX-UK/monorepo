@@ -6,8 +6,7 @@ import {
   isSaleroomSessionActive,
   isSaleroomSessionLive,
 } from "@/lib/saleroom/public-session-status";
-import { cn } from "@auction/ui";
-import { LiveDot } from "@auction/ui";
+import { LiveDot, cn } from "@auction/ui";
 import Link from "next/link";
 
 export type SaleroomLiveLotRef = {
@@ -41,10 +40,7 @@ export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: P
   if (live.status === "paused") {
     return (
       <div
-        className={cn(
-          "sticky top-[var(--header-height)] z-20 border-b border-outline-variant/25 bg-amber-500/10 px-4 py-3",
-          className,
-        )}
+        className={cn("border-b border-outline-variant/25 bg-amber-500/10 px-4 py-3", className)}
       >
         <p className="font-body text-sm text-on-surface">
           <span className="font-medium">Auction paused</span>
@@ -65,7 +61,7 @@ export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: P
     return (
       <div
         className={cn(
-          "sticky top-[var(--header-height)] z-20 border-b border-outline-variant/25 bg-surface-container-low px-4 py-3",
+          "border-b border-outline-variant/25 bg-surface-container-low px-4 py-3",
           className,
         )}
       >
@@ -81,15 +77,10 @@ export function SaleroomLiveLotBanner({ lots, viewedLotId = null, className }: P
   const lotLabel = onBlockLot.lotNumber != null ? `Lot ${onBlockLot.lotNumber}` : onBlockLot.title;
 
   return (
-    <div
-      className={cn(
-        "sticky top-[var(--header-height)] z-20 border-b border-error/20 bg-error/5 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-        className,
-      )}
-    >
+    <div className={cn("border-b border-live-red/20 bg-live-red/5 px-4 py-3", className)}>
       <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <LiveDot className="live-dot-pulse h-2 w-2 shrink-0 text-error" />
+          <LiveDot className="live-dot-pulse h-2 w-2 shrink-0" />
           <p className="font-body text-sm text-on-surface">
             <span className="font-medium">{lotLabel} is on the block</span>
             {totalLots > 0 ? (
