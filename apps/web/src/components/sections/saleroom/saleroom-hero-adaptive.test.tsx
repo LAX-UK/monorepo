@@ -28,12 +28,7 @@ beforeEach(() => {
 describe("SaleroomHeroAdaptive", () => {
   it("mounts adaptive overlay frame when cover image is present", () => {
     const { container } = render(
-      <SaleroomHeroAdaptive
-        hero={saleroomHeroFixture}
-        toolbar={null}
-        actions={null}
-        isAuthenticated
-      />,
+      <SaleroomHeroAdaptive hero={saleroomHeroFixture} toolbar={null} actions={null} />,
     );
     expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Modern British Art" })).toBeInTheDocument();

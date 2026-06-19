@@ -147,6 +147,26 @@ The saleroom **projector board** is not a marketing surface. Session status and 
 - Do **not** reuse `SaleLifecycleBadge` / `LotStatusBadge` on the AV board unless product explicitly requests parity.
 - Catalog and lot-detail surfaces remain on the registry in [`status-presentation.ts`](apps/web/src/lib/presenters/status-presentation.ts).
 
+### Saleroom mobile chrome (hybrid sales)
+
+On hybrid sale pages (`deliveryMode === "hybrid"`), live saleroom session UX splits by viewport:
+
+| Surface | Role |
+|---------|------|
+| **`SaleMobileSummaryBar`** (mobile, fixed bottom) | Delegates on-block / paused hybrid states to **`SaleroomMobileSummaryBar`**. Primary live action: registry `saleroomOnBlockBadge()` + **Bid now →** to the lot. |
+| **`SaleroomLiveLotBanner`** (catalog, `lg+` only) | Desktop cross-lot nudge above the catalog grid. Hidden on mobile catalog (`max-lg:hidden`) when the saleroom session is active — bottom bar owns the CTA. |
+| **`SaleroomLiveLotBanner`** (lot detail) | Shown on all viewports when viewing a lot that is **not** on the block — nudges bidders to the current lot. |
+
+**Do not** make the in-catalog on-block banner sticky; it overlaps [`MarketingListToolbar`](apps/web/src/components/marketing/marketing-list-toolbar.tsx) at the same `top` offset.
+
+Shared module [`saleroom-mobile-chrome.ts`](apps/web/src/lib/saleroom/saleroom-mobile-chrome.ts): `SaleroomLotRef`, caption presenters (`saleroomOnBlockCaption`, `saleroomPausedCaption`), `countSaleroomLotProgress`, `resolveSaleroomMobileSummaryBarMode`, `publicSaleroomSessionToRegistryStatus`, `saleroomBidNowCtaClassName`.
+
+Shared UI: `SaleroomSessionCaption`, `SaleroomSessionStatusBadge`, `SaleroomMobileSummaryBar`.
+
+**Sale hero action row** ([`SaleroomHeroActionRow`](apps/web/src/components/sections/saleroom/saleroom-hero-action-row.tsx)): two-band layout on imagery — (1) horizontal button row `Browse → Verify/Register → Follow` at `saleroomHeroActionSizing` (40px), (2) optional KYC caption below via `OverlayToneText`, (3) optional agent registration form in band 3 with `#register-to-bid` anchor. Use `SaleroomRegisterToBid layout="button"` in band 1 and `layout="form"` in band 3; never stack caption above a button inside the button flex.
+
+Bottom reserve: `--bottom-chrome-bid` (5rem) via [`bottom-chrome.ts`](apps/web/src/lib/layout/bottom-chrome.ts) for the taller on-block summary bar.
+
 ### Participation warnings (bid flow)
 
 Anti-snipe extensions and onsite no-web-bidding callouts are **bid-participation UX**, not API lifecycle status. Use [`participation-warning-presentation.ts`](apps/web/src/lib/presenters/participation-warning-presentation.ts) → `ParticipationWarningBadge` / `ParticipationWarningCallout` (`StatusBadge variant="warning"`). Keep [`sale-participation-timeline.tsx`](apps/web/src/components/marketing/sale-participation-timeline.tsx) step progress colors separate.

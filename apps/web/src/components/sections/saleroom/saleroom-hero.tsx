@@ -8,11 +8,9 @@ type Props = {
   hero: SaleHeroVM;
   toolbar: ReactNode;
   actions: ReactNode;
-  isAuthenticated?: boolean;
   backHref?: string;
   backLabel?: string;
   deliveryMode?: SaleDeliveryMode;
-  streamUrl?: string | null;
   catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
   saleroomSession?: PublicSaleroomSessionStatus | null;
 };

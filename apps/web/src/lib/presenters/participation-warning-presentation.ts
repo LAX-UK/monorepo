@@ -20,6 +20,8 @@ export function lotParticipationWarningPresentation(
 /** Callout shell tokens aligned with StatusBadge `warning` variant. */
 export const participationWarningCalloutClassName =
   "rounded-2xl border border-primary-container/40 bg-primary-fixed/10 p-5";
+/** Full-width band variant (saleroom paused banner, etc.). */
+export const participationWarningBandClassName = "border-primary-container/40 bg-primary-fixed/10";
 export const participationWarningCalloutTitleClassName =
   "font-body text-sm font-semibold text-on-primary-fixed";
 export const participationWarningCalloutBodyClassName =

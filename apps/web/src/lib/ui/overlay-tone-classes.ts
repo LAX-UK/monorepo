@@ -20,6 +20,10 @@ const toneAttrs = (result: OverlayToneResult) => ({
   ...(result.kind === "opaque" ? { "data-overlay-fallback": "opaque" as const } : {}),
 });
 
+/** Saleroom hero action row: 40px height, shared by Follow / Verify / primary CTAs. */
+export const saleroomHeroActionSizing =
+  "box-border h-10 min-h-10 px-8 font-body text-base font-semibold leading-6 tracking-[0.8px]";
+
 /** Frosted or opaque pill / chip chrome over imagery. */
 export function overlayPillClasses(result: OverlayToneResult, extra?: string): string {
   return cn(
