@@ -22,6 +22,8 @@ type Props = {
   show: boolean;
   lotEligible: boolean;
   kycApproved: boolean;
+  /** When false (staff viewers), suppress the condition-report request CTA. Defaults to true. */
+  canParticipate?: boolean;
   kycFeedback?: KycUserFeedbackDto | null;
   publishedConditionReport?: PublishedConditionReport | null;
   buyerRequest?: ConditionReportRequestSnapshot | null;
@@ -41,6 +43,7 @@ export function ArtworkConditionReportCta({
   show,
   lotEligible,
   kycApproved,
+  canParticipate = true,
   kycFeedback = null,
   publishedConditionReport = null,
   buyerRequest = null,
@@ -115,6 +118,8 @@ export function ArtworkConditionReportCta({
   );
 
   const submitting = uiPhase === "submitting";
+
+  if (!canParticipate) return null;
 
   if (!cardState) return null;
 

@@ -36,6 +36,8 @@ type Props = {
   locationLine?: string;
   /** Hybrid saleroom lot refs for on-block bottom bar CTA. */
   saleroomLotRefs?: readonly SaleroomLotRef[];
+  /** When false (staff viewers), suppress register/bid CTAs. Defaults to true. */
+  canParticipate?: boolean;
 };
 
 export function SaleMobileSummaryBar({
@@ -50,6 +52,7 @@ export function SaleMobileSummaryBar({
   sale,
   locationLine = "",
   saleroomLotRefs = [],
+  canParticipate = true,
 }: Props) {
   const saleroomLive = useSaleroomLive();
   const saleroomMode =
@@ -79,7 +82,13 @@ export function SaleMobileSummaryBar({
   }
 
   if (saleroomMode?.kind === "on_block" || saleroomMode?.kind === "paused") {
-    return <SaleroomMobileSummaryBar mode={saleroomMode} saleTitle={saleTitle} />;
+    return (
+      <SaleroomMobileSummaryBar
+        mode={saleroomMode}
+        saleTitle={saleTitle}
+        canParticipate={canParticipate}
+      />
+    );
   }
 
   const isUpcoming = status === "scheduled" || status === "draft";
@@ -131,8 +140,8 @@ export function SaleMobileSummaryBar({
       );
     }
 
-    const ctaHref = isUpcoming ? "/register" : "#catalog";
-    const ctaLabel = isUpcoming ? "Register" : "View lots";
+    const ctaHref = isUpcoming ? (canParticipate ? "/register" : "#catalog") : "#catalog";
+    const ctaLabel = isUpcoming ? (canParticipate ? "Register" : "View lots") : "View lots";
     return (
       <Link href={ctaHref} className={saleroomBidNowCtaClassName}>
         {ctaLabel}

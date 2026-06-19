@@ -165,6 +165,8 @@ Shared UI: `SaleroomSessionCaption`, `SaleroomSessionStatusBadge`, `SaleroomMobi
 
 **Sale hero action row** ([`SaleroomHeroActionRow`](apps/web/src/components/sections/saleroom/saleroom-hero-action-row.tsx)): two-band layout on imagery — (1) horizontal button row `Browse → Verify/Register → Follow` at `saleroomHeroActionSizing` (40px), (2) optional KYC caption below via `OverlayToneText`, (3) optional agent registration form in band 3 with `#register-to-bid` anchor. Use `SaleroomRegisterToBid layout="button"` in band 1 and `layout="form"` in band 3; never stack caption above a button inside the button flex.
 
+**Staff viewer participation:** staff accounts lack `bid.place`; derive flags once via [`resolveViewerParticipation`](apps/web/src/lib/presenters/viewer-participation.ts) on marketing pages. Pass `canParticipate={viewer.canParticipateAsBuyer}` to participation surfaces (sticky bars, catalogue bid CTAs, condition-report request). Fold into `registerToBid.show` on sale pages so hero register/verify bands disappear for staff. [`SaleParticipationTimeline`](apps/web/src/components/marketing/sale-participation-timeline.tsx) returns `null` for staff; sale page hides the participate section and anchor tab entirely. Keep Follow (sale) and Watchlist (lot) for staff browsing. Lot bid panel gates via `BidGate` → `adminPolicy`.
+
 Bottom reserve: `--bottom-chrome-bid` (5rem) via [`bottom-chrome.ts`](apps/web/src/lib/layout/bottom-chrome.ts) for the taller on-block summary bar.
 
 ### Participation warnings (bid flow)

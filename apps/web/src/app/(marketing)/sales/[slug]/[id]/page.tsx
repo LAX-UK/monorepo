@@ -39,6 +39,7 @@ import { parseSaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort"
 import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.service";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
+import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import {
@@ -237,7 +238,9 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const eventLd = saleEventJsonLd(bundle.sale);
   const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, eventLd, itemsLd] : [crumbs, eventLd]));
 
-  const isAuthenticated = Boolean(session);
+  const viewer = resolveViewerParticipation(session);
+  const isAuthenticated = viewer.isAuthenticated;
+  const showParticipateSection = viewer.canParticipateAsBuyer;
 
   const buyerEntities =
     actingCtx?.memberships
@@ -250,7 +253,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const registerToBidShow =
     saleAllowsWebBidding(bundle.sale.deliveryMode) &&
-    (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
+    (bundle.sale.status === "scheduled" || bundle.sale.status === "active") &&
+    viewer.canParticipateAsBuyer;
 
   const myRegistrations = mySaleRegs.map((r) => ({
     buyerLegalEntityId: r.buyerLegalEntityId,
@@ -338,6 +342,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             streamUrl={bundle.sale.streamUrl}
             sale={bundle.sale}
             locationLine={locationLine}
+            canParticipate={viewer.canParticipateAsBuyer}
             {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
             {...(isHybridSaleroom ? { saleroomLotRefs } : {})}
           />
@@ -395,13 +400,16 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           deliveryMode={bundle.sale.deliveryMode}
           streamUrl={bundle.sale.streamUrl}
           isAuthenticated={isAuthenticated}
+          canParticipate={viewer.canParticipateAsBuyer}
           {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
         />
 
         <SaleAnchorTabs
           tabs={[
             { id: "catalog", label: "Catalogue" },
-            { id: "participate", label: "How to participate" },
+            ...(showParticipateSection
+              ? [{ id: "participate" as const, label: "How to participate" }]
+              : []),
             { id: "overview", label: "Overview" },
           ]}
         />
@@ -433,6 +441,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             view={layoutView}
             lots={lotVMs}
             isAuthenticated={isAuthenticated}
+            canParticipate={viewer.canParticipateAsBuyer}
             emptyMessage={catalogEmptyMessage}
             clearFiltersHref={catalogClearFiltersHref}
           />
@@ -448,49 +457,52 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           )}
         </section>
 
-        <section
-          id="participate"
-          className={cn(
-            MARKETING_PAGE_SHELL,
-            "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
-          )}
-          aria-label="How to participate"
-        >
-          <SaleParticipationTimeline
-            deliveryMode={bundle.sale.deliveryMode}
-            isAuthenticated={isAuthenticated}
-            kycApproved={kycApproved}
-            myRegistrations={myRegistrations}
-            buyerEntities={buyerEntities}
-            previewStartTime={bundle.sale.previewStartTime}
-            startTime={bundle.sale.startTime}
-            endTime={bundle.sale.endTime}
-            streamUrl={bundle.sale.streamUrl}
-            {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
-            {...(isSaleroomDeliveryMode(bundle.sale.deliveryMode)
-              ? { telephoneAnchorId: "bid-onsite-hub" }
-              : {})}
-            registerReturnPath={basePath}
-            className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
-          />
-          {isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
-          (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
-            <div className="mt-8">
-              <SaleTelephoneBookingPanel
-                saleId={bundle.sale.id}
-                saleTitle={bundle.sale.title}
-                loginNextPath={basePath}
-                isAuthenticated={isAuthenticated}
-                kycApproved={kycApproved}
-                mobile={session?.mobile ?? null}
-                {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
-                buyerEntities={buyerEntities}
-                existingBooking={telephoneBooking}
-                orgModuleEnabled={orgModuleEnabled}
-              />
-            </div>
-          ) : null}
-        </section>
+        {showParticipateSection ? (
+          <section
+            id="participate"
+            className={cn(
+              MARKETING_PAGE_SHELL,
+              "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
+            )}
+            aria-label="How to participate"
+          >
+            <SaleParticipationTimeline
+              deliveryMode={bundle.sale.deliveryMode}
+              isAuthenticated={isAuthenticated}
+              kycApproved={kycApproved}
+              myRegistrations={myRegistrations}
+              buyerEntities={buyerEntities}
+              canParticipate={viewer.canParticipateAsBuyer}
+              previewStartTime={bundle.sale.previewStartTime}
+              startTime={bundle.sale.startTime}
+              endTime={bundle.sale.endTime}
+              streamUrl={bundle.sale.streamUrl}
+              {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
+              {...(isSaleroomDeliveryMode(bundle.sale.deliveryMode)
+                ? { telephoneAnchorId: "bid-onsite-hub" }
+                : {})}
+              registerReturnPath={basePath}
+              className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
+            />
+            {isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
+            (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
+              <div className="mt-8">
+                <SaleTelephoneBookingPanel
+                  saleId={bundle.sale.id}
+                  saleTitle={bundle.sale.title}
+                  loginNextPath={basePath}
+                  isAuthenticated={isAuthenticated}
+                  kycApproved={kycApproved}
+                  mobile={session?.mobile ?? null}
+                  {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
+                  buyerEntities={buyerEntities}
+                  existingBooking={telephoneBooking}
+                  orgModuleEnabled={orgModuleEnabled}
+                />
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <section
           id="overview"
