@@ -1,6 +1,7 @@
 "use client";
 
 import { useConsent } from "@/lib/analytics/consent/context";
+import { useMarketingBidBarChromeActive } from "@/lib/context/marketing-bid-bar-chrome";
 import {
   type BottomChromeState,
   consentOffset,
@@ -16,16 +17,18 @@ import { useMemo } from "react";
 export function useBottomChromeState(): BottomChromeState {
   const pathname = usePathname();
   const { showBanner } = useConsent();
+  const marketingBidBarActive = useMarketingBidBarChromeActive();
 
   return useMemo(
     () => ({
       consentBannerVisible: showBanner,
       dashboardTabBarActive: isDashboardTabBarRoute(pathname),
       marketingBidBarRoute: isMarketingBidBarRoute(pathname),
+      marketingBidBarActive,
       fixedPayBarRoute: isFixedPayBarRoute(pathname),
       hideDashboardTabBar: isHideDashboardTabBarRoute(pathname),
     }),
-    [pathname, showBanner],
+    [pathname, showBanner, marketingBidBarActive],
   );
 }
 

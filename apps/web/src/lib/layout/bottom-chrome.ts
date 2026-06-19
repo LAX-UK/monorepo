@@ -14,6 +14,8 @@ export type BottomChromeState = {
   dashboardTabBarActive: boolean;
   /** Marketing sticky bid bar may appear (lot / saleroom pages). */
   marketingBidBarRoute: boolean;
+  /** When false, do not reserve bid-bar bottom padding on marketing routes. */
+  marketingBidBarActive?: boolean | undefined;
   /** Lot checkout uses a fixed pay bar instead of the tab bar. */
   fixedPayBarRoute: boolean;
   /** Tab bar is hidden (wizard / lot checkout) — do not reserve tab height. */
@@ -32,7 +34,7 @@ export function pageBottomPadding(state: BottomChromeState): string {
   if (state.dashboardTabBarActive && !state.hideDashboardTabBar) {
     return `calc(${BOTTOM_CHROME.tab} + 1rem + env(safe-area-inset-bottom, 0px) + ${consent})`;
   }
-  if (state.marketingBidBarRoute) {
+  if (state.marketingBidBarRoute && state.marketingBidBarActive !== false) {
     return `calc(${BOTTOM_CHROME.bid} + 1.5rem + ${consent})`;
   }
   return `calc(1.5rem + ${consent})`;
