@@ -14,6 +14,8 @@ the image — they cannot be supplied only at runtime.
 | Turnstile site key | GitHub secret `TURNSTILE_SITE_KEY` (repo) | Public site key; secret key stays server-side only |
 | Sentry client DSN | GitHub secret `SENTRY_DSN_WEB` (per env) | Same DSN Terraform binds as `NEXT_PUBLIC_SENTRY_DSN_WEB`; required for client error reporting in prebuilt images |
 | Sentry release | CI git SHA | Passed as `SENTRY_RELEASE` at build time |
+| Sentry upload token | GitHub secret `SENTRY_AUTH_TOKEN` (per env) | Passed via BuildKit secret mount at image build — **not** a Docker build-arg (never baked into layers) |
+| Node runtime heap | `NODE_RUNTIME_HEAP_MB` build-arg | `384` (test / basic-xxs) or `768` (prod / professional-xs); caps V8 heap separately from build heap |
 
 CI validates that `NEXT_PUBLIC_WEB_ORIGIN` in `<env>.env` equals the Terraform
 `local.web_origin` before every web image build (`scripts/ci/web-build-args.sh

@@ -341,20 +341,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const showPreviewRibbon = previewLife.kind === "preLaunch";
   const isSaleQueueLoading = Boolean(auction.saleId && saleBundle === null);
 
-  const buyerEntities =
-    actingCtx.memberships
-      .filter((m) => m.status === "approved" || m.status === "restricted")
-      .map((m) => ({
-        id: m.id,
-        displayName: m.displayName,
-        memberRole: m.role,
-      })) ?? [];
-
-  const myRegistrationsForTimeline = mySaleRegs.map((r) => ({
-    buyerLegalEntityId: r.buyerLegalEntityId,
-    status: r.status,
-  }));
-
   const onsiteOverviewVM = saleBundle
     ? mapSaleToOverviewVM(saleBundle.sale, {
         lotsTotal: saleLots?.length ?? 0,
@@ -508,11 +494,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
               isSaleQueueLoading={isSaleQueueLoading}
               saleForLifecycle={saleLifecyclePick}
               overview={onsiteOverviewVM}
-              kycApproved={kycApprovedForBid}
-              canParticipate={viewer.canParticipateAsBuyer}
-              myRegistrations={myRegistrationsForTimeline}
-              buyerEntities={buyerEntities}
-              loginNextPath={lotPath(auction)}
             />
           ) : auction.saleId && !saleBundle ? (
             <OnsiteLotUnavailable saleTitle={parentSale?.title ?? null} saleId={auction.saleId} />

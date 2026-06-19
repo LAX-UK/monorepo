@@ -31,8 +31,10 @@ ARG NEXT_PUBLIC_CSP_REPORT_URI=
 ARG NEXT_PUBLIC_ALLOW_INDEXING=
 ARG CSP_ENFORCE=
 ARG SENTRY_RELEASE=
-ARG SENTRY_AUTH_TOKEN=
 ARG SENTRY_PROJECT=
+# Build-only: heap for next build + Sentry source maps (not persisted to runner).
+ARG NODE_OPTIONS=--max-old-space-size=4096
+ARG TURBO_CONCURRENCY=1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL
 ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
@@ -48,21 +50,30 @@ ENV NEXT_PUBLIC_CSP_REPORT_URI=$NEXT_PUBLIC_CSP_REPORT_URI
 ENV NEXT_PUBLIC_ALLOW_INDEXING=$NEXT_PUBLIC_ALLOW_INDEXING
 ENV CSP_ENFORCE=$CSP_ENFORCE
 ENV SENTRY_RELEASE=$SENTRY_RELEASE
-ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY apps/api ./apps/api
 COPY apps/web ./apps/web
-RUN pnpm turbo run build --filter=@auction/web
+# SENTRY_AUTH_TOKEN via BuildKit secret — never baked into image layers or cache.
+RUN --mount=type=secret,id=sentry_auth_token \
+    --mount=type=cache,target=/app/apps/web/.next/cache \
+    sh -c 'if [ -f /run/secrets/sentry_auth_token ] && [ -s /run/secrets/sentry_auth_token ]; then export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)"; fi && export NODE_OPTIONS="${NODE_OPTIONS}" TURBO_CONCURRENCY="${TURBO_CONCURRENCY}" && pnpm turbo run build --filter=@auction/web'
 
 FROM node:22-alpine AS runner
 WORKDIR /app
+ARG NODE_RUNTIME_HEAP_MB=384
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public ./apps/web/public
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=builder --chown=node:node /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=node:node /app/apps/web/public ./apps/web/public
+RUN printf '%s\n' '#!/bin/sh' "exec node --max-old-space-size=${NODE_RUNTIME_HEAP_MB} apps/web/server.js" > /app/docker-entrypoint.sh \
+  && chmod +x /app/docker-entrypoint.sh \
+  && chown node:node /app/docker-entrypoint.sh
+USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(async r=>{await r.text();process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"
-CMD ["node", "apps/web/server.js"]
+CMD ["/app/docker-entrypoint.sh"]
