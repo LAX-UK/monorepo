@@ -2,6 +2,7 @@ import { lotStatuses, saleStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   liveStatusCountdownClassName,
+  liveUrgencyTextClass,
   lotEndedPresentation,
   lotStatusLabel,
   lotStatusToBadgeVariant,
@@ -10,6 +11,17 @@ import {
   saleStatusLabel,
   saleStatusToBadgeVariant,
 } from "./status-presentation";
+
+describe("liveUrgencyTextClass", () => {
+  it("returns live-red for live and urgent tiers", () => {
+    expect(liveUrgencyTextClass("live")).toContain("text-live-red");
+    expect(liveUrgencyTextClass("soon")).toContain("text-live-red");
+  });
+
+  it("returns neutral text for normal tier", () => {
+    expect(liveUrgencyTextClass("normal")).toContain("text-on-surface");
+  });
+});
 
 describe("liveStatusCountdownClassName", () => {
   it("exports live accent typography", () => {

@@ -129,7 +129,7 @@ flowchart TD
 - `apps/web/src/components/dashboard/overview/build-attention-items.ts`
 - `apps/web/src/components/dashboard/overview/overview-hero-band.tsx`
 - `apps/web/src/components/sections/saleroom/saleroom-register-to-bid.tsx`
-- `apps/web/src/components/sections/saleroom/saleroom-hero-actions.tsx`
+- `apps/web/src/components/sections/saleroom/saleroom-hero-action-row.tsx`
 - `apps/web/src/components/sections/artwork/artwork-bid-panel.tsx`
 - `apps/web/src/components/bid/bid-gate.tsx`
 

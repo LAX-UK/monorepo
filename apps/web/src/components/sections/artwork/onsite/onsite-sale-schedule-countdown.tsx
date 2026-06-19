@@ -8,6 +8,11 @@ import {
   formatCountdownForDisplay,
   parseCountdownSegments,
 } from "@/lib/format-countdown";
+import {
+  type LiveCountdownUrgency,
+  liveUrgencyPulseClass,
+  liveUrgencyTextClass,
+} from "@/lib/presenters/status-presentation";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
@@ -55,11 +60,16 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+function tierToUrgency(phase: Phase, tier: CountdownTier): LiveCountdownUrgency {
+  if (phase === "during") return "live";
+  if (tier === "critical") return "imminent";
+  if (tier === "urgent") return "soon";
+  return "normal";
+}
+
 function segmentDigitClass(phase: Phase, tier: CountdownTier): string {
   if (phase === "ended") return "text-on-surface-variant";
-  if (phase === "during") return "text-live-red";
-  if (tier === "critical" || tier === "urgent") return "text-live-red";
-  return "text-on-surface";
+  return liveUrgencyTextClass(tierToUrgency(phase, tier));
 }
 
 type SegmentChipProps = {
@@ -77,7 +87,7 @@ function SegmentChip({ value, unit, phase, tier, placeholder }: SegmentChipProps
         className={cn(
           "text-2xl font-bold tabular-nums",
           segmentDigitClass(phase, tier),
-          tier === "critical" && phase !== "ended" && !placeholder && "live-dot-pulse",
+          tier === "critical" && phase !== "ended" && !placeholder && liveUrgencyPulseClass,
         )}
       >
         {placeholder ? "\u00A0" : pad2(value)}
@@ -188,7 +198,9 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
             aria-label={ariaLabel}
             className={cn(
               "mt-0.5 block font-body text-sm font-semibold tabular-nums",
-              phase === "during" || tier !== "normal" ? "text-live-red" : "text-on-surface",
+              phase === "during" || tier !== "normal"
+                ? liveUrgencyTextClass(tierToUrgency(phase, tier))
+                : "text-on-surface",
             )}
             suppressHydrationWarning
           >

@@ -4,6 +4,10 @@ import {
   type DisplayBidTick,
   formatDisplayLeaderLabel,
 } from "@/features/saleroom/lib/display-bid-ticks";
+import {
+  displayBidRowClassName,
+  displayLeadingBidRowClassName,
+} from "@/features/saleroom/lib/display-session-status-presentation";
 import { formatMoney } from "@/lib/ui/format";
 
 type Props = {
@@ -52,11 +56,7 @@ export function SaleroomDisplayBidFeed({
             return (
               <div
                 key={tick.id}
-                className={
-                  isLeading
-                    ? "motion-safe:animate-artwork-slide-up-fade flex items-center justify-between gap-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-5 py-4 motion-reduce:opacity-100"
-                    : "motion-safe:animate-artwork-slide-up-fade flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-neutral-950/40 px-5 py-4 motion-reduce:opacity-100"
-                }
+                className={isLeading ? displayLeadingBidRowClassName : displayBidRowClassName}
               >
                 <div className="min-w-0">
                   <p className="text-xs uppercase tracking-widest text-white/45">

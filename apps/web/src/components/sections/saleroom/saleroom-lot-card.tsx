@@ -7,7 +7,7 @@ import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
-import { saleroomOnBlockBadge } from "@/lib/lot/lot-lifecycle";
+import { saleroomOnBlockBadge, saleroomOnBlockRingClass } from "@/lib/lot/lot-lifecycle";
 import { LOT_CARD_GRID_SLOTS, LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { cn } from "@auction/ui";
@@ -152,7 +152,7 @@ export function SaleroomLotCard({
           href={lot.href}
           className={cn(
             "relative block aspect-[4/5] w-full min-h-0 overflow-hidden rounded-lg bg-surface-container-high transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:bg-surface-container-high",
-            lot.isOnBlock && "ring-2 ring-error/40",
+            lot.isOnBlock && saleroomOnBlockRingClass,
           )}
           aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
         >

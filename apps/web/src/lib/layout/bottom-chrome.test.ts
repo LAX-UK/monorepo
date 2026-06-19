@@ -21,7 +21,7 @@ describe("bottom-chrome", () => {
       fixedPayBarRoute: false,
       hideDashboardTabBar: false,
     });
-    expect(padding).toContain("4.5rem");
+    expect(padding).toContain("5rem");
   });
 
   it("detects lot checkout pay bar routes", () => {

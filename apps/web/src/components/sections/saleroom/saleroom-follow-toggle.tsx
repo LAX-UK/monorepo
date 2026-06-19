@@ -1,7 +1,11 @@
 "use client";
 
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
-import { overlayOutlineButtonClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
+import {
+  overlayOutlineButtonClasses,
+  overlayToneProps,
+  saleroomHeroActionSizing,
+} from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bell, BellRing } from "lucide-react";
@@ -27,8 +31,7 @@ function apiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 }
 
-const outlinedBlockSizing =
-  "box-border h-10 min-w-[117px] px-8 font-body text-base font-semibold leading-6 tracking-[0.8px]";
+const outlinedBlockSizing = cn(saleroomHeroActionSizing, "min-w-[117px]");
 
 const outlinedOnSurfaceClass = cn(
   outlinedBlockSizing,

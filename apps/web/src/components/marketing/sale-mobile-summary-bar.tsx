@@ -2,9 +2,16 @@
 
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
 import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
+import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile-summary-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
+import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import {
+  type SaleroomLotRef,
+  resolveSaleroomMobileSummaryBarMode,
+  saleroomBidNowCtaClassName,
+} from "@/lib/saleroom/saleroom-mobile-chrome";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
 import Link from "next/link";
@@ -27,6 +34,10 @@ type Props = {
   /** Full sale object for onsite calendar download. */
   sale?: Sale;
   locationLine?: string;
+  /** Hybrid saleroom lot refs for on-block bottom bar CTA. */
+  saleroomLotRefs?: readonly SaleroomLotRef[];
+  /** When false (staff viewers), suppress register/bid CTAs. Defaults to true. */
+  canParticipate?: boolean;
 };
 
 export function SaleMobileSummaryBar({
@@ -40,7 +51,19 @@ export function SaleMobileSummaryBar({
   streamUrl,
   sale,
   locationLine = "",
+  saleroomLotRefs = [],
+  canParticipate = true,
 }: Props) {
+  const saleroomLive = useSaleroomLive();
+  const saleroomMode =
+    status === "active" && deliveryMode === "hybrid" && saleroomLotRefs.length > 0 && saleroomLive
+      ? resolveSaleroomMobileSummaryBarMode(
+          saleroomLive.status,
+          saleroomLive.currentLotId,
+          saleroomLotRefs,
+        )
+      : null;
+
   if (status === "ended" || status === "cancelled") {
     return (
       <MarketingStickyBidBar innerClassName={MARKETING_PAGE_INNER}>
@@ -55,6 +78,16 @@ export function SaleMobileSummaryBar({
           View results
         </Link>
       </MarketingStickyBidBar>
+    );
+  }
+
+  if (saleroomMode?.kind === "on_block" || saleroomMode?.kind === "paused") {
+    return (
+      <SaleroomMobileSummaryBar
+        mode={saleroomMode}
+        saleTitle={saleTitle}
+        canParticipate={canParticipate}
+      />
     );
   }
 
@@ -94,29 +127,23 @@ export function SaleMobileSummaryBar({
             href={directionsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on"
+            className={saleroomBidNowCtaClassName}
           >
             Get directions
           </a>
         );
       }
       return (
-        <Link
-          href="#plan-visit"
-          className="shrink-0 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on"
-        >
+        <Link href="#plan-visit" className={saleroomBidNowCtaClassName}>
           Plan visit
         </Link>
       );
     }
 
-    const ctaHref = isUpcoming ? "/register" : "#catalog";
-    const ctaLabel = isUpcoming ? "Register" : "View lots";
+    const ctaHref = isUpcoming ? (canParticipate ? "/register" : "#catalog") : "#catalog";
+    const ctaLabel = isUpcoming ? (canParticipate ? "Register" : "View lots") : "View lots";
     return (
-      <Link
-        href={ctaHref}
-        className="shrink-0 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on"
-      >
+      <Link href={ctaHref} className={saleroomBidNowCtaClassName}>
         {ctaLabel}
       </Link>
     );
@@ -136,7 +163,11 @@ export function SaleMobileSummaryBar({
           announce
           className="font-headline text-sm text-on-surface tabular-nums md:text-base"
         />
-        {!isUpcoming && typeof liveLotsCount === "number" && liveLotsCount > 0 ? (
+        {saleroomMode?.kind === "live_no_lot" ? (
+          <p className="mt-0.5 font-label text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-variant">
+            Saleroom live · {saleroomMode.progressLabel}
+          </p>
+        ) : !isUpcoming && typeof liveLotsCount === "number" && liveLotsCount > 0 ? (
           <p className="mt-0.5 font-label text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-variant">
             {liveLotsCount} lots active
           </p>

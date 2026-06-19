@@ -5,8 +5,7 @@ import { MarketingPaginationControls } from "@/components/marketing/marketing-pa
 import { SaleAnchorTabs } from "@/components/marketing/sale-anchor-tabs";
 import { SaleDesktopStickyBar } from "@/components/marketing/sale-desktop-sticky-bar";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
-import { SaleParticipationTimeline } from "@/components/marketing/sale-participation-timeline";
-import { SaleTelephoneBookingPanel } from "@/components/marketing/sale-telephone-booking-panel";
+import { SaleTelephoneBiddingSection } from "@/components/marketing/sale-telephone-bidding-section";
 import {
   mapLotToCardVM,
   mapSaleToHeroVM,
@@ -16,7 +15,7 @@ import { SaleroomCatalogLiveShell } from "@/components/sections/saleroom/saleroo
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
-import { SaleroomHeroActions } from "@/components/sections/saleroom/saleroom-hero-actions";
+import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-hero-action-row";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomRelatedAuctionsSection } from "@/components/sections/saleroom/saleroom-related-auctions-section";
@@ -35,10 +34,12 @@ import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { buildSaleAnchorTabs } from "@/lib/marketing/sale-anchor-tab-list";
 import { parseSaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
 import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.service";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
+import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import {
@@ -237,7 +238,12 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const eventLd = saleEventJsonLd(bundle.sale);
   const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, eventLd, itemsLd] : [crumbs, eventLd]));
 
-  const isAuthenticated = Boolean(session);
+  const viewer = resolveViewerParticipation(session);
+  const isAuthenticated = viewer.isAuthenticated;
+  const showTelephoneBooking =
+    viewer.canParticipateAsBuyer &&
+    isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
+    (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
 
   const buyerEntities =
     actingCtx?.memberships
@@ -250,7 +256,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const registerToBidShow =
     saleAllowsWebBidding(bundle.sale.deliveryMode) &&
-    (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
+    (bundle.sale.status === "scheduled" || bundle.sale.status === "active") &&
+    viewer.canParticipateAsBuyer;
 
   const myRegistrations = mySaleRegs.map((r) => ({
     buyerLegalEntityId: r.buyerLegalEntityId,
@@ -306,6 +313,14 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     title: lot.title,
   }));
 
+  const saleroomLotRefs = lotVMs.map((lot) => ({
+    id: lot.id,
+    lotNumber: lot.lotNumber ?? null,
+    title: lot.title,
+    href: lot.href,
+    status: lot.status,
+  }));
+
   return (
     <SaleroomCatalogLiveShell
       saleId={isHybridSaleroom ? bundle.sale.id : null}
@@ -330,7 +345,9 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             streamUrl={bundle.sale.streamUrl}
             sale={bundle.sale}
             locationLine={locationLine}
+            canParticipate={viewer.canParticipateAsBuyer}
             {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
+            {...(isHybridSaleroom ? { saleroomLotRefs } : {})}
           />
         }
         wayfinding={
@@ -349,18 +366,19 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         hero={
           <SaleroomHero
             hero={heroVM}
-            isAuthenticated={isAuthenticated}
             backHref={calendarBackHref}
             deliveryMode={bundle.sale.deliveryMode}
-            streamUrl={bundle.sale.streamUrl}
             catalogLotRefs={catalogLotRefs}
             saleroomSession={isHybridSaleroom ? initialSaleroomStatus : null}
             toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
             actions={
-              <SaleroomHeroActions
+              <SaleroomHeroActionRow
+                hero={heroVM}
+                isAuthenticated={isAuthenticated}
+                deliveryMode={bundle.sale.deliveryMode}
+                streamUrl={bundle.sale.streamUrl}
                 saleId={bundle.sale.id}
                 saleHref={basePath}
-                isAuthenticated={isAuthenticated}
                 initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
                 sale={bundle.sale}
                 registerToBid={{
@@ -385,16 +403,11 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           deliveryMode={bundle.sale.deliveryMode}
           streamUrl={bundle.sale.streamUrl}
           isAuthenticated={isAuthenticated}
+          canParticipate={viewer.canParticipateAsBuyer}
           {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
         />
 
-        <SaleAnchorTabs
-          tabs={[
-            { id: "catalog", label: "Catalogue" },
-            { id: "participate", label: "How to participate" },
-            { id: "overview", label: "Overview" },
-          ]}
-        />
+        <SaleAnchorTabs tabs={buildSaleAnchorTabs({ showTelephone: showTelephoneBooking })} />
 
         <section
           id="catalog"
@@ -423,6 +436,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             view={layoutView}
             lots={lotVMs}
             isAuthenticated={isAuthenticated}
+            canParticipate={viewer.canParticipateAsBuyer}
             emptyMessage={catalogEmptyMessage}
             clearFiltersHref={catalogClearFiltersHref}
           />
@@ -438,49 +452,20 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           )}
         </section>
 
-        <section
-          id="participate"
-          className={cn(
-            MARKETING_PAGE_SHELL,
-            "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
-          )}
-          aria-label="How to participate"
-        >
-          <SaleParticipationTimeline
-            deliveryMode={bundle.sale.deliveryMode}
+        {showTelephoneBooking ? (
+          <SaleTelephoneBiddingSection
+            saleId={bundle.sale.id}
+            saleTitle={bundle.sale.title}
+            loginNextPath={basePath}
             isAuthenticated={isAuthenticated}
             kycApproved={kycApproved}
-            myRegistrations={myRegistrations}
+            mobile={session?.mobile ?? null}
+            {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
             buyerEntities={buyerEntities}
-            previewStartTime={bundle.sale.previewStartTime}
-            startTime={bundle.sale.startTime}
-            endTime={bundle.sale.endTime}
-            streamUrl={bundle.sale.streamUrl}
-            {...(registerToBidShow ? { registerAnchorId: "register-to-bid" } : {})}
-            {...(isSaleroomDeliveryMode(bundle.sale.deliveryMode)
-              ? { telephoneAnchorId: "bid-onsite-hub" }
-              : {})}
-            registerReturnPath={basePath}
-            className="rounded-xl border border-outline-variant/35 bg-surface-container-lowest p-7 dark:bg-surface-container-low/40 shadow-xs"
+            existingBooking={telephoneBooking}
+            orgModuleEnabled={orgModuleEnabled}
           />
-          {isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
-          (bundle.sale.status === "scheduled" || bundle.sale.status === "active") ? (
-            <div className="mt-8">
-              <SaleTelephoneBookingPanel
-                saleId={bundle.sale.id}
-                saleTitle={bundle.sale.title}
-                loginNextPath={basePath}
-                isAuthenticated={isAuthenticated}
-                kycApproved={kycApproved}
-                mobile={session?.mobile ?? null}
-                {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
-                buyerEntities={buyerEntities}
-                existingBooking={telephoneBooking}
-                orgModuleEnabled={orgModuleEnabled}
-              />
-            </div>
-          ) : null}
-        </section>
+        ) : null}
 
         <section
           id="overview"

@@ -7,11 +7,15 @@ import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
+import { cn } from "@auction/ui";
 
 type Props = {
   view: CatalogLayoutView;
   lots: SaleLotCardVM[];
   isAuthenticated: boolean;
+  /** When false (staff viewers), hide per-lot bid CTAs. Defaults to true. */
+  canParticipate?: boolean;
   emptyMessage?: string;
   clearFiltersHref?: string | null;
 };
@@ -20,6 +24,7 @@ export function SaleroomCatalogLotsLive({
   lots,
   view,
   isAuthenticated,
+  canParticipate = true,
   emptyMessage,
   clearFiltersHref,
 }: Props) {
@@ -43,9 +48,15 @@ export function SaleroomCatalogLotsLive({
     status: lot.status,
   }));
 
+  const hideBannerOnMobile = live != null && isSaleroomSessionActive(live.status);
+
   return (
     <>
-      <SaleroomLiveLotBanner lots={bannerLots} />
+      <SaleroomLiveLotBanner
+        lots={bannerLots}
+        canParticipate={canParticipate}
+        className={cn(hideBannerOnMobile && "max-lg:hidden")}
+      />
       <SaleroomCatalogLotsByView
         view={view}
         isAuthenticated={isAuthenticated}
@@ -58,7 +69,7 @@ export function SaleroomCatalogLotsLive({
         renderCorner={(lot) => (
           <SaleroomLotQuickLookCorner lot={lot} isAuthenticated={isAuthenticated} />
         )}
-        renderActions={(lot) => <SaleroomLotActions lotHref={lot.href} />}
+        renderActions={(lot) => (canParticipate ? <SaleroomLotActions lotHref={lot.href} /> : null)}
       />
     </>
   );
