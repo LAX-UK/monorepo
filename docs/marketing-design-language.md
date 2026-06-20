@@ -119,6 +119,7 @@ Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and
 | `MarketingEmptyState` | Unified empty / error copy + CTA on catalog surfaces. |
 | `MarketingSectionHeader` | Section title + subtitle + trailing action (home rails). |
 | `MarketingStickyBidBar` | Mobile sticky bid / sale summary (`lg:hidden`); inner gutters match `MARKETING_PAGE_GUTTER_X`. |
+| `SaleTypeBadge` + `SaleTypeExplainerPopover` | Format badge with optional help popover; popover is **contextual to the sale's delivery mode** — copy resolved by `resolveSaleFormatExplainer` (`sale-format-explainer.ts`) from the policy SSOT (`sale-mode-policy.ts`). Pass `explainerContext` (from `saleFormatExplainerContextFromSale`) for stream/gating-aware copy; falls back to `{ deliveryMode }` when omitted. |
 | `ChromeIconButton` | 44×44 header icon button with `FOCUS_RING`. |
 | `ChromePopoverPanel` | Shared account / notification dropdown shell. |
 | `NavLabel` | Uppercase utility / nav label (`NAV_LABEL_CLASSES`, etc.). |

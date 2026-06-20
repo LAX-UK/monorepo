@@ -3,6 +3,7 @@ import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-vie
 import { LotStatePill } from "@/components/sections/artwork/online/lot-state-pill";
 import { OnsiteSaleScheduleCountdown } from "@/components/sections/artwork/onsite/onsite-sale-schedule-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import { saleFormatExplainerContextFromSale } from "@/lib/sale-format-explainer";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -48,9 +49,10 @@ export function OnsiteLotHero({
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <SaleTypeBadge
-              deliveryMode="onsite"
+              deliveryMode={sale.deliveryMode}
               size="sm"
               withExplainer
+              explainerContext={saleFormatExplainerContextFromSale(sale)}
               className="border-outline-variant/30 bg-surface-container-low text-on-surface-variant"
             />
             {auction.lotNumber != null && (

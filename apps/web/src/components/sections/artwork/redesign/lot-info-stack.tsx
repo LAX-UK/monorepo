@@ -258,8 +258,8 @@ function ClosingBanner({
       <p className="sr-only">
         Closes {saleEndLocalLabel}.{" "}
         {extended
-          ? "Closing time was extended because a bid arrived near the original end time."
-          : "Anti-snipe may extend closing time if bids arrive near the end."}
+          ? "Closing time was extended because a bid arrived in the final minutes before the lot was due to close."
+          : "Bids placed in the final minutes before a lot's scheduled closing time may extend that lot's closing time."}
       </p>
     </div>
   );

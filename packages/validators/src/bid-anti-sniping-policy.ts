@@ -30,12 +30,21 @@ export function formatAntiSnipingExtensionLabel(
   return formatDurationLabel(extensionMs);
 }
 
-/** Full marketing sentence for English/buy-it-now anti-sniping behaviour. */
+/** Short inline rule for format explainers and sale copy (mechanism only). */
 export function formatAntiSnipingRuleSentence(
   windowMs: number = DEFAULT_ANTI_SNIPING_WINDOW_MS,
   extensionMs: number = DEFAULT_ANTI_SNIPING_EXTENSION_MS,
 ): string {
   const windowLabel = formatAntiSnipingWindowLabel(windowMs);
   const extensionLabel = formatAntiSnipingExtensionLabel(extensionMs);
-  return `A bid in the final ${windowLabel} extends that lot's closing time by ${extensionLabel} to reduce last-second sniping.`;
+  return `If a bid is placed in the final ${windowLabel} of a lot's scheduled closing time, that lot's closing time is extended by ${extensionLabel}.`;
+}
+
+/** FAQ / help-centre paragraph: per-lot scope and fairness rationale. */
+export function formatAntiSnipingClosingRuleParagraph(
+  windowMs: number = DEFAULT_ANTI_SNIPING_WINDOW_MS,
+  extensionMs: number = DEFAULT_ANTI_SNIPING_EXTENSION_MS,
+): string {
+  const rule = formatAntiSnipingRuleSentence(windowMs, extensionMs);
+  return `${rule} The extension applies to that lot only — not to other lots in the sale — and may repeat until bidding stops, so every registered bidder has a fair chance to respond.`;
 }

@@ -163,9 +163,10 @@ describe("LotOnsiteMarketingLayout", () => {
     expect(screen.getByRole("link", { name: /open in youtube/i })).toBeInTheDocument();
   });
 
-  it("renders participation timeline without onsite bid form triggers", () => {
+  it("shows plan your visit without onsite bid form triggers", () => {
     renderLayout();
-    expect(screen.getByText(/Public Preview/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Plan your visit/i })).toBeInTheDocument();
+    expect(screen.getByText(/not through the website/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Submit Bid Form/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Request Line/i })).not.toBeInTheDocument();
   });

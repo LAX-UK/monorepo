@@ -14,6 +14,15 @@ describe("faq bidding copy", () => {
     expect(bidding.body).toContain("30 seconds");
   });
 
+  it("dedicated closing-extension FAQ explains per-lot rule without jargon", () => {
+    const extensions = findFaq("lot-closing-extensions");
+    expect(extensions.title).toMatch(/stay open/i);
+    expect(extensions.body).toContain("final 2 minutes");
+    expect(extensions.body).toContain("30 seconds");
+    expect(extensions.body).toContain("that lot only");
+    expect(extensions.body).not.toMatch(/snip/i);
+  });
+
   it("states onsite sales have no web bidding", () => {
     const bidding = findFaq("how-bidding-works");
     expect(bidding.body).toContain("not through the website");
