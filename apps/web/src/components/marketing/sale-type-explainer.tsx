@@ -1,108 +1,106 @@
 "use client";
 
 import { useHydrated } from "@/lib/hooks/use-hydrated";
-import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
-import type { SaleDeliveryMode } from "@auction/types";
+import {
+  type SaleFormatExplainerContext,
+  resolveSaleFormatExplainer,
+  saleFormatExplainerAriaLabel,
+} from "@/lib/sale-format-explainer";
+import { saleFormatIcon, saleFormatIconToneClass } from "@/lib/sale-format-icon";
 import { cn } from "@auction/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
-import { HelpCircle, Laptop, MapPin } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import type * as React from "react";
 
-type Props = {
-  activeMode?: SaleDeliveryMode | undefined;
-  className?: string;
+type PanelProps = {
+  context: SaleFormatExplainerContext;
+  className?: string | undefined;
 };
 
-export function SaleTypeExplainerContent({ activeMode, className }: Props) {
-  const onlinePres = getSaleTypePresentation("online");
-  const onsitePres = getSaleTypePresentation("onsite");
-  const hybridPres = getSaleTypePresentation("hybrid");
-
-  const sections = [
-    { pres: onlinePres, icon: Laptop, isSelected: activeMode === "online" },
-    { pres: onsitePres, icon: MapPin, isSelected: activeMode === "onsite" },
-    { pres: hybridPres, icon: Laptop, isSelected: activeMode === "hybrid" },
-  ];
+export function SaleFormatExplainerPanel({ context, className }: PanelProps) {
+  const vm = resolveSaleFormatExplainer(context);
+  const Icon = saleFormatIcon(vm.iconName);
 
   return (
-    <div className={cn("space-y-4 text-left", className)}>
-      <h3 className="font-headline text-base font-semibold text-on-surface">
-        Auction Formats Explained
-      </h3>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {sections.map(({ pres, icon: Icon, isSelected }) => (
-          <div
-            key={pres.key}
-            className={cn(
-              "rounded-lg border p-3 transition-colors",
-              isSelected
-                ? "border-primary/45 bg-primary/5 dark:bg-primary/10"
-                : "border-outline-variant/30 bg-surface-container-lowest dark:bg-surface-container-low",
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full",
-                  pres.key === "online" || pres.key === "hybrid"
-                    ? "bg-brand-500/10 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400"
-                    : "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
-                )}
-              >
-                <Icon className="size-4" />
-              </div>
-              <h4 className="font-headline text-sm font-semibold text-on-surface">{pres.title}</h4>
-            </div>
-            <p className="mt-2 font-body text-xs text-on-surface-variant leading-relaxed">
-              {pres.description}
-            </p>
-            <div className="mt-3 space-y-1.5 border-t border-outline-variant/20 pt-2">
-              <p className="font-label text-[10px] font-bold uppercase tracking-wider text-secondary">
-                How to participate:
-              </p>
-              <ul className="space-y-1 pl-1 list-none">
-                {pres.howToTakePart.map((step) => (
-                  <li
-                    key={`${pres.key}-${step.title}`}
-                    className="font-body text-[11px] text-on-surface-variant leading-normal flex items-start gap-1"
-                  >
-                    <span className="text-secondary select-none font-medium">•</span>
-                    <span>
-                      <strong className="text-on-surface font-medium">{step.title}:</strong>{" "}
-                      {step.description}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {pres.key === "onsite" ? (
-              <p className="font-body text-[10px] text-on-surface-variant/70 leading-relaxed">
-                Live stream availability varies by sale.
-              </p>
-            ) : null}
-          </div>
-        ))}
+    <div className={cn("space-y-3 text-left", className)}>
+      <div className="flex items-start gap-2.5">
+        <div
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-full",
+            saleFormatIconToneClass(vm.mode),
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+        </div>
+        <div className="min-w-0 space-y-0.5">
+          <h3 className="font-headline text-base font-semibold text-on-surface">{vm.title}</h3>
+          <p className="font-body text-xs text-secondary">{vm.tagline}</p>
+        </div>
       </div>
+
+      <p className="font-body text-xs leading-relaxed text-on-surface-variant">{vm.description}</p>
+
+      {vm.steps.length > 0 ? (
+        <div className="space-y-1.5 border-t border-outline-variant/20 pt-2.5">
+          <p className="font-label text-[10px] font-bold uppercase tracking-wider text-secondary">
+            How to participate
+          </p>
+          <ul className="list-none space-y-1.5 pl-0">
+            {vm.steps.map((step) => (
+              <li
+                key={step.title}
+                className="flex items-start gap-1 font-body text-[11px] leading-normal text-on-surface-variant"
+              >
+                <span className="select-none font-medium text-secondary" aria-hidden>
+                  •
+                </span>
+                <span>
+                  <strong className="font-medium text-on-surface">{step.title}:</strong>{" "}
+                  {step.description}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {vm.footnotes.map((note) => (
+        <p key={note} className="font-body text-[10px] leading-relaxed text-on-surface-variant/80">
+          {note}
+        </p>
+      ))}
     </div>
   );
 }
 
+/** @deprecated Use `SaleFormatExplainerPanel`. */
+export function SaleTypeExplainerContent({
+  context,
+  className,
+}: {
+  context: SaleFormatExplainerContext;
+  className?: string;
+}) {
+  return <SaleFormatExplainerPanel context={context} className={className} />;
+}
+
 type PopoverProps = {
   children?: React.ReactNode;
-  activeMode?: SaleDeliveryMode;
+  context: SaleFormatExplainerContext;
   align?: "start" | "center" | "end";
 };
 
-export function SaleTypeExplainerPopover({ children, activeMode, align = "center" }: PopoverProps) {
+export function SaleTypeExplainerPopover({ children, context, align = "center" }: PopoverProps) {
   const hydrated = useHydrated();
+  const ariaLabel = saleFormatExplainerAriaLabel(context.deliveryMode);
 
   if (!hydrated) {
     return (
       children ?? (
         <button
           type="button"
-          className="text-on-surface-variant/75 hover:text-on-surface transition-colors rounded-full focus-visible:ring-2 focus-visible:ring-primary outline-hidden"
-          aria-label="Learn about auction formats"
+          className="rounded-full text-on-surface-variant/75 outline-hidden transition-colors hover:text-on-surface focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label={ariaLabel}
         >
           <HelpCircle className="size-4" />
         </button>
@@ -116,15 +114,15 @@ export function SaleTypeExplainerPopover({ children, activeMode, align = "center
         {children ?? (
           <button
             type="button"
-            className="text-on-surface-variant/75 hover:text-on-surface transition-colors rounded-full focus-visible:ring-2 focus-visible:ring-primary outline-hidden"
-            aria-label="Learn about auction formats"
+            className="rounded-full text-on-surface-variant/75 outline-hidden transition-colors hover:text-on-surface focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label={ariaLabel}
           >
             <HelpCircle className="size-4" />
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent align={align} className="w-[min(540px,calc(100vw-2rem))] p-4 shadow-xl z-50">
-        <SaleTypeExplainerContent activeMode={activeMode} />
+      <PopoverContent align={align} className="z-50 w-[min(360px,calc(100vw-2rem))] p-4 shadow-xl">
+        <SaleFormatExplainerPanel context={context} />
       </PopoverContent>
     </Popover>
   );

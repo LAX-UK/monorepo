@@ -1,11 +1,13 @@
 "use client";
 
+import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
+import { saleFormatIcon } from "@/lib/sale-format-icon";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { HelpCircle, Laptop, MapPin } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { SaleTypeExplainerPopover } from "./sale-type-explainer";
 
 type Props = {
@@ -15,6 +17,8 @@ type Props = {
   withExplainer?: boolean;
   size?: "sm" | "md" | "lg";
   isLive?: boolean;
+  /** Sale-specific context for the format help popover. */
+  explainerContext?: SaleFormatExplainerContext;
 };
 
 export function SaleTypeBadge({
@@ -24,9 +28,12 @@ export function SaleTypeBadge({
   withExplainer = false,
   size = "md",
   isLive = false,
+  explainerContext,
 }: Props) {
   const pres = getSaleTypePresentation(deliveryMode);
-  const Icon = pres.iconName === "Laptop" ? Laptop : MapPin;
+  const Icon = saleFormatIcon(pres.iconName);
+  const context: SaleFormatExplainerContext =
+    explainerContext ?? ({ deliveryMode: pres.key } satisfies SaleFormatExplainerContext);
 
   const sizeClasses = {
     sm: "px-2 py-0.5 text-[10px] gap-1",
@@ -57,7 +64,7 @@ export function SaleTypeBadge({
       ) : null}
       <span>{pres.label}</span>
       {withExplainer ? (
-        <span className="ml-1 opacity-60 group-hover:opacity-100 transition-opacity" aria-hidden>
+        <span className="ml-1 opacity-60 transition-opacity group-hover:opacity-100" aria-hidden>
           <HelpCircle className={cn(size === "sm" ? "size-3" : "size-3.5", "inline")} />
         </span>
       ) : null}
@@ -66,7 +73,7 @@ export function SaleTypeBadge({
 
   if (withExplainer) {
     return (
-      <SaleTypeExplainerPopover activeMode={pres.key} align="start">
+      <SaleTypeExplainerPopover context={context} align="start">
         <button
           type="button"
           className="group inline-flex items-center rounded-full text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"

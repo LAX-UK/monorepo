@@ -8,6 +8,7 @@ import {
 } from "@/lib/brand";
 import {
   getOnlineBiddingSummary,
+  getOnlineClosingExtensionSummary,
   getOnsiteNoWebBiddingNote,
   getOnsiteParticipationSummary,
 } from "@/lib/sale-type-presentation";
@@ -50,6 +51,11 @@ export const faqGroups: FaqGroup[] = [
         id: "how-bidding-works",
         title: "How does bidding work?",
         body: `${getOnlineBiddingSummary()} ${getOnsiteParticipationSummary()} ${getOnsiteNoWebBiddingNote()}`,
+      },
+      {
+        id: "lot-closing-extensions",
+        title: "Can a lot stay open after its scheduled closing time?",
+        body: getOnlineClosingExtensionSummary(),
       },
       {
         id: "bidding-increments",
