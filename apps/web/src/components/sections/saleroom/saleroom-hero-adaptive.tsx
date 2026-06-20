@@ -13,6 +13,7 @@ import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { HERO_IMMERSIVE_SLOTS } from "@/lib/media/overlay-slot-presets";
+import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import { overlayPillClasses } from "@/lib/ui/overlay-tone-classes";
@@ -33,6 +34,8 @@ type Props = {
   catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
   /** SSR snapshot for hybrid on-block hero copy. */
   saleroomSession?: PublicSaleroomSessionStatus | null;
+  /** Sale-specific context for the format help popover. */
+  explainerContext?: SaleFormatExplainerContext;
 };
 
 export function SaleroomHeroAdaptive({
@@ -44,6 +47,7 @@ export function SaleroomHeroAdaptive({
   deliveryMode = "online",
   catalogLotRefs = [],
   saleroomSession = null,
+  explainerContext,
 }: Props) {
   const toneResult = useOverlayTone("contentBlock");
   const badgeOverlayClasses = overlayPillClasses(
@@ -136,6 +140,7 @@ export function SaleroomHeroAdaptive({
                 size="sm"
                 isLive={hero.isLive}
                 withExplainer
+                {...(explainerContext ? { explainerContext } : {})}
                 className={badgeOverlayClasses}
               />
             </div>

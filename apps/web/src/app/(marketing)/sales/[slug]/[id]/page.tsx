@@ -39,6 +39,7 @@ import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.serv
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
+import { saleFormatExplainerContextFromSale } from "@/lib/sale-format-explainer";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import {
@@ -368,6 +369,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             deliveryMode={bundle.sale.deliveryMode}
             catalogLotRefs={catalogLotRefs}
             saleroomSession={isHybridSaleroom ? initialSaleroomStatus : null}
+            explainerContext={saleFormatExplainerContextFromSale(bundle.sale)}
             toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
             actions={
               <SaleroomHeroActionRow

@@ -57,6 +57,7 @@ describe("sale-type-presentation helper", () => {
     expect(pres.description).toContain("30 seconds");
     expect(pres.description).toContain("final 2 minutes");
     expect(pres.description).not.toMatch(/extends.*by 2 minutes/i);
+    expect(pres.description).not.toMatch(/snip/i);
     expect(pres.description).toContain("often staggered in catalogue order");
     expect(pres.description).not.toContain("sequentially one-by-one");
 
