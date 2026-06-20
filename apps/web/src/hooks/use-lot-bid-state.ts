@@ -156,7 +156,7 @@ export function useLotBidState({
         if (!bidCardVisible) {
           notify.info("Closing time extended", {
             id: `lot-extend-${auction.id}`,
-            description: `Anti-snipe added ${Math.round(delta / 1000)}s to the clock.`,
+            description: `A bid near the closing time added ${Math.round(delta / 1000)}s to this lot's clock.`,
             duration: 7000,
           });
         }
