@@ -1,5 +1,8 @@
 import type { Sale, SaleDeliveryMode } from "@auction/types";
-import { formatAntiSnipingRuleSentence } from "@auction/validators";
+import {
+  formatAntiSnipingClosingRuleParagraph,
+  formatAntiSnipingRuleSentence,
+} from "@auction/validators";
 
 export type SaleTypePresentation = {
   key: SaleDeliveryMode;
@@ -195,6 +198,11 @@ export function getSaleDeliveryModeLabel(mode: SaleDeliveryMode): string {
 /** Short FAQ / policy paragraph for online timed web bidding. */
 export function getOnlineBiddingSummary(): string {
   return getSaleTypePresentation("online").description;
+}
+
+/** FAQ answer for lot closing extensions on online timed sales. */
+export function getOnlineClosingExtensionSummary(): string {
+  return formatAntiSnipingClosingRuleParagraph();
 }
 
 /** Short FAQ / policy paragraph for in-person saleroom participation. */
