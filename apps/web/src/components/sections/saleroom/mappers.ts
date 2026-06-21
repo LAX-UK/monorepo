@@ -2,6 +2,7 @@ import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
@@ -135,7 +136,7 @@ export function mapSaleToHeroVM(
     biddingStartsLabel: isLive ? null : formatLongDateTime(sale.startTime),
     description: sale.description,
     shareUrl: opts.shareUrl,
-    itemsLabel: `${opts.totalLots} ${opts.totalLots === 1 ? "lot" : "lots"}`,
+    itemsLabel: formatSaleLotsLabel(opts.totalLots),
     tags,
     dateLine,
     registrationClosesShort,
@@ -203,7 +204,7 @@ export function mapSaleToRelatedVM(sale: Sale, lotCount: number): RelatedSaleVM 
     kindLabel: getSaleTypePresentation(sale.deliveryMode).title,
     dateLabel,
     dateLine: dateLabel.toUpperCase(),
-    itemsLabel: `${lotCount} ${lotCount === 1 ? "lot" : "lots"}`,
+    itemsLabel: formatSaleLotsLabel(lotCount),
     imageUrl: sale.coverImages[0] ?? null,
   };
 }

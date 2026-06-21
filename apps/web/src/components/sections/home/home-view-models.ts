@@ -1,10 +1,10 @@
-import type { SaleListRow } from "@/lib/data/http/sales.server";
 import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-date";
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { type HeroCoverSources, resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
+import type { SaleListRow } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { lotPath, salePath } from "@/lib/seo/url";
@@ -357,7 +357,7 @@ export function toEndingSoonLotCardVMs(lots: Lot[]): LotCardVM[] {
 }
 
 export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAuctionTileVM {
-  const { sale, lots } = row;
+  const { sale, lotCount } = row;
   const auctionKindLabel = getSaleTypePresentation(sale.deliveryMode).title;
   const now = Date.now();
   const startMs =
@@ -375,7 +375,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
     dateLabel: formatSaleDateRange(sale),
     coverImageUrl: sale.coverImages[0] ?? null,
     coverImageAlt: `${sale.title} — auction cover`,
-    lotCount: lots.length,
+    lotCount,
     auctionKindLabel,
     deliveryMode: sale.deliveryMode,
     status: sale.status,
