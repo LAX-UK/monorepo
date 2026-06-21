@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getServerApiBase } from "@/lib/data/http/hc-server";
-import { parseSale } from "@/lib/data/http/parse";
+import { parseSaleListRowApiPayload } from "@/lib/sale-list-row";
 import type { Sale } from "@auction/types";
 import { cookies } from "next/headers";
 
@@ -54,9 +54,12 @@ export async function getServerRelatedSales(params: GetRelatedSalesParams): Prom
   const url = `${base}/sales?${qs.toString()}`;
   const res = await fetch(url, { next: { revalidate: 60 } });
   if (!res.ok) return [];
-  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
+  const body = (await res.json()) as { data: unknown[] };
   return body.data
-    .map((row) => ({ sale: parseSale(row.sale), lotCount: row.lots.length }))
+    .map((row) => {
+      const parsed = parseSaleListRowApiPayload(row);
+      return { sale: parsed.sale, lotCount: parsed.lotCount };
+    })
     .filter((row) => row.sale.id !== params.id)
     .slice(0, limit);
 }
