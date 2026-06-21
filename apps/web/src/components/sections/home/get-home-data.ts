@@ -35,9 +35,10 @@ import type { ListLotsParams } from "@/lib/data/contracts";
 import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { buildLotListQuery } from "@/lib/data/http/lots.server";
-import { parseLot, parseSale } from "@/lib/data/http/parse";
+import { parseLot } from "@/lib/data/http/parse";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import { type SaleListRow, parseSaleListRowApiPayload } from "@/lib/sale-list-row";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
@@ -66,8 +67,6 @@ type HomeSaleListQuery = {
   offset?: number;
   sort?: "createdDesc" | "startAsc";
 };
-
-type HomeSaleListRow = { sale: Sale; lots: Lot[] };
 
 function jsonLdListEntriesFromLots(lots: Lot[]): HomeJsonLdListEntry[] {
   return lots.map((lot) => ({ title: lot.title, href: lotPath(lot) }));
@@ -100,18 +99,15 @@ async function fetchHomeLots(params: ListLotsParams): Promise<Lot[]> {
   return body.data.map(parseLot);
 }
 
-async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<HomeSaleListRow[]> {
+async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<SaleListRow[]> {
   const qs = new URLSearchParams(buildHomeSalesQuery(params));
   const res = await catalogueFetch(
     `${getServerApiBase()}/sales?${qs.toString()}`,
     CATALOGUE_FETCH_POLICIES.home,
   );
   if (!res.ok) throw new Error(`Failed to list home sales: ${res.status}`);
-  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
-  return body.data.map((row) => ({
-    sale: parseSale(row.sale),
-    lots: row.lots.map(parseLot),
-  }));
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseSaleListRowApiPayload);
 }
 
 function liveNowLots(lots: Lot[], excludeLotId: string | null): Lot[] {
@@ -234,7 +230,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
 
   let activeLots: Lot[] = [];
   let scheduledLots: Lot[] = [];
-  let salesRows: HomeSaleListRow[] = [];
+  let salesRows: SaleListRow[] = [];
   try {
     const filtered: ListLotsParams = {
       limit: HOME_CATALOG_FETCH_LIMIT,

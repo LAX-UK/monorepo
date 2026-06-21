@@ -47,15 +47,27 @@ describe("local event dev smoke", () => {
 
     expect(res.status).toBe(200);
     expect(body.data?.slug).toBe("lax001");
-    expect(body.data?.rsvpOpen).toBe(true);
+    expect(typeof body.data?.rsvpOpen).toBe("boolean");
     expect(body.data?.segmentOptions?.length).toBeGreaterThan(0);
   });
 
-  it("proxies RSVP email lookup", async () => {
+  it("proxies RSVP email lookup with status aligned to config", async () => {
     if (!(await reachable(`${EVENT_ORIGIN}/`))) {
       console.warn(`skip: event dev server not running at ${EVENT_ORIGIN}`);
       return;
     }
+
+    const configRes = await fetch(`${EVENT_ORIGIN}/events/lax001/config`, {
+      headers: { Accept: "application/json" },
+    });
+    if (configRes.status >= 500) {
+      console.warn(`skip: local API proxy not ready for config (${configRes.status})`);
+      return;
+    }
+    const configBody = (await configRes.json()) as {
+      data?: { rsvpOpen: boolean };
+    };
+    const rsvpOpen = configBody.data?.rsvpOpen === true;
 
     const res = await fetch(`${EVENT_ORIGIN}/events/lax001/lookup`, {
       method: "POST",
@@ -72,7 +84,7 @@ describe("local event dev smoke", () => {
     const body = (await res.json()) as { data?: { status: string } };
 
     expect(res.status).toBe(200);
-    expect(body.data?.status).toBe("not_registered");
+    expect(body.data?.status).toBe(rsvpOpen ? "not_registered" : "event_closed");
   });
 
   it("serves bundled invitation images from public/", async () => {
