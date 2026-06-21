@@ -6,6 +6,7 @@ import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalo
 import { getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
 import { parseLot, parseSale } from "@/lib/data/http/parse";
 import { NO_STORE_FETCH_POLICY } from "@/lib/data/http/server-fetch-policy";
+import { type SaleListRow, parseSaleListRowApiPayload } from "@/lib/sale-list-row";
 import type { Lot, Sale } from "@auction/types";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -31,17 +32,14 @@ function buildSalesQuery(params: ListSalesQuery): Record<string, string> {
   return q;
 }
 
-export type SaleListRow = { sale: Sale; lots: Lot[] };
+export type { SaleListRow } from "@/lib/sale-list-row";
 
 export async function getServerSalesList(params: ListSalesQuery = {}): Promise<SaleListRow[]> {
   const client = await getServerHc();
   const res = await client.sales.$get({ query: buildSalesQuery(params) });
   if (!res.ok) throw new Error(`Failed to list sales: ${res.status}`);
-  const body = (await res.json()) as { data: { sale: unknown; lots: unknown[] }[] };
-  return body.data.map((row) => ({
-    sale: parseSale(row.sale),
-    lots: row.lots.map(parseLot),
-  }));
+  const body = (await res.json()) as { data: unknown[] };
+  return body.data.map(parseSaleListRowApiPayload);
 }
 
 export type SaleViewerState = {

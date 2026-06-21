@@ -268,24 +268,24 @@ export default async function SalesListPage({
   const listLd = !err && listLdSource.length > 0 ? itemListJsonLd(listLdSource) : null;
   const listLdText = listLd ? jsonLdScript(listLd) : null;
 
-  const featuredVms = featuredRows.map(({ sale, lots }) =>
-    mapSaleToFeaturedAuctionCardVM(sale, lots),
-  );
+  const featuredVms = featuredRows.map((row) => mapSaleToFeaturedAuctionCardVM(row));
 
   const yearOptions = collectYears(saleRows.length > 0 ? saleRows : featuredRows);
 
   const showSalesBrowse = tab === "upcoming" || tab === "live" || tab === "results";
-  const rowVms = filteredSales.map(({ sale, lots }) =>
-    mapSaleToAuctionRowVM(sale, lots, {
-      showRegisterButton: !session && (sale.status === "scheduled" || sale.status === "active"),
+  const rowVms = filteredSales.map((row) =>
+    mapSaleToAuctionRowVM(row, {
+      showRegisterButton:
+        !session && (row.sale.status === "scheduled" || row.sale.status === "active"),
     }),
   );
-  const gridVms = filteredSales.map(({ sale, lots }) =>
-    mapSaleToCalendarGridCardVM(sale, lots, {
-      showRegisterButton: !session && (sale.status === "scheduled" || sale.status === "active"),
+  const gridVms = filteredSales.map((row) =>
+    mapSaleToCalendarGridCardVM(row, {
+      showRegisterButton:
+        !session && (row.sale.status === "scheduled" || row.sale.status === "active"),
     }),
   );
-  const agendaVms = filteredSales.map(({ sale, lots }) => mapSaleToAgendaItemVM(sale, lots));
+  const agendaVms = filteredSales.map((row) => mapSaleToAgendaItemVM(row));
 
   const hasActiveCalendarFilters = countActiveCalendarFilters(calendarState) > 0;
 
