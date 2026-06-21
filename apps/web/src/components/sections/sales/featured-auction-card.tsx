@@ -44,7 +44,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
             </div>
 
             <SaleCardTitle mode="embedded" title={vm.title} className="line-clamp-2" />
-            <SaleCardMeta locationLabel={vm.locationLabel} />
+            <SaleCardMeta itemsLabel={vm.itemsLabel} locationLabel={vm.locationLabel} />
           </div>
         </SaleCardGrid>
       </MarketingCardReveal>

@@ -10,6 +10,7 @@ import {
 } from "@/components/sections/sales/card/sale-card-shell";
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { SaleAction } from "@/components/sections/sales/card/types";
+import { formatSaleItemsLabel } from "@/lib/sale-list-row";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -39,7 +40,7 @@ function buildActions(tile: HomeUpcomingAuctionTileVM, isAuthenticated: boolean)
 }
 
 export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }: Props) {
-  const itemsLabel = tile.lotCount === 1 ? "1 Item" : `${tile.lotCount} Items`;
+  const itemsLabel = formatSaleItemsLabel(tile.lotCount);
   const isLive = Boolean(tile.isLive);
   const mediaCommon = {
     href: tile.href,

@@ -1,5 +1,6 @@
 import type { SaleCardCommon } from "@/components/sections/sales/card/types";
 import { formatMoney } from "@/lib/format-currency";
+import { type SaleListRow, formatSaleItemsLabel, formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
@@ -82,18 +83,17 @@ function deriveCategoryLabel(sale: Sale): string | undefined {
 }
 
 export function mapSaleToCalendarCardVM(
-  sale: Sale,
-  lots: Lot[],
+  row: SaleListRow,
   listLocale = "en-GB",
 ): SaleCalendarCardVM {
+  const { sale, lots, lotCount } = row;
   const start = toDisplayDate(sale.startTime);
   const end = toDisplayDate(sale.endTime);
   const dateRangeLabel = formatDateRangeLine(start, end, listLocale).toUpperCase();
   const timeLabel = formatTimeLine(start, listLocale).toUpperCase();
   const dateLabel = `${dateRangeLabel} | ${timeLabel}`;
 
-  const n = lots.length;
-  const itemsLabel = `${n} Item${n === 1 ? "" : "s"}`;
+  const itemsLabel = formatSaleItemsLabel(lotCount);
 
   const categoryLabel = deriveCategoryLabel(sale);
   const hammer = sale.status === "ended" ? endedHammerTotal(lots) : undefined;
@@ -128,6 +128,7 @@ export type FeaturedAuctionCardVM = SaleCardCommon & {
   /** Uppercase schedule line, e.g. "9–16 APRIL 2026 | 11:00 AM GMT". */
   dateLabel: string;
   locationLabel: string | null;
+  itemsLabel: string;
 };
 
 /** Browse row — horizontal list on large screens, stacked mobile-first. */
@@ -143,7 +144,6 @@ export type SaleAuctionRowVM = SaleCardCommon & {
 
 /** Calendar browse grid tile — compact card with items + register parity vs row view. */
 export type CalendarGridCardVM = FeaturedAuctionCardVM & {
-  itemsLabel: string;
   lotsHref: string;
   showRegisterButton: boolean;
 };
@@ -195,11 +195,10 @@ function buildRowScheduleParts(
 }
 
 export function mapSaleToFeaturedAuctionCardVM(
-  sale: Sale,
-  lots: Lot[],
+  row: SaleListRow,
   listLocale = "en-GB",
 ): FeaturedAuctionCardVM {
-  const base = mapSaleToCalendarCardVM(sale, lots, listLocale);
+  const base = mapSaleToCalendarCardVM(row, listLocale);
   return {
     id: base.id,
     href: base.href,
@@ -209,6 +208,7 @@ export function mapSaleToFeaturedAuctionCardVM(
     auctionTypeLabel: base.auctionTypeLabel,
     dateLabel: base.dateLabel,
     locationLabel: base.locationLabel,
+    itemsLabel: base.itemsLabel,
     status: base.status,
     deliveryMode: base.deliveryMode,
     ...(base.countdownEndIso ? { countdownEndIso: base.countdownEndIso } : {}),
@@ -216,18 +216,14 @@ export function mapSaleToFeaturedAuctionCardVM(
 }
 
 export function mapSaleToCalendarGridCardVM(
-  sale: Sale,
-  lots: Lot[],
+  row: SaleListRow,
   opts: { showRegisterButton: boolean },
   listLocale = "en-GB",
 ): CalendarGridCardVM {
-  const featured = mapSaleToFeaturedAuctionCardVM(sale, lots, listLocale);
-  const n = lots.length;
-  const itemsLabel = `${n} Item${n === 1 ? "" : "s"}`;
+  const featured = mapSaleToFeaturedAuctionCardVM(row, listLocale);
   return {
     ...featured,
-    itemsLabel,
-    lotsHref: salePath(sale),
+    lotsHref: salePath(row.sale),
     showRegisterButton: opts.showRegisterButton,
   };
 }
@@ -253,13 +249,9 @@ export type SaleAgendaItemVM = {
   countdownEndIso?: string;
 };
 
-export function mapSaleToAgendaItemVM(
-  sale: Sale,
-  lots: Lot[],
-  listLocale = "en-GB",
-): SaleAgendaItemVM {
+export function mapSaleToAgendaItemVM(row: SaleListRow, listLocale = "en-GB"): SaleAgendaItemVM {
+  const { sale, lotCount } = row;
   const start = toDisplayDate(sale.startTime);
-  const n = lots.length;
   const countdownEndIso = toSaleCountdownEndIso(sale);
   const startIso = toOptionalIsoString(sale.startTime) ?? "";
   return {
@@ -274,21 +266,20 @@ export function mapSaleToAgendaItemVM(
       .toUpperCase(),
     timeLabel: formatTimeLineShort(start, listLocale).toUpperCase(),
     auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
-    itemsLabel: `${n} lot${n === 1 ? "" : "s"}`,
+    itemsLabel: formatSaleLotsLabel(lotCount),
     locationLabel: saleMarketingLocationLabel(sale),
     ...(countdownEndIso ? { countdownEndIso } : {}),
   };
 }
 
 export function mapSaleToAuctionRowVM(
-  sale: Sale,
-  lots: Lot[],
+  row: SaleListRow,
   opts: { showRegisterButton: boolean },
   listLocale = "en-GB",
 ): SaleAuctionRowVM {
+  const { sale, lots, lotCount } = row;
   const { lead, rest } = buildRowScheduleParts(sale, lots, listLocale);
-  const n = lots.length;
-  const itemsLabel = `${n} Item${n === 1 ? "" : "s"}`;
+  const itemsLabel = formatSaleItemsLabel(lotCount);
   const countdownEndIso = toSaleCountdownEndIso(sale);
 
   return {

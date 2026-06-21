@@ -29,7 +29,8 @@ function lotPriceInRange(
 
 /** Client/server-safe row filter for query params not yet supported by `GET /sales`. */
 export function applyCalendarRowFilters(rows: SaleListRow[], f: CalendarRowFilters): SaleListRow[] {
-  return rows.filter(({ sale, lots }) => {
+  return rows.filter((row) => {
+    const { sale } = row;
     if (f.deliveryMode && f.deliveryMode !== "all" && sale.deliveryMode !== f.deliveryMode) {
       return false;
     }
@@ -49,7 +50,7 @@ export function applyCalendarRowFilters(rows: SaleListRow[], f: CalendarRowFilte
       const y = new Date(sale.startTime).getFullYear();
       if (y !== f.year) return false;
     }
-    if (!lotPriceInRange({ sale, lots }, f.minPrice, f.maxPrice)) return false;
+    if (!lotPriceInRange(row, f.minPrice, f.maxPrice)) return false;
     return true;
   });
 }

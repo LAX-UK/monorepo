@@ -1,7 +1,8 @@
-import type { Lot } from "@auction/types";
+import { saleListRow } from "@/lib/sale-list-row";
+import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { parseLot } from "../../../lib/data/http/parse";
-import { toEditorsPickLotCardVM } from "./home-view-models";
+import { toEditorsPickLotCardVM, toHomeUpcomingAuctionTileVM } from "./home-view-models";
 
 function baseLot(overrides: Partial<Lot> = {}): Lot {
   return {
@@ -34,6 +35,53 @@ function baseLot(overrides: Partial<Lot> = {}): Lot {
     ...overrides,
   };
 }
+
+function baseSale(overrides: Partial<Sale> = {}): Sale {
+  const start = new Date("2026-09-10T10:00:00Z");
+  return {
+    id: "sale-1",
+    title: "Autumn Sale",
+    description: null,
+    coverImages: [],
+    categoryId: null,
+    deliveryMode: "online",
+    allowOnlineBidsBeforeGoLive: false,
+    streamUrl: null,
+    locationName: null,
+    locationAddress: null,
+    locationMapUrl: null,
+    locationAddressLine1: null,
+    locationAddressLine2: null,
+    locationCity: null,
+    locationCounty: null,
+    locationPostcode: null,
+    locationCountry: null,
+    status: "scheduled",
+    startTime: start,
+    endTime: new Date("2026-09-10T12:00:00Z"),
+    previewStartTime: null,
+    buyerPremiumRate: "0",
+    buyerPremiumTiers: null,
+    terms: null,
+    createdAt: start,
+    updatedAt: start,
+    ...overrides,
+  };
+}
+
+describe("toHomeUpcomingAuctionTileVM", () => {
+  it("uses lotCount from the row instead of preview lots.length", () => {
+    const previewLots = Array.from({ length: 4 }, (_, i) => ({ id: `l${i}` }) as Lot);
+    const vm = toHomeUpcomingAuctionTileVM(saleListRow(baseSale(), previewLots, 15));
+    expect(vm.lotCount).toBe(15);
+  });
+
+  it("falls back to lots.length when lotCount equals preview length", () => {
+    const lots = [{ id: "l1" } as Lot, { id: "l2" } as Lot];
+    const vm = toHomeUpcomingAuctionTileVM(saleListRow(baseSale(), lots, 2));
+    expect(vm.lotCount).toBe(2);
+  });
+});
 
 describe("toEditorsPickLotCardVM", () => {
   it("uses marketing estimate when present", () => {
