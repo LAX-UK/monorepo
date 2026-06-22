@@ -19,6 +19,8 @@ export type MarketingCatalogGridProps = {
   /** List item wrapper classes (defaults to stretch-ready flex column). */
   itemClassName?: string;
   as?: "ul" | "section";
+  /** Accessible name for the list when children are interactive tiles. */
+  ariaLabel?: string;
 };
 
 /**
@@ -35,9 +37,11 @@ export function MarketingCatalogGrid({
   gridClassName,
   itemClassName,
   as: Tag = "ul",
+  ariaLabel,
 }: MarketingCatalogGridProps): ReactElement {
   return (
     <Tag
+      aria-label={ariaLabel}
       className={cn(
         "list-none auto-rows-fr items-stretch justify-items-stretch p-0",
         sparseGridClasses(count, {
