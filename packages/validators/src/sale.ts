@@ -69,6 +69,56 @@ const locationPostcodeField = z
     }
   });
 
+const pressMentionTypes = ["feature", "interview", "quote", "roundup"] as const;
+
+const salePressRefSchema = z
+  .object({
+    url: z
+      .string()
+      .url()
+      .max(2048)
+      .refine(
+        (v) => {
+          try {
+            const { protocol } = new URL(v);
+            return protocol === "https:" || protocol === "http:";
+          } catch {
+            return false;
+          }
+        },
+        { message: "Press URL must start with https:// or http://" },
+      ),
+    headline: z.string().min(1).max(500),
+    outletName: z.string().min(1).max(200),
+    publishedAt: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "publishedAt must be YYYY-MM-DD")
+      .refine(
+        (v) => {
+          const d = new Date(`${v}T12:00:00Z`);
+          return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
+        },
+        { message: "publishedAt must be a valid calendar date (YYYY-MM-DD)" },
+      )
+      .optional(),
+    excerpt: z.string().max(280).optional(),
+    mentionType: z.enum(pressMentionTypes).optional(),
+  })
+  .transform((v) => {
+    const out: {
+      url: string;
+      headline: string;
+      outletName: string;
+      publishedAt?: string;
+      excerpt?: string;
+      mentionType?: (typeof pressMentionTypes)[number];
+    } = { url: v.url, headline: v.headline, outletName: v.outletName };
+    if (v.publishedAt) out.publishedAt = v.publishedAt;
+    if (v.excerpt) out.excerpt = v.excerpt;
+    if (v.mentionType) out.mentionType = v.mentionType;
+    return out;
+  });
+
 const dayPhotoRefSchema = z
   .object({
     mediaType: z.enum(["image", "video"]).optional(),
@@ -103,6 +153,8 @@ const saleCreateBodySchema = z.object({
   coverImages: z.array(mediaReferenceSchema).max(20).optional(),
   /** Auction-day event photos. Accepted on update only for ended onsite/hybrid sales. */
   dayImages: z.array(dayPhotoRefSchema).max(60).optional(),
+  /** Curated press/news links. Accepted for all sale statuses and delivery modes. */
+  pressCoverage: z.array(salePressRefSchema).max(50).optional(),
   categoryIds: optionalCategoryIdsSchema,
   categoryId: z.string().uuid().optional(),
   deliveryMode: z.enum(saleDeliveryModes).optional(),

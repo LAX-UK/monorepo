@@ -995,6 +995,10 @@ export class SaleService {
       if (canEditStreamUrl) {
         publishedPatch.streamUrl = patch.streamUrl ?? null;
       }
+      // Press coverage: allowed for all delivery modes and all non-draft statuses.
+      if (patch.pressCoverage !== undefined) {
+        publishedPatch.pressCoverage = patch.pressCoverage;
+      }
       // Auction-day media: only allowed for ended onsite/hybrid sales.
       const dayImagesRequested = patch.dayImages !== undefined;
       if (dayImagesRequested) {

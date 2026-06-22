@@ -12,6 +12,7 @@ import {
   mapSaleToDayGalleryVM,
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
+  mapSaleToPressCoverageVM,
 } from "@/components/sections/saleroom/mappers";
 import { SaleroomCatalogLiveShell } from "@/components/sections/saleroom/saleroom-catalog-live-shell";
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
@@ -21,6 +22,7 @@ import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-hero-action-row";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
+import { SaleroomPressCoverage } from "@/components/sections/saleroom/saleroom-press-coverage";
 import { SaleroomRelatedAuctionsSection } from "@/components/sections/saleroom/saleroom-related-auctions-section";
 import {
   isPublicCatalogSale,
@@ -57,6 +59,7 @@ import {
   jsonLdScript,
   saleDayGalleryJsonLd,
   saleEventJsonLd,
+  salePressJsonLd,
   saleRecordingVideoJsonLd,
 } from "@/lib/seo/structured-data";
 import { salePath, slugify } from "@/lib/seo/url";
@@ -213,6 +216,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   });
   const dayGalleryVM = mapSaleToDayGalleryVM(bundle.sale);
   const showDayGallery = dayGalleryVM !== null;
+  const pressCoverageItems = mapSaleToPressCoverageVM(bundle.sale);
+  const showPressSection = pressCoverageItems !== null && pressCoverageItems.length > 0;
 
   const overviewVM = mapSaleToOverviewVM(bundle.sale, {
     categoryLabel,
@@ -290,12 +295,18 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       ? saleDayGalleryJsonLd(bundle.sale, bundle.sale.dayImageAssets)
       : null;
 
+  const pressLd =
+    showPressSection && bundle.sale.pressCoverage && bundle.sale.pressCoverage.length > 0
+      ? salePressJsonLd(bundle.sale, bundle.sale.pressCoverage)
+      : null;
+
   const jsonLdText = jsonLdScript(
     crumbs,
     eventLd,
     ...(videoLd ? [videoLd] : []),
     ...(itemsLd ? [itemsLd] : []),
     ...(galleryLd ? [galleryLd] : []),
+    ...(pressLd ? [pressLd] : []),
   );
 
   const viewer = resolveViewerParticipation(session);
@@ -470,6 +481,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           tabs={buildSaleAnchorTabs({
             showTelephone: showTelephoneBooking,
             showGallery: showDayGallery,
+            showPress: showPressSection,
           })}
         />
 
@@ -537,6 +549,20 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             aria-label="Auction day media"
           >
             <SaleroomDayGallery vm={dayGalleryVM} />
+          </section>
+        ) : null}
+
+        {showPressSection && pressCoverageItems ? (
+          <section
+            id="press"
+            className={cn(
+              MARKETING_PAGE_SHELL,
+              SALE_SECTION_SCROLL_MT,
+              "pb-0 pt-[var(--section-spacing)]",
+            )}
+            aria-label="Press coverage"
+          >
+            <SaleroomPressCoverage items={pressCoverageItems} />
           </section>
         ) : null}
 

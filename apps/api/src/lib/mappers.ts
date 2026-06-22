@@ -13,6 +13,7 @@ import type {
   Sale,
   SaleDayMediaRef,
   SaleDeliveryMode,
+  SalePressRef,
   SaleStatus,
 } from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
@@ -214,6 +215,31 @@ export function mapItemSubmissionRow(
   };
 }
 
+function parsePressRefs(raw: unknown): SalePressRef[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: SalePressRef[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const url = typeof o.url === "string" ? o.url.trim() : null;
+    const headline = typeof o.headline === "string" ? o.headline.trim() : null;
+    const outletName = typeof o.outletName === "string" ? o.outletName.trim() : null;
+    if (!url || !headline || !outletName) continue;
+    const ref: SalePressRef = { url, headline, outletName };
+    if (typeof o.publishedAt === "string" && o.publishedAt.trim())
+      ref.publishedAt = o.publishedAt.trim();
+    if (typeof o.excerpt === "string" && o.excerpt.trim()) ref.excerpt = o.excerpt.trim();
+    if (
+      typeof o.mentionType === "string" &&
+      ["feature", "interview", "quote", "roundup"].includes(o.mentionType)
+    ) {
+      ref.mentionType = o.mentionType as import("@auction/types").SalePressMentionType;
+    }
+    out.push(ref);
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 function parseDayImageRefs(raw: unknown): SaleDayMediaRef[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
   const out: SaleDayMediaRef[] = [];
@@ -242,6 +268,8 @@ function parseDayImageRefs(raw: unknown): SaleDayMediaRef[] | undefined {
 export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
   const dayImagesRaw = (row as Record<string, unknown>).auctionDayImages;
   const dayImages = parseDayImageRefs(dayImagesRaw);
+  const pressCoverageRaw = (row as Record<string, unknown>).pressCoverage;
+  const pressCoverage = parsePressRefs(pressCoverageRaw);
   return {
     id: row.id,
     title: row.title,
@@ -270,6 +298,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     buyerPremiumTiers: row.buyerPremiumTiers ?? null,
     terms: row.terms ?? null,
     ...(dayImages !== undefined ? { dayImages } : {}),
+    ...(pressCoverage !== undefined ? { pressCoverage } : {}),
     createdByLegalEntityId: requireBackfilledLegalEntityId(
       row.createdByLegalEntityId,
       `sale:${row.id}`,

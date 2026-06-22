@@ -33,6 +33,28 @@ export type SaleDayVideoRef = {
 /** Storage form for either an auction-day photo or video. */
 export type SaleDayMediaRef = SaleDayPhotoRef | SaleDayVideoRef;
 
+// ─── Press coverage ──────────────────────────────────────────────────────────
+
+export type SalePressMentionType = "feature" | "interview" | "quote" | "roundup";
+
+/**
+ * Storage form for a single press coverage item (curated external link).
+ * URLs are already fully-resolved; no media enrichment needed.
+ */
+export type SalePressRef = {
+  url: string;
+  headline: string;
+  outletName: string;
+  /** ISO date string YYYY-MM-DD. */
+  publishedAt?: string;
+  /** Short pull-quote or excerpt (max 280 chars). */
+  excerpt?: string;
+  mentionType?: SalePressMentionType;
+};
+
+/** Resolved/public form — structurally identical to SalePressRef (no enrichment). */
+export type SalePressItem = SalePressRef;
+
 /** Resolved/public form: enriched GalleryImage merged with caption and media type. */
 export type SaleDayPhoto = GalleryImage & {
   mediaType: "image";
@@ -66,6 +88,8 @@ export type Sale = {
   dayImages?: SaleDayMediaRef[];
   /** Enriched/resolved auction-day media. Populated by the API after media enrichment. */
   dayImageAssets?: SaleDayMedia[];
+  /** Curated external press/news links. Visible publicly as soon as any items are added. */
+  pressCoverage?: SalePressRef[];
   categoryIds?: string[];
   /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string | null;
@@ -179,4 +203,6 @@ export type CreateSaleInput = {
   createdByLegalEntityId?: string | undefined;
   /** Auction-day event photos/videos to persist (only accepted for ended onsite/hybrid sales). */
   dayImages?: SaleDayMediaRef[] | undefined;
+  /** Curated press/news links (accepted for all sale statuses and delivery modes). */
+  pressCoverage?: SalePressRef[] | undefined;
 };
