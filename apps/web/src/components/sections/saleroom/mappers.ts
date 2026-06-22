@@ -2,6 +2,7 @@ import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/form
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
@@ -427,17 +428,53 @@ export function mapSaleToPressCoverageVM(sale: Sale): PressCoverageVM[] | null {
   });
 }
 
+function resolveDayMediaSrc(value: string): string {
+  return resolveMediaSrc(value) ?? value;
+}
+
+function withResolvedDayMediaSrc(item: SaleDayMedia): SaleDayMedia {
+  if (item.mediaType === "video") {
+    const src = resolveDayMediaSrc(item.src);
+    const posterSrc = item.posterSrc ? resolveDayMediaSrc(item.posterSrc) : undefined;
+    return { ...item, src, ...(posterSrc ? { posterSrc } : {}) };
+  }
+  return { ...item, src: resolveDayMediaSrc(item.src) };
+}
+
+function buildDayGalleryItems(sale: Sale): SaleDayMedia[] {
+  if (sale.dayImageAssets?.length) {
+    return sale.dayImageAssets.map(withResolvedDayMediaSrc);
+  }
+  if (!sale.dayImages?.length) return [];
+  return sale.dayImages.map((ref) => {
+    if (ref.mediaType === "video") {
+      const item: SaleDayMedia = {
+        mediaType: "video",
+        src: resolveDayMediaSrc(ref.key),
+      };
+      if (ref.caption) item.caption = ref.caption;
+      if (ref.posterKey) item.posterSrc = resolveDayMediaSrc(ref.posterKey);
+      return item;
+    }
+    const item: SaleDayMedia = {
+      mediaType: "image",
+      src: resolveDayMediaSrc(ref.key),
+    };
+    if (ref.caption) item.caption = ref.caption;
+    if (ref.alt) item.alt = ref.alt;
+    return item;
+  });
+}
+
 export function mapSaleToDayGalleryVM(sale: Sale): DayGalleryVM | null {
-  if (
-    sale.status !== "ended" ||
-    !isSaleroomDeliveryMode(sale.deliveryMode) ||
-    !sale.dayImageAssets ||
-    sale.dayImageAssets.length === 0
-  ) {
+  if (sale.status !== "ended" || !isSaleroomDeliveryMode(sale.deliveryMode)) {
     return null;
   }
+  const rawItems = buildDayGalleryItems(sale).filter((item) => item.src.trim().length > 0);
+  if (rawItems.length === 0) return null;
+
   let photoN = 0;
-  const items: SaleDayMedia[] = sale.dayImageAssets.map((item) => {
+  const items: SaleDayMedia[] = rawItems.map((item) => {
     if (item.mediaType === "video") return item;
     photoN += 1;
     return {
