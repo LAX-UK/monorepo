@@ -134,7 +134,8 @@ function parseDayPhotoAssets(raw: unknown): SaleDayMedia[] | undefined {
     if (!entry || typeof entry !== "object") continue;
     const o = entry as Record<string, unknown>;
     if (o.mediaType === "video") {
-      const src = typeof o.src === "string" ? o.src : null;
+      const src =
+        typeof o.src === "string" ? o.src.trim() : typeof o.key === "string" ? o.key.trim() : null;
       if (!src) continue;
       const video: import("@auction/types").SaleDayVideo = { mediaType: "video", src };
       if (typeof o.posterSrc === "string" && o.posterSrc) video.posterSrc = o.posterSrc;
@@ -143,7 +144,14 @@ function parseDayPhotoAssets(raw: unknown): SaleDayMedia[] | undefined {
       if (typeof o.height === "number") video.height = o.height;
       out.push(video);
     } else {
-      const src = typeof o.src === "string" ? o.src : typeof o.url === "string" ? o.url : null;
+      const src =
+        typeof o.src === "string"
+          ? o.src.trim()
+          : typeof o.url === "string"
+            ? o.url.trim()
+            : typeof o.key === "string"
+              ? o.key.trim()
+              : null;
       if (!src) continue;
       const photo: import("@auction/types").SaleDayPhoto = { mediaType: "image", src };
       if (typeof o.alt === "string" && o.alt.trim()) photo.alt = o.alt.trim();

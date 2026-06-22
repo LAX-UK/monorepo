@@ -64,12 +64,14 @@ function mergeDayMediaAssets(
       };
       return video;
     }
-    const asset = enrichedImages[i] ?? { src: resolvedMap.get(ref.key.trim()) ?? ref.key };
+    const resolvedSrc = resolvedMap.get(ref.key.trim()) ?? ref.key;
+    const asset = enrichedImages[i];
     const photo: SaleDayPhoto = {
-      ...asset,
+      ...(asset ?? {}),
+      src: asset?.src ?? resolvedSrc,
       mediaType: "image",
       ...(ref.caption ? { caption: ref.caption } : {}),
-      ...(!asset.alt && ref.alt ? { alt: ref.alt } : {}),
+      ...(!asset?.alt && ref.alt ? { alt: ref.alt } : {}),
     };
     return photo;
   });
@@ -158,8 +160,7 @@ export async function presentSaleImages(
 ): Promise<Sale> {
   const coverKeys = row.coverImages;
   const dayRefs = row.dayImages ?? [];
-  const dayKeys = dayRefs.map((r) => r.key);
-  const allKeys = collectUniqueKeys([...coverKeys, ...dayKeys]);
+  const allKeys = collectUniqueKeys([...coverKeys, ...collectSaleDayImageKeys([row])]);
 
   const resolvedMap = await resolveKeysBatch(resolver, allKeys);
   const coverImages = applyResolvedKeys(coverKeys, resolvedMap);
@@ -204,7 +205,7 @@ export async function presentSaleAdminImages(
   const coverKeys = row.coverImages;
   const dayRefs = row.dayImages ?? [];
   const dayKeys = dayRefs.map((r) => r.key);
-  const allKeys = collectUniqueKeys([...coverKeys, ...dayKeys]);
+  const allKeys = collectUniqueKeys([...coverKeys, ...collectSaleDayImageKeys([row])]);
 
   const resolvedMap = await resolveKeysBatch(resolver, allKeys);
 

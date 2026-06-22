@@ -81,6 +81,18 @@ describe("parseSale — dayImages / dayImageAssets", () => {
     });
   });
 
+  it("parses dayImageAssets from storage keys when src is absent", () => {
+    const sale = parseSale({
+      ...baseSaleRaw,
+      dayImageAssets: [{ key: "uploads/pending/sale-day/user/photo.jpg", caption: "Floor" }],
+    });
+    expect(sale.dayImageAssets?.[0]).toMatchObject({
+      mediaType: "image",
+      src: "uploads/pending/sale-day/user/photo.jpg",
+      caption: "Floor",
+    });
+  });
+
   it("silently skips invalid dayImages entries (missing key)", () => {
     const sale = parseSale({
       ...baseSaleRaw,
