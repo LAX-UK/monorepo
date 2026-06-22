@@ -11,7 +11,7 @@ import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { type ArtistKind, getCreatorKindConfig } from "@auction/types";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, SaleDayMedia, SalePressItem } from "@auction/types";
 
 export function lotProductJsonLd(
   auction: Lot,
@@ -107,6 +107,37 @@ export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
     organizer: { "@type": "Organization", name: SITE_NAME, url: base },
     location: location.location,
     url,
+  };
+}
+
+/**
+ * Schema.org `VideoObject` for an archived saleroom recording.
+ * Only emit this when the sale has ended, the stream URL is embeddable (so
+ * `embedUrl` is present), and the stream provider is known.
+ * Pass `null` for `embedUrl` when the URL is not embeddable — callers should
+ * skip emitting this in that case.
+ */
+export function saleRecordingVideoJsonLd(
+  sale: Sale,
+  embedUrl: string,
+  posterUrl: string | null,
+): Record<string, unknown> {
+  const base = getSiteUrl();
+  const uploadDate = coerceToIsoString(sale.endTime) ?? coerceToIsoString(sale.startTime);
+  return {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: `${sale.title} — saleroom recording`,
+    description: sale.description ?? `Watch the complete ${sale.title} auction as it happened.`,
+    embedUrl,
+    ...(uploadDate ? { uploadDate } : {}),
+    ...(posterUrl ? { thumbnailUrl: posterUrl } : {}),
+    url: `${base}${salePath(sale)}`,
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: base,
+    },
   };
 }
 
@@ -410,6 +441,101 @@ export function policyHubPageJsonLd(opts: {
     breadcrumbId,
   });
   return jsonLdScript(crumbs, page, organizationJsonLd());
+}
+
+/**
+ * Schema.org `ImageGallery` with `ImageObject`/`VideoObject` entries for auction-day media.
+ * Only emit when the sale has ended, delivery mode is onsite/hybrid, and media exists.
+ * Each item gets `contentUrl` (absolute), `name` (caption or fallback), `width`, `height`.
+ * The first item also carries `representativeOfPage: true`.
+ */
+export function saleDayGalleryJsonLd(
+  sale: Sale,
+  media: SaleDayMedia[],
+): Record<string, unknown> | null {
+  if (media.length === 0) return null;
+  const base = getSiteUrl();
+  const saleUrl = `${base}${salePath(sale)}`;
+  const endDate = coerceToIsoString(sale.endTime);
+  const absUrl = (src: string) =>
+    src.startsWith("http") ? src : `${base}/${src.replace(/^\//, "")}`;
+
+  let imageN = 0;
+  const mediaObjects = media.map((item, i) => {
+    if (item.mediaType === "video") {
+      return {
+        "@type": "VideoObject",
+        contentUrl: absUrl(item.src),
+        name: item.caption?.trim() || `${sale.title} — auction day video`,
+        description: item.caption?.trim() || `Video from the ${sale.title} auction.`,
+        ...(endDate ? { uploadDate: endDate } : {}),
+        ...(item.posterSrc ? { thumbnailUrl: absUrl(item.posterSrc) } : {}),
+        ...(item.width ? { width: String(item.width) } : {}),
+        ...(item.height ? { height: String(item.height) } : {}),
+        ...(i === 0 ? { representativeOfPage: true } : {}),
+      };
+    }
+    imageN += 1;
+    return {
+      "@type": "ImageObject",
+      contentUrl: absUrl(item.src),
+      name:
+        item.caption?.trim() || item.alt?.trim() || `${sale.title} — auction day photo ${imageN}`,
+      ...(item.alt ? { description: item.alt } : {}),
+      ...(item.width ? { width: String(item.width) } : {}),
+      ...(item.height ? { height: String(item.height) } : {}),
+      ...(i === 0 ? { representativeOfPage: true } : {}),
+    };
+  });
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ImageGallery",
+    name: `${sale.title} — Auction Day`,
+    url: `${saleUrl}#gallery`,
+    associatedMedia: mediaObjects,
+  };
+}
+
+/**
+ * Schema.org `ItemList` wrapping `NewsArticle` entries for curated press coverage.
+ * Each press item produces a `NewsArticle` with headline, url, datePublished, publisher, and
+ * description (excerpt). Google can surface these in news carousels and AI extractions.
+ * Links are standard follow links — curated editorial coverage warrants passing link equity.
+ */
+export function salePressJsonLd(
+  sale: Sale,
+  items: SalePressItem[],
+): Record<string, unknown> | null {
+  if (items.length === 0) return null;
+  const base = getSiteUrl();
+  const saleUrl = `${base}${salePath(sale)}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Press coverage for ${sale.title}`,
+    url: `${saleUrl}#press`,
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "NewsArticle",
+        headline: item.headline,
+        url: item.url,
+        ...(item.publishedAt ? { datePublished: item.publishedAt } : {}),
+        ...(item.excerpt ? { description: item.excerpt } : {}),
+        publisher: {
+          "@type": "Organization",
+          name: item.outletName,
+        },
+        about: {
+          "@type": "Event",
+          name: sale.title,
+          url: saleUrl,
+        },
+      },
+    })),
+  };
 }
 
 /** Safe inline JSON-LD for `<script type="application/ld+json">` (escapes `<`). */

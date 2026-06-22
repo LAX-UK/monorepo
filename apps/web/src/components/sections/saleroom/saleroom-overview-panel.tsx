@@ -1,4 +1,5 @@
 import type { Sale } from "@auction/types";
+import { SaleroomEndedSaleSummary } from "./saleroom-ended-sale-summary";
 import { SaleroomOverviewAbout } from "./saleroom-overview-about";
 import { SaleroomOverviewFacts } from "./saleroom-overview-facts";
 import { SaleroomOverviewPlanVisit } from "./saleroom-overview-plan-visit";
@@ -10,27 +11,21 @@ import type { SaleOverviewVM } from "./view-models";
 type Props = {
   overview: SaleOverviewVM;
   sale?: Sale;
-  /** Optional featured lot titles for onsite engagement teaser. */
-  featuredLotTitles?: readonly string[];
   /** When true, omit the “About this sale” copy (moved to hero). */
   hideDescription?: boolean;
 };
 
 /** Read-only marketing overview: composes facts, about, venue, stream, and terms. */
-export function SaleroomOverviewPanel({
-  overview,
-  sale,
-  featuredLotTitles,
-  hideDescription = false,
-}: Props) {
+export function SaleroomOverviewPanel({ overview, sale, hideDescription = false }: Props) {
   return (
     <div className="mx-auto grid w-full max-w-[var(--container-max,1440px)] grid-cols-1 gap-6 lg:grid-cols-2">
-      {sale ? (
-        <SaleroomOverviewPlanVisit
-          sale={sale}
-          {...(featuredLotTitles ? { featuredLotTitles } : {})}
-        />
+      {overview.endedSaleSummary ? (
+        <div className="lg:col-span-2">
+          <SaleroomEndedSaleSummary summary={overview.endedSaleSummary} />
+        </div>
       ) : null}
+
+      {sale ? <SaleroomOverviewPlanVisit sale={sale} /> : null}
 
       <SaleroomOverviewFacts overview={overview} />
 

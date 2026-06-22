@@ -10,6 +10,7 @@ import { SaleroomCatalogFilterSheet } from "@/components/sections/saleroom/saler
 import { SaleroomCatalogSearch } from "@/components/sections/saleroom/saleroom-catalog-search";
 import { SaleroomCatalogToolbar } from "@/components/sections/saleroom/saleroom-catalog-toolbar";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { SALE_CATALOG_TOOLBAR_STICKY_TOP } from "@/lib/marketing/chrome";
 import { SALEROOM_CATALOG_SORT_OPTIONS } from "@/lib/marketing/saleroom-catalog-sort";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
@@ -20,7 +21,6 @@ type Props = {
   layoutView: CatalogLayoutView;
   countLabel: string;
   resultCountLabel: string;
-  totalLots: number;
 };
 
 export function SaleroomCatalogToolbarRow({
@@ -28,7 +28,6 @@ export function SaleroomCatalogToolbarRow({
   layoutView,
   countLabel,
   resultCountLabel,
-  totalLots,
 }: Props) {
   const params = useSearchParams();
   const sortValue = params?.get("sort") ?? "lot";
@@ -37,16 +36,14 @@ export function SaleroomCatalogToolbarRow({
 
   return (
     <>
-      <div className="mb-4 flex items-baseline gap-2 border-b border-outline-variant/30 pb-2.5">
+      <div className="mb-4 border-b border-outline-variant/30 pb-2.5">
         <DisplayHeading as="h2" id="sale-catalog-heading" size="section" className="font-semibold">
           Lots
         </DisplayHeading>
-        <span className="font-headline text-[length:var(--text-title-section)] font-semibold leading-tight text-on-surface-variant">
-          ({totalLots})
-        </span>
       </div>
       <MarketingListToolbar
         className="-mx-8 md:-mx-10 lg:-mx-14"
+        stickyTopClassName={SALE_CATALOG_TOOLBAR_STICKY_TOP}
         countLabel={countLabel}
         mobileFilterTrigger={
           <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>

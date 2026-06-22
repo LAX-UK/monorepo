@@ -1,4 +1,12 @@
-import type { GalleryImage, ItemSubmission, Lot, Sale } from "@auction/types";
+import type {
+  GalleryImage,
+  ItemSubmission,
+  Lot,
+  Sale,
+  SaleDayMedia,
+  SaleDayMediaRef,
+  SaleDayPhoto,
+} from "@auction/types";
 import type { MediaAssetEnricher, MediaAssetRecord } from "../services/media-asset-enricher.js";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";
 
@@ -17,6 +25,54 @@ function collectLotImageKeys(lots: readonly Lot[]): string[] {
 
 function collectSaleCoverKeys(sales: readonly Sale[]): string[] {
   return collectUniqueKeys(sales.flatMap((row) => row.coverImages));
+}
+
+function collectSaleDayImageKeys(sales: readonly Sale[]): string[] {
+  return collectUniqueKeys(
+    sales.flatMap((row) =>
+      (row.dayImages ?? []).flatMap((r) => {
+        const keys = [r.key];
+        if (r.mediaType === "video" && "posterKey" in r && r.posterKey) keys.push(r.posterKey);
+        return keys;
+      }),
+    ),
+  );
+}
+
+/**
+ * Resolve day-media refs into enriched SaleDayMedia[].
+ * Videos get src + optional posterSrc only (no image enrichment).
+ * Images get enriched GalleryImage merged with caption/alt.
+ */
+function mergeDayMediaAssets(
+  refs: SaleDayMediaRef[],
+  resolvedMap: Map<string, string>,
+  enrichedImages: (GalleryImage | undefined)[],
+): SaleDayMedia[] {
+  return refs.map((ref, i) => {
+    if (ref.mediaType === "video") {
+      const src = resolvedMap.get(ref.key.trim()) ?? ref.key;
+      const posterSrc =
+        "posterKey" in ref && ref.posterKey
+          ? (resolvedMap.get(ref.posterKey.trim()) ?? ref.posterKey)
+          : undefined;
+      const video: import("@auction/types").SaleDayVideo = {
+        mediaType: "video",
+        src,
+        ...(posterSrc ? { posterSrc } : {}),
+        ...(ref.caption ? { caption: ref.caption } : {}),
+      };
+      return video;
+    }
+    const asset = enrichedImages[i] ?? { src: resolvedMap.get(ref.key.trim()) ?? ref.key };
+    const photo: SaleDayPhoto = {
+      ...asset,
+      mediaType: "image",
+      ...(ref.caption ? { caption: ref.caption } : {}),
+      ...(!asset.alt && ref.alt ? { alt: ref.alt } : {}),
+    };
+    return photo;
+  });
 }
 
 async function enrichImageAssets(
@@ -100,20 +156,44 @@ export async function presentSaleImages(
   row: Sale,
   enricher?: MediaAssetEnricher,
 ): Promise<Sale> {
-  const keys = row.coverImages;
-  if (!resolver) {
-    const coverImageAssets = await enrichImageAssets(enricher, keys, keys);
-    return coverImageAssets ? { ...row, coverImageAssets } : row;
+  const coverKeys = row.coverImages;
+  const dayRefs = row.dayImages ?? [];
+  const dayKeys = dayRefs.map((r) => r.key);
+  const allKeys = collectUniqueKeys([...coverKeys, ...dayKeys]);
+
+  const resolvedMap = await resolveKeysBatch(resolver, allKeys);
+  const coverImages = applyResolvedKeys(coverKeys, resolvedMap);
+  const coverImageAssets = await enrichImageAssets(enricher, coverKeys, coverImages);
+
+  let dayImageAssets: SaleDayMedia[] | undefined;
+  if (dayRefs.length > 0) {
+    const imageRefs = dayRefs.filter((r) => r.mediaType !== "video");
+    const imageKeys = imageRefs.map((r) => r.key);
+    const rawImageAssets =
+      imageKeys.length > 0
+        ? await enrichImageAssets(enricher, imageKeys, applyResolvedKeys(imageKeys, resolvedMap))
+        : undefined;
+    // Build a per-ref enriched image array aligned with dayRefs (videos get undefined)
+    let enrichedIdx = 0;
+    const enrichedImages = dayRefs.map((r) =>
+      r.mediaType === "video" ? undefined : (rawImageAssets?.[enrichedIdx++] ?? undefined),
+    );
+    dayImageAssets = mergeDayMediaAssets(dayRefs, resolvedMap, enrichedImages);
   }
-  const resolvedMap = await resolveKeysBatch(resolver, keys);
-  const coverImages = applyResolvedKeys(keys, resolvedMap);
-  const coverImageAssets = await enrichImageAssets(enricher, keys, coverImages);
-  return coverImageAssets ? { ...row, coverImages, coverImageAssets } : { ...row, coverImages };
+
+  return {
+    ...row,
+    ...(resolver ? { coverImages } : {}),
+    ...(coverImageAssets ? { coverImageAssets } : {}),
+    ...(dayImageAssets ? { dayImageAssets } : {}),
+  };
 }
 
 /** Admin edit: keep raw storage keys and expose resolved URLs for thumbnails. */
 export type SaleAdminImages = Sale & {
   coverImagePresentedUrls: string[];
+  /** Resolved preview URLs for each day-photo ref, aligned with `Sale.dayImages`. */
+  dayImagePresentedUrls: string[];
 };
 
 export async function presentSaleAdminImages(
@@ -121,17 +201,45 @@ export async function presentSaleAdminImages(
   row: Sale,
   enricher?: MediaAssetEnricher,
 ): Promise<SaleAdminImages> {
-  const keys = row.coverImages;
-  const resolvedMap = await resolveKeysBatch(resolver, keys);
+  const coverKeys = row.coverImages;
+  const dayRefs = row.dayImages ?? [];
+  const dayKeys = dayRefs.map((r) => r.key);
+  const allKeys = collectUniqueKeys([...coverKeys, ...dayKeys]);
+
+  const resolvedMap = await resolveKeysBatch(resolver, allKeys);
+
   const coverImagePresentedUrls = resolver
-    ? applyResolvedKeys(keys, resolvedMap)
-    : keys.map((k) => k);
-  const coverImageAssets = await enrichImageAssets(enricher, keys, coverImagePresentedUrls);
+    ? applyResolvedKeys(coverKeys, resolvedMap)
+    : coverKeys.map((k) => k);
+
+  const dayImagePresentedUrls = resolver
+    ? applyResolvedKeys(dayKeys, resolvedMap)
+    : dayKeys.map((k) => k);
+
+  const coverImageAssets = await enrichImageAssets(enricher, coverKeys, coverImagePresentedUrls);
+
+  let dayImageAssets: SaleDayMedia[] | undefined;
+  if (dayRefs.length > 0) {
+    const imageRefs = dayRefs.filter((r) => r.mediaType !== "video");
+    const imageKeys = imageRefs.map((r) => r.key);
+    const rawImageAssets =
+      imageKeys.length > 0
+        ? await enrichImageAssets(enricher, imageKeys, applyResolvedKeys(imageKeys, resolvedMap))
+        : undefined;
+    let enrichedIdx = 0;
+    const enrichedImages = dayRefs.map((r) =>
+      r.mediaType === "video" ? undefined : (rawImageAssets?.[enrichedIdx++] ?? undefined),
+    );
+    dayImageAssets = mergeDayMediaAssets(dayRefs, resolvedMap, enrichedImages);
+  }
+
   return {
     ...row,
-    coverImages: keys,
+    coverImages: coverKeys,
     coverImagePresentedUrls,
+    dayImagePresentedUrls,
     ...(coverImageAssets ? { coverImageAssets } : {}),
+    ...(dayImageAssets ? { dayImageAssets } : {}),
   };
 }
 
@@ -166,8 +274,9 @@ export async function presentSalesWithLotsImages(
   if (rows.length === 0) return [];
 
   const saleKeys = collectSaleCoverKeys(rows.map((r) => r.sale));
+  const saleDayKeys = collectSaleDayImageKeys(rows.map((r) => r.sale));
   const lotKeys = collectLotImageKeys(rows.flatMap((r) => r.lots));
-  const allKeys = collectUniqueKeys([...saleKeys, ...lotKeys]);
+  const allKeys = collectUniqueKeys([...saleKeys, ...saleDayKeys, ...lotKeys]);
 
   const [resolvedMap, assetLookup] = await Promise.all([
     resolveKeysBatch(resolver, allKeys),
@@ -183,6 +292,33 @@ export async function presentSalesWithLotsImages(
           ? await buildGalleryFromBatch(enricher, coverKeys, coverImages, assetLookup)
           : await enrichImageAssets(enricher, coverKeys, coverImages);
 
+      const dayRefs = sale.dayImages ?? [];
+      let dayImageAssets: SaleDayMedia[] | undefined;
+      if (dayRefs.length > 0) {
+        const imageRefs = dayRefs.filter((r) => r.mediaType !== "video");
+        const imageKeys = imageRefs.map((r) => r.key);
+        const rawDayAssets =
+          imageKeys.length > 0
+            ? enricher && assetLookup.size > 0
+              ? await buildGalleryFromBatch(
+                  enricher,
+                  imageKeys,
+                  applyResolvedKeys(imageKeys, resolvedMap),
+                  assetLookup,
+                )
+              : await enrichImageAssets(
+                  enricher,
+                  imageKeys,
+                  applyResolvedKeys(imageKeys, resolvedMap),
+                )
+            : undefined;
+        let enrichedIdx = 0;
+        const enrichedImages = dayRefs.map((r) =>
+          r.mediaType === "video" ? undefined : (rawDayAssets?.[enrichedIdx++] ?? undefined),
+        );
+        dayImageAssets = mergeDayMediaAssets(dayRefs, resolvedMap, enrichedImages);
+      }
+
       const presentedLots = await Promise.all(
         lots.map(async (lotRow) => {
           const keys = lotRow.images;
@@ -196,9 +332,12 @@ export async function presentSalesWithLotsImages(
       );
 
       return {
-        sale: coverImageAssets
-          ? { ...sale, coverImages, coverImageAssets }
-          : { ...sale, coverImages },
+        sale: {
+          ...sale,
+          coverImages,
+          ...(coverImageAssets ? { coverImageAssets } : {}),
+          ...(dayImageAssets ? { dayImageAssets } : {}),
+        },
         lots: presentedLots,
       };
     }),

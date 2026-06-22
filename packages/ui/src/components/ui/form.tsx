@@ -98,6 +98,7 @@ const FormLabel = React.forwardRef<
       ref={ref}
       className={cn(error && "text-error", className)}
       htmlFor={formItemId}
+      suppressHydrationWarning
       {...props}
     />
   );

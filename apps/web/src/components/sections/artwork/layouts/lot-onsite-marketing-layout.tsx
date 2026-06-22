@@ -22,6 +22,7 @@ import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
 import { ParticipationWarningCallout } from "@/components/ui/participation-warning-callout";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -80,6 +81,13 @@ export function LotOnsiteMarketingLayout({
   overview,
 }: Props) {
   const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
+  const streamCtx = resolveSaleStreamContext({
+    streamUrl: sale.streamUrl,
+    status: sale.status,
+    deliveryMode: sale.deliveryMode,
+    saleTitle: sale.title,
+    endTime: sale.endTime,
+  });
   const locationLine = locationOneLine(sale);
   const showQueue = shouldShowLotQueueSidebar(queueUpNext, queueRest, isSaleQueueLoading);
   const { lotDetails: lotDetailsBlock, accordionBlocks } =
@@ -125,6 +133,7 @@ export function LotOnsiteMarketingLayout({
               sale={sale}
               summarySeed={summarySeed}
               saleForLifecycle={saleForLifecycle}
+              showStreamCta={streamCtx.showOnLotPage}
               {...(serverClockMs !== undefined ? { serverClockMs } : {})}
             />
           </div>
@@ -157,7 +166,14 @@ export function LotOnsiteMarketingLayout({
               </div>
             ) : null}
 
-            <OnsiteStreamSection sale={sale} streamPosterUrl={streamPosterUrl} />
+            {streamCtx.showOnLotPage && streamCtx.presentation && sale.streamUrl ? (
+              <OnsiteStreamSection
+                streamUrl={sale.streamUrl}
+                saleTitle={sale.title}
+                streamPosterUrl={streamPosterUrl}
+                presentation={streamCtx.presentation}
+              />
+            ) : null}
           </div>
 
           <div className="order-1 self-start space-y-6 rounded-3xl border border-outline-variant/20 bg-surface-container-lowest/80 p-6 shadow-sm backdrop-blur-md lg:sticky lg:top-24 lg:order-2">

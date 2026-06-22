@@ -54,11 +54,48 @@ export class PdfContentTypeValidator implements IContentTypeValidator {
   }
 }
 
+/**
+ * MP4: ISO base media file format — `ftyp` box at byte 4.
+ * We match the four-byte box type 0x66 0x74 0x79 0x70 ("ftyp") at offset 4.
+ */
+export class Mp4ContentTypeValidator implements IContentTypeValidator {
+  readonly declaredType = "video/mp4";
+
+  matches(magic: Buffer): boolean {
+    return (
+      magic.length >= 8 &&
+      magic[4] === 0x66 && // f
+      magic[5] === 0x74 && // t
+      magic[6] === 0x79 && // y
+      magic[7] === 0x70 // p
+    );
+  }
+}
+
+/**
+ * WebM: EBML header — starts with 0x1A 0x45 0xDF 0xA3.
+ */
+export class WebmContentTypeValidator implements IContentTypeValidator {
+  readonly declaredType = "video/webm";
+
+  matches(magic: Buffer): boolean {
+    return (
+      magic.length >= 4 &&
+      magic[0] === 0x1a &&
+      magic[1] === 0x45 &&
+      magic[2] === 0xdf &&
+      magic[3] === 0xa3
+    );
+  }
+}
+
 const VALIDATORS: readonly IContentTypeValidator[] = [
   new ImageContentTypeValidator("image/jpeg"),
   new ImageContentTypeValidator("image/png"),
   new ImageContentTypeValidator("image/webp"),
   new PdfContentTypeValidator(),
+  new Mp4ContentTypeValidator(),
+  new WebmContentTypeValidator(),
 ];
 
 export function pickValidator(declared: string): IContentTypeValidator | undefined {

@@ -17,6 +17,7 @@ export function SaleroomOverviewVenue({ overview }: Props) {
         Venue
       </h3>
       <VenueMapCard
+        id="venue-map"
         locationName={overview.locationName}
         addressLines={overview.locationAddressLines}
         locationAddress={overview.locationAddress}

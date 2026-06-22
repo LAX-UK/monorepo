@@ -1488,3 +1488,142 @@ describe("SaleService venue assignment", () => {
     expect(saleRepo.updateStatus).not.toHaveBeenCalled();
   });
 });
+
+describe("SaleService.updateDraft — auction-day photos", () => {
+  function makeEndedOnsiteSale(overrides: Partial<Sale> = {}): Sale {
+    return baseSale({
+      status: "ended",
+      deliveryMode: "onsite",
+      ...overrides,
+    });
+  }
+
+  it("accepts dayImages for ended onsite sale", async () => {
+    const endedSale = makeEndedOnsiteSale();
+    const update = vi.fn().mockResolvedValue({ ...endedSale });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(endedSale),
+      update,
+    } as unknown as ISaleRepository;
+    const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+        imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      endedSale.id,
+      { dayImages: [{ key: "day-photo-1.jpg", caption: "Lot 1 on the block" }] },
+      "super_admin",
+    );
+    expect(result.isErr()).toBe(false);
+    expect(update).toHaveBeenCalledWith(
+      endedSale.id,
+      expect.objectContaining({
+        dayImages: [{ key: "day-photo-1.jpg", caption: "Lot 1 on the block" }],
+      }),
+    );
+  });
+
+  it("accepts dayImages for ended hybrid sale", async () => {
+    const endedHybrid = makeEndedOnsiteSale({ deliveryMode: "hybrid" });
+    const update = vi.fn().mockResolvedValue({ ...endedHybrid });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(endedHybrid),
+      update,
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({ saleRepo, lotRepo: {} as ILotRepository, jobScheduler: null }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      endedHybrid.id,
+      { dayImages: [{ key: "day-2.jpg" }] },
+      "super_admin",
+    );
+    expect(result.isErr()).toBe(false);
+    expect(update).toHaveBeenCalledWith(
+      endedHybrid.id,
+      expect.objectContaining({ dayImages: [{ key: "day-2.jpg" }] }),
+    );
+  });
+
+  it("rejects dayImages for online sale (no location capability)", async () => {
+    const endedOnline = makeEndedOnsiteSale({ deliveryMode: "online" });
+    const update = vi.fn().mockResolvedValue({ ...endedOnline });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(endedOnline),
+      update,
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({ saleRepo, lotRepo: {} as ILotRepository, jobScheduler: null }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      endedOnline.id,
+      { dayImages: [{ key: "day-3.jpg" }] },
+      "super_admin",
+    );
+    expect(result.isErr()).toBe(true);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects dayImages for non-ended onsite sale", async () => {
+    const scheduledSale = baseSale({ deliveryMode: "onsite", status: "scheduled" });
+    const update = vi.fn().mockResolvedValue({ ...scheduledSale });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(scheduledSale),
+      update,
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({ saleRepo, lotRepo: {} as ILotRepository, jobScheduler: null }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      scheduledSale.id,
+      { dayImages: [{ key: "day-4.jpg" }] },
+      "super_admin",
+    );
+    expect(result.isErr()).toBe(true);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("enqueues cleanup for removed day-photo keys", async () => {
+    const endedSale = makeEndedOnsiteSale({
+      dayImages: [{ key: "old-key.jpg" }, { key: "keep-key.jpg" }],
+    });
+    const update = vi.fn().mockResolvedValue({ ...endedSale });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(endedSale),
+      update,
+    } as unknown as ISaleRepository;
+    const enqueueRemovedMany = vi.fn().mockResolvedValue(undefined);
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+        imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
+      }),
+    );
+
+    await svc.updateDraft(
+      "staff",
+      endedSale.id,
+      { dayImages: [{ key: "keep-key.jpg" }] },
+      "super_admin",
+    );
+    expect(enqueueRemovedMany).toHaveBeenCalledWith(
+      ["old-key.jpg", "keep-key.jpg"],
+      ["keep-key.jpg"],
+    );
+  });
+});

@@ -1,12 +1,16 @@
 import type {
   Bid,
   BuyerPremiumTier,
+  GalleryImage,
   ItemSubmission,
   ItemSubmissionStatus,
   Lot,
   LotMarketingDetails,
   NotificationPreference,
   Sale,
+  SaleDayMedia,
+  SaleDayMediaRef,
+  SalePressRef,
   UserNotification,
 } from "@auction/types";
 import { itemSubmissionStatuses } from "@auction/types";
@@ -52,14 +56,124 @@ function parseBuyerPremiumTiers(raw: unknown): BuyerPremiumTier[] | null {
   return out.length > 0 ? out : null;
 }
 
+function parseStringArray(v: unknown): string[] {
+  return Array.isArray(v) ? (v as unknown[]).map(String) : [];
+}
+
+function parseGalleryImages(raw: unknown): GalleryImage[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: GalleryImage[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const src = typeof o.src === "string" ? o.src : typeof o.url === "string" ? o.url : null;
+    if (!src) continue;
+    const image: GalleryImage = { src };
+    if (typeof o.alt === "string" && o.alt.trim()) image.alt = o.alt.trim();
+    if (typeof o.width === "number") image.width = o.width;
+    if (typeof o.height === "number") image.height = o.height;
+    if (typeof o.blurDataURL === "string" && o.blurDataURL) image.blurDataURL = o.blurDataURL;
+    out.push(image);
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+function parsePressRefs(raw: unknown): SalePressRef[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: SalePressRef[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const url = typeof o.url === "string" ? o.url.trim() : null;
+    const headline = typeof o.headline === "string" ? o.headline.trim() : null;
+    const outletName = typeof o.outletName === "string" ? o.outletName.trim() : null;
+    if (!url || !headline || !outletName) continue;
+    const ref: SalePressRef = { url, headline, outletName };
+    if (typeof o.publishedAt === "string" && o.publishedAt.trim())
+      ref.publishedAt = o.publishedAt.trim();
+    if (typeof o.excerpt === "string" && o.excerpt.trim()) ref.excerpt = o.excerpt.trim();
+    if (
+      typeof o.mentionType === "string" &&
+      ["feature", "interview", "quote", "roundup"].includes(o.mentionType)
+    ) {
+      ref.mentionType = o.mentionType as import("@auction/types").SalePressMentionType;
+    }
+    out.push(ref);
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+function parseDayPhotoRefs(raw: unknown): SaleDayMediaRef[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: SaleDayMediaRef[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const key = typeof o.key === "string" ? o.key.trim() : null;
+    if (!key) continue;
+    if (o.mediaType === "video") {
+      const ref: import("@auction/types").SaleDayVideoRef = { mediaType: "video", key };
+      if (typeof o.caption === "string" && o.caption.trim()) ref.caption = o.caption.trim();
+      if (typeof o.posterKey === "string" && o.posterKey.trim()) ref.posterKey = o.posterKey.trim();
+      out.push(ref);
+    } else {
+      const ref: import("@auction/types").SaleDayPhotoRef = { key };
+      if (o.mediaType === "image") ref.mediaType = "image";
+      if (typeof o.caption === "string" && o.caption.trim()) ref.caption = o.caption.trim();
+      if (typeof o.alt === "string" && o.alt.trim()) ref.alt = o.alt.trim();
+      out.push(ref);
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+function parseDayPhotoAssets(raw: unknown): SaleDayMedia[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: SaleDayMedia[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    if (o.mediaType === "video") {
+      const src = typeof o.src === "string" ? o.src : null;
+      if (!src) continue;
+      const video: import("@auction/types").SaleDayVideo = { mediaType: "video", src };
+      if (typeof o.posterSrc === "string" && o.posterSrc) video.posterSrc = o.posterSrc;
+      if (typeof o.caption === "string" && o.caption.trim()) video.caption = o.caption.trim();
+      if (typeof o.width === "number") video.width = o.width;
+      if (typeof o.height === "number") video.height = o.height;
+      out.push(video);
+    } else {
+      const src = typeof o.src === "string" ? o.src : typeof o.url === "string" ? o.url : null;
+      if (!src) continue;
+      const photo: import("@auction/types").SaleDayPhoto = { mediaType: "image", src };
+      if (typeof o.alt === "string" && o.alt.trim()) photo.alt = o.alt.trim();
+      if (typeof o.width === "number") photo.width = o.width;
+      if (typeof o.height === "number") photo.height = o.height;
+      if (typeof o.blurDataURL === "string" && o.blurDataURL) photo.blurDataURL = o.blurDataURL;
+      if (typeof o.caption === "string" && o.caption.trim()) photo.caption = o.caption.trim();
+      out.push(photo);
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 export function parseSale(raw: unknown): Sale {
   const o = raw as Record<string, unknown>;
+  const coverImageAssets = parseGalleryImages(o.coverImageAssets);
+  const dayImages = parseDayPhotoRefs(o.dayImages);
+  const dayImageAssets = parseDayPhotoAssets(o.dayImageAssets);
+  const pressCoverage = parsePressRefs(o.pressCoverage);
   return {
     id: String(o.id),
     title: String(o.title),
     description: o.description == null ? null : String(o.description),
     coverImages: Array.isArray(o.coverImages) ? (o.coverImages as unknown[]).map(String) : [],
+    ...(coverImageAssets !== undefined ? { coverImageAssets } : {}),
+    ...(dayImages !== undefined ? { dayImages } : {}),
+    ...(dayImageAssets !== undefined ? { dayImageAssets } : {}),
+    ...(pressCoverage !== undefined ? { pressCoverage } : {}),
     categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
+    categoryIds: parseStringArray(o.categoryIds),
     deliveryMode: parseSaleDeliveryMode(o.deliveryMode),
     allowOnlineBidsBeforeGoLive: o.allowOnlineBidsBeforeGoLive === true,
     streamUrl: o.streamUrl == null || o.streamUrl === "" ? null : String(o.streamUrl),
@@ -123,10 +237,6 @@ function parseCheckoutPricing(raw: unknown): Lot["checkoutPricing"] | undefined 
 
 function nullableString(v: unknown): string | null {
   return v == null || v === "" ? null : String(v);
-}
-
-function parseStringArray(v: unknown): string[] {
-  return Array.isArray(v) ? (v as unknown[]).map(String) : [];
 }
 
 export function parseLot(raw: unknown): Lot {

@@ -995,12 +995,45 @@ export class SaleService {
       if (canEditStreamUrl) {
         publishedPatch.streamUrl = patch.streamUrl ?? null;
       }
+      // Press coverage: allowed for all delivery modes and all non-draft statuses.
+      if (patch.pressCoverage !== undefined) {
+        publishedPatch.pressCoverage = patch.pressCoverage;
+      }
+      // Auction-day media: only allowed for ended onsite/hybrid sales.
+      const dayImagesRequested = patch.dayImages !== undefined;
+      if (dayImagesRequested) {
+        if (!caps.allowsLocation) {
+          return err(
+            new LotError("Auction day media is only supported for onsite and hybrid sales", 422),
+          );
+        }
+        if (sale.status !== "ended") {
+          return err(
+            new LotError("Auction day media can only be saved after the sale has ended", 422),
+          );
+        }
+        publishedPatch.dayImages = patch.dayImages;
+      }
       if (Object.keys(publishedPatch).length === 0) {
         return err(new LotError("Only draft sales can be edited"));
       }
       const updated = await this.saleRepo.update(saleId, publishedPatch);
       if (patch.coverImages !== undefined) {
         await this.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
+      }
+      if (dayImagesRequested && patch.dayImages !== undefined) {
+        // Collect all keys (video poster keys too) for cleanup.
+        const prevKeys = (sale.dayImages ?? []).flatMap((r) => {
+          const keys = [r.key];
+          if (r.mediaType === "video" && "posterKey" in r && r.posterKey) keys.push(r.posterKey);
+          return keys;
+        });
+        const nextKeys = patch.dayImages.flatMap((r) => {
+          const keys = [r.key];
+          if (r.mediaType === "video" && "posterKey" in r && r.posterKey) keys.push(r.posterKey);
+          return keys;
+        });
+        await this.imageCleanup?.enqueueRemovedMany(prevKeys, nextKeys);
       }
       return ok(updated);
     }
@@ -1084,6 +1117,19 @@ export class SaleService {
     const updated = await this.saleRepo.update(saleId, normalized);
     if (patch.coverImages !== undefined) {
       await this.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
+    }
+    if (normalized.dayImages !== undefined) {
+      const prevKeys = (sale.dayImages ?? []).flatMap((r) => {
+        const keys = [r.key];
+        if (r.mediaType === "video" && "posterKey" in r && r.posterKey) keys.push(r.posterKey);
+        return keys;
+      });
+      const nextKeys = normalized.dayImages.flatMap((r) => {
+        const keys = [r.key];
+        if (r.mediaType === "video" && "posterKey" in r && r.posterKey) keys.push(r.posterKey);
+        return keys;
+      });
+      await this.imageCleanup?.enqueueRemovedMany(prevKeys, nextKeys);
     }
     return ok(updated);
   }

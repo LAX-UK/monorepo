@@ -53,4 +53,34 @@ describe("media-presenters admin", () => {
     const out = await presentLotImages(resolver, lot);
     expect(out.images).toEqual(["https://cdn.example/img-1"]);
   });
+
+  it("presentSaleImages resolves dayImages keys and merges caption", async () => {
+    const sale = {
+      id: "s1",
+      coverImages: [],
+      dayImages: [{ key: "day-1.jpg", caption: "Lot 1 on the block" }, { key: "day-2.jpg" }],
+    } as unknown as Parameters<typeof presentSaleImages>[1];
+    const out = await presentSaleImages(resolver, sale);
+    expect(out.dayImageAssets).toHaveLength(2);
+    expect(out.dayImageAssets?.[0]).toMatchObject({
+      src: "https://cdn.example/day-1.jpg",
+      caption: "Lot 1 on the block",
+    });
+    expect(out.dayImageAssets?.[1]).toMatchObject({ src: "https://cdn.example/day-2.jpg" });
+    expect(out.dayImageAssets?.[1]).not.toHaveProperty("caption");
+  });
+
+  it("presentSaleAdminImages resolves dayImagePresentedUrls and merges caption", async () => {
+    const sale = {
+      id: "s1",
+      coverImages: [],
+      dayImages: [{ key: "day-3.jpg", caption: "After the gavel" }],
+    } as unknown as Parameters<typeof presentSaleAdminImages>[1];
+    const out = await presentSaleAdminImages(resolver, sale);
+    expect(out.dayImagePresentedUrls).toEqual(["https://cdn.example/day-3.jpg"]);
+    expect(out.dayImageAssets?.[0]).toMatchObject({
+      src: "https://cdn.example/day-3.jpg",
+      caption: "After the gavel",
+    });
+  });
 });

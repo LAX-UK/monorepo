@@ -29,7 +29,8 @@ export function VenueMapCard({
   className,
   id,
 }: Props) {
-  const mapRegionId = useId();
+  const generatedMapRegionId = useId();
+  const mapRegionId = id ? `${id}-map-region` : generatedMapRegionId;
   const [mapVisible, setMapVisible] = useState(false);
 
   const showMap = useCallback(() => {

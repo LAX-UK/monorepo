@@ -124,6 +124,7 @@ export function mapSaleToCalendarCardVM(
 
 /** Featured hero card — `calendar.html` trending row. */
 export type FeaturedAuctionCardVM = SaleCardCommon & {
+  deliveryMode: Sale["deliveryMode"];
   auctionTypeLabel: string;
   /** Uppercase schedule line, e.g. "9–16 APRIL 2026 | 11:00 AM GMT". */
   dateLabel: string;
