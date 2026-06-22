@@ -5,7 +5,18 @@ import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
 import { notify } from "@/lib/ui/notify";
 import type { SalePressMentionType, SalePressRef } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { DatePicker } from "@auction/ui/components/date-picker";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Input } from "@auction/ui/components/input";
+import { Label } from "@auction/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
+import { Textarea } from "@auction/ui/components/textarea";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -23,8 +34,7 @@ const MENTION_TYPE_OPTIONS: { value: SalePressMentionType; label: string }[] = [
   { value: "roundup", label: "Roundup" },
 ];
 
-const inputCls =
-  "block w-full rounded-md border border-outline-variant/40 bg-surface px-3 py-2 font-body text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50";
+const NO_MENTION_TYPE = "__none__";
 
 // ─── Empty add form ────────────────────────────────────────────────────────────
 
@@ -199,30 +209,20 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label
-                  className="mb-1 block font-label text-xs uppercase tracking-wider text-on-surface-variant"
-                  htmlFor="press-url"
-                >
-                  Article URL *
-                </label>
-                <input
+                <Label htmlFor="press-url">Article URL *</Label>
+                <Input
                   id="press-url"
                   type="url"
                   placeholder="https://dailymail.co.uk/article/..."
                   value={form.url}
                   onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                   disabled={saving}
-                  className={inputCls}
+                  className="mt-1 font-body text-sm"
                 />
               </div>
               <div>
-                <label
-                  className="mb-1 block font-label text-xs uppercase tracking-wider text-on-surface-variant"
-                  htmlFor="press-outlet"
-                >
-                  Outlet name *
-                </label>
-                <input
+                <Label htmlFor="press-outlet">Outlet name *</Label>
+                <Input
                   id="press-outlet"
                   type="text"
                   placeholder="Daily Mail"
@@ -230,18 +230,13 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
                   value={form.outletName}
                   onChange={(e) => setForm((f) => ({ ...f, outletName: e.target.value }))}
                   disabled={saving}
-                  className={inputCls}
+                  className="mt-1 font-body text-sm"
                 />
               </div>
             </div>
             <div>
-              <label
-                className="mb-1 block font-label text-xs uppercase tracking-wider text-on-surface-variant"
-                htmlFor="press-headline"
-              >
-                Headline *
-              </label>
-              <input
+              <Label htmlFor="press-headline">Headline *</Label>
+              <Input
                 id="press-headline"
                 type="text"
                 placeholder="Article headline as published"
@@ -249,65 +244,55 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
                 value={form.headline}
                 onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
                 disabled={saving}
-                className={inputCls}
+                className="mt-1 font-body text-sm"
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label
-                  className="mb-1 block font-label text-xs uppercase tracking-wider text-on-surface-variant"
-                  htmlFor="press-date"
-                >
-                  Publication date
-                </label>
-                <input
+                <Label htmlFor="press-date">Publication date</Label>
+                <DatePicker
                   id="press-date"
-                  type="date"
                   value={form.publishedAt}
-                  onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.value }))}
+                  onChange={(value) => setForm((f) => ({ ...f, publishedAt: value }))}
                   disabled={saving}
-                  className={inputCls}
+                  placeholder="Pick a date"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <label
-                  className="mb-1 block font-label text-xs uppercase tracking-wider text-on-surface-variant"
-                  htmlFor="press-type"
-                >
-                  Mention type
-                </label>
-                <select
-                  id="press-type"
-                  value={form.mentionType ?? ""}
-                  onChange={(e) =>
+                <Label htmlFor="press-type">Mention type</Label>
+                <Select
+                  value={form.mentionType || NO_MENTION_TYPE}
+                  onValueChange={(value) =>
                     setForm((f) => ({
                       ...f,
-                      mentionType: (e.target.value || "") as SalePressMentionType | "",
+                      mentionType: value === NO_MENTION_TYPE ? "" : (value as SalePressMentionType),
                     }))
                   }
                   disabled={saving}
-                  className={inputCls}
                 >
-                  <option value="">— select type —</option>
-                  {MENTION_TYPE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="press-type" className="mt-1 w-full font-body text-sm">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_MENTION_TYPE}>— select type —</SelectItem>
+                    {MENTION_TYPE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div>
-              <label
-                className="mb-1 block font-label text-xs uppercase tracking-wider text-on-surface-variant"
-                htmlFor="press-excerpt"
-              >
+              <Label htmlFor="press-excerpt">
                 Excerpt / pull quote
-                <span className="ml-1 font-body normal-case text-on-surface-variant/50">
+                <span className="ml-1 font-body font-normal normal-case text-on-surface-variant/50">
                   ({(form.excerpt ?? "").length}/280)
                 </span>
-              </label>
-              <textarea
+              </Label>
+              <Textarea
                 id="press-excerpt"
                 placeholder="Short quote or summary from the article (max 280 chars)"
                 maxLength={280}
@@ -315,7 +300,7 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
                 value={form.excerpt ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
                 disabled={saving}
-                className={inputCls}
+                className="mt-1 font-body text-sm"
               />
             </div>
             <div className="flex justify-end">
