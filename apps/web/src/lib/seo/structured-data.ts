@@ -11,7 +11,7 @@ import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { type ArtistKind, getCreatorKindConfig } from "@auction/types";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, SaleDayMedia } from "@auction/types";
 
 export function lotProductJsonLd(
   auction: Lot,
@@ -441,6 +441,60 @@ export function policyHubPageJsonLd(opts: {
     breadcrumbId,
   });
   return jsonLdScript(crumbs, page, organizationJsonLd());
+}
+
+/**
+ * Schema.org `ImageGallery` with `ImageObject`/`VideoObject` entries for auction-day media.
+ * Only emit when the sale has ended, delivery mode is onsite/hybrid, and media exists.
+ * Each item gets `contentUrl` (absolute), `name` (caption or fallback), `width`, `height`.
+ * The first item also carries `representativeOfPage: true`.
+ */
+export function saleDayGalleryJsonLd(
+  sale: Sale,
+  media: SaleDayMedia[],
+): Record<string, unknown> | null {
+  if (media.length === 0) return null;
+  const base = getSiteUrl();
+  const saleUrl = `${base}${salePath(sale)}`;
+  const endDate = coerceToIsoString(sale.endTime);
+  const absUrl = (src: string) =>
+    src.startsWith("http") ? src : `${base}/${src.replace(/^\//, "")}`;
+
+  let imageN = 0;
+  const mediaObjects = media.map((item, i) => {
+    if (item.mediaType === "video") {
+      return {
+        "@type": "VideoObject",
+        contentUrl: absUrl(item.src),
+        name: item.caption?.trim() || `${sale.title} — auction day video`,
+        description: item.caption?.trim() || `Video from the ${sale.title} auction.`,
+        ...(endDate ? { uploadDate: endDate } : {}),
+        ...(item.posterSrc ? { thumbnailUrl: absUrl(item.posterSrc) } : {}),
+        ...(item.width ? { width: String(item.width) } : {}),
+        ...(item.height ? { height: String(item.height) } : {}),
+        ...(i === 0 ? { representativeOfPage: true } : {}),
+      };
+    }
+    imageN += 1;
+    return {
+      "@type": "ImageObject",
+      contentUrl: absUrl(item.src),
+      name:
+        item.caption?.trim() || item.alt?.trim() || `${sale.title} — auction day photo ${imageN}`,
+      ...(item.alt ? { description: item.alt } : {}),
+      ...(item.width ? { width: String(item.width) } : {}),
+      ...(item.height ? { height: String(item.height) } : {}),
+      ...(i === 0 ? { representativeOfPage: true } : {}),
+    };
+  });
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ImageGallery",
+    name: `${sale.title} — Auction Day`,
+    url: `${saleUrl}#gallery`,
+    associatedMedia: mediaObjects,
+  };
 }
 
 /** Safe inline JSON-LD for `<script type="application/ld+json">` (escapes `<`). */

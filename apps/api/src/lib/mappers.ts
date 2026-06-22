@@ -11,6 +11,7 @@ import type {
   Payment,
   PaymentStatus,
   Sale,
+  SaleDayMediaRef,
   SaleDeliveryMode,
   SaleStatus,
 } from "@auction/types";
@@ -213,7 +214,34 @@ export function mapItemSubmissionRow(
   };
 }
 
+function parseDayImageRefs(raw: unknown): SaleDayMediaRef[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: SaleDayMediaRef[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const key = typeof o.key === "string" ? o.key.trim() : null;
+    if (!key) continue;
+    const isVideo = o.mediaType === "video";
+    if (isVideo) {
+      const ref: import("@auction/types").SaleDayVideoRef = { mediaType: "video", key };
+      if (typeof o.caption === "string" && o.caption) ref.caption = o.caption;
+      if (typeof o.posterKey === "string" && o.posterKey) ref.posterKey = o.posterKey;
+      out.push(ref);
+    } else {
+      const ref: import("@auction/types").SaleDayPhotoRef = { key };
+      if (o.mediaType === "image") ref.mediaType = "image";
+      if (typeof o.caption === "string" && o.caption) ref.caption = o.caption;
+      if (typeof o.alt === "string" && o.alt) ref.alt = o.alt;
+      out.push(ref);
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
+  const dayImagesRaw = (row as Record<string, unknown>).auctionDayImages;
+  const dayImages = parseDayImageRefs(dayImagesRaw);
   return {
     id: row.id,
     title: row.title,
@@ -241,6 +269,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     buyerPremiumRate: String(row.buyerPremiumRate),
     buyerPremiumTiers: row.buyerPremiumTiers ?? null,
     terms: row.terms ?? null,
+    ...(dayImages !== undefined ? { dayImages } : {}),
     createdByLegalEntityId: requireBackfilledLegalEntityId(
       row.createdByLegalEntityId,
       `sale:${row.id}`,

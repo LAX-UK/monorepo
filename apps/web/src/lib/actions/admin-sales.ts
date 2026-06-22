@@ -78,6 +78,14 @@ export async function adminUpdateSaleResultAction(
     }
     revalidateAdminSaleDetail(id);
     revalidatePath("/");
+    // Immediately bust the public sale page ISR cache for day-photo updates.
+    if (parsed.data.dayImages !== undefined && r.data) {
+      const saleData = r.data as { id: string; title: string };
+      if (saleData.id && saleData.title) {
+        const { salePath: buildSalePath } = await import("@/lib/seo/url");
+        revalidatePath(buildSalePath(saleData));
+      }
+    }
     return actionSuccess();
   });
 }

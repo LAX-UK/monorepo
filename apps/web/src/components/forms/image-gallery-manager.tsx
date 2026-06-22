@@ -41,6 +41,8 @@ function dropzoneAriaLabel(kind: ImageUploadKind): string {
       return "Upload lot images";
     case "sale_cover":
       return "Upload sale cover images";
+    case "sale_day":
+      return "Upload auction day photos";
     case "artist_image":
       return "Upload artist images";
     case "category_image":

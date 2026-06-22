@@ -9,12 +9,14 @@ import {
   aggregateSaleEstimateTotal,
   computeEndedSaleSummary,
   mapLotToCardVM,
+  mapSaleToDayGalleryVM,
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
 } from "@/components/sections/saleroom/mappers";
 import { SaleroomCatalogLiveShell } from "@/components/sections/saleroom/saleroom-catalog-live-shell";
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
+import { SaleroomDayGallery } from "@/components/sections/saleroom/saleroom-day-gallery";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-hero-action-row";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
@@ -53,6 +55,7 @@ import {
   breadcrumbJsonLd,
   itemListJsonLd,
   jsonLdScript,
+  saleDayGalleryJsonLd,
   saleEventJsonLd,
   saleRecordingVideoJsonLd,
 } from "@/lib/seo/structured-data";
@@ -208,6 +211,9 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
       ? { registeredBidderCount }
       : {}),
   });
+  const dayGalleryVM = mapSaleToDayGalleryVM(bundle.sale);
+  const showDayGallery = dayGalleryVM !== null;
+
   const overviewVM = mapSaleToOverviewVM(bundle.sale, {
     categoryLabel,
     categoryLabels,
@@ -279,14 +285,17 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const videoLd = recordingEmbed
     ? saleRecordingVideoJsonLd(bundle.sale, recordingEmbed.src, bundle.sale.coverImages[0] ?? null)
     : null;
+  const galleryLd =
+    dayGalleryVM && bundle.sale.dayImageAssets && bundle.sale.dayImageAssets.length > 0
+      ? saleDayGalleryJsonLd(bundle.sale, bundle.sale.dayImageAssets)
+      : null;
+
   const jsonLdText = jsonLdScript(
-    ...(itemsLd
-      ? videoLd
-        ? [crumbs, eventLd, videoLd, itemsLd]
-        : [crumbs, eventLd, itemsLd]
-      : videoLd
-        ? [crumbs, eventLd, videoLd]
-        : [crumbs, eventLd]),
+    crumbs,
+    eventLd,
+    ...(videoLd ? [videoLd] : []),
+    ...(itemsLd ? [itemsLd] : []),
+    ...(galleryLd ? [galleryLd] : []),
   );
 
   const viewer = resolveViewerParticipation(session);
@@ -457,7 +466,12 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           />
         }
       >
-        <SaleAnchorTabs tabs={buildSaleAnchorTabs({ showTelephone: showTelephoneBooking })} />
+        <SaleAnchorTabs
+          tabs={buildSaleAnchorTabs({
+            showTelephone: showTelephoneBooking,
+            showGallery: showDayGallery,
+          })}
+        />
 
         <section
           id="catalog"
@@ -511,6 +525,20 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             />
           )}
         </section>
+
+        {showDayGallery && dayGalleryVM ? (
+          <section
+            id="gallery"
+            className={cn(
+              MARKETING_PAGE_SHELL,
+              SALE_SECTION_SCROLL_MT,
+              "pb-0 pt-[var(--section-spacing)]",
+            )}
+            aria-label="Auction day media"
+          >
+            <SaleroomDayGallery vm={dayGalleryVM} />
+          </section>
+        ) : null}
 
         {showTelephoneBooking ? (
           <SaleTelephoneBiddingSection
