@@ -10,6 +10,7 @@ import type {
   Sale,
   SaleDayMedia,
   SaleDayMediaRef,
+  SalePressRef,
   UserNotification,
 } from "@auction/types";
 import { itemSubmissionStatuses } from "@auction/types";
@@ -77,6 +78,31 @@ function parseGalleryImages(raw: unknown): GalleryImage[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
+function parsePressRefs(raw: unknown): SalePressRef[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: SalePressRef[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const url = typeof o.url === "string" ? o.url.trim() : null;
+    const headline = typeof o.headline === "string" ? o.headline.trim() : null;
+    const outletName = typeof o.outletName === "string" ? o.outletName.trim() : null;
+    if (!url || !headline || !outletName) continue;
+    const ref: SalePressRef = { url, headline, outletName };
+    if (typeof o.publishedAt === "string" && o.publishedAt.trim())
+      ref.publishedAt = o.publishedAt.trim();
+    if (typeof o.excerpt === "string" && o.excerpt.trim()) ref.excerpt = o.excerpt.trim();
+    if (
+      typeof o.mentionType === "string" &&
+      ["feature", "interview", "quote", "roundup"].includes(o.mentionType)
+    ) {
+      ref.mentionType = o.mentionType as import("@auction/types").SalePressMentionType;
+    }
+    out.push(ref);
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 function parseDayPhotoRefs(raw: unknown): SaleDayMediaRef[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
   const out: SaleDayMediaRef[] = [];
@@ -136,6 +162,7 @@ export function parseSale(raw: unknown): Sale {
   const coverImageAssets = parseGalleryImages(o.coverImageAssets);
   const dayImages = parseDayPhotoRefs(o.dayImages);
   const dayImageAssets = parseDayPhotoAssets(o.dayImageAssets);
+  const pressCoverage = parsePressRefs(o.pressCoverage);
   return {
     id: String(o.id),
     title: String(o.title),
@@ -144,6 +171,7 @@ export function parseSale(raw: unknown): Sale {
     ...(coverImageAssets !== undefined ? { coverImageAssets } : {}),
     ...(dayImages !== undefined ? { dayImages } : {}),
     ...(dayImageAssets !== undefined ? { dayImageAssets } : {}),
+    ...(pressCoverage !== undefined ? { pressCoverage } : {}),
     categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
     categoryIds: parseStringArray(o.categoryIds),
     deliveryMode: parseSaleDeliveryMode(o.deliveryMode),

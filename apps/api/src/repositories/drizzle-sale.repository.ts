@@ -212,6 +212,8 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.coverImages !== undefined) rowPatch.coverImages = patch.coverImages;
     if (patch.dayImages !== undefined)
       (rowPatch as Record<string, unknown>).auctionDayImages = patch.dayImages ?? [];
+    if (patch.pressCoverage !== undefined)
+      (rowPatch as Record<string, unknown>).pressCoverage = patch.pressCoverage ?? [];
     const categoryIds =
       patch.categoryIds !== undefined
         ? patch.categoryIds

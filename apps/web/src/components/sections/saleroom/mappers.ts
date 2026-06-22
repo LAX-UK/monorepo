@@ -19,6 +19,7 @@ import {
 import type {
   DayGalleryVM,
   EndedSaleSummaryVM,
+  PressCoverageVM,
   RelatedSaleVM,
   SaleHeroVM,
   SaleLotCardVM,
@@ -388,6 +389,44 @@ export function mapSaleToOverviewVM(
  * Returns `null` when the sale is not eligible (not ended, not onsite/hybrid, no photos).
  * Applies alt-text fallback so every image has meaningful alt for SEO + accessibility.
  */
+/**
+ * Build the view-models for the press coverage section.
+ * Returns null when no press links have been added.
+ * Extracts display `domain` from the URL hostname and formats `dateLabel`.
+ */
+export function mapSaleToPressCoverageVM(sale: Sale): PressCoverageVM[] | null {
+  if (!sale.pressCoverage || sale.pressCoverage.length === 0) return null;
+  return sale.pressCoverage.map((ref) => {
+    let domain = "";
+    try {
+      domain = new URL(ref.url).hostname.replace(/^www\./, "");
+    } catch {
+      domain = ref.outletName.toLowerCase().replace(/\s+/g, "");
+    }
+    let dateLabel: string | null = null;
+    if (ref.publishedAt) {
+      try {
+        dateLabel = new Intl.DateTimeFormat("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }).format(new Date(`${ref.publishedAt}T12:00:00Z`));
+      } catch {
+        dateLabel = ref.publishedAt;
+      }
+    }
+    return {
+      url: ref.url,
+      headline: ref.headline,
+      outletName: ref.outletName,
+      domain,
+      dateLabel,
+      excerpt: ref.excerpt ?? null,
+      mentionType: ref.mentionType ?? null,
+    };
+  });
+}
+
 export function mapSaleToDayGalleryVM(sale: Sale): DayGalleryVM | null {
   if (
     sale.status !== "ended" ||

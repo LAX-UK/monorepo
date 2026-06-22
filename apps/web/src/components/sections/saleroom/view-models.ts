@@ -146,3 +146,16 @@ export type DayGalleryVM = {
   /** Resolved media items — photos and/or video clips in presentation order. */
   items: SaleDayMedia[];
 };
+
+/** View-model for a single curated press/news item. */
+export type PressCoverageVM = {
+  url: string;
+  headline: string;
+  outletName: string;
+  /** Hostname extracted from the URL, e.g. "dailymail.co.uk". */
+  domain: string;
+  /** Human-readable date string, e.g. "14 Jun 2026". Null when publishedAt absent. */
+  dateLabel: string | null;
+  excerpt: string | null;
+  mentionType: import("@auction/types").SalePressMentionType | null;
+};
