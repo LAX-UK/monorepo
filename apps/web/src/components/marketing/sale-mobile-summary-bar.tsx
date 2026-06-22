@@ -21,7 +21,7 @@ type Props = {
   /** Bidding end instant. Used for "Closes in" countdown when live. */
   end: Date;
   /** Sale lifecycle — drives the label/CTA switch. */
-  status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
   saleTitle: string;
   deliveryMode?: SaleDeliveryMode;
   /** Optional live lots count — when present and live, surfaces a "{n} lots active" caption. */
@@ -63,7 +63,7 @@ export function SaleMobileSummaryBar({
         )
       : null;
 
-  if (status === "ended" || status === "cancelled") {
+  if (status === "ended" || status === "cancelled" || status === "voided") {
     return (
       <MarketingStickyBidBar>
         <div className="min-w-0 flex flex-col gap-1">

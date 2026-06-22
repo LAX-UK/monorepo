@@ -43,7 +43,7 @@ export function SaleroomCatalogLotsByView({
         }
         action={
           clearFiltersHref ? (
-            <Button variant="outline" asChild>
+            <Button variant="cta" asChild>
               <Link href={clearFiltersHref}>Clear filters</Link>
             </Button>
           ) : undefined

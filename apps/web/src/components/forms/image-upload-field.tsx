@@ -14,6 +14,7 @@ export type ImageUploadKind =
   | "submission_image"
   | "lot_image"
   | "sale_cover"
+  | "sale_day"
   | "artist_image"
   | "category_image";
 
@@ -36,6 +37,8 @@ function placeholderLabel(kind: ImageUploadKind): string {
       return "Profile";
     case "sale_cover":
       return "Auction cover";
+    case "sale_day":
+      return "Auction day photo";
     case "submission_image":
       return "Submission image";
     case "lot_image":
@@ -53,6 +56,8 @@ function dropzoneAriaLabel(kind: ImageUploadKind): string {
       return "Upload lot images";
     case "sale_cover":
       return "Upload sale cover images";
+    case "sale_day":
+      return "Upload auction day photos";
     case "artist_image":
       return "Upload artist images";
     case "category_image":

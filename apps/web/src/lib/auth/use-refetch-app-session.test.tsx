@@ -29,7 +29,9 @@ describe("useRefetchAppSession", () => {
 
     const { result } = renderHook(() => useRefetchAppSession(), {
       wrapper: ({ children }) => (
-        <AuthSessionProvider serverUser={null}>{children}</AuthSessionProvider>
+        <AuthSessionProvider serverUser={null} authCookiePresent={false}>
+          {children}
+        </AuthSessionProvider>
       ),
     });
 

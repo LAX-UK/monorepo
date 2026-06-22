@@ -8,6 +8,8 @@ export const SALE_DETAIL_TABS = [
   "registrations",
   "operations",
   "telephone-bookings",
+  "media",
+  "press",
   "activity",
 ] as const;
 

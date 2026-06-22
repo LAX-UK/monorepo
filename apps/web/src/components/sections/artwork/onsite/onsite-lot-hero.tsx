@@ -18,6 +18,8 @@ type Props = {
   summarySeed: LotSummarySeedVM;
   saleForLifecycle: SaleLifecyclePick;
   serverClockMs?: number;
+  /** When true, render the "Watch live stream → #live-stream" button. Caller gates via policy. */
+  showStreamCta?: boolean;
 };
 
 export function OnsiteLotHero({
@@ -26,6 +28,7 @@ export function OnsiteLotHero({
   summarySeed,
   saleForLifecycle,
   serverClockMs,
+  showStreamCta = false,
 }: Props) {
   const lifecycleLot = {
     id: auction.id,
@@ -121,7 +124,7 @@ export function OnsiteLotHero({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {sale.streamUrl ? (
+            {showStreamCta ? (
               <Button variant="outline" className="flex-1" asChild>
                 <a href="#live-stream">Watch live stream</a>
               </Button>

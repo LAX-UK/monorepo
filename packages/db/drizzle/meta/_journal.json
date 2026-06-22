@@ -869,6 +869,20 @@
       "when": 1788000000000,
       "tag": "0124_sale_saleroom_bid_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1788000001000,
+      "tag": "0125_sale_auction_day_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1788000002000,
+      "tag": "0126_sale_press_coverage",
+      "breakpoints": true
     }
   ]
 }

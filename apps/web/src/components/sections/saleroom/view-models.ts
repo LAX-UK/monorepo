@@ -1,4 +1,5 @@
-import type { LotCardTimingVM } from "@auction/types";
+import type { StreamPresentation } from "@/lib/sale-stream-policy";
+import type { LotCardTimingVM, SaleDayMedia } from "@auction/types";
 
 /** View-models for the saleroom page (ISP).
  * These types are intentionally small and opinionated toward rendering; mappers in
@@ -16,25 +17,19 @@ export type SaleHeroVM = {
   /** ISO 8601 end of bidding — drives the hero "Closes in" countdown. */
   endTime: string | null;
   isLive: boolean;
-  registrationClosesLabel: string | null;
-  biddingStartsLabel: string | null;
-  description: string | null;
   shareUrl: string;
   itemsLabel: string;
-  tags: string[];
   /** Uppercased one-line: date range | time | location (or empty tail if unknown). */
   dateLine: string;
   /** Relative time until preview opens when `previewStartTime` is set (Figma: left detail cell).
    */
   registrationClosesShort: string | null;
-  /** Bidding state: relative to `startTime` when scheduled, "Live now" when active, else null.
-   */
+  /** Relative time until bidding opens — scheduled sales only (live state is in the meta row). */
   biddingStartsShort: string | null;
   /** Shown in the left bordered cell when `registrationClosesShort` is the preview value. */
   leftColumnLabel: "Preview opens" | null;
-  rightColumnLabel: "Bidding" | "Bidding starts" | null;
-  /** Subtle one-line: format, buyer’s premium, optional category. */
-  overviewMetaLine: string | null;
+  /** Sidebar label for `biddingStartsShort` — scheduled sales only. */
+  rightColumnLabel: "Bidding starts" | null;
   /** Optional precomputed count of lots that are currently live within this
    * sale. When present and the sale is live, the hero kicker reads
    * "· {liveLotsCount} lots live"; when omitted, the existing
@@ -46,6 +41,8 @@ export type SaleHeroVM = {
    * existing "Format" stat in place.
    */
   estimatedTotalLabel?: string;
+  /** Masked registered bidder count when API provides it. */
+  registeredBidderCount?: number;
 };
 
 export type SaleLotCardVM = {
@@ -88,23 +85,43 @@ export type RelatedSaleVM = {
   dateLabel: string;
   itemsLabel: string;
   imageUrl: string | null;
+  coverImageAlt: string;
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
+  deliveryMode: import("@auction/types").SaleDeliveryMode;
+  isLive: boolean;
+  startsSoon: boolean;
+  countdownEndIso: string | null;
+  locationLabel: string | null;
   /** Uppercased date line for related row header (alias of dateLabel for Figma). */
   dateLine: string;
 };
 
+export type EndedSaleSummaryVM = {
+  soldCount: number;
+  unsoldCount: number;
+  hammerTotalLabel: string;
+  /** Set when catalogue was not fully loaded for aggregation. */
+  partialLabel?: string;
+};
+
 /** Overview tab: all salient sale fields for the read-only marketing panel. */
 export type SaleOverviewVM = {
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
   description: string | null;
   startLabel: string;
   endLabel: string;
   previewLabel: string | null;
   formatLabel: string;
   buyerPremiumLabel: string;
+  buyerPremiumTiers: import("@auction/types").BuyerPremiumTier[] | null;
   categoryLabel: string | null;
-  lotsLabel: string;
+  categoryLabels: string[];
   tags: string[];
   streamUrl: string | null;
-  showLiveStream: boolean;
+  /** Whether the sale page should render the stream (includes recording for ended sales). */
+  showSalePageStream: boolean;
+  /** Full copy/label bundle; null when showSalePageStream is false. */
+  streamPresentation: StreamPresentation | null;
   saleTitle: string;
   streamPosterUrl: string | null;
   terms: string | null;
@@ -119,4 +136,26 @@ export type SaleOverviewVM = {
   /** Google Maps embed URL for click-to-load preview (no API key). */
   locationEmbedUrl: string | null;
   showLocation: boolean;
+  /** Aggregated ended-sale stats when sale has ended and lots are loaded. */
+  endedSaleSummary?: EndedSaleSummaryVM | null;
+};
+
+/** View-model for the auction-day media gallery section (ended onsite/hybrid only). */
+export type DayGalleryVM = {
+  saleTitle: string;
+  /** Resolved media items — photos and/or video clips in presentation order. */
+  items: SaleDayMedia[];
+};
+
+/** View-model for a single curated press/news item. */
+export type PressCoverageVM = {
+  url: string;
+  headline: string;
+  outletName: string;
+  /** Hostname extracted from the URL, e.g. "dailymail.co.uk". */
+  domain: string;
+  /** Human-readable date string, e.g. "14 Jun 2026". Null when publishedAt absent. */
+  dateLabel: string | null;
+  excerpt: string | null;
+  mentionType: import("@auction/types").SalePressMentionType | null;
 };

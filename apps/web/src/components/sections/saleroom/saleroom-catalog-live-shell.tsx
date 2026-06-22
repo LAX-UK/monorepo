@@ -10,7 +10,7 @@ type Props = {
   children: ReactNode;
 };
 
-/** Wraps hybrid sale catalog with saleroom live subscription when saleId is set. */
+/** Wraps saleroom sale catalog with live session subscription when saleId is set. */
 export function SaleroomCatalogLiveShell({ saleId, initial, children }: Props) {
   return (
     <MaybeSaleroomLiveProvider saleId={saleId} initial={initial}>

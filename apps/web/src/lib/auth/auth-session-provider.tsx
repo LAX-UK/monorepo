@@ -30,16 +30,19 @@ export const AuthSessionContext = createContext<AuthSessionContextValue | null>(
 
 export function AuthSessionProvider({
   serverUser,
+  authCookiePresent,
   children,
 }: {
   serverUser: SessionUser | null;
+  /** When false, SSR already confirmed a signed-out visitor — skip client pending chrome. */
+  authCookiePresent: boolean;
   children: ReactNode;
 }) {
   const session = authClient.useSession();
   const rawUser = session.data?.user as AuthUserLike | undefined;
   const clientUser = rawUser ? mapAuthSessionUser(rawUser) : null;
   const user = clientUser ?? serverUser ?? null;
-  const pending = session.isPending && !serverUser;
+  const pending = session.isPending && serverUser == null && authCookiePresent;
 
   const refetch = useCallback(() => refetchAuthSessionClient(session.refetch), [session.refetch]);
 

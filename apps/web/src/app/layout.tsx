@@ -88,7 +88,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cookieStore = await cookies();
   const cookieHeader = hdrs.get("cookie") ?? "";
   const existingTheme = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
-  const user = hasAuthSessionCookie(cookieHeader) ? await getServerSessionUser() : null;
+  const authCookiePresent = hasAuthSessionCookie(cookieHeader);
+  const user = authCookiePresent ? await getServerSessionUser() : null;
   const profileTheme = user?.uiPreferences?.theme ?? DEFAULT_THEME_PREFERENCE;
   const themePref =
     existingTheme ?? (await resolveEffectiveThemePreference(user ? profileTheme : undefined));
@@ -137,7 +138,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           </Suspense>
           <MarketingClickIdsSync />
           <BrowserOfflineBanner />
-          <AuthSessionProvider serverUser={user}>
+          <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
             <PushBootstrap />
             <PwaInstallPrompt />
             {children}

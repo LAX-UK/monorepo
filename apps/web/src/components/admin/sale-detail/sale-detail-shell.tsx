@@ -149,8 +149,18 @@ export function SaleDetailShell({
             href: saleDetailTabHref(saleId, "telephone-bookings"),
             ...(pendingTelephone > 0 ? { badge: "pending" as const } : {}),
           },
+          {
+            id: "media",
+            label: "Auction day",
+            href: saleDetailTabHref(saleId, "media"),
+          },
         ]
       : []),
+    {
+      id: "press",
+      label: "Press",
+      href: saleDetailTabHref(saleId, "press"),
+    },
     {
       id: "activity",
       label: "Activity",
