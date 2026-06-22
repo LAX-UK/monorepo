@@ -113,4 +113,41 @@ describe("mapSaleToDayGalleryVM", () => {
     });
     expect(mapSaleToDayGalleryVM(sale)).not.toBeNull();
   });
+
+  it("resolves storage keys to CDN URLs when media base is configured", () => {
+    const prev = process.env.NEXT_PUBLIC_MEDIA_BASE_URL;
+    process.env.NEXT_PUBLIC_MEDIA_BASE_URL = "https://cdn.example";
+    try {
+      const sale = baseSale({
+        dayImageAssets: [{ mediaType: "image", src: "uploads/pending/sale-day/user/photo.jpg" }],
+      });
+      const vm = mapSaleToDayGalleryVM(sale);
+      expect(vm?.items[0]?.mediaType === "image" && vm.items[0].src).toBe(
+        "https://cdn.example/uploads/pending/sale-day/user/photo.jpg",
+      );
+    } finally {
+      if (prev === undefined) process.env.NEXT_PUBLIC_MEDIA_BASE_URL = undefined;
+      else process.env.NEXT_PUBLIC_MEDIA_BASE_URL = prev;
+    }
+  });
+
+  it("falls back to dayImages refs when dayImageAssets is absent", () => {
+    const prev = process.env.NEXT_PUBLIC_MEDIA_BASE_URL;
+    process.env.NEXT_PUBLIC_MEDIA_BASE_URL = "https://cdn.example";
+    try {
+      const sale = baseSale({
+        dayImages: [{ key: "uploads/pending/sale-day/user/photo.jpg", caption: "Floor" }],
+      });
+      const vm = mapSaleToDayGalleryVM(sale);
+      expect(vm?.items).toHaveLength(1);
+      expect(vm?.items[0]).toMatchObject({
+        mediaType: "image",
+        src: "https://cdn.example/uploads/pending/sale-day/user/photo.jpg",
+        caption: "Floor",
+      });
+    } finally {
+      if (prev === undefined) process.env.NEXT_PUBLIC_MEDIA_BASE_URL = undefined;
+      else process.env.NEXT_PUBLIC_MEDIA_BASE_URL = prev;
+    }
+  });
 });
