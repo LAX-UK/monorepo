@@ -7,7 +7,7 @@ import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
-import type { BuyerPremiumTier, Lot, Sale } from "@auction/types";
+import type { BuyerPremiumTier, Lot, Sale, SaleDayMedia } from "@auction/types";
 import { toLotCardTimingVM, toSaleCardTimingVM, toSaleCountdownEndIso } from "@auction/validators";
 import {
   buildGoogleMapsEmbedUrl,
@@ -17,6 +17,7 @@ import {
   resolveOnsiteMapUrl,
 } from "@auction/validators";
 import type {
+  DayGalleryVM,
   EndedSaleSummaryVM,
   RelatedSaleVM,
   SaleHeroVM,
@@ -380,4 +381,30 @@ export function mapSaleToOverviewVM(
     showLocation,
     ...(opts.endedSaleSummary ? { endedSaleSummary: opts.endedSaleSummary } : {}),
   };
+}
+
+/**
+ * Build the view-model for the auction-day gallery section.
+ * Returns `null` when the sale is not eligible (not ended, not onsite/hybrid, no photos).
+ * Applies alt-text fallback so every image has meaningful alt for SEO + accessibility.
+ */
+export function mapSaleToDayGalleryVM(sale: Sale): DayGalleryVM | null {
+  if (
+    sale.status !== "ended" ||
+    !isSaleroomDeliveryMode(sale.deliveryMode) ||
+    !sale.dayImageAssets ||
+    sale.dayImageAssets.length === 0
+  ) {
+    return null;
+  }
+  let photoN = 0;
+  const items: SaleDayMedia[] = sale.dayImageAssets.map((item) => {
+    if (item.mediaType === "video") return item;
+    photoN += 1;
+    return {
+      ...item,
+      alt: item.alt?.trim() ? item.alt.trim() : `${sale.title} — auction day photo ${photoN}`,
+    };
+  });
+  return { saleTitle: sale.title, items };
 }

@@ -141,6 +141,7 @@ function saleRow(
     terms: null,
     createdByLegalEntityId: "00000000-0000-4000-8000-000000000012",
     venueId: null,
+    auctionDayImages: [],
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

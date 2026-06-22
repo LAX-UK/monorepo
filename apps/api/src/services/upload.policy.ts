@@ -7,6 +7,7 @@ export const uploadKinds = [
   "submission_image",
   "lot_image",
   "sale_cover",
+  "sale_day",
   "legal_entity_document",
   "lot_document",
   "sale_document",
@@ -43,6 +44,12 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     maxBytes: 10 * 1024 * 1024,
     allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/sales",
+  },
+  sale_day: {
+    /** Photos up to 15 MB, short video clips up to 200 MB. */
+    maxBytes: 200 * 1024 * 1024,
+    allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"],
+    keyPrefix: "uploads/pending/sale-day",
   },
   legal_entity_document: {
     maxBytes: 15 * 1024 * 1024,
@@ -100,6 +107,7 @@ export function canUploadKind(
       );
     case "lot_image":
     case "sale_cover":
+    case "sale_day":
       return (
         roleHasCapability(role, "platform.admin.full", staffRole) ||
         roleHasCapability(role, "auction.manage", staffRole) ||
@@ -147,6 +155,10 @@ export function extForContentType(contentType: string): string {
       return ".png";
     case "image/webp":
       return ".webp";
+    case "video/mp4":
+      return ".mp4";
+    case "video/webm":
+      return ".webm";
     case "application/pdf":
       return ".pdf";
     default:
