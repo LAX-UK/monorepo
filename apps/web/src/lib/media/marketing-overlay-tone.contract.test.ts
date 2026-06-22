@@ -14,10 +14,6 @@ const ADAPTIVE_FRAME = /AdaptiveMediaFrame|HeroAdaptiveShell/;
 
 const MARKETING_IMAGE_SURFACES = [
   {
-    label: "sale detail hero",
-    path: "components/sections/saleroom/saleroom-hero-adaptive.tsx",
-  },
-  {
     label: "home hero lot",
     path: "components/sections/home/lax-hero-lot.tsx",
   },
@@ -115,10 +111,11 @@ describe("marketing overlay tone contract", () => {
     expect(src).toContain("EDITORIAL_CALM_SLOTS");
   });
 
-  it("saleroom hero uses tone-aware scrim and overlay text", () => {
-    const src = read("components/sections/saleroom/saleroom-hero-adaptive.tsx");
-    expect(src).toContain("HeroHorizontalScrim");
-    expect(src).toContain("OverlayToneText");
-    expect(src).not.toContain("text-white");
+  it("saleroom hero uses editorial surface layout without overlay scrim", () => {
+    const src = read("components/sections/saleroom/hero/saleroom-hero-editorial.tsx");
+    expect(src).toContain("SaleroomHeroCoverMedia");
+    expect(src).toContain("DisplayHeading");
+    expect(src).not.toContain("HeroHorizontalScrim");
+    expect(src).not.toContain("OverlayToneText");
   });
 });

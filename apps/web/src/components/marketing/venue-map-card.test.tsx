@@ -22,14 +22,17 @@ describe("VenueMapCard", () => {
   it("reveals map iframe after Show map is clicked", () => {
     render(
       <VenueMapCard
+        id="venue-map"
         locationName="Venue"
         addressLines={["London"]}
         embedUrl="https://www.google.com/maps?q=London&output=embed"
         directionsUrl="https://maps.example.com/dir"
       />,
     );
-    expect(screen.queryByTitle("Map of Venue")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /show map/i }));
+    const showMap = screen.getByRole("button", { name: /show map/i });
+    expect(showMap).toHaveAttribute("aria-controls", "venue-map-map-region");
+    fireEvent.click(showMap);
+    expect(document.getElementById("venue-map-map-region")).toBeTruthy();
     expect(screen.getByTitle("Map of Venue")).toHaveAttribute(
       "src",
       "https://www.google.com/maps?q=London&output=embed",

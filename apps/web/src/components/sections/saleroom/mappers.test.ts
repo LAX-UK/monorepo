@@ -70,39 +70,35 @@ const baseLot: Lot = {
 };
 
 const now = new Date("2026-01-15T12:00:00Z");
-const defaultHeroOpts = { shareUrl: "/s", now, categoryLabel: null as string | null };
+const defaultHeroOpts = { shareUrl: "/s", now };
 
 describe("mapSaleToHeroVM", () => {
-  it("emits onsite / online tags and live-stream tag when streamUrl set", () => {
+  it("maps hero fields for scheduled onsite sales with stream", () => {
     const vm = mapSaleToHeroVM(baseSale, {
       totalLots: 12,
       shareUrl: "/sales/evening-sale/sale-1",
       now,
-      categoryLabel: null,
     });
-    expect(vm.tags).toContain("In-person");
-    expect(vm.tags).toContain("Live stream");
     expect(vm.itemsLabel).toBe("12 lots");
     expect(vm.dateLine).toContain("THELAX SALEROOM");
   });
 
-  it("marks active sales as live and shows a live bidding short label", () => {
+  it("marks active sales as live without a duplicate bidding sidebar line", () => {
     const vm = mapSaleToHeroVM(
       { ...baseSale, status: "active" },
-      { totalLots: 1, shareUrl: "/sales/evening-sale/sale-1", now, categoryLabel: null },
+      { totalLots: 1, shareUrl: "/sales/evening-sale/sale-1", now },
     );
     expect(vm.isLive).toBe(true);
-    expect(vm.biddingStartsLabel).toBeNull();
     expect(vm.itemsLabel).toBe("1 lot");
-    expect(vm.biddingStartsShort).toBe("Live now");
-    expect(vm.rightColumnLabel).toBe("Bidding");
+    expect(vm.biddingStartsShort).toBeNull();
+    expect(vm.rightColumnLabel).toBeNull();
     expect(vm.registrationClosesShort).toBeNull();
   });
 
   it("uses previewStartTime for the left preview cell when set", () => {
     const vm = mapSaleToHeroVM(
       { ...baseSale, previewStartTime: new Date("2026-05-20T12:00:00Z") },
-      { totalLots: 1, shareUrl: "/sales/evening-sale/sale-1", now, categoryLabel: null },
+      { totalLots: 1, shareUrl: "/sales/evening-sale/sale-1", now },
     );
     expect(vm.leftColumnLabel).toBe("Preview opens");
     expect(vm.registrationClosesShort).toBeTruthy();
@@ -113,12 +109,24 @@ describe("mapSaleToHeroVM", () => {
       totalLots: 1,
       shareUrl: "/sales/evening-sale/sale-1",
       now,
-      categoryLabel: null,
     });
     expect(vm.registrationClosesShort).toBeNull();
     expect(vm.leftColumnLabel).toBeNull();
     expect(vm.biddingStartsShort).toBeTruthy();
     expect(vm.rightColumnLabel).toBe("Bidding starts");
+  });
+
+  it("hides preview lines for active sales even when previewStartTime is set", () => {
+    const vm = mapSaleToHeroVM(
+      {
+        ...baseSale,
+        status: "active",
+        previewStartTime: new Date("2026-05-20T12:00:00Z"),
+      },
+      { totalLots: 1, shareUrl: "/sales/evening-sale/sale-1", now },
+    );
+    expect(vm.leftColumnLabel).toBeNull();
+    expect(vm.registrationClosesShort).toBeNull();
   });
 
   it("passes sale status on hero VM for registry badges", () => {
@@ -155,12 +163,17 @@ describe("mapSaleToHeroVM", () => {
 
 describe("mapSaleToOverviewVM", () => {
   it("maps sale fields and category label", () => {
-    const vm = mapSaleToOverviewVM(baseSale, { lotsTotal: 5, categoryLabel: "Contemporary" });
-    expect(vm.lotsLabel).toBe("5 lots");
+    const vm = mapSaleToOverviewVM(baseSale, {
+      categoryLabel: "Contemporary",
+      categoryLabels: ["Contemporary"],
+    });
+    expect(vm.status).toBe("scheduled");
     expect(vm.categoryLabel).toBe("Contemporary");
     expect(vm.buyerPremiumLabel).toBe("25%");
     expect(vm.formatLabel).toBe("In-person");
-    expect(vm.showLiveStream).toBe(true);
+    expect(vm.showSalePageStream).toBe(true);
+    expect(vm.streamPresentation?.sectionHeading).toBe("Live stream");
+    expect(vm.tags).toEqual([]);
     expect(vm.saleTitle).toBe("Evening Sale");
     expect(vm.streamPosterUrl).toBe("https://cdn/image.jpg");
     expect(vm.showLocation).toBe(true);
@@ -177,7 +190,7 @@ describe("mapSaleToOverviewVM", () => {
       locationPostcode: "W1A 2AA",
       locationCountry: "United Kingdom",
     };
-    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
     expect(vm.showLocation).toBe(true);
     expect(vm.locationAddressLines).toEqual([
       "34 New Bond Street",
@@ -198,14 +211,46 @@ describe("mapSaleToOverviewVM", () => {
       allowOnlineBidsBeforeGoLive: false,
       locationAddressLine1: "Should not show",
     };
-    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
     expect(vm.showLocation).toBe(false);
   });
 
-  it("hides stream preview when sale has ended", () => {
+  it("shows recording stream on sale page when sale has ended with stream URL", () => {
     const sale = { ...baseSale, status: "ended" as const };
-    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
-    expect(vm.showLiveStream).toBe(false);
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
+    expect(vm.showSalePageStream).toBe(true);
+    expect(vm.streamPresentation?.sectionHeading).toBe("Saleroom recording");
+    expect(vm.streamPresentation?.embedCtaLabel).toBe("Watch recording");
+    expect(vm.streamPresentation?.overviewTag).toBe("Saleroom recording");
+  });
+
+  it("hides stream on sale page when ended sale has no stream URL", () => {
+    const sale = { ...baseSale, status: "ended" as const, streamUrl: null };
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
+    expect(vm.showSalePageStream).toBe(false);
+    expect(vm.streamPresentation).toBeNull();
+  });
+
+  it("shows location for hybrid sales with venue info", () => {
+    const sale: Sale = {
+      ...baseSale,
+      deliveryMode: "hybrid",
+      locationName: "TheLax Saleroom",
+      locationAddressLine1: "12 King Street",
+      locationCity: "London",
+    };
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
+    expect(vm.showLocation).toBe(true);
+  });
+
+  it("maps tiered buyer premium label", () => {
+    const sale: Sale = {
+      ...baseSale,
+      buyerPremiumTiers: [{ hammerThresholdMinor: 0, rate: "0.1500" }],
+    };
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
+    expect(vm.buyerPremiumLabel).toBe("Tiered — see table");
+    expect(vm.buyerPremiumTiers).toHaveLength(1);
   });
 
   it("uses an explicit locationMapUrl override when provided", () => {
@@ -216,8 +261,47 @@ describe("mapSaleToOverviewVM", () => {
       locationCity: "London",
       locationPostcode: "SW1Y 6QU",
     };
-    const vm = mapSaleToOverviewVM(sale, { lotsTotal: 1, categoryLabel: null });
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
     expect(vm.resolvedMapUrl).toBe("https://maps.example.com/custom-pin");
+  });
+});
+
+describe("aggregateSaleEstimateTotal", () => {
+  it("sums estimates when all lots are loaded", async () => {
+    const { aggregateSaleEstimateTotal } = await import("./mappers");
+    const lots = [
+      baseLot,
+      {
+        ...baseLot,
+        id: "lot-2",
+        marketingDetails: { estimate: { low: "200", high: "400", currency: "USD" } },
+      },
+    ];
+    const label = aggregateSaleEstimateTotal(lots, { loadedCount: 2, totalLots: 2 });
+    expect(label).toBeTruthy();
+    expect(label).toContain("700");
+  });
+
+  it("returns null when catalogue is paginated", async () => {
+    const { aggregateSaleEstimateTotal } = await import("./mappers");
+    expect(aggregateSaleEstimateTotal([baseLot], { loadedCount: 1, totalLots: 10 })).toBeNull();
+  });
+});
+
+describe("computeEndedSaleSummary", () => {
+  it("aggregates sold and hammer total for ended sales", async () => {
+    const { computeEndedSaleSummary } = await import("./mappers");
+    const summary = computeEndedSaleSummary(
+      { ...baseSale, status: "ended" },
+      [
+        { ...baseLot, status: "ended", winnerId: "buyer-1", currentPrice: "1000.00" },
+        { ...baseLot, id: "lot-2", status: "ended", winnerId: null, currentPrice: "0.00" },
+      ],
+      { loadedCount: 2, totalLots: 2 },
+    );
+    expect(summary?.soldCount).toBe(1);
+    expect(summary?.unsoldCount).toBe(1);
+    expect(summary?.hammerTotalLabel).toBeTruthy();
   });
 });
 

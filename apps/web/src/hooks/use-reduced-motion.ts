@@ -17,11 +17,6 @@ function readOverride(): Override {
   return "system";
 }
 
-function readOsPref(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-}
-
 /** F9 — `useReducedMotion()` — single source of truth combining the OS
  * preference and an in-app override saved in `localStorage`.
  *
@@ -30,12 +25,8 @@ function readOsPref(): boolean {
  * disable a sound effect, skip an inline animation in a render path).
  */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = React.useState<boolean>(() => {
-    const override = readOverride();
-    if (override === "force-reduce") return true;
-    if (override === "force-allow") return false;
-    return readOsPref();
-  });
+  /** SSR and first client paint must match; read OS / localStorage only after mount. */
+  const [reduced, setReduced] = React.useState(false);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
