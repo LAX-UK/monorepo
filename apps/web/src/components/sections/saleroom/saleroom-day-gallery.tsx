@@ -1,62 +1,19 @@
 "use client";
 
+import { MediaLightbox } from "@/components/gallery/engine/media-lightbox";
 import type { DayGalleryVM } from "@/components/sections/saleroom/view-models";
 import { MediaImage } from "@/components/ui/media-image";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { SaleDayMedia } from "@auction/types";
 import { cn } from "@auction/ui";
 import { PlayCircleIcon } from "lucide-react";
 import { useState } from "react";
-import Lightbox from "yet-another-react-lightbox";
-import Captions from "yet-another-react-lightbox/plugins/captions";
-import Counter from "yet-another-react-lightbox/plugins/counter";
-import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen";
-import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
-import Video from "yet-another-react-lightbox/plugins/video";
-import Zoom from "yet-another-react-lightbox/plugins/zoom";
-import "yet-another-react-lightbox/styles.css";
-import "yet-another-react-lightbox/plugins/captions.css";
-import "yet-another-react-lightbox/plugins/counter.css";
-import "yet-another-react-lightbox/plugins/thumbnails.css";
-
-const LIGHTBOX_PLUGINS = [Video, Zoom, Thumbnails, Counter, Fullscreen, Captions];
 
 type Props = {
   vm: DayGalleryVM;
   className?: string;
 };
-
-/** Infer a video MIME type from the URL extension. Defaults to "video/mp4". */
-function videoMimeFromSrc(src: string): "video/mp4" | "video/webm" {
-  const base = src.split("?")[0] ?? "";
-  return base.endsWith(".webm") ? "video/webm" : "video/mp4";
-}
-
-// Build YARL slides for mixed image/video items.
-function buildSlides(items: SaleDayMedia[]) {
-  return items.map((item) => {
-    if (item.mediaType === "video") {
-      return {
-        type: "video" as const,
-        sources: [{ src: item.src, type: videoMimeFromSrc(item.src) }],
-        ...(item.posterSrc ? { poster: item.posterSrc } : {}),
-        ...(item.width ? { width: item.width } : {}),
-        ...(item.height ? { height: item.height } : {}),
-        ...(item.caption ? { description: item.caption } : {}),
-        controls: true,
-        playsInline: true,
-      };
-    }
-    return {
-      src: item.src,
-      alt: item.alt ?? "",
-      ...(item.width ? { width: item.width } : {}),
-      ...(item.height ? { height: item.height } : {}),
-      ...(item.blurDataURL ? { blurDataURL: item.blurDataURL } : {}),
-      ...(item.caption ? { description: item.caption } : {}),
-    };
-  });
-}
 
 // Thumbnail for a single grid item — image or video.
 function DayMediaThumbnail({
@@ -147,8 +104,9 @@ function DayMediaThumbnail({
 
 export function SaleroomDayGallery({ vm, className }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
-  const slides = buildSlides(vm.items);
+  const reduceMotion = useReducedMotion();
   const hasVideos = vm.items.some((i) => i.mediaType === "video");
+  const animation = reduceMotion ? { fade: 0, swipe: 0 } : { fade: 250, swipe: 300 };
 
   return (
     <>
@@ -176,13 +134,13 @@ export function SaleroomDayGallery({ vm, className }: Props) {
         </ol>
       </div>
 
-      <Lightbox
+      <MediaLightbox
+        items={vm.items}
         open={lightboxIndex >= 0}
         index={lightboxIndex}
-        close={() => setLightboxIndex(-1)}
-        slides={slides}
-        plugins={LIGHTBOX_PLUGINS}
-        video={{ controls: true, playsInline: true }}
+        onClose={() => setLightboxIndex(-1)}
+        onIndexChange={setLightboxIndex}
+        animation={animation}
       />
     </>
   );
