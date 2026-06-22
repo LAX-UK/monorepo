@@ -191,6 +191,20 @@ export async function getServerSaleMyRegistrations(
   return body.data.items.map(parseSaleRegistrationMine);
 }
 
+/** Masked registered bidder count for social proof (public endpoint). */
+export async function getServerSaleBidderCount(saleId: string): Promise<number | null> {
+  const base = getServerApiBase();
+  const res = await catalogueFetch(
+    `${base}/sales/${encodeURIComponent(saleId)}/bidders?limit=1&offset=0`,
+    CATALOGUE_FETCH_POLICIES.sales,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  const body = (await res.json()) as { data?: { total?: number } };
+  const total = body.data?.total;
+  return typeof total === "number" && Number.isFinite(total) ? total : null;
+}
+
 export type SitemapSale = { id: string; title: string };
 
 /** For sitemap / ISR without full Hono client shape. */

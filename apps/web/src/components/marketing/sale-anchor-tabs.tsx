@@ -1,6 +1,7 @@
 "use client";
 
-import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { MarketingUnderlineTabs } from "@/components/marketing/marketing-underline-tabs";
+import { SALE_ANCHOR_STICKY_CLASS } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { useCallback, useEffect, useState } from "react";
 
@@ -50,35 +51,20 @@ export function SaleAnchorTabs({ tabs, className }: Props) {
   }, []);
 
   return (
-    <nav
-      aria-label="Sale sections"
+    <MarketingUnderlineTabs
+      variant="anchor"
+      ariaLabel="Sale sections"
       className={cn(
-        "sticky top-[var(--header-height)] z-[var(--z-sticky,30)] border-b border-outline-variant/30 bg-page-bg/90 backdrop-blur-md dark:bg-background/90",
+        `${SALE_ANCHOR_STICKY_CLASS} border-b border-outline-variant/30 bg-page-bg/90 backdrop-blur-md dark:bg-background/90`,
         className,
       )}
-    >
-      <div className="mx-auto flex max-w-[var(--container-max,1440px)] gap-1 overflow-x-auto px-8 [scrollbar-width:none] md:px-10 lg:px-14">
-        {tabs.map((tab) => {
-          const active = tab.id === activeId;
-          return (
-            <a
-              key={tab.id}
-              href={`#${tab.id}`}
-              onClick={(e) => onClick(e, tab.id)}
-              aria-current={active ? "true" : undefined}
-              className={cn(
-                "relative inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 font-label text-[0.7rem] font-semibold uppercase tracking-wider transition-colors motion-reduce:transition-none",
-                FOCUS_RING,
-                active
-                  ? "border-primary text-on-surface"
-                  : "border-transparent text-on-surface-variant hover:text-on-surface",
-              )}
-            >
-              {tab.label}
-            </a>
-          );
-        })}
-      </div>
-    </nav>
+      tabs={tabs.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        href: `#${tab.id}`,
+        active: tab.id === activeId,
+        onClick: (e) => onClick(e, tab.id),
+      }))}
+    />
   );
 }

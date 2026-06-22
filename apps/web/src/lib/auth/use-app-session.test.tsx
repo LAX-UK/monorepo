@@ -55,10 +55,12 @@ function sessionState(data: { user?: Record<string, unknown> } | null, isPending
   };
 }
 
-function renderWithProvider(serverUserValue: SessionUser | null = null) {
+function renderWithProvider(serverUserValue: SessionUser | null = null, authCookiePresent = false) {
   return renderHook(() => useAppSession(), {
     wrapper: ({ children }) => (
-      <AuthSessionProvider serverUser={serverUserValue}>{children}</AuthSessionProvider>
+      <AuthSessionProvider serverUser={serverUserValue} authCookiePresent={authCookiePresent}>
+        {children}
+      </AuthSessionProvider>
     ),
   });
 }
@@ -110,16 +112,25 @@ describe("useAppSession", () => {
   it("returns pending=true when client session is loading and no server fallback", () => {
     useSessionMock.mockReturnValue(sessionState(null, true));
 
-    const { result } = renderWithProvider(null);
+    const { result } = renderWithProvider(null, true);
 
     expect(result.current.user).toBeNull();
     expect(result.current.pending).toBe(true);
   });
 
+  it("returns pending=false for confirmed guests without an auth cookie", () => {
+    useSessionMock.mockReturnValue(sessionState(null, true));
+
+    const { result } = renderWithProvider(null, false);
+
+    expect(result.current.user).toBeNull();
+    expect(result.current.pending).toBe(false);
+  });
+
   it("returns pending=false when client session is loading but server fallback exists", () => {
     useSessionMock.mockReturnValue(sessionState(null, true));
 
-    const { result } = renderWithProvider(serverUser);
+    const { result } = renderWithProvider(serverUser, true);
 
     expect(result.current.user).toEqual(serverUser);
     expect(result.current.pending).toBe(false);

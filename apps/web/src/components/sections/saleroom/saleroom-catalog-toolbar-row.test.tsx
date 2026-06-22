@@ -15,7 +15,6 @@ const baseProps = {
   layoutView: "grid" as const,
   countLabel: "24 lots",
   resultCountLabel: "Show 24 lots",
-  totalLots: 24,
 };
 
 describe("SaleroomCatalogToolbarRow", () => {
@@ -52,5 +51,12 @@ describe("SaleroomCatalogToolbarRow", () => {
     render(<SaleroomCatalogToolbarRow {...baseProps} />);
 
     expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
+  });
+
+  it("offsets sticky toolbar below anchor tabs", () => {
+    searchParams = new URLSearchParams();
+    const { container } = render(<SaleroomCatalogToolbarRow {...baseProps} />);
+    const sticky = container.querySelector(".sticky");
+    expect(sticky?.className).toContain("calc(var(--header-height");
   });
 });

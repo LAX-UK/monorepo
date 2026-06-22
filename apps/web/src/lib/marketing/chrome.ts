@@ -55,3 +55,15 @@ export const MARKETING_CATALOG_FILTER_RAIL_SLOT = "hidden lg:block";
 
 /** Second grid column: catalogue results (grid, list, calendar). */
 export const MARKETING_CATALOG_MAIN_COLUMN = "min-w-0";
+
+/** Sticky `SaleAnchorTabs` bar height (`min-h-11` = 2.75rem). */
+export const SALE_ANCHOR_BAR_HEIGHT = "2.75rem";
+
+/** Sticky anchor tab bar — sits below site header. */
+export const SALE_ANCHOR_STICKY_CLASS = "sticky top-[var(--header-height)] z-[var(--z-sticky,30)]";
+
+/** Catalogue toolbar offset — stacks below anchor tabs on sale detail pages. */
+export const SALE_CATALOG_TOOLBAR_STICKY_TOP = `top-[calc(var(--header-height,4rem)+${SALE_ANCHOR_BAR_HEIGHT})]`;
+
+/** Scroll margin for `#catalog` / `#overview` anchor targets (header + anchor bar). */
+export const SALE_SECTION_SCROLL_MT = `scroll-mt-[calc(var(--header-height,4rem)+${SALE_ANCHOR_BAR_HEIGHT})]`;

@@ -101,7 +101,7 @@ const blocks: AccordionBlock[] = [
   },
 ];
 const queueVMs = mapSaleLotsToQueueVMs(baseLot, [baseLot], () => "Seller");
-const overview = mapSaleToOverviewVM(baseSale, { lotsTotal: 1, categoryLabel: null });
+const overview = mapSaleToOverviewVM(baseSale, { categoryLabel: null });
 
 function renderLayout(sale: Sale = baseSale) {
   return render(
@@ -147,20 +147,46 @@ describe("LotOnsiteMarketingLayout", () => {
     expect(screen.queryByText(/Weekdays, 09:00/i)).not.toBeInTheDocument();
   });
 
-  it("shows live stream section when streamUrl is set", () => {
-    const sale = { ...baseSale, streamUrl: "https://example.com/watch" };
-    renderLayout(sale);
-    expect(screen.getByRole("heading", { name: /Watch From Anywhere/i })).toBeInTheDocument();
-  });
-
-  it("shows embed preview for YouTube stream URLs", () => {
+  it("shows live stream section when scheduled and streamUrl is set", () => {
     const sale = {
       ...baseSale,
+      status: "scheduled" as const,
+      streamUrl: "https://example.com/watch",
+    };
+    renderLayout(sale);
+    expect(screen.getByRole("heading", { name: /Live stream/i })).toBeInTheDocument();
+  });
+
+  it("shows Watch live CTA in hero when scheduled and streamUrl is set", () => {
+    const sale = {
+      ...baseSale,
+      status: "scheduled" as const,
+      streamUrl: "https://example.com/watch",
+    };
+    renderLayout(sale);
+    expect(screen.getByRole("link", { name: /Watch live stream/i })).toBeInTheDocument();
+  });
+
+  it("shows embed preview for YouTube stream URLs when scheduled", () => {
+    const sale = {
+      ...baseSale,
+      status: "scheduled" as const,
       streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
     };
     renderLayout(sale);
     expect(screen.getByRole("button", { name: /watch live/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /open in youtube/i })).toBeInTheDocument();
+  });
+
+  it("hides stream section and hero CTA when sale has ended", () => {
+    const sale = {
+      ...baseSale,
+      status: "ended" as const,
+      streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    };
+    renderLayout(sale);
+    expect(screen.queryByRole("heading", { name: /Live stream/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Watch live stream/i })).not.toBeInTheDocument();
   });
 
   it("shows plan your visit without onsite bid form triggers", () => {

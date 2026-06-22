@@ -17,13 +17,27 @@ import type { Category, Sale } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 
 const CATALOG_LOAD_ALL_BATCH = 48;
-const CATALOG_LOAD_ALL_CAP = 200;
+export const SALE_CATALOG_LOAD_ALL_CAP = 200;
+
+function resolveSaleCategoryLabels(sale: Sale, categories: Category[]): string[] {
+  const ids =
+    sale.categoryIds && sale.categoryIds.length > 0
+      ? sale.categoryIds
+      : sale.categoryId
+        ? [sale.categoryId]
+        : [];
+  if (ids.length === 0 || categories.length === 0) return [];
+  return ids
+    .map((id) => categories.find((c) => c.id === id)?.name ?? null)
+    .filter((name): name is string => Boolean(name));
+}
 
 export type SaleroomShellData = {
   shell: SaleShell;
   lotsPage: SaleLotsPage;
   categories: Category[];
   categoryLabel: string | null;
+  categoryLabels: string[];
 };
 
 export type SaleroomSecondaryData = {
@@ -42,7 +56,7 @@ async function loadAllCatalogPages(id: string, sort: SaleroomCatalogSort): Promi
     sort,
   });
   if (!first) throw new Error("notfound");
-  const cap = Math.min(CATALOG_LOAD_ALL_CAP, first.total);
+  const cap = Math.min(SALE_CATALOG_LOAD_ALL_CAP, first.total);
   const items = [...first.items];
   const totalPages = Math.ceil(cap / CATALOG_LOAD_ALL_BATCH);
   if (totalPages > 1) {
@@ -89,13 +103,10 @@ export class SaleroomPageDataService {
         });
     if (!lotsPage) return null;
 
-    const categoryId = shell.sale.categoryId ?? null;
-    const categoryLabel =
-      categoryId && categories.length > 0
-        ? (categories.find((c) => c.id === categoryId)?.name ?? null)
-        : null;
+    const categoryLabels = resolveSaleCategoryLabels(shell.sale, categories);
+    const categoryLabel = categoryLabels[0] ?? null;
 
-    return { shell, lotsPage, categories, categoryLabel };
+    return { shell, lotsPage, categories, categoryLabel, categoryLabels };
   }
 
   async loadSecondary(

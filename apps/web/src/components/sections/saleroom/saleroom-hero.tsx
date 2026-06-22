@@ -1,4 +1,4 @@
-import { SaleroomHeroAdaptive } from "@/components/sections/saleroom/saleroom-hero-adaptive";
+import { SaleroomHeroEditorial } from "@/components/sections/saleroom/hero/saleroom-hero-editorial";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import type { SaleDeliveryMode } from "@auction/types";
@@ -14,9 +14,12 @@ type Props = {
   deliveryMode?: SaleDeliveryMode;
   catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
   saleroomSession?: PublicSaleroomSessionStatus | null;
+  coverBlurDataURL?: string | null;
+  saleStartsSoon?: boolean;
+  showOnlineBiddingGatedBadge?: boolean;
   explainerContext?: SaleFormatExplainerContext;
 };
 
 export function SaleroomHero(props: Props) {
-  return <SaleroomHeroAdaptive {...props} />;
+  return <SaleroomHeroEditorial {...props} />;
 }

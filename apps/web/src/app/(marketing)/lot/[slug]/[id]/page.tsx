@@ -64,6 +64,7 @@ import {
 } from "@/lib/marketing/catalog-links";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
@@ -272,6 +273,15 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const isOnsiteSale =
     saleBundle?.sale != null && !saleAllowsWebBidding(saleBundle.sale.deliveryMode);
   const isHybridSale = saleBundle?.sale?.deliveryMode === "hybrid";
+  const lotStreamCtx = saleBundle?.sale
+    ? resolveSaleStreamContext({
+        streamUrl: saleBundle.sale.streamUrl,
+        status: saleBundle.sale.status,
+        deliveryMode: saleBundle.sale.deliveryMode,
+        saleTitle: saleBundle.sale.title,
+        endTime: saleBundle.sale.endTime,
+      })
+    : null;
   const initialSaleroomStatus =
     isHybridSale && auction.saleId
       ? await getServerSaleroomStatus(auction.saleId)
@@ -358,7 +368,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
 
   const onsiteOverviewVM = saleBundle
     ? mapSaleToOverviewVM(saleBundle.sale, {
-        lotsTotal: saleLots?.length ?? 0,
         categoryLabel: null,
       })
     : null;
@@ -560,7 +569,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                             userId={session?.id ?? null}
                           />
                         }
-                        hasVideoStream={Boolean(saleBundle?.sale?.streamUrl)}
+                        hasVideoStream={Boolean(lotStreamCtx?.showOnLotPage)}
                         streamUrl={saleBundle?.sale?.streamUrl ?? null}
                         streamSaleTitle={
                           saleBundle?.sale?.title ?? parentSale?.title ?? auction.title

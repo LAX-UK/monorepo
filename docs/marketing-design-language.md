@@ -148,9 +148,9 @@ The saleroom **projector board** is not a marketing surface. Session status and 
 - Do **not** reuse `SaleLifecycleBadge` / `LotStatusBadge` on the AV board unless product explicitly requests parity.
 - Catalog and lot-detail surfaces remain on the registry in [`status-presentation.ts`](apps/web/src/lib/presenters/status-presentation.ts).
 
-### Saleroom mobile chrome (hybrid sales)
+### Saleroom mobile chrome (onsite + hybrid sales)
 
-On hybrid sale pages (`deliveryMode === "hybrid"`), live saleroom session UX splits by viewport:
+On saleroom sale pages (`isSaleroomDeliveryMode`: `onsite` and `hybrid`), live session UX splits by viewport:
 
 | Surface | Role |
 |---------|------|
@@ -160,15 +160,37 @@ On hybrid sale pages (`deliveryMode === "hybrid"`), live saleroom session UX spl
 
 **Do not** make the in-catalog on-block banner sticky; it overlaps [`MarketingListToolbar`](apps/web/src/components/marketing/marketing-list-toolbar.tsx) at the same `top` offset.
 
+On the **sale detail page**, the catalogue toolbar sticks **below** the anchor tab bar — use `SALE_CATALOG_TOOLBAR_STICKY_TOP` from [`chrome.ts`](apps/web/src/lib/marketing/chrome.ts) (`top-[calc(var(--header-height)+2.75rem)]`). Section anchors (`#catalog`, `#overview`) use matching `SALE_SECTION_SCROLL_MT`.
+
 Shared module [`saleroom-mobile-chrome.ts`](apps/web/src/lib/saleroom/saleroom-mobile-chrome.ts): `SaleroomLotRef`, caption presenters (`saleroomOnBlockCaption`, `saleroomPausedCaption`), `countSaleroomLotProgress`, `resolveSaleroomMobileSummaryBarMode`, `publicSaleroomSessionToRegistryStatus`, `saleroomBidNowCtaClassName`.
 
 Shared UI: `SaleroomSessionCaption`, `SaleroomSessionStatusBadge`, `SaleroomMobileSummaryBar`.
 
-**Sale hero action row** ([`SaleroomHeroActionRow`](apps/web/src/components/sections/saleroom/saleroom-hero-action-row.tsx)): two-band layout on imagery — (1) horizontal button row `Browse → Verify/Register → Follow` at `saleroomHeroActionSizing` (40px), (2) optional KYC caption below via `OverlayToneText`, (3) optional agent registration form in band 3 with `#register-to-bid` anchor. Use `SaleroomRegisterToBid layout="button"` in band 1 and `layout="form"` in band 3; never stack caption above a button inside the button flex.
+**Sale hero (editorial split)** — [`SaleroomHeroEditorial`](apps/web/src/components/sections/saleroom/hero/saleroom-hero-editorial.tsx): meta row → `DisplayHeading` H1 (`font-semibold`) → 16/9 cover + sidebar (timing, stats, share toolbar, CTAs). Sidebar countdown uses [`MarketingCountdownPanel`](apps/web/src/components/marketing/marketing-countdown-panel.tsx) (segmented Days/Hours/Min/Sec chips + urgency); mobile sticky bar keeps compact inline `Countdown`. **No** immersive full-bleed `MarketingPageHero`, **no** Watch live / Print / View catalogue / Browse CTAs in the hero. Share-only toolbar; primary actions are Register (guest), Plan visit (onsite/hybrid), and **Notify me** (follow). Optional **You're registered** chip when paddle is approved.
+
+**Sale hero action row** ([`SaleroomHeroActionRow`](apps/web/src/components/sections/saleroom/saleroom-hero-action-row.tsx)): primary CTAs (Register / Plan visit) + optional KYC caption + **Notify me** footer; optional agent registration form band with `#register-to-bid` anchor. Use `SaleroomRegisterToBid layout="button"` in the primary band and `layout="form"` in the form band.
+
+**Sale meta badges:** reuse [`SaleMetaBadges`](apps/web/src/components/marketing/sale-meta-badges.tsx) for lifecycle + format + date rhythm across hero meta, featured tiles, upcoming tiles, and related-auction rows. Scheduled sales may show [`SaleScheduleBadges`](apps/web/src/components/marketing/sale-status-badge.tsx) (“Starts soon”) in the hero meta row.
 
 **Staff viewer participation:** staff accounts lack `bid.place`; derive flags once via [`resolveViewerParticipation`](apps/web/src/lib/presenters/viewer-participation.ts) on marketing pages. Pass `canParticipate={viewer.canParticipateAsBuyer}` to participation surfaces (sticky bars, catalogue bid CTAs, condition-report request). Fold into `registerToBid.show` on sale pages so hero register/verify bands disappear for staff. Keep Follow (sale) and Watchlist (lot) for staff browsing. Lot bid panel gates via `BidGate` → `adminPolicy`.
 
-**Sale participation UX:** no multi-card “How to participate” guide grid — hero CTAs (Browse / Verify / Register / Follow) and the **mobile** sticky bar drive registration and bidding on `lg+`; desktop relies on hero CTAs and in-page chrome (e.g. **`SaleroomLiveLotBanner`** on hybrid catalog). Saleroom sales that offer telephone booking expose a dedicated **Telephone bidding** section ([`SaleTelephoneBiddingSection`](apps/web/src/components/marketing/sale-telephone-bidding-section.tsx); panel owns card chrome) and matching anchor tab via [`buildSaleAnchorTabs`](apps/web/src/lib/marketing/sale-anchor-tab-list.ts). When telephone booking does not apply, tabs collapse to Catalogue + Overview only.
+**Sale participation UX:** hero CTAs (Register / Plan visit / Notify me) and the **mobile** sticky bar drive registration and bidding on `lg+`; desktop relies on hero CTAs and in-page chrome (e.g. **`SaleroomLiveLotBanner`** on saleroom catalog). Saleroom sales that offer telephone booking expose a dedicated **Telephone bidding** section ([`SaleTelephoneBiddingSection`](apps/web/src/components/marketing/sale-telephone-bidding-section.tsx); panel owns card chrome) and matching anchor tab via [`buildSaleAnchorTabs`](apps/web/src/lib/marketing/sale-anchor-tab-list.ts). When telephone booking does not apply, tabs collapse to Catalogue + Overview only.
+
+**Intentional duplicates on the sale page:** countdown + lifecycle on hero and mobile summary bar; live stream link on mobile bar and overview embed — kept for viewport-specific affordances, not deduped.
+
+**Stream surface policy** — all visibility + copy rules live in [`sale-stream-policy.ts`](apps/web/src/lib/sale-stream-policy.ts). Summary:
+
+| Status | Lot page (onsite/hybrid) | Sale page | Tag |
+|--------|--------------------------|-----------|-----|
+| `scheduled` | `OnsiteStreamSection` + hero CTA / hybrid video tab ("Live stream") | Overview "Live stream" | "Live stream" |
+| `active` | same, with pulse icon | Overview "Live stream" (pulse icon) | "Live stream" |
+| `ended` | **hidden** | Overview **"Saleroom recording"** + "Watch recording" | "Saleroom recording" |
+| `cancelled` / `draft` | hidden | hidden | — |
+| `online` mode | never (policy disallows stream for online mode) | never | — |
+
+Ended sale pages also emit a [`VideoObject`](https://schema.org/VideoObject) JSON-LD entry alongside `EventCompleted` for SEO when the stream URL is embeddable. Mobile sticky bar stream CTA remains live-only (active state only, unchanged).
+
+**Anchor-tab IA:** [`SaleAnchorTabs`](apps/web/src/components/marketing/sale-anchor-tabs.tsx) (via [`MarketingUnderlineTabs`](apps/web/src/components/marketing/marketing-underline-tabs.tsx) `variant="anchor"`) — order **Catalogue → (Telephone) → Overview**; DOM order matches tabs; scroll-spy highlights the active section.
 
 Bottom reserve: `--bottom-chrome-bid` (5rem) via [`bottom-chrome.ts`](apps/web/src/lib/layout/bottom-chrome.ts) for the taller on-block summary bar. On **terminal/closed lots**, the mobile bid bar is hidden and bottom padding collapses to the standard page inset (via [`MarketingBidBarChromeProvider`](apps/web/src/lib/context/marketing-bid-bar-chrome.tsx) + [`shouldShowBidStickyMobileBar`](apps/web/src/components/bid/bid-sticky-mobile-bar.logic.ts)).
 
@@ -316,17 +338,22 @@ Transparent home hero (`/`): header uses `data-header-tone="on-dark"` at scroll 
 
 ```
 ┌─────────────────────────────────────────────────────────────
-│ MarketingPageHero (media = cover) + stats + Register CTA
-│ SaleroomTabs: Overview | Catalog
+│ MarketingDetailWayfinding (md+)
+│ SaleroomHeroEditorial: meta row → H1 → 16/9 cover + sidebar
+│   (timing, stats, share toolbar, Register / Plan visit / Notify me)
+│ SaleMobileSummaryBar (mobile sticky)
 ├─────────────────────────────────────────────────────────────
-│ (Overview tab) OverviewFacts / Venue / Stream / Terms blocks
+│ SaleAnchorTabs sticky (Catalogue | Telephone? | Overview) — scroll-spy
 ├─────────────────────────────────────────────────────────────
-│ (Catalog tab) Optional LotCard editorial-bold rail (curated)
-│ MarketingListToolbar: status chips + CatalogViewSwitcher (grid|list)
-│ CatalogLotView
-│ MarketingLoadMore (progress + next)
+│ #catalog — Lots heading + MarketingListToolbar (sticky below anchor tabs)
+│ CatalogLotView (grid | list) + pagination / load-all
 ├─────────────────────────────────────────────────────────────
-│ Related auctions — horizontal cards
+│ #telephone (optional) — telephone bidding panel
+├─────────────────────────────────────────────────────────────
+│ #overview — facts / plan visit / venue / stream / terms
+│ Ended-sale results summary (when sale ended + lots loaded)
+├─────────────────────────────────────────────────────────────
+│ Related auctions — SaleCard list rows + MarketingViewAllLink
 └─────────────────────────────────────────────────────────────
 ```
 

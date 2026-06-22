@@ -110,6 +110,37 @@ export function saleEventJsonLd(sale: Sale): Record<string, unknown> {
   };
 }
 
+/**
+ * Schema.org `VideoObject` for an archived saleroom recording.
+ * Only emit this when the sale has ended, the stream URL is embeddable (so
+ * `embedUrl` is present), and the stream provider is known.
+ * Pass `null` for `embedUrl` when the URL is not embeddable — callers should
+ * skip emitting this in that case.
+ */
+export function saleRecordingVideoJsonLd(
+  sale: Sale,
+  embedUrl: string,
+  posterUrl: string | null,
+): Record<string, unknown> {
+  const base = getSiteUrl();
+  const uploadDate = coerceToIsoString(sale.endTime) ?? coerceToIsoString(sale.startTime);
+  return {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: `${sale.title} — saleroom recording`,
+    description: sale.description ?? `Watch the complete ${sale.title} auction as it happened.`,
+    embedUrl,
+    ...(uploadDate ? { uploadDate } : {}),
+    ...(posterUrl ? { thumbnailUrl: posterUrl } : {}),
+    url: `${base}${salePath(sale)}`,
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: base,
+    },
+  };
+}
+
 /** Home page root document (pairs with `breadcrumbJsonLd` via optional `@id` link). */
 export function webPageJsonLd(opts: {
   url: string;
