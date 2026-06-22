@@ -78,15 +78,17 @@ export async function adminUpdateSaleResultAction(
     }
     revalidateAdminSaleDetail(id);
     revalidatePath("/");
-    // Immediately bust the public sale page ISR cache for day-photo or press-coverage updates.
-    if (
-      (parsed.data.dayImages !== undefined || parsed.data.pressCoverage !== undefined) &&
-      r.data
-    ) {
-      const saleData = r.data as { id: string; title: string };
-      if (saleData.id && saleData.title) {
+    // Immediately bust the public sale page ISR + tagged catalogue fetch cache.
+    if (parsed.data.dayImages !== undefined || parsed.data.pressCoverage !== undefined) {
+      const { revalidateCatalogueCache } = await import("@/lib/actions/revalidate-catalogue");
+      revalidateCatalogueCache();
+      const payload = r.data as { data?: { id?: string; title?: string } };
+      const updated = payload.data;
+      const revalidateId = updated?.id ?? id;
+      const revalidateTitle = updated?.title;
+      if (revalidateId && revalidateTitle) {
         const { salePath: buildSalePath } = await import("@/lib/seo/url");
-        revalidatePath(buildSalePath(saleData));
+        revalidatePath(buildSalePath({ id: revalidateId, title: revalidateTitle }));
       }
     }
     return actionSuccess();

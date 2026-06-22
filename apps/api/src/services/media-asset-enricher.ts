@@ -81,6 +81,6 @@ export class MediaAssetEnricher {
       return image;
     });
 
-    return assets.some((asset) => asset.blurDataURL != null) ? assets : undefined;
+    return assets.length > 0 ? assets : undefined;
   }
 }
