@@ -27,6 +27,18 @@ export type BuyerPremiumTier = {
   rate: string;
 };
 
+/**
+ * Single auction-day event media item stored in `sale.auction_day_images` JSONB.
+ * `mediaType` absent or "image" → photo; "video" → video clip.
+ */
+export type SaleDayPhotoRef = {
+  mediaType?: "image" | "video";
+  key: string;
+  caption?: string;
+  alt?: string;
+  posterKey?: string;
+};
+
 export const saleStatusEnum = pgEnum("sale_status", [
   "draft",
   "scheduled",
@@ -79,6 +91,8 @@ export const sale = pgTable(
      */
     buyerPremiumTiers: jsonb("buyer_premium_tiers").$type<BuyerPremiumTier[] | null>(),
     terms: text("terms"),
+    /** Auction-day event photos. Only meaningful for onsite/hybrid; empty array by default. */
+    auctionDayImages: jsonb("auction_day_images").$type<SaleDayPhotoRef[]>().notNull().default([]),
     createdByLegalEntityId: uuid("created_by_legal_entity_id")
       .notNull()
       .references(() => legalEntity.id, { onDelete: "restrict" }),

@@ -589,6 +589,7 @@ export async function getAdminSalesList(
 export type AdminSaleDetailRow = AdminSaleListRow & {
   sale: AdminSaleListRow["sale"] & {
     coverImagePresentedUrls?: string[];
+    dayImagePresentedUrls?: string[];
   };
 };
 
@@ -603,10 +604,17 @@ export async function getAdminSaleById(id: string): Promise<AdminSaleDetailRow |
   const coverImagePresentedUrls = Array.isArray(saleRaw.coverImagePresentedUrls)
     ? (saleRaw.coverImagePresentedUrls as unknown[]).map(String)
     : undefined;
+  const dayImagePresentedUrls = Array.isArray(saleRaw.dayImagePresentedUrls)
+    ? (saleRaw.dayImagePresentedUrls as unknown[]).map(String)
+    : undefined;
   const sale = parseSale(saleRaw);
   const deleteEligibility = parseSaleDeleteEligibility(body.data.deleteEligibility);
   return {
-    sale: coverImagePresentedUrls !== undefined ? { ...sale, coverImagePresentedUrls } : sale,
+    sale: {
+      ...sale,
+      ...(coverImagePresentedUrls !== undefined ? { coverImagePresentedUrls } : {}),
+      ...(dayImagePresentedUrls !== undefined ? { dayImagePresentedUrls } : {}),
+    },
     lots: body.data.lots.map(parseLot),
     ...(deleteEligibility ? { deleteEligibility } : {}),
   };

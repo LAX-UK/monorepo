@@ -1,5 +1,5 @@
 import type { StreamPresentation } from "@/lib/sale-stream-policy";
-import type { LotCardTimingVM } from "@auction/types";
+import type { LotCardTimingVM, SaleDayMedia } from "@auction/types";
 
 /** View-models for the saleroom page (ISP).
  * These types are intentionally small and opinionated toward rendering; mappers in
@@ -138,4 +138,11 @@ export type SaleOverviewVM = {
   showLocation: boolean;
   /** Aggregated ended-sale stats when sale has ended and lots are loaded. */
   endedSaleSummary?: EndedSaleSummaryVM | null;
+};
+
+/** View-model for the auction-day media gallery section (ended onsite/hybrid only). */
+export type DayGalleryVM = {
+  saleTitle: string;
+  /** Resolved media items — photos and/or video clips in presentation order. */
+  items: SaleDayMedia[];
 };

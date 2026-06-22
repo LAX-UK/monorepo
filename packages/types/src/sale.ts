@@ -1,8 +1,56 @@
 import type { AuctionTimingValue } from "./auction-timing.js";
 import type { BuyerPremiumTier } from "./buyer-premium.js";
+import type { GalleryImage } from "./gallery.js";
 
 export const saleStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
 export type SaleStatus = (typeof saleStatuses)[number];
+
+/** Media type discriminator for auction-day items. Absent → treated as "image" for backwards compat. */
+export type SaleDayMediaType = "image" | "video";
+
+/**
+ * Storage form for a single auction-day image.
+ * `mediaType` is optional and defaults to "image" when absent for backwards compatibility.
+ */
+export type SaleDayPhotoRef = {
+  mediaType?: "image";
+  key: string;
+  caption?: string;
+  alt?: string;
+};
+
+/**
+ * Storage form for a single auction-day video clip.
+ * `posterKey` is an optional storage key for a thumbnail/poster image.
+ */
+export type SaleDayVideoRef = {
+  mediaType: "video";
+  key: string;
+  caption?: string;
+  posterKey?: string;
+};
+
+/** Storage form for either an auction-day photo or video. */
+export type SaleDayMediaRef = SaleDayPhotoRef | SaleDayVideoRef;
+
+/** Resolved/public form: enriched GalleryImage merged with caption and media type. */
+export type SaleDayPhoto = GalleryImage & {
+  mediaType: "image";
+  caption?: string;
+};
+
+/** Resolved/public form for an auction-day video clip. */
+export type SaleDayVideo = {
+  mediaType: "video";
+  src: string;
+  posterSrc?: string;
+  caption?: string;
+  width?: number;
+  height?: number;
+};
+
+/** Resolved/public form: photo or video. */
+export type SaleDayMedia = SaleDayPhoto | SaleDayVideo;
 
 export const saleDeliveryModes = ["online", "onsite", "hybrid"] as const;
 export type SaleDeliveryMode = (typeof saleDeliveryModes)[number];
@@ -13,7 +61,11 @@ export type Sale = {
   description: string | null;
   coverImages: string[];
   /** Enriched metadata (width/height/blur) aligned with `coverImages` when available. */
-  coverImageAssets?: import("./gallery.js").GalleryImage[];
+  coverImageAssets?: GalleryImage[];
+  /** Auction-day event photos and videos (raw refs). Only set for onsite/hybrid. */
+  dayImages?: SaleDayMediaRef[];
+  /** Enriched/resolved auction-day media. Populated by the API after media enrichment. */
+  dayImageAssets?: SaleDayMedia[];
   categoryIds?: string[];
   /** @deprecated Use categoryIds[0] while legacy web surfaces are migrated. */
   categoryId: string | null;
@@ -125,4 +177,6 @@ export type CreateSaleInput = {
   buyerPremiumTiers?: BuyerPremiumTier[] | null | undefined;
   terms?: string | undefined;
   createdByLegalEntityId?: string | undefined;
+  /** Auction-day event photos/videos to persist (only accepted for ended onsite/hybrid sales). */
+  dayImages?: SaleDayMediaRef[] | undefined;
 };

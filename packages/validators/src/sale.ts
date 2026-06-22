@@ -69,10 +69,40 @@ const locationPostcodeField = z
     }
   });
 
+const dayPhotoRefSchema = z
+  .object({
+    mediaType: z.enum(["image", "video"]).optional(),
+    key: mediaReferenceSchema,
+    caption: z.string().max(280).optional(),
+    alt: z.string().max(280).optional(),
+    posterKey: mediaReferenceSchema.optional(),
+  })
+  .transform((v) => {
+    const isVideo = v.mediaType === "video";
+    if (isVideo) {
+      const out: { mediaType: "video"; key: string; caption?: string; posterKey?: string } = {
+        mediaType: "video",
+        key: v.key,
+      };
+      if (v.caption) out.caption = v.caption;
+      if (v.posterKey) out.posterKey = v.posterKey;
+      return out;
+    }
+    const out: { mediaType?: "image"; key: string; caption?: string; alt?: string } = {
+      key: v.key,
+    };
+    if (v.mediaType) out.mediaType = "image";
+    if (v.caption) out.caption = v.caption;
+    if (v.alt) out.alt = v.alt;
+    return out;
+  });
+
 const saleCreateBodySchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(10000).optional(),
   coverImages: z.array(mediaReferenceSchema).max(20).optional(),
+  /** Auction-day event photos. Accepted on update only for ended onsite/hybrid sales. */
+  dayImages: z.array(dayPhotoRefSchema).max(60).optional(),
   categoryIds: optionalCategoryIdsSchema,
   categoryId: z.string().uuid().optional(),
   deliveryMode: z.enum(saleDeliveryModes).optional(),
