@@ -142,6 +142,7 @@ function saleRow(
     createdByLegalEntityId: "00000000-0000-4000-8000-000000000012",
     venueId: null,
     auctionDayImages: [],
+    pressCoverage: [],
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

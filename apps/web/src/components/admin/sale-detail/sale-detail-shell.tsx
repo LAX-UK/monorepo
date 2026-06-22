@@ -157,6 +157,11 @@ export function SaleDetailShell({
         ]
       : []),
     {
+      id: "press",
+      label: "Press",
+      href: saleDetailTabHref(saleId, "press"),
+    },
+    {
       id: "activity",
       label: "Activity",
       href: saleDetailTabHref(saleId, "activity"),
