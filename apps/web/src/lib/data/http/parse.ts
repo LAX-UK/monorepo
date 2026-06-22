@@ -1,6 +1,7 @@
 import type {
   Bid,
   BuyerPremiumTier,
+  GalleryImage,
   ItemSubmission,
   ItemSubmissionStatus,
   Lot,
@@ -52,14 +53,39 @@ function parseBuyerPremiumTiers(raw: unknown): BuyerPremiumTier[] | null {
   return out.length > 0 ? out : null;
 }
 
+function parseStringArray(v: unknown): string[] {
+  return Array.isArray(v) ? (v as unknown[]).map(String) : [];
+}
+
+function parseGalleryImages(raw: unknown): GalleryImage[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: GalleryImage[] = [];
+  for (const entry of raw as unknown[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const o = entry as Record<string, unknown>;
+    const src = typeof o.src === "string" ? o.src : typeof o.url === "string" ? o.url : null;
+    if (!src) continue;
+    const image: GalleryImage = { src };
+    if (typeof o.alt === "string" && o.alt.trim()) image.alt = o.alt.trim();
+    if (typeof o.width === "number") image.width = o.width;
+    if (typeof o.height === "number") image.height = o.height;
+    if (typeof o.blurDataURL === "string" && o.blurDataURL) image.blurDataURL = o.blurDataURL;
+    out.push(image);
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 export function parseSale(raw: unknown): Sale {
   const o = raw as Record<string, unknown>;
+  const coverImageAssets = parseGalleryImages(o.coverImageAssets);
   return {
     id: String(o.id),
     title: String(o.title),
     description: o.description == null ? null : String(o.description),
     coverImages: Array.isArray(o.coverImages) ? (o.coverImages as unknown[]).map(String) : [],
+    ...(coverImageAssets !== undefined ? { coverImageAssets } : {}),
     categoryId: o.categoryId == null || o.categoryId === "" ? null : String(o.categoryId),
+    categoryIds: parseStringArray(o.categoryIds),
     deliveryMode: parseSaleDeliveryMode(o.deliveryMode),
     allowOnlineBidsBeforeGoLive: o.allowOnlineBidsBeforeGoLive === true,
     streamUrl: o.streamUrl == null || o.streamUrl === "" ? null : String(o.streamUrl),
@@ -123,10 +149,6 @@ function parseCheckoutPricing(raw: unknown): Lot["checkoutPricing"] | undefined 
 
 function nullableString(v: unknown): string | null {
   return v == null || v === "" ? null : String(v);
-}
-
-function parseStringArray(v: unknown): string[] {
-  return Array.isArray(v) ? (v as unknown[]).map(String) : [];
 }
 
 export function parseLot(raw: unknown): Lot {

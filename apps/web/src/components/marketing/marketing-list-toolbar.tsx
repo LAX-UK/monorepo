@@ -21,6 +21,8 @@ export type MarketingListToolbarProps = {
   secondaryRow?: ReactNode;
   /** Full-width removable active filter chips inside the sticky shell. */
   activeFiltersRow?: ReactNode;
+  /** Override sticky `top` offset (e.g. sale page stacks below anchor tabs). */
+  stickyTopClassName?: string;
   className?: string;
 };
 
@@ -34,6 +36,7 @@ export function MarketingListToolbar({
   stackTrailingOnMobile = false,
   secondaryRow,
   activeFiltersRow,
+  stickyTopClassName = "top-[var(--header-height,4rem)]",
   className,
 }: MarketingListToolbarProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -64,7 +67,8 @@ export function MarketingListToolbar({
       <div
         data-scrolled={scrolled ? "true" : undefined}
         className={cn(
-          "sticky top-[var(--header-height,4rem)] z-30 border-b border-border-hairline bg-surface/85 backdrop-blur-md motion-safe:transition-shadow motion-safe:duration-200",
+          "sticky z-30 border-b border-border-hairline bg-surface/85 backdrop-blur-md motion-safe:transition-shadow motion-safe:duration-200",
+          stickyTopClassName,
           scrolled &&
             "shadow-[0_4px_12px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_12px_-12px_rgba(0,0,0,0.35)]",
           className,

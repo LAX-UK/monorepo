@@ -10,6 +10,8 @@ type Props = {
   posterUrl?: string | null;
   /** Alt for poster image */
   posterAlt: string;
+  /** Click-to-load button label. Defaults to "Watch live". */
+  ctaLabel?: string;
   withTwitchParent?: boolean;
   className?: string;
 };
@@ -27,6 +29,7 @@ export function DeferredLiveIframe({
   src,
   posterUrl,
   posterAlt,
+  ctaLabel = "Watch live",
   withTwitchParent = false,
   className,
 }: Props) {
@@ -69,7 +72,7 @@ export function DeferredLiveIframe({
           onClick={() => setPlay(true)}
           className="h-auto rounded-md border-2 border-white/90 bg-black/40 px-8 py-4 font-label text-sm font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-white backdrop-blur-sm hover:bg-black/55 hover:text-white"
         >
-          Watch live
+          {ctaLabel}
         </Button>
       </div>
     </div>

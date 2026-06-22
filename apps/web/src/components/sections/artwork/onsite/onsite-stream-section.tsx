@@ -1,15 +1,23 @@
 import { SaleStreamPreview } from "@/components/marketing/sale-stream-preview";
-import type { Sale } from "@auction/types";
+import type { StreamPresentation } from "@/lib/sale-stream-policy";
 import { Video } from "lucide-react";
 
 type Props = {
-  sale: Sale;
+  streamUrl: string;
+  saleTitle: string;
   streamPosterUrl: string | null;
+  presentation: StreamPresentation;
 };
 
-export function OnsiteStreamSection({ sale, streamPosterUrl }: Props) {
-  if (!sale.streamUrl) return null;
-
+/** Lot-page live stream section (onsite / hybrid). Only rendered when stream is
+ * active or upcoming — the parent is responsible for gating via the policy.
+ */
+export function OnsiteStreamSection({
+  streamUrl,
+  saleTitle,
+  streamPosterUrl,
+  presentation,
+}: Props) {
   return (
     <section
       id="live-stream"
@@ -20,17 +28,20 @@ export function OnsiteStreamSection({ sale, streamPosterUrl }: Props) {
         id="stream-promo"
         className="flex items-center gap-2 font-headline text-xl font-bold text-on-surface"
       >
-        <Video className="size-5 animate-pulse text-primary" aria-hidden />
-        Watch From Anywhere
+        {presentation.showPulseIcon ? (
+          <Video className="size-5 animate-pulse text-primary" aria-hidden />
+        ) : null}
+        {presentation.sectionHeading}
       </h2>
       <p className="mt-2 text-xs leading-relaxed text-on-surface-variant">
-        Follow the live stream while the auction runs in the gallery.
+        {presentation.sectionBody}
       </p>
       <div className="mt-5 overflow-hidden rounded-2xl border border-outline-variant/15 shadow-md">
         <SaleStreamPreview
-          streamUrl={sale.streamUrl}
-          saleTitle={sale.title}
+          streamUrl={streamUrl}
+          saleTitle={saleTitle}
           posterUrl={streamPosterUrl}
+          presentation={presentation}
         />
       </div>
     </section>

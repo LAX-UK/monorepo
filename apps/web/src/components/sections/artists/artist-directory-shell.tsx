@@ -10,7 +10,7 @@ import { ArtistDirectoryFilters } from "@/components/sections/artists/artist-dir
 import { ArtistFiltersSheet } from "@/components/sections/artists/artist-filters-sheet";
 import { ArtistsDirectoryHero } from "@/components/sections/artists/artists-directory-hero";
 import { ArtistsDirectoryPagination } from "@/components/sections/artists/artists-directory-pagination";
-import { CatalogArtistView } from "@/components/sections/artists/catalog-artist-view";
+import { CatalogArtistViewClient } from "@/components/sections/artists/catalog-artist-view-client";
 import { firstString } from "@/lib/admin/admin-list-params";
 import {
   ARTIST_DIRECTORY_PRESETS,
@@ -546,8 +546,8 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
                 }
               />
             ) : (
-              <CatalogArtistView
-                view={layoutView}
+              <CatalogArtistViewClient
+                initialView={layoutView}
                 rows={rows}
                 watchSet={watchSet}
                 isAuthenticated={isAuthenticated}

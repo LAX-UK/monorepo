@@ -6,6 +6,7 @@ import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-l
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
+import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
 import { cn } from "@auction/ui";
@@ -22,12 +23,13 @@ type Props = {
 
 export function SaleroomCatalogLotsLive({
   lots,
-  view,
+  view: initialView,
   isAuthenticated,
   canParticipate = true,
   emptyMessage,
   clearFiltersHref,
 }: Props) {
+  const view = useUrlLayoutView("grid", initialView) as CatalogLayoutView;
   const live = useSaleroomLive();
   const currentLotId = live?.currentLotId ?? null;
 

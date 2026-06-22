@@ -6,6 +6,8 @@ import { SaleAnchorTabs } from "@/components/marketing/sale-anchor-tabs";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import { SaleTelephoneBiddingSection } from "@/components/marketing/sale-telephone-bidding-section";
 import {
+  aggregateSaleEstimateTotal,
+  computeEndedSaleSummary,
   mapLotToCardVM,
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
@@ -25,6 +27,7 @@ import {
 import { getServerSaleroomStatus } from "@/lib/data/http/saleroom-status.server";
 import {
   type SaleLotsPage,
+  getServerSaleBidderCount,
   getServerSaleMyRegistrations,
   getServerSaleShell,
 } from "@/lib/data/http/sales.server";
@@ -32,26 +35,32 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { MARKETING_PAGE_SHELL, SALE_SECTION_SCROLL_MT } from "@/lib/marketing/chrome";
 import { buildSaleAnchorTabs } from "@/lib/marketing/sale-anchor-tab-list";
 import { parseSaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
-import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.service";
+import {
+  SALE_CATALOG_LOAD_ALL_CAP,
+  saleroomPageDataService,
+} from "@/lib/marketing/saleroom-page-data.service";
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleFormatExplainerContextFromSale } from "@/lib/sale-format-explainer";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import {
   breadcrumbJsonLd,
   itemListJsonLd,
   jsonLdScript,
   saleEventJsonLd,
+  saleRecordingVideoJsonLd,
 } from "@/lib/seo/structured-data";
 import { salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Sale } from "@auction/types";
 import { cn } from "@auction/ui";
+import { parseStreamEmbedUrl } from "@auction/validators";
 import {
   formatPostalAddressLines,
   isSaleroomDeliveryMode,
@@ -59,7 +68,6 @@ import {
 } from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { Suspense } from "react";
 
 export const revalidate = 60;
 
@@ -134,7 +142,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     getServerSessionUser(),
   ]);
   if (!loaded) notFound();
-  const { shell, lotsPage, categoryLabel } = loaded;
+  const { shell, lotsPage, categoryLabel, categoryLabels } = loaded;
   const bundle = shell;
   const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRole);
   if (!canPreviewCatalog && !isPublicCatalogSale(bundle.sale)) {
@@ -173,16 +181,37 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   const now = new Date();
   const liveLotsCount = lotsPage.items.filter((l) => l.status === "active").length;
+  const allLotsLoaded = isCatalogLoadAll && lotsPage.items.length >= lotsPage.total;
+  const estimatedTotalLabel = allLotsLoaded
+    ? aggregateSaleEstimateTotal(lotsPage.items, {
+        loadedCount: lotsPage.items.length,
+        totalLots: lotsPage.total,
+      })
+    : null;
+  const endedSaleSummary =
+    bundle.sale.status === "ended"
+      ? computeEndedSaleSummary(bundle.sale, lotsPage.items, {
+          loadedCount: lotsPage.items.length,
+          totalLots: lotsPage.total,
+        })
+      : null;
+  const registeredBidderCount = await getServerSaleBidderCount(bundle.sale.id).catch(() => null);
+  const coverBlurDataURL = bundle.sale.coverImageAssets?.[0]?.blurDataURL ?? null;
+
   const heroVM = mapSaleToHeroVM(bundle.sale, {
     totalLots: lotsPage.total,
     shareUrl,
     now,
-    categoryLabel,
     ...(liveLotsCount > 0 ? { liveLotsCount } : {}),
+    ...(estimatedTotalLabel ? { estimatedTotalLabel } : {}),
+    ...(registeredBidderCount != null && registeredBidderCount > 0
+      ? { registeredBidderCount }
+      : {}),
   });
   const overviewVM = mapSaleToOverviewVM(bundle.sale, {
-    lotsTotal: lotsPage.total,
     categoryLabel,
+    categoryLabels,
+    ...(endedSaleSummary ? { endedSaleSummary } : {}),
   });
 
   const preservedQuery: Array<[string, string]> = [["view", layoutView]];
@@ -236,7 +265,29 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
         )
       : null;
   const eventLd = saleEventJsonLd(bundle.sale);
-  const jsonLdText = jsonLdScript(...(itemsLd ? [crumbs, eventLd, itemsLd] : [crumbs, eventLd]));
+  const saleStreamCtx = resolveSaleStreamContext({
+    streamUrl: bundle.sale.streamUrl,
+    status: bundle.sale.status,
+    deliveryMode: bundle.sale.deliveryMode,
+    saleTitle: bundle.sale.title,
+    endTime: bundle.sale.endTime,
+  });
+  const recordingEmbed =
+    saleStreamCtx.phase === "recording" && bundle.sale.streamUrl
+      ? parseStreamEmbedUrl(bundle.sale.streamUrl)
+      : null;
+  const videoLd = recordingEmbed
+    ? saleRecordingVideoJsonLd(bundle.sale, recordingEmbed.src, bundle.sale.coverImages[0] ?? null)
+    : null;
+  const jsonLdText = jsonLdScript(
+    ...(itemsLd
+      ? videoLd
+        ? [crumbs, eventLd, videoLd, itemsLd]
+        : [crumbs, eventLd, itemsLd]
+      : videoLd
+        ? [crumbs, eventLd, videoLd]
+        : [crumbs, eventLd]),
+  );
 
   const viewer = resolveViewerParticipation(session);
   const isAuthenticated = viewer.isAuthenticated;
@@ -269,6 +320,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const kycFeedback = kycApproved ? null : (kycSummary?.feedback ?? null);
 
   const hasCatalogNarrowing = statusFilter != null || catalogSearch !== "";
+  const catalogSearchFilterCapped = isCatalogLoadAll && lotsPage.total > SALE_CATALOG_LOAD_ALL_CAP;
 
   const catalogEmptyMessage =
     catalogSearch && lotVMs.length === 0
@@ -300,11 +352,13 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
     .filter(Boolean)
     .join(", ");
   const directionsUrl = resolveOnsiteMapUrl(bundle.sale);
-  const featuredLotTitles = lotVMs.slice(0, 3).map((lot) => lot.title);
 
-  const isHybridSaleroom = bundle.sale.deliveryMode === "hybrid";
-  const initialSaleroomStatus = isHybridSaleroom
-    ? await getServerSaleroomStatus(bundle.sale.id)
+  const isSaleroomSale = isSaleroomDeliveryMode(bundle.sale.deliveryMode);
+  const initialSaleroomStatus = isSaleroomSale
+    ? await getServerSaleroomStatus(bundle.sale.id).catch(() => ({
+        status: "none" as const,
+        currentLotId: null,
+      }))
     : { status: "none" as const, currentLotId: null };
 
   const catalogLotRefs = lotsPage.items.map((lot) => ({
@@ -323,7 +377,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
 
   return (
     <SaleroomCatalogLiveShell
-      saleId={isHybridSaleroom ? bundle.sale.id : null}
+      saleId={isSaleroomSale ? bundle.sale.id : null}
       initial={initialSaleroomStatus}
     >
       <MarketingDetailShell
@@ -346,7 +400,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             locationLine={locationLine}
             canParticipate={viewer.canParticipateAsBuyer}
             {...(liveLotsCount > 0 ? { liveLotsCount } : {})}
-            {...(isHybridSaleroom ? { saleroomLotRefs } : {})}
+            {...(isSaleroomSale ? { saleroomLotRefs } : {})}
           />
         }
         wayfinding={
@@ -368,7 +422,16 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             backHref={calendarBackHref}
             deliveryMode={bundle.sale.deliveryMode}
             catalogLotRefs={catalogLotRefs}
-            saleroomSession={isHybridSaleroom ? initialSaleroomStatus : null}
+            saleroomSession={isSaleroomSale ? initialSaleroomStatus : null}
+            coverBlurDataURL={coverBlurDataURL}
+            saleStartsSoon={
+              bundle.sale.status === "scheduled" &&
+              bundle.sale.startTime.getTime() > now.getTime() &&
+              bundle.sale.startTime.getTime() <= now.getTime() + 7 * 24 * 60 * 60 * 1000
+            }
+            showOnlineBiddingGatedBadge={
+              bundle.sale.deliveryMode === "hybrid" && !bundle.sale.allowOnlineBidsBeforeGoLive
+            }
             explainerContext={saleFormatExplainerContextFromSale(bundle.sale)}
             toolbar={<SaleroomHeroToolbar shareUrl={shareUrl} shareTitle={bundle.sale.title} />}
             actions={
@@ -376,11 +439,9 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
                 hero={heroVM}
                 isAuthenticated={isAuthenticated}
                 deliveryMode={bundle.sale.deliveryMode}
-                streamUrl={bundle.sale.streamUrl}
                 saleId={bundle.sale.id}
                 saleHref={basePath}
                 initialFollowing={bundle.viewer?.isFollowing ?? follow.isFollowing ?? false}
-                sale={bundle.sale}
                 registerToBid={{
                   show: registerToBidShow,
                   buyerEntities,
@@ -390,6 +451,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
                   orgModuleEnabled,
                   saleCurrency: "GBP",
                 }}
+                hasApprovedRegistration={myRegistrations.some((r) => r.status === "approved")}
               />
             }
           />
@@ -401,7 +463,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           id="catalog"
           className={cn(
             MARKETING_PAGE_SHELL,
-            "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-14",
+            SALE_SECTION_SCROLL_MT,
+            "pb-0 pt-[var(--section-spacing-tight)]",
           )}
         >
           <ViewItemListTracker
@@ -412,14 +475,23 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           <SaleroomCatalogToolbarRow
             basePath={basePath}
             layoutView={layoutView}
-            totalLots={lotsPage.total}
             countLabel={
-              hasCatalogNarrowing && lotVMs.length !== lotsPage.total
-                ? `${lotVMs.length} matching · ${lotsPage.total} in sale`
-                : `${lotsPage.total} lots`
+              catalogSearchFilterCapped
+                ? hasCatalogNarrowing && lotVMs.length !== lotsPage.items.length
+                  ? `${lotVMs.length} matching · first ${SALE_CATALOG_LOAD_ALL_CAP} of ${lotsPage.total} lots`
+                  : `First ${SALE_CATALOG_LOAD_ALL_CAP} of ${lotsPage.total} lots`
+                : hasCatalogNarrowing && lotVMs.length !== lotsPage.total
+                  ? `${lotVMs.length} matching · ${lotsPage.total} in sale`
+                  : `${lotsPage.total} lots`
             }
             resultCountLabel={lotVMs.length === 1 ? "Show 1 lot" : `Show ${lotVMs.length} lots`}
           />
+          {catalogSearchFilterCapped ? (
+            <p className="mb-4 text-sm text-on-surface-variant">
+              Search and status filters apply to the first {SALE_CATALOG_LOAD_ALL_CAP} lots of{" "}
+              {lotsPage.total} in this sale.
+            </p>
+          ) : null}
           <SaleroomCatalogLotsLive
             view={layoutView}
             lots={lotVMs}
@@ -459,20 +531,15 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
           id="overview"
           className={cn(
             MARKETING_PAGE_SHELL,
-            "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
+            SALE_SECTION_SCROLL_MT,
+            "pb-0 pt-[var(--section-spacing)]",
           )}
           aria-label="Additional sale information"
         >
-          <SaleroomOverviewPanel
-            overview={overviewVM}
-            sale={bundle.sale}
-            featuredLotTitles={featuredLotTitles}
-          />
+          <SaleroomOverviewPanel overview={overviewVM} sale={bundle.sale} />
         </section>
 
-        <Suspense fallback={null}>
-          <SaleroomRelatedAuctionsSection saleId={id} sale={bundle.sale} />
-        </Suspense>
+        <SaleroomRelatedAuctionsSection relatedSales={secondary.relatedSales} />
       </MarketingDetailShell>
     </SaleroomCatalogLiveShell>
   );

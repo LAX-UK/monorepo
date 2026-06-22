@@ -1,3 +1,4 @@
+import { DisplayHeading, LabelCaps } from "@auction/ui";
 import type { SaleOverviewVM } from "./view-models";
 
 type Props = {
@@ -5,24 +6,35 @@ type Props = {
   hideDescription?: boolean;
 };
 
-/** Long-form description + tag chips. */
+/** Long-form description + tag chips. Omits the block when there is nothing to show. */
 export function SaleroomOverviewAbout({ overview, hideDescription = false }: Props) {
+  const hasDescription = !hideDescription && Boolean(overview.description?.trim());
+  const hasTags = overview.tags.length > 0;
+
+  if (!hasDescription && !hasTags) {
+    return null;
+  }
+
   return (
     <>
-      <h2 className="mb-4 text-lg font-semibold text-on-surface">About this sale</h2>
-      {hideDescription ? null : overview.description ? (
-        <p className="whitespace-pre-wrap text-sm leading-7 text-on-surface-variant">
-          {overview.description}
-        </p>
-      ) : (
-        <p className="text-sm leading-7 text-on-surface-variant">
-          No description has been provided.
-        </p>
-      )}
+      {hasDescription ? (
+        <>
+          <DisplayHeading as="h2" size="section" className="mb-4 font-semibold">
+            About this sale
+          </DisplayHeading>
+          <p className="whitespace-pre-wrap text-sm leading-7 text-on-surface-variant">
+            {overview.description}
+          </p>
+        </>
+      ) : hasTags ? (
+        <DisplayHeading as="h2" size="section" className="mb-4 font-semibold">
+          About this sale
+        </DisplayHeading>
+      ) : null}
 
-      {overview.tags.length > 0 ? (
-        <div className="mt-6">
-          <p className="mb-2 text-sm uppercase leading-4 text-on-surface-variant">Tags</p>
+      {hasTags ? (
+        <div className={hasDescription ? "mt-6" : undefined}>
+          <LabelCaps className="mb-2 text-on-surface-variant">Tags</LabelCaps>
           <ul className="flex list-none flex-wrap gap-2 p-0">
             {overview.tags.map((t) => (
               <li
