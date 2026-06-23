@@ -17,9 +17,12 @@ function locationOneLine(sale: Sale): string {
   return [sale.locationName, ...lines].filter(Boolean).join(", ");
 }
 
-/** Saleroom "Plan your visit" block for onsite and hybrid sales. */
+/** Saleroom "Plan your visit" block for onsite and hybrid sales before/during the event. */
 export function SaleroomOverviewPlanVisit({ sale }: Props) {
   if (!isSaleroomDeliveryMode(sale.deliveryMode)) return null;
+  if (sale.status === "ended" || sale.status === "cancelled") {
+    return null;
+  }
 
   const locationLine = locationOneLine(sale);
 

@@ -56,4 +56,11 @@ describe("SaleroomOverviewPlanVisit", () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  it("returns null when the sale has ended", () => {
+    const { container } = render(
+      <SaleroomOverviewPlanVisit sale={{ ...baseSale, status: "ended" }} />,
+    );
+    expect(container.firstChild).toBeNull();
+  });
 });
