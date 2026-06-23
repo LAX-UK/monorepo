@@ -26,8 +26,12 @@ const MESSAGE_MAP: ReadonlyArray<[pattern: RegExp | string, message: string]> = 
     "The seller needs to complete payout setup before this sale can go live.",
   ],
   [
-    "Lots can only be added while the sale is draft",
-    "This sale is already live — add lots from the lots list instead.",
+    "Add at least one image before publishing this lot",
+    "Add at least one image before adding this lot to a live sale.",
+  ],
+  [
+    "Add a catalogue description before publishing this lot",
+    "Add a catalogue description before adding this lot to a live sale.",
   ],
   ["Unsupported stream URL host", "Use a YouTube, Vimeo, or Twitch link."],
   [
@@ -73,6 +77,12 @@ export function humanizeSetupError(input: HumanizeSetupErrorInput): string {
 
   if (/uuid|schema|JSON|must be/i.test(raw) && raw.length > 80) {
     return "Something went wrong. Check the form and try again.";
+  }
+
+  // Fallback for emergency lot add failures where the specific message wasn't recognized
+  // (e.g. BullMQ scheduling failure after a successful publish step).
+  if (input.errorCode === "emergency_add_publish_failed") {
+    return "Could not schedule this lot for the live sale. Fix the issues and try again.";
   }
 
   return raw;

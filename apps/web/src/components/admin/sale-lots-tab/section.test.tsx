@@ -28,7 +28,8 @@ describe("SaleLotsTabSection", () => {
     deliveryMode: "online" as const,
     saleStartTime: new Date("2030-06-01T10:00:00"),
     saleEndTime: new Date("2030-06-01T18:00:00"),
-    canEdit: false,
+    canEditDraft: false,
+    canAddLots: false,
     lots: [
       {
         id: "lot-1",

@@ -33,6 +33,8 @@ type SubmitArgs = {
   clearDraft: () => void;
   onValidationBanner: (message: string | null, stepIndex?: number) => void;
   router: { push: (href: string) => void; refresh: () => void };
+  /** When creating into a non-draft sale, copy and navigation reflect emergency add. */
+  emergencyAddSaleStatus?: "scheduled" | "active" | null;
 };
 
 export async function validateAllLotWizardSteps(
@@ -94,37 +96,65 @@ export async function submitLotForm(values: AdminLotFormValues, args: SubmitArgs
     if (r.ok) {
       args.clearDraft();
       const newId = r.data?.id;
+      const isEmergencyAdd =
+        args.emergencyAddSaleStatus === "scheduled" || args.emergencyAddSaleStatus === "active";
       if (newId) {
         const alts = await adminUpdateLotMarketingDetailsResultAction(
           newId,
           formValuesToImageAltsPatch(values),
         );
         if (!alts.ok) {
-          notify.warning("Draft created, but image alt text could not be saved", {
-            description: alts.error,
-          });
+          notify.warning(
+            isEmergencyAdd
+              ? "Lot added but alt text could not be saved"
+              : "Draft created, but image alt text could not be saved",
+            { description: alts.error },
+          );
         }
       }
       if (newId) {
-        notify.action("Draft lot created", {
-          description: "Add photos and finish catalogue details before publishing.",
-          actionLabel: "Add images",
-          onAction: () => args.router.push(`/admin/lots/${newId}/images`),
-        });
-        args.router.push(`/admin/lots/${newId}?created=1`);
+        if (isEmergencyAdd) {
+          notify.success(
+            args.emergencyAddSaleStatus === "active"
+              ? "Lot added to live sale"
+              : "Lot added and scheduled",
+            {
+              description: "The lot is ready for the clerk or online timer.",
+            },
+          );
+          args.router.push(`/admin/lots/${newId}?created=1`);
+        } else {
+          notify.action("Draft lot created", {
+            description: "Add photos and finish catalogue details before publishing.",
+            actionLabel: "Add images",
+            onAction: () => args.router.push(`/admin/lots/${newId}/images`),
+          });
+          args.router.push(`/admin/lots/${newId}?created=1`);
+        }
       } else {
-        notify.warning("Draft created but id was missing — open it from the lots list.");
+        notify.warning("Lot created but id was missing — open it from the lots list.");
         args.router.push("/admin/lots");
       }
       return;
     }
+    const lotId = typeof r.meta?.lotId === "string" ? r.meta.lotId : null;
+    const rolledBack = r.meta?.rolledBack === true;
     notify.error(
       actionFailureNotifyMessage(r.error, {
         status: r.status,
         errorCode: r.errorCode,
         meta: r.meta,
       }),
+      rolledBack && lotId
+        ? {
+            description:
+              "Saved as standalone inventory. Open the lot to fix catalogue details and retry.",
+          }
+        : undefined,
     );
+    if (rolledBack && lotId) {
+      args.router.push(`/admin/lots/${lotId}`);
+    }
     return;
   }
 
