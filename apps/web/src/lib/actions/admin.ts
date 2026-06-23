@@ -443,7 +443,8 @@ export async function adminCreateLotResultAction(
     const { adminLots } = getWriteContainer();
     const r = await adminLots.create(parsed.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      const meta = readApiActionErrorMeta(r.body);
+      return actionFailure(r.message, undefined, r.status, r.code, meta);
     }
     setIdempotentLotCreate(idempotencyKey, r.data.id);
     revalidatePath("/admin/lots");

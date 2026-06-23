@@ -938,6 +938,164 @@ describe("SaleService.publish domain events", () => {
   });
 });
 
+describe("SaleService.addLot emergency add", () => {
+  const categoryId = "00000000-0000-4000-8000-0000000000c0";
+  const saleStart = new Date(Date.now() + 86_400_000);
+  const saleEnd = new Date(Date.now() + 86_400_000 * 8);
+  const lotStart = new Date(Date.now() + 86_400_000 * 2);
+  const lotEnd = new Date(Date.now() + 86_400_000 * 3);
+
+  const activeSale = baseSale({
+    id: "sale-live",
+    status: "active",
+    deliveryMode: "online",
+    startTime: saleStart,
+    endTime: saleEnd,
+  });
+
+  const existingLot: Lot = {
+    id: "lot-existing",
+    saleId: "sale-live",
+    lotNumber: 5,
+    sellerLegalEntityId: "seller-1",
+    artistId: null,
+    title: "Existing",
+    description: "Desc",
+    medium: null,
+    dimensions: null,
+    images: ["img.jpg"],
+    categoryId,
+    auctionType: "english",
+    startingPrice: "10",
+    reservePrice: null,
+    buyNowPrice: null,
+    currentPrice: "10",
+    buyerPremiumRate: "0.25",
+    minBidIncrement: "1",
+    dutchDecrementAmount: null,
+    dutchDecrementIntervalMs: 0,
+    dutchLastDecrementAt: null,
+    startTime: lotStart,
+    endTime: lotEnd,
+    status: "scheduled",
+    winnerId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    marketingDetails: {},
+  };
+
+  it("auto-assigns lot number and publishes on active sale", async () => {
+    const createdDraft: Lot = {
+      ...existingLot,
+      id: "lot-new",
+      lotNumber: 6,
+      status: "draft",
+    };
+    const scheduledLot: Lot = { ...createdDraft, status: "scheduled" };
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([existingLot]),
+      create: vi.fn().mockResolvedValue(createdDraft),
+      update: vi.fn(),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(scheduledLot),
+      clearSaleId: vi.fn(),
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(activeSale),
+    } as unknown as ISaleRepository;
+    const scheduleLot = vi.fn().mockResolvedValue(undefined);
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: {
+          scheduleLot,
+          cancelLotJobs: vi.fn(),
+          rescheduleEnd: vi.fn(),
+          cancelLotEndJob: vi.fn(),
+        } as ILotJobScheduler,
+      }),
+    );
+
+    const result = await svc.addLot(
+      "staff",
+      "sale-live",
+      {
+        title: "Emergency lot",
+        sellerId: "seller-1",
+        categoryIds: [categoryId],
+        auctionType: "english",
+        startingPrice: "100",
+        startTime: lotStart,
+        endTime: lotEnd,
+        description: "Catalogue description",
+        images: ["img.jpg"],
+      },
+      "super_admin",
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.status).toBe("scheduled");
+      expect(result.value.lotNumber).toBe(6);
+    }
+    expect(lotRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ lotNumber: 6, saleId: "sale-live" }),
+    );
+    expect(scheduleLot).toHaveBeenCalled();
+  });
+
+  it("rolls back and returns meta when publish fails", async () => {
+    const createdDraft: Lot = {
+      ...existingLot,
+      id: "lot-new",
+      lotNumber: 6,
+      status: "draft",
+      images: [],
+      description: null,
+    };
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([existingLot]),
+      create: vi.fn().mockResolvedValue(createdDraft),
+      updateStatus: vi.fn(),
+      findById: vi.fn().mockResolvedValue(createdDraft),
+      clearSaleId: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(activeSale),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.addLot(
+      "staff",
+      "sale-live",
+      {
+        title: "Emergency lot",
+        sellerId: "seller-1",
+        categoryIds: [categoryId],
+        auctionType: "english",
+        startingPrice: "100",
+        startTime: lotStart,
+        endTime: lotEnd,
+      },
+      "super_admin",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error instanceof LotError) {
+      expect(result.error.code).toBe("emergency_add_publish_failed");
+      expect(result.error.meta).toEqual({ lotId: "lot-new", rolledBack: true });
+    }
+    expect(lotRepo.clearSaleId).toHaveBeenCalledWith("lot-new");
+  });
+});
+
 describe("SaleService.detachLot", () => {
   it("rejects detaching non-draft lots", async () => {
     const sale = baseSale({ status: "draft" });

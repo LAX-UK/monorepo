@@ -81,6 +81,8 @@ type Props = {
   showArtistField?: boolean;
   /** When set, dirty state is reported to {@link LotEditFormProvider} instead of a local guard. */
   lotEditSection?: LotEditSectionId;
+  /** When set, create flow targets a live/scheduled sale (copy + submit behaviour). */
+  emergencyAddSaleStatus?: "scheduled" | "active" | null;
 };
 
 export function AdminLotForm({
@@ -94,6 +96,7 @@ export function AdminLotForm({
   htmlFormId,
   showArtistField = true,
   lotEditSection,
+  emergencyAddSaleStatus = null,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -265,6 +268,7 @@ export function AdminLotForm({
                     setValidationStepIndex(stepIndex ?? null);
                   },
                   router,
+                  emergencyAddSaleStatus,
                 });
               });
             },

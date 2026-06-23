@@ -3,6 +3,7 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AttachExistingLotReview } from "@/components/admin/attach-existing-lot-review";
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
+import { EmergencyAddLotPanel } from "@/components/admin/sale-lots-tab/emergency-add-lot-panel";
 import { MediaImage } from "@/components/ui/media-image";
 import { DisplayHeading } from "@/components/ui/typography";
 import { adminReturnLotToInventoryResultAction } from "@/lib/actions/admin";
@@ -14,7 +15,7 @@ import {
 import { attachExistingLotPanelBody } from "@/lib/admin/sale-setup";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
-import type { LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
+import type { CategoryNode, LotStatus, SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { isSaleroomDeliveryMode } from "@auction/validators";
@@ -38,7 +39,10 @@ type Props = {
   deliveryMode: SaleDeliveryMode;
   saleStartTime: Date;
   saleEndTime: Date;
-  canEdit: boolean;
+  canEditDraft: boolean;
+  canAddLots: boolean;
+  categories?: CategoryNode[];
+  englishOnlyAuctionsLocked?: boolean;
   canManageAuction?: boolean;
   lots: SaleLotsTabLotRow[];
 };
@@ -60,7 +64,10 @@ export function SaleLotsTabSection({
   deliveryMode,
   saleStartTime,
   saleEndTime,
-  canEdit,
+  canEditDraft,
+  canAddLots,
+  categories = [],
+  englishOnlyAuctionsLocked = false,
   canManageAuction = false,
   lots,
 }: Props) {
@@ -182,7 +189,7 @@ export function SaleLotsTabSection({
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/admin/lots/${l.id}`}>Open</Link>
                     </Button>
-                    {canEdit ? (
+                    {canEditDraft ? (
                       <ConfirmActionButton
                         type="button"
                         size="sm"
@@ -248,11 +255,15 @@ export function SaleLotsTabSection({
         {lots.length === 0 ? (
           <div className="mt-3 space-y-2">
             <p className="font-body text-sm text-on-surface-variant">No lots attached yet.</p>
-            {canEdit && saleStatus === "draft" ? (
+            {canEditDraft && saleStatus === "draft" ? (
               <Button variant="secondary" size="sm" asChild>
                 <Link href={`/admin/sales/${saleId}/setup?step=lots`}>
                   Continue setup to add lots
                 </Link>
+              </Button>
+            ) : canAddLots && saleStatus !== "draft" ? (
+              <Button variant="secondary" size="sm" asChild>
+                <a href="#add-lot-to-live-sale">Add new lot</a>
               </Button>
             ) : null}
           </div>
@@ -294,7 +305,7 @@ export function SaleLotsTabSection({
         </div>
       ) : null}
 
-      {canEdit ? (
+      {canEditDraft ? (
         <div>
           <DisplayHeading as="h2" className="text-xl">
             Attach existing lot
@@ -311,6 +322,18 @@ export function SaleLotsTabSection({
             />
           </div>
         </div>
+      ) : null}
+
+      {canAddLots && saleStatus !== "draft" ? (
+        <EmergencyAddLotPanel
+          saleId={saleId}
+          saleStatus={saleStatus}
+          deliveryMode={deliveryMode}
+          saleStartTime={saleStartTime}
+          saleEndTime={saleEndTime}
+          categories={categories}
+          englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+        />
       ) : null}
     </div>
   );
