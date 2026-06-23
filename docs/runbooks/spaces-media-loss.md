@@ -3,6 +3,7 @@
 ## Symptom
 
 - Images 403/404; uploads fail; CDN `media.lax.bid` errors; `S3_*` env misconfigured.
+- **Auction-day photos only** (`uploads/pending/sale-day/*`) return 403 while lot/cover images work — bucket policy prefix whitelist missing `uploads/pending/sale-day` (see `infra/terraform/modules/digitalocean-spaces/main.tf` `public_image_prefixes`; must match `sale_day` in `apps/api/src/services/upload.policy.ts`).
 
 ## Diagnosis
 
@@ -12,6 +13,7 @@
 
 ## Resolution
 
+- **Missing public prefix (e.g. sale-day 403)** — add prefix to `public_image_prefixes` in Terraform, apply `persistent/prod` via GitHub Actions workflow **Terraform apply prod** (`layer=persistent`, confirmation `APPLY-PROD`), then flush CDN cache (DO control panel or `doctl compute cdn flush <cdn-endpoint-id>`) so cached 403s clear.
 - **Wrong ACL / public base URL** — fix `S3_PUBLIC_BASE_URL` to match CDN hostname in Terraform locals.
 - **Accidental delete** — restore from **object versioning** if enabled; else restore from last **Postgres + media backup** (re-upload assets from design archive).
 - **Full bucket loss** — disaster: rebuild from git-tracked marketing assets + DB `image` rows; expect partial data loss for user uploads.
