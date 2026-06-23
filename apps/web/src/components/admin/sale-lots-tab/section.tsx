@@ -183,15 +183,21 @@ export function SaleLotsTabSection({
                       <Link href={`/admin/lots/${l.id}`}>Open</Link>
                     </Button>
                     {canEdit ? (
-                      <Button
+                      <ConfirmActionButton
                         type="button"
                         size="sm"
                         variant="secondary"
                         disabled={pending}
-                        onClick={() => run(() => adminDetachLotFromSaleResultAction(saleId, l.id))}
+                        confirmTitle="Detach lot from sale?"
+                        confirmBody="Detach this lot from the sale? It returns to inventory as a standalone draft lot."
+                        confirmLabel="Detach"
+                        tone="warning"
+                        onConfirmed={() =>
+                          run(() => adminDetachLotFromSaleResultAction(saleId, l.id))
+                        }
                       >
                         Detach
-                      </Button>
+                      </ConfirmActionButton>
                     ) : null}
                     {canManageAuction &&
                     transitions.includes("cancelled") &&

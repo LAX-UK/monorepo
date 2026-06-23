@@ -9,5 +9,6 @@ export function revalidateAdminSaleDetail(saleId: string) {
   revalidatePath(`/admin/sales/${saleId}/schedule`);
   revalidatePath(`/admin/sales/${saleId}/lots`);
   revalidatePath(`/admin/sales/${saleId}/documents`);
+  revalidatePath(`/admin/sales/${saleId}/media`);
   revalidatePath(`/admin/sales/${saleId}/registrations`);
 }
