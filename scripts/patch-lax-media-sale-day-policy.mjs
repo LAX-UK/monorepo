@@ -17,8 +17,7 @@ const ENDPOINT = `https://${REGION}.digitaloceanspaces.com`;
 const NEW_PREFIX = "uploads/pending/sale-day";
 const dryRun = process.argv.includes("--dry-run");
 
-const accessKeyId =
-  process.env.AWS_ACCESS_KEY_ID ?? process.env.MEDIA_SPACES_ACCESS_KEY_ID ?? "";
+const accessKeyId = process.env.AWS_ACCESS_KEY_ID ?? process.env.MEDIA_SPACES_ACCESS_KEY_ID ?? "";
 const secretAccessKey =
   process.env.AWS_SECRET_ACCESS_KEY ?? process.env.MEDIA_SPACES_SECRET_ACCESS_KEY ?? "";
 
@@ -66,9 +65,7 @@ async function main() {
     return;
   }
 
-  await client.send(
-    new PutBucketPolicyCommand({ Bucket: BUCKET, Policy: JSON.stringify(next) }),
-  );
+  await client.send(new PutBucketPolicyCommand({ Bucket: BUCKET, Policy: JSON.stringify(next) }));
   console.log(`Added public read for ${NEW_PREFIX} on ${BUCKET}.`);
   console.log("Flush CDN: doctl compute cdn flush 0f93453a-e8e0-4ed7-a540-0f3ee7049457");
 }
