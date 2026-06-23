@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmedRemoveButton } from "@/components/admin/confirmed-remove-button";
 import { DocumentUploadField } from "@/components/forms/document-upload-field";
 import type { DocumentUploadKind } from "@/components/forms/document-upload-field";
 import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
@@ -126,7 +127,7 @@ export function DocumentAttachmentManager<TKind extends string>({
     }
   }
 
-  async function remove(documentId: string) {
+  async function removeConfirmed(documentId: string) {
     setBusy(true);
     const res = await actions.remove(documentId);
     setBusy(false);
@@ -167,16 +168,16 @@ export function DocumentAttachmentManager<TKind extends string>({
                     Download
                   </a>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
+                <ConfirmedRemoveButton
+                  ariaLabel={`Remove ${displayName}`}
+                  confirmTitle="Remove document?"
+                  confirmBody={`Remove ${displayName}? This detaches the file from this record.`}
                   disabled={busy}
-                  aria-label={`Remove ${displayName}`}
-                  onClick={() => void remove(d.id)}
+                  loading={busy}
+                  onConfirmed={() => removeConfirmed(d.id)}
                 >
                   Remove
-                </Button>
+                </ConfirmedRemoveButton>
               </li>
             );
           })}
