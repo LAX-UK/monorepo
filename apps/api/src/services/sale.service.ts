@@ -30,6 +30,11 @@ import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
 import type { LotAttachedToSalePayload } from "../domain/lot-events.js";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
+import {
+  emergencyAddPublishFailedError,
+  resolveLotNumberForEmergencyAdd,
+  rollbackFailedEmergencyLotAdd,
+} from "../lib/emergency-lot-add.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { lotTimingViolationForSale, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
@@ -43,7 +48,9 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../lib/media-presenters.js";
+import { findPostgresError } from "../lib/pg-error.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
+import { publishSingleLot } from "../lib/publish-single-lot.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
@@ -66,6 +73,27 @@ export type SaleFollowReader = {
 type UpdateSaleBody = z.infer<typeof updateSaleSchema>;
 
 const SALE_CANCELLABLE: ReadonlySet<Sale["status"]> = new Set(["draft", "scheduled", "active"]);
+
+const SALE_STATUSES_ALLOWING_LOT_ADD: ReadonlySet<Sale["status"]> = new Set([
+  "draft",
+  "scheduled",
+  "active",
+]);
+
+const LOT_NUMBER_CONFLICT_MSG =
+  "Lot number already used in that sale — pick a different number or leave it blank to auto-assign.";
+
+function mapSaleAddLotDbError(error: unknown): LotError | null {
+  const pg = findPostgresError(error);
+  if (
+    pg?.code === "23505" &&
+    (pg.message.includes("lot_sale_id_lot_number") ||
+      pg.message.includes("lot_sale_id_lot_number_uid"))
+  ) {
+    return new LotError(LOT_NUMBER_CONFLICT_MSG, 400);
+  }
+  return null;
+}
 
 export type SaleServiceOptions = {
   saleRepo: ISaleRepository;
@@ -124,6 +152,18 @@ export class SaleService {
     this.venueRepository = opts.venueRepository ?? null;
     this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
     this.qrCodeService = opts.qrCodeService ?? null;
+  }
+
+  private publishSingleLotDeps() {
+    return {
+      lotRepo: this.lotRepo,
+      jobScheduler: this.jobScheduler,
+      lotLifecycleRecording: this.lotLifecycleRecording,
+      db: this.db ?? null,
+      recordLotLifecycle: (fn: (tx: Database) => Promise<void>) => this.recordLotLifecycle(fn),
+      legalEntityRepository: this.legalEntityRepository,
+      enforceIndividualConnectOnPublish: this.enforceIndividualConnectOnPublish,
+    };
   }
 
   private async recordLotLifecycle(fn: (tx: Database) => Promise<void>): Promise<void> {
@@ -789,7 +829,7 @@ export class SaleService {
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
-    if (sale.status !== "draft") {
+    if (!SALE_STATUSES_ALLOWING_LOT_ADD.has(sale.status)) {
       return err(new LotError("Lots can only be added while the sale is draft"));
     }
     const { sellerId, ...lotFields } = row;
@@ -807,37 +847,58 @@ export class SaleService {
     if (lockMsg) {
       return err(new LotError(lockMsg));
     }
+    const inSaleLots = await this.lotRepo.findBySaleId(saleId);
+    const lotNumber = resolveLotNumberForEmergencyAdd({
+      sale,
+      requestedLotNumber: lotFields.lotNumber,
+      inSaleLots,
+    });
+    const createdSource =
+      sale.status === "draft" ? ("sale_create" as const) : ("emergency_add" as const);
+    const createFields = {
+      ...lotFields,
+      sellerLegalEntityId: sellerId,
+      startTime: resolved.startTime,
+      endTime: resolved.endTime,
+      saleId,
+      ...(lotNumber !== undefined ? { lotNumber } : {}),
+    };
     let created: Lot;
     if (this.db && this.lotLifecycleRecording) {
-      created = await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
-        const row = await lotRepo.create({
-          ...lotFields,
-          sellerLegalEntityId: sellerId,
-          startTime: resolved.startTime,
-          endTime: resolved.endTime,
-          saleId,
+      try {
+        created = await this.db.transaction(async (tx) => {
+          const lotRepo = new DrizzleLotRepository(tx);
+          const row = await lotRepo.create(createFields);
+          await this.lotLifecycleRecording?.recordCreated(tx, { lot: row, source: createdSource });
+          return row;
         });
-        await this.lotLifecycleRecording?.recordCreated(tx, {
-          lot: row,
-          source: "sale_create",
-        });
-        return row;
-      });
+      } catch (e) {
+        const mapped = mapSaleAddLotDbError(e);
+        if (mapped) return err(mapped);
+        throw e;
+      }
     } else {
-      created = await this.lotRepo.create({
-        ...lotFields,
-        sellerLegalEntityId: sellerId,
-        startTime: resolved.startTime,
-        endTime: resolved.endTime,
-        saleId,
-      });
+      try {
+        created = await this.lotRepo.create(createFields);
+      } catch (e) {
+        const mapped = mapSaleAddLotDbError(e);
+        if (mapped) return err(mapped);
+        throw e;
+      }
       await this.recordLotLifecycle(async (tx) => {
         await this.lotLifecycleRecording?.recordCreated(tx, {
           lot: created,
-          source: "sale_create",
+          source: createdSource,
         });
       });
+    }
+    if (sale.status !== "draft") {
+      const published = await publishSingleLot({ lot: created, sale }, this.publishSingleLotDeps());
+      if (published.isErr()) {
+        await rollbackFailedEmergencyLotAdd(created, this.publishSingleLotDeps());
+        return err(emergencyAddPublishFailedError(published.error, created.id, true));
+      }
+      return ok(published.value);
     }
     return ok(created);
   }

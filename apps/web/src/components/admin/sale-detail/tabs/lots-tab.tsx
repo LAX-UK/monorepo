@@ -2,7 +2,7 @@ import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { AdminSaleLotQrPrintButton } from "@/components/admin/qr-code/admin-sale-lot-qr-print-button";
 import { SaleLotsTabSection } from "@/components/admin/sale-lots-tab-section";
 import { saleSetupHref } from "@/lib/admin/sale-setup";
-import type { Lot, Sale } from "@auction/types";
+import type { CategoryNode, Lot, Sale } from "@auction/types";
 import Link from "next/link";
 
 type Props = {
@@ -10,10 +10,21 @@ type Props = {
   sale: Sale;
   lots: Lot[];
   canManageAuction?: boolean;
+  categories?: CategoryNode[];
+  englishOnlyAuctionsLocked?: boolean;
 };
 
-export function SaleLotsTab({ saleId, sale, lots, canManageAuction = false }: Props) {
-  const canEdit = sale.status === "draft";
+export function SaleLotsTab({
+  saleId,
+  sale,
+  lots,
+  canManageAuction = false,
+  categories = [],
+  englishOnlyAuctionsLocked = false,
+}: Props) {
+  const canEditDraft = sale.status === "draft";
+  const canAddLots =
+    sale.status === "draft" || sale.status === "scheduled" || sale.status === "active";
 
   return (
     <CatalogDetailTabPanel
@@ -32,13 +43,20 @@ export function SaleLotsTab({ saleId, sale, lots, canManageAuction = false }: Pr
               lots={lots.map((l) => ({ id: l.id, title: l.title, lotNumber: l.lotNumber }))}
             />
           ) : null}
-          {canEdit ? (
+          {canEditDraft ? (
             <Link
               href={saleSetupHref(saleId, "lots")}
               className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
             >
               Add lots in setup →
             </Link>
+          ) : canAddLots ? (
+            <a
+              href="#add-lot-to-live-sale"
+              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
+            >
+              Add new lot →
+            </a>
           ) : null}
         </div>
       </div>
@@ -49,7 +67,10 @@ export function SaleLotsTab({ saleId, sale, lots, canManageAuction = false }: Pr
           deliveryMode={sale.deliveryMode}
           saleStartTime={sale.startTime}
           saleEndTime={sale.endTime}
-          canEdit={canEdit}
+          canEditDraft={canEditDraft}
+          canAddLots={canAddLots}
+          categories={categories}
+          englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
           canManageAuction={canManageAuction}
           lots={lots.map((l) => ({
             id: l.id,

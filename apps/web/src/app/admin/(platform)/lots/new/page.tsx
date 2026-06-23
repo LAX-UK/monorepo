@@ -11,11 +11,12 @@ import {
   lotToAdminLotFormValues,
 } from "@/lib/forms/schemas/admin-lot-defaults";
 
-type PageProps = { searchParams: Promise<{ fromLot?: string }> };
+type PageProps = { searchParams: Promise<{ fromLot?: string; saleId?: string }> };
 
 export default async function AdminNewLotPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const fromLotId = (sp.fromLot ?? "").trim();
+  const presetSaleId = (sp.saleId ?? "").trim();
   const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
 
   let cloneDefaults = emptyAdminLotFormValues();
@@ -41,26 +42,40 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
     cloneDefaults = { ...cloneDefaults, auctionType: "english" };
   }
 
+  if (presetSaleId) {
+    cloneDefaults = { ...cloneDefaults, saleId: presetSaleId };
+  }
+
   const [categoriesResult, salesResult, artistResult] = await Promise.allSettled([
     (async () => (await getServerCategoryReader()).tree())(),
-    getLotFormAssignableSales(),
+    getLotFormAssignableSales(presetSaleId || undefined),
     getAdminArtistList({ includeArchived: false, limit: 200 }),
   ]);
   const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
-  const sales = salesResult.status === "fulfilled" ? salesResult.value : [];
+  const salesResult_ =
+    salesResult.status === "fulfilled" ? salesResult.value : { sales: [], currentSale: null };
+  const sales = salesResult_.sales;
+  const currentSale = salesResult_.currentSale;
+  const emergencyAddSaleStatus =
+    currentSale?.status === "scheduled" || currentSale?.status === "active"
+      ? currentSale.status
+      : null;
   const artists = artistResult.status === "fulfilled" ? artistResult.value.rows : [];
   const loadWarnings: string[] = [];
   if (categoriesResult.status === "rejected") loadWarnings.push("category tree");
   if (salesResult.status === "rejected") loadWarnings.push("sales list");
   if (artistResult.status === "rejected") loadWarnings.push("artist list");
-
   const description = cloneFailed
     ? "Could not load the lot to clone — starting with a blank form."
     : fromLotId
       ? `Cloning catalogue fields from lot ${fromLotId.slice(0, 8)}… Schedule new dates before publishing.`
-      : loadWarnings.length > 0
-        ? `Some lists could not be loaded (${loadWarnings.join(", ")}). You can still create a draft.`
-        : null;
+      : presetSaleId && emergencyAddSaleStatus
+        ? "This lot will be added to the selected sale and scheduled immediately after creation."
+        : presetSaleId
+          ? "This lot will be assigned to the selected sale."
+          : loadWarnings.length > 0
+            ? `Some lists could not be loaded (${loadWarnings.join(", ")}). You can still create a draft.`
+            : null;
 
   return (
     <CatalogFormShell
@@ -69,8 +84,8 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
       {...(description ? { description } : {})}
       wizardMobile={{
         formId: CATALOG_FORM_IDS.lot,
-        submitLabel: "Create draft",
-        cancelHref: "/admin/lots",
+        submitLabel: emergencyAddSaleStatus ? "Add lot to sale" : "Create draft",
+        cancelHref: presetSaleId ? `/admin/sales/${presetSaleId}/lots` : "/admin/lots",
       }}
     >
       <AdminLotForm
@@ -81,6 +96,7 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
         artists={artists}
         englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
         htmlFormId={CATALOG_FORM_IDS.lot}
+        emergencyAddSaleStatus={emergencyAddSaleStatus}
       />
     </CatalogFormShell>
   );
