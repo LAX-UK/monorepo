@@ -23,6 +23,10 @@ type Props = {
 };
 
 export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }: Props) {
+  if (sale.status === "ended" || sale.status === "cancelled") {
+    return null;
+  }
+
   const mapsUrl = resolveOnsiteMapUrl(sale);
   const embedUrl = buildGoogleMapsEmbedUrl(sale);
   const addressLines = formatPostalAddressLines(sale);
