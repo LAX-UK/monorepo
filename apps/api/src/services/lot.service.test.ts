@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
+import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
@@ -1342,9 +1343,9 @@ describe("LotService.create sale membership", () => {
         }),
       ),
     } as unknown as ISaleRepository;
-    const jobScheduler = { scheduleLot: vi.fn().mockResolvedValue(undefined) } as unknown as import(
-      "./interfaces/job-scheduler.js",
-    ).ILotJobScheduler;
+    const jobScheduler = {
+      scheduleLot: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ILotJobScheduler;
     const svc = new LotService({
       lotRepo,
       saleRepo,
