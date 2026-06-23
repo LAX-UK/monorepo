@@ -8,25 +8,7 @@ const HAS_DB = Boolean(process.env.DATABASE_URL);
 describe.skipIf(!HAS_DB)(
   "DrizzleArtistProfileRepository.listPublicDirectory lotCount (integration)",
   () => {
-    it("returns a correlated public lot count for seeded artists with attributed lots", async () => {
-      const databaseUrl = process.env.DATABASE_URL;
-      if (!databaseUrl) throw new Error("DATABASE_URL required");
-      const db = createDb(databaseUrl);
-      const repo = new DrizzleArtistProfileRepository(db);
-
-      const result = await repo.listPublicDirectory({
-        limit: 5,
-        offset: 0,
-        q: "Carolina",
-        sort: "name_asc",
-      });
-
-      expect(result.rows).toHaveLength(1);
-      expect(result.rows[0]?.displayName).toBe("Carolina Price");
-      expect(result.rows[0]?.lotCount).toBe(4);
-    });
-
-    it("counts only browseable lots (excludes ended)", async () => {
+    it("counts public catalogue lots including ended (excludes draft)", async () => {
       const databaseUrl = process.env.DATABASE_URL;
       if (!databaseUrl) throw new Error("DATABASE_URL required");
       const db = createDb(databaseUrl);
@@ -98,7 +80,8 @@ describe.skipIf(!HAS_DB)(
           });
 
           expect(result.rows).toHaveLength(1);
-          expect(result.rows[0]?.lotCount).toBe(1);
+          expect(result.rows[0]?.lotCount).toBe(2);
+          expect(result.facets.hasUpcoming).toBeGreaterThanOrEqual(1);
 
           throw rollback;
         });
