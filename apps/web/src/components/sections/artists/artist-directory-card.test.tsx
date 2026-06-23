@@ -86,4 +86,21 @@ describe("ArtistDirectoryCard", () => {
     expect(screen.getByRole("link", { name: /Browse 3 lots by Jane Doe/i })).toBeInTheDocument();
     expect(screen.getByText("b. 1980 · British")).toBeInTheDocument();
   });
+
+  it("hides the lots link when lotCount is zero", () => {
+    render(
+      <ul>
+        <ArtistDirectoryCard
+          artist={{ ...baseArtist, lotCount: 0 }}
+          watching={false}
+          isAuthenticated={false}
+        />
+      </ul>,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: /Browse.*lots by Jane Doe/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /View profile for Jane Doe/i })).toBeInTheDocument();
+  });
 });

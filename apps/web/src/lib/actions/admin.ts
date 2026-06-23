@@ -649,6 +649,7 @@ export async function adminMergeArtistResultAction(
     revalidatePath("/admin/artists");
     revalidatePath(`/admin/artists/${fromId}/edit`);
     revalidatePath(`/admin/artists/${remainingId}/edit`);
+    revalidateCatalogueCache();
     return actionSuccess({ remainingId });
   });
 }
@@ -686,6 +687,7 @@ export async function adminDeleteArtistResultAction(
     revalidatePath("/admin/artists");
     revalidatePath(`/admin/artists/${id}`);
     revalidatePath(`/admin/artists/${id}/edit`);
+    revalidateCatalogueCache();
     return actionSuccess();
   });
 }
