@@ -66,6 +66,7 @@ locals {
     "uploads/pending/submissions",
     "uploads/pending/lots",
     "uploads/pending/sales",
+    "uploads/pending/sale-day",
     "uploads/pending/artists",
     "uploads/pending/categories",
   ]
