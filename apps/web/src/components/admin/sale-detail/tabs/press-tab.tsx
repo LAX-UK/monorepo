@@ -1,6 +1,7 @@
 "use client";
 
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
+import { ConfirmedRemoveButton } from "@/components/admin/confirmed-remove-button";
 import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
 import { notify } from "@/lib/ui/notify";
 import type { SalePressMentionType, SalePressRef } from "@auction/types";
@@ -20,7 +21,8 @@ import { Textarea } from "@auction/ui/components/textarea";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ExternalLinkIcon, GripVerticalIcon, Trash2Icon } from "lucide-react";
+import { ExternalLinkIcon, GripVerticalIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -61,11 +63,11 @@ const EMPTY_FORM: PressForm = {
 function PressItemRow({
   item,
   disabled,
-  onRemove,
+  onRemoveConfirmed,
 }: {
   item: PressItem;
   disabled: boolean;
-  onRemove: () => void;
+  onRemoveConfirmed: () => Promise<void>;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -121,15 +123,15 @@ function PressItemRow({
         >
           <ExternalLinkIcon className="size-4" aria-hidden />
         </a>
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={disabled}
-          className="rounded p-1 text-on-surface-variant/50 hover:text-error focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-40"
-          aria-label="Remove press link"
-        >
-          <Trash2Icon className="size-4" aria-hidden />
-        </button>
+        <ConfirmedRemoveButton
+          ariaLabel="Remove press link"
+          confirmTitle="Remove press link?"
+          confirmBody={`Remove "${item.headline}" from public press coverage? This cannot be undone.`}
+          disabled={Boolean(disabled)}
+          loading={Boolean(disabled)}
+          className="rounded p-1"
+          onConfirmed={onRemoveConfirmed}
+        />
       </div>
     </li>
   );
@@ -147,7 +149,12 @@ function toItem(ref: SalePressRef, index: number): PressItem {
   return { ...ref, id: `${index}::${ref.url}` };
 }
 
+function itemsToPressCoverage(items: PressItem[]): SalePressRef[] {
+  return items.map(({ id: _id, ...r }) => r);
+}
+
 export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props) {
+  const router = useRouter();
   const [items, setItems] = useState<PressItem[]>(() => initialPressCoverage.map(toItem));
   const [form, setForm] = useState<PressForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -179,25 +186,51 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
     setForm(EMPTY_FORM);
   };
 
+  const persistPressCoverage = useCallback(
+    async (nextItems: PressItem[]): Promise<boolean> => {
+      setSaving(true);
+      try {
+        const pressCoverage = itemsToPressCoverage(nextItems);
+        const result = await adminUpdateSaleResultAction(saleId, { pressCoverage });
+        if (result.ok) {
+          savedRef.current = JSON.stringify(pressCoverage);
+          router.refresh();
+          return true;
+        }
+        notify.error("Save failed", {
+          description: !result.ok && result.error ? result.error : "Please try again.",
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [router, saleId],
+  );
+
   const handleSave = useCallback(async () => {
-    setSaving(true);
-    const pressCoverage: SalePressRef[] = items.map(({ id: _id, ...r }) => r);
-    const result = await adminUpdateSaleResultAction(saleId, { pressCoverage });
-    setSaving(false);
-    if (result.ok) {
-      savedRef.current = JSON.stringify(pressCoverage);
+    const ok = await persistPressCoverage(items);
+    if (ok) {
       notify.success("Press coverage saved");
-    } else {
-      notify.error("Save failed", {
-        description: !result.ok && result.error ? result.error : "Please try again.",
-      });
     }
-  }, [saleId, items]);
+  }, [items, persistPressCoverage]);
+
+  const handleRemoveConfirmed = useCallback(
+    async (itemId: string) => {
+      if (saving || !canManage) return;
+      const next = items.filter((it) => it.id !== itemId);
+      const ok = await persistPressCoverage(next);
+      if (!ok) return;
+      setItems(next);
+      notify.success("Press link removed");
+    },
+    [canManage, items, persistPressCoverage, saving],
+  );
 
   return (
     <CatalogDetailTabPanel
       title="Press coverage"
-      description="Curate external press and news links for this sale. Links appear publicly on the sale page as soon as they are saved."
+      description="Curate external press and news links for this sale. Removing a link saves immediately; use Save coverage for new links and reordering."
       framed={false}
     >
       {/* Add form */}
@@ -349,7 +382,7 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
                     key={item.id}
                     item={item}
                     disabled={!canManage || saving}
-                    onRemove={() => setItems((prev) => prev.filter((it) => it.id !== item.id))}
+                    onRemoveConfirmed={() => handleRemoveConfirmed(item.id)}
                   />
                 ))}
               </ol>
@@ -361,6 +394,8 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-border-hairline pt-4">
             <p className="font-body text-xs text-on-surface-variant">
               {items.length} link{items.length !== 1 ? "s" : ""}
+              {dirty && !saving ? " · Unsaved changes" : ""}
+              {saving ? " · Saving…" : ""}
             </p>
             <Button
               onClick={() => void handleSave()}
