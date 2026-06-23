@@ -32,6 +32,10 @@ import type { z } from "zod";
 import type { AdminArtistListOptions } from "../admin/admin-route-dtos.js";
 import { replaceArtistCategoriesInTx } from "../services/artist-registry.service.js";
 import type { DbTransaction } from "../services/interfaces/artist-delete.js";
+import {
+  artistHasPublicBrowseLotsExists,
+  artistPublicBrowseLotCountSubquery,
+} from "./artist-public-lot-count.sql.js";
 
 export type CreateArtistInput = z.infer<typeof adminCreateArtistBodySchema> & {
   slug: string;
@@ -129,8 +133,24 @@ function buildAdminListFilters(options: AdminArtistListOptions) {
   return filters.length > 0 ? (filters.length === 1 ? filters[0] : and(...filters)) : undefined;
 }
 
-const lotCountExpr = sql<number>`(select count(*)::int from ${lot} where ${lot.artistId} = ${artistProfile.id})`;
-const aliasCountExpr = sql<number>`(select count(*)::int from ${artistAlias} where ${artistAlias.artistProfileId} = ${artistProfile.id})`;
+/** Correlated lot counts for SELECT lists. Drizzle strips table qualifiers inside
+ * `sql` selected fields (see drizzle-orm#5734), so correlate with bare SQL
+ * table names that match the outer `artist_profile` row.
+ *
+ * Admin list: all non-deleted lots with FK attribution to the artist.
+ * Public directory card counts: browseable lots only (active + scheduled on public sales). */
+const lotCountExpr = sql<number>`(
+  select count(*)::int
+  from lot
+  where lot.artist_id = artist_profile.id
+    and lot.deleted_at is null
+)`;
+const publicLotCountExpr = artistPublicBrowseLotCountSubquery();
+const aliasCountExpr = sql<number>`(
+  select count(*)::int
+  from artist_alias
+  where artist_alias.artist_profile_id = artist_profile.id
+)`;
 
 /** Extract the leading 4-digit year from `birth_year` text using a Postgres regex.
  * Returns `NULL` when no year prefix is present. Reused by decade filter + facets. */
@@ -379,9 +399,7 @@ export class DrizzleArtistProfileRepository {
     const decadeFilter = decadeWhereClause(options.decade);
     if (decadeFilter) refinedFilters.push(decadeFilter);
     if (options.hasUpcoming === true) {
-      refinedFilters.push(
-        sql`exists (select 1 from ${lot} where ${lot.artistId} = ${artistProfile.id} and ${lot.status} in ('active','scheduled'))`,
-      );
+      refinedFilters.push(artistHasPublicBrowseLotsExists());
     }
     const letter = options.letter?.trim().toLowerCase();
     if (letter === "other") {
@@ -407,11 +425,11 @@ export class DrizzleArtistProfileRepository {
         : sort === "recent"
           ? [desc(artistProfile.updatedAt), asc(artistProfile.displayName)]
           : sort === "popular"
-            ? [desc(lotCountExpr), asc(artistProfile.displayName)]
+            ? [desc(publicLotCountExpr), asc(artistProfile.displayName)]
             : [asc(artistProfile.displayName)];
 
     const rows = await this.db
-      .select({ ap: artistProfile, lotCount: lotCountExpr })
+      .select({ ap: artistProfile, lotCount: publicLotCountExpr })
       .from(artistProfile)
       .where(whereClause)
       .orderBy(...orderBy)
@@ -440,7 +458,7 @@ export class DrizzleArtistProfileRepository {
         featured: sql<number>`count(*) filter (where ${artistProfile.featured})::int`,
         living: sql<number>`count(*) filter (where ${artistProfile.deathYear} is null)::int`,
         historical: sql<number>`count(*) filter (where ${artistProfile.deathYear} is not null)::int`,
-        hasUpcoming: sql<number>`count(*) filter (where exists (select 1 from ${lot} where ${lot.artistId} = ${artistProfile.id} and ${lot.status} in ('active','scheduled')))::int`,
+        hasUpcoming: sql<number>`count(*) filter (where ${artistHasPublicBrowseLotsExists()})::int`,
       })
       .from(artistProfile)
       .where(baseWhere);

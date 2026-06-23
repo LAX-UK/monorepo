@@ -1,18 +1,20 @@
 "use client";
 
+import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
-import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { isPublicLotStatus } from "@auction/validators";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -116,14 +118,24 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
           owned={Boolean(currentUserId && lot.sellerId === currentUserId)}
           className="absolute right-3 top-3"
         />
+        {isPublicLotStatus(lot.status) ? (
+          <>
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%]"
+              style={{
+                background:
+                  "linear-gradient(to top, var(--color-scrim-hero-strong) 0%, var(--color-scrim-hero-soft) 55%, transparent 100%)",
+              }}
+              aria-hidden
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 max-w-full p-2">
+              <LotStatusBadge {...lotStatusBadgeProps(lot)} />
+            </div>
+          </>
+        ) : null}
       </div>
       <div className="flex min-w-0 flex-1 flex-col pt-3">
-        <DomainStatusBadge
-          domain="lot"
-          status={lot.status}
-          context={{ lot: { winnerId: lot.winnerId } }}
-        />
-        <h3 className="mt-1 line-clamp-2 min-h-10 font-headline text-base font-semibold leading-5 text-on-surface underline-offset-4 group-hover:underline">
+        <h3 className="line-clamp-2 min-h-10 font-headline text-base font-semibold leading-5 text-on-surface underline-offset-4 group-hover:underline">
           {lot.title}
         </h3>
         {yearMedium ? (
