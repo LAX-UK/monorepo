@@ -21,6 +21,11 @@ import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import type { LotCancelledPayload } from "../domain/lot-events.js";
 import { canManageCatalogue } from "../lib/catalogue-auth.js";
+import {
+  emergencyAddPublishFailedError,
+  resolveLotNumberForEmergencyAdd,
+  rollbackFailedEmergencyLotAdd,
+} from "../lib/emergency-lot-add.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../lib/lot-public-view.js";
@@ -29,6 +34,7 @@ import { mergeSaleTimingIntoPatch, resolveLotTimingForSale } from "../lib/lot-sa
 import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { findPostgresError } from "../lib/pg-error.js";
+import { publishSingleLot } from "../lib/publish-single-lot.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
@@ -55,6 +61,12 @@ import type { QrCodeService } from "./qr-code.service.js";
 
 const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
+const SALE_STATUSES_ALLOWING_LOT_ADD: ReadonlySet<Sale["status"]> = new Set([
+  "draft",
+  "scheduled",
+  "active",
+]);
+
 const SELLER_WITHDRAW_ROLES = new Set(["owner", "admin"]);
 
 const LOT_NUMBER_CONFLICT_MSG =
@@ -75,7 +87,7 @@ function nextLotNumberInSale(lots: Lot[], excludeLotId: string): number {
   return maxNum + 1;
 }
 
-function mapLotUpdateDbError(error: unknown): LotError | null {
+function mapLotNumberConstraintError(error: unknown): LotError | null {
   const pg = findPostgresError(error);
   if (
     pg?.code === "23505" &&
@@ -86,6 +98,9 @@ function mapLotUpdateDbError(error: unknown): LotError | null {
   }
   return null;
 }
+
+/** @deprecated use {@link mapLotNumberConstraintError} — kept for call-sites in update path */
+const mapLotUpdateDbError = mapLotNumberConstraintError;
 
 export type LotBidPublicApiRow = Omit<Bid, "placedByUserId"> & {
   bidderRef: string;
@@ -187,6 +202,18 @@ export class LotService {
     );
   }
 
+  private publishSingleLotDeps() {
+    return {
+      lotRepo: this.lotRepo,
+      jobScheduler: this.jobScheduler,
+      lotLifecycleRecording: this.lotLifecycleRecording,
+      db: this.db ?? null,
+      recordLotLifecycle: (fn: (tx: Database) => Promise<void>) => this.recordLifecycle(fn),
+      legalEntityRepository: this.legalEntityRepository,
+      enforceIndividualConnectOnPublish: this.enforceIndividualConnectOnPublish,
+    };
+  }
+
   private async recordLifecycle(
     fn: (tx: NonNullable<LotServiceOptions["db"]>) => Promise<void>,
   ): Promise<void> {
@@ -209,33 +236,86 @@ export class LotService {
     if (timingResult.isErr()) {
       return err(timingResult.error);
     }
-    if (this.db && this.lotLifecycleRecording) {
-      const created = await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
-        const row = await lotRepo.create(timingResult.value);
-        await this.lotLifecycleRecording?.recordCreated(tx, {
-          lot: row,
-          source: "staff_create",
-        });
-        return row;
+    const { input: timedInput, sale: saleForPublish } = timingResult.value;
+    const createdSource =
+      saleForPublish && saleForPublish.status !== "draft"
+        ? ("emergency_add" as const)
+        : ("staff_create" as const);
+    let createPayload = timedInput;
+    if (saleForPublish && saleForPublish.status !== "draft") {
+      const inSaleLots = await this.lotRepo.findBySaleId(saleForPublish.id);
+      const lotNumber = resolveLotNumberForEmergencyAdd({
+        sale: saleForPublish,
+        requestedLotNumber: createPayload.lotNumber,
+        inSaleLots,
       });
+      if (lotNumber !== undefined) {
+        createPayload = { ...createPayload, lotNumber };
+      }
+    }
+    if (this.db && this.lotLifecycleRecording) {
+      let created: Lot;
+      try {
+        created = await this.db.transaction(async (tx) => {
+          const lotRepo = new DrizzleLotRepository(tx);
+          const row = await lotRepo.create(createPayload);
+          await this.lotLifecycleRecording?.recordCreated(tx, {
+            lot: row,
+            source: createdSource,
+          });
+          return row;
+        });
+      } catch (e) {
+        const mapped = mapLotNumberConstraintError(e);
+        if (mapped) return err(mapped);
+        throw e;
+      }
       await this.qrCodeService?.getOrCreateDefault({
         entityType: "lot",
         entityId: created.id,
       });
+      if (saleForPublish && saleForPublish.status !== "draft") {
+        const published = await publishSingleLot(
+          { lot: created, sale: saleForPublish },
+          this.publishSingleLotDeps(),
+        );
+        if (published.isErr()) {
+          await rollbackFailedEmergencyLotAdd(created, this.publishSingleLotDeps());
+          return err(emergencyAddPublishFailedError(published.error, created.id, true));
+        }
+        return ok(published.value);
+      }
       return ok(created);
     }
-    const created = await this.lotRepo.create(timingResult.value);
+    let created: Lot;
+    try {
+      created = await this.lotRepo.create(createPayload);
+    } catch (e) {
+      const mapped = mapLotNumberConstraintError(e);
+      if (mapped) return err(mapped);
+      throw e;
+    }
     await this.recordLifecycle(async (tx) => {
       await this.lotLifecycleRecording?.recordCreated(tx, {
         lot: created,
-        source: "staff_create",
+        source: createdSource,
       });
     });
     await this.qrCodeService?.getOrCreateDefault({
       entityType: "lot",
       entityId: created.id,
     });
+    if (saleForPublish && saleForPublish.status !== "draft") {
+      const published = await publishSingleLot(
+        { lot: created, sale: saleForPublish },
+        this.publishSingleLotDeps(),
+      );
+      if (published.isErr()) {
+        await rollbackFailedEmergencyLotAdd(created, this.publishSingleLotDeps());
+        return err(emergencyAddPublishFailedError(published.error, created.id, true));
+      }
+      return ok(published.value);
+    }
     return ok(created);
   }
 
@@ -606,9 +686,11 @@ export class LotService {
   private async applySaleTimingPolicyToInput(
     saleId: string | null,
     input: Pick<CreateLotInput, "startTime" | "endTime"> & Partial<CreateLotInput>,
-  ): Promise<Result<CreateLotInput, LotError>> {
+  ): Promise<
+    Result<{ input: CreateLotInput; sale: import("@auction/types").Sale | null }, LotError>
+  > {
     if (saleId == null) {
-      return ok(input as CreateLotInput);
+      return ok({ input: input as CreateLotInput, sale: null });
     }
     if (!this.saleRepo) {
       return err(new LotError("Sale repository not configured", 500));
@@ -617,7 +699,7 @@ export class LotService {
     if (!sale) {
       return err(new LotError("Sale not found", 404));
     }
-    if (sale.status !== "draft") {
+    if (!SALE_STATUSES_ALLOWING_LOT_ADD.has(sale.status)) {
       return err(new LotError("Lots can only be added while the sale is draft"));
     }
     const resolved = resolveLotTimingForSale(sale, input.startTime, input.endTime);
@@ -625,9 +707,12 @@ export class LotService {
       return err(new LotError(resolved.message, 400));
     }
     return ok({
-      ...(input as CreateLotInput),
-      startTime: resolved.startTime,
-      endTime: resolved.endTime,
+      input: {
+        ...(input as CreateLotInput),
+        startTime: resolved.startTime,
+        endTime: resolved.endTime,
+      },
+      sale,
     });
   }
 
