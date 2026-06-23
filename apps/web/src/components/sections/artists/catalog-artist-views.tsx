@@ -1,6 +1,7 @@
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { ArtistDirectoryCard } from "@/components/sections/artists/artist-directory-card";
+import { ArtistDirectoryLotsLink } from "@/components/sections/artists/artist-directory-lots-link";
 import { MediaImage } from "@/components/ui/media-image";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
@@ -100,7 +101,6 @@ export function ArtistBrowseCard({
           deathYear: artist.deathYear,
         });
         const lifespan = lifespanRaw === "—" ? null : lifespanRaw;
-        const lotsLabel = artist.lotCount === 1 ? "1 lot" : `${artist.lotCount} lots`;
         const altText = `Portrait of ${artist.displayName}`;
         const isBrand = artist.kind === "brand" || artist.kind === "marque";
         const heroAspect = isBrand ? "aspect-[2/3]" : "aspect-video";
@@ -157,16 +157,12 @@ export function ArtistBrowseCard({
               </div>
             </Link>
             <div className="flex items-center justify-between gap-3 border-t border-border-hairline px-5 py-3">
-              <Link
-                href={`${href}#works`}
-                className={cn(
-                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline",
-                  FOCUS_RING,
-                )}
-                aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
-              >
-                {lotsLabel}
-              </Link>
+              <ArtistDirectoryLotsLink
+                lotCount={artist.lotCount}
+                href={href}
+                artistName={artist.displayName}
+                className="text-[10px]"
+              />
               <Link
                 href={href}
                 className={cn(
@@ -211,14 +207,14 @@ export function ArtistBrowseList({
                 surface="inline"
               />
             </div>
-            <Link
-              href={href}
-              className={cn(
-                "flex items-center gap-4 rounded-md p-4 pr-12 transition-colors hover:bg-surface-container-low/50 sm:px-5 sm:pr-14",
-                FOCUS_RING,
-              )}
-            >
-              <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-surface-container-low">
+            <div className="flex items-center gap-4 rounded-md p-4 pr-12 transition-colors hover:bg-surface-container-low/50 sm:px-5 sm:pr-14">
+              <Link
+                href={href}
+                className={cn(
+                  "relative size-12 shrink-0 overflow-hidden rounded-full bg-surface-container-low",
+                  FOCUS_RING,
+                )}
+              >
                 <MediaImage
                   src={a.portraitUrl}
                   alt={`Portrait of ${a.displayName}`}
@@ -226,18 +222,32 @@ export function ArtistBrowseList({
                   shape="circle"
                   sizes="48px"
                 />
-              </span>
+              </Link>
               <div className="min-w-0 flex-1">
-                <p className="font-headline text-base text-on-surface sm:text-lg">
-                  {a.displayName}
-                </p>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <Link
+                    href={href}
+                    className={cn(
+                      "font-headline text-base text-on-surface hover:text-link sm:text-lg",
+                      FOCUS_RING,
+                    )}
+                  >
+                    {a.displayName}
+                  </Link>
+                  <ArtistDirectoryLotsLink
+                    lotCount={a.lotCount}
+                    href={href}
+                    artistName={a.displayName}
+                    variant="inline"
+                  />
+                </div>
                 {a.shortBio ? (
                   <p className="mt-0.5 line-clamp-2 text-sm text-on-surface-variant">
                     {a.shortBio}
                   </p>
                 ) : null}
               </div>
-            </Link>
+            </div>
           </li>
         );
       })}

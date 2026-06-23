@@ -97,7 +97,7 @@ export type AdminArtistStats = {
   featured: number;
 };
 
-/** Public directory card with denormalized lot count for "X lots" links. */
+/** Public directory card with browseable lot count (active + scheduled) for "X lots" links. */
 export type PublicArtistDirectoryRow = ArtistProfile & {
   lotCount: number;
 };

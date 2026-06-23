@@ -1,6 +1,7 @@
 import { ArtistCardGrid, type ArtistCardGridDensity } from "@/components/marketing/artist-card";
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
+import { ArtistDirectoryLotsLink } from "@/components/sections/artists/artist-directory-lots-link";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
@@ -36,7 +37,6 @@ export function ArtistDirectoryCard({
     deathYear: artist.deathYear,
   });
   const lifespan = lifespanRaw === "—" ? null : lifespanRaw;
-  const lotsLabel = artist.lotCount === 1 ? "1 lot" : `${artist.lotCount} lots`;
   const altText = `Portrait of ${artist.displayName}`;
   const isBrand = artist.kind === "brand" || artist.kind === "marque";
   const metaLine = [lifespan, artist.nationality?.trim()].filter(Boolean).join(" · ");
@@ -110,13 +110,11 @@ export function ArtistDirectoryCard({
       }
       footer={
         <>
-          <Link
-            href={`${href}#works`}
-            className={`rounded-sm font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline ${FOCUS_RING}`}
-            aria-label={`Browse ${lotsLabel} by ${artist.displayName}`}
-          >
-            {lotsLabel}
-          </Link>
+          <ArtistDirectoryLotsLink
+            lotCount={artist.lotCount}
+            href={href}
+            artistName={artist.displayName}
+          />
           {!isCompact ? (
             <Link
               href={href}
