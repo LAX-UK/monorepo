@@ -1,6 +1,7 @@
 "use client";
 
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
+import { ConfirmedRemoveButton } from "@/components/admin/confirmed-remove-button";
 import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
 import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
 import { notify } from "@/lib/ui/notify";
@@ -11,7 +12,8 @@ import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVerticalIcon, InfoIcon, PlayCircleIcon, Trash2Icon } from "lucide-react";
+import { GripVerticalIcon, InfoIcon, PlayCircleIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 const ACCEPT_ALL = "image/jpeg,image/png,image/webp,video/mp4,video/webm";
@@ -39,14 +41,18 @@ function DayMediaCard({
   item,
   index,
   disabled,
-  onRemove,
+  removeConfirmTitle,
+  removeConfirmBody,
+  onRemoveConfirmed,
   onCaptionChange,
   onAltChange,
 }: {
   item: DayMediaItem;
   index: number;
   disabled: boolean;
-  onRemove: () => void;
+  removeConfirmTitle: string;
+  removeConfirmBody: string;
+  onRemoveConfirmed: () => Promise<void>;
   onCaptionChange: (v: string) => void;
   onAltChange: (v: string) => void;
 }) {
@@ -148,16 +154,14 @@ function DayMediaCard({
         ) : null}
       </div>
 
-      {/* Remove */}
-      <button
-        type="button"
-        onClick={onRemove}
-        disabled={disabled || item.uploading}
-        className="shrink-0 self-start rounded-md p-1 text-on-surface-variant/60 hover:bg-surface-container-low hover:text-error focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-40"
-        aria-label={`Remove item ${index + 1}`}
-      >
-        <Trash2Icon className="size-4" aria-hidden />
-      </button>
+      <ConfirmedRemoveButton
+        ariaLabel={`Remove item ${index + 1}`}
+        confirmTitle={removeConfirmTitle}
+        confirmBody={removeConfirmBody}
+        disabled={Boolean(disabled || item.uploading)}
+        loading={Boolean(disabled)}
+        onConfirmed={onRemoveConfirmed}
+      />
     </li>
   );
 }
@@ -184,6 +188,22 @@ function refToItem(ref: SaleDayMediaRef, previewUrlByKey: Record<string, string>
   };
 }
 
+function itemsToDayImages(items: DayMediaItem[]): SaleDayMediaRef[] {
+  return items
+    .filter((it) => it.key && !it.uploadError)
+    .map((it) => {
+      if (it.mediaType === "video") {
+        const ref: import("@auction/types").SaleDayVideoRef = { mediaType: "video", key: it.key };
+        if (it.caption.trim()) ref.caption = it.caption.trim();
+        return ref;
+      }
+      const ref: import("@auction/types").SaleDayPhotoRef = { key: it.key };
+      if (it.caption.trim()) ref.caption = it.caption.trim();
+      if (it.alt.trim()) ref.alt = it.alt.trim();
+      return ref;
+    });
+}
+
 export function SaleDayPhotosTab({
   saleId,
   saleStatus,
@@ -191,11 +211,13 @@ export function SaleDayPhotosTab({
   previewUrlByKey,
   canManage,
 }: Props) {
+  const router = useRouter();
   const [items, setItems] = useState<DayMediaItem[]>(() =>
     initialDayImages.map((r) => refToItem(r, previewUrlByKey)),
   );
   const [saving, setSaving] = useState(false);
   const { uploadFile } = useUploadObjectLifecycle();
+  const isEnded = saleStatus === "ended";
 
   const savedRef = useRef<string>(
     JSON.stringify(initialDayImages.map((r) => refToItem(r, previewUrlByKey))),
@@ -247,46 +269,67 @@ export function SaleDayPhotosTab({
     [uploadFile],
   );
 
-  // ── Save ────────────────────────────────────────────────────────────────────
-  const handleSave = useCallback(async () => {
-    const pending = items.filter((it) => it.uploading);
-    if (pending.length > 0) {
-      notify.error("Please wait for uploads to finish before saving.");
-      return;
-    }
-    setSaving(true);
-    const dayImages: SaleDayMediaRef[] = items
-      .filter((it) => it.key && !it.uploadError)
-      .map((it) => {
-        if (it.mediaType === "video") {
-          const ref: import("@auction/types").SaleDayVideoRef = { mediaType: "video", key: it.key };
-          if (it.caption.trim()) ref.caption = it.caption.trim();
-          return ref;
+  // ── Persist ─────────────────────────────────────────────────────────────────
+  const persistDayImages = useCallback(
+    async (nextItems: DayMediaItem[]): Promise<boolean> => {
+      const pending = nextItems.filter((it) => it.uploading);
+      if (pending.length > 0) {
+        notify.error("Please wait for uploads to finish before saving.");
+        return false;
+      }
+      if (!isEnded) {
+        return true;
+      }
+      setSaving(true);
+      try {
+        const result = await adminUpdateSaleResultAction(saleId, {
+          dayImages: itemsToDayImages(nextItems),
+        });
+        if (result.ok) {
+          savedRef.current = JSON.stringify(nextItems);
+          router.refresh();
+          return true;
         }
-        const ref: import("@auction/types").SaleDayPhotoRef = { key: it.key };
-        if (it.caption.trim()) ref.caption = it.caption.trim();
-        if (it.alt.trim()) ref.alt = it.alt.trim();
-        return ref;
-      });
-    const result = await adminUpdateSaleResultAction(saleId, { dayImages });
-    setSaving(false);
-    if (result.ok) {
-      savedRef.current = JSON.stringify(items);
-      notify.success("Auction day media saved");
-    } else {
-      notify.error("Save failed", {
-        description: !result.ok && result.error ? result.error : "Please try again.",
-      });
-    }
-  }, [saleId, items]);
+        notify.error("Save failed", {
+          description: !result.ok && result.error ? result.error : "Please try again.",
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [isEnded, router, saleId],
+  );
 
-  const isEnded = saleStatus === "ended";
+  const handleSave = useCallback(async () => {
+    const ok = await persistDayImages(items);
+    if (ok && isEnded) {
+      notify.success("Auction day media saved");
+    }
+  }, [isEnded, items, persistDayImages]);
+
+  const handleRemoveConfirmed = useCallback(
+    async (itemId: string) => {
+      if (saving) return;
+      const next = items.filter((it) => it.id !== itemId);
+      if (!isEnded || !canManage) {
+        setItems(next);
+        return;
+      }
+      const ok = await persistDayImages(next);
+      if (!ok) return;
+      setItems(next);
+      notify.success("Media removed");
+    },
+    [canManage, isEnded, items, persistDayImages, saving],
+  );
+
   const anyUploading = items.some((it) => it.uploading);
 
   return (
     <CatalogDetailTabPanel
       title="Auction day media"
-      description="Upload event photos and short video clips from the saleroom floor. Media is published automatically once the sale ends."
+      description="Upload event photos and short video clips from the saleroom floor. Once the sale has ended, removing an item saves immediately; use Save media for caption or order changes."
       framed={false}
     >
       {!isEnded ? (
@@ -375,7 +418,15 @@ export function SaleDayPhotosTab({
                     item={item}
                     index={index}
                     disabled={!canManage || saving}
-                    onRemove={() => setItems((prev) => prev.filter((it) => it.id !== item.id))}
+                    removeConfirmTitle={
+                      isEnded ? "Remove from public gallery?" : "Remove from draft list?"
+                    }
+                    removeConfirmBody={
+                      isEnded
+                        ? "Remove this item from the public gallery? This cannot be undone."
+                        : "Remove this item from your draft list? You can re-upload before the sale ends."
+                    }
+                    onRemoveConfirmed={() => handleRemoveConfirmed(item.id)}
                     onCaptionChange={(v) =>
                       setItems((prev) =>
                         prev.map((it) => (it.id === item.id ? { ...it, caption: v } : it)),
@@ -398,6 +449,8 @@ export function SaleDayPhotosTab({
             <p className="font-body text-xs text-on-surface-variant">
               {items.length} item{items.length !== 1 ? "s" : ""}
               {anyUploading ? " · Uploading…" : ""}
+              {dirty && isEnded && !saving ? " · Unsaved changes" : ""}
+              {saving ? " · Saving…" : ""}
             </p>
             <Button
               onClick={() => void handleSave()}
