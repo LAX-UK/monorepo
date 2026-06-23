@@ -8,7 +8,7 @@ const HAS_DB = Boolean(process.env.DATABASE_URL);
 describe.skipIf(!HAS_DB)(
   "DrizzleArtistProfileRepository.listPublicDirectory lotCount (integration)",
   () => {
-    it("counts only browseable lots (excludes ended)", async () => {
+    it("counts public catalogue lots including ended (excludes draft)", async () => {
       const databaseUrl = process.env.DATABASE_URL;
       if (!databaseUrl) throw new Error("DATABASE_URL required");
       const db = createDb(databaseUrl);
@@ -80,7 +80,7 @@ describe.skipIf(!HAS_DB)(
           });
 
           expect(result.rows).toHaveLength(1);
-          expect(result.rows[0]?.lotCount).toBe(1);
+          expect(result.rows[0]?.lotCount).toBe(2);
           expect(result.facets.hasUpcoming).toBeGreaterThanOrEqual(1);
 
           throw rollback;
