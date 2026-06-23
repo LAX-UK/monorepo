@@ -34,7 +34,7 @@ import { replaceArtistCategoriesInTx } from "../services/artist-registry.service
 import type { DbTransaction } from "../services/interfaces/artist-delete.js";
 import {
   artistHasPublicBrowseLotsExists,
-  artistPublicBrowseLotCountSubquery,
+  artistPublicCatalogLotCountSubquery,
 } from "./artist-public-lot-count.sql.js";
 
 export type CreateArtistInput = z.infer<typeof adminCreateArtistBodySchema> & {
@@ -138,14 +138,14 @@ function buildAdminListFilters(options: AdminArtistListOptions) {
  * table names that match the outer `artist_profile` row.
  *
  * Admin list: all non-deleted lots with FK attribution to the artist.
- * Public directory card counts: browseable lots only (active + scheduled on public sales). */
+ * Public directory card counts: public catalogue lots (scheduled + active + ended). */
 const lotCountExpr = sql<number>`(
   select count(*)::int
   from lot
   where lot.artist_id = artist_profile.id
     and lot.deleted_at is null
 )`;
-const publicLotCountExpr = artistPublicBrowseLotCountSubquery();
+const publicLotCountExpr = artistPublicCatalogLotCountSubquery();
 const aliasCountExpr = sql<number>`(
   select count(*)::int
   from artist_alias
