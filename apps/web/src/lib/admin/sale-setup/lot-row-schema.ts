@@ -211,3 +211,36 @@ export function safeParseSaleSetupLotRowForApi(
   const payload = saleSetupLotRowToApiPayload(formParsed.data, ctx);
   return createNestedLotForSaleSchema.safeParse(payload);
 }
+
+/** Live-sale emergency add — requires catalogue fields upfront so publish can succeed. */
+export const emergencyAddLotFormSchema = saleSetupLotRowFormSchema.extend({
+  description: z.string().min(1, "Add a catalogue description").max(10_000),
+  images: z.array(z.string().min(1)).min(1, "Add at least one image").max(50),
+});
+
+export type EmergencyAddLotFormValues = z.infer<typeof emergencyAddLotFormSchema>;
+
+export function emptyEmergencyAddLotRow(clientRowId: string): EmergencyAddLotFormValues {
+  return {
+    ...emptySaleSetupLotRow(clientRowId),
+    description: "",
+    images: [],
+  };
+}
+
+export function safeParseEmergencyAddLotForApi(
+  row: EmergencyAddLotFormValues,
+  ctx: SaleSetupLotRowContext,
+) {
+  const rowParsed = emergencyAddLotFormSchema.safeParse(row);
+  if (!rowParsed.success) return rowParsed;
+
+  const apiParsed = safeParseSaleSetupLotRowForApi(rowParsed.data, ctx);
+  if (!apiParsed.success) return apiParsed;
+
+  return createNestedLotForSaleSchema.safeParse({
+    ...apiParsed.data,
+    description: rowParsed.data.description.trim(),
+    images: rowParsed.data.images,
+  });
+}

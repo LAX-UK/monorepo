@@ -1277,8 +1277,10 @@ describe("LotService.bulkPublishOrCancel", () => {
 });
 
 describe("LotService.create sale membership", () => {
-  const start = new Date(Date.now() + 86_400_000);
-  const end = new Date(Date.now() + 172_800_000);
+  const saleStart = new Date(Date.now() + 86_400_000);
+  const saleEnd = new Date(Date.now() + 86_400_000 * 8);
+  const start = new Date(Date.now() + 86_400_000 * 2);
+  const end = new Date(Date.now() + 86_400_000 * 3);
   const createInput: CreateLotInput = {
     title: "T",
     categoryId,
@@ -1290,10 +1292,10 @@ describe("LotService.create sale membership", () => {
     sellerLegalEntityId: "ent-1",
   };
 
-  it("rejects create when target sale is not draft", async () => {
+  it("rejects create when target sale is ended", async () => {
     const lotRepo: ILotRepository = { create: vi.fn() } as unknown as ILotRepository;
     const saleRepo: ISaleRepository = {
-      findById: vi.fn().mockResolvedValue(mkSale({ id: saleBId, status: "scheduled" })),
+      findById: vi.fn().mockResolvedValue(mkSale({ id: saleBId, status: "ended" })),
     } as unknown as ISaleRepository;
     const svc = new LotService({
       lotRepo,
@@ -1309,6 +1311,108 @@ describe("LotService.create sale membership", () => {
       expect(result.error.message).toContain("Lots can only be added while the sale is draft");
     }
     expect(lotRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("creates and publishes when target sale is scheduled", async () => {
+    const createdLot: Lot = {
+      ...baseLot,
+      id: "00000000-0000-4000-8000-000000000002",
+      saleId: saleBId,
+      status: "draft",
+      images: ["https://example.com/img.jpg"],
+      description: "Catalogue description",
+      startTime: start,
+      endTime: end,
+    };
+    const scheduledLot: Lot = { ...createdLot, status: "scheduled" };
+    const lotRepo: ILotRepository = {
+      create: vi.fn().mockResolvedValue(createdLot),
+      findBySaleId: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue(scheduledLot),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(scheduledLot),
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(
+        mkSale({
+          id: saleBId,
+          status: "scheduled",
+          startTime: saleStart,
+          endTime: saleEnd,
+        }),
+      ),
+    } as unknown as ISaleRepository;
+    const jobScheduler = { scheduleLot: vi.fn().mockResolvedValue(undefined) } as unknown as import(
+      "./interfaces/job-scheduler.js",
+    ).ILotJobScheduler;
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler,
+      lotNotifications: null,
+    });
+    const result = await svc.create("seller-1", {
+      ...createInput,
+      images: ["https://example.com/img.jpg"],
+      description: "Catalogue description",
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.status).toBe("scheduled");
+    }
+    expect(lotRepo.create).toHaveBeenCalled();
+    expect(lotRepo.updateStatus).toHaveBeenCalledWith(createdLot.id, "scheduled");
+    expect(jobScheduler.scheduleLot).toHaveBeenCalled();
+  });
+
+  it("rolls back to standalone inventory when publish fails", async () => {
+    const createdLot: Lot = {
+      ...baseLot,
+      id: "00000000-0000-4000-8000-000000000003",
+      saleId: saleBId,
+      status: "draft",
+      images: [],
+      description: null,
+      startTime: start,
+      endTime: end,
+    };
+    const lotRepo: ILotRepository = {
+      create: vi.fn().mockResolvedValue(createdLot),
+      findBySaleId: vi.fn().mockResolvedValue([]),
+      updateStatus: vi.fn(),
+      findById: vi.fn().mockResolvedValue(createdLot),
+      clearSaleId: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ILotRepository;
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(
+        mkSale({
+          id: saleBId,
+          status: "scheduled",
+          startTime: saleStart,
+          endTime: saleEnd,
+        }),
+      ),
+    } as unknown as ISaleRepository;
+    const svc = new LotService({
+      lotRepo,
+      saleRepo,
+      bids: {} as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+    const result = await svc.create("seller-1", createInput);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("emergency_add_publish_failed");
+      expect(result.error.meta).toEqual({
+        lotId: createdLot.id,
+        rolledBack: true,
+      });
+    }
+    expect(lotRepo.clearSaleId).toHaveBeenCalledWith(createdLot.id);
   });
 });
 

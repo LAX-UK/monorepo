@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const lotCreatedPayloadSchema = z.object({
   saleId: z.string().uuid().nullable(),
-  source: z.enum(["staff_create", "sale_create", "submission"]),
+  source: z.enum(["staff_create", "sale_create", "submission", "emergency_add"]),
 });
 
 export const lotActivatedPayloadSchema = z.object({

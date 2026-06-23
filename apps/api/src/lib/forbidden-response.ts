@@ -62,8 +62,12 @@ export function respondAuthzError(c: Context, e: AuthzError) {
 /** Map service-layer errors to JSON bodies (AuthzError includes structured capability metadata). */
 export function serviceErrorJsonBody(error: Error): Record<string, unknown> {
   if (error instanceof AuthzError) return authzErrorJsonBody(error);
-  if (error instanceof LotError && error.code) {
-    return { error: error.message, code: error.code };
+  if (error instanceof LotError) {
+    return {
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+      ...(error.meta ? { meta: error.meta } : {}),
+    };
   }
   if (error instanceof VenueError && error.code) {
     return { error: error.message, code: error.code };

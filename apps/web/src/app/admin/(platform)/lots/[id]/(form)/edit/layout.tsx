@@ -27,12 +27,13 @@ type Props = {
 export default async function AdminEditLotLayout({ params, children }: Props) {
   const { id } = await params;
   const auction = await loadAdminLotRecord(id);
-  const [categories, sales, artistList, lotDocuments] = await Promise.all([
+  const [categories, salesResult, artistList, lotDocuments] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
     getLotFormAssignableSales(auction?.saleId).catch(() => getLotFormAssignableSales()),
     getAdminArtistList({ includeArchived: false, limit: 200 }),
     getServerLotDocuments(id),
   ]);
+  const sales = salesResult.sales;
   const artists = artistList.rows;
   if (auction.status === "ended" || auction.status === "cancelled" || auction.status === "voided") {
     redirect(`/admin/lots/${id}`);
