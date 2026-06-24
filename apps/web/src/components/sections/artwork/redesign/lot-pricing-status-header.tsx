@@ -4,6 +4,8 @@ import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-vie
 import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
+import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
+import { reserveBadgeLabel } from "@/lib/lot/reserve-presentation";
 import { cn } from "@auction/ui";
 
 type Props = {
@@ -11,7 +13,7 @@ type Props = {
   currentPrice: string;
   minNextBid: string;
   lotNumber?: number | null;
-  reservePrice: string | null;
+  reserveContext: LotReserveContext;
   lifecycle: LotLifecycle;
   countdownClock: string;
   /** When anti-snipe extended the clock. */
@@ -19,23 +21,20 @@ type Props = {
   className?: string;
 };
 
-function reserveMet(currentPrice: string, reservePrice: string | null): boolean | null {
-  if (reservePrice == null || reservePrice === "") return null;
-  return Number.parseFloat(currentPrice) + 1e-9 >= Number.parseFloat(reservePrice);
-}
-
 export function LotPricingStatusHeader({
   seed,
   currentPrice,
   minNextBid,
   lotNumber,
-  reservePrice,
+  reserveContext,
   lifecycle,
   countdownClock,
   extendedByMs = null,
   className,
 }: Props) {
-  const met = reserveMet(currentPrice, reservePrice);
+  const badge = reserveBadgeLabel(reserveContext.reserveMet, reserveContext.hasReserve);
+  const showBadge =
+    badge != null && lifecycle.kind !== "endedNoSale" && lifecycle.kind !== "endedSold";
   const live = lifecycle.kind === "live" || lifecycle.kind === "extended";
   const scheduled = lifecycle.kind === "scheduled";
   const showTimingColumn = live || scheduled;
@@ -62,16 +61,16 @@ export function LotPricingStatusHeader({
                 ? "Final bid"
                 : "Current bid"}
             </p>
-            {met !== null ? (
+            {showBadge ? (
               <span
                 className={cn(
                   "rounded-sm px-1 py-0.5 font-label text-[9px] font-bold uppercase tracking-wide",
-                  met
+                  reserveContext.reserveMet
                     ? "bg-primary-container/40 text-primary"
                     : "bg-surface-container-high text-on-surface-variant",
                 )}
               >
-                {met ? "Reserve met" : "Reserve not met"}
+                {badge}
               </span>
             ) : null}
           </div>

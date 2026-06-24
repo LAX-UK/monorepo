@@ -1,9 +1,12 @@
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import type { Container } from "../container.js";
 import { computeLotCheckoutPricing } from "./lot-checkout-pricing.js";
 
 /** Batch-load sales and attach `checkoutPricing` for dashboard / list consumers. */
-export async function lotsWithCheckoutPricing(container: Container, lots: Lot[]): Promise<Lot[]> {
+export async function lotsWithCheckoutPricing(
+  container: Container,
+  lots: (Lot | PublicLotView)[],
+): Promise<(Lot | PublicLotView)[]> {
   if (lots.length === 0) return lots;
   const saleIds = [
     ...new Set(

@@ -1,12 +1,13 @@
-import { lotAuctionTypes } from "@auction/types";
+import { type CreateLotInput, lotAuctionTypes } from "@auction/types";
 import type { SaleDeliveryMode } from "@auction/types";
 import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
-  type CreateLotInput,
   createLotSchema,
   getSaleModeCapabilities,
   lotTimingViolationAgainstSale,
   mediaReferenceSchema,
+  moneyGte,
+  moneyLt,
   updateLotSchema,
 } from "@auction/validators";
 import type { z } from "zod";
@@ -170,6 +171,29 @@ export const adminLotFormValuesSchema = zod
       });
     }
     refineLotFieldsByAuctionType(values, ctx);
+    const starting = values.startingPrice?.trim();
+    const reserve = values.reservePrice?.trim();
+    if (starting && reserve && moneyLt(reserve, starting)) {
+      ctx.addIssue({
+        code: zod.ZodIssueCode.custom,
+        message: "Reserve must be at least the starting price",
+        path: ["reservePrice"],
+      });
+    }
+    const buyNow = values.buyNowPrice?.trim();
+    const floor =
+      starting && reserve
+        ? moneyGte(reserve, starting)
+          ? reserve
+          : starting
+        : (reserve ?? starting);
+    if (buyNow && floor && moneyLt(buyNow, floor)) {
+      ctx.addIssue({
+        code: zod.ZodIssueCode.custom,
+        message: "Buy now price must be at least the reserve (or starting price when no reserve)",
+        path: ["buyNowPrice"],
+      });
+    }
   });
 
 /** Sale metadata used to validate lot schedule against the assigned sale window. */

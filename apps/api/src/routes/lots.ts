@@ -1,5 +1,6 @@
 import {
   type CreateLotInput,
+  type Lot,
   type UserRole,
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
@@ -138,9 +139,10 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
         });
       }
       if (roleHasCapability(viewerRole, "auction.manage", staff) && rows.length > 0) {
+        const staffRows = rows as Lot[];
         const eligibilityByLot =
-          await container.lotSoftDeleteService.getDeleteEligibilityBatch(rows);
-        rows = rows.map((lotRow) => {
+          await container.lotSoftDeleteService.getDeleteEligibilityBatch(staffRows);
+        rows = staffRows.map((lotRow) => {
           if (lotRow.status !== "draft" && lotRow.status !== "scheduled") {
             return lotRow;
           }
@@ -150,17 +152,18 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       }
 
       if (canSeeLifecycle && rows.length > 0) {
+        const staffRows = rows as Lot[];
         const connectEnforced = container.stripeConnectService.isConfigured();
         const connectByLot = await buildConnectRequiredByLotId(
-          rows,
+          staffRows,
           container.legalEntityRepository,
           connectEnforced,
         );
-        rows = rows.map((lotRow) => ({
+        rows = staffRows.map((lotRow) => ({
           ...lotRow,
           connectRequired: connectByLot.get(lotRow.id) ?? false,
         }));
-        return { data: rows.map(mapLotToStaffListRow) };
+        return { data: (rows as Lot[]).map(mapLotToStaffListRow) };
       }
 
       const withPricing = await lotsWithCheckoutPricing(container, rows);

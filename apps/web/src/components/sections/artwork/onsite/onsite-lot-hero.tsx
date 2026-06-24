@@ -5,7 +5,7 @@ import { OnsiteSaleScheduleCountdown } from "@/components/sections/artwork/onsit
 import { formatMoney } from "@/lib/format-currency";
 import { saleFormatExplainerContextFromSale } from "@/lib/sale-format-explainer";
 import { salePath } from "@/lib/seo/url";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { LotMediaBlock } from "../redesign/lot-media-block";
@@ -13,7 +13,7 @@ import { LotMediaBlock } from "../redesign/lot-media-block";
 type SaleLifecyclePick = Pick<Sale, "status" | "deliveryMode"> | null;
 
 type Props = {
-  auction: Lot;
+  auction: Lot | PublicLotView;
   sale: Sale;
   summarySeed: LotSummarySeedVM;
   saleForLifecycle: SaleLifecyclePick;
@@ -36,7 +36,6 @@ export function OnsiteLotHero({
     startTime: auction.startTime,
     endTime: auction.endTime,
     winnerId: auction.winnerId,
-    reservePrice: auction.reservePrice,
     currentPrice: auction.currentPrice,
   };
 

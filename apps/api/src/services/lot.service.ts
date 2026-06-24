@@ -4,6 +4,7 @@ import {
   type Bid,
   type CreateLotInput,
   type Lot,
+  type PublicLotView,
   type Sale,
   type UserRole,
   normalizeUserRoleOrClient,
@@ -779,7 +780,7 @@ export class LotService {
     filter: ListLotsFilter,
     viewerRole: string | undefined,
     viewerStaffRole?: string | null,
-  ): Promise<{ data: Lot[] }> {
+  ): Promise<{ data: (Lot | PublicLotView)[] }> {
     const viewerCanSeeNonPublic = viewerCanSeeNonPublicCatalog(viewerRole, viewerStaffRole);
     const resolved = resolvePublicLotListFilter({
       status: filter.status,

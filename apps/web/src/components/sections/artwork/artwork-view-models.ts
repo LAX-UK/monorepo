@@ -16,7 +16,7 @@ import {
 } from "@/lib/saleroom/public-session-status";
 import { sortLotsForRunList } from "@/lib/saleroom/sort-lots-for-run-list";
 import { lotPath, salePath } from "@/lib/seo/url";
-import type { Bid, Lot, LotMarketingDetails, Sale } from "@auction/types";
+import type { Bid, Lot, LotMarketingDetails, PublicLotView, Sale } from "@auction/types";
 import { normalizeAuctionTime } from "@auction/validators";
 import type { ReactNode } from "react";
 import { lotMarketingSection } from "./lot-marketing-sections";
@@ -98,14 +98,14 @@ function sortSaleLotsForNav(lots: Lot[]): Lot[] {
   });
 }
 
-function resolveLotHref(lot: Lot, catalogLinkParams?: CatalogLinkParams): string {
+function resolveLotHref(lot: Lot | PublicLotView, catalogLinkParams?: CatalogLinkParams): string {
   return catalogLinkParams ? lotCatalogHref(lot, catalogLinkParams) : lotPath(lot);
 }
 
 /** Breadcrumb + prev/next within the current sale (when `saleId` and lots are known).
  */
 export function mapLotToHeroVM(
-  lot: Lot,
+  lot: Lot | PublicLotView,
   parentSale: { id: string; title: string } | null,
   saleLots: Lot[] | null,
   catalogLinkParams?: CatalogLinkParams,
@@ -164,7 +164,7 @@ export type LotSummarySeedVM = {
 /** Static hero copy; live bid/close values come from `ArtworkBidPanel` client state.
  */
 export function mapLotToSummarySeed(
-  lot: Lot,
+  lot: Lot | PublicLotView,
   sellerName: string,
   sellerHref: string,
   sellerImageUrl: string | null = null,
@@ -200,7 +200,10 @@ export function formatExhibitions(list: NonNullable<LotMarketingDetails["exhibit
 }
 
 /** Same body text as the “About artist” accordion item. */
-export function aboutArtistBlockContent(lot: Lot, artist: PublicUser | null): string {
+export function aboutArtistBlockContent(
+  lot: Lot | PublicLotView,
+  artist: PublicUser | null,
+): string {
   const md = lot.marketingDetails;
   const aboutName = artist?.name ?? "";
   return (
@@ -211,7 +214,10 @@ export function aboutArtistBlockContent(lot: Lot, artist: PublicUser | null): st
 
 /** Data-driven accordion list; `hidden` items are filtered out in the component.
  */
-export function mapLotToAccordionBlocks(lot: Lot, artist: PublicUser | null): AccordionBlock[] {
+export function mapLotToAccordionBlocks(
+  lot: Lot | PublicLotView,
+  artist: PublicUser | null,
+): AccordionBlock[] {
   const md = lot.marketingDetails;
   const est = md.estimate;
   const estimateText = est?.low != null && est?.high != null ? formatEstimateRange(est) : "";
@@ -287,7 +293,7 @@ const MIN_SALE_SIBLINGS = 1;
  * is missing or has too few peers.
  */
 export function mapSiblingsToRailVM(
-  lot: Lot,
+  lot: Lot | PublicLotView,
   parentSale: { id: string; title: string; deliveryMode?: Sale["deliveryMode"] | null } | null,
   saleLots: Lot[] | null,
   sellerRelated: Lot[],
@@ -394,7 +400,7 @@ export type AuctionSessionHeaderVM = {
 };
 
 function lotToQueueCardVM(
-  lot: Lot,
+  lot: Lot | PublicLotView,
   artistName: string,
   flags: { isCurrentLot: boolean; isUpNext: boolean },
   catalogLinkParams?: CatalogLinkParams,
@@ -423,9 +429,9 @@ function isQueueEligibleStatus(status: Lot["status"]): boolean {
  * Up next and Queue only include lots that are `active` or `scheduled` (in catalog order after the current lot).
  */
 export function mapSaleLotsToQueueVMs(
-  currentLot: Lot,
+  currentLot: Lot | PublicLotView,
   saleLots: Lot[] | null,
-  resolveArtistName: (l: Lot) => string,
+  resolveArtistName: (l: Lot | PublicLotView) => string,
   catalogLinkParams?: CatalogLinkParams,
 ): { current: LotQueueCardVM; upNext: LotQueueCardVM | null; queue: LotQueueCardVM[] } {
   const ordered = sortSaleLotsForNav(saleLots?.filter((l) => l.saleId === currentLot.saleId) ?? []);
@@ -493,7 +499,7 @@ export function mapSaleLotsToSaleroomQueueVMs(
   saleLots: Lot[],
   currentLotId: string | null,
   sessionStatus: PublicSaleroomSessionStatus["status"],
-  resolveArtistName: (l: Lot) => string,
+  resolveArtistName: (l: Lot | PublicLotView) => string,
   catalogLinkParams?: CatalogLinkParams,
 ): { upNext: LotQueueCardVM | null; queue: LotQueueCardVM[] } | null {
   if (!isSaleroomSessionActive(sessionStatus) || saleLots.length === 0) return null;
@@ -623,7 +629,7 @@ export function mapBidHistoryToFeedEntries(
 
 export function mapAuctionSessionHeaderVM(args: {
   saleTitle: string;
-  lot: Lot;
+  lot: Lot | PublicLotView;
   paddleNumber?: string | null;
   userVerified?: boolean;
 }): AuctionSessionHeaderVM {

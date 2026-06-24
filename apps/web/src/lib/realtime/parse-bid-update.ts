@@ -44,6 +44,7 @@ export function parseBidUpdateEvent(raw: unknown): BidUpdateEvent | null {
       placedVia: typeof bid.placedVia === "string" ? bid.placedVia : undefined,
       bidCount:
         typeof o.bidCount === "number" && Number.isFinite(o.bidCount) ? o.bidCount : undefined,
+      reserveMet: typeof o.reserveMet === "boolean" ? o.reserveMet : undefined,
     };
   }
   return null;

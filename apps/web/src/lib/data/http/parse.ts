@@ -7,6 +7,7 @@ import type {
   Lot,
   LotMarketingDetails,
   NotificationPreference,
+  PublicLotView,
   Sale,
   SaleDayMedia,
   SaleDayMediaRef,
@@ -301,6 +302,24 @@ export function parseLot(raw: unknown): Lot {
     updatedAt: toDate(o.updatedAt),
     marketingDetails: parseMarketingDetails(o.marketingDetails),
   };
+}
+
+/** Lot detail from public API — withholds reserve amount when `hasReserve` is present. */
+export function parseLotDetail(raw: unknown): Lot | PublicLotView {
+  const o = raw as Record<string, unknown>;
+  const lot = parseLot(raw);
+  if (
+    typeof o.hasReserve === "boolean" &&
+    (o.reservePrice === undefined || o.reservePrice === null)
+  ) {
+    const { reservePrice: _reserve, ...rest } = lot;
+    return {
+      ...rest,
+      hasReserve: o.hasReserve,
+      reserveMet: o.reserveMet === true || o.reserveMet === false ? o.reserveMet : null,
+    };
+  }
+  return lot;
 }
 
 export function parseNotificationPreference(raw: unknown): NotificationPreference {

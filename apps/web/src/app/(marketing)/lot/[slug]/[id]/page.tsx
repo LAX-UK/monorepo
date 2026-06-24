@@ -349,7 +349,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     startTime: auction.startTime,
     endTime: auction.endTime,
     winnerId: auction.winnerId,
-    reservePrice: auction.reservePrice,
     currentPrice: auction.currentPrice,
   };
 
