@@ -50,7 +50,10 @@ export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadg
   }
 
   if (state.kind === "closed" || state.kind === "cancelled" || state.kind === "unknown") {
-    const presentation = resolveLotStatusPresentation(inputs.status, { winnerId, hasWinner });
+    const presentation = resolveLotStatusPresentation(inputs.status, {
+      ...(winnerId !== undefined ? { winnerId } : {}),
+      ...(hasWinner !== undefined ? { hasWinner } : {}),
+    });
     return (
       <StatusBadge
         variant={presentation.variant}
