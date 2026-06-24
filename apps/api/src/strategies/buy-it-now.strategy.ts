@@ -1,3 +1,4 @@
+import { hasConfiguredReserve } from "@auction/domain";
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { moneyGte } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -67,6 +68,10 @@ export class BuyItNowAuctionStrategy implements ILotStrategy {
   ): EarlyCloseResolution | null {
     const buyNow = lot.buyNowPrice?.trim();
     if (!buyNow || buyNow === "" || !moneyGte(lastBid.amount, buyNow)) {
+      return null;
+    }
+    const reserve = lot.reservePrice?.trim();
+    if (reserve && hasConfiguredReserve(reserve) && !moneyGte(lastBid.amount, reserve)) {
       return null;
     }
     const winnerUserId = lastBid.placedByUserId ?? lastBid.bidderId;

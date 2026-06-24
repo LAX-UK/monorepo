@@ -1,7 +1,7 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
-import type { LegalEntityMemberRole, Lot } from "@auction/types";
+import type { LegalEntityMemberRole, Lot, PublicLotView } from "@auction/types";
 import type { ReactNode } from "react";
 
 export type KycBidGateContext = {
@@ -27,7 +27,7 @@ export type SaleRegistrationBidGateContext = {
 
 export type BidPolicyContext = {
   user: SessionUser | null;
-  lot: Lot;
+  lot: Lot | PublicLotView;
   lotStatus: Lot["status"];
   /** Post-login return path for the sign-in CTA (e.g. `/lot/:slug/:id`). */
   loginNextPath: string;

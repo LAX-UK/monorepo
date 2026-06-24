@@ -28,7 +28,15 @@ export type BidUpdateEvent = {
   placedVia?: string | null | undefined;
   /** Total bids on the lot after this update (when provided by the API). */
   bidCount?: number | undefined;
+  /** Whether the current high bid meets or exceeds the reserve (when reserve applies). */
+  reserveMet?: boolean | undefined;
 };
+
+export type LotEndedNoSaleReason = "reserve_not_met" | "no_bids" | "clerk_passed";
+
+export type LotEndedOutcome = "sold" | "no_sale";
+
+export type LotEndedTrigger = "timed" | "clerk_hammer" | "clerk_no_sale" | "early_close";
 
 export type LotEndedEvent = {
   type: "lot_ended";
@@ -39,6 +47,11 @@ export type LotEndedEvent = {
   currentPrice: string;
   status: string;
   noSale?: boolean;
+  outcome?: LotEndedOutcome;
+  noSaleReason?: LotEndedNoSaleReason;
+  reserveMet?: boolean;
+  hadBids?: boolean;
+  trigger?: LotEndedTrigger;
 };
 
 export type LotStateEvent = {

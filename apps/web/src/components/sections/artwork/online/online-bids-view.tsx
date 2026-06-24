@@ -97,7 +97,6 @@ export function OnlineBidsView({
           startTime: new Date(),
           endTime: new Date(),
           winnerId: lotSnap.winnerId,
-          reservePrice: null,
           currentPrice: liveCurrentPrice,
         },
         null,

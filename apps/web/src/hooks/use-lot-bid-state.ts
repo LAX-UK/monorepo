@@ -11,12 +11,17 @@ import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { type LotLifecycle, classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
+import {
+  type LotReserveContext,
+  resolveEndedBanner,
+  resolveLotReserveContext,
+} from "@/lib/lot/reserve-presentation";
 import { notify } from "@/lib/ui/notify";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, LotEndedNoSaleReason, PublicLotView, Sale } from "@auction/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type UseLotBidStateParams = {
-  auction: Lot;
+  auction: Lot | PublicLotView;
   initialHistory: BidHistoryEntry[];
   initialLeadingBidderId?: string | null;
   sessionUser: SessionUser | null;
@@ -46,9 +51,11 @@ export type UseLotBidStateResult = {
   saleEndLocalLabel: string;
   saleStartLocalLabel: string;
   position: LotBidPosition;
+  reserveContext: LotReserveContext;
   biddingLive: boolean;
   priceFlash: boolean;
   endedBanner: string | null;
+  noSaleReason: LotEndedNoSaleReason | null;
   outbidSignal: boolean;
   userHasBid: boolean;
   applyOwnBidResult: (bid: {
@@ -81,6 +88,7 @@ export function useLotBidState({
     leadingBidderId,
     applyOwnBid,
     setEndedWinner,
+    latestSnapshotReserveMet,
   } = useLotBidHistory();
   const onlineLifecycle = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
@@ -94,8 +102,11 @@ export function useLotBidState({
   );
   const [priceFlash, setPriceFlash] = useState(false);
   const [endedBanner, setEndedBanner] = useState<string | null>(null);
+  const [noSaleReason, setNoSaleReason] = useState<LotEndedNoSaleReason | null>(null);
   const [outbidSignal, setOutbidSignal] = useState(initialOutbid);
   const [userHasBid, setUserHasBid] = useState(initialUserHasBid);
+  /** Overrides the SSR-derived reserveMet when a live bid event carries the updated value. */
+  const [liveReserveMet, setLiveReserveMet] = useState<boolean | undefined>(undefined);
 
   const endTimeRef = useRef(endTime);
   endTimeRef.current = endTime;
@@ -141,6 +152,9 @@ export function useLotBidState({
           setOutbidSignal(false);
         }
       }
+      if (typeof e.reserveMet === "boolean") {
+        setLiveReserveMet(e.reserveMet);
+      }
     },
     onLotExtended: (payload) => {
       const p = payload as { newEndTime?: string };
@@ -165,13 +179,23 @@ export function useLotBidState({
     onLotEnded: (p) => {
       setLotStatus("ended");
       setEndedWinner(p.winnerId ?? null, p.currentPrice);
-      const noSale = Boolean(p.noSale) || !p.winnerId;
+      const noSale = Boolean(p.noSale) || p.outcome === "no_sale" || !p.winnerId;
+      const reason = p.noSaleReason ?? (noSale ? "reserve_not_met" : null);
+      setNoSaleReason(reason ?? null);
       onlineLifecycle?.setLiveLotEnded({
         winnerId: p.winnerId ?? null,
         noSale,
       });
       if (noSale) {
-        setEndedBanner("Reserve not met — this lot passed unsold.");
+        const isHighBidder = Boolean(
+          sessionUser?.id && leadingBidderId && leadingBidderId === sessionUser.id,
+        );
+        setEndedBanner(
+          resolveEndedBanner({
+            ...(reason ? { noSaleReason: reason } : {}),
+            isHighBidder,
+          }),
+        );
       } else if (sessionUser?.id && p.winnerId === sessionUser.id) {
         setEndedBanner("You won this lot — complete checkout from your dashboard.");
       } else {
@@ -204,6 +228,22 @@ export function useLotBidState({
     }
   }, [onlineLifecycle?.liveLotStatus]);
 
+  // Sync liveReserveMet from the server snapshot whenever the provider completes a hydrate
+  // (initial mount, reconnect, periodic 15s refresh, tab-focus re-sync).
+  useEffect(() => {
+    if (latestSnapshotReserveMet !== undefined) {
+      setLiveReserveMet(latestSnapshotReserveMet);
+    }
+  }, [latestSnapshotReserveMet]);
+
+  const reserveContext = useMemo((): LotReserveContext => {
+    const base = resolveLotReserveContext(auction, currentPrice);
+    if (liveReserveMet !== undefined && base.hasReserve) {
+      return { hasReserve: true, reserveMet: liveReserveMet };
+    }
+    return base;
+  }, [auction, currentPrice, liveReserveMet]);
+
   const lifecycleLot = useMemo(
     () => ({
       id: auction.id,
@@ -211,19 +251,10 @@ export function useLotBidState({
       startTime: new Date(startTimeMs),
       endTime: new Date(endTime),
       winnerId: lotStatus === "ended" ? leadingBidderId : auction.winnerId,
-      reservePrice: auction.reservePrice,
       currentPrice,
+      reservePrice: "reservePrice" in auction ? auction.reservePrice : null,
     }),
-    [
-      auction.id,
-      auction.winnerId,
-      auction.reservePrice,
-      lotStatus,
-      startTimeMs,
-      endTime,
-      currentPrice,
-      leadingBidderId,
-    ],
+    [auction, lotStatus, startTimeMs, endTime, currentPrice, leadingBidderId],
   );
 
   const lifecycle = useMemo(
@@ -292,6 +323,8 @@ export function useLotBidState({
         outbidSignal,
         activeAutoBid,
         endedBanner,
+        reserveContext,
+        noSaleReason,
       }),
     [
       sessionUser?.id,
@@ -305,6 +338,8 @@ export function useLotBidState({
       outbidSignal,
       activeAutoBid,
       endedBanner,
+      reserveContext,
+      noSaleReason,
     ],
   );
 
@@ -379,6 +414,7 @@ export function useLotBidState({
     saleEndLocalLabel,
     saleStartLocalLabel,
     position,
+    reserveContext,
     biddingLive,
     priceFlash,
     endedBanner,
@@ -390,5 +426,6 @@ export function useLotBidState({
     extendedByMs: onlineLifecycle?.extendedByMs ?? null,
     msRemaining,
     markLotEndedLocally,
+    noSaleReason,
   };
 }

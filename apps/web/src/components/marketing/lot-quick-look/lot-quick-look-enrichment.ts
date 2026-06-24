@@ -2,7 +2,7 @@ import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
-import type { Lot } from "@auction/types";
+import type { Lot, PublicLotView } from "@auction/types";
 import { toLotCardTimingVM } from "@auction/validators";
 import type { LotQuickLookEnrichment } from "./fetch-lot-quick-look-enrichment.client";
 
@@ -15,7 +15,7 @@ function formatBuyerPremiumHint(rate: string): string | undefined {
 }
 
 /** Build enrichment payload from a full Lot record. */
-export function lotQuickLookEnrichmentFromLot(lot: Lot): LotQuickLookEnrichment {
+export function lotQuickLookEnrichmentFromLot(lot: Lot | PublicLotView): LotQuickLookEnrichment {
   const est = lotEstimateLine(lot);
   const price = lotPriceDisplay(lot);
   const { startTime, endTime } = toLotCardTimingVM(lot);

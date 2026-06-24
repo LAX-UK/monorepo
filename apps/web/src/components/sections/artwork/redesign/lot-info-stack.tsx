@@ -6,6 +6,9 @@ import {
 } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
+import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
+import { reserveBadgeLabel, resolveEndedBanner } from "@/lib/lot/reserve-presentation";
+import type { LotEndedNoSaleReason } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Clock } from "lucide-react";
 import Link from "next/link";
@@ -15,8 +18,8 @@ type Props = {
   estimateLine: string | null;
   currentPrice: string;
   bidCount: number;
-  /** When set, show reserve met / not met next to the current-bid label. */
-  reservePrice: string | null;
+  /** Reserve indicator — amount is never shown to bidders. */
+  reserveContext: LotReserveContext;
   /** Unified lifecycle from `classifyLotLifecycle` — drives banners. */
   lifecycle: LotLifecycle;
   /** Pre-formatted clock text (HH:MM:SS or `Nd HH:MM:SS`) sized to the timer state. */
@@ -31,6 +34,8 @@ type Props = {
   startAtIso?: string;
   /** Signed-in user — used for "You won" vs hammer copy on `endedSold`. */
   currentUserId?: string | null;
+  /** Structured reason the lot did not sell — used for accurate terminal copy. */
+  noSaleReason?: LotEndedNoSaleReason | undefined;
   /** Placed under scheduled opens banner — e.g. watchlist toggle. */
   scheduledNotifySlot?: ReactNode;
   /** Shown when lifecycle is `endedNoSale` — e.g. watchlist for relist interest. */
@@ -45,7 +50,7 @@ export function LotInfoStack({
   estimateLine,
   currentPrice,
   bidCount,
-  reservePrice,
+  reserveContext,
   lifecycle,
   countdownClock,
   saleEndLocalLabel,
@@ -53,13 +58,13 @@ export function LotInfoStack({
   endAtIso,
   startAtIso,
   currentUserId = null,
+  noSaleReason,
   scheduledNotifySlot,
   endedNoSaleNotifySlot,
 }: Props) {
-  const hasReserve = reservePrice != null && reservePrice !== "";
-  const reserveMet = hasReserve
-    ? Number.parseFloat(currentPrice) + 1e-9 >= Number.parseFloat(reservePrice ?? "0")
-    : null;
+  const badge = reserveBadgeLabel(reserveContext.reserveMet, reserveContext.hasReserve);
+  const showReserveBadge =
+    badge != null && lifecycle.kind !== "endedNoSale" && lifecycle.kind !== "endedSold";
 
   return (
     <div className="w-full max-w-[480px] rounded-lg bg-surface-container-low p-5 dark:bg-surface-container-low/50">
@@ -70,16 +75,16 @@ export function LotInfoStack({
             <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
               Current bid ({bidCount} {bidCount === 1 ? "bid" : "bids"})
             </span>
-            {hasReserve && reserveMet !== null ? (
+            {showReserveBadge ? (
               <span
                 className={cn(
                   "rounded-sm px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide",
-                  reserveMet
+                  reserveContext.reserveMet
                     ? "bg-primary-container/40 text-primary"
                     : "bg-surface-container-high text-on-surface-variant",
                 )}
               >
-                {reserveMet ? "Reserve met" : "Reserve not met"}
+                {badge}
               </span>
             ) : null}
           </div>
@@ -95,6 +100,7 @@ export function LotInfoStack({
         lifecycle={lifecycle}
         currentPrice={currentPrice}
         currentUserId={currentUserId}
+        noSaleReason={noSaleReason}
         countdownClock={countdownClock}
         endAtIso={endAtIso}
         startAtIso={startAtIso ?? endAtIso}
@@ -132,6 +138,7 @@ type LifecycleBannerProps = {
   lifecycle: LotLifecycle;
   currentPrice: string;
   currentUserId: string | null;
+  noSaleReason?: LotEndedNoSaleReason | undefined;
   countdownClock: string;
   endAtIso: string;
   startAtIso: string;
@@ -145,6 +152,7 @@ function LifecycleBanner({
   lifecycle,
   currentPrice,
   currentUserId,
+  noSaleReason,
   countdownClock,
   endAtIso,
   startAtIso,
@@ -193,7 +201,7 @@ function LifecycleBanner({
         <div className="mt-4 space-y-3">
           <TerminalBanner
             label="No sale"
-            detail="Reserve was not met — this lot closed without a winning bid."
+            detail={resolveEndedBanner(noSaleReason ? { noSaleReason } : {})}
           />
           {endedNoSaleNotifySlot ? (
             <div className="rounded-lg border border-outline-variant/30 bg-surface-container-high/40 px-4 py-3 dark:bg-surface-container-high/20">

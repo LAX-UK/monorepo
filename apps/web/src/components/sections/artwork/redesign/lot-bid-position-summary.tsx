@@ -5,6 +5,8 @@ import {
   lotBidPositionAutoStickyLabel,
 } from "@/lib/bid/derive-lot-bid-position";
 import { formatMoney } from "@/lib/format-currency";
+import { resolveNoSaleSummaryCopy } from "@/lib/lot/reserve-presentation";
+import type { LotEndedNoSaleReason } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Gavel, Shield, Zap } from "lucide-react";
@@ -104,6 +106,24 @@ export function LotBidPositionSummary({
           <p className="mt-1 text-on-surface-variant">
             You haven&apos;t bid on this lot yet. Set an auto-bid max or place a one-time bid below.
           </p>
+        </>,
+      );
+
+    case "leadingBelowReserve":
+      return shell(
+        "warn",
+        <>
+          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
+            <Gavel className="size-3.5 shrink-0" aria-hidden />
+            High bid — reserve not met yet
+          </span>
+          <p className="mt-1">
+            You&apos;re the high bidder, but the reserve hasn&apos;t been met. Bid again to try to
+            reach the reserve.
+          </p>
+          {position.autoBid ? (
+            <AutoBidLine max={position.autoBid.max} step={position.autoBid.step} />
+          ) : null}
         </>,
       );
 
@@ -250,7 +270,11 @@ export function LotBidPositionSummary({
             No sale
           </span>
           <p className="mt-1 text-on-surface-variant">
-            Reserve was not met — this lot closed without a winning bid.
+            {position.noSaleReason
+              ? resolveNoSaleSummaryCopy({
+                  noSaleReason: position.noSaleReason as LotEndedNoSaleReason,
+                })
+              : "This lot did not sell."}
           </p>
         </>,
       );

@@ -3,6 +3,7 @@ import type {
   BidPlacedRealtimeMeta,
   IBidNotificationSender,
   ILotNotificationSender,
+  LotEndedRealtimeMeta,
 } from "./interfaces/notifications.js";
 
 /** Application-level notifications — delegates to segregated senders (ISP).
@@ -21,8 +22,8 @@ export class NotificationService {
     return this.lotSender.notifyLotExtended(lot, newEndTime);
   }
 
-  notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void> {
-    return this.lotSender.notifyLotEnded(lot, winningBid);
+  notifyLotEnded(lot: Lot, winningBid: Bid | null, meta?: LotEndedRealtimeMeta): Promise<void> {
+    return this.lotSender.notifyLotEnded(lot, winningBid, meta);
   }
 
   notifyProxyCancelled(lotId: string, bidderUserId: string, reason?: string): Promise<void> {

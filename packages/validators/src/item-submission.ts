@@ -2,6 +2,7 @@ import { itemSubmissionStatuses } from "@auction/types";
 import { z } from "zod";
 import { inlineCreateArtistSchema } from "./artist.js";
 import { mediaReferenceSchema } from "./media.js";
+import { moneyLt } from "./money-compare.js";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal string");
 
@@ -75,6 +76,13 @@ export const itemSubmissionFormSchema = z
       ctx.addIssue({
         code: "custom",
         message: "Must be a valid decimal (e.g. 1200 or 1200.50)",
+        path: ["reservePrice"],
+      });
+    }
+    if (ap && rp && moneyLt(rp, ap)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Reserve must be at least the asking price",
         path: ["reservePrice"],
       });
     }

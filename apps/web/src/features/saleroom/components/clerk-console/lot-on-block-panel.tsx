@@ -14,6 +14,7 @@ import { PLATFORM_DEFAULT_CURRENCY, resolveLotCurrency } from "@/lib/money/curre
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import { formatMoney } from "@/lib/ui/format";
+import { deriveReserveStatus } from "@auction/domain";
 import type { Lot } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -151,6 +152,16 @@ export function LotOnBlockPanel({
             ) : null}
           </p>
         ) : null}
+        {currentLot.reservePrice != null && currentLot.reservePrice !== "" ? (
+          <p className="mt-1 font-body text-xs text-secondary tabular-nums">
+            Reserve {formatMoney(currentLot.reservePrice, lotCurrency)} ·{" "}
+            {deriveReserveStatus(liveBid.currentPrice, currentLot.reservePrice).kind === "met"
+              ? "Reserve met"
+              : "Below reserve"}
+          </p>
+        ) : (
+          <p className="mt-1 font-body text-xs text-secondary">No reserve</p>
+        )}
       </div>
 
       {isPaused ? (

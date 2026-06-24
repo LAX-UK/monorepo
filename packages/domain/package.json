@@ -16,7 +16,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@auction/types": "workspace:*"
+    "@auction/types": "workspace:*",
+    "@auction/validators": "workspace:*"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",

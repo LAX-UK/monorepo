@@ -5,10 +5,7 @@ import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import type { Lot, Sale } from "@auction/types";
 import { useMemo } from "react";
 
-type LotPick = Pick<
-  Lot,
-  "status" | "startTime" | "endTime" | "winnerId" | "reservePrice" | "currentPrice" | "id"
->;
+type LotPick = Pick<Lot, "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id">;
 type SalePick =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
   | null;

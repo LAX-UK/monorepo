@@ -111,6 +111,37 @@ describe("deriveLotBidPosition", () => {
     ).toEqual({ kind: "won", hammerLabel: "You won" });
   });
 
+  it("returns leadingBelowReserve when leading with reserve not met", () => {
+    expect(
+      deriveLotBidPosition({
+        ...base,
+        leadingBidderId: "buyer-1",
+        reserveContext: { hasReserve: true, reserveMet: false },
+      }),
+    ).toEqual({ kind: "leadingBelowReserve", autoBid: null });
+  });
+
+  it("returns winning when leading with reserve met", () => {
+    expect(
+      deriveLotBidPosition({
+        ...base,
+        leadingBidderId: "buyer-1",
+        reserveContext: { hasReserve: true, reserveMet: true },
+      }),
+    ).toEqual({ kind: "winning", autoBid: null });
+  });
+
+  it("returns noSale with reason when provided", () => {
+    expect(
+      deriveLotBidPosition({
+        ...base,
+        lotStatus: "ended",
+        lifecycleKind: "endedNoSale",
+        noSaleReason: "no_bids",
+      }),
+    ).toEqual({ kind: "noSale", noSaleReason: "no_bids" });
+  });
+
   it("returns noSale for ended without winner", () => {
     expect(
       deriveLotBidPosition({
@@ -118,6 +149,6 @@ describe("deriveLotBidPosition", () => {
         lotStatus: "ended",
         lifecycleKind: "endedNoSale",
       }),
-    ).toEqual({ kind: "noSale" });
+    ).toEqual({ kind: "noSale", noSaleReason: null });
   });
 });
