@@ -41,20 +41,34 @@ describe("lotStatusToBadgeVariant", () => {
 
 describe("lotEndedPresentation", () => {
   it("returns Sold when winnerId is set", () => {
-    expect(lotEndedPresentation("user-1")).toEqual({
+    expect(lotEndedPresentation({ winnerId: "user-1" })).toEqual({
+      label: "Sold",
+      variant: "success",
+    });
+  });
+
+  it("returns Sold when hasWinner is true without buyer id", () => {
+    expect(lotEndedPresentation({ hasWinner: true })).toEqual({
       label: "Sold",
       variant: "success",
     });
   });
 
   it("returns Unsold when winnerId is null", () => {
-    expect(lotEndedPresentation(null)).toEqual({
+    expect(lotEndedPresentation({ winnerId: null })).toEqual({
       label: "Unsold",
       variant: "neutral",
     });
   });
 
-  it("returns Ended when winnerId is omitted", () => {
+  it("returns Unsold when hasWinner is false", () => {
+    expect(lotEndedPresentation({ hasWinner: false })).toEqual({
+      label: "Unsold",
+      variant: "neutral",
+    });
+  });
+
+  it("returns Ended when outcome is omitted", () => {
     expect(lotEndedPresentation(undefined)).toEqual({
       label: "Ended",
       variant: "success",
@@ -68,6 +82,13 @@ describe("resolveLotStatusPresentation", () => {
       label: "Live",
       variant: "live",
       dot: true,
+    });
+  });
+
+  it("maps ended with hasWinner to Sold", () => {
+    expect(resolveLotStatusPresentation("ended", { hasWinner: true })).toEqual({
+      label: "Sold",
+      variant: "success",
     });
   });
 

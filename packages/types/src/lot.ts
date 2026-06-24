@@ -31,6 +31,8 @@ export type LotSummary = {
   categoryIds?: string[];
   /** Estimate only on list rows; full marketing JSON lives on lot detail. */
   marketingDetails: LotMarketingDetails;
+  /** Present on ended list rows when the hammer sold (buyer id stays on detail only). */
+  hasWinner?: boolean;
 };
 
 /** Optional marketing / catalog enrichment (stored as JSON on `lot`). */
@@ -115,6 +117,8 @@ export type Lot = {
   /** seller entity archived while lot was draft/scheduled. */
   archivedSeller?: boolean;
   winnerId: string | null;
+  /** Present on list rows derived from summaries — sold outcome without exposing buyer id. */
+  hasWinner?: boolean;
   /** winner's acting legal entity at win time */
   buyerLegalEntityId?: string | null;
   createdAt: Date;
