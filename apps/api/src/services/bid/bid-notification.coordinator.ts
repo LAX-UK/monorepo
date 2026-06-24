@@ -57,7 +57,10 @@ export class BidNotificationCoordinator {
         await this.lotJobs?.cancelLotJobs(lotId);
       });
       await this.runBestEffort("notifyLotEnded", () =>
-        this.notifications.notifyLotEnded(updatedLot, created),
+        this.notifications.notifyLotEnded(updatedLot, created, {
+          trigger: "early_close",
+          hadBids: true,
+        }),
       );
     }
 

@@ -1,5 +1,7 @@
 import type { AutoBidSettings } from "@/lib/data/contracts";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
+import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
+import { leadingBelowReserve } from "@/lib/lot/reserve-presentation";
 import type { Lot } from "@auction/types";
 
 export type LotBidPositionKind =
@@ -8,6 +10,7 @@ export type LotBidPositionKind =
   | "notBidding"
   | "winning"
   | "winningByAuto"
+  | "leadingBelowReserve"
   | "outbid"
   | "inRunning"
   | "won"
@@ -30,11 +33,12 @@ export type LotBidPosition =
   | { kind: "notBidding" }
   | { kind: "winning"; autoBid: LotBidAutoBidInfo | null }
   | { kind: "winningByAuto"; autoBid: LotBidAutoBidInfo }
+  | { kind: "leadingBelowReserve"; autoBid: LotBidAutoBidInfo | null }
   | { kind: "outbid"; autoBid: LotBidAutoBidInfo | null }
   | { kind: "inRunning"; autoBid: LotBidAutoBidInfo | null }
   | { kind: "won"; hammerLabel: string }
   | { kind: "lost"; hammerLabel: string }
-  | { kind: "noSale" }
+  | { kind: "noSale"; noSaleReason?: string | null }
   | { kind: "cancelled" }
   | { kind: "withdrawn" }
   | { kind: "preLaunch" }
@@ -55,6 +59,8 @@ export type DeriveLotBidPositionInput = {
   outbidSignal: boolean;
   activeAutoBid: AutoBidSettings | null;
   endedBanner: string | null;
+  reserveContext?: LotReserveContext;
+  noSaleReason?: string | null;
 };
 
 function toAutoBidInfo(settings: AutoBidSettings | null): LotBidAutoBidInfo | null {
@@ -82,6 +88,8 @@ export function deriveLotBidPosition(input: DeriveLotBidPositionInput): LotBidPo
     outbidSignal,
     activeAutoBid,
     endedBanner,
+    reserveContext = { hasReserve: false, reserveMet: null },
+    noSaleReason,
   } = input;
 
   if (isOwnLot || (sellerId && sessionUserId && sessionUserId === sellerId)) {
@@ -102,7 +110,7 @@ export function deriveLotBidPosition(input: DeriveLotBidPositionInput): LotBidPo
     case "scheduled":
       return { kind: "scheduled" };
     case "endedNoSale":
-      return { kind: "noSale" };
+      return { kind: "noSale", noSaleReason: noSaleReason ?? null };
     case "endedSold": {
       if (winnerId && sessionUserId === winnerId) {
         return { kind: "won", hammerLabel: endedBanner ?? "You won this lot." };
@@ -124,6 +132,9 @@ export function deriveLotBidPosition(input: DeriveLotBidPositionInput): LotBidPo
   const isLeading = Boolean(leadingBidderId && sessionUserId && leadingBidderId === sessionUserId);
 
   if (isLeading) {
+    if (leadingBelowReserve(reserveContext, true)) {
+      return { kind: "leadingBelowReserve", autoBid: toAutoBidInfo(activeAutoBid) };
+    }
     if (autoBid) {
       return { kind: "winningByAuto", autoBid };
     }
@@ -141,7 +152,18 @@ export function deriveLotBidPosition(input: DeriveLotBidPositionInput): LotBidPo
 }
 
 /** Compact label for sticky bar / badges. */
-export function lotBidPositionStickyLabel(position: LotBidPosition): string | null {
+export function lotBidPositionStickyLabel(
+  position: LotBidPosition,
+  reserveContext?: LotReserveContext,
+): string | null {
+  if (position.kind === "leadingBelowReserve") return "High bid";
+  if (
+    reserveContext &&
+    (position.kind === "winning" || position.kind === "winningByAuto") &&
+    leadingBelowReserve(reserveContext, true)
+  ) {
+    return "High bid";
+  }
   switch (position.kind) {
     case "winning":
     case "winningByAuto":
@@ -172,6 +194,7 @@ export function lotBidPositionAutoStickyLabel(
   const auto =
     position.kind === "winning" ||
     position.kind === "winningByAuto" ||
+    position.kind === "leadingBelowReserve" ||
     position.kind === "outbid" ||
     position.kind === "inRunning"
       ? position.autoBid

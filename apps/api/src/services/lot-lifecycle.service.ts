@@ -14,11 +14,15 @@ import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 
+import type { LotEndedTrigger } from "@auction/types";
+
 type LotCloseOutcome = {
   lotId: string;
   winnerId: string | null;
   voided: boolean;
   winningBid: Bid | null;
+  trigger: LotEndedTrigger;
+  hadBids: boolean;
 };
 
 /** Scheduled status transitions (scheduled→active, active→ended + winner),
@@ -185,11 +189,15 @@ export class LotLifecycleService {
       return true;
     });
     if (!ok) return false;
+    const bids = this.repos.root.bid;
+    const hadBids = (await bids.listForLotSettlement(lotId, 1)).length > 0;
     await this.notifyBiddersAfterLotClose(a, {
       lotId,
       winnerId: null,
       voided: false,
       winningBid: null,
+      trigger: "clerk_no_sale",
+      hadBids,
     });
     return true;
   }
@@ -299,7 +307,14 @@ export class LotLifecycleService {
           tx,
         });
       }
-      return { lotId: row.id, winnerId, voided, winningBid: chosen ?? null };
+      return {
+        lotId: row.id,
+        winnerId,
+        voided,
+        winningBid: chosen ?? null,
+        trigger: ignoreEndTime ? "clerk_hammer" : "timed",
+        hadBids: bidsList.length > 0,
+      };
     });
   }
 
@@ -344,7 +359,11 @@ export class LotLifecycleService {
     if (this.lotNotifications) {
       const lotNotifications = this.lotNotifications;
       await this.runBestEffort("notifyLotEnded", () =>
-        lotNotifications.notifyLotEnded(a, outcome.winningBid),
+        lotNotifications.notifyLotEnded(a, outcome.winningBid, {
+          trigger: outcome.trigger,
+          hadBids: outcome.hadBids,
+          voided: outcome.voided,
+        }),
       );
     }
   }

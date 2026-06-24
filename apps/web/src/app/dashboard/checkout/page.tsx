@@ -12,7 +12,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
-import type { Lot } from "@auction/types";
+import type { Lot, PublicLotView } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Gavel, ShoppingBag } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +21,7 @@ import { redirect } from "next/navigation";
 type Props = { searchParams: Promise<{ lots?: string; notice?: string }> };
 
 type BasketRow = {
-  lot: Lot;
+  lot: Lot | PublicLotView;
   hammer: number;
   premium: number;
   total: number;

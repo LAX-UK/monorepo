@@ -24,7 +24,7 @@ import { ParticipationWarningCallout } from "@/components/ui/participation-warni
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { formatPostalAddressLines } from "@auction/validators";
 import type { ReactNode } from "react";
@@ -32,7 +32,7 @@ import type { ReactNode } from "react";
 type SaleLifecyclePick = Pick<Sale, "status" | "deliveryMode"> | null;
 
 type Props = {
-  auction: Lot;
+  auction: Lot | PublicLotView;
   sale: Sale;
   summarySeed: LotSummarySeedVM;
   marketingAccordionBlocks: AccordionBlock[];

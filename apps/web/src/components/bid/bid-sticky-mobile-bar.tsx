@@ -14,6 +14,7 @@ import { useMarketingBidBarChromeRegistration } from "@/lib/context/marketing-bi
 import { countdownTier } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
+import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { liveUrgencyTextClass } from "@/lib/presenters/status-presentation";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -52,6 +53,7 @@ type Props = {
   compact?: boolean;
   /** Unified bidder position — drives outbid CTA and auto badge. */
   position?: LotBidPosition | null;
+  reserveContext?: LotReserveContext;
   hasActiveAutoBid?: boolean;
   onFocusManualBid?: () => void;
   onFocusAutoBid?: () => void;
@@ -120,6 +122,7 @@ export function BidStickyMobileBar({
   isOnBlock = false,
   compact = false,
   position = null,
+  reserveContext,
   hasActiveAutoBid = false,
   onFocusManualBid,
   onFocusAutoBid,
@@ -128,7 +131,7 @@ export function BidStickyMobileBar({
 }: Props) {
   const outbid = position ? lotBidPositionShowOutbidCta(position) : false;
   const autoBidLabel = position ? lotBidPositionAutoStickyLabel(position, formatMoney) : null;
-  const positionLabel = position ? lotBidPositionStickyLabel(position) : null;
+  const positionLabel = position ? lotBidPositionStickyLabel(position, reserveContext) : null;
   const saleroomMode = isSaleroomLifecycle(lifecycleKind);
   const showBidCta = canShowBidCta(decision);
   const showBar = shouldShowBidStickyMobileBar({ live, lifecycleKind, timerState });

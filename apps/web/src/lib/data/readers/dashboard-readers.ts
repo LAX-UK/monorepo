@@ -31,6 +31,7 @@ import type {
   Lot,
   NotificationPreference,
   PortfolioRow,
+  PublicLotView,
   UserNotification,
 } from "@auction/types";
 
@@ -142,7 +143,7 @@ export type DashboardCategoriesReader = {
 
 /** Single-lot read for checkout / deep links (winner flows). */
 export type DashboardBuyerLotReader = {
-  getById(id: string): Promise<Lot | null>;
+  getById(id: string): Promise<Lot | PublicLotView | null>;
 };
 
 /** Listing lots for seller workspace (acting entity). */

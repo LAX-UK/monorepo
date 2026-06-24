@@ -1,9 +1,11 @@
-import type { Bid, Lot } from "@auction/types";
+import { deriveNoSaleReason, deriveReserveStatus } from "@auction/domain";
+import type { Bid, Lot, LotEndedTrigger } from "@auction/types";
 import type { Redis } from "ioredis";
 import type {
   BidPlacedRealtimeMeta,
   IBidNotificationSender,
   ILotNotificationSender,
+  LotEndedRealtimeMeta,
 } from "../services/interfaces/notifications.js";
 
 export class RedisNotificationSender implements IBidNotificationSender, ILotNotificationSender {
@@ -32,6 +34,11 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
         emittedAt: Date.now(),
         ...(meta?.outbidUserId ? { outbidUserId: meta.outbidUserId } : {}),
         ...(meta?.bidCount != null ? { bidCount: meta.bidCount } : {}),
+        ...(() => {
+          const reserveStatus = deriveReserveStatus(lot.currentPrice, lot.reservePrice);
+          if (reserveStatus.kind === "none") return {};
+          return { reserveMet: reserveStatus.kind === "met" };
+        })(),
       }),
     );
   }
@@ -61,9 +68,31 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
     );
   }
 
-  async notifyLotEnded(lot: Lot, winningBid: Bid | null): Promise<void> {
+  async notifyLotEnded(
+    lot: Lot,
+    winningBid: Bid | null,
+    meta?: LotEndedRealtimeMeta,
+  ): Promise<void> {
     const channel = `lot:${lot.id}:events`;
     const winnerId = winningBid?.placedByUserId ?? winningBid?.bidderId ?? null;
+    const hammerPrice = winningBid?.amount ?? lot.currentPrice;
+    const reserveStatus = deriveReserveStatus(hammerPrice, lot.reservePrice);
+    const sold = Boolean(winnerId);
+    const hadBids = meta?.hadBids ?? sold;
+    let noSaleReason: ReturnType<typeof deriveNoSaleReason> | undefined;
+    if (!sold) {
+      const input: {
+        reserveStatus: ReturnType<typeof deriveReserveStatus>;
+        hadBids: boolean;
+        trigger?: LotEndedTrigger;
+        voided?: boolean;
+      } = { reserveStatus, hadBids };
+      if (meta?.trigger) input.trigger = meta.trigger;
+      if (meta?.voided) input.voided = true;
+      noSaleReason = deriveNoSaleReason(input);
+    }
+    const reserveMet = reserveStatus.kind === "none" ? undefined : reserveStatus.kind === "met";
+
     await this.redis.publish(
       channel,
       JSON.stringify({
@@ -71,9 +100,14 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
         lotId: lot.id,
         winnerId,
         bidId: winningBid?.id ?? null,
-        currentPrice: winningBid?.amount ?? lot.currentPrice,
+        currentPrice: hammerPrice,
         status: "ended",
-        ...(winnerId ? {} : { noSale: true }),
+        outcome: sold ? "sold" : "no_sale",
+        ...(sold ? {} : { noSale: true }),
+        ...(noSaleReason && noSaleReason !== "voided" ? { noSaleReason } : {}),
+        ...(reserveMet !== undefined ? { reserveMet } : {}),
+        hadBids,
+        ...(meta?.trigger ? { trigger: meta.trigger } : {}),
       }),
     );
   }

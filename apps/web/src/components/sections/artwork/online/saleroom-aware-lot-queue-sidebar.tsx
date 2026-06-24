@@ -8,11 +8,11 @@ import {
 import { LotQueueSidebar } from "@/components/sections/artwork/online/lot-queue-sidebar";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
-import type { Lot } from "@auction/types";
+import type { Lot, PublicLotView } from "@auction/types";
 import { useMemo } from "react";
 
 type Props = {
-  viewedLot: Lot;
+  viewedLot: Lot | PublicLotView;
   saleLots: Lot[] | null;
   catalogueQueue: {
     current: LotQueueCardVM;
@@ -39,7 +39,7 @@ export function SaleroomAwareLotQueueSidebar({
   const saleroom = useSaleroomLive();
 
   const queue = useMemo(() => {
-    const resolveArtistName = (l: Lot) => artistNameByLotId[l.id] ?? "Artist";
+    const resolveArtistName = (l: Lot | PublicLotView) => artistNameByLotId[l.id] ?? "Artist";
 
     if (!isHybridSale || !saleLots?.length || !saleroom) return catalogueQueue;
 

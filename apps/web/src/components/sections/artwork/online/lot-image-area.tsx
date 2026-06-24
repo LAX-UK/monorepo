@@ -1,9 +1,9 @@
 import { LotMediaBlock } from "@/components/sections/artwork/redesign/lot-media-block";
-import type { Lot } from "@auction/types";
+import type { Lot, PublicLotView } from "@auction/types";
 import { cn } from "@auction/ui";
 
 type Props = {
-  lot: Lot;
+  lot: Lot | PublicLotView;
   /** When true, allow a wider hero when the queue sidebar is hidden. */
   wide?: boolean;
   className?: string;

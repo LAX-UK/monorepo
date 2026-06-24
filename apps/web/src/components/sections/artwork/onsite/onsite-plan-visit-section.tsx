@@ -6,7 +6,7 @@ import { OnsiteSaleFactsStrip } from "@/components/sections/artwork/onsite/onsit
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
 import { formatOnsitePreviewHoursLabel } from "@/lib/onsite/preview-hours-label";
 import { salePath } from "@/lib/seo/url";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
   buildGoogleMapsEmbedUrl,
@@ -17,7 +17,7 @@ import { Calendar, Clock, ExternalLink, MapPin } from "lucide-react";
 
 type Props = {
   sale: Sale;
-  auction: Lot;
+  auction: Lot | PublicLotView;
   overview: SaleOverviewVM;
   locationLine: string;
 };

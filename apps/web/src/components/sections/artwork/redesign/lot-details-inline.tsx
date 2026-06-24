@@ -1,15 +1,17 @@
 import { formatMoney } from "@/lib/format-currency";
-import type { Lot } from "@auction/types";
+import { lotDetailsReserveLine } from "@/lib/lot/reserve-presentation";
+import type { Lot, PublicLotView } from "@auction/types";
 import Link from "next/link";
 import { Fragment } from "react";
 
 type Props = {
-  lot: Lot;
+  lot: Lot | PublicLotView;
   /** Min next bid and sale end (live auction UX preserved) */
   minNextBid: string;
   saleEndLocalLabel: string;
   /** Live current high bid (client state) */
   currentPrice: string;
+  hasReserve: boolean;
   /** Inside marketing accordion: hide duplicate title, reduce padding. */
   variant?: "default" | "accordion";
 };
@@ -21,6 +23,7 @@ export function LotDetailsInline({
   minNextBid,
   saleEndLocalLabel,
   currentPrice,
+  hasReserve,
   variant = "default",
 }: Props) {
   const embedded = variant === "accordion";
@@ -60,11 +63,7 @@ export function LotDetailsInline({
         <li>Opening bid: {formatMoney(lot.startingPrice)}</li>
         <li>Current high bid: {formatMoney(currentPrice)}</li>
         <li>Minimum next bid: {formatMoney(minNextBid)}</li>
-        {lot.reservePrice ? (
-          <li>Reserve: {formatMoney(lot.reservePrice)}</li>
-        ) : (
-          <li>Reserve: Not disclosed</li>
-        )}
+        <li>Reserve: {lotDetailsReserveLine(hasReserve)}</li>
         <li>Closes: {saleEndLocalLabel}</li>
         <li>
           Buyer&apos;s premium: {((Number(lot.buyerPremiumRate) || 0) * 100).toFixed(0)}% on the

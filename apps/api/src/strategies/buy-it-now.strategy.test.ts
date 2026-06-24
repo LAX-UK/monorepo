@@ -68,4 +68,43 @@ describe("BuyItNowAuctionStrategy", () => {
     ];
     expect(strategy.determineWinner(a, bids)?.id).toBe("b2");
   });
+
+  it("does not early-close when hammer is below reserve", () => {
+    const lot = mkLot({ reservePrice: "600.00", buyNowPrice: "500.00" });
+    const lastBid: Bid = {
+      id: "b1",
+      lotId: lot.id,
+      placedByUserId: "u1",
+      bidderId: "u1",
+      buyerLegalEntityId: "le-1",
+      amount: "500.00",
+      isWinning: true,
+      isAutoBid: false,
+      maxAutoBidAmount: null,
+      createdAt: new Date(),
+    };
+    expect(strategy.resolveEarlyClose(lot, lastBid, { buyerLegalEntityId: "le-1" })).toBeNull();
+  });
+
+  it("early-closes when hammer meets buy now and reserve", () => {
+    const lot = mkLot({ reservePrice: "400.00", buyNowPrice: "500.00" });
+    const lastBid: Bid = {
+      id: "b1",
+      lotId: lot.id,
+      placedByUserId: "u1",
+      bidderId: "u1",
+      buyerLegalEntityId: "le-1",
+      amount: "500.00",
+      isWinning: true,
+      isAutoBid: false,
+      maxAutoBidAmount: null,
+      createdAt: new Date(),
+    };
+    expect(strategy.resolveEarlyClose(lot, lastBid, { buyerLegalEntityId: "le-1" })).toEqual({
+      endedEarly: true,
+      winnerUserId: "u1",
+      winnerLegalEntityId: "le-1",
+      hammerPrice: "500.00",
+    });
+  });
 });
