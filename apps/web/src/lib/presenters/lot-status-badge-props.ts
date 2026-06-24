@@ -4,7 +4,10 @@ import type { Lot, LotCardTimingVM, LotStatus } from "@auction/types";
 import { toLotCardTimingVM } from "@auction/validators";
 
 export type LotStatusBadgeInputs = LotTimerInputs & {
+  /** API winner — drives Sold vs Unsold when status is `ended`. */
   winnerId?: string | null | undefined;
+  /** List-row sold flag when buyer id is omitted from public summaries. */
+  hasWinner?: boolean;
 };
 
 export type LotStatusBadgeSource = {
@@ -12,6 +15,7 @@ export type LotStatusBadgeSource = {
   startTime: Lot["startTime"] | LotCardTimingVM["startTime"];
   endTime: Lot["endTime"] | LotCardTimingVM["endTime"];
   winnerId?: string | null | undefined;
+  hasWinner?: boolean;
 };
 
 /** Lot VM → timer inputs + winnerId for `LotStatusBadge`. */
@@ -30,5 +34,9 @@ export function lotStatusBadgeProps(lot: LotStatusBadgeSource): LotStatusBadgeIn
         };
 
   const timing = lotCardTimingToTimerInputs(timingSource);
-  return lot.winnerId !== undefined ? { ...timing, winnerId: lot.winnerId } : timing;
+  return {
+    ...timing,
+    ...(lot.winnerId !== undefined ? { winnerId: lot.winnerId } : {}),
+    ...(lot.hasWinner !== undefined ? { hasWinner: lot.hasWinner } : {}),
+  };
 }

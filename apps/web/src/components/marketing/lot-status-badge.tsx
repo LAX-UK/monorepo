@@ -21,10 +21,12 @@ export { LotCardTimer as LotStatusTimer, LotCardTimer, type LotCardTimerProps };
 type LotStatusBadgeProps = LotTimerInputs & {
   /** API winner — drives Sold vs Unsold when status is `ended`. */
   winnerId?: string | null | undefined;
+  /** List-row sold flag when buyer id is omitted from public summaries. */
+  hasWinner?: boolean;
 };
 
 /** Compact inline lot status — live / opens soon / API status + optional countdown. */
-export function LotStatusBadge({ winnerId, ...inputs }: LotStatusBadgeProps) {
+export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadgeProps) {
   const now = useNow(1000);
   const state = classifyLotTimerState(inputs, now);
 
@@ -48,7 +50,10 @@ export function LotStatusBadge({ winnerId, ...inputs }: LotStatusBadgeProps) {
   }
 
   if (state.kind === "closed" || state.kind === "cancelled" || state.kind === "unknown") {
-    const presentation = resolveLotStatusPresentation(inputs.status, { winnerId });
+    const presentation = resolveLotStatusPresentation(inputs.status, {
+      ...(winnerId !== undefined ? { winnerId } : {}),
+      ...(hasWinner !== undefined ? { hasWinner } : {}),
+    });
     return (
       <StatusBadge
         variant={presentation.variant}

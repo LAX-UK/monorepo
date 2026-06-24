@@ -143,7 +143,7 @@ export function computeEndedSaleSummary(
 
   const allLoaded = opts.loadedCount === opts.totalLots && lots.length === opts.totalLots;
   const endedLots = lots.filter((l) => l.status === "ended");
-  const soldLots = endedLots.filter((l) => l.winnerId);
+  const soldLots = endedLots.filter((l) => l.winnerId != null || l.hasWinner === true);
   const unsoldCount = endedLots.length - soldLots.length;
 
   let hammerSum = 0;
@@ -296,6 +296,7 @@ export function mapLotToCardVM(
     artistOrMedium: lotSubtitle(lot),
     viewerIsWatching: Boolean(opts.initialWatching),
     winnerId: lot.winnerId,
+    ...(lot.hasWinner !== undefined ? { hasWinner: lot.hasWinner } : {}),
     ...toLotCardTimingVM(lot),
   };
 }
