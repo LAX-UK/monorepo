@@ -296,6 +296,7 @@ export function parseLot(raw: unknown): Lot {
     endTime: toDate(o.endTime),
     status: o.status as Lot["status"],
     winnerId: o.winnerId == null ? null : String(o.winnerId),
+    ...(typeof o.hasWinner === "boolean" ? { hasWinner: o.hasWinner } : {}),
     createdAt: toDate(o.createdAt),
     updatedAt: toDate(o.updatedAt),
     marketingDetails: parseMarketingDetails(o.marketingDetails),

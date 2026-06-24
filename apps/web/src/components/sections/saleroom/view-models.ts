@@ -75,6 +75,7 @@ export type SaleLotCardVM = {
   isOnBlock?: boolean;
   /** Drives Sold vs Unsold when status is `ended`. */
   winnerId?: string | null | undefined;
+  hasWinner?: boolean;
 } & LotCardTimingVM;
 
 export type RelatedSaleVM = {

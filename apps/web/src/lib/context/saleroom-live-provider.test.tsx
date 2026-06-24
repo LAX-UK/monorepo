@@ -27,13 +27,13 @@ vi.mock("@/lib/data/http/saleroom-status.client", () => ({
   fetchSaleroomStatus: (...args: unknown[]) => mockFetchSaleroomStatus(...args),
 }));
 
-const mockNotifyWarning = vi.fn();
-const mockNotifySuccess = vi.fn();
-vi.mock("@/lib/ui/notify", () => ({
-  notify: {
-    warning: (...args: unknown[]) => mockNotifyWarning(...args),
-    success: (...args: unknown[]) => mockNotifySuccess(...args),
-  },
+const mockReportNotice = vi.fn();
+const mockClearNotice = vi.fn();
+vi.mock("@/lib/connection/live-connectivity-notice", () => ({
+  useLiveConnectivityNoticeReporterOptional: () => ({
+    reportNotice: (...args: unknown[]) => mockReportNotice(...args),
+    clearNotice: (...args: unknown[]) => mockClearNotice(...args),
+  }),
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -83,8 +83,8 @@ beforeEach(() => {
   mockEmit.mockReset();
   mockOn.mockReset();
   mockOff.mockReset();
-  mockNotifyWarning.mockReset();
-  mockNotifySuccess.mockReset();
+  mockReportNotice.mockReset();
+  mockClearNotice.mockReset();
   mockFetchSaleroomStatus.mockReset();
   mockConnected.value = false;
 });
@@ -163,11 +163,11 @@ describe("SaleroomLiveProvider — periodic interval resync", () => {
     await advanceAndFlush(100);
 
     mockFetchSaleroomStatus.mockResolvedValue(null);
-    mockNotifyWarning.mockClear();
+    mockReportNotice.mockClear();
 
     await advanceAndFlush(15_000);
 
-    expect(mockNotifyWarning).not.toHaveBeenCalled();
+    expect(mockReportNotice).not.toHaveBeenCalled();
   });
 
   it("de-dupes overlapping interval hydrates via in-flight guard", async () => {
@@ -324,14 +324,14 @@ describe("SaleroomLiveProvider — refresh()", () => {
     await advanceAndFlush(100);
 
     mockFetchSaleroomStatus.mockResolvedValue(null);
-    mockNotifyWarning.mockClear();
+    mockReportNotice.mockClear();
 
     await act(async () => {
       result.current?.refresh();
       await vi.advanceTimersByTimeAsync(100);
     });
 
-    expect(mockNotifyWarning).not.toHaveBeenCalled();
+    expect(mockReportNotice).not.toHaveBeenCalled();
   });
 
   it("de-dupes concurrent refresh() calls via in-flight guard", async () => {
@@ -398,19 +398,18 @@ describe("SaleroomLiveProvider — socket event passthrough", () => {
   });
 });
 
-describe("SaleroomLiveProvider — reconnect toast is preserved", () => {
-  it("shows a success toast on socket reconnect re-hydrate", async () => {
+describe("SaleroomLiveProvider — reconnect", () => {
+  it("re-hydrates silently on socket reconnect without a success toast", async () => {
     mockFetchSaleroomStatus.mockResolvedValue(LIVE_LOT1);
-    // Mark as previously connected so reconnect branch fires
     mockConnected.value = true;
 
     renderHook(() => useSaleroomLive(), { wrapper: wrapper("sale-1", INITIAL_NONE) });
 
     await advanceAndFlush(100);
-    mockNotifySuccess.mockClear();
+    mockReportNotice.mockClear();
+    mockClearNotice.mockClear();
     mockFetchSaleroomStatus.mockResolvedValue(LIVE_LOT1);
 
-    // Fire the connect event (simulates reconnect)
     await act(async () => {
       for (const [event, handler] of mockOn.mock.calls) {
         if (event === "connect" && typeof handler === "function") {
@@ -420,9 +419,22 @@ describe("SaleroomLiveProvider — reconnect toast is preserved", () => {
       await vi.advanceTimersByTimeAsync(100);
     });
 
-    expect(mockNotifySuccess).toHaveBeenCalledWith(
-      expect.stringContaining("Reconnected"),
-      expect.anything(),
+    expect(mockReportNotice).not.toHaveBeenCalled();
+    expect(mockClearNotice).toHaveBeenCalledWith("saleroom-hydrate-failed-sale-1");
+  });
+
+  it("reports a connectivity notice when a non-silent hydrate fails", async () => {
+    mockFetchSaleroomStatus.mockResolvedValue(null);
+
+    renderHook(() => useSaleroomLive(), { wrapper: wrapper("sale-1", INITIAL_NONE) });
+
+    await advanceAndFlush(100);
+
+    expect(mockReportNotice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "saleroom-hydrate-failed-sale-1",
+        message: expect.stringContaining("Could not refresh saleroom status"),
+      }),
     );
   });
 });

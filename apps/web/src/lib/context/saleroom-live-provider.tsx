@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  LIVE_CONNECTIVITY_COPY,
+  saleroomHydrateNoticeId,
+} from "@/lib/connection/live-connectivity-copy";
+import { useLiveConnectivityNoticeReporterOptional } from "@/lib/connection/live-connectivity-notice";
 import { fetchSaleroomStatus } from "@/lib/data/http/saleroom-status.client";
 import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
@@ -8,7 +13,6 @@ import {
   isSaleroomSessionLive,
 } from "@/lib/saleroom/public-session-status";
 import { getSocket } from "@/lib/socket";
-import { notify } from "@/lib/ui/notify";
 import type { SaleroomRealtimePayload } from "@auction/types";
 import {
   type ReactNode,
@@ -43,10 +47,16 @@ type Props = {
 /** Subscribes to saleroom session events for hybrid/onsite buyer awareness. */
 export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
   const [state, setState] = useState<PublicSaleroomSessionStatus>(initial);
+  const noticeReporter = useLiveConnectivityNoticeReporterOptional();
+  const noticeReporterRef = useRef(noticeReporter);
   /** After first socket event or HTTP hydrate, ignore SSR `initial` re-seeds. */
   const hasAuthoritativeStateRef = useRef(false);
   /** Prevents overlapping silent hydrates from stacking. */
   const hydratingSilentlyRef = useRef(false);
+
+  useEffect(() => {
+    noticeReporterRef.current = noticeReporter;
+  }, [noticeReporter]);
 
   useEffect(() => {
     if (!hasAuthoritativeStateRef.current) {
@@ -72,29 +82,21 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
      * When `silent` is true, failures are swallowed and no toasts are shown,
      * which is appropriate for the periodic interval and focus-resync paths.
      */
-    const hydrateFromServer = async (opts?: {
-      notifyOnSuccess?: boolean;
-      silent?: boolean;
-    }): Promise<boolean> => {
+    const hydrateFromServer = async (opts?: { silent?: boolean }): Promise<boolean> => {
+      const noticeId = saleroomHydrateNoticeId(saleId);
       const snap = await fetchSaleroomStatus(saleId);
       if (!snap) {
         if (!opts?.silent) {
-          notify.warning("Could not refresh saleroom status", {
-            id: `saleroom-hydrate-failed-${saleId}`,
-            description: "On-block lot info may be stale until the connection recovers.",
-            duration: 7000,
+          noticeReporterRef.current?.reportNotice({
+            id: noticeId,
+            message: LIVE_CONNECTIVITY_COPY.saleroomHydrateFailed,
           });
         }
         return false;
       }
       setState(snap);
       markAuthoritative();
-      if (opts?.notifyOnSuccess) {
-        notify.success("Reconnected — saleroom status refreshed", {
-          id: `saleroom-reconnect-${saleId}`,
-          duration: 5000,
-        });
-      }
+      noticeReporterRef.current?.clearNotice(noticeId);
       return true;
     };
 
@@ -131,7 +133,7 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
     const onConnect = () => {
       join();
       if (hadConnected) {
-        void hydrateFromServer({ notifyOnSuccess: true });
+        void hydrateFromServer();
       }
       hadConnected = true;
     };
@@ -169,11 +171,13 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
   const refresh = useCallback(() => {
     if (hydratingSilentlyRef.current) return;
     hydratingSilentlyRef.current = true;
+    const noticeId = saleroomHydrateNoticeId(saleId);
     void fetchSaleroomStatus(saleId)
       .then((snap) => {
         if (snap) {
           setState(snap);
           hasAuthoritativeStateRef.current = true;
+          noticeReporterRef.current?.clearNotice(noticeId);
         }
       })
       .finally(() => {

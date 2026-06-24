@@ -20,7 +20,13 @@ type LotPriceDisplaySource = Pick<
   | "buyNowPrice"
   | "startingPrice"
   | "marketingDetails"
->;
+> & {
+  hasWinner?: boolean;
+};
+
+function lotWasSold(lot: LotPriceDisplaySource): boolean {
+  return lot.winnerId != null || lot.hasWinner === true;
+}
 
 function money(amount: string, lot: LotPriceDisplaySource): string {
   return formatMoney(amount, resolveLotCurrency(lot));
@@ -35,7 +41,7 @@ export function lotPriceDisplay(lot: LotPriceDisplaySource): LotPriceDisplay {
   }
 
   if (lot.status === "ended") {
-    if (lot.winnerId) {
+    if (lotWasSold(lot)) {
       return { label: "Sold for", value: money(lot.currentPrice, lot) };
     }
     return { label: "Unsold", value: "—" };
