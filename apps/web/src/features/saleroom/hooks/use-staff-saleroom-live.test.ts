@@ -4,16 +4,18 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchSaleroomStatus = vi.fn();
+const mockReportNotice = vi.fn();
+const mockClearNotice = vi.fn();
 
 vi.mock("@/lib/data/http/saleroom-status.client", () => ({
   fetchSaleroomStatus: (...args: unknown[]) => fetchSaleroomStatus(...args),
 }));
 
-vi.mock("@/lib/ui/notify", () => ({
-  notify: {
-    success: vi.fn(),
-    warning: vi.fn(),
-  },
+vi.mock("@/lib/connection/live-connectivity-notice", () => ({
+  useLiveConnectivityNoticeReporterOptional: () => ({
+    reportNotice: (...args: unknown[]) => mockReportNotice(...args),
+    clearNotice: (...args: unknown[]) => mockClearNotice(...args),
+  }),
 }));
 
 describe("useStaffSaleroomLive", () => {
@@ -21,6 +23,8 @@ describe("useStaffSaleroomLive", () => {
 
   beforeEach(() => {
     fetchSaleroomStatus.mockReset();
+    mockReportNotice.mockReset();
+    mockClearNotice.mockReset();
   });
 
   it("updates session when saleroom socket events arrive", () => {
@@ -31,7 +35,6 @@ describe("useStaffSaleroomLive", () => {
         saleId: "sale-1",
         initial: initialSession,
         socketAdapter: adapter,
-        notifyOnReconnect: false,
       }),
     );
 
@@ -61,7 +64,6 @@ describe("useStaffSaleroomLive", () => {
         saleId: "sale-1",
         initial: initialSession,
         socketAdapter: adapter,
-        notifyOnReconnect: false,
       }),
     );
 
@@ -84,6 +86,7 @@ describe("useStaffSaleroomLive", () => {
     expect(fetchSaleroomStatus).toHaveBeenCalledWith("sale-1");
     expect(result.current.session.status).toBe("paused");
     expect(result.current.session.currentLotId).toBe("lot-9");
+    expect(mockClearNotice).toHaveBeenCalledWith("saleroom-hydrate-failed-sale-1");
   });
 
   it("sets connectionStatus to disconnected when socket drops", () => {
@@ -94,7 +97,6 @@ describe("useStaffSaleroomLive", () => {
         saleId: "sale-1",
         initial: initialSession,
         socketAdapter: adapter,
-        notifyOnReconnect: false,
       }),
     );
 
@@ -109,5 +111,41 @@ describe("useStaffSaleroomLive", () => {
     });
 
     expect(result.current.session.connectionStatus).toBe("disconnected");
+  });
+
+  it("reports a connectivity notice when reconnect hydrate fails", async () => {
+    const adapter = createMockSaleroomSocketAdapter();
+    fetchSaleroomStatus.mockResolvedValueOnce(null);
+
+    renderHook(() =>
+      useStaffSaleroomLive({
+        saleId: "sale-1",
+        initial: initialSession,
+        socketAdapter: adapter,
+      }),
+    );
+
+    act(() => {
+      adapter.simulateConnect();
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      adapter.simulateConnect();
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockReportNotice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "saleroom-hydrate-failed-sale-1",
+        message: expect.stringContaining("Could not refresh saleroom status"),
+      }),
+    );
   });
 });

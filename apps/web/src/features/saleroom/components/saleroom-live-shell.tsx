@@ -1,6 +1,8 @@
 "use client";
 
+import { LiveConnectivityNoticeBanner } from "@/components/realtime/live-connectivity-notice-banner";
 import { useStaffSaleroomLive } from "@/features/saleroom/hooks/use-staff-saleroom-live";
+import { LiveConnectivityNoticeProvider } from "@/lib/connection/live-connectivity-notice";
 import type { AdminSaleroomEventRow } from "@/lib/data/http/admin.server";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import type { ReactNode } from "react";
@@ -13,8 +15,7 @@ type Props = {
   children: (value: ReturnType<typeof useStaffSaleroomLive>) => ReactNode;
 };
 
-/** Client island wrapper — pages pass server-fetched initial state. */
-export function SaleroomLiveShell({
+function SaleroomLiveShellInner({
   saleId,
   initial,
   dbEvents = [],
@@ -27,5 +28,22 @@ export function SaleroomLiveShell({
     trackLiveFeed,
     dbEvents,
   });
-  return <>{children(live)}</>;
+  return (
+    <>
+      <LiveConnectivityNoticeBanner
+        scope="saleroom"
+        testId="staff-saleroom-connectivity-notice-banner"
+      />
+      {children(live)}
+    </>
+  );
+}
+
+/** Client island wrapper — pages pass server-fetched initial state. */
+export function SaleroomLiveShell(props: Props) {
+  return (
+    <LiveConnectivityNoticeProvider>
+      <SaleroomLiveShellInner {...props} />
+    </LiveConnectivityNoticeProvider>
+  );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRealtimeHealthPortOptional } from "@/lib/connection/realtime-health-provider";
 import type { AutoBidWriter, BidWriter } from "@/lib/data/contracts";
 import { createHttpAutoBidWriter } from "@/lib/data/http/auto-bid";
 import { createHttpBidWriter } from "@/lib/data/http/bids";
@@ -34,14 +35,15 @@ export function LotPortsProvider({
    * `X-Legal-Entity-Id` header so bids never trust a stale browser cookie. */
   actingEntityId?: string | undefined;
 }) {
+  const contextHealth = useRealtimeHealthPortOptional();
   const value = useMemo<LotPortsValue>(
     () => ({
       bidWriter: bidWriter ?? createHttpBidWriter(actingEntityId),
       autoBidWriter: autoBidWriter ?? createHttpAutoBidWriter(actingEntityId),
       realtime: realtime ?? createSocketLotRealtime(),
-      health: health ?? createSocketHealthAdapter(),
+      health: health ?? contextHealth ?? createSocketHealthAdapter(),
     }),
-    [bidWriter, autoBidWriter, realtime, health, actingEntityId],
+    [bidWriter, autoBidWriter, realtime, health, contextHealth, actingEntityId],
   );
   return <LotPortsContext.Provider value={value}>{children}</LotPortsContext.Provider>;
 }
@@ -52,4 +54,8 @@ export function useLotPorts(): LotPortsValue {
     throw new Error("useLotPorts must be used within LotPortsProvider");
   }
   return ctx;
+}
+
+export function useLotPortsOptional(): LotPortsValue | null {
+  return useContext(LotPortsContext);
 }
