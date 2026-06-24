@@ -103,6 +103,7 @@ export function mapLotToSummary(lot: Lot): LotSummary {
     images: lot.images,
     categoryIds: lot.categoryIds ?? (lot.categoryId ? [lot.categoryId] : []),
     marketingDetails: summaryMarketingDetails(lot),
+    ...(lot.status === "ended" ? { hasWinner: lot.winnerId != null } : {}),
   };
 }
 

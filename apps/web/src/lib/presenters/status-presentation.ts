@@ -926,6 +926,8 @@ export type StatusPresentation = {
 export type LotStatusContext = {
   /** When set, `ended` resolves to Sold vs Unsold; when omitted, falls back to Ended. */
   winnerId?: string | null | undefined;
+  /** List-row sold flag when buyer id is omitted from public summaries. */
+  hasWinner?: boolean;
 };
 
 export type StatusPresentationContext = {
@@ -934,15 +936,17 @@ export type StatusPresentationContext = {
 
 export type StatusDomain = AdminStatusDomain;
 
-/** Outcome-aware label + variant for `ended` lots (uses API `winnerId`). */
-export function lotEndedPresentation(winnerId?: string | null): StatusPresentation {
-  if (winnerId === undefined) {
-    return { label: lotStatusLabel.ended, variant: "success" };
-  }
-  if (winnerId != null) {
+/** Outcome-aware label + variant for `ended` lots (uses API `winnerId` or list `hasWinner`). */
+export function lotEndedPresentation(context?: LotStatusContext): StatusPresentation {
+  const winnerId = context?.winnerId;
+  const hasWinner = context?.hasWinner;
+  if (winnerId != null || hasWinner === true) {
     return { label: "Sold", variant: "success" };
   }
-  return { label: "Unsold", variant: "neutral" };
+  if (winnerId === null || hasWinner === false) {
+    return { label: "Unsold", variant: "neutral" };
+  }
+  return { label: lotStatusLabel.ended, variant: "success" };
 }
 
 export function resolveLotStatusPresentation(
@@ -951,7 +955,7 @@ export function resolveLotStatusPresentation(
 ): StatusPresentation {
   const variant = lotStatusToBadgeVariant(status);
   if (status === "ended") {
-    return lotEndedPresentation(context?.winnerId);
+    return lotEndedPresentation(context);
   }
   const label = lotStatusLabel[status as LotStatus] ?? String(status);
   return { label, variant, dot: status === "active" };
