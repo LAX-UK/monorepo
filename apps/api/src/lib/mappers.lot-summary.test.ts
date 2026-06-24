@@ -62,10 +62,10 @@ describe("mapLotToSummary", () => {
   });
 
   it("includes hasWinner on ended list rows without exposing buyer id", () => {
-    expect(mapLotToSummary(baseLot({ status: "ended", winnerId: "buyer-1" })).hasWinner).toBe(
-      true,
-    );
+    expect(mapLotToSummary(baseLot({ status: "ended", winnerId: "buyer-1" })).hasWinner).toBe(true);
     expect(mapLotToSummary(baseLot({ status: "ended", winnerId: null })).hasWinner).toBe(false);
-    expect(mapLotToSummary(baseLot({ status: "active", winnerId: null })).hasWinner).toBeUndefined();
+    expect(
+      mapLotToSummary(baseLot({ status: "active", winnerId: null })).hasWinner,
+    ).toBeUndefined();
   });
 });
