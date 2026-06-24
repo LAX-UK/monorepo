@@ -26,7 +26,6 @@ export function useSaleroomSessionState({
     initial,
     trackLiveFeed,
     liveFeedLimit,
-    notifyOnReconnect: false,
   });
   return {
     session: {

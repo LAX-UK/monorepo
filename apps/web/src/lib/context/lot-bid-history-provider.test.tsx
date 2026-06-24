@@ -22,13 +22,13 @@ vi.mock("@/lib/context/online-lot-lifecycle", () => ({
   useOnlineLotLifecycle: () => null,
 }));
 
-const mockNotifyWarning = vi.fn();
-const mockNotifySuccess = vi.fn();
-vi.mock("@/lib/ui/notify", () => ({
-  notify: {
-    warning: (...args: unknown[]) => mockNotifyWarning(...args),
-    success: (...args: unknown[]) => mockNotifySuccess(...args),
-  },
+const mockReportNotice = vi.fn();
+const mockClearNotice = vi.fn();
+vi.mock("@/lib/connection/live-connectivity-notice", () => ({
+  useLiveConnectivityNoticeReporterOptional: () => ({
+    reportNotice: (...args: unknown[]) => mockReportNotice(...args),
+    clearNotice: (...args: unknown[]) => mockClearNotice(...args),
+  }),
 }));
 
 const LOT_ID = "lot-1";
@@ -74,8 +74,8 @@ describe("LotBidHistoryProvider resync", () => {
     vi.useFakeTimers();
     mockFetchLotBidSnapshot.mockResolvedValue(snapshot);
     mockFetchLotBidHistory.mockResolvedValue(history);
-    mockNotifyWarning.mockReset();
-    mockNotifySuccess.mockReset();
+    mockReportNotice.mockReset();
+    mockClearNotice.mockReset();
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
@@ -105,7 +105,7 @@ describe("LotBidHistoryProvider resync", () => {
 
     expect(mockFetchLotBidSnapshot).toHaveBeenCalledWith(LOT_ID);
     expect(mockFetchLotBidHistory).toHaveBeenCalledWith(LOT_ID);
-    expect(mockNotifyWarning).not.toHaveBeenCalled();
+    expect(mockReportNotice).not.toHaveBeenCalled();
   });
 
   it("does not hydrate on visibility change while the tab is hidden", async () => {
@@ -139,7 +139,7 @@ describe("LotBidHistoryProvider resync", () => {
 
     expect(mockFetchLotBidSnapshot).toHaveBeenCalledWith(LOT_ID);
     expect(mockFetchLotBidHistory).toHaveBeenCalledWith(LOT_ID);
-    expect(mockNotifyWarning).not.toHaveBeenCalled();
+    expect(mockReportNotice).not.toHaveBeenCalled();
   });
 
   it("stops interval polling once the lot has ended", async () => {
@@ -167,5 +167,34 @@ describe("LotBidHistoryProvider resync", () => {
 
     expect(mockFetchLotBidSnapshot).not.toHaveBeenCalled();
     expect(mockFetchLotBidHistory).not.toHaveBeenCalled();
+  });
+
+  it("reports a connectivity notice when a non-silent hydrate fails", async () => {
+    const { result } = renderHook(() => useLotBidHistory(), { wrapper });
+    await advanceAndFlush(100);
+
+    mockFetchLotBidSnapshot.mockResolvedValue(null);
+
+    await act(async () => {
+      await result.current.refreshFromServer();
+    });
+
+    expect(mockReportNotice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "lot-hydrate-failed-lot-1",
+        message: expect.stringContaining("Could not refresh live prices"),
+      }),
+    );
+  });
+
+  it("clears the connectivity notice after a successful hydrate", async () => {
+    const { result } = renderHook(() => useLotBidHistory(), { wrapper });
+    await advanceAndFlush(100);
+
+    await act(async () => {
+      await result.current.refreshFromServer();
+    });
+
+    expect(mockClearNotice).toHaveBeenCalledWith("lot-hydrate-failed-lot-1");
   });
 });

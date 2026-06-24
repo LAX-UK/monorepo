@@ -9,6 +9,11 @@ import type {
   SaleroomActivityEntry,
   StaffSaleroomSessionVM,
 } from "@/features/saleroom/types/staff-saleroom.vm";
+import {
+  LIVE_CONNECTIVITY_COPY,
+  saleroomHydrateNoticeId,
+} from "@/lib/connection/live-connectivity-copy";
+import { useLiveConnectivityNoticeReporterOptional } from "@/lib/connection/live-connectivity-notice";
 import type { AdminSaleroomEventRow } from "@/lib/data/http/admin.server";
 import { fetchSaleroomStatus } from "@/lib/data/http/saleroom-status.client";
 import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
@@ -17,7 +22,6 @@ import {
   isSaleroomSessionActive,
   isSaleroomSessionLive,
 } from "@/lib/saleroom/public-session-status";
-import { notify } from "@/lib/ui/notify";
 import type { SaleroomRealtimePayload } from "@auction/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -28,7 +32,6 @@ type Options = {
   liveFeedLimit?: number;
   dbEvents?: AdminSaleroomEventRow[];
   socketAdapter?: SaleroomSocketAdapter;
-  notifyOnReconnect?: boolean;
 };
 
 function toStaffSessionVM(
@@ -52,7 +55,6 @@ export function useStaffSaleroomLive({
   liveFeedLimit = 40,
   dbEvents = [],
   socketAdapter = createSaleroomSocketAdapter(),
-  notifyOnReconnect = true,
 }: Options): {
   session: StaffSaleroomSessionVM;
   liveFeed: SaleroomRealtimePayload[];
@@ -65,6 +67,12 @@ export function useStaffSaleroomLive({
   const [lastEventAt, setLastEventAt] = useState<string | null>(null);
   const connectionStatusRef = useRef(connectionStatus);
   connectionStatusRef.current = connectionStatus;
+  const noticeReporter = useLiveConnectivityNoticeReporterOptional();
+  const noticeReporterRef = useRef(noticeReporter);
+
+  useEffect(() => {
+    noticeReporterRef.current = noticeReporter;
+  }, [noticeReporter]);
 
   useEffect(() => {
     if (connectionStatusRef.current === "disconnected") {
@@ -74,23 +82,22 @@ export function useStaffSaleroomLive({
 
   useEffect(() => {
     let hadConnected = socketAdapter.isConnected();
+    const noticeId = saleroomHydrateNoticeId(saleId);
 
     const hydrateFromServer = async (): Promise<boolean> => {
       const snap = await fetchSaleroomStatus(saleId);
       if (!snap) {
         setConnectionStatus("disconnected");
-        if (notifyOnReconnect) {
-          notify.warning("Could not refresh saleroom status", {
-            id: `saleroom-hydrate-failed-${saleId}`,
-            description: "Session info may be stale until the connection recovers.",
-            duration: 7000,
-          });
-        }
+        noticeReporterRef.current?.reportNotice({
+          id: noticeId,
+          message: LIVE_CONNECTIVITY_COPY.saleroomHydrateFailed,
+        });
         return false;
       }
       setSession(snap);
       setConnectionStatus("connected");
       setLastEventAt(new Date().toISOString());
+      noticeReporterRef.current?.clearNotice(noticeId);
       return true;
     };
 
@@ -113,14 +120,7 @@ export function useStaffSaleroomLive({
       join();
       if (hadConnected) {
         setConnectionStatus("reconnecting");
-        void hydrateFromServer().then((ok) => {
-          if (ok && notifyOnReconnect) {
-            notify.success("Reconnected — saleroom status refreshed", {
-              id: `saleroom-reconnect-${saleId}`,
-              duration: 5000,
-            });
-          }
-        });
+        void hydrateFromServer();
       } else {
         setConnectionStatus(socketAdapter.isConnected() ? "connected" : "reconnecting");
       }
@@ -142,7 +142,7 @@ export function useStaffSaleroomLive({
       socketAdapter.offDisconnect(onDisconnect);
       socketAdapter.leaveSaleroom(saleId);
     };
-  }, [liveFeedLimit, notifyOnReconnect, saleId, socketAdapter, trackLiveFeed]);
+  }, [liveFeedLimit, saleId, socketAdapter, trackLiveFeed]);
 
   const staffSession = useMemo(
     () => toStaffSessionVM(session, connectionStatus, lastEventAt),

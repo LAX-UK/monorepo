@@ -13,8 +13,12 @@ import {
 } from "@/lib/bid/lot-bid-history-reducer";
 import type { OwnBidEchoGuard } from "@/lib/bid/own-bid-echo-guard";
 import { shouldSkipOwnBidEcho } from "@/lib/bid/own-bid-echo-guard";
+import {
+  LIVE_CONNECTIVITY_COPY,
+  lotHydrateNoticeId,
+} from "@/lib/connection/live-connectivity-copy";
+import { useLiveConnectivityNoticeReporterOptional } from "@/lib/connection/live-connectivity-notice";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
-import { notify } from "@/lib/ui/notify";
 import type { BidUpdateEvent, Lot, LotEndedEvent } from "@auction/types";
 import {
   type ReactNode,
@@ -36,7 +40,7 @@ type LotBidHistoryContextValue = {
   leadingBidderId: string | null;
   applyOwnBid: (bid: OwnBidInput) => void;
   setEndedWinner: (winnerId: string | null, currentPrice: string) => void;
-  refreshFromServer: (opts?: { fromReconnect?: boolean; silent?: boolean }) => Promise<{
+  refreshFromServer: (opts?: { silent?: boolean }) => Promise<{
     ok: boolean;
     snapshot?: LotBidSnapshot;
   }>;
@@ -74,6 +78,7 @@ export function LotBidHistoryProvider({
   children,
 }: ProviderProps) {
   const onlineLifecycle = useOnlineLotLifecycle();
+  const noticeReporter = useLiveConnectivityNoticeReporterOptional();
   const localOwnBidRef = useRef<OwnBidEchoGuard | null>(null);
   const ownBidEchoGuardRef = onlineLifecycle?.ownBidEchoGuardRef ?? localOwnBidRef;
 
@@ -107,20 +112,20 @@ export function LotBidHistoryProvider({
   }, []);
 
   const hydrateFromServer = useCallback(
-    async (opts?: { fromReconnect?: boolean; silent?: boolean }): Promise<{
+    async (opts?: { silent?: boolean }): Promise<{
       ok: boolean;
       snapshot?: LotBidSnapshot;
     }> => {
+      const noticeId = lotHydrateNoticeId(lotId);
       const [lotSnap, bidEntries] = await Promise.all([
         fetchLotBidSnapshot(lotId),
         fetchLotBidHistory(lotId),
       ]);
       if (!lotSnap || !bidEntries) {
         if (!opts?.silent) {
-          notify.warning("Could not refresh live prices", {
-            id: `lot-hydrate-failed-${lotId}`,
-            description: "Showing last known bids until the connection recovers.",
-            duration: 7000,
+          noticeReporter?.reportNotice({
+            id: noticeId,
+            message: LIVE_CONNECTIVITY_COPY.lotHydrateFailed,
           });
         }
         return { ok: false };
@@ -140,15 +145,10 @@ export function LotBidHistoryProvider({
       const endMs = new Date(lotSnap.endTime).getTime();
       onlineLifecycle?.setLiveEndTimeMs(endMs);
       onlineLifecycle?.setLiveLotStatus(lotSnap.status);
-      if (opts?.fromReconnect) {
-        notify.success("Reconnected — live prices refreshed", {
-          id: `lot-reconnect-${lotId}`,
-          duration: 5000,
-        });
-      }
+      noticeReporter?.clearNotice(noticeId);
       return { ok: true, snapshot: lotSnap };
     },
-    [lotId, onlineLifecycle],
+    [lotId, onlineLifecycle, noticeReporter],
   );
 
   useLotRealtime(lotId, {
@@ -170,7 +170,7 @@ export function LotBidHistoryProvider({
       }));
     },
     onReconnect: () => {
-      void hydrateFromServer({ fromReconnect: true });
+      void hydrateFromServer();
     },
   });
 
