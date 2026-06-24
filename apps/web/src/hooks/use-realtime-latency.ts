@@ -1,6 +1,7 @@
 "use client";
 
-import { useLotPorts } from "@/lib/context/lot-ports";
+import { useRealtimeHealthPortOptional } from "@/lib/connection/realtime-health-provider";
+import { useLotPortsOptional } from "@/lib/context/lot-ports";
 import type { ConnectionStatus } from "@/lib/realtime/contracts";
 import { useEffect, useState } from "react";
 
@@ -12,10 +13,15 @@ const initial: ConnectionStatus = {
 };
 
 export function useRealtimeLatency(): ConnectionStatus {
-  const { health } = useLotPorts();
+  const contextHealth = useRealtimeHealthPortOptional();
+  const lotPorts = useLotPortsOptional();
+  const health = contextHealth ?? lotPorts?.health ?? null;
   const [status, setStatus] = useState<ConnectionStatus>(initial);
 
-  useEffect(() => health.subscribe(setStatus), [health]);
+  useEffect(() => {
+    if (!health) return;
+    return health.subscribe(setStatus);
+  }, [health]);
 
   return status;
 }

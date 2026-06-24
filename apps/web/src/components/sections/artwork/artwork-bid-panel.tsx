@@ -91,6 +91,7 @@ export function ArtworkBidPanel({
   const { refreshFromServer } = useLotBidHistory();
   const onlineLifecycle = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
+  const connectivityScope = saleroomLive ? "hybrid" : "bidding";
   const { biddingAllowed, realtimeHealthy } = useLiveConnection();
   const isLotOnBlock = saleroomLive?.isLotOnBlock(auction.id) ?? false;
 
@@ -719,7 +720,9 @@ export function ArtworkBidPanel({
 
           return (
             <div className="min-w-0">
-              {biddingLive ? <ConnectionStatusBannerContainer className="mb-3" /> : null}
+              {biddingLive ? (
+                <ConnectionStatusBannerContainer scope={connectivityScope} className="mb-3" />
+              ) : null}
               <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
                 {/* Compact summary row */}
                 <div className="flex items-center gap-3">
@@ -788,7 +791,9 @@ export function ArtworkBidPanel({
         /* ── Full surface (Bids View tab / no video stream) ────────────────── */
         return (
           <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
-            {biddingLive ? <ConnectionStatusBannerContainer className="mb-4" /> : null}
+            {biddingLive ? (
+              <ConnectionStatusBannerContainer scope={connectivityScope} className="mb-4" />
+            ) : null}
             <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
               {showPricingHeader ? (
                 <LotPricingStatusHeader

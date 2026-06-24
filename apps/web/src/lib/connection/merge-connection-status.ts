@@ -1,3 +1,4 @@
+import { biddingConnectionMessage } from "@/lib/connection/live-connectivity-copy";
 import type { ConnectionStatus } from "@/lib/realtime/contracts";
 
 export type LiveConnectionState = "offline" | "connecting" | "degraded" | "live";
@@ -15,16 +16,7 @@ export function mergeConnectionStatus(
 }
 
 export function liveConnectionMessage(state: LiveConnectionState): string | null {
-  switch (state) {
-    case "offline":
-      return "No connection — live bidding is paused. Prices may be outdated.";
-    case "connecting":
-      return "Reconnecting to the saleroom…";
-    case "degraded":
-      return "Slow connection — live updates may be delayed. You can still place bids; we refresh the price before you confirm.";
-    default:
-      return null;
-  }
+  return biddingConnectionMessage(state);
 }
 
 /** True when HTTP bid submission is allowed (live or degraded socket). */
