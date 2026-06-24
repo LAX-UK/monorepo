@@ -1,7 +1,7 @@
-import type { Lot } from "@auction/types";
+import type { Lot, PublicLotView } from "@auction/types";
 
 /** Min next bid amount (same rules as the bid panel / bid form). */
-export function getMinNextBidAmount(auction: Lot, currentPriceStr: string): number {
+export function getMinNextBidAmount(auction: Lot | PublicLotView, currentPriceStr: string): number {
   const cur = Number.parseFloat(currentPriceStr);
   if (auction.auctionType === "dutch") return cur;
   const start = Number.parseFloat(auction.startingPrice);

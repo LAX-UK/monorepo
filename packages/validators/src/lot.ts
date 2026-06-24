@@ -1,6 +1,7 @@
 import { lotAuctionTypes, lotStatuses } from "@auction/types";
 import { z } from "zod";
 import { mediaReferenceSchema } from "./media.js";
+import { moneyGte, moneyLt } from "./money-compare.js";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal string");
 
@@ -56,7 +57,65 @@ const createLotBodySchema = z.object({
   artistId: z.string().uuid().nullable().optional(),
 });
 
-export const createLotSchema = z.preprocess(normalizeCategoryIdsInput, createLotBodySchema);
+type CreateLotBody = z.infer<typeof createLotBodySchema>;
+
+function refineLotPricingFields(
+  values: Partial<CreateLotBody>,
+  ctx: z.RefinementCtx,
+  opts?: { requireBuyNowWhenTypeSet?: boolean },
+) {
+  const starting = values.startingPrice?.trim();
+  const reserve = values.reservePrice?.trim();
+  if (starting && reserve && moneyLt(reserve, starting)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Reserve must be at least the starting price",
+      path: ["reservePrice"],
+    });
+  }
+
+  const buyNow = values.buyNowPrice?.trim();
+  if (values.auctionType === "buy_it_now" && opts?.requireBuyNowWhenTypeSet !== false) {
+    if (!buyNow) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Buy now price is required",
+        path: ["buyNowPrice"],
+      });
+    }
+  }
+
+  if (buyNow && starting && moneyLt(buyNow, starting)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Buy now price must be at least the list / floor price",
+      path: ["buyNowPrice"],
+    });
+  }
+
+  const floor =
+    starting && reserve
+      ? moneyGte(reserve, starting)
+        ? reserve
+        : starting
+      : (reserve ?? starting);
+  if (buyNow && floor && moneyLt(buyNow, floor)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Buy now price must be at least the reserve (or starting price when no reserve)",
+      path: ["buyNowPrice"],
+    });
+  }
+}
+
+const createLotBodyWithPricingRefine = createLotBodySchema.superRefine((values, ctx) =>
+  refineLotPricingFields(values, ctx, { requireBuyNowWhenTypeSet: true }),
+);
+
+export const createLotSchema = z.preprocess(
+  normalizeCategoryIdsInput,
+  createLotBodyWithPricingRefine,
+);
 
 const listSort = z
   .enum(["createdDesc", "endingAsc", "hammerDesc", "endedDesc", "sellerAsc"])
@@ -145,6 +204,9 @@ export const updateLotSchema = z
         path: ["saleId"],
       });
     }
+    refineLotPricingFields(values as Partial<CreateLotBody>, ctx, {
+      requireBuyNowWhenTypeSet: values.auctionType === "buy_it_now",
+    });
   });
 
 export const lotIdParamSchema = z.object({

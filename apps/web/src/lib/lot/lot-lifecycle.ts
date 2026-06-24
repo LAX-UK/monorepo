@@ -31,7 +31,7 @@ export type LifecycleBadgeVM = {
 
 type LotLifecycleLot = Pick<
   Lot,
-  "status" | "startTime" | "endTime" | "winnerId" | "reservePrice" | "currentPrice" | "id"
+  "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"
 >;
 
 type LotLifecycleSale =

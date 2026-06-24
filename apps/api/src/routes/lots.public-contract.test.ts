@@ -39,10 +39,23 @@ function draftLot(): Lot {
   };
 }
 
-function mount(user: { id: string; role: string; staffRole?: string } | null) {
+function activeLot(): Lot {
+  return {
+    ...draftLot(),
+    status: "active",
+    reservePrice: "27000.00",
+    currentPrice: "1101.00",
+    saleId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  };
+}
+
+function mount(
+  user: { id: string; role: string; staffRole?: string } | null,
+  lot: Lot = draftLot(),
+) {
   const app = new Hono();
   const listLotsForPublicApi = vi.fn().mockResolvedValue({ data: [] });
-  const getById = vi.fn().mockResolvedValue(draftLot());
+  const getById = vi.fn().mockResolvedValue(lot);
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     lotService: { getById, listLotsForPublicApi },
@@ -93,6 +106,53 @@ describe("lots public contract", () => {
     const { app } = mount(null);
     const res = await app.request(`http://t/lots/${lotId}`);
     expect(res.status).toBe(404);
+  });
+
+  it("strips reservePrice from public lot detail for anonymous callers", async () => {
+    const saleId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const lot = activeLot();
+    const app = new Hono();
+    const getById = vi.fn().mockResolvedValue(lot);
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      lotService: { getById, listLotsForPublicApi: vi.fn() },
+      saleService: {
+        getById: vi.fn().mockResolvedValue({
+          id: saleId,
+          status: "active",
+          deliveryMode: "online",
+          allowOnlineBidsBeforeGoLive: true,
+        }),
+        findByIds: vi.fn().mockResolvedValue([]),
+      },
+      mediaUrlResolver: {
+        resolve: vi.fn(async (url: string) => url),
+        resolveMany: vi.fn(async (urls: string[]) => urls),
+      },
+      lotSoftDeleteService: { getDeleteEligibility: vi.fn() },
+      lotLifecycleQueryService: { getSnapshotsForLots: vi.fn().mockResolvedValue(new Map()) },
+      cachedCatalogueListService: {
+        buildKey: (_route: string, query: Record<string, unknown>) => JSON.stringify(query),
+        getOrLoad: async (_key: string, load: () => Promise<unknown>) => load(),
+      },
+      redis: null,
+      env: {},
+      kycService: null,
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue(null),
+    };
+    app.route("/lots", createLotRoutes(container, authenticator));
+
+    const res = await app.request(`http://t/lots/${lotId}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: Record<string, unknown> };
+    expect(body.data).not.toHaveProperty("reservePrice");
+    expect(body.data).toMatchObject({
+      hasReserve: true,
+      reserveMet: false,
+      currentPrice: "1101.00",
+    });
   });
 
   it("returns 200 for draft lot detail when catalogue staff", async () => {

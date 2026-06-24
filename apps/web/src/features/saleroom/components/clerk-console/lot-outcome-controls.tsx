@@ -43,10 +43,15 @@ export function LotOutcomeControls({ saleId, canHammer, className, compact = fal
             disabled={!canHammer}
             aria-disabled={!canHammer}
           >
-            No sale
+            Pass (no sale)
           </SaleroomPendingSubmit>
         </form>
       </div>
+      {!compact ? (
+        <p className="font-body text-xs text-on-surface-variant">
+          Use Pass when the reserve isn&apos;t met or the lot is withdrawn from the block.
+        </p>
+      ) : null}
     </div>
   );
 }

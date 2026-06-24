@@ -36,13 +36,13 @@ import { lotPath } from "@/lib/seo/url";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import { BID_ERROR_CODES } from "@/lib/ui/bid-error/codes";
 import { shouldStayOnBidConfirmStep } from "@/lib/ui/bid-error/confirm-step";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
-  auction: Lot;
+  auction: Lot | PublicLotView;
   initialHistory: BidHistoryEntry[];
   initialLeadingBidderId?: string | null;
   sessionUser: SessionUser | null;
@@ -123,8 +123,10 @@ export function ArtworkBidPanel({
     saleEndLocalLabel,
     saleStartLocalLabel,
     position,
+    reserveContext,
     biddingLive,
     priceFlash,
+    noSaleReason,
     applyOwnBidResult,
     scrollToBid,
     scrollToAutoBid,
@@ -226,7 +228,10 @@ export function ArtworkBidPanel({
 
   const includeAutoBidOnManualBid = Boolean(activeAutoBid?.isActive);
 
-  const isWinning = position.kind === "winning" || position.kind === "winningByAuto";
+  const isWinning =
+    position.kind === "winning" ||
+    position.kind === "winningByAuto" ||
+    position.kind === "leadingBelowReserve";
 
   const supportsAutoBidPanel =
     auction.auctionType === "english" || auction.auctionType === "buy_it_now";
@@ -715,7 +720,7 @@ export function ArtworkBidPanel({
          * BidStickyMobileBar is suppressed here (the bar itself replaces it).
          */
         if (surface === "videoCompact") {
-          const positionLabel = lotBidPositionStickyLabel(position);
+          const positionLabel = lotBidPositionStickyLabel(position, reserveContext);
           const canBid = decision.kind !== "block" && !connectionBlocked && !englishOnlySurfaceLock;
 
           return (
@@ -801,7 +806,7 @@ export function ArtworkBidPanel({
                   currentPrice={currentPrice}
                   minNextBid={minNumeric.toFixed(2)}
                   lotNumber={auction.lotNumber}
-                  reservePrice={auction.reservePrice}
+                  reserveContext={reserveContext}
                   lifecycle={lifecycle}
                   countdownClock={countdownClock}
                   extendedByMs={extendedByMs}
@@ -812,7 +817,7 @@ export function ArtworkBidPanel({
                   estimateLine={summarySeed.estimateLine}
                   currentPrice={currentPrice}
                   bidCount={history.length}
-                  reservePrice={auction.reservePrice}
+                  reserveContext={reserveContext}
                   lifecycle={lifecycle}
                   countdownClock={countdownClock}
                   saleEndLocalLabel={saleEndLocalLabel}
@@ -842,6 +847,7 @@ export function ArtworkBidPanel({
                       />
                     ) : null
                   }
+                  noSaleReason={noSaleReason ?? undefined}
                 />
               ) : null}
 
@@ -906,10 +912,15 @@ export function ArtworkBidPanel({
                 isOnBlock={isLotOnBlock}
                 compact={bidCardInView}
                 position={position}
+                reserveContext={reserveContext}
                 hasActiveAutoBid={Boolean(activeAutoBid?.isActive)}
                 onFocusManualBid={() => switchEntryMode("manual", { userInitiated: true })}
                 onFocusAutoBid={() => switchEntryMode("auto", { userInitiated: true })}
-                isLeading={position.kind === "winning" || position.kind === "winningByAuto"}
+                isLeading={
+                  position.kind === "winning" ||
+                  position.kind === "winningByAuto" ||
+                  position.kind === "leadingBelowReserve"
+                }
                 upcomingSlot={
                   <ArtworkWatchToggle
                     lotId={auction.id}

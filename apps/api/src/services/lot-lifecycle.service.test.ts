@@ -337,7 +337,11 @@ describe("LotLifecycleService", () => {
     );
     await svc.runTransitions(new Date());
 
-    expect(notifyLotEnded).toHaveBeenCalledWith(lot, winningBid);
+    expect(notifyLotEnded).toHaveBeenCalledWith(lot, winningBid, {
+      trigger: "timed",
+      hadBids: true,
+      voided: false,
+    });
   });
 
   it("publishes lot_ended with null winning bid when reserve is not met on timed close", async () => {
@@ -387,7 +391,11 @@ describe("LotLifecycleService", () => {
     );
     await svc.runTransitions(new Date());
 
-    expect(notifyLotEnded).toHaveBeenCalledWith(lot, null);
+    expect(notifyLotEnded).toHaveBeenCalledWith(lot, null, {
+      trigger: "timed",
+      hadBids: true,
+      voided: false,
+    });
   });
 
   it("stages lot_lost for bidders when reserve is not met at timed close", async () => {
@@ -471,6 +479,7 @@ describe("LotLifecycleService", () => {
 
     const clearWinningBid = vi.fn();
     const bids: IBidRepository = {
+      listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["bidder-a"]),
       clearWinningBid,
     } as unknown as IBidRepository;

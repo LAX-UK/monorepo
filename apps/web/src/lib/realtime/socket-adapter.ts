@@ -1,7 +1,12 @@
 import type { LotRealtimeCallbacks, LotRealtimePort } from "@/lib/realtime/contracts";
 import { parseBidUpdateEvent } from "@/lib/realtime/parse-bid-update";
 import { getSocket } from "@/lib/socket";
-import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
+import type {
+  BidUpdateEvent,
+  LotEndedEvent,
+  LotEndedNoSaleReason,
+  LotEndedTrigger,
+} from "@auction/types";
 
 function asBidUpdate(raw: unknown): BidUpdateEvent | null {
   return parseBidUpdateEvent(raw);
@@ -16,7 +21,7 @@ function asLotEnded(raw: unknown): LotEndedEvent | null {
   const bidId = o.bidId;
   const hasWinner =
     typeof winnerId === "string" && winnerId.length > 0 && typeof bidId === "string";
-  const noSale = o.noSale === true;
+  const noSale = o.noSale === true || o.outcome === "no_sale";
   if (
     (o.type === "lot_ended" || o.type === "auction_ended") &&
     lotId &&
@@ -24,15 +29,26 @@ function asLotEnded(raw: unknown): LotEndedEvent | null {
     typeof o.status === "string" &&
     (hasWinner || noSale)
   ) {
-    return {
+    const event: LotEndedEvent = {
       type: "lot_ended",
       lotId,
-      ...(typeof winnerId === "string" ? { winnerId } : { winnerId: null }),
-      ...(typeof bidId === "string" ? { bidId } : { bidId: null }),
+      winnerId: typeof winnerId === "string" ? winnerId : null,
+      bidId: typeof bidId === "string" ? bidId : null,
       currentPrice: o.currentPrice,
       status: o.status,
-      ...(noSale ? { noSale: true } : {}),
+      outcome:
+        o.outcome === "sold" || o.outcome === "no_sale" ? o.outcome : noSale ? "no_sale" : "sold",
     };
+    if (noSale) event.noSale = true;
+    if (typeof o.noSaleReason === "string") {
+      event.noSaleReason = o.noSaleReason as LotEndedNoSaleReason;
+    }
+    if (typeof o.hadBids === "boolean") event.hadBids = o.hadBids;
+    if (typeof o.reserveMet === "boolean") event.reserveMet = o.reserveMet;
+    if (typeof o.trigger === "string") {
+      event.trigger = o.trigger as LotEndedTrigger;
+    }
+    return event;
   }
   return null;
 }

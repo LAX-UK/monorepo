@@ -17,3 +17,12 @@ export {
   type LotReadinessResult,
   type LotReadinessInput,
 } from "./lot-readiness.js";
+export {
+  deriveNoSaleReason,
+  deriveReserveStatus,
+  hasConfiguredReserve,
+  isReserveMet,
+  type LotEndedTrigger,
+  type NoSaleReason,
+  type ReserveStatus,
+} from "./reserve.js";

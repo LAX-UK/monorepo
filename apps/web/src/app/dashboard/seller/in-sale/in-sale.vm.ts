@@ -1,5 +1,6 @@
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotPath, salePath } from "@/lib/seo/url";
+import { deriveReserveStatus } from "@auction/domain";
 import type { Lot, LotStatus } from "@auction/types";
 import { toDisplayDate, toRequiredIsoString } from "@auction/validators";
 
@@ -23,6 +24,8 @@ export type InSaleDisplayRow = {
   reserveMet: boolean;
   /** Human-readable label: "Met", "Below reserve", or "No reserve". */
   reserveLabel: string;
+  /** When ended: sold vs passed (no winner). */
+  saleOutcome: "sold" | "passed" | null;
   currentPriceLabel: string;
   endTimeIso: string;
   endTimeLabel: string;
@@ -64,19 +67,50 @@ function lotStatusView(status: LotStatus): {
 }
 
 /** Reserve-met indicator. Returns null-safe results for lots without a reserve. */
-function deriveReserve(lot: Lot): { met: boolean; label: string } {
-  const reserve =
-    lot.reservePrice == null || lot.reservePrice === ""
-      ? null
-      : Number.parseFloat(lot.reservePrice);
-  const current = Number.parseFloat(lot.currentPrice);
-  if (reserve == null || !Number.isFinite(reserve) || reserve <= 0) {
-    return { met: true, label: "No reserve" };
+function deriveReserve(lot: Lot): {
+  met: boolean;
+  label: string;
+  saleOutcome: "sold" | "passed" | null;
+} {
+  if (lot.status === "ended") {
+    if (lot.winnerId) {
+      const status = deriveReserveStatus(lot.currentPrice, lot.reservePrice);
+      if (status.kind === "none") {
+        return { met: true, label: "Sold", saleOutcome: "sold" };
+      }
+      return {
+        met: status.kind === "met",
+        label: status.kind === "met" ? "Sold · reserve met" : "Sold",
+        saleOutcome: "sold",
+      };
+    }
+    const status = deriveReserveStatus(lot.currentPrice, lot.reservePrice);
+    if (status.kind === "none") {
+      // No reserve — distinguish "no bids at all" from "clerk passed with bids"
+      // Use currentPrice vs startingPrice as a proxy (price only rises on a bid).
+      const hadBids =
+        lot.currentPrice !== lot.startingPrice &&
+        Number.parseFloat(lot.currentPrice) > Number.parseFloat(lot.startingPrice);
+      return {
+        met: true,
+        label: hadBids ? "No sale" : "No sale · no bids",
+        saleOutcome: "passed",
+      };
+    }
+    return {
+      met: status.kind === "met",
+      label: status.kind === "met" ? "No sale" : "No sale · below reserve",
+      saleOutcome: "passed",
+    };
   }
-  if (!Number.isFinite(current)) {
-    return { met: false, label: "Below reserve" };
+
+  const status = deriveReserveStatus(lot.currentPrice, lot.reservePrice);
+  if (status.kind === "none") {
+    return { met: true, label: "No reserve", saleOutcome: null };
   }
-  return current >= reserve ? { met: true, label: "Met" } : { met: false, label: "Below reserve" };
+  return status.kind === "met"
+    ? { met: true, label: "Met", saleOutcome: null }
+    : { met: false, label: "Below reserve", saleOutcome: null };
 }
 
 /** Map domain lot rows to display rows. Pure: deterministic, no IO. */
@@ -100,6 +134,7 @@ export function toInSaleDisplayRows(
       statusTone: view.tone,
       reserveMet: reserve.met,
       reserveLabel: reserve.label,
+      saleOutcome: reserve.saleOutcome,
       currentPriceLabel: formatMoney(lot.currentPrice, resolveLotCurrency(lot)),
       endTimeIso: toRequiredIsoString(lot.endTime),
       endTimeLabel: formatDateTime(toDisplayDate(lot.endTime)),

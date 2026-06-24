@@ -4,12 +4,12 @@ import { evaluateBidPolicies } from "@/lib/bid/evaluate-bid-policies";
 import { defaultBidPolicies } from "@/lib/bid/policies";
 import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "@/lib/bid/policies/types";
 import type { SessionUser } from "@/lib/data/contracts";
-import type { Lot } from "@auction/types";
+import type { Lot, PublicLotView } from "@auction/types";
 import { type ReactNode, useMemo } from "react";
 
 type Props = {
   user: SessionUser | null;
-  lot: Lot;
+  lot: Lot | PublicLotView;
   lotStatus: Lot["status"];
   loginNextPath: string;
   isOwnLot?: boolean;

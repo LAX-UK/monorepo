@@ -128,6 +128,12 @@ export type Lot = {
   deletedByUserId?: string | null;
 };
 
+/** Bidder/marketing lot detail — reserve amount withheld; met/not-met only. */
+export type PublicLotView = Omit<Lot, "reservePrice"> & {
+  hasReserve: boolean;
+  reserveMet: boolean | null;
+};
+
 /** Lot timing as received over the wire or after RSC serialization. */
 export type LotTimingValue = AuctionTimingValue;
 

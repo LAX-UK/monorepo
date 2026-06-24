@@ -8,19 +8,21 @@ import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-det
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { PublicUser } from "@/lib/data/contracts";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
-import type { Lot } from "@auction/types";
+import { resolveLotReserveContext } from "@/lib/lot/reserve-presentation";
+import type { Lot, PublicLotView } from "@auction/types";
 import Link from "next/link";
 
 /** Marketing accordion plus “Lot details” and “Bid history” (rich nodes).
  * Use from the artwork page (RSC); `BidHistoryInAccordion` is a client child.
  */
 export function buildArtworkPageAccordionBlocks(args: {
-  lot: Lot;
+  lot: Lot | PublicLotView;
   artist: PublicUser | null;
   documents?: LotDocumentPublicRow[];
 }): AccordionBlock[] {
   const { lot, artist, documents = [] } = args;
   const minNext = getMinNextBidAmount(lot, lot.currentPrice).toFixed(2);
+  const reserveContext = resolveLotReserveContext(lot, lot.currentPrice);
   const saleEndLocal = new Date(lot.endTime).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -100,6 +102,7 @@ export function buildArtworkPageAccordionBlocks(args: {
           minNextBid={minNext}
           saleEndLocalLabel={saleEndLocal}
           currentPrice={lot.currentPrice}
+          hasReserve={reserveContext.hasReserve}
           variant="accordion"
         />
       ),

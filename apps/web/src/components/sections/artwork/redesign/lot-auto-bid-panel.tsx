@@ -5,7 +5,7 @@ import { useLotPorts } from "@/lib/context/lot-ports";
 import type { AutoBidPlacedBid, AutoBidSettings } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
 import { clientBidError, mapBidError } from "@/lib/ui/bid-error";
-import type { Lot, LotAuctionType } from "@auction/types";
+import type { Lot, LotAuctionType, PublicLotView } from "@auction/types";
 import { BodyText } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -14,7 +14,7 @@ import { listAllowedAutoBidSteps } from "@auction/validators";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
-  lot: Lot;
+  lot: Lot | PublicLotView;
   auctionType: LotAuctionType;
   currentPrice: string;
   minNextBid: number;
