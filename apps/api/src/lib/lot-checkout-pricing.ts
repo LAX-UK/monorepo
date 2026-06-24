@@ -1,4 +1,4 @@
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy } from "@auction/validators";
 
 export type LotCheckoutPricing = NonNullable<Lot["checkoutPricing"]>;
@@ -7,7 +7,10 @@ export type LotCheckoutPricing = NonNullable<Lot["checkoutPricing"]>;
  * Hammer + buyer's premium for display / portfolio analytics, using the same policy
  * factory as `PaymentService` (sale tiers override per-lot rate).
  */
-export function computeLotCheckoutPricing(lot: Lot, sale: Sale | null): LotCheckoutPricing {
+export function computeLotCheckoutPricing(
+  lot: Lot | PublicLotView,
+  sale: Sale | null,
+): LotCheckoutPricing {
   const policy = buildBuyerPremiumPolicy({
     saleTiers: sale?.buyerPremiumTiers ?? null,
     lotRate: lot.buyerPremiumRate,

@@ -9,10 +9,10 @@ import type {
 } from "@/lib/data/contracts";
 import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { createServerHc, getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
-import { parseBid, parseLot } from "@/lib/data/http/parse";
+import { parseBid, parseLot, parseLotDetail } from "@/lib/data/http/parse";
 import { NO_STORE_FETCH_POLICY } from "@/lib/data/http/server-fetch-policy";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
-import type { Bid, Lot } from "@auction/types";
+import type { Bid, Lot, PublicLotView } from "@auction/types";
 import { cookies } from "next/headers";
 import { cache } from "react";
 
@@ -170,21 +170,21 @@ export async function getServerLotReader(): Promise<LotReader> {
       const body = (await res.json()) as { data: unknown[] };
       return body.data.map(parseLot);
     },
-    async getById(id: string): Promise<Lot | null> {
+    async getById(id: string): Promise<Lot | PublicLotView | null> {
       const res = await client.lots[":id"].$get({ param: { id } });
       if (res.status === 404) return null;
       if (!res.ok) {
         throw new Error(`Failed to load lot: ${res.status}`);
       }
       const body = (await res.json()) as { data: unknown };
-      return parseLot(body.data);
+      return parseLotDetail(body.data);
     },
   };
 }
 
 export const getServerLotById = cache(async function getServerLotById(
   id: string,
-): Promise<Lot | null> {
+): Promise<Lot | PublicLotView | null> {
   const reader = await getServerLotReader();
   return reader.getById(id);
 });

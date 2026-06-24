@@ -4,6 +4,7 @@ import type {
   CategoryNode,
   Lot,
   LotStatus,
+  PublicLotView,
   UserRole,
   UserStaffRole,
 } from "@auction/types";
@@ -49,7 +50,7 @@ export interface ArchiveMetricsReader {
 /** Read-only lot listing and detail (ISP). */
 export interface LotReader {
   list(params: ListLotsParams): Promise<Lot[]>;
-  getById(id: string): Promise<Lot | null>;
+  getById(id: string): Promise<Lot | PublicLotView | null>;
 }
 
 export type PlaceBidInput = {

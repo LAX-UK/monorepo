@@ -89,6 +89,38 @@ describe("toInSaleDisplayRows", () => {
     expect(b?.lotNumberLabel).toBe("—");
   });
 
+  it("labels ended no-sale below reserve", () => {
+    const [out] = toInSaleDisplayRows(
+      [
+        lot({
+          status: "ended",
+          currentPrice: "350.00",
+          reservePrice: "500.00",
+          winnerId: null,
+        }),
+      ],
+      saleMap,
+    );
+    expect(out?.saleOutcome).toBe("passed");
+    expect(out?.reserveLabel).toBe("No sale · below reserve");
+  });
+
+  it("labels ended sold with reserve met", () => {
+    const [out] = toInSaleDisplayRows(
+      [
+        lot({
+          status: "ended",
+          currentPrice: "500.00",
+          reservePrice: "500.00",
+          winnerId: "buyer-1",
+        }),
+      ],
+      saleMap,
+    );
+    expect(out?.saleOutcome).toBe("sold");
+    expect(out?.reserveLabel).toBe("Sold · reserve met");
+  });
+
   it("maps lot statuses to expected tones", () => {
     const out = toInSaleDisplayRows(
       [

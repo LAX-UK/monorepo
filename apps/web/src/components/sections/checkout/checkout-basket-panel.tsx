@@ -3,7 +3,7 @@
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { bulkBarBottomOffset } from "@/lib/layout/bottom-chrome";
 import { lotPath } from "@/lib/seo/url";
-import type { Lot } from "@auction/types";
+import type { Lot, PublicLotView } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
@@ -12,7 +12,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export type CheckoutBasketRow = {
-  lot: Lot;
+  lot: Lot | PublicLotView;
   hammer: number;
   premium: number;
   total: number;

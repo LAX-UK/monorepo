@@ -23,7 +23,7 @@ import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more
 import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -32,7 +32,7 @@ type SalePick =
   | null;
 
 type Props = {
-  auction: Lot;
+  auction: Lot | PublicLotView;
   saleForLifecycle: SalePick;
   /** Draft sale / draft lot catalogue ribbon */
   showPreviewRibbon?: boolean;
@@ -107,7 +107,6 @@ export function ArtworkOnlineLayout({
     startTime: auction.startTime,
     endTime: auction.endTime,
     winnerId: auction.winnerId,
-    reservePrice: auction.reservePrice,
     currentPrice: auction.currentPrice,
   };
 

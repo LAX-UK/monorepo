@@ -22,6 +22,7 @@ function inSaleRow(id: string, title: string): InSaleDisplayRow {
     currentPriceLabel: "£1,200",
     reserveLabel: "Reserve met",
     reserveMet: true,
+    saleOutcome: null,
     status: "active",
     statusLabel: "Live",
     statusTone: "success",

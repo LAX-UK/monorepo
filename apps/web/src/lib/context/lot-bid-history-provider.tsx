@@ -38,6 +38,8 @@ type LotBidHistoryContextValue = {
   entries: BidHistoryEntry[];
   currentPrice: string;
   leadingBidderId: string | null;
+  /** Latest server-synced reserveMet from snapshot (undefined until first hydrate completes). */
+  latestSnapshotReserveMet: boolean | undefined;
   applyOwnBid: (bid: OwnBidInput) => void;
   setEndedWinner: (winnerId: string | null, currentPrice: string) => void;
   refreshFromServer: (opts?: { silent?: boolean }) => Promise<{
@@ -87,6 +89,9 @@ export function LotBidHistoryProvider({
     currentPrice: initialCurrentPrice,
     leadingBidderId: initialLeadingBidderId,
   }));
+  const [latestSnapshotReserveMet, setLatestSnapshotReserveMet] = useState<boolean | undefined>(
+    undefined,
+  );
   const lotStatusRef = useRef<Lot["status"] | null>(null);
 
   const applyOwnBid = useCallback(
@@ -146,6 +151,9 @@ export function LotBidHistoryProvider({
       onlineLifecycle?.setLiveEndTimeMs(endMs);
       onlineLifecycle?.setLiveLotStatus(lotSnap.status);
       noticeReporter?.clearNotice(noticeId);
+      if (lotSnap.reserveMet !== undefined) {
+        setLatestSnapshotReserveMet(lotSnap.reserveMet);
+      }
       return { ok: true, snapshot: lotSnap };
     },
     [lotId, onlineLifecycle, noticeReporter],
@@ -200,11 +208,12 @@ export function LotBidHistoryProvider({
       entries: state.entries,
       currentPrice: state.currentPrice,
       leadingBidderId: state.leadingBidderId,
+      latestSnapshotReserveMet,
       applyOwnBid,
       setEndedWinner,
       refreshFromServer: hydrateFromServer,
     }),
-    [state, applyOwnBid, setEndedWinner, hydrateFromServer],
+    [state, latestSnapshotReserveMet, applyOwnBid, setEndedWinner, hydrateFromServer],
   );
 
   return <LotBidHistoryContext.Provider value={value}>{children}</LotBidHistoryContext.Provider>;

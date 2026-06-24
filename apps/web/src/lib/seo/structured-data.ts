@@ -11,10 +11,10 @@ import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { type ArtistKind, getCreatorKindConfig } from "@auction/types";
-import type { Lot, Sale, SaleDayMedia, SalePressItem } from "@auction/types";
+import type { Lot, PublicLotView, Sale, SaleDayMedia, SalePressItem } from "@auction/types";
 
 export function lotProductJsonLd(
-  auction: Lot,
+  auction: Lot | PublicLotView,
   opts: { artistName?: string; sellerName?: string } = {},
 ): Record<string, unknown> {
   const base = getSiteUrl();

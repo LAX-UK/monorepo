@@ -10,6 +10,7 @@ import type {
   LotSummary,
   Payment,
   PaymentStatus,
+  PublicLotView,
   Sale,
   SaleDayMediaRef,
   SaleDeliveryMode,
@@ -82,12 +83,12 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
   } as Lot;
 }
 
-function summaryMarketingDetails(lot: Lot): Lot["marketingDetails"] {
+function summaryMarketingDetails(lot: Lot | PublicLotView): Lot["marketingDetails"] {
   const estimate = lot.marketingDetails?.estimate;
   return estimate ? { estimate } : {};
 }
 
-export function mapLotToSummary(lot: Lot): LotSummary {
+export function mapLotToSummary(lot: Lot | PublicLotView): LotSummary {
   return {
     id: lot.id,
     saleId: lot.saleId,
