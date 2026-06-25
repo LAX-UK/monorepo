@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 
 /** Preferences dialog (banner &ldquo;Customise&rdquo; + footer &ldquo;Cookie preferences&rdquo;). */
 export function ConsentPreferencesDialog() {
-  const { preferencesOpen, closePreferences, snapshot, saveCustom } = useConsent();
+  const { preferencesOpen, closePreferences, snapshot, saveCustom, rejectAll } = useConsent();
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
 
@@ -98,13 +98,23 @@ export function ConsentPreferencesDialog() {
           </div>
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={closePreferences}>
-            Cancel
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:mr-auto sm:w-auto"
+            onClick={() => void rejectAll()}
+          >
+            Reject all
           </Button>
-          <Button type="button" onClick={() => void saveCustom({ analytics, marketing })}>
-            Save preferences
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button type="button" variant="outline" onClick={closePreferences}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void saveCustom({ analytics, marketing })}>
+              Save preferences
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
