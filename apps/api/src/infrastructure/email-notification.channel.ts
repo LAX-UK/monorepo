@@ -62,14 +62,18 @@ export class EmailNotificationChannel implements INotificationChannel {
           currentBid: payload.message,
           unsubscribeUrl,
         };
-      case "lot-won":
+      case "lot-won": {
+        const m = payload.meta;
         return {
           userName,
           lotTitle,
           lotUrl,
           winningBid: payload.message,
           unsubscribeUrl,
+          ...(typeof m?.hammerPrice === "string" ? { hammerPrice: m.hammerPrice } : {}),
+          ...(typeof m?.totalDue === "string" ? { totalDue: m.totalDue } : {}),
         };
+      }
       case "lot-ended-seller":
         return {
           userName,
@@ -87,6 +91,7 @@ export class EmailNotificationChannel implements INotificationChannel {
         const m = payload.meta;
         const amount = m?.amount ?? payload.message;
         const invoiceNumber = m?.invoiceNumber ?? "Invoice";
+        const dueDate = typeof m?.dueDate === "string" ? m.dueDate : undefined;
         const base = this.apiBaseUrl.replace(/\/$/, "");
         const invoiceUrl =
           m?.invoiceUrl && /^https?:\/\//i.test(m.invoiceUrl) ? m.invoiceUrl : `${base}/dashboard`;
@@ -103,6 +108,7 @@ export class EmailNotificationChannel implements INotificationChannel {
           amount,
           invoiceUrl,
           billTo,
+          ...(dueDate ? { dueDate } : {}),
         };
       }
       case "submission-approved":
