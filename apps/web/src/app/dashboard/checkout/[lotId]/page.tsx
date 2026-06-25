@@ -121,7 +121,11 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
               compactOnMobile
               sticky={false}
               className="mb-8 border-0 bg-transparent px-0 py-0 backdrop-blur-none lg:mb-10"
-              description="Lot settled in your favor. Review your invoice and complete payment below (card or UK bank transfer via Stripe). High-value lots may require finance review first."
+              description={
+                openPayment
+                  ? "Your invoice is ready — confirm your details to pay below (card or UK bank transfer via Stripe). High-value lots may require finance review first."
+                  : "Lot settled in your favor. Review your invoice and complete payment below (card or UK bank transfer via Stripe). High-value lots may require finance review first."
+              }
             />
 
             <Suspense fallback={null}>
