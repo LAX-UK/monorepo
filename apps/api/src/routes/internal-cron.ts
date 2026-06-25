@@ -3,9 +3,11 @@ import { verification } from "@auction/db/schema";
 import { probeSentryConnectivity } from "@auction/observability";
 import { inArray, lt } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
 import type { Container } from "../container.js";
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
+import { zValidator } from "../lib/z-validator.js";
 import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-runtime.js";
 
 /** Redis key for `SET … NX` — only one bulk settlement across API instances. */
@@ -391,6 +393,56 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     }
     const data = await container.displayPairingService.cleanupStalePairings();
     return c.json({ data });
+  });
+
+  /** Idempotently ensure a payment + invoice exists for one sold lot (worker projector). */
+  r.post(
+    "/ensure-lot-invoice",
+    zValidator("json", z.object({ lotId: z.string().uuid() })),
+    async (c) => {
+      if (!env.CRON_INTERNAL_SECRET) {
+        return c.json({ error: "cron_not_configured" }, 503);
+      }
+      const secret = c.req.header("x-cron-secret");
+      if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+        return c.json({ error: "unauthorized" }, 401);
+      }
+      const { lotId } = c.req.valid("json");
+      const data = await container.lotInvoiceInitiationService.ensureForLot(lotId);
+      return c.json({ data });
+    },
+  );
+
+  /** Reconciliation sweep: backfill invoices for sold lots missing a payment row. */
+  r.post("/ensure-lot-invoices", async (c) => {
+    if (!env.CRON_INTERNAL_SECRET) {
+      return c.json({ error: "cron_not_configured" }, 503);
+    }
+    const secret = c.req.header("x-cron-secret");
+    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const lotIds = await container.repoFactory.root.lot.listSoldLotsMissingPayment(50);
+    const settled = await Promise.allSettled(
+      lotIds.map((id) => container.lotInvoiceInitiationService.ensureForLot(id)),
+    );
+    const results = settled.map((outcome, index) => {
+      if (outcome.status === "fulfilled") return outcome.value;
+      return {
+        created: false,
+        reason: "ensure_failed",
+        lotId: lotIds[index],
+        error: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+      };
+    });
+    return c.json({
+      data: {
+        processed: lotIds.length,
+        created: results.filter((r) => r.created).length,
+        failed: settled.filter((r) => r.status === "rejected").length,
+        results,
+      },
+    });
   });
 
   return r;

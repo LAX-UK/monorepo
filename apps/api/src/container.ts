@@ -279,6 +279,7 @@ import { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecy
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { PersonalLegalEntityResolver } from "./services/legal-entity/personal-legal-entity-resolver.service.js";
 import { LotFulfilmentService } from "./services/lot-fulfilment.service.js";
+import { LotInvoiceInitiationService } from "./services/lot-invoice-initiation.service.js";
 import { LotLifecycleEventRecorder } from "./services/lot-lifecycle-event-recorder.js";
 import { LotLifecycleQueryService } from "./services/lot-lifecycle-query.service.js";
 import { LotLifecycleRecording } from "./services/lot-lifecycle-recording.service.js";
@@ -417,6 +418,7 @@ export type Container = {
   cachedCatalogueListService: CachedCatalogueListService;
   notificationQueryService: NotificationQueryService;
   paymentService: PaymentService;
+  lotInvoiceInitiationService: LotInvoiceInitiationService;
   qrCodeService: QrCodeService;
   qrCodeAnalytics: QrCodeAnalyticsService;
   paymentRefundReconcileService: PaymentRefundReconcileService;
@@ -865,6 +867,7 @@ export function createContainer(env: Env): Container {
     notificationService,
     notificationOutboxService,
     saleroomSessionLookup,
+    saleRepo,
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);
@@ -1415,6 +1418,28 @@ export function createContainer(env: Env): Container {
     env.XERO_INVOICE_BLOCKING,
   );
 
+  const lotInvoiceInitiationService = new LotInvoiceInitiationService(
+    lotRepo,
+    saleRepo,
+    paymentRepo,
+    settlementCompliancePolicy,
+    paymentTierPolicy,
+    platformFeePolicy,
+    accountingProvider,
+    notificationOutboxService,
+    notificationFactory,
+    domainEventPublisher,
+    {
+      ensureAwaitingPayment: (lotId, paymentId, addressSnapshot) =>
+        lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId, addressSnapshot),
+      onPaymentCaptured: (lotId, paymentId) =>
+        lotFulfilmentService.onPaymentCaptured(lotId, paymentId),
+    },
+    legalEntityRepository,
+    userRepo,
+    db,
+  );
+
   const stripePaymentWebhookServiceResolved: StripePaymentWebhookService | null =
     env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
       ? new StripePaymentWebhookService(
@@ -1465,6 +1490,7 @@ export function createContainer(env: Env): Container {
     },
     notificationOutbox: notificationOutboxService,
     notificationFactory,
+    saleRepo,
   });
   const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
@@ -1737,6 +1763,7 @@ export function createContainer(env: Env): Container {
     cachedCatalogueListService,
     notificationQueryService,
     paymentService,
+    lotInvoiceInitiationService,
     qrCodeService,
     qrCodeAnalytics,
     paymentRefundReconcileService,

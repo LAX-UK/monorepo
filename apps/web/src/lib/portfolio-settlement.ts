@@ -29,7 +29,7 @@ export function portfolioSettlementLabel(row: PortfolioRow): string {
     case "refunded":
       return "Refunded";
     case "requires_manual_review":
-      return "Under review";
+      return payment.manualReviewReason ? "Compliance review" : "Under review";
     default:
       return "Awaiting payment";
   }
@@ -42,6 +42,7 @@ export function portfolioSettlementLabel(row: PortfolioRow): string {
 export function portfolioComplianceReason(row: PortfolioRow): ManualReviewReason | null {
   const reason = row.payment?.manualReviewReason ?? null;
   if (reason === "aml_hold" || reason === "source_of_funds_required") return reason;
+  if (row.payment?.status === "requires_manual_review" && reason) return reason;
   return null;
 }
 

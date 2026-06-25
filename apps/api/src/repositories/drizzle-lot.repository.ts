@@ -1,10 +1,32 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
-import { artistProfile, bid, legalEntity, lot, lotCategories, sale } from "@auction/db/schema";
+import {
+  artistProfile,
+  bid,
+  legalEntity,
+  lot,
+  lotCategories,
+  payment,
+  sale,
+} from "@auction/db/schema";
 import type { CreateLotInput, Lot, LotStatus, SaleStatus } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { PUBLIC_LOT_STATUSES, PUBLIC_SALE_STATUSES } from "@auction/validators";
-import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  lt,
+  lte,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import { mergeLotMarketingDetailsPatch } from "../lib/lot-marketing-details-merge.js";
 import { mapLotRow } from "../lib/mappers.js";
 import type {
@@ -731,5 +753,24 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
     return queryCreatedAtDailyCounts(this.db, lot, lot.createdAt, rangeStart, lotNotDeleted());
+  }
+
+  async listSoldLotsMissingPayment(limit: number): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: lot.id })
+      .from(lot)
+      .where(
+        and(
+          eq(lot.status, "ended"),
+          isNotNull(lot.winnerId),
+          notExists(
+            this.db.select({ id: payment.id }).from(payment).where(eq(payment.lotId, lot.id)),
+          ),
+          lotNotDeleted(),
+        ),
+      )
+      .orderBy(lot.endTime)
+      .limit(limit);
+    return rows.map((row) => row.id);
   }
 }

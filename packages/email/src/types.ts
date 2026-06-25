@@ -137,6 +137,8 @@ export type TemplateVarsByName = {
   "lot-won": OptOutableLotVars & {
     winningBid: string;
     paymentUrl?: string | null;
+    hammerPrice?: string;
+    totalDue?: string;
   };
   "lot-ended-seller": OptOutableLotVars & {
     saleUrl?: string | null;
@@ -153,6 +155,7 @@ export type TemplateVarsByName = {
     amount: string;
     invoiceUrl: string;
     billTo: BillToContext;
+    dueDate?: string;
   };
   "admin-impersonation-notice": {
     recipientFirstName?: string | null;
