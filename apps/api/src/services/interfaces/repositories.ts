@@ -140,6 +140,8 @@ export interface ILotRepository {
     items: Lot[];
     total: number;
   }>;
+  /** Ended sold lots with a winner but no payment row (reconciliation sweep). */
+  listSoldLotsMissingPayment(limit: number): Promise<string[]>;
 }
 
 export type SaleCatalogLotsSort = "lot" | "priceAsc" | "priceDesc" | "endingAsc";

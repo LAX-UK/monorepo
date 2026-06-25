@@ -24,3 +24,27 @@ describe("NotificationFactory condition report", () => {
     expect(row.message).toContain("Not available");
   });
 });
+
+describe("NotificationFactory lot won", () => {
+  it("createWon includes optional hammer and total in meta", () => {
+    const row = factory.createWon(lot, "user-1", {
+      hammerPrice: "1000.00",
+      totalDue: "1250.00",
+    });
+    expect(row.meta?.hammerPrice).toBe("1000.00");
+    expect(row.meta?.totalDue).toBe("1250.00");
+  });
+});
+
+describe("NotificationFactory payment due", () => {
+  it("createPaymentDue appends due date to message and meta", () => {
+    const row = factory.createPaymentDue(lot, "user-1", {
+      paymentId: "pay-1",
+      amount: "1250.00",
+      checkoutUrl: null,
+      dueDate: "3 July 2026",
+    });
+    expect(row.message).toContain("Payment due by 3 July 2026");
+    expect(row.meta?.dueDate).toBe("3 July 2026");
+  });
+});

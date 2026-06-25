@@ -6,6 +6,8 @@ export async function postInternalCronJob(opts: {
   cronSecret: string;
   path: string;
   log: pino.Logger;
+  /** Optional JSON body (defaults to `{}`). */
+  body?: Record<string, unknown>;
   /** When true, HTTP 409 is treated as success (e.g. distributed lock already held). */
   treat409AsSuccess?: boolean;
 }): Promise<void> {
@@ -17,7 +19,7 @@ export async function postInternalCronJob(opts: {
       "Content-Type": "application/json",
       "X-Cron-Secret": opts.cronSecret,
     },
-    body: "{}",
+    body: JSON.stringify(opts.body ?? {}),
   });
   if (res.status === 503) {
     opts.log.warn({ url }, `${opts.path} skipped (API reports cron_not_configured)`);

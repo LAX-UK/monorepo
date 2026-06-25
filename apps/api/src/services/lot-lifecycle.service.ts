@@ -1,11 +1,13 @@
 import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
+import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
 import type { ILotNotificationSender } from "./interfaces/notifications.js";
+import type { ISaleRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
@@ -44,6 +46,7 @@ export class LotLifecycleService {
     private readonly lotNotifications: ILotNotificationSender | null = null,
     private readonly notificationOutbox: INotificationOutboxService | null = null,
     private readonly saleroomSessionLookup: ISaleroomSessionLookup | null = null,
+    private readonly saleRepo: ISaleRepository | null = null,
   ) {}
 
   private async shouldSkipTimedCloseForLot(lotId: string): Promise<boolean> {
@@ -327,11 +330,16 @@ export class LotLifecycleService {
     if (!this.notificationOutbox) return;
 
     if (params.winnerId) {
+      const sale = params.lot.saleId ? await this.saleRepo?.findById(params.lot.saleId) : null;
+      const pricing = computeLotCheckoutPricing(params.lot, sale ?? null);
       await this.notificationOutbox.stageDispatch(
         {
           userId: params.winnerId,
           payload: notificationRowToPayload(
-            this.notificationFactory.createWon(params.lot, params.winnerId),
+            this.notificationFactory.createWon(params.lot, params.winnerId, {
+              hammerPrice: pricing.hammerMajor,
+              totalDue: pricing.totalMajor,
+            }),
           ),
           idempotencyKey: `lot_won:${params.lot.id}:${params.winnerId}`,
         },
