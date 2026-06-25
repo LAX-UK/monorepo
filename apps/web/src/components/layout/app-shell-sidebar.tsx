@@ -15,8 +15,6 @@ import { navBadgeClassName } from "@/lib/layout/nav-badge-classes";
 import { navEntriesToFlatItems, navEntriesToGroups } from "@/lib/shell/nav-adapters";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import type { UserRole } from "@auction/types";
-import { staffRoleDefaultDestination } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
@@ -86,16 +84,12 @@ export function AppShellSidebar({
     <div className="flex h-full min-h-0 flex-col bg-surface-container-lowest">
       <div className={cn("border-b border-border-hairline px-3 py-5", !labelsHidden && "px-5")}>
         <Link
-          href={
-            role === "client"
-              ? "/dashboard"
-              : staffRoleDefaultDestination(user.role as UserRole, user.staffRole ?? null)
-          }
+          href="/"
           className={cn(
             "inline-flex w-full items-center justify-center gap-2",
             !labelsHidden && "justify-start",
           )}
-          aria-label="LAX dashboard home"
+          aria-label="LAX home"
         >
           <LaxLogo
             variant="header"
