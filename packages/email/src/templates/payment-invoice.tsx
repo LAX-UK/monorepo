@@ -13,6 +13,7 @@ export default function PaymentInvoiceEmail({
   amount,
   invoiceUrl,
   billTo,
+  dueDate,
 }: TemplateVarsByName["payment-invoice"]) {
   const billToValue =
     billTo.addressLines.length === 0 ? (
@@ -52,6 +53,7 @@ export default function PaymentInvoiceEmail({
           { label: "Bill to", value: billToValue },
           { label: "Invoice", value: invoiceNumber, mono: true },
           { label: "Amount", value: amount },
+          ...(dueDate ? [{ label: "Due by", value: dueDate }] : []),
         ]}
       />
       <Button href={invoiceUrl}>View invoice</Button>

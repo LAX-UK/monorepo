@@ -38,13 +38,18 @@ import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 import { type MyPaymentRowDTO, presentMyPayments } from "./payment-me-presenter.js";
 import { resolveCheckoutAddressSnapshot } from "./payment/checkout-address.js";
+import { ensureXeroInvoiceForPayment } from "./payment/ensure-xero-invoice.js";
+import { formatPaymentDueDateFromCreated } from "./payment/payment-due-date.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
 import type {
   CheckoutRailKind,
   ManualReviewReason,
   PaymentTierPolicy,
 } from "./payment/payment-tier.policy.js";
-import { manualReviewReasonFromCheckoutBlockCode } from "./payment/resolve-manual-review-reason.js";
+import {
+  manualReviewReasonFromCheckoutBlockCode,
+  resolveNewPaymentReviewDecision,
+} from "./payment/resolve-manual-review-reason.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 export type CreatePendingPaymentResult = {
@@ -241,25 +246,16 @@ export class PaymentService {
         : null;
     const sellerArchived = sellerEntity?.status === "archived";
 
-    // CDD Sections 5 & 6: halt settlement on an AML/sanctions hold or when SoF is
-    // owed. Reuses the existing manual-review gate rather than a parallel flow.
-    const complianceDecision = this.settlementCompliance
-      ? await this.settlementCompliance.evaluate({ buyerUserId: buyerId, amountPence })
-      : { hold: false, reason: null };
-
-    const tierNeedsReview = this.paymentTierPolicy.needsManualReviewGate(
+    const reviewDecision = await resolveNewPaymentReviewDecision({
+      buyerUserId: buyerId,
       amountPence,
       sellerArchived,
-    );
-    const requiresManualReview = complianceDecision.hold || tierNeedsReview;
-    // Compliance reasons take precedence over value-tier reasons for display/audit.
-    const manualReviewReason: ManualReviewReason | null = complianceDecision.hold
-      ? complianceDecision.reason
-      : tierNeedsReview
-        ? this.paymentTierPolicy.resolveManualReviewReason(amountPence, sellerArchived)
-        : null;
-    if (complianceDecision.hold) {
-      recordMoneyPathEvent(`settlement_compliance_hold_${complianceDecision.reason}`);
+      paymentTierPolicy: this.paymentTierPolicy,
+      settlementCompliance: this.settlementCompliance,
+    });
+    const { requiresManualReview, manualReviewReason } = reviewDecision;
+    if (reviewDecision.complianceHold && manualReviewReason) {
+      recordMoneyPathEvent(`settlement_compliance_hold_${manualReviewReason}`);
     }
 
     const created = await this.payments.create({
@@ -318,6 +314,7 @@ export class PaymentService {
     await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id, addressSnapshot);
 
     if (this.notificationDispatcher && !requiresManualReview) {
+      const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
       await this.notificationDispatcher.dispatch(
         buyerId,
         notificationRowToPayload(
@@ -325,6 +322,7 @@ export class PaymentService {
             paymentId: created.id,
             amount: created.amount,
             checkoutUrl,
+            dueDate,
           }),
         ),
       );
@@ -744,7 +742,14 @@ export class PaymentService {
       return err(new PaymentProviderError("Invalid payment amount", 400, "invalid_payment_amount"));
     }
 
-    const invoiceResult = await this.ensureXeroInvoiceForPayment(paymentId, lot, buyerId, amount);
+    const invoiceResult = await ensureXeroInvoiceForPayment(
+      this.accounting,
+      this.users,
+      paymentId,
+      lot,
+      buyerId,
+      amount,
+    );
     if (!invoiceResult.ok) {
       if (this.xeroInvoiceBlocking) {
         return err(
@@ -816,27 +821,6 @@ export class PaymentService {
     });
   }
 
-  private async ensureXeroInvoiceForPayment(
-    paymentId: string,
-    lot: Lot,
-    buyerId: string,
-    amount: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    if (!this.accounting.isConfigured()) return { ok: true };
-    const buyer = await this.users.findById(buyerId);
-    if (!buyer?.email) {
-      return { ok: false, error: "Buyer email is required for accounting invoice" };
-    }
-    return this.accounting.ensureInvoiceForPayment({
-      paymentId,
-      lot,
-      buyerEmail: buyer.email,
-      buyerName: buyer.name,
-      amount,
-      buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
-    });
-  }
-
   /**
    * Backfill the Xero ACCREC invoice for a settleable payment that has none yet (created while
    * Xero was unavailable in non-blocking mode). Idempotent: `ensureInvoiceForPayment` early-returns
@@ -856,7 +840,14 @@ export class PaymentService {
     if (!lot) return { ok: false, error: "lot_not_found" };
     const buyerId = p.buyerId ?? p.paidByUserId;
     if (!buyerId) return { ok: false, error: "buyer_not_found" };
-    const result = await this.ensureXeroInvoiceForPayment(paymentId, lot, buyerId, p.amount);
+    const result = await ensureXeroInvoiceForPayment(
+      this.accounting,
+      this.users,
+      paymentId,
+      lot,
+      buyerId,
+      p.amount,
+    );
     if (result.ok) {
       recordMoneyPathEvent("xero_invoice_backfilled");
     }

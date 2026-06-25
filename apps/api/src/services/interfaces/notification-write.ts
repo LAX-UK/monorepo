@@ -13,6 +13,9 @@ export type CreateNotificationRow = {
     amount?: string;
     invoiceUrl?: string | null;
     invoiceNumber?: string;
+    dueDate?: string;
+    hammerPrice?: string;
+    totalDue?: string;
     lotTitle?: string;
     outboxIdempotencyKey?: string;
   };

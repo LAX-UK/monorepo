@@ -4,6 +4,7 @@ import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason, portfolioSettlementLabel } from "@/lib/portfolio-settlement";
 import type { ManualReviewReason, PortfolioRow } from "@auction/types";
+import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
 export function filterPortfolioRowsByTitle(rows: PortfolioRow[], qLower: string): PortfolioRow[] {
@@ -92,6 +93,22 @@ function isAwaitingCheckout(row: PortfolioRow): boolean {
   return status !== "captured" && status !== "refunded";
 }
 
+function portfolioDueColumnLabel(row: PortfolioRow): string {
+  const status = row.payment?.status ?? null;
+  if (status === "captured") return "Paid";
+  if (row.payment?.createdAt) {
+    const due = new Date(row.payment.createdAt);
+    due.setUTCDate(due.getUTCDate() + INVOICE_PAYMENT_DUE_DAYS);
+    return `Due ${new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(due)}`;
+  }
+  return status === "pending" || status === "authorized" ? "Due now" : "Total due";
+}
+
 export function toPortfolioLotCards(
   rows: PortfolioRow[],
   options: {
@@ -138,7 +155,7 @@ export function toPortfolioLotCards(
         : formatMoney(a.currentPrice, currency),
       premiumLabel: formatMoney((Number.isFinite(premium) ? premium : 0).toFixed(2), currency),
       totalLabel: Number.isFinite(total) ? formatMoney(total.toFixed(2), currency) : "—",
-      dueLabel: row.payment?.status === "captured" ? "Paid" : "Due now",
+      dueLabel: portfolioDueColumnLabel(row),
       settlementLabel,
       settlementStageIndex,
       medium: a.medium,

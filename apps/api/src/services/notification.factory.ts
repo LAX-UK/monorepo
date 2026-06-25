@@ -14,14 +14,22 @@ export class NotificationFactory {
     };
   }
 
-  createWon(lot: Lot, winnerId: string): CreateNotificationRow {
+  createWon(
+    lot: Lot,
+    winnerId: string,
+    opts?: { hammerPrice?: string; totalDue?: string },
+  ): CreateNotificationRow {
     return {
       userId: winnerId,
       type: "lot_won",
       title: "Congratulations — you won",
       message: `You won "${lot.title}". Complete payment from your portfolio when ready.`,
       lotId: lot.id,
-      meta: { lotTitle: lot.title },
+      meta: {
+        lotTitle: lot.title,
+        ...(opts?.hammerPrice ? { hammerPrice: opts.hammerPrice } : {}),
+        ...(opts?.totalDue ? { totalDue: opts.totalDue } : {}),
+      },
     };
   }
 
@@ -128,13 +136,14 @@ export class NotificationFactory {
   createPaymentDue(
     lot: Lot,
     buyerId: string,
-    input: { paymentId: string; amount: string; checkoutUrl: string | null },
+    input: { paymentId: string; amount: string; checkoutUrl: string | null; dueDate?: string },
   ): CreateNotificationRow {
+    const dueSuffix = input.dueDate ? ` Payment due by ${input.dueDate}.` : "";
     return {
       userId: buyerId,
       type: "payment_due",
       title: `Payment due — ${lot.title}`,
-      message: `Complete payment of ${input.amount} GBP for this lot.`,
+      message: `Complete payment of ${input.amount} GBP for this lot.${dueSuffix}`,
       lotId: lot.id,
       meta: {
         paymentId: input.paymentId,
@@ -142,6 +151,7 @@ export class NotificationFactory {
         invoiceUrl: input.checkoutUrl,
         invoiceNumber: `PAY-${input.paymentId.slice(0, 8).toUpperCase()}`,
         lotTitle: lot.title,
+        ...(input.dueDate ? { dueDate: input.dueDate } : {}),
       },
     };
   }

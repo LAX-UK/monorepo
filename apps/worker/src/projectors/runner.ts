@@ -7,6 +7,10 @@ import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-r
 import { processClearArtistBlocks } from "./clear-artist-blocks.js";
 import { processLegalEntityProvisioning } from "./legal-entity-provisioning.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
+import {
+  LOT_INVOICE_INITIATION_PROJECTOR,
+  processLotInvoiceInitiation,
+} from "./lot-invoice-initiation.js";
 import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
 import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
@@ -65,6 +69,8 @@ export function createProjectorRunner(options: {
   heartbeat: () => Promise<void>;
   /** when set, `payout.paid` events trigger Xero bill sync via API. */
   syncXeroPayoutBill?: (payoutId: string) => Promise<boolean>;
+  /** when set, `lot.ended` (sold) triggers auto-invoice creation via API. */
+  ensureLotInvoice?: (lotId: string) => Promise<void>;
   /** transactional email outbox for impersonation notices. */
   emailService?: IEmailService;
   /** when set, registration/verification events enqueue a marketing-contacts ESP sync. */
@@ -330,6 +336,14 @@ export function createProjectorRunner(options: {
       db: options.db,
       log: options.log,
     });
+    if (options.ensureLotInvoice) {
+      await ensureCursor(LOT_INVOICE_INITIATION_PROJECTOR);
+      await processLotInvoiceInitiation({
+        db: options.db,
+        log: options.log,
+        ensureLotInvoice: options.ensureLotInvoice,
+      });
+    }
     await options.heartbeat();
   }
 

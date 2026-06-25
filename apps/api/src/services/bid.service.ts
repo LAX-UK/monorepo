@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
 import { BidError } from "../lib/errors.js";
+import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import type { AdminMetricsService } from "./admin-metrics.service.js";
 import { numberToMoneyString } from "./bid/bid-money.js";
 import { BidNotificationCoordinator } from "./bid/bid-notification.coordinator.js";
@@ -32,6 +33,7 @@ import type { ILegalEntityRepository } from "./interfaces/legal-entity-repositor
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
 import type { IBidPlacer, PlaceBidInput } from "./interfaces/place-bid.js";
 import type { IBidRepository } from "./interfaces/repositories.js";
+import type { ISaleRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
 import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
@@ -62,6 +64,7 @@ export type BidServiceOptions = {
   bidPolicy?: BidPolicyConfig;
   notificationOutbox?: INotificationOutboxService | null;
   notificationFactory?: NotificationFactory;
+  saleRepo?: ISaleRepository | null;
 };
 
 export class BidService implements IBidPlacer {
@@ -80,6 +83,7 @@ export class BidService implements IBidPlacer {
   private readonly bidPolicy: BidPolicyConfig;
   private readonly notificationOutbox: INotificationOutboxService | null;
   private readonly notificationFactory: NotificationFactory;
+  private readonly saleRepo: ISaleRepository | null;
 
   constructor(opts: BidServiceOptions) {
     this.repos = opts.repos;
@@ -93,6 +97,7 @@ export class BidService implements IBidPlacer {
     this.bidEligibility = opts.bidEligibility ?? null;
     this.notificationOutbox = opts.notificationOutbox ?? null;
     this.notificationFactory = opts.notificationFactory ?? new NotificationFactory();
+    this.saleRepo = opts.saleRepo ?? null;
 
     this.notificationCoordinator = new BidNotificationCoordinator(
       opts.cache,
@@ -459,11 +464,16 @@ export class BidService implements IBidPlacer {
     }
 
     if (params.endedEarly) {
+      const sale = lotForNotify.saleId ? await this.saleRepo?.findById(lotForNotify.saleId) : null;
+      const pricing = computeLotCheckoutPricing(lotForNotify, sale ?? null);
       await this.notificationOutbox.stageDispatch(
         {
           userId: createdUserId,
           payload: notificationRowToPayload(
-            this.notificationFactory.createWon(lotForNotify, createdUserId),
+            this.notificationFactory.createWon(lotForNotify, createdUserId, {
+              hammerPrice: pricing.hammerMajor,
+              totalDue: pricing.totalMajor,
+            }),
           ),
           idempotencyKey: `lot_won:${params.lotId}:${createdUserId}`,
         },
