@@ -44,7 +44,7 @@ describe("ConsentBar", () => {
     });
   });
 
-  it("calls setConsentAction with reject-all prefs", async () => {
+  it("calls setConsentAction with reject-all prefs from preferences dialog", async () => {
     mockSetConsentAction.mockResolvedValueOnce({
       ok: true,
       snapshot: buildConsentSnapshot({ analytics: false, marketing: false }),
@@ -55,11 +55,17 @@ describe("ConsentBar", () => {
         <ConsentPreferencesDialog />
       </>,
     );
-    fireEvent.click(screen.getByRole("button", { name: /reject all/i }));
+    fireEvent.click(screen.getByRole("button", { name: /customise/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /reject all/i }));
     await waitFor(() => {
       expect(mockSetConsentAction).toHaveBeenCalledWith({ analytics: false, marketing: false });
     });
     expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it("does not show reject all on the first-layer banner", () => {
+    tree(<ConsentBar />);
+    expect(screen.queryByRole("button", { name: /reject all/i })).not.toBeInTheDocument();
   });
 
   it("calls setConsentAction with accept-all prefs", async () => {
