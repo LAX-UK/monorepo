@@ -1,5 +1,8 @@
 import type { Lot } from "./lot.js";
 
+/** Calendar days from invoice creation until payment is due (terms §13). */
+export const INVOICE_PAYMENT_DUE_DAYS = 7;
+
 export const paymentStatuses = [
   "pending",
   "authorized",
@@ -56,5 +59,7 @@ export type PortfolioRow = {
     id: string;
     status: PaymentStatus;
     manualReviewReason: ManualReviewReason | null;
+    /** ISO-8601 timestamp when the payment row was created (invoice date). */
+    createdAt?: string;
   } | null;
 };

@@ -75,6 +75,7 @@ import {
   runMarketingEventOutboxPoller,
 } from "./jobs/marketing-event-processor.js";
 import {
+  runEnsureLotInvoicesJob,
   runExpireStalePaymentsJob,
   runProcessNotificationOutboxJob,
   runRefreshXeroTokensJob,
@@ -83,6 +84,7 @@ import {
   runRetryXeroStripeCaptureSyncJob,
   runRetryXeroWebhookFailuresJob,
 } from "./jobs/payment-ops-cron.js";
+import { postInternalCronJob } from "./jobs/post-internal-cron-job.js";
 import { processImageJob } from "./jobs/process-image.js";
 import { purgeExpiredExportsJob } from "./jobs/purge-expired-exports.js";
 import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js";
@@ -953,6 +955,14 @@ if (env.CRON_INTERNAL_SECRET) {
     run: () => runProcessNotificationOutboxJob(apiCronBase),
   });
   registerPaymentOpsCron({
+    queueName: "ensure-lot-invoices",
+    jobName: "ensure-lot-invoices",
+    jobId: "ensure-lot-invoices-5m",
+    everyMs: 5 * 60 * 1000,
+    sentrySlug: "ensure-lot-invoices",
+    run: () => runEnsureLotInvoicesJob(apiCronBase),
+  });
+  registerPaymentOpsCron({
     queueName: "cleanup-display-pairings",
     jobName: "cleanup-display-pairings",
     jobId: "cleanup-display-pairings-1h",
@@ -1095,6 +1105,7 @@ void Promise.all([
         heartbeat("retry-refund-reconciles"),
         heartbeat("refresh-xero-tokens"),
         heartbeat("process-notification-outbox"),
+        heartbeat("ensure-lot-invoices"),
       ]
     : []),
 ]);
@@ -1140,6 +1151,14 @@ const projectorRunner = createProjectorRunner({
             apiBaseUrl: env.API_INTERNAL_BASE_URL,
             cronSecret: internalCronSecret,
             payoutId,
+            log,
+          }),
+        ensureLotInvoice: async (lotId: string) =>
+          postInternalCronJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret: internalCronSecret,
+            path: "ensure-lot-invoice",
+            body: { lotId },
             log,
           }),
       }

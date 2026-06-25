@@ -202,7 +202,12 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       return {
         lot: lotRow,
         payment: p
-          ? { id: p.id, status: p.status, manualReviewReason: p.manualReviewReason ?? null }
+          ? {
+              id: p.id,
+              status: p.status,
+              manualReviewReason: p.manualReviewReason ?? null,
+              createdAt: p.createdAt,
+            }
           : null,
       };
     });
