@@ -61,13 +61,14 @@ Tracking is **off by default** and only switches on when ALL of these are true. 
 
 When a visitor lands on the site, our consent system checks whether they've made a choice before (by reading the `lax_consent` cookie). If not, the **cookie banner** appears at the bottom of the page.
 
-### Banner buttons
+### Banner buttons (first layer)
 
 | Button | Result |
 |----|----|
-| **Accept all** | Analytics ON, Marketing ON. Everything starts firing immediately. |
-| **Reject all** | Analytics OFF, Marketing OFF. GTM never loads, no events fire, no `_fbp`/`_fbc` cookies are read. |
-| **Customise** | Opens a dialog to toggle the two categories independently. |
+| **Accept all** | Analytics ON, Marketing ON. Everything starts firing immediately. Primary action on the banner. |
+| **Customise** | Opens the cookie preferences dialog to review categories or reject optional cookies. |
+
+**Reject all** is not shown on the first-layer banner. Visitors who want to refuse optional cookies open **Customise** (or **Cookie preferences** in the footer) and use **Reject all** or leave toggles off and click **Save preferences**.
 
 ### Inside the "Customise" dialog
 
@@ -77,6 +78,14 @@ There are **two switches**:
 - **Marketing** — controls advertising/remarketing tags (e.g. Meta Pixel + Conversions API) and reading of marketing cookies (`_fbp`, `_fbc`).
 
 **Marketing is gated on Analytics.** You cannot turn Marketing on while Analytics is off. If a visitor turns Analytics off, Marketing is forced off as well (the switch is disabled and the toggle reverts). This is intentional — GTM is the runtime that fires marketing tags, so without analytics consent there is no place for marketing tags to run.
+
+Optional category toggles default to **off** for first-time visitors. Dialog actions:
+
+| Button | Result |
+|----|----|
+| **Reject all** | Analytics OFF, Marketing OFF. GTM never loads, no events fire, no `_fbp`/`_fbc` cookies are read. |
+| **Save preferences** | Persists the current toggle state (all off = same outcome as reject all). |
+| **Cancel** | Closes the dialog without saving; the banner stays until a choice is made. |
 
 ### Footer link
 
@@ -251,7 +260,7 @@ Use Meta's **Events Manager → Test events** view with `META_CAPI_TEST_EVENT_CO
 ### Validating consent works
 
 1. Open in incognito → don't touch the banner. No network requests to `gtm.lax.bid` or `googletagmanager.com` should appear.
-2. Click **Reject all** → same as above.
+2. Click **Customise** → **Reject all** (or leave toggles off and click **Save preferences**) → same as above.
 3. Click **Accept all** → GTM loads and a `page_view` fires immediately.
 4. Open Cookie preferences from the footer → toggle Analytics off → save → reload → GTM no longer loads.
 
@@ -356,7 +365,7 @@ Before public launch, run the checklist in [`docs/runbooks/consent-gtm-go-live-v
 
 - Banner visible in incognito; no `gtm.js` / no `gtm.lax.bid` before a choice
 - **Accept all** loads GTM and sends hits to `gtm.lax.bid`
-- **Reject all** keeps GTM silent
+- **Customise** → **Reject all** (or save with toggles off) keeps GTM silent
 - GTM container `transport_url` and tag consent requirements
 - Privacy / cookie policy alignment
 

@@ -19,7 +19,7 @@ import {
 type ConsentContextValue = {
   /** Persisted choice from cookie; `null` means visitor has not chosen yet. */
   snapshot: ConsentSnapshot | null;
-  /** First-visit banner until Accept / Reject / Customise save. */
+  /** First-visit banner until Accept / Customise save (reject via preferences dialog). */
   showBanner: boolean;
   preferencesOpen: boolean;
   openPreferences: () => void;

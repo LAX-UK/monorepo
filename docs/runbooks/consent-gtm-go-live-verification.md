@@ -16,8 +16,8 @@ curl -sS -o /dev/null -w "gtm.lax.bid/healthy -> HTTP %{http_code}\n" https://gt
 ## A. Banner visible (incognito)
 
 1. Open a **private/incognito** window to `https://lax.bid`.
-2. Confirm the **Cookies on LAX.BID** banner appears with **Reject all**, **Customise**, and **Accept all** on the first layer.
-3. Confirm **Reject all** and **Accept all** have equal visual prominence (same button style).
+2. Confirm the **Cookies on LAX.BID** banner shows **Customise** (outline) and **Accept all** (primary) on the first layer — **Reject all** is not on the banner.
+3. Confirm **Accept all** is the filled primary button and **Customise** opens the cookie preferences dialog.
 
 ## B. Before any choice (expect silence)
 
@@ -46,7 +46,8 @@ This is correct and compliant (Basic Consent Mode).
 ## D. After **Reject all** (fresh incognito session)
 
 1. Open a new incognito window.
-2. Click **Reject all**.
+2. Click **Customise**.
+3. Click **Reject all**.
 
 | Check | Expected |
 |-------|----------|
