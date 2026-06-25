@@ -4,9 +4,9 @@ import { useConsent } from "@/lib/analytics/consent/context";
 import { Button, Card, CardContent } from "@auction/ui";
 import Link from "next/link";
 
-/** First-visit cookie banner: equal-prominence Accept / Reject / Customise. */
+/** First-visit cookie banner: Accept all + Customise (reject via preferences dialog). */
 export function ConsentBar() {
-  const { showBanner, acceptAll, rejectAll, openPreferences } = useConsent();
+  const { showBanner, acceptAll, openPreferences } = useConsent();
 
   if (!showBanner) return null;
 
@@ -36,13 +36,6 @@ export function ConsentBar() {
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            <Button
-              type="button"
-              className="w-full sm:w-auto sm:min-w-[8.5rem]"
-              onClick={() => void rejectAll()}
-            >
-              Reject all
-            </Button>
             <Button
               type="button"
               variant="outline"
