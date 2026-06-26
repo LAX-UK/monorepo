@@ -55,3 +55,10 @@ export async function runProcessNotificationOutboxJob(opts: JobOpts): Promise<vo
     path: "process-notification-outbox",
   });
 }
+
+export async function runEnsureLotInvoicesJob(opts: JobOpts): Promise<void> {
+  await postInternalCronJob({
+    ...opts,
+    path: "ensure-lot-invoices",
+  });
+}
