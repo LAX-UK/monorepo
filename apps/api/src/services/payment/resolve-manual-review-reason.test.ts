@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment-tier.policy.js";
-import { resolveManualReviewReason } from "./resolve-manual-review-reason.js";
+import {
+  resolveManualReviewReason,
+  resolveNewPaymentReviewDecision,
+} from "./resolve-manual-review-reason.js";
 
 const policy = new PaymentTierPolicy(
   parsePaymentTierLimits({
@@ -81,5 +84,43 @@ describe("resolveManualReviewReason", () => {
       manualReviewReason: "source_of_funds_required",
       complianceHold: true,
     });
+  });
+});
+
+describe("resolveNewPaymentReviewDecision", () => {
+  it("requires manual review for AML hold at payment creation", async () => {
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
+      peek: vi.fn(),
+    };
+    const result = await resolveNewPaymentReviewDecision({
+      buyerUserId: "buyer-1",
+      amountPence: 10_000,
+      sellerArchived: false,
+      paymentTierPolicy: policy,
+      settlementCompliance,
+    });
+    expect(result).toEqual({
+      requiresManualReview: true,
+      manualReviewReason: "aml_hold",
+      complianceHold: true,
+    });
+  });
+
+  it("requires manual review for high-value tier without compliance hold", async () => {
+    const settlementCompliance: ISettlementCompliancePolicy = {
+      evaluate: vi.fn().mockResolvedValue({ hold: false, reason: null }),
+      peek: vi.fn(),
+    };
+    const result = await resolveNewPaymentReviewDecision({
+      buyerUserId: "buyer-1",
+      amountPence: 60_000_000,
+      sellerArchived: false,
+      paymentTierPolicy: policy,
+      settlementCompliance,
+    });
+    expect(result.requiresManualReview).toBe(true);
+    expect(result.manualReviewReason).toBe("high_value");
+    expect(result.complianceHold).toBe(false);
   });
 });
