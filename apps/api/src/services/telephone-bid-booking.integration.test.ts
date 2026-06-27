@@ -53,6 +53,8 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
         name: "Tel Buyer",
         email: "tel_int_buyer@integration.test",
         emailVerified: true,
+        phoneNumber: "+447700900123",
+        phoneNumberVerified: true,
         mobile: "+447700900123",
         createdAt: t,
         updatedAt: t,
