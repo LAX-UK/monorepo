@@ -154,6 +154,7 @@ export function SignInPhoneForm({
                 <FormControl>
                   <PhoneNumberField
                     id="sign-in-phone"
+                    variant="auth"
                     defaultCountry={defaultCountry}
                     value={field.value}
                     onChange={field.onChange}
