@@ -42,6 +42,8 @@ export type ProfileMeRow = {
   name: string;
   mobile: string | null;
   mobileCountry: string | null;
+  phoneNumber: string | null;
+  phoneNumberVerified: boolean;
   image: string | null;
   role: string;
   staffRole: string | null;

@@ -17,6 +17,7 @@ type Props = {
   isAuthenticated: boolean;
   kycApproved: boolean;
   mobile: string | null;
+  phoneNumberVerified?: boolean;
   mobileDisplay?: string | null;
   buyerEntities: Array<{ id: string; displayName: string; memberRole: string }>;
   telephoneBooking?: TelephoneBookingSnapshot | null;
@@ -31,6 +32,7 @@ export function OnsiteParticipationHub({
   isAuthenticated,
   kycApproved,
   mobile,
+  phoneNumberVerified = false,
   mobileDisplay,
   buyerEntities,
   telephoneBooking = null,
@@ -124,6 +126,7 @@ export function OnsiteParticipationHub({
               isAuthenticated={isAuthenticated}
               kycApproved={kycApproved}
               mobile={mobile}
+              phoneNumberVerified={phoneNumberVerified}
               {...(mobileDisplay ? { mobileDisplay } : {})}
               buyerEntities={buyerEntities}
               existingBooking={telephoneBooking}

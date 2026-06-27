@@ -10,6 +10,7 @@ import {
   verification,
 } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
+import type { IPhoneVerificationService } from "@auction/sms";
 import type { BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink, twoFactor } from "better-auth/plugins";
@@ -22,6 +23,11 @@ import type { EnvelopeCrypto } from "./crypto/envelope.js";
 import { createJwksAdapter } from "./jwks.js";
 import { pickMagicLinkTemplate } from "./magic-link-email.js";
 import { buildMagicLinkVerifyPlugin } from "./magic-link-verify-hooks.js";
+import {
+  buildPhoneNumberGuardPlugin,
+  buildPhoneNumberPlugin,
+  buildPhoneNumberRateLimitPlugin,
+} from "./phone-number-plugin.js";
 import { buildTwoFactorEnforcementPlugin } from "./two-factor-enforcement.js";
 
 type RevokeSessions = (userId: string) => Promise<number>;
@@ -55,12 +61,13 @@ export function buildJwtAndOidcPlugins(options: {
   jwtAudience: string;
   envelope?: EnvelopeCrypto | undefined;
   email?: IEmailService | undefined;
+  phoneVerification?: IPhoneVerificationService | undefined;
   onEmailVerified?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
 }): BetterAuthPlugin[] {
   const jwksAdapter = createJwksAdapter(options.db, options.envelope);
-  const { db, issuer, webOrigin, jwtAudience, email, onEmailVerified } = options;
+  const { db, issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
   const webBase = (webOrigin ?? "https://lax.bid").replace(/\/$/, "");
   return [
     jwt({
@@ -166,6 +173,9 @@ export function buildJwtAndOidcPlugins(options: {
     }),
     buildMagicLinkVerifyPlugin({ onEmailVerified }),
     buildTwoFactorEnforcementPlugin({ webOrigin }),
+    buildPhoneNumberPlugin({ db, phoneVerification, email }),
+    buildPhoneNumberRateLimitPlugin(),
+    buildPhoneNumberGuardPlugin(db),
   ];
 }
 

@@ -74,6 +74,16 @@ locals {
     { key = "POSTMARK_SERVER_TOKEN", value = var.postmark_server_token, type = "SECRET", scope = "RUN_TIME" },
   ]
 
+  # Twilio Verify — phone OTP for profile verification and phone sign-in (apps/api + apps/auth).
+  # When enable_phone_verification=true, apps refuse to start without the Twilio credentials below.
+  phone_verification_common_env = [
+    { key = "ENABLE_PHONE_VERIFICATION", value = var.enable_phone_verification, type = "GENERAL", scope = "RUN_TIME" },
+    { key = "TWILIO_ACCOUNT_SID", value = var.twilio_account_sid, type = "SECRET", scope = "RUN_TIME" },
+    { key = "TWILIO_VERIFY_SERVICE_SID", value = var.twilio_verify_service_sid, type = "SECRET", scope = "RUN_TIME" },
+    { key = "TWILIO_API_KEY_SID", value = var.twilio_api_key_sid, type = "SECRET", scope = "RUN_TIME" },
+    { key = "TWILIO_API_KEY_SECRET", value = var.twilio_api_key_secret, type = "SECRET", scope = "RUN_TIME" },
+  ]
+
   # Organisation module kill switch — must stay in sync with infra/web-build/prod.env.
   org_module_hidden_env_web = var.org_module_hidden ? [
     { key = "NEXT_PUBLIC_FORCE_ORG_MODULE", value = "hidden", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
@@ -187,7 +197,7 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.api
       primary_domain    = false
-      env = concat(local.common_secret_env, local.email_common_env, local.sentry_env_for["api"], local.org_module_hidden_env_api, [
+      env = concat(local.common_secret_env, local.email_common_env, local.phone_verification_common_env, local.sentry_env_for["api"], local.org_module_hidden_env_api, [
         { key = "DATABASE_URL", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_API", value = local.database_url_api, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
@@ -266,7 +276,7 @@ locals {
       health_check_path = "/health/live"
       domain            = local.domain.auth
       primary_domain    = false
-      env = concat(local.common_secret_env, local.email_common_env, local.sentry_env_for["auth"], [
+      env = concat(local.common_secret_env, local.email_common_env, local.phone_verification_common_env, local.sentry_env_for["auth"], [
         { key = "DATABASE_URL", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_URL_AUTH", value = local.database_url_auth, type = "SECRET", scope = "RUN_TIME" },
         { key = "DATABASE_CA_CERT", value = module.postgres.ca_certificate, type = "SECRET", scope = "RUN_TIME" },

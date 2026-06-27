@@ -153,7 +153,7 @@ variable "email_provider" {
 }
 variable "email_from" {
   type        = string
-  default     = "LAX.BID by London Art Xxchange <no-reply@mail.lax.bid>"
+  default     = "LAX.BID by London Art Xchange <no-reply@mail.lax.bid>"
   description = "Default From header for transactional/notification mail."
 }
 variable "email_reply_to" {
@@ -275,6 +275,42 @@ variable "veriff_api_base_url" {
   default     = "https://stationapi.veriff.com"
   description = "Veriff API base URL."
 }
+
+# --- Phone verification (Twilio Verify) ---
+variable "enable_phone_verification" {
+  type        = string
+  default     = "true"
+  description = "When \"true\", Twilio Verify credentials are required at runtime on apps/api and apps/auth."
+  validation {
+    condition     = contains(["true", "false"], var.enable_phone_verification)
+    error_message = "enable_phone_verification must be the string \"true\" or \"false\"."
+  }
+}
+variable "twilio_account_sid" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Twilio Account SID (AC…). Required when enable_phone_verification=true."
+}
+variable "twilio_verify_service_sid" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Twilio Verify Service SID (VA…)."
+}
+variable "twilio_api_key_sid" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Twilio API Key SID (SK…). Preferred over auth token in production."
+}
+variable "twilio_api_key_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Twilio API Key secret. Pair with twilio_api_key_sid."
+}
+
 variable "stripe_connect_webhook_secret" {
   type        = string
   default     = ""
