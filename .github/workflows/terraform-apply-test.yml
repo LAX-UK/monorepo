@@ -42,6 +42,10 @@ jobs:
       TF_VAR_vapid_private_key: ${{ secrets.VAPID_PRIVATE_KEY }}
       TF_VAR_veriff_api_key: ${{ secrets.VERIFF_API_KEY }}
       TF_VAR_veriff_shared_secret: ${{ secrets.VERIFF_SHARED_SECRET }}
+      TF_VAR_twilio_account_sid: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TF_VAR_twilio_verify_service_sid: ${{ secrets.TWILIO_VERIFY_SERVICE_SID }}
+      TF_VAR_twilio_api_key_sid: ${{ secrets.TWILIO_API_KEY_SID }}
+      TF_VAR_twilio_api_key_secret: ${{ secrets.TWILIO_API_KEY_SECRET }}
       TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
       TF_VAR_stripe_transfers_webhook_secret: ${{ secrets.STRIPE_TRANSFERS_WEBHOOK_SECRET }}
       TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}

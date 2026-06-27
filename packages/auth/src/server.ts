@@ -26,11 +26,13 @@
 import type { Database } from "@auction/db";
 import { session as sessionTable } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
+import type { IPhoneVerificationService } from "@auction/sms";
 import { betterAuth } from "better-auth";
 import { count, eq } from "drizzle-orm";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 import { parseAuthDekKey } from "./crypto/dek.js";
 import { createEnvelopeCrypto } from "./crypto/envelope.js";
+import { resetPhoneVerifiedIfNumberChanged } from "./phone-number-plugin.js";
 import {
   buildDrizzleDatabase,
   buildEmailAndPasswordBlock,
@@ -57,6 +59,7 @@ export type AuthEnv = {
   /** Apple client secret JWT. If absent, Apple is feature-flagged off. */
   appleClientSecret?: string | undefined;
   email?: IEmailService | undefined;
+  phoneVerification?: IPhoneVerificationService | undefined;
   requireEmailVerification?: boolean | undefined;
   /** `aud` claim for JWTs consumed by `lax-api` (Bearer). OIDC clients may use separate audiences via issuer config. */
   jwtAudience?: string | undefined;
@@ -164,6 +167,22 @@ export function createAuth(env: AuthEnv): Auth {
           required: false,
           input: false,
         },
+        phoneNumber: {
+          type: "string",
+          required: false,
+          input: false,
+        },
+        phoneNumberVerified: {
+          type: "boolean",
+          required: false,
+          defaultValue: false,
+          input: false,
+        },
+        mobileCountry: {
+          type: "string",
+          required: false,
+          input: false,
+        },
       },
     },
     emailAndPassword: buildEmailAndPasswordBlock({
@@ -209,6 +228,27 @@ export function createAuth(env: AuthEnv): Auth {
                   error: err instanceof Error ? err.message : String(err),
                 });
               });
+          },
+        },
+        update: {
+          before: async (userData) => {
+            if (!("phoneNumber" in userData)) return;
+            const userId = (userData as { id?: string }).id;
+            if (!userId) return;
+            const existing = await env.db.query.user.findFirst({
+              where: (u, { eq }) => eq(u.id, userId),
+              columns: { phoneNumber: true },
+            });
+            const nextPhone =
+              userData.phoneNumber === null || userData.phoneNumber === undefined
+                ? null
+                : String(userData.phoneNumber);
+            await resetPhoneVerifiedIfNumberChanged(
+              env.db,
+              userId,
+              existing?.phoneNumber,
+              nextPhone,
+            );
           },
         },
       },
@@ -272,6 +312,7 @@ export function createAuth(env: AuthEnv): Auth {
       jwtAudience,
       envelope,
       email: env.email,
+      phoneVerification: env.phoneVerification,
       onEmailVerified: env.onEmailVerified,
     }),
     advanced: {

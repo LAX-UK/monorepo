@@ -153,19 +153,30 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
     userId: string,
   ): Promise<Result<string, TelephoneBidBookingServiceError>> {
     const [row] = await this.db
-      .select({ mobile: user.mobile })
+      .select({
+        phoneNumber: user.phoneNumber,
+        phoneNumberVerified: user.phoneNumberVerified,
+        mobile: user.mobile,
+      })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
-    const mobile = row?.mobile?.trim();
-    if (!mobile) {
+    const phone = row?.phoneNumber?.trim() ?? row?.mobile?.trim();
+    if (!phone) {
       return this.err(
         "Add a mobile number to your profile before requesting a telephone line",
         400,
         "profile_phone_required",
       );
     }
-    return ok(mobile);
+    if (!row?.phoneNumberVerified) {
+      return this.err(
+        "Verify your mobile number before requesting a telephone line",
+        400,
+        "profile_phone_unverified",
+      );
+    }
+    return ok(phone);
   }
 
   private async validateLotIds(

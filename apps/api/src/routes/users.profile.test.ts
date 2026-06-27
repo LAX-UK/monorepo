@@ -12,6 +12,8 @@ function baseProfile(over: Partial<ProfileMeRow> = {}): ProfileMeRow {
     name: "A",
     mobile: null,
     mobileCountry: null,
+    phoneNumber: null,
+    phoneNumberVerified: false,
     image: null,
     role: "client",
     staffRole: null,

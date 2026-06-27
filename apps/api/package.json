@@ -38,6 +38,7 @@
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
     "@auction/queues": "workspace:*",
+    "@auction/sms": "workspace:^",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
     "@aws-sdk/client-s3": "^3.1041.0",

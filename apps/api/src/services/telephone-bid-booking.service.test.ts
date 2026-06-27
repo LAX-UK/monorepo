@@ -31,11 +31,16 @@ function mockDb(
   overrides: {
     sale?: { deliveryMode: string; status: string } | null;
     mobile?: string | null;
+    phoneNumber?: string | null;
+    phoneNumberVerified?: boolean;
     lots?: Array<{ id: string }>;
   } = {},
 ) {
   const saleRow = overrides.sale ?? { deliveryMode: "onsite", status: "scheduled" };
   const mobile = "mobile" in overrides ? overrides.mobile : "+447700900123";
+  const phoneNumber = "phoneNumber" in overrides ? overrides.phoneNumber : (mobile ?? null);
+  const phoneNumberVerified =
+    "phoneNumberVerified" in overrides ? overrides.phoneNumberVerified : true;
   const lots = overrides.lots ?? [{ id: "lot-1" }];
 
   const chain = () => ({
@@ -60,11 +65,17 @@ function mockDb(
           }),
         };
       }
-      if (keys.includes("mobile")) {
+      if (keys.includes("phoneNumber") || keys.includes("mobile")) {
         return {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([{ mobile }]),
+              limit: vi.fn().mockResolvedValue([
+                {
+                  phoneNumber,
+                  phoneNumberVerified,
+                  mobile,
+                },
+              ]),
             }),
           }),
         };
@@ -155,7 +166,7 @@ describe("TelephoneBidBookingService", () => {
 
   it("rejects request without profile phone", async () => {
     const service = new TelephoneBidBookingService(
-      mockDb({ mobile: null }),
+      mockDb({ mobile: null, phoneNumber: null, phoneNumberVerified: false }),
       repo,
       mockLegalEntity(),
     );
@@ -167,6 +178,23 @@ describe("TelephoneBidBookingService", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.code).toBe("profile_phone_required");
+    }
+  });
+
+  it("rejects request with unverified profile phone", async () => {
+    const service = new TelephoneBidBookingService(
+      mockDb({ phoneNumberVerified: false }),
+      repo,
+      mockLegalEntity(),
+    );
+    const result = await service.requestBooking({
+      userId: "user-1",
+      saleId: "sale-1",
+      buyerLegalEntityId: "le-1",
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("profile_phone_unverified");
     }
   });
 

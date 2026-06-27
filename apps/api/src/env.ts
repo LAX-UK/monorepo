@@ -199,6 +199,16 @@ const envSchema = z
       emptyToUndefined,
       z.string().url().default("https://stationapi.veriff.com"),
     ),
+    /** When true, Twilio Verify credentials are required in production. */
+    ENABLE_PHONE_VERIFICATION: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    TWILIO_ACCOUNT_SID: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    TWILIO_VERIFY_SERVICE_SID: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    TWILIO_API_KEY_SID: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    TWILIO_API_KEY_SECRET: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** Local/dev fallback when API key credentials are not configured. */
+    TWILIO_AUTH_TOKEN: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** Stripe Connect webhook signing secret (whsec_…). */
     STRIPE_CONNECT_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Stripe Payments webhook signing secret (whsec_…) for disputes/refunds. */
@@ -410,6 +420,33 @@ const envSchema = z
           message: "VERIFF_SHARED_SECRET is required in production",
           path: ["VERIFF_SHARED_SECRET"],
         });
+      }
+      if (e.ENABLE_PHONE_VERIFICATION) {
+        if (!e.TWILIO_ACCOUNT_SID?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "TWILIO_ACCOUNT_SID is required when ENABLE_PHONE_VERIFICATION=true",
+            path: ["TWILIO_ACCOUNT_SID"],
+          });
+        }
+        if (!e.TWILIO_VERIFY_SERVICE_SID?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "TWILIO_VERIFY_SERVICE_SID is required when ENABLE_PHONE_VERIFICATION=true",
+            path: ["TWILIO_VERIFY_SERVICE_SID"],
+          });
+        }
+        const hasApiKey =
+          Boolean(e.TWILIO_API_KEY_SID?.trim()) && Boolean(e.TWILIO_API_KEY_SECRET?.trim());
+        const hasAuthToken = Boolean(e.TWILIO_AUTH_TOKEN?.trim());
+        if (!hasApiKey && !hasAuthToken) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (or TWILIO_AUTH_TOKEN) required when ENABLE_PHONE_VERIFICATION=true",
+            path: ["TWILIO_API_KEY_SID"],
+          });
+        }
       }
     } else if (appEnv === "test") {
       if (e.STRIPE_SECRET_KEY && !e.STRIPE_SECRET_KEY.startsWith("sk_test_")) {

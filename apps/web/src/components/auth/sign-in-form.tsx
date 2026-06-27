@@ -8,6 +8,7 @@ import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SellAuthIntentBanner } from "@/components/auth/sell-auth-intent-banner";
 import { SignInCredentialsStep } from "@/components/auth/sign-in-credentials-step";
 import { SignInEmailStep } from "@/components/auth/sign-in-email-step";
+import { SignInPhoneForm } from "@/components/auth/sign-in-phone-form";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { LogoutButton } from "@/components/layout/logout-button";
@@ -21,7 +22,7 @@ import { sellRegisterHrefFromSubmissionNext } from "@/lib/marketing/sell-intake"
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type SignInFormProps = {
   /** When true (e.g. `/login?switch=1`), show sign-out to use another account. */
@@ -31,6 +32,7 @@ type SignInFormProps = {
 export function SignInForm({ switchAccount = false }: SignInFormProps) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
+  const [signInMode, setSignInMode] = useState<"email" | "phone">("email");
   const sellIntent = searchParams.get("intent") === "sell";
   const prefillEmail = parseAuthEmailParam(searchParams.get("email"));
   const {
@@ -268,6 +270,19 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
   );
 
   if (!emailFirst) {
+    if (signInMode === "phone") {
+      return (
+        <div className="flex w-full flex-col gap-10">
+          {banners}
+          <SignInPhoneForm
+            nextHref={isSafeNextPath(next) ? next : "/dashboard"}
+            next={next}
+            onUseEmail={() => setSignInMode("email")}
+          />
+        </div>
+      );
+    }
+
     return (
       <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
         {banners}
@@ -344,6 +359,13 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
               Sign In
             </AuthSubmitButton>
           )}
+          <button
+            type="button"
+            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            onClick={() => setSignInMode("phone")}
+          >
+            Sign in with phone number
+          </button>
           {sellIntent ? (
             <p className="text-center font-footer-links text-sm text-on-surface-variant">
               New to LAX? Create an account to start your submission in about 3 minutes.
@@ -357,6 +379,19 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           )}
         </div>
       </form>
+    );
+  }
+
+  if (signInMode === "phone") {
+    return (
+      <div className="flex w-full flex-col gap-10">
+        {banners}
+        <SignInPhoneForm
+          nextHref={isSafeNextPath(next) ? next : "/dashboard"}
+          next={next}
+          onUseEmail={() => setSignInMode("email")}
+        />
+      </div>
     );
   }
 
@@ -396,6 +431,13 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
       {step === "email" ? (
         <>
           <SignInEmailStep control={form.control} onContinue={goToCredentials} next={next} />
+          <button
+            type="button"
+            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            onClick={() => setSignInMode("phone")}
+          >
+            Sign in with phone number
+          </button>
           {!sellIntent ? (
             <AuthFooterLink
               prefix="Don't have an account?"
@@ -441,6 +483,13 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             sellIntent={sellIntent}
             sellRegisterHref={sellRegisterHref}
           />
+          <button
+            type="button"
+            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            onClick={() => setSignInMode("phone")}
+          >
+            Sign in with phone number
+          </button>
           {!sellIntent ? (
             <AuthFooterLink
               prefix="Don't have an account?"
