@@ -57,9 +57,10 @@ export default async function ProfileSettingsPage({
       <ProfileSettingsBoard
         initialName={me.name}
         initialImage={me.image ?? null}
-        initialMobile={me.mobile ?? null}
+        initialMobile={me.phoneNumber ?? me.mobile ?? null}
         initialMobileCountry={me.mobileCountry ?? null}
         phoneDefaultCountry={phoneDefaultCountry}
+        phoneNumberVerified={me.phoneNumberVerified === true}
         addresses={addresses}
         email={me.email}
         {...(me.emailVerified !== undefined ? { emailVerified: me.emailVerified } : {})}

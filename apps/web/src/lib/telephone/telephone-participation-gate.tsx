@@ -22,6 +22,7 @@ type Props = {
   isAuthenticated: boolean;
   kycApproved: boolean;
   mobile: string | null;
+  phoneNumberVerified?: boolean;
   mobileDisplay?: string | null;
   buyerEntities: Entity[];
   loginNextPath: string;
@@ -35,6 +36,7 @@ export function TelephoneParticipationGate({
   isAuthenticated,
   kycApproved,
   mobile,
+  phoneNumberVerified = false,
   mobileDisplay,
   buyerEntities,
   loginNextPath,
@@ -78,15 +80,18 @@ export function TelephoneParticipationGate({
     );
   }
 
-  if (!mobile?.trim()) {
+  if (!mobile?.trim() || !phoneNumberVerified) {
     return (
       <div className="space-y-2">
         <p className="font-body text-xs text-on-surface-variant">
-          Add a contact number to your profile so our team can reach you on the line.
+          {mobile?.trim()
+            ? "Verify your contact number so our team can reach you on the telephone line."
+            : "Add and verify a contact number so our team can reach you on the line."}
         </p>
         <Button size="sm" variant="outline" className="w-full gap-1.5" asChild>
           <Link href={profileHref}>
-            Add mobile number <ArrowRight className="size-3" />
+            {mobile?.trim() ? "Verify mobile number" : "Add mobile number"}{" "}
+            <ArrowRight className="size-3" />
           </Link>
         </Button>
       </div>

@@ -14,6 +14,11 @@ import { session } from "@auction/db/schema";
 import { ConsoleEmailService, PostmarkEmailService, bindEmailQueue } from "@auction/email";
 import { Sentry, getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import { EMAIL_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
+import {
+  ConsolePhoneVerificationService,
+  TwilioVerifyService,
+  isTwilioVerifyConfigured,
+} from "@auction/sms";
 import { serve } from "@hono/node-server";
 import { Queue } from "bullmq";
 import { eq, sql } from "drizzle-orm";
@@ -73,6 +78,11 @@ const envelope =
     ? createEnvelopeCrypto(parseAuthDekKey(env.AUTH_DEK_KEY.trim()))
     : undefined;
 
+const phoneVerification =
+  env.ENABLE_PHONE_VERIFICATION && isTwilioVerifyConfigured(env)
+    ? TwilioVerifyService.fromEnv(env)
+    : new ConsolePhoneVerificationService();
+
 const auth = createAuth({
   db,
   secret: env.BETTER_AUTH_SECRET,
@@ -87,6 +97,7 @@ const auth = createAuth({
   appleClientId: env.APPLE_CLIENT_ID,
   appleClientSecret: env.APPLE_CLIENT_SECRET,
   email: emailService,
+  phoneVerification,
   requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
   jwtAudience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
   authDekKey: env.AUTH_DEK_KEY?.trim(),
