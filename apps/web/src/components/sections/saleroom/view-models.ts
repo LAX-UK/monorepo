@@ -161,4 +161,6 @@ export type PressCoverageVM = {
   publishedAt: string | null;
   excerpt: string | null;
   mentionType: import("@auction/types").SalePressMentionType | null;
+  /** Article preview image when resolved from the source URL. */
+  imageUrl: string | null;
 };

@@ -13,6 +13,8 @@ describe("PressArchiveReadService", () => {
     vi.mocked(repo.listCoveragePage).mockResolvedValue({
       data: [],
       total: 0,
+      archiveTotal: 0,
+      outletCount: 0,
       lastUpdated: null,
       availableYears: [],
     });
@@ -39,6 +41,8 @@ describe("PressArchiveReadService", () => {
         },
       ],
       total: 1,
+      archiveTotal: 1,
+      outletCount: 1,
       lastUpdated: new Date("2026-06-02"),
       availableYears: [2026],
     });
@@ -46,6 +50,8 @@ describe("PressArchiveReadService", () => {
     const result = await svc.listCoverage({ limit: 10, offset: 0 });
     expect(result.meta).toEqual({
       total: 1,
+      archiveTotal: 1,
+      outletCount: 1,
       lastUpdated: new Date("2026-06-02"),
       availableYears: [2026],
     });

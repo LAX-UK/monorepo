@@ -1,6 +1,7 @@
 import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import type { PressDayMediaSaleVM } from "@/components/sections/press/mappers";
+import { HorizontalCarousel } from "@/components/ui/horizontal-carousel";
 import { SITE_NAME, SITE_PRESS_EMAIL } from "@/lib/brand";
 import {
   FOCUS_RING,
@@ -14,9 +15,48 @@ import Link from "next/link";
 
 type Props = {
   items: PressDayMediaSaleVM[];
+  variant?: "grid" | "carousel";
 };
 
-export function PressDayMediaRail({ items }: Props) {
+function DayMediaCard({ item }: { item: PressDayMediaSaleVM }) {
+  return (
+    <Link
+      href={item.galleryHref}
+      className={cn(
+        "group flex h-full flex-col overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest hover:border-outline-variant/60",
+        MARKETING_CARD_LIFT,
+        FOCUS_RING,
+      )}
+    >
+      <div className="relative aspect-[16/10] bg-surface-container-low">
+        {item.coverImageUrl ? (
+          <Image
+            src={item.coverImageUrl}
+            alt={`Auction day photo from ${item.title}`}
+            fill
+            className={cn("object-cover", MARKETING_CARD_MEDIA_HOVER)}
+            sizes="(max-width: 1024px) 100vw, 33vw"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center font-body text-sm text-on-surface-variant">
+            {item.dayImageCount} media items
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-1 p-4">
+        <p className="font-headline text-base font-semibold text-on-surface group-hover:text-link">
+          {item.title}
+        </p>
+        <p className="font-body text-xs text-on-surface-variant">
+          {item.dayImageCount} auction day {item.dayImageCount === 1 ? "item" : "items"}
+          {item.endDateLabel ? ` · ${item.endDateLabel}` : null}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+export function PressDayMediaRail({ items, variant = "carousel" }: Props) {
   if (items.length === 0) return null;
 
   return (
@@ -46,47 +86,25 @@ export function PressDayMediaRail({ items }: Props) {
         </a>
         .
       </p>
-      <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item, index) => (
-          <li key={item.id}>
-            <MarketingCardReveal index={index} className="h-full min-w-0">
-              <Link
-                href={item.galleryHref}
-                className={cn(
-                  "group flex h-full flex-col overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest hover:border-outline-variant/60",
-                  MARKETING_CARD_LIFT,
-                  FOCUS_RING,
-                )}
-              >
-                <div className="relative aspect-[16/10] bg-surface-container-low">
-                  {item.coverImageUrl ? (
-                    <Image
-                      src={item.coverImageUrl}
-                      alt={`Auction day photo from ${item.title}`}
-                      fill
-                      className={cn("object-cover", MARKETING_CARD_MEDIA_HOVER)}
-                      sizes="(max-width: 1024px) 100vw, 33vw"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center font-body text-sm text-on-surface-variant">
-                      {item.dayImageCount} media items
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1 p-4">
-                  <p className="font-headline text-base font-semibold text-on-surface group-hover:text-link">
-                    {item.title}
-                  </p>
-                  <p className="font-body text-xs text-on-surface-variant">
-                    {item.dayImageCount} auction day {item.dayImageCount === 1 ? "item" : "items"}
-                    {item.endDateLabel ? ` · ${item.endDateLabel}` : null}
-                  </p>
-                </div>
-              </Link>
+      {variant === "carousel" ? (
+        <HorizontalCarousel ariaLabel="Auction day photos">
+          {items.map((item, index) => (
+            <MarketingCardReveal key={item.id} index={index} className="h-full min-w-0">
+              <DayMediaCard item={item} />
             </MarketingCardReveal>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </HorizontalCarousel>
+      ) : (
+        <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item, index) => (
+            <li key={item.id}>
+              <MarketingCardReveal index={index} className="h-full min-w-0">
+                <DayMediaCard item={item} />
+              </MarketingCardReveal>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

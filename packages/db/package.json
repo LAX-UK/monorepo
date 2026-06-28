@@ -30,7 +30,8 @@
     "db:backfill-lot-lifecycle-snapshot": "tsx src/scripts/backfill-lot-lifecycle-snapshot.ts",
     "db:backfill-user-mobile-e164": "tsx src/scripts/backfill-user-mobile-e164.ts",
     "db:backfill-user-registered-events": "tsx src/scripts/backfill-user-registered-events.ts",
-    "db:backfill-qr-code": "tsx src/scripts/backfill-qr-code.ts"
+    "db:backfill-qr-code": "tsx src/scripts/backfill-qr-code.ts",
+    "db:seed:press-demo": "tsx scripts/seed-press-hub-demo.ts"
   },
   "dependencies": {
     "@auction/types": "workspace:*",

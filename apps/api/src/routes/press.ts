@@ -20,6 +20,8 @@ function serializePressArchiveListResult(
     })),
     meta: {
       total: result.meta.total,
+      archiveTotal: result.meta.archiveTotal,
+      outletCount: result.meta.outletCount,
       lastUpdated: result.meta.lastUpdated?.toISOString() ?? null,
       availableYears: result.meta.availableYears,
     },
@@ -44,6 +46,7 @@ export function createPressRoutes(container: Container, authenticator: IAuthenti
         offset: query.offset,
         ...(query.year !== undefined ? { year: query.year } : {}),
         ...(query.q !== undefined ? { q: query.q } : {}),
+        ...(query.mentionType !== undefined ? { mentionType: query.mentionType } : {}),
       },
       viewer,
     );

@@ -38,6 +38,7 @@ export function PressCoverageList({ items, hasActiveFilters = false, toolbar }: 
         <MarketingEmptyState
           variant="marketing"
           context={hasActiveFilters ? "filtered" : "noResults"}
+          illustration="press"
           title={
             hasActiveFilters ? EMPTY_STATE_VOICE.filteredTitle("articles") : "No press coverage yet"
           }

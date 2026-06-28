@@ -11,11 +11,14 @@ export type ListPressArchiveFilter = {
   offset: number;
   year?: number;
   q?: string;
+  mentionType?: import("@auction/types").SalePressMentionType;
 };
 
 export type PressCoveragePageResult = {
   data: PressArchiveEntry[];
   total: number;
+  archiveTotal: number;
+  outletCount: number;
   lastUpdated: Date | null;
   availableYears: number[];
 };

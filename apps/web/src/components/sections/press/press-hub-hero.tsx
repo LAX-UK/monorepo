@@ -11,6 +11,7 @@ import {
   MARKETING_PAGE_SHELL,
   MARKETING_PROSE_LINK,
 } from "@/lib/marketing/chrome";
+import { type PressHubStats, formatPressHubStatsLabel } from "@/lib/marketing/press-hub-stats";
 import { Button, DisplayHeading, cn } from "@auction/ui";
 import { Rss } from "lucide-react";
 import Link from "next/link";
@@ -20,9 +21,10 @@ const DESCRIPTION =
 
 type Props = {
   lastUpdated?: Date | null;
+  stats?: PressHubStats;
 };
 
-export function PressHubHero({ lastUpdated }: Props) {
+export function PressHubHero({ lastUpdated, stats }: Props) {
   const lastUpdatedLabel =
     lastUpdated != null
       ? new Intl.DateTimeFormat("en-GB", {
@@ -31,6 +33,7 @@ export function PressHubHero({ lastUpdated }: Props) {
           year: "numeric",
         }).format(lastUpdated)
       : null;
+  const statsLabel = stats ? formatPressHubStatsLabel(stats) : null;
 
   return (
     <section
@@ -59,6 +62,11 @@ export function PressHubHero({ lastUpdated }: Props) {
           description={
             <>
               {DESCRIPTION} {SITE_NAME}.
+              {statsLabel ? (
+                <span className="mt-3 block font-body text-sm text-on-surface-variant">
+                  {statsLabel}
+                </span>
+              ) : null}
             </>
           }
           meta={
