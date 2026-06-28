@@ -11,7 +11,7 @@ import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { type ArtistKind, getCreatorKindConfig } from "@auction/types";
-import type { Lot, PublicLotView, Sale, SaleDayMedia, SalePressItem } from "@auction/types";
+import type { Lot, PublicLotView, Sale, SaleDayMedia } from "@auction/types";
 
 export function lotProductJsonLd(
   auction: Lot | PublicLotView,
@@ -498,45 +498,10 @@ export function saleDayGalleryJsonLd(
 }
 
 /**
- * Schema.org `ItemList` wrapping `NewsArticle` entries for curated press coverage.
- * Each press item produces a `NewsArticle` with headline, url, datePublished, publisher, and
- * description (excerpt). Google can surface these in news carousels and AI extractions.
- * Links are standard follow links — curated editorial coverage warrants passing link equity.
+ * Schema.org `ItemList` wrapping external press coverage on sale pages.
+ * Re-exported from the press SEO module for backward compatibility.
  */
-export function salePressJsonLd(
-  sale: Sale,
-  items: SalePressItem[],
-): Record<string, unknown> | null {
-  if (items.length === 0) return null;
-  const base = getSiteUrl();
-  const saleUrl = `${base}${salePath(sale)}`;
-  return {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `Press coverage for ${sale.title}`,
-    url: `${saleUrl}#press`,
-    itemListElement: items.map((item, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      item: {
-        "@type": "NewsArticle",
-        headline: item.headline,
-        url: item.url,
-        ...(item.publishedAt ? { datePublished: item.publishedAt } : {}),
-        ...(item.excerpt ? { description: item.excerpt } : {}),
-        publisher: {
-          "@type": "Organization",
-          name: item.outletName,
-        },
-        about: {
-          "@type": "Event",
-          name: sale.title,
-          url: saleUrl,
-        },
-      },
-    })),
-  };
-}
+export { salePressJsonLd } from "@/lib/seo/press/jsonld";
 
 /** Safe inline JSON-LD for `<script type="application/ld+json">` (escapes `<`). */
 export function jsonLdScript(...items: Array<Record<string, unknown> | null | undefined>): string {

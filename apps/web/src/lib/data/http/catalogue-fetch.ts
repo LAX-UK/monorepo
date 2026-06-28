@@ -5,6 +5,7 @@ import {
   CATALOGUE_HOME_TAG,
   CATALOGUE_LOTS_TAG,
   CATALOGUE_MEGA_MENU_TAG,
+  CATALOGUE_PRESS_TAG,
   CATALOGUE_SALES_TAG,
 } from "@/lib/data/cache-tags";
 import {
@@ -19,6 +20,7 @@ export const CATALOGUE_FETCH_POLICIES = {
   home: revalidateFetchPolicy(60, [CATALOGUE_HOME_TAG]),
   artists: revalidateFetchPolicy(120, [CATALOGUE_ARTISTS_TAG]),
   megaMenu: revalidateFetchPolicy(300, [CATALOGUE_MEGA_MENU_TAG]),
+  press: revalidateFetchPolicy(60, [CATALOGUE_PRESS_TAG]),
 } as const satisfies Record<string, ServerFetchPolicy>;
 
 export async function catalogueFetch(
