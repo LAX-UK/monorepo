@@ -5,6 +5,13 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@auction/ui/components/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -61,8 +68,8 @@ export function PressFilterForm({
     "mb-2 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
   const inputClassName =
     "rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus";
-  const selectClassName = cn(
-    "h-11 min-h-11 w-full rounded-md border border-outline-variant/50 bg-surface px-3 font-body text-sm text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+  const yearSelectClassName = cn(
+    "h-11 min-h-11 w-full rounded-md border border-outline-variant/50 bg-surface font-body text-sm text-on-surface lg:min-w-[8rem]",
   );
 
   return (
@@ -118,16 +125,28 @@ export function PressFilterForm({
               <label htmlFor={yearSelectId} className={labelClassName}>
                 Year
               </label>
-              <FormControl>
-                <select id={yearSelectId} className={selectClassName} {...field}>
-                  <option value="">All years</option>
+              <Select
+                value={field.value || "__all__"}
+                onValueChange={(value) => field.onChange(value === "__all__" ? "" : value)}
+              >
+                <FormControl>
+                  <SelectTrigger
+                    id={yearSelectId}
+                    className={yearSelectClassName}
+                    aria-label="Year"
+                  >
+                    <SelectValue placeholder="All years" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="__all__">All years</SelectItem>
                   {years.map((year) => (
-                    <option key={year} value={year}>
+                    <SelectItem key={year} value={String(year)}>
                       {year}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
-              </FormControl>
+                </SelectContent>
+              </Select>
             </FormItem>
           )}
         />
