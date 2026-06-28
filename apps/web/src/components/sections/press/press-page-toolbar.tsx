@@ -23,9 +23,14 @@ export function PressPageToolbar({ params, years, resultCount }: PressPageToolba
   const activeCount = countActivePressHubFilters(params);
   const hasActiveFilters = activeCount > 0;
 
+  const countRow = (
+    <p className="font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums">
+      {countLabel}
+    </p>
+  );
+
   return (
     <MarketingListToolbar
-      countLabel={countLabel}
       className={cn(
         "lg:static lg:z-auto lg:border-b-0 lg:bg-transparent lg:backdrop-blur-none",
         "-mx-8 md:-mx-10 lg:mx-0",
@@ -53,7 +58,12 @@ export function PressPageToolbar({ params, years, resultCount }: PressPageToolba
           RSS
         </Link>
       }
-      activeFiltersRow={hasActiveFilters ? <PressActiveFilters params={params} /> : undefined}
+      activeFiltersRow={
+        <div className="flex flex-col gap-2">
+          {countRow}
+          {hasActiveFilters ? <PressActiveFilters params={params} /> : null}
+        </div>
+      }
     />
   );
 }

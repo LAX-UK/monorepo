@@ -65,19 +65,23 @@ export function PressFilterForm({
 
   const isSheet = variant === "sheet";
   const labelClassName =
-    "mb-2 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
-  const inputClassName =
-    "rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus";
-  const yearSelectClassName = cn(
-    "h-11 min-h-11 w-full rounded-md border border-outline-variant/50 bg-surface font-body text-sm text-on-surface lg:min-w-[8rem]",
+    "block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
+  const inputClassName = cn(
+    "h-11 min-h-11 rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus",
   );
+  const yearSelectClassName = cn(
+    "h-11 min-h-11 w-full rounded-md border border-outline-variant/50 bg-surface font-body text-sm text-on-surface lg:w-[10rem]",
+  );
+  const fieldClassName = "space-y-2";
 
   return (
     <Form {...form}>
       <form
         id={formId}
         className={cn(
-          isSheet ? "flex flex-col gap-6" : "flex flex-col gap-3 lg:flex-row lg:items-end",
+          isSheet
+            ? "flex flex-col gap-6"
+            : "flex flex-col gap-3 lg:grid lg:w-full lg:grid-cols-[minmax(14rem,1fr)_10rem_auto] lg:items-start lg:gap-3",
           className,
         )}
         onSubmit={form.handleSubmit((values) => {
@@ -101,7 +105,7 @@ export function PressFilterForm({
           control={form.control}
           name="q"
           render={({ field }) => (
-            <FormItem className="min-w-0 flex-1 lg:min-w-[14rem]">
+            <FormItem className="min-w-0 space-y-2">
               <label htmlFor={inputId} className={labelClassName}>
                 Search
               </label>
@@ -121,7 +125,7 @@ export function PressFilterForm({
           control={form.control}
           name="year"
           render={({ field }) => (
-            <FormItem className="w-full shrink-0 lg:w-auto lg:min-w-[8rem]">
+            <FormItem className="min-w-0 space-y-2">
               <label htmlFor={yearSelectId} className={labelClassName}>
                 Year
               </label>
@@ -151,9 +155,18 @@ export function PressFilterForm({
           )}
         />
         {!isSheet ? (
-          <Button type="submit" variant="cta" className="h-11 min-h-[44px] shrink-0 px-8">
-            Apply
-          </Button>
+          <div className={cn(fieldClassName, "w-full shrink-0 lg:w-auto")}>
+            <span className={cn(labelClassName, "invisible select-none")} aria-hidden>
+              Apply
+            </span>
+            <Button
+              type="submit"
+              variant="cta"
+              className="h-11 min-h-11 w-full shrink-0 px-8 lg:w-auto"
+            >
+              Apply
+            </Button>
+          </div>
         ) : null}
       </form>
     </Form>
