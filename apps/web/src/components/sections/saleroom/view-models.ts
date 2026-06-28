@@ -157,6 +157,8 @@ export type PressCoverageVM = {
   domain: string;
   /** Human-readable date string, e.g. "14 Jun 2026". Null when publishedAt absent. */
   dateLabel: string | null;
+  /** ISO date (YYYY-MM-DD) for `<time dateTime>`. */
+  publishedAt: string | null;
   excerpt: string | null;
   mentionType: import("@auction/types").SalePressMentionType | null;
 };

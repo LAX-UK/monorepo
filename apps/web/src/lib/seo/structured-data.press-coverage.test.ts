@@ -1,4 +1,4 @@
-import { salePressJsonLd } from "@/lib/seo/structured-data";
+import { salePressJsonLd } from "@/lib/seo/press/jsonld";
 import type { Sale, SalePressItem } from "@auction/types";
 import { describe, expect, it } from "vitest";
 
@@ -66,26 +66,20 @@ describe("salePressJsonLd", () => {
     expect(list).toHaveLength(2);
   });
 
-  it("each entry is a ListItem with a nested NewsArticle", () => {
+  it("each entry is a ListItem with external WebPage semantics", () => {
     const ld = salePressJsonLd(baseSale, items);
     const list = ld?.itemListElement as Array<Record<string, unknown>>;
     expect(list[0]?.["@type"]).toBe("ListItem");
     expect(list[0]?.position).toBe(1);
     const article = list[0]?.item as Record<string, unknown>;
-    expect(article?.["@type"]).toBe("NewsArticle");
-    expect(article?.headline).toBe("Stunning result at LAX");
+    expect(article?.["@type"]).toBe("WebPage");
     expect(article?.url).toBe("https://dailymail.co.uk/article/123");
+    expect(article?.name).toBe("Stunning result at LAX");
     expect(article?.datePublished).toBe("2026-06-02");
     expect(article?.description).toBe("A record evening.");
-  });
-
-  it("includes publisher Organization with outletName", () => {
-    const ld = salePressJsonLd(baseSale, items);
-    const list = ld?.itemListElement as Array<Record<string, unknown>>;
-    const article = list[0]?.item as Record<string, unknown>;
-    const publisher = article?.publisher as Record<string, unknown>;
-    expect(publisher?.["@type"]).toBe("Organization");
-    expect(publisher?.name).toBe("Daily Mail");
+    const outlet = article?.isPartOf as Record<string, unknown>;
+    expect(outlet?.["@type"]).toBe("NewsMediaOrganization");
+    expect(outlet?.name).toBe("Daily Mail");
   });
 
   it("omits datePublished and description when absent", () => {
