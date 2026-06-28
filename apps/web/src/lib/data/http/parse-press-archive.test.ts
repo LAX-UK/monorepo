@@ -35,4 +35,24 @@ describe("parsePressArchiveListResponse", () => {
     expect(result.data[0]?.sale.id).toBe("good");
     expect(result.meta.availableYears).toEqual([2026]);
   });
+
+  it("parses archiveTotal and outletCount from meta", () => {
+    const result = parsePressArchiveListResponse({
+      data: [],
+      meta: {
+        total: 0,
+        archiveTotal: 42,
+        outletCount: 9,
+        lastUpdated: null,
+        availableYears: [2026, 2020],
+      },
+    });
+
+    expect(result.meta).toMatchObject({
+      total: 0,
+      archiveTotal: 42,
+      outletCount: 9,
+      availableYears: [2026, 2020],
+    });
+  });
 });

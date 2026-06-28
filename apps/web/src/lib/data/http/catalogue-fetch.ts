@@ -9,6 +9,7 @@ import {
   CATALOGUE_SALES_TAG,
 } from "@/lib/data/cache-tags";
 import {
+  NO_STORE_FETCH_POLICY,
   type ServerFetchPolicy,
   mergeFetchInitWithPolicy,
   revalidateFetchPolicy,
@@ -20,7 +21,11 @@ export const CATALOGUE_FETCH_POLICIES = {
   home: revalidateFetchPolicy(60, [CATALOGUE_HOME_TAG]),
   artists: revalidateFetchPolicy(120, [CATALOGUE_ARTISTS_TAG]),
   megaMenu: revalidateFetchPolicy(300, [CATALOGUE_MEGA_MENU_TAG]),
-  press: revalidateFetchPolicy(60, [CATALOGUE_PRESS_TAG]),
+  /** Dev: always fresh so local press seed / admin edits show immediately. */
+  press:
+    process.env.NODE_ENV === "development"
+      ? NO_STORE_FETCH_POLICY
+      : revalidateFetchPolicy(60, [CATALOGUE_PRESS_TAG]),
 } as const satisfies Record<string, ServerFetchPolicy>;
 
 export async function catalogueFetch(

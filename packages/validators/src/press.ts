@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const pressMentionTypeSchema = z.enum(["feature", "interview", "quote", "roundup"]);
+
 export const pressArchiveQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(100),
   offset: z.coerce.number().int().min(0).default(0),
@@ -7,6 +9,8 @@ export const pressArchiveQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100).optional(),
   /** Case-insensitive match on sale title, headline, or outlet name. */
   q: z.string().trim().max(200).optional(),
+  /** Filter by curated mention type. */
+  mentionType: pressMentionTypeSchema.optional(),
 });
 
 export type PressArchiveQuery = z.infer<typeof pressArchiveQuerySchema>;

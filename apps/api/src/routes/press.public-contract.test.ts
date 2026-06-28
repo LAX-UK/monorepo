@@ -45,6 +45,8 @@ describe("press public routes contract", () => {
       ],
       meta: {
         total: 1,
+        archiveTotal: 1,
+        outletCount: 1,
         lastUpdated: new Date("2026-06-02T12:00:00.000Z"),
         availableYears: [2026],
       },
@@ -58,6 +60,8 @@ describe("press public routes contract", () => {
     };
     expect(body.meta).toMatchObject({
       total: 1,
+      archiveTotal: 1,
+      outletCount: 1,
       lastUpdated: expect.any(String),
       availableYears: [2026],
     });
@@ -74,7 +78,7 @@ describe("press public routes contract", () => {
     const app = new Hono();
     const listCoverage = vi.fn().mockResolvedValue({
       data: [],
-      meta: { total: 0, lastUpdated: null, availableYears: [] },
+      meta: { total: 0, archiveTotal: 0, outletCount: 0, lastUpdated: null, availableYears: [] },
     });
     app.route("/press", createPressRoutes(mockContainer({ listCoverage }), mockAuthenticator()));
     const res = await app.request("http://t/press/coverage?year=2024&q=BBC&limit=10&offset=5");

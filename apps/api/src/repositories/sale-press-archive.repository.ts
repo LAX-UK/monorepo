@@ -63,6 +63,17 @@ function flattenSales(sales: Sale[]): PressArchiveEntry[] {
   return out;
 }
 
+function matchesMentionType(
+  item: SalePressRef,
+  mentionType: import("@auction/types").SalePressMentionType,
+): boolean {
+  return item.mentionType === mentionType;
+}
+
+function computeOutletCount(entries: PressArchiveEntry[]): number {
+  return new Set(entries.map((entry) => entry.item.outletName)).size;
+}
+
 function filterEntries(
   entries: PressArchiveEntry[],
   filter: Omit<ListPressArchiveFilter, "limit" | "offset" | "statuses">,
@@ -70,6 +81,8 @@ function filterEntries(
   return entries.filter((entry) => {
     if (filter.year != null && !matchesYear(entry.item, filter.year)) return false;
     if (filter.q && !matchesQuery(entry, filter.q)) return false;
+    if (filter.mentionType != null && !matchesMentionType(entry.item, filter.mentionType))
+      return false;
     return true;
   });
 }
@@ -135,6 +148,8 @@ export class SalePressArchiveRepository implements IPressArchiveRepository {
     return {
       data: filtered.slice(filter.offset, filter.offset + filter.limit),
       total: filtered.length,
+      archiveTotal: allEntries.length,
+      outletCount: computeOutletCount(allEntries),
       lastUpdated: computeFreshness(filtered),
       availableYears,
     };

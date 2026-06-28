@@ -21,7 +21,13 @@ export class PressArchiveReadService implements IPressArchiveReadService {
   }
 
   async listCoverage(
-    filter: { limit: number; offset: number; year?: number; q?: string },
+    filter: {
+      limit: number;
+      offset: number;
+      year?: number;
+      q?: string;
+      mentionType?: import("@auction/types").SalePressMentionType;
+    },
     viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
   ): Promise<PressArchiveListResult> {
     const statuses = this.resolveStatuses(viewer);
@@ -31,12 +37,15 @@ export class PressArchiveReadService implements IPressArchiveReadService {
       offset: filter.offset,
       ...(filter.year !== undefined ? { year: filter.year } : {}),
       ...(filter.q !== undefined ? { q: filter.q } : {}),
+      ...(filter.mentionType !== undefined ? { mentionType: filter.mentionType } : {}),
     };
     const page = await this.pressArchiveRepo.listCoveragePage(base);
     return {
       data: page.data,
       meta: {
         total: page.total,
+        archiveTotal: page.archiveTotal,
+        outletCount: page.outletCount,
         lastUpdated: page.lastUpdated,
         availableYears: page.availableYears,
       },

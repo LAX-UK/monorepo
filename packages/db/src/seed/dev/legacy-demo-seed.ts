@@ -13,6 +13,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
+import { buildPressDemoSaleRow } from "../shared/press-demo.js";
 
 const { Pool } = pg;
 
@@ -185,6 +186,7 @@ const S = {
   hybridA: "e1000003-0000-4000-8000-000000000003",
   hybridB: "e1000004-0000-4000-8000-000000000004",
   hybridC: "e1000005-0000-4000-8000-000000000005",
+  pressDemo: "e1000006-0000-4000-8000-000000000006",
 } as const;
 
 const SUB = {
@@ -3031,6 +3033,32 @@ export async function runLegacyDemoSeed() {
       createdAt: stamp,
       updatedAt: stamp,
     },
+    (() => {
+      const demo = buildPressDemoSaleRow(now, day);
+      return {
+        id: demo.id,
+        title: demo.title,
+        description: demo.description,
+        coverImages: demo.coverImages,
+        categoryId: CAT.paintings,
+        deliveryMode: demo.deliveryMode,
+        locationName: demo.locationName,
+        locationAddress: demo.locationAddress,
+        locationMapUrl: demo.locationMapUrl,
+        streamUrl: demo.streamUrl,
+        status: demo.status,
+        startTime: demo.startTime,
+        endTime: demo.endTime,
+        previewStartTime: demo.previewStartTime,
+        buyerPremiumRate: demo.buyerPremiumRate,
+        terms: demo.terms,
+        auctionDayImages: demo.auctionDayImages,
+        pressCoverage: demo.pressCoverage,
+        createdBy: ADMIN_ID,
+        createdAt: demo.createdAt,
+        updatedAt: demo.updatedAt,
+      };
+    })(),
   ];
   await db.insert(sale).values(
     saleRows.map(({ categoryId: _categoryId, createdBy: _createdBy, ...row }) => ({

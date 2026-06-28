@@ -237,6 +237,7 @@ function parsePressRefs(raw: unknown): SalePressRef[] | undefined {
     ) {
       ref.mentionType = o.mentionType as import("@auction/types").SalePressMentionType;
     }
+    if (typeof o.imageUrl === "string" && o.imageUrl.trim()) ref.imageUrl = o.imageUrl.trim();
     out.push(ref);
   }
   return out.length > 0 ? out : undefined;

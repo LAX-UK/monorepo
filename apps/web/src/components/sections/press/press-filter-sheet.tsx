@@ -11,11 +11,18 @@ type Props = {
   activeCount: number;
   initialParams: PressHubParams;
   years: number[];
+  resultCount: number;
   resultCountLabel: string;
 };
 
 /** Mobile filter sheet for the press hub (`/press`). */
-export function PressFilterSheet({ activeCount, initialParams, years, resultCountLabel }: Props) {
+export function PressFilterSheet({
+  activeCount,
+  initialParams,
+  years,
+  resultCount,
+  resultCountLabel,
+}: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const formId = useId();
@@ -42,6 +49,7 @@ export function PressFilterSheet({ activeCount, initialParams, years, resultCoun
         formId={formId}
         initialParams={initialParams}
         years={years}
+        resultCount={resultCount}
         variant="sheet"
         onSubmitted={close}
       />

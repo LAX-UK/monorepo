@@ -12,6 +12,11 @@ describe("pressArchiveQuerySchema", () => {
     expect(() => pressArchiveQuerySchema.parse({ limit: 201 })).toThrow();
   });
 
+  it("accepts mentionType filter", () => {
+    const parsed = pressArchiveQuerySchema.parse({ mentionType: "feature" });
+    expect(parsed.mentionType).toBe("feature");
+  });
+
   it("accepts year and q filters", () => {
     const parsed = pressArchiveQuerySchema.parse({ year: 2026, q: "Daily Mail" });
     expect(parsed.year).toBe(2026);

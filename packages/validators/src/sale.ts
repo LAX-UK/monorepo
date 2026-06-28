@@ -103,6 +103,21 @@ const salePressRefSchema = z
       .optional(),
     excerpt: z.string().max(280).optional(),
     mentionType: z.enum(pressMentionTypes).optional(),
+    imageUrl: z
+      .string()
+      .max(2048)
+      .refine(
+        (v) => {
+          try {
+            const { protocol } = new URL(v);
+            return protocol === "https:" || protocol === "http:";
+          } catch {
+            return false;
+          }
+        },
+        { message: "imageUrl must start with https:// or http://" },
+      )
+      .optional(),
   })
   .transform((v) => {
     const out: {
@@ -112,10 +127,12 @@ const salePressRefSchema = z
       publishedAt?: string;
       excerpt?: string;
       mentionType?: (typeof pressMentionTypes)[number];
+      imageUrl?: string;
     } = { url: v.url, headline: v.headline, outletName: v.outletName };
     if (v.publishedAt) out.publishedAt = v.publishedAt;
     if (v.excerpt) out.excerpt = v.excerpt;
     if (v.mentionType) out.mentionType = v.mentionType;
+    if (v.imageUrl) out.imageUrl = v.imageUrl;
     return out;
   });
 

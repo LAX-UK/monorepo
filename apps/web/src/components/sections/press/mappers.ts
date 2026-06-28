@@ -51,6 +51,7 @@ export function mapPressRefToVM(ref: {
   publishedAt?: string;
   excerpt?: string;
   mentionType?: PressCoverageVM["mentionType"];
+  imageUrl?: string;
 }): PressCoverageVM {
   let domain = "";
   try {
@@ -79,6 +80,7 @@ export function mapPressRefToVM(ref: {
     publishedAt: ref.publishedAt ?? null,
     excerpt: ref.excerpt ?? null,
     mentionType: ref.mentionType ?? null,
+    imageUrl: ref.imageUrl ?? null,
   };
 }
 

@@ -50,6 +50,7 @@ import {
 } from "../lib/media-presenters.js";
 import { findPostgresError } from "../lib/pg-error.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
+import { enrichPressCoverageWithOpenGraphImages } from "../lib/press-coverage-enrichment.js";
 import { publishSingleLot } from "../lib/publish-single-lot.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
@@ -1043,6 +1044,14 @@ export class SaleService {
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
 
+    let pressCoverage = patch.pressCoverage;
+    if (pressCoverage !== undefined) {
+      pressCoverage = await enrichPressCoverageWithOpenGraphImages(
+        sale.pressCoverage,
+        pressCoverage,
+      );
+    }
+
     if (sale.status !== "draft") {
       const publishedPatch: Partial<CreateSaleInput> = {};
       if (patch.coverImages !== undefined) publishedPatch.coverImages = patch.coverImages;
@@ -1057,8 +1066,8 @@ export class SaleService {
         publishedPatch.streamUrl = patch.streamUrl ?? null;
       }
       // Press coverage: allowed for all delivery modes and all non-draft statuses.
-      if (patch.pressCoverage !== undefined) {
-        publishedPatch.pressCoverage = patch.pressCoverage;
+      if (pressCoverage !== undefined) {
+        publishedPatch.pressCoverage = pressCoverage;
       }
       // Auction-day media: only allowed for ended onsite/hybrid sales.
       const dayImagesRequested = patch.dayImages !== undefined;
@@ -1104,6 +1113,9 @@ export class SaleService {
       return err(new LotError("endTime must be after startTime"));
     }
     let normalized: Partial<CreateSaleInput> = { ...(patch as Partial<CreateSaleInput>) };
+    if (pressCoverage !== undefined) {
+      normalized = { ...normalized, pressCoverage };
+    }
     const nextDelivery = patch.deliveryMode ?? sale.deliveryMode;
     const caps = getSaleModeCapabilities(nextDelivery);
     if (!caps.allowsStreamUrl) {

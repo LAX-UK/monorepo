@@ -85,7 +85,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getServerPressArchiveReader()
       .getSitemapFreshness()
       .catch(() => []),
-    fetchPressHubMeta().catch(() => ({ total: 0, lastUpdated: null, availableYears: [] })),
+    fetchPressHubMeta().catch(() => ({
+      total: 0,
+      archiveTotal: 0,
+      outletCount: 0,
+      lastUpdated: null,
+      availableYears: [],
+    })),
   ]);
   const freshnessBySaleId = new Map(pressFreshness.map((row) => [row.saleId, row]));
   const sales: MetadataRoute.Sitemap = saleRows.map((sale) => {

@@ -217,6 +217,7 @@ export type ListPressArchiveParams = {
   offset?: number;
   year?: number;
   q?: string;
+  mentionType?: import("@auction/types").SalePressMentionType;
 };
 
 /** Read-only press archive for marketing hub, RSS, and sitemap helpers. */

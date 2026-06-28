@@ -10,7 +10,9 @@ import { PressHubHero } from "@/components/sections/press/press-hub-hero";
 import { PressMediaKitBlock } from "@/components/sections/press/press-media-kit-block";
 import { PressPageToolbar } from "@/components/sections/press/press-page-toolbar";
 import { PressPagination } from "@/components/sections/press/press-pagination";
+import { BackToTopFab } from "@/components/ui/back-to-top-fab";
 import { getServerPressArchiveReader } from "@/lib/data/http/press.server";
+import { computePressHubStats } from "@/lib/marketing/press-hub-stats";
 import {
   PRESS_HUB_PAGE_SIZE,
   buildPressHubClampedPageQuery,
@@ -64,6 +66,7 @@ export default async function PressPage({ searchParams }: PageProps) {
       offset,
       ...(params.year != null ? { year: params.year } : {}),
       ...(params.q ? { q: params.q } : {}),
+      ...(params.mentionType != null ? { mentionType: params.mentionType } : {}),
     }),
     reader.listDayMediaSales(24),
   ]);
@@ -79,6 +82,7 @@ export default async function PressPage({ searchParams }: PageProps) {
   const years = meta.availableYears;
   const totalPages = pressHubTotalPages(meta.total);
   const includeItemList = !nonCanonical && params.page === 1 && data.length > 0;
+  const hubStats = computePressHubStats(meta);
 
   const base = getSiteUrl();
   const crumbs = breadcrumbJsonLd([
@@ -126,7 +130,7 @@ export default async function PressPage({ searchParams }: PageProps) {
 
   return (
     <MarketingCatalogHubShell
-      hero={<PressHubHero lastUpdated={meta.lastUpdated} />}
+      hero={<PressHubHero lastUpdated={meta.lastUpdated} stats={hubStats} />}
       footer={
         totalPages > 1 ? (
           <Suspense fallback={null}>
@@ -152,6 +156,7 @@ export default async function PressPage({ searchParams }: PageProps) {
         <PressDayMediaRail items={dayMediaItems} />
         <PressMediaKitBlock />
       </div>
+      <BackToTopFab targetId="press-coverage" />
     </MarketingCatalogHubShell>
   );
 }
