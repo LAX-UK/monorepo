@@ -117,7 +117,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return metadataForNotFound("Sale not found");
   }
   ensureCanonicalSaleSlug(slug, shell.sale);
-  return metadataForSale(shell.sale);
+  return metadataForSale(shell.sale, {
+    hasPress: (shell.sale.pressCoverage?.length ?? 0) > 0,
+    hasDayMedia:
+      shell.sale.status === "ended" &&
+      (shell.sale.dayImageAssets?.length ?? shell.sale.dayImages?.length ?? 0) > 0,
+  });
 }
 
 export default async function SaleDetailPage({ params, searchParams }: PageProps) {
