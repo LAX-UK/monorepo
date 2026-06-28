@@ -6,8 +6,11 @@ import {
 } from "@/lib/artists/directory-presets";
 import { fetchArtistsForSitemap } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { fetchPressHubMeta, getServerPressArchiveReader } from "@/lib/data/http/press.server";
 import { fetchSalesForSitemap } from "@/lib/data/http/sales.server";
+import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
+import { buildPressHubSitemapEntry } from "@/lib/seo/press/sitemap";
 import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
@@ -36,6 +39,7 @@ const STATIC_PATHS = [
   "/shipping",
   "/faq",
   "/sales",
+  "/press",
 ] as const;
 
 const LETTER_SEGMENTS = "abcdefghijklmnopqrstuvwxyz".split("").concat(["other"]);
@@ -46,12 +50,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
   const now = new Date();
 
-  const staticRoutes: MetadataRoute.Sitemap = STATIC_PATHS.map((path) => ({
-    url: `${base}${path}`,
-    lastModified: now,
-    changeFrequency: path === "" ? "daily" : "weekly",
-    priority: path === "" ? 1 : 0.6,
-  }));
+  const staticRoutes: MetadataRoute.Sitemap = STATIC_PATHS.filter((path) => path !== "/press").map(
+    (path) => ({
+      url: `${base}${path}`,
+      lastModified: now,
+      changeFrequency: path === "" ? "daily" : "weekly",
+      priority: path === "" ? 1 : 0.6,
+    }),
+  );
 
   const reader = await getServerLotReader();
   const [active, ended] = await Promise.all([
@@ -73,16 +79,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  const [saleRows, artistRows] = await Promise.all([
+  const [saleRows, artistRows, pressFreshness, pressMeta] = await Promise.all([
     fetchSalesForSitemap(),
     fetchArtistsForSitemap(),
+    getServerPressArchiveReader()
+      .getSitemapFreshness()
+      .catch(() => []),
+    fetchPressHubMeta().catch(() => ({ total: 0, lastUpdated: null, availableYears: [] })),
   ]);
-  const sales: MetadataRoute.Sitemap = saleRows.map((sale) => ({
-    url: `${base}${salePath(sale)}`,
-    lastModified: now,
-    changeFrequency: "daily" as const,
-    priority: 0.65,
-  }));
+  const freshnessBySaleId = new Map(pressFreshness.map((row) => [row.saleId, row]));
+  const sales: MetadataRoute.Sitemap = saleRows.map((sale) => {
+    const fresh = freshnessBySaleId.get(sale.id);
+    const preview = fresh?.previewImageSrc ? resolveMediaSrc(fresh.previewImageSrc) : null;
+    return {
+      url: `${base}${salePath(sale)}`,
+      lastModified: fresh?.lastModified ?? now,
+      changeFrequency: "daily" as const,
+      priority: 0.65,
+      ...(preview ? { images: [preview] } : {}),
+    };
+  });
+  const pressHub = buildPressHubSitemapEntry(base, pressMeta);
   const artists: MetadataRoute.Sitemap = artistRows.map((artist) => ({
     url: `${base}${artistPath(artist)}`,
     lastModified: now,
@@ -142,5 +159,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  return [...staticRoutes, ...sales, ...artists, ...directorySlices, ...lots];
+  return [...staticRoutes, pressHub, ...sales, ...artists, ...directorySlices, ...lots];
 }

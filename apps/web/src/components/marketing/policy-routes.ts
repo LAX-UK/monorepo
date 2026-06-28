@@ -19,6 +19,7 @@ export const policyRoutes: readonly PolicyRoute[] = [
   { href: "/buy", label: "Buy", sidebarLabel: "Buying at LAX.BID" },
   { href: "/sell", label: "Sell", sidebarLabel: "Selling with LAX.BID" },
   { href: "/contact", label: "Contact", sidebarLabel: "Contact" },
+  { href: "/press", label: "Press", sidebarLabel: "Press & media" },
   { href: "/faq", label: "FAQ", sidebarLabel: "FAQ" },
   {
     href: "/terms",
