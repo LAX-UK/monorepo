@@ -39,6 +39,9 @@ export const MARKETING_PAGE_INNER = `${MARKETING_PAGE_GUTTER} max-w-[var(--conta
 /** Catalogue toolbar / rail horizontal rhythm (matches page inner). */
 export const MARKETING_CATALOG_GUTTER = MARKETING_PAGE_GUTTER;
 
+/** Negative margin to bleed sticky list toolbars to the shell edge (pairs with MARKETING_CATALOG_GUTTER). */
+export const MARKETING_LIST_TOOLBAR_BLEED = "-mx-8 md:-mx-10 lg:-mx-14";
+
 /** Top padding for catalogue hubs with sticky toolbars (aligns with site header). */
 export const MARKETING_CATALOG_PT = "pt-[var(--header-height)]";
 
