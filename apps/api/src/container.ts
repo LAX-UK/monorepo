@@ -170,6 +170,7 @@ import { DrizzleVenueRepository } from "./repositories/drizzle-venue.repository.
 import { DrizzleWatchlistRepository } from "./repositories/drizzle-watchlist.repository.js";
 import { DrizzleXeroConnectionRepository } from "./repositories/drizzle-xero-connection.repository.js";
 import { DrizzleXeroWebhookEventRepository } from "./repositories/drizzle-xero-webhook-event.repository.js";
+import { SalePressArchiveRepository } from "./repositories/sale-press-archive.repository.js";
 import { AbsenteeBidService } from "./services/absentee-bid.service.js";
 import { NoOpAccountingProvider } from "./services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "./services/accounting/xero-accounting.provider.js";
@@ -319,6 +320,7 @@ import { PlatformFeePolicy } from "./services/payment/platform-fee.policy.js";
 import { StripeCheckoutService } from "./services/payment/stripe-checkout.service.js";
 import { PayoutService } from "./services/payout.service.js";
 import { PayoutAdjustmentService } from "./services/payout/payout-adjustment.service.js";
+import { PressArchiveReadService } from "./services/press-archive-read.service.js";
 import { ProfileService } from "./services/profile.service.js";
 import { QrCodeAnalyticsService } from "./services/qr-code-analytics.service.js";
 import { QrCodeService } from "./services/qr-code.service.js";
@@ -381,6 +383,7 @@ export type Container = {
   conditionReportService: IConditionReportService;
   saleService: SaleService;
   saleListReadService: SaleListReadService;
+  pressArchiveReadService: PressArchiveReadService;
   venueService: VenueService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   saleSoftDeleteService: SaleSoftDeleteService;
@@ -1216,6 +1219,8 @@ export function createContainer(env: Env): Container {
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
   );
+  const pressArchiveRepo = new SalePressArchiveRepository(saleRepo);
+  const pressArchiveReadService = new PressArchiveReadService(pressArchiveRepo);
   const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db, lotLifecycleRecording);
   const saleSoftDeleteService = new SaleSoftDeleteService(
     saleRepo,
@@ -1726,6 +1731,7 @@ export function createContainer(env: Env): Container {
     conditionReportService,
     saleService,
     saleListReadService,
+    pressArchiveReadService,
     saleSoftDeleteService,
     lotSoftDeleteService,
     saleFollowService,

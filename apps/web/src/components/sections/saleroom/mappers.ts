@@ -1,3 +1,4 @@
+import { mapPressRefToVM } from "@/components/sections/press/mappers";
 import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -398,35 +399,7 @@ export function mapSaleToOverviewVM(
  */
 export function mapSaleToPressCoverageVM(sale: Sale): PressCoverageVM[] | null {
   if (!sale.pressCoverage || sale.pressCoverage.length === 0) return null;
-  return sale.pressCoverage.map((ref) => {
-    let domain = "";
-    try {
-      domain = new URL(ref.url).hostname.replace(/^www\./, "");
-    } catch {
-      domain = ref.outletName.toLowerCase().replace(/\s+/g, "");
-    }
-    let dateLabel: string | null = null;
-    if (ref.publishedAt) {
-      try {
-        dateLabel = new Intl.DateTimeFormat("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }).format(new Date(`${ref.publishedAt}T12:00:00Z`));
-      } catch {
-        dateLabel = ref.publishedAt;
-      }
-    }
-    return {
-      url: ref.url,
-      headline: ref.headline,
-      outletName: ref.outletName,
-      domain,
-      dateLabel,
-      excerpt: ref.excerpt ?? null,
-      mentionType: ref.mentionType ?? null,
-    };
-  });
+  return sale.pressCoverage.map((ref) => mapPressRefToVM(ref));
 }
 
 function resolveDayMediaSrc(value: string): string {

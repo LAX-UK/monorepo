@@ -28,3 +28,4 @@ export * from "./catalog-url.js";
 export * from "./telephone-booking.js";
 export * from "./onsite-event.js";
 export * from "./admin-dispute-case.js";
+export * from "./press.js";

@@ -4,6 +4,10 @@ import type {
   CategoryNode,
   Lot,
   LotStatus,
+  PressArchiveEntry,
+  PressDayMediaSaleSummary,
+  PressHubMeta,
+  PressSitemapSaleFreshness,
   PublicLotView,
   UserRole,
   UserStaffRole,
@@ -203,6 +207,24 @@ export type PublicUser = {
 
 export interface PublicUserReader {
   getById(userId: string): Promise<PublicUser | null>;
+}
+
+export type ListPressArchiveParams = {
+  limit?: number;
+  offset?: number;
+  year?: number;
+  q?: string;
+};
+
+/** Read-only press archive for marketing hub, RSS, and sitemap helpers. */
+export interface IPressArchiveReader {
+  list(params?: ListPressArchiveParams): Promise<{
+    data: PressArchiveEntry[];
+    meta: PressHubMeta;
+    unavailable?: boolean;
+  }>;
+  listDayMediaSales(limit?: number): Promise<PressDayMediaSaleSummary[]>;
+  getSitemapFreshness(): Promise<PressSitemapSaleFreshness[]>;
 }
 
 export interface CategoryReader {

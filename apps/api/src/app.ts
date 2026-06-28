@@ -57,6 +57,7 @@ import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
 import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statements.js";
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
+import { createPressRoutes } from "./routes/press.js";
 import { createQrRoutes } from "./routes/qr.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
@@ -137,6 +138,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/lots/*", etag(), compress(), publicCatalogueCache);
   app.use("/sales", etag(), compress(), publicCatalogueCache);
   app.use("/sales/*", etag(), compress(), publicCatalogueCache);
+  app.use("/press", etag(), compress(), publicCatalogueCache);
+  app.use("/press/*", etag(), compress(), publicCatalogueCache);
   app.use("/bids/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/users/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/auth/*", createRateLimitMiddleware(container.rateLimitStore));
@@ -221,6 +224,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/events", createOnsiteEventRoutes(container))
     .route("/", createTelephoneBookingRoutes(container, authenticator))
     .route("/sales", createSaleRoutes(container, authenticator))
+    .route("/press", createPressRoutes(container, authenticator))
     .route("/", createSaleroomDisplayRoutes(container))
     .route("/sales", createSaleDocumentRoutes(container, authenticator))
     .route("/bids", createBidRoutes(container, authenticator))
