@@ -8,14 +8,21 @@ import {
   parsePressDayMediaSalesResponse,
   parsePressSitemapFreshnessResponse,
 } from "@/lib/data/http/parse-press-archive";
+import type { PressHubMeta } from "@auction/types";
 import { cache } from "react";
 
-const EMPTY_META: import("@auction/types").PressHubMeta = {
+const EMPTY_META: PressHubMeta = {
   total: 0,
   archiveTotal: 0,
   outletCount: 0,
   lastUpdated: null,
   availableYears: [],
+};
+
+const UNAVAILABLE_COVERAGE = {
+  data: [],
+  meta: EMPTY_META,
+  unavailable: true as const,
 };
 
 function buildPressQuery(params: ListPressArchiveParams = {}): string {
@@ -29,40 +36,61 @@ function buildPressQuery(params: ListPressArchiveParams = {}): string {
   return s ? `?${s}` : "";
 }
 
-async function fetchPressCoverage(params: ListPressArchiveParams = {}) {
-  const base = getServerApiBase();
-  const url = `${base}/press/coverage${buildPressQuery(params)}`;
-  const res = await catalogueFetch(url, CATALOGUE_FETCH_POLICIES.press);
-  if (!res.ok) {
-    console.error("[press] Failed to load coverage:", res.status, url);
-    return { data: [], meta: EMPTY_META, unavailable: true as const };
+async function fetchPressCatalogue<T>(
+  resource: string,
+  path: string,
+  parse: (body: unknown) => T,
+  fallback: T,
+  query = "",
+): Promise<T> {
+  try {
+    const url = `${getServerApiBase()}${path}${query}`;
+    const res = await catalogueFetch(url, CATALOGUE_FETCH_POLICIES.press);
+    if (!res.ok) {
+      console.error(`[press] Failed to load ${resource}:`, res.status, url);
+      return fallback;
+    }
+    return parse(await res.json());
+  } catch (error) {
+    console.error(`[press] Failed to load ${resource}:`, error);
+    return fallback;
   }
-  const body = (await res.json()) as Parameters<typeof parsePressArchiveListResponse>[0];
-  return parsePressArchiveListResponse(body);
+}
+
+async function fetchPressCoverage(params: ListPressArchiveParams = {}) {
+  return fetchPressCatalogue(
+    "coverage",
+    "/press/coverage",
+    (body) =>
+      parsePressArchiveListResponse(body as Parameters<typeof parsePressArchiveListResponse>[0]),
+    UNAVAILABLE_COVERAGE,
+    buildPressQuery(params),
+  );
 }
 
 async function fetchPressDayMedia(limit = 24) {
-  const base = getServerApiBase();
-  const url = `${base}/press/day-media?limit=${limit}`;
-  const res = await catalogueFetch(url, CATALOGUE_FETCH_POLICIES.press);
-  if (!res.ok) {
-    console.error("[press] Failed to load day media:", res.status, url);
-    return [];
-  }
-  const body = (await res.json()) as Parameters<typeof parsePressDayMediaSalesResponse>[0];
-  return parsePressDayMediaSalesResponse(body);
+  return fetchPressCatalogue(
+    "day media",
+    "/press/day-media",
+    (body) =>
+      parsePressDayMediaSalesResponse(
+        body as Parameters<typeof parsePressDayMediaSalesResponse>[0],
+      ),
+    [],
+    `?limit=${limit}`,
+  );
 }
 
 async function fetchPressSitemapFreshness() {
-  const base = getServerApiBase();
-  const url = `${base}/press/sitemap-freshness`;
-  const res = await catalogueFetch(url, CATALOGUE_FETCH_POLICIES.press);
-  if (!res.ok) {
-    console.error("[press] Failed to load sitemap freshness:", res.status, url);
-    return [];
-  }
-  const body = (await res.json()) as Parameters<typeof parsePressSitemapFreshnessResponse>[0];
-  return parsePressSitemapFreshnessResponse(body);
+  return fetchPressCatalogue(
+    "sitemap freshness",
+    "/press/sitemap-freshness",
+    (body) =>
+      parsePressSitemapFreshnessResponse(
+        body as Parameters<typeof parsePressSitemapFreshnessResponse>[0],
+      ),
+    [],
+  );
 }
 
 const getCachedPressCoverage = cache((paramsKey: string) => {
@@ -84,7 +112,7 @@ export function getServerPressArchiveReader(): IPressArchiveReader {
   };
 }
 
-export async function fetchPressHubMeta(): Promise<import("@auction/types").PressHubMeta> {
+export async function fetchPressHubMeta(): Promise<PressHubMeta> {
   const { meta } = await fetchPressCoverage({ limit: 1, offset: 0 });
   return meta;
 }

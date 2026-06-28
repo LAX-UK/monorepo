@@ -10,7 +10,10 @@ import { SaleroomCatalogFilterSheet } from "@/components/sections/saleroom/saler
 import { SaleroomCatalogSearch } from "@/components/sections/saleroom/saleroom-catalog-search";
 import { SaleroomCatalogToolbar } from "@/components/sections/saleroom/saleroom-catalog-toolbar";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { SALE_CATALOG_TOOLBAR_STICKY_TOP } from "@/lib/marketing/chrome";
+import {
+  MARKETING_LIST_TOOLBAR_BLEED,
+  SALE_CATALOG_TOOLBAR_STICKY_TOP,
+} from "@/lib/marketing/chrome";
 import { SALEROOM_CATALOG_SORT_OPTIONS } from "@/lib/marketing/saleroom-catalog-sort";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
@@ -42,7 +45,7 @@ export function SaleroomCatalogToolbarRow({
         </DisplayHeading>
       </div>
       <MarketingListToolbar
-        className="-mx-8 md:-mx-10 lg:-mx-14"
+        className={MARKETING_LIST_TOOLBAR_BLEED}
         stickyTopClassName={SALE_CATALOG_TOOLBAR_STICKY_TOP}
         countLabel={countLabel}
         mobileFilterTrigger={

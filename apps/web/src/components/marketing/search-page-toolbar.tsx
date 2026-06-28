@@ -7,6 +7,7 @@ import { SearchActiveFilters } from "@/components/marketing/search-active-filter
 import { SearchCatalogFilterChips } from "@/components/marketing/search-catalog-filter-chips";
 import { SearchFilterSheet } from "@/components/marketing/search-filter-sheet";
 import { SearchSortSelect, type SearchSortValue } from "@/components/marketing/search-sort-select";
+import { MARKETING_LIST_TOOLBAR_BLEED } from "@/lib/marketing/chrome";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { Category, LotStatus } from "@auction/types";
@@ -42,7 +43,7 @@ export function SearchPageToolbar({
   return (
     <>
       <MarketingListToolbar
-        className="-mx-8 md:-mx-10 lg:-mx-14"
+        className={MARKETING_LIST_TOOLBAR_BLEED}
         {...(countLabel ? { countLabel } : {})}
         mobileFilterTrigger={
           <SearchFilterSheet

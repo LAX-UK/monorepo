@@ -3,7 +3,8 @@ import { getServerPressArchiveReader } from "@/lib/data/http/press.server";
 import { buildPressRssFeed } from "@/lib/seo/press/rss";
 import { getSiteUrl } from "@/lib/site-url";
 
-export const revalidate = 300;
+// Live API data — must not prerender during `next build` (CI has no API on :3001).
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const reader = getServerPressArchiveReader();

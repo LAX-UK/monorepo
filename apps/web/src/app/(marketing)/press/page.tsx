@@ -10,7 +10,6 @@ import { PressHubHero } from "@/components/sections/press/press-hub-hero";
 import { PressMediaKitBlock } from "@/components/sections/press/press-media-kit-block";
 import { PressPageToolbar } from "@/components/sections/press/press-page-toolbar";
 import { PressPagination } from "@/components/sections/press/press-pagination";
-import { BackToTopFab } from "@/components/ui/back-to-top-fab";
 import { getServerPressArchiveReader } from "@/lib/data/http/press.server";
 import { computePressHubStats } from "@/lib/marketing/press-hub-stats";
 import {
@@ -156,7 +155,6 @@ export default async function PressPage({ searchParams }: PageProps) {
         <PressDayMediaRail items={dayMediaItems} />
         <PressMediaKitBlock />
       </div>
-      <BackToTopFab targetId="press-coverage" />
     </MarketingCatalogHubShell>
   );
 }

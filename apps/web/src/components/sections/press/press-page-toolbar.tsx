@@ -4,7 +4,7 @@ import { MarketingListToolbar } from "@/components/marketing/marketing-list-tool
 import { PressActiveFilters } from "@/components/sections/press/press-active-filters";
 import { PressFilterForm } from "@/components/sections/press/press-filter-form";
 import { PressFilterSheet } from "@/components/sections/press/press-filter-sheet";
-import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
+import { FOCUS_RING, MARKETING_LIST_TOOLBAR_BLEED } from "@/lib/marketing/chrome";
 import {
   type PressHubParams,
   countActivePressHubFilters,
@@ -30,9 +30,7 @@ export function PressPageToolbar({ params, years, resultCount }: PressPageToolba
     <MarketingListToolbar
       className={cn(
         "lg:static lg:z-auto lg:border-b-0 lg:bg-transparent lg:backdrop-blur-none",
-        "-mx-8 md:-mx-10 lg:mx-0",
-        MARKETING_PAGE_GUTTER_X,
-        "lg:px-0",
+        MARKETING_LIST_TOOLBAR_BLEED,
       )}
       mobileFilterTrigger={
         <PressFilterSheet
