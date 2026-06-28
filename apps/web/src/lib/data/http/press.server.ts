@@ -12,6 +12,8 @@ import { cache } from "react";
 
 const EMPTY_META: import("@auction/types").PressHubMeta = {
   total: 0,
+  archiveTotal: 0,
+  outletCount: 0,
   lastUpdated: null,
   availableYears: [],
 };
@@ -22,6 +24,7 @@ function buildPressQuery(params: ListPressArchiveParams = {}): string {
   if (params.offset != null) qs.set("offset", String(params.offset));
   if (params.year != null) qs.set("year", String(params.year));
   if (params.q) qs.set("q", params.q);
+  if (params.mentionType != null) qs.set("mentionType", params.mentionType);
   const s = qs.toString();
   return s ? `?${s}` : "";
 }

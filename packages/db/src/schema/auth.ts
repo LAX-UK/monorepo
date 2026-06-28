@@ -53,6 +53,9 @@ export const user = pgTable(
     mobile: text("mobile"),
     /** ISO 3166-1 alpha-2 region for formatting `mobile` (E.164). */
     mobileCountry: text("mobile_country"),
+    /** Canonical E.164 phone for Better Auth phoneNumber plugin + telephone bidding. */
+    phoneNumber: text("phone_number"),
+    phoneNumberVerified: boolean("phone_number_verified").notNull().default(false),
     /** Stored lowercased + trimmed; uniqueness enforced by `user_email_lower_uidx`. */
     email: text("email").notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
@@ -110,6 +113,9 @@ export const user = pgTable(
     uniqueIndex("user_pending_new_email_lower_uidx")
       .on(sql`lower(trim(${table.pendingNewEmail}))`)
       .where(sql`${table.pendingNewEmail} IS NOT NULL`),
+    uniqueIndex("user_phone_number_uidx")
+      .on(table.phoneNumber)
+      .where(sql`${table.phoneNumber} IS NOT NULL`),
   ],
 );
 

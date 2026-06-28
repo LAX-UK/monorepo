@@ -49,7 +49,13 @@ export function parsePressArchiveEntry(raw: ApiPressArchiveEntry): PressArchiveE
 
 export function parsePressArchiveListResponse(body: {
   data?: ApiPressArchiveEntry[];
-  meta?: { total?: number; lastUpdated?: string | null; availableYears?: number[] };
+  meta?: {
+    total?: number;
+    archiveTotal?: number;
+    outletCount?: number;
+    lastUpdated?: string | null;
+    availableYears?: number[];
+  };
 }): { data: PressArchiveEntry[]; meta: PressHubMeta } {
   const data = (body.data ?? [])
     .map(parsePressArchiveEntry)
@@ -62,10 +68,15 @@ export function parsePressArchiveListResponse(body: {
         (y): y is number => typeof y === "number" && Number.isFinite(y),
       )
     : [];
+  const archiveTotal =
+    typeof body.meta?.archiveTotal === "number" ? body.meta.archiveTotal : data.length;
+  const outletCount = typeof body.meta?.outletCount === "number" ? body.meta.outletCount : 0;
   return {
     data,
     meta: {
       total: typeof body.meta?.total === "number" ? body.meta.total : data.length,
+      archiveTotal,
+      outletCount,
       lastUpdated: lastUpdated && Number.isFinite(lastUpdated.getTime()) ? lastUpdated : null,
       availableYears,
     },

@@ -28,7 +28,12 @@ export type PressDayMediaSaleSummary = {
 
 /** Aggregate metadata for the press hub, RSS, and sitemap freshness. */
 export type PressHubMeta = {
+  /** Total matching the active filters (pagination total). */
   total: number;
+  /** Total articles in the full archive (ignores active year/q/mention filters). */
+  archiveTotal: number;
+  /** Distinct outlet names across the full archive. */
+  outletCount: number;
   lastUpdated: Date | null;
   /** Distinct publication years across the full archive (ignores active year/q filters). */
   availableYears: number[];

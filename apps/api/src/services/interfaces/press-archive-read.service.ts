@@ -12,7 +12,13 @@ export type PressArchiveListResult = {
 
 export interface IPressArchiveReadService {
   listCoverage(
-    filter: { limit: number; offset: number; year?: number; q?: string },
+    filter: {
+      limit: number;
+      offset: number;
+      year?: number;
+      q?: string;
+      mentionType?: import("@auction/types").SalePressMentionType;
+    },
     viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
   ): Promise<PressArchiveListResult>;
   listDayMediaSales(

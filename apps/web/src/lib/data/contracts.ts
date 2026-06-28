@@ -143,6 +143,9 @@ export type SessionUser = {
   image?: string | null;
   /** E.164 contact phone from GET /users/me. */
   mobile?: string | null;
+  /** Canonical verified phone (Better Auth phoneNumber plugin). */
+  phoneNumber?: string | null;
+  phoneNumberVerified?: boolean;
   /** ISO 3166-1 alpha-2 for formatting `mobile`. */
   mobileCountry?: string | null;
   /** Formatted display string from API. */
@@ -214,6 +217,7 @@ export type ListPressArchiveParams = {
   offset?: number;
   year?: number;
   q?: string;
+  mentionType?: import("@auction/types").SalePressMentionType;
 };
 
 /** Read-only press archive for marketing hub, RSS, and sitemap helpers. */

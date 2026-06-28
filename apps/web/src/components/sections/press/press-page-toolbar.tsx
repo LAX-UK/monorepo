@@ -5,7 +5,11 @@ import { PressActiveFilters } from "@/components/sections/press/press-active-fil
 import { PressFilterForm } from "@/components/sections/press/press-filter-form";
 import { PressFilterSheet } from "@/components/sections/press/press-filter-sheet";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
-import { type PressHubParams, countActivePressHubFilters } from "@/lib/marketing/press-params";
+import {
+  type PressHubParams,
+  countActivePressHubFilters,
+  formatPressApplyButtonLabel,
+} from "@/lib/marketing/press-params";
 import { cn } from "@auction/ui";
 import { Rss } from "lucide-react";
 import Link from "next/link";
@@ -18,16 +22,9 @@ export type PressPageToolbarProps = {
 
 /** Press coverage filters — sticky on mobile via shared marketing toolbar. */
 export function PressPageToolbar({ params, years, resultCount }: PressPageToolbarProps) {
-  const countLabel = `${resultCount} article${resultCount === 1 ? "" : "s"}`;
-  const resultCountLabel = resultCount === 1 ? "Show 1 article" : `Show ${resultCount} articles`;
+  const resultCountLabel = formatPressApplyButtonLabel(resultCount);
   const activeCount = countActivePressHubFilters(params);
   const hasActiveFilters = activeCount > 0;
-
-  const countRow = (
-    <p className="font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums">
-      {countLabel}
-    </p>
-  );
 
   return (
     <MarketingListToolbar
@@ -42,10 +39,18 @@ export function PressPageToolbar({ params, years, resultCount }: PressPageToolba
           activeCount={activeCount}
           initialParams={params}
           years={years}
+          resultCount={resultCount}
           resultCountLabel={resultCountLabel}
         />
       }
-      filters={<PressFilterForm initialParams={params} years={years} className="w-full" />}
+      filters={
+        <PressFilterForm
+          initialParams={params}
+          years={years}
+          resultCount={resultCount}
+          className="w-full"
+        />
+      }
       trailing={
         <Link
           href="/press/feed.xml"
@@ -58,12 +63,7 @@ export function PressPageToolbar({ params, years, resultCount }: PressPageToolba
           RSS
         </Link>
       }
-      activeFiltersRow={
-        <div className="flex flex-col gap-2">
-          {countRow}
-          {hasActiveFilters ? <PressActiveFilters params={params} /> : null}
-        </div>
-      }
+      activeFiltersRow={hasActiveFilters ? <PressActiveFilters params={params} /> : null}
     />
   );
 }

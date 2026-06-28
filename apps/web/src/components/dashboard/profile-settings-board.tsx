@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneOtpVerifyForm } from "@/components/auth/phone-otp-verify-form";
 import { SettingsField } from "@/components/dashboard/settings-field";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { SettingsTag } from "@/components/dashboard/settings-tag";
@@ -7,10 +8,8 @@ import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { PhoneNumberField } from "@/components/forms/phone-number-field";
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
-import {
-  updateProfileImageAction,
-  updateProfilePhoneFromValuesAction,
-} from "@/lib/actions/profile";
+import { updateProfileImageAction } from "@/lib/actions/profile";
+import { removePhoneNumberService } from "@/lib/auth/services/phone-verification.service";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileMobileController } from "@/lib/forms/profile/use-profile-mobile-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
@@ -51,6 +50,7 @@ type Props = {
   initialMobile: string | null;
   initialMobileCountry: string | null;
   phoneDefaultCountry: string;
+  phoneNumberVerified?: boolean;
   addresses: ProfileAddressRow[];
   /** When set, shows email + verification in Personal details */
   email?: string;
@@ -78,21 +78,59 @@ function PersonalMobileBlock({
   initialMobile,
   initialMobileCountry,
   phoneDefaultCountry,
+  phoneNumberVerified = false,
 }: {
   initialMobile: string | null;
   initialMobileCountry: string | null;
   phoneDefaultCountry: string;
+  phoneNumberVerified?: boolean;
 }) {
   const router = useRouter();
-  const { form, onSubmit, isSubmitting } = useProfileMobileController(
+  const {
+    form,
+    onSubmit,
+    isSubmitting,
+    step,
+    pendingDisplay,
+    otpError,
+    resendCooldown,
+    verifyOtp,
+    resendOtp,
+    cancelOtp,
+    initialVerified,
+  } = useProfileMobileController(
     initialMobile,
     initialMobileCountry,
     phoneDefaultCountry as import("libphonenumber-js").CountryCode,
+    phoneNumberVerified,
   );
   const [removePending, startRemove] = useTransition();
 
+  if (step === "otp" && pendingDisplay) {
+    return (
+      <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6">
+        <PhoneOtpVerifyForm
+          phoneDisplay={pendingDisplay}
+          busy={isSubmitting}
+          bannerError={otpError}
+          resendCooldown={resendCooldown}
+          onVerify={verifyOtp}
+          onResend={resendOtp}
+          onCancel={cancelOtp}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-6">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {initialMobile?.trim() ? (
+          <StatusBadge variant={initialVerified ? "success" : "warning"} size="sm">
+            {initialVerified ? "Verified" : "Unverified"}
+          </StatusBadge>
+        ) : null}
+      </div>
       <Form {...form}>
         <form id="profile-mobile-form" onSubmit={onSubmit} className="space-y-3">
           <FormField
@@ -106,7 +144,11 @@ function PersonalMobileBlock({
                 onChange={field.onChange}
                 onBlur={field.onBlur}
                 error={fieldState.error?.message ?? null}
-                description="Optional contact number for live bidding updates and fulfilment. We do not verify this number yet."
+                description={
+                  initialMobile?.trim() && !initialVerified
+                    ? "Verify your number to sign in with it and to use telephone bidding. We will send a one-time code by SMS."
+                    : "Optional contact number for live bidding updates and fulfilment. Adding or changing your number requires SMS verification."
+                }
               />
             )}
           />
@@ -117,7 +159,13 @@ function PersonalMobileBlock({
               disabled={isSubmitting || removePending}
               className="min-w-28"
             >
-              {isSubmitting ? "Saving…" : "Save"}
+              {isSubmitting
+                ? initialMobile?.trim() && !initialVerified
+                  ? "Sending code…"
+                  : "Saving…"
+                : initialMobile?.trim() && !initialVerified
+                  ? "Send verification code"
+                  : "Save"}
             </Button>
             {initialMobile ? (
               <Button
@@ -126,10 +174,7 @@ function PersonalMobileBlock({
                 disabled={isSubmitting || removePending}
                 onClick={() => {
                   startRemove(async () => {
-                    const r = await updateProfilePhoneFromValuesAction({
-                      phone: null,
-                      mobile: null,
-                    });
+                    const r = await removePhoneNumberService();
                     if (r.ok) {
                       notify.success("Phone number removed");
                       form.reset({
@@ -138,7 +183,7 @@ function PersonalMobileBlock({
                       router.refresh();
                       return;
                     }
-                    notify.error(r.error);
+                    notify.error(r.message);
                   });
                 }}
               >
@@ -406,6 +451,7 @@ export function ProfileSettingsBoard({
   initialMobile,
   initialMobileCountry,
   phoneDefaultCountry,
+  phoneNumberVerified,
   addresses,
   email,
   emailVerified,
@@ -508,6 +554,7 @@ export function ProfileSettingsBoard({
           initialMobile={initialMobile}
           initialMobileCountry={initialMobileCountry}
           phoneDefaultCountry={phoneDefaultCountry}
+          {...(phoneNumberVerified !== undefined ? { phoneNumberVerified } : {})}
         />
       </SettingsSection>
 

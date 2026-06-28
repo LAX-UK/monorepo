@@ -1,10 +1,31 @@
 import type { CatalogActiveFilterChip } from "@/components/marketing/catalog-active-filter-chips";
+import type { SalePressMentionType } from "@auction/types";
 
 export const PRESS_HUB_PAGE_SIZE = 24;
+
+/** Sentinel value for "all" in filter form selects. */
+export const PRESS_FILTER_ALL = "__all__";
+
+export const PRESS_MENTION_TYPE_OPTIONS: ReadonlyArray<{
+  value: SalePressMentionType;
+  label: string;
+}> = [
+  { value: "feature", label: "Feature" },
+  { value: "interview", label: "Interview" },
+  { value: "quote", label: "Quote" },
+  { value: "roundup", label: "Roundup" },
+];
+
+export type PressFilterFormValues = {
+  q: string;
+  year: string;
+  mentionType: string;
+};
 
 export type PressHubParams = {
   q: string;
   year: number | null;
+  mentionType: SalePressMentionType | null;
   page: number;
 };
 
@@ -25,13 +46,70 @@ export function parsePressHubParams(
     typeof rawPage === "string" ? rawPage : Array.isArray(rawPage) ? rawPage[0] : undefined;
   const pageParsed = pageStr ? Number.parseInt(pageStr, 10) : Number.NaN;
   const page = Number.isFinite(pageParsed) && pageParsed >= 1 ? pageParsed : 1;
-  return { q, year, page };
+  const rawMentionType = searchParams.mentionType;
+  const mentionTypeStr =
+    typeof rawMentionType === "string"
+      ? rawMentionType
+      : Array.isArray(rawMentionType)
+        ? rawMentionType[0]
+        : undefined;
+  const mentionType = PRESS_MENTION_TYPE_OPTIONS.some((opt) => opt.value === mentionTypeStr)
+    ? (mentionTypeStr as SalePressMentionType)
+    : null;
+  return { q, year, mentionType, page };
+}
+
+export function getPressMentionTypeLabel(mentionType: SalePressMentionType): string {
+  return (
+    PRESS_MENTION_TYPE_OPTIONS.find((option) => option.value === mentionType)?.label ?? mentionType
+  );
+}
+
+export function parsePressFilterYear(value: string): number | null {
+  if (!value) return null;
+  const yearParsed = Number.parseInt(value, 10);
+  return Number.isFinite(yearParsed) && yearParsed >= 2000 && yearParsed <= 2100
+    ? yearParsed
+    : null;
+}
+
+export function parsePressFilterMentionType(value: string): SalePressMentionType | null {
+  if (!value || value === PRESS_FILTER_ALL) return null;
+  return PRESS_MENTION_TYPE_OPTIONS.some((option) => option.value === value)
+    ? (value as SalePressMentionType)
+    : null;
+}
+
+export function pressHubParamsToFilterFormValues(params: PressHubParams): PressFilterFormValues {
+  return {
+    q: params.q,
+    year: params.year != null ? String(params.year) : "",
+    mentionType: params.mentionType ?? PRESS_FILTER_ALL,
+  };
+}
+
+export function pressFilterFormValuesToHubParams(values: PressFilterFormValues): PressHubParams {
+  return {
+    q: values.q.trim(),
+    year: parsePressFilterYear(values.year),
+    mentionType: parsePressFilterMentionType(values.mentionType),
+    page: 1,
+  };
+}
+
+export function formatPressArticleCount(count: number): string {
+  return `${count} article${count === 1 ? "" : "s"}`;
+}
+
+export function formatPressApplyButtonLabel(count: number): string {
+  return count === 1 ? "Show 1 article" : `Show ${count} articles`;
 }
 
 export function buildPressHubQuery(params: PressHubParams): string {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.year != null) qs.set("year", String(params.year));
+  if (params.mentionType != null) qs.set("mentionType", params.mentionType);
   if (params.page > 1) qs.set("page", String(params.page));
   const s = qs.toString();
   return s ? `?${s}` : "";
@@ -57,13 +135,14 @@ export function buildPressHubClampedPageQuery(params: PressHubParams, total: num
 
 /** True when URL state should not be indexed (filters or pagination). */
 export function pressHubHasNonCanonicalState(params: PressHubParams): boolean {
-  return Boolean(params.q) || params.year != null || params.page > 1;
+  return Boolean(params.q) || params.year != null || params.mentionType != null || params.page > 1;
 }
 
 export function countActivePressHubFilters(params: PressHubParams): number {
   let n = 0;
   if (params.q) n += 1;
   if (params.year != null) n += 1;
+  if (params.mentionType != null) n += 1;
   return n;
 }
 
@@ -84,14 +163,36 @@ export function buildPressActiveFilterChips(params: PressHubParams): CatalogActi
     chips.push({
       key: "q",
       label: `Search: “${params.q}”`,
-      removeHref: buildPressHubQuery({ q: "", year: params.year, page: 1 }),
+      removeHref: buildPressHubQuery({
+        q: "",
+        year: params.year,
+        mentionType: params.mentionType,
+        page: 1,
+      }),
     });
   }
   if (params.year != null) {
     chips.push({
       key: "year",
       label: String(params.year),
-      removeHref: buildPressHubQuery({ q: params.q, year: null, page: 1 }),
+      removeHref: buildPressHubQuery({
+        q: params.q,
+        year: null,
+        mentionType: params.mentionType,
+        page: 1,
+      }),
+    });
+  }
+  if (params.mentionType != null) {
+    chips.push({
+      key: "mentionType",
+      label: getPressMentionTypeLabel(params.mentionType),
+      removeHref: buildPressHubQuery({
+        q: params.q,
+        year: params.year,
+        mentionType: null,
+        page: 1,
+      }),
     });
   }
   return chips;

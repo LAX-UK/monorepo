@@ -1,4 +1,4 @@
-import { magicLinkClient, twoFactorClient } from "better-auth/client/plugins";
+import { magicLinkClient, phoneNumberClient, twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 const baseURL =
@@ -14,7 +14,7 @@ export function getAuthIssuerBaseUrl(): string {
 function createAppAuthClient() {
   return createAuthClient({
     baseURL,
-    plugins: [twoFactorClient(), magicLinkClient()],
+    plugins: [twoFactorClient(), magicLinkClient(), phoneNumberClient()],
   });
 }
 
@@ -24,6 +24,17 @@ type AuthErr = { message?: string; code?: string } | null | undefined;
 type AuctionAuthClient = {
   signIn: {
     email: (args: { email: string; password: string }) => Promise<{
+      data?: {
+        twoFactorRedirect?: boolean;
+        twoFactorMethods?: string[];
+      } | null;
+      error?: AuthErr;
+    }>;
+    phoneNumber: (args: {
+      phoneNumber: string;
+      password: string;
+      rememberMe?: boolean;
+    }) => Promise<{
       data?: {
         twoFactorRedirect?: boolean;
         twoFactorMethods?: string[];
@@ -42,12 +53,25 @@ type AuctionAuthClient = {
   sendVerificationEmail: (
     args: Record<string, unknown>,
   ) => Promise<{ data?: unknown; error?: AuthErr }>;
+  updateUser: (args: { phoneNumber?: string | null }) => Promise<{
+    data?: unknown;
+    error?: AuthErr;
+  }>;
   useSession: () => {
     data: { user?: Record<string, unknown> } | null;
     isPending: boolean;
     isRefetching: boolean;
     error: Error | null;
     refetch: (opts?: { query?: { disableCookieCache?: boolean } }) => Promise<void>;
+  };
+  phoneNumber: {
+    sendOtp: (args: { phoneNumber: string }) => Promise<{ data?: unknown; error?: AuthErr }>;
+    verify: (args: {
+      phoneNumber: string;
+      code: string;
+      updatePhoneNumber?: boolean;
+      disableSession?: boolean;
+    }) => Promise<{ data?: unknown; error?: AuthErr }>;
   };
   twoFactor: {
     enable: (args: { password: string }) => Promise<{

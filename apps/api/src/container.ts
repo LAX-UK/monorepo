@@ -35,6 +35,12 @@ import {
   bindLegalEntityArchiveQueue,
   createBullQueueOptions,
 } from "@auction/queues";
+import {
+  ConsolePhoneVerificationService,
+  type IPhoneVerificationService,
+  TwilioVerifyService,
+  isTwilioVerifyConfigured,
+} from "@auction/sms";
 import { Queue } from "bullmq";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import type { Redis, RedisOptions } from "ioredis";
@@ -586,6 +592,11 @@ export function createContainer(env: Env): Container {
 
   const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
 
+  const phoneVerification: IPhoneVerificationService =
+    env.ENABLE_PHONE_VERIFICATION && isTwilioVerifyConfigured(env)
+      ? TwilioVerifyService.fromEnv(env)
+      : new ConsolePhoneVerificationService();
+
   const auth = createAuth({
     db: authDb,
     secret: env.BETTER_AUTH_SECRET,
@@ -600,6 +611,7 @@ export function createContainer(env: Env): Container {
     appleClientId: env.APPLE_CLIENT_ID,
     appleClientSecret: env.APPLE_CLIENT_SECRET,
     email: emailService,
+    phoneVerification,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     jwtAudience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
     authDekKey: env.AUTH_DEK_KEY?.trim(),

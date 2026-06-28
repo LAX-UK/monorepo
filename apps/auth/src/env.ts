@@ -71,6 +71,14 @@ const envSchema = z
     APPLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     APPLE_DOMAIN_ASSOCIATION: z.preprocess(emptyToUndefined, z.string().optional()),
     TURNSTILE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    ENABLE_PHONE_VERIFICATION: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    TWILIO_ACCOUNT_SID: z.preprocess(emptyToUndefined, z.string().optional()),
+    TWILIO_VERIFY_SERVICE_SID: z.preprocess(emptyToUndefined, z.string().optional()),
+    TWILIO_API_KEY_SID: z.preprocess(emptyToUndefined, z.string().optional()),
+    TWILIO_API_KEY_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    TWILIO_AUTH_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
@@ -128,6 +136,33 @@ const envSchema = z
             path: ["AUTH_DEK_KEY"],
           });
         }
+      }
+    }
+    if (e.NODE_ENV === "production" && e.ENABLE_PHONE_VERIFICATION) {
+      if (!e.TWILIO_ACCOUNT_SID?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "TWILIO_ACCOUNT_SID is required when ENABLE_PHONE_VERIFICATION=true",
+          path: ["TWILIO_ACCOUNT_SID"],
+        });
+      }
+      if (!e.TWILIO_VERIFY_SERVICE_SID?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "TWILIO_VERIFY_SERVICE_SID is required when ENABLE_PHONE_VERIFICATION=true",
+          path: ["TWILIO_VERIFY_SERVICE_SID"],
+        });
+      }
+      const hasApiKey =
+        Boolean(e.TWILIO_API_KEY_SID?.trim()) && Boolean(e.TWILIO_API_KEY_SECRET?.trim());
+      const hasAuthToken = Boolean(e.TWILIO_AUTH_TOKEN?.trim());
+      if (!hasApiKey && !hasAuthToken) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (or TWILIO_AUTH_TOKEN) required when ENABLE_PHONE_VERIFICATION=true",
+          path: ["TWILIO_API_KEY_SID"],
+        });
       }
     }
   });

@@ -74,6 +74,8 @@ describe("SalePressArchiveRepository", () => {
     });
 
     expect(page.total).toBe(2);
+    expect(page.archiveTotal).toBe(2);
+    expect(page.outletCount).toBe(1);
     expect(page.data[0]?.item.headline).toBe("New");
     expect(page.availableYears).toEqual([2026, 2020]);
     expect(saleRepo.list).toHaveBeenCalledTimes(2);
@@ -115,5 +117,45 @@ describe("SalePressArchiveRepository", () => {
     expect(page.total).toBe(1);
     expect(page.data[0]?.item.headline).toBe("Evening record");
     expect(page.availableYears).toEqual([2026, 2025]);
+  });
+
+  it("filters by mention type", async () => {
+    const saleRepo: ISaleRepository = {
+      list: vi.fn(async () => [
+        makeSale(
+          "s1",
+          [
+            {
+              url: "https://x.com/a",
+              headline: "Feature story",
+              outletName: "BBC",
+              publishedAt: "2026-01-01",
+              mentionType: "feature",
+            },
+            {
+              url: "https://x.com/b",
+              headline: "Interview piece",
+              outletName: "Times",
+              publishedAt: "2026-01-02",
+              mentionType: "interview",
+            },
+          ],
+          "2026-06-01T18:00:00.000Z",
+        ),
+      ]),
+    } as unknown as ISaleRepository;
+
+    const repo = new SalePressArchiveRepository(saleRepo);
+    const page = await repo.listCoveragePage({
+      statuses: ["ended"],
+      limit: 10,
+      offset: 0,
+      mentionType: "interview",
+    });
+
+    expect(page.total).toBe(1);
+    expect(page.data[0]?.item.mentionType).toBe("interview");
+    expect(page.archiveTotal).toBe(2);
+    expect(page.outletCount).toBe(2);
   });
 });

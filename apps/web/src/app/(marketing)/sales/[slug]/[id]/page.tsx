@@ -578,7 +578,8 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
             loginNextPath={basePath}
             isAuthenticated={isAuthenticated}
             kycApproved={kycApproved}
-            mobile={session?.mobile ?? null}
+            mobile={session?.phoneNumber ?? session?.mobile ?? null}
+            phoneNumberVerified={session?.phoneNumberVerified === true}
             {...(session?.mobileDisplay ? { mobileDisplay: session.mobileDisplay } : {})}
             buyerEntities={buyerEntities}
             existingBooking={telephoneBooking}

@@ -169,6 +169,39 @@ function EmptySalesIllustration(props: IllustrationProps) {
   );
 }
 
+/** Empty press / news archive */
+function EmptyPressIllustration(props: IllustrationProps) {
+  return (
+    <IllustrationFrame {...props}>
+      <rect
+        x="24"
+        y="16"
+        width="72"
+        height="48"
+        rx="4"
+        stroke="currentColor"
+        strokeWidth="2"
+        opacity="0.35"
+      />
+      <path
+        d="M34 28 H86 M34 38 H74 M34 48 H58"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.3"
+      />
+      <circle cx="78" cy="52" r="12" stroke="currentColor" strokeWidth="2" opacity="0.35" />
+      <path
+        d="M86 60 L96 70"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        opacity="0.45"
+      />
+    </IllustrationFrame>
+  );
+}
+
 /** Route error — subtle broken frame */
 function ErrorIllustration(props: IllustrationProps) {
   return (
@@ -234,6 +267,7 @@ export type EmptyStateIllustrationKey =
   | "users"
   | "lots"
   | "sales"
+  | "press"
   | "error"
   | "notFound";
 
@@ -247,6 +281,7 @@ const ILLUSTRATIONS: Record<
   users: EmptyUsersIllustration,
   lots: EmptyLotsIllustration,
   sales: EmptySalesIllustration,
+  press: EmptyPressIllustration,
   error: ErrorIllustration,
   notFound: NotFoundIllustration,
 };

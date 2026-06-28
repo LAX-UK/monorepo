@@ -249,6 +249,7 @@ type TelephoneProps = {
   isAuthenticated: boolean;
   kycApproved: boolean;
   mobile: string | null;
+  phoneNumberVerified?: boolean;
   mobileDisplay?: string | null;
   buyerEntities: Entity[];
   existingBooking?: TelephoneBookingSnapshot | null;
@@ -264,6 +265,7 @@ export function OnsiteTelephoneBidForm({
   isAuthenticated,
   kycApproved,
   mobile,
+  phoneNumberVerified = false,
   mobileDisplay,
   buyerEntities,
   existingBooking = null,
@@ -354,6 +356,7 @@ export function OnsiteTelephoneBidForm({
         isAuthenticated={isAuthenticated}
         kycApproved={kycApproved}
         mobile={mobile}
+        phoneNumberVerified={phoneNumberVerified}
         {...(mobileDisplay ? { mobileDisplay } : {})}
         buyerEntities={buyerEntities}
         loginNextPath={loginNextPath}

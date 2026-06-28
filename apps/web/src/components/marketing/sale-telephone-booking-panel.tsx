@@ -48,6 +48,7 @@ type Props = {
   isAuthenticated: boolean;
   kycApproved: boolean;
   mobile: string | null;
+  phoneNumberVerified?: boolean;
   mobileDisplay?: string | null;
   buyerEntities: Entity[];
   existingBooking?: TelephoneBookingSnapshot | null;
@@ -63,6 +64,7 @@ export function SaleTelephoneBookingPanel({
   isAuthenticated,
   kycApproved,
   mobile,
+  phoneNumberVerified = false,
   mobileDisplay,
   buyerEntities,
   existingBooking = null,
@@ -142,6 +144,7 @@ export function SaleTelephoneBookingPanel({
         isAuthenticated={isAuthenticated}
         kycApproved={kycApproved}
         mobile={mobile}
+        phoneNumberVerified={phoneNumberVerified}
         {...(mobileDisplay ? { mobileDisplay } : {})}
         buyerEntities={buyerEntities}
         loginNextPath={loginNextPath}

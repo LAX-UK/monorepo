@@ -39,7 +39,7 @@ export type SalePressMentionType = "feature" | "interview" | "quote" | "roundup"
 
 /**
  * Storage form for a single press coverage item (curated external link).
- * URLs are already fully-resolved; no media enrichment needed.
+ * `imageUrl` is populated server-side from the article's Open Graph preview when available.
  */
 export type SalePressRef = {
   url: string;
@@ -50,6 +50,8 @@ export type SalePressRef = {
   /** Short pull-quote or excerpt (max 280 chars). */
   excerpt?: string;
   mentionType?: SalePressMentionType;
+  /** Resolved preview image URL (typically og:image). */
+  imageUrl?: string;
 };
 
 /** Resolved/public form — structurally identical to SalePressRef (no enrichment). */
