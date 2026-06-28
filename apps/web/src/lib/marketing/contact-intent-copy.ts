@@ -33,6 +33,17 @@ export function contactIntentFromSearchParams(input: {
     };
   }
 
+  if (intent === "press") {
+    return {
+      topic: "press",
+      headline: "Press & media enquiry — our team responds within two business hours (GMT).",
+      successMessage:
+        "Thank you — your press enquiry has been received. A member of our media team will respond shortly.",
+      successCtaHref: "/press",
+      successCtaLabel: "Back to press centre",
+    };
+  }
+
   if (intent === "selling" || intent === "sell") {
     const typeCopy: Record<ContactSellType, string> = {
       prints: "Tell us about prints and editions you would like to consign.",

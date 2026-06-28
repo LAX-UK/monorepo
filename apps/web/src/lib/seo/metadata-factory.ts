@@ -105,12 +105,21 @@ export function metadataForListing(opts: {
 }
 
 /** Sale catalog page */
-export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">): Metadata {
+export function metadataForSale(
+  sale: Pick<Sale, "id" | "title" | "description">,
+  opts?: { hasPress?: boolean; hasDayMedia?: boolean },
+): Metadata {
   const base = getSiteUrl();
   const url = `${base}${salePath(sale)}`;
-  const desc =
+  let desc =
     (sale.description?.trim() ? truncateMetaDescription(sale.description) : null) ??
     `Browse lots and bidding in ${sale.title} — ${SITE_NAME}.`;
+  const extras: string[] = [];
+  if (opts?.hasPress) extras.push("press coverage");
+  if (opts?.hasDayMedia) extras.push("auction-day photos");
+  if (extras.length > 0) {
+    desc = `${desc} Includes ${extras.join(" and ")}.`;
+  }
   const fullTitle = `${sale.title} · ${SITE_NAME}`;
   return withIndexingPolicy({
     title: sale.title,
@@ -118,6 +127,41 @@ export function metadataForSale(sale: Pick<Sale, "id" | "title" | "description">
     alternates: { canonical: url },
     ...socialTextFields({ url, title: fullTitle, description: desc }),
   });
+}
+
+/** Press hub archive */
+export function metadataForPressHub(opts?: {
+  searchQuery?: string;
+  year?: number;
+  /** Faceted or paginated hub views — canonical stays `/press`. */
+  noIndex?: boolean;
+}): Metadata {
+  const base = getSiteUrl();
+  const url = `${base}/press`;
+  const title = "Press & media";
+  let description =
+    "Press coverage archive, auction-day photography, and media resources for journalists covering LAX.BID by London Art Exchange.";
+  if (opts?.searchQuery) {
+    description = `Press coverage matching “${opts.searchQuery}” — ${description}`;
+  } else if (opts?.year != null) {
+    description = `Press coverage from ${opts.year} — ${description}`;
+  }
+  const fullTitle = `${title} · ${SITE_NAME}`;
+  const meta = withIndexingPolicy({
+    title,
+    description,
+    alternates: {
+      canonical: url,
+      types: {
+        "application/rss+xml": `${base}/press/feed.xml`,
+      },
+    },
+    ...socialTextFields({ url, title: fullTitle, description }),
+  });
+  if (opts?.noIndex) {
+    return { ...meta, robots: { index: false, follow: true } };
+  }
+  return meta;
 }
 
 export function metadataForLot(auction: Pick<Lot, "id" | "title" | "description">): Metadata {
