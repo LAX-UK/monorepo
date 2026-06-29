@@ -10,8 +10,6 @@
     "container.bidService",
     "container.conditionReportService",
     "container.db",
-    "container.displayOverlayService",
-    "container.displayPairingService",
     "container.env",
     "container.itemSubmissionService",
     "container.legalEntityDocumentAdminService",

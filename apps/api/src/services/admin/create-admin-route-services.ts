@@ -11,6 +11,8 @@ import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
 import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-reader.js";
+import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
+import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
 import type { IItemSubmissionService } from "../interfaces/item-submission-service.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
@@ -42,6 +44,7 @@ import { AdminPaymentsApplicationService } from "./admin-payments-application.se
 import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
 import { AdminRequestLifecycleApplicationService } from "./admin-request-lifecycle-application.service.js";
+import { AdminSaleroomDisplayApplicationService } from "./admin-saleroom-display-application.service.js";
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
 import { AdminUserApplicationService } from "./admin-user-application.service.js";
 import { AdminXeroApplicationService } from "./admin-xero-application.service.js";
@@ -72,6 +75,8 @@ export type CreateAdminRouteServicesInput = {
   xeroConnectionRepository: IXeroConnectionRepository;
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   paymentExternalRefRepository: IPaymentExternalRefRepository;
+  displayPairingService: IDisplayPairingService;
+  displayOverlayService: IDisplayOverlayService;
   env: Pick<Env, "XERO_REDIRECT_URI" | "API_PUBLIC_URL" | "XERO_WEBHOOK_KEY">;
 };
 
@@ -118,6 +123,10 @@ export function createAdminRouteServices(
       input.paymentExternalRefRepository,
       input.db,
       input.env,
+    ),
+    display: new AdminSaleroomDisplayApplicationService(
+      input.displayPairingService,
+      input.displayOverlayService,
     ),
   };
 }

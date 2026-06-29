@@ -1177,7 +1177,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId } = c.req.valid("param");
       const { userCode } = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.displayPairingService.approvePairing({
+      const result = await container.admin.display.approvePairing({
         userCode,
         saleId,
         actorUserId: userId,
@@ -1199,7 +1199,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId } = c.req.valid("param");
       const body = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.displayOverlayService.setOverlay({
+      const result = await container.admin.display.setOverlay({
         saleId,
         kind: body.kind,
         ...(body.message != null ? { message: body.message } : {}),
@@ -1220,7 +1220,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.displayOverlayService.clearOverlay({
+      const result = await container.admin.display.clearOverlay({
         saleId,
         actorUserId: userId,
       });
@@ -1238,7 +1238,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", adminSaleroomSaleIdParamSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");
-      const devices = await container.displayPairingService.listDevices(saleId);
+      const devices = await container.admin.display.listDevices(saleId);
       return c.json({ data: { items: devices } });
     },
   );
@@ -1252,7 +1252,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId } = c.req.valid("param");
       const { pairingId } = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.displayPairingService.revokePairing({
+      const result = await container.admin.display.revokePairing({
         pairingId,
         saleId,
         actorUserId: userId,

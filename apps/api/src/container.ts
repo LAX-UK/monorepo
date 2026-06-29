@@ -1525,6 +1525,8 @@ export function createContainer(env: Env): Container {
     xeroConnectionRepository: xeroConnRepo,
     xeroWebhookEventRepository,
     paymentExternalRefRepository: paymentExtRepo,
+    displayPairingService,
+    displayOverlayService,
     env,
   });
 

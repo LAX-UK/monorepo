@@ -47,6 +47,8 @@ import type { AdminAnalyticsDashboard, DateRange } from "./analytics.js";
 import type { ArtistSearchHit } from "./artist-registry.js";
 import type { AttentionItem } from "./attention-feed.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.js";
+import type { IDisplayOverlayService } from "./display-overlay-service.js";
+import type { IDisplayPairingService } from "./display-pairing-service.js";
 import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "./email-observability.js";
 import type { InvitationAdminListFilters, InvitationAdminListRow } from "./invitation.js";
 import type { ListSubmissionsFilter } from "./repositories.js";
@@ -422,6 +424,14 @@ export interface IAdminDashboardMetricsService {
   getPayoutsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
 }
 
+export interface IAdminSaleroomDisplayService {
+  approvePairing: IDisplayPairingService["approvePairing"];
+  revokePairing: IDisplayPairingService["revokePairing"];
+  listDevices: IDisplayPairingService["listDevices"];
+  setOverlay: IDisplayOverlayService["setOverlay"];
+  clearOverlay: IDisplayOverlayService["clearOverlay"];
+}
+
 export type AdminRouteServices = {
   requestLifecycle: IAdminRequestLifecycleService;
   ops: IAdminOpsReadService;
@@ -437,5 +447,6 @@ export type AdminRouteServices = {
   invitations: IAdminInvitationApplicationService;
   legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService;
   xero: IXeroAdminApplicationService;
+  display: IAdminSaleroomDisplayService;
   dashboardMetrics: IAdminDashboardMetricsService;
 };
