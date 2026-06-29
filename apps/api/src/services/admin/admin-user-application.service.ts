@@ -10,9 +10,13 @@ import type {
   AdminUserListResult,
   AdminUserListRow,
 } from "../interfaces/admin-user.js";
+import type { ProfileService } from "../profile.service.js";
 
 export class AdminUserApplicationService implements IAdminUserApplicationService {
-  constructor(private readonly adminUsers: AdminUserService) {}
+  constructor(
+    private readonly adminUsers: AdminUserService,
+    private readonly profiles: ProfileService,
+  ) {}
 
   list(
     actorRole: string,
@@ -144,5 +148,9 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
       }
     }
     return { count: ids.length };
+  }
+
+  updateProfileName(userId: string, name: string) {
+    return this.profiles.updateProfile(userId, { name });
   }
 }

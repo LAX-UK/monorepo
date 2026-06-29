@@ -268,7 +268,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   );
 
   platform.get("/submissions/quality-gaps-count", requireSubmissionsAccess, async (c) => {
-    const count = await container.itemSubmissionService.countQualityGapsForAdminApi();
+    const count = await container.admin.ops.countQualityGapsForAdminApi();
     return c.json({ data: { count } });
   });
 
@@ -291,8 +291,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminSubmissionCountBySellersQuerySchema),
     async (c) => {
       const { sellerIds } = c.req.valid("query");
-      const count =
-        await container.itemSubmissionService.countSubmissionsBySellersForAdminApi(sellerIds);
+      const count = await container.admin.ops.countSubmissionsBySellersForAdminApi(sellerIds);
       return c.json({ data: { count } });
     },
   );
@@ -606,7 +605,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const query = c.req.valid("query");
-      const items = await container.saleRegistrationService.listForSaleAdmin({
+      const items = await container.admin.saleRegistrations.listForSaleAdmin({
         saleId,
         status: query.status,
       });
@@ -621,7 +620,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId, registrationId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.saleRegistrationService.approve({
+      const result = await container.admin.saleRegistrations.approve({
         saleId,
         registrationId,
         decidedByUserId: userId,
@@ -643,7 +642,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId, registrationId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.saleRegistrationService.reject({
+      const result = await container.admin.saleRegistrations.reject({
         saleId,
         registrationId,
         decidedByUserId: userId,
@@ -666,7 +665,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId, registrationId } = c.req.valid("param");
       const { bidLimit } = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.saleRegistrationService.updateBidLimit({
+      const result = await container.admin.saleRegistrations.updateBidLimit({
         saleId,
         registrationId,
         bidLimit,
@@ -1405,7 +1404,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   );
 
   platform.get("/platform-catalog/legal-entity-id", requireVenuesAccess, async (c) => {
-    const id = await container.resolvePlatformCatalogLegalEntityId();
+    const id = await container.admin.catalog.resolvePlatformCatalogLegalEntityId();
     return c.json({ data: { id } });
   });
 
@@ -2446,7 +2445,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       if (body.name == null) {
         return c.json({ error: "name is required" }, 400);
       }
-      await container.profileService.updateProfile(userId, { name: body.name });
+      await container.admin.users.updateProfileName(userId, body.name);
       return c.json({ ok: true });
     },
   );
@@ -2519,15 +2518,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     return c.json({ ok: true });
   });
 
-  attachAdminLegalEntityLifecycleRoutes(
-    platform,
-    container.admin.legalEntityLifecycle,
-    container.legalEntityDocumentAdminService,
-  );
+  attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 
   attachAdminStripeConnectRoutes(
     platform,
-    container.stripeConnectService,
+    container.admin.stripeConnect,
     container.env?.WEB_ORIGIN,
   );
 

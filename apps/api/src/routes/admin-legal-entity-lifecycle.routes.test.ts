@@ -41,11 +41,12 @@ function lifecycleApp(
   const legalEntityLifecycle = new AdminLegalEntityLifecycleApplicationService(
     container.legalEntityRepository,
     container.legalEntityLifecycleAdminService,
+    {
+      listDocuments: vi.fn().mockResolvedValue([]),
+      reviewDocument: vi.fn(),
+    } as never,
   );
-  attachAdminLegalEntityLifecycleRoutes(app, legalEntityLifecycle, {
-    listDocuments: vi.fn().mockResolvedValue([]),
-    reviewDocument: vi.fn(),
-  } as never);
+  attachAdminLegalEntityLifecycleRoutes(app, legalEntityLifecycle);
   return app;
 }
 

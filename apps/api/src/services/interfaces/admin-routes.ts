@@ -35,11 +35,16 @@ import type { LifecycleAdminOp } from "../../lib/legal-entity-lifecycle-transiti
 import type { AdminTodayMetrics } from "../admin-metrics.service.js";
 import type { AdminNavCounts } from "../admin/admin-nav-counts.service.js";
 import type { AdminSourceOfFundsQueryService } from "../admin/admin-source-of-funds-query.service.js";
+import type {
+  AdminLegalEntityDocumentDto,
+  LegalEntityDocumentAdminService,
+} from "../admin/legal-entity-document-admin.service.js";
 import type { AmlService } from "../aml/aml.service.js";
 import type { CreateInvitationInput, InvitationError } from "../invitation.service.js";
 import type { LegalEntityLifecycleFailure } from "../legal-entity-lifecycle-admin.service.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
 import type { QrCodeService } from "../qr-code.service.js";
+import type { SaleRegistrationService } from "../sale-registration.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
 import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/source-of-funds-document-review.service.js";
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
@@ -66,6 +71,7 @@ import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "./email
 import type { InvitationAdminListFilters, InvitationAdminListRow } from "./invitation.js";
 import type { ListPaymentsAdminTableFilter } from "./payment-write.js";
 import type { ListSubmissionsFilter } from "./repositories.js";
+import type { IStripeConnectService } from "./stripe-connect.js";
 
 export type AdminImpersonationLookupResult =
   | { ok: true; data: { id: string; displayName: string; status: string } }
@@ -201,6 +207,7 @@ export interface IAdminCatalogApplicationService {
   getArtist(artistId: string): Promise<ArtistProfile | null>;
   updateArtist(artistId: string, body: AdminCatalogUpdateArtistBody): Promise<ArtistProfile>;
   searchArtists(query: string, limit?: number): Promise<ArtistSearchHit[]>;
+  resolvePlatformCatalogLegalEntityId(): Promise<string | null>;
 }
 
 export interface IAdminEmailApplicationService {
@@ -237,6 +244,8 @@ export interface IAdminOpsReadService {
   countPendingSubmissions(filter: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
   /** Submissions + converted lots for Arman-style conveyor (limit default 200). */
   listConveyorPipeline(limit?: number): Promise<ConveyorPipelineRowDto[]>;
+  countQualityGapsForAdminApi(): Promise<number>;
+  countSubmissionsBySellersForAdminApi(sellerIds: readonly string[]): Promise<number>;
 }
 
 export interface IAdminRequestLifecycleService {
@@ -314,6 +323,7 @@ export interface IAdminUserApplicationService {
     op: "suspend" | "unsuspend";
     reason: string | null | undefined;
   }): Promise<{ count: number }>;
+  updateProfileName(userId: string, name: string): Promise<void>;
 }
 
 export interface IAdminPaymentsApplicationService {
@@ -399,7 +409,18 @@ export interface IAdminLegalEntityLifecycleApplicationService {
     op: LifecycleAdminOp,
     reason?: string | null,
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>>;
+  listDocuments(entityId: string): Promise<AdminLegalEntityDocumentDto[] | null>;
+  reviewDocument: LegalEntityDocumentAdminService["reviewDocument"];
 }
+
+export interface IAdminSaleRegistrationsApplicationService {
+  listForSaleAdmin: SaleRegistrationService["listForSaleAdmin"];
+  approve: SaleRegistrationService["approve"];
+  reject: SaleRegistrationService["reject"];
+  updateBidLimit: SaleRegistrationService["updateBidLimit"];
+}
+
+export type IAdminStripeConnectApplicationService = IStripeConnectService;
 
 export type XeroConnectionHealth = "healthy" | "degraded" | "disconnected";
 
@@ -517,4 +538,6 @@ export type AdminRouteServices = {
   conditionReports: IAdminConditionReportsApplicationService;
   aml: IAdminAmlApplicationService;
   sourceOfFunds: IAdminSourceOfFundsApplicationService;
+  saleRegistrations: IAdminSaleRegistrationsApplicationService;
+  stripeConnect: IAdminStripeConnectApplicationService;
 };

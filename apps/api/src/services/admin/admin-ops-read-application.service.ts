@@ -55,4 +55,12 @@ export class AdminOpsReadApplicationService implements IAdminOpsReadService {
       }),
     );
   }
+
+  countQualityGapsForAdminApi() {
+    return this.itemSubmissions.countQualityGapsForAdminApi();
+  }
+
+  countSubmissionsBySellersForAdminApi(sellerIds: readonly string[]) {
+    return this.itemSubmissions.countSubmissionsBySellersForAdminApi(sellerIds);
+  }
 }

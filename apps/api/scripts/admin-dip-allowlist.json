@@ -5,21 +5,15 @@
     "container.bidService",
     "container.db",
     "container.env",
-    "container.itemSubmissionService",
-    "container.legalEntityDocumentAdminService",
     "container.lotFulfilmentService",
     "container.lotLifecycleQueryService",
     "container.lotTransitionOrchestrator",
     "container.paddleService",
-    "container.profileService",
     "container.redis",
     "container.repoFactory",
-    "container.resolvePlatformCatalogLegalEntityId",
-    "container.saleRegistrationService",
     "container.saleroomCheckInService",
     "container.saleroomOnBlockPolicy",
     "container.saleroomService",
-    "container.stripeConnectService",
     "container.telephoneBidBookingService"
   ]
 }

@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { Env } from "../../env.js";
+import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
 import type { AdminUserService } from "../admin-user.service.js";
 import type { AmlService } from "../aml/aml.service.js";
@@ -19,6 +20,7 @@ import type { IDisplayPairingService } from "../interfaces/display-pairing-servi
 import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
 import type { IItemSubmissionService } from "../interfaces/item-submission-service.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
+import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { IUserSuspensionChecker } from "../interfaces/user-suspension.js";
 import type {
   IPaymentExternalRefRepository,
@@ -31,8 +33,10 @@ import type { LotService } from "../lot.service.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { PaymentService } from "../payment.service.js";
+import type { ProfileService } from "../profile.service.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
 import type { QrCodeService } from "../qr-code.service.js";
+import type { SaleRegistrationService } from "../sale-registration.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
 import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/source-of-funds-document-review.service.js";
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
@@ -59,12 +63,15 @@ import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.se
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
 import { AdminQrCodesApplicationService } from "./admin-qr-codes-application.service.js";
 import { AdminRequestLifecycleApplicationService } from "./admin-request-lifecycle-application.service.js";
+import { AdminSaleRegistrationsApplicationService } from "./admin-sale-registrations-application.service.js";
 import { AdminSaleroomDisplayApplicationService } from "./admin-saleroom-display-application.service.js";
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
 import { AdminSourceOfFundsApplicationService } from "./admin-source-of-funds-application.service.js";
 import type { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
+import { AdminStripeConnectApplicationService } from "./admin-stripe-connect-application.service.js";
 import { AdminUserApplicationService } from "./admin-user-application.service.js";
 import { AdminXeroApplicationService } from "./admin-xero-application.service.js";
+import type { LegalEntityDocumentAdminService } from "./legal-entity-document-admin.service.js";
 
 export type AdminRouteServicesCore = Omit<AdminRouteServices, "dashboardMetrics">;
 
@@ -76,10 +83,12 @@ export type CreateAdminRouteServicesInput = {
   userSuspensionChecker: IUserSuspensionChecker;
   legalEntityRepository: ILegalEntityRepository;
   legalEntityLifecycleAdminService: LegalEntityLifecycleAdminService;
+  legalEntityDocumentAdminService: LegalEntityDocumentAdminService;
   categoryService: CategoryService;
   artistProfileService: ArtistProfileService;
   emailObservabilityRepository: IEmailObservabilityRepository;
   adminUserService: AdminUserService;
+  profileService: ProfileService;
   analyticsService: IAnalyticsService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
@@ -89,7 +98,9 @@ export type CreateAdminRouteServicesInput = {
   adminPaymentListQueryService: AdminPaymentListQueryService;
   lotService: LotService;
   adminLotBrowseService: AdminLotBrowseService;
+  saleRegistrationService: SaleRegistrationService;
   artistRegistryService: IArtistRegistryService;
+  resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   invitationService: InvitationService;
   xeroOAuthService: XeroOAuthService | null;
   xeroConnectionRepository: IXeroConnectionRepository;
@@ -107,6 +118,7 @@ export type CreateAdminRouteServicesInput = {
   sourceOfFundsService: SourceOfFundsService;
   sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
   sourceOfFundsDocumentReviewService: SourceOfFundsDocumentReviewService;
+  stripeConnectService: IStripeConnectService;
   env: Pick<Env, "XERO_REDIRECT_URI" | "API_PUBLIC_URL" | "XERO_WEBHOOK_KEY">;
 };
 
@@ -139,9 +151,10 @@ export function createAdminRouteServices(
       input.categoryService,
       input.artistProfileService,
       input.artistRegistryService,
+      input.resolvePlatformCatalogLegalEntityId,
     ),
     email: new AdminEmailApplicationService(input.emailObservabilityRepository),
-    users: new AdminUserApplicationService(input.adminUserService),
+    users: new AdminUserApplicationService(input.adminUserService, input.profileService),
     payments: new AdminPaymentsApplicationService(
       input.paymentService,
       input.adminPaymentListQueryService,
@@ -151,6 +164,7 @@ export function createAdminRouteServices(
     legalEntityLifecycle: new AdminLegalEntityLifecycleApplicationService(
       input.legalEntityRepository,
       input.legalEntityLifecycleAdminService,
+      input.legalEntityDocumentAdminService,
     ),
     xero: new AdminXeroApplicationService(
       input.xeroOAuthService,
@@ -178,6 +192,8 @@ export function createAdminRouteServices(
       input.sourceOfFundsDocumentCollectionService,
       input.sourceOfFundsDocumentReviewService,
     ),
+    saleRegistrations: new AdminSaleRegistrationsApplicationService(input.saleRegistrationService),
+    stripeConnect: new AdminStripeConnectApplicationService(input.stripeConnectService),
   };
 }
 

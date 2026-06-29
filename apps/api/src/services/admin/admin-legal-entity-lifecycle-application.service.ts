@@ -7,6 +7,7 @@ import type {
   LegalEntityLifecycleAdminService,
   LegalEntityLifecycleFailure,
 } from "../legal-entity-lifecycle-admin.service.js";
+import type { LegalEntityDocumentAdminService } from "./legal-entity-document-admin.service.js";
 
 export class AdminLegalEntityLifecycleApplicationService
   implements IAdminLegalEntityLifecycleApplicationService
@@ -14,6 +15,7 @@ export class AdminLegalEntityLifecycleApplicationService
   constructor(
     private readonly legalEntities: ILegalEntityRepository,
     private readonly lifecycle: LegalEntityLifecycleAdminService,
+    private readonly documents: LegalEntityDocumentAdminService,
   ) {}
 
   findLegalEntityById(id: string) {
@@ -27,5 +29,13 @@ export class AdminLegalEntityLifecycleApplicationService
     reason?: string | null,
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>> {
     return this.lifecycle.runTransition(userId, entityId, op, reason);
+  }
+
+  listDocuments(entityId: string) {
+    return this.documents.listDocuments(entityId);
+  }
+
+  reviewDocument(...args: Parameters<LegalEntityDocumentAdminService["reviewDocument"]>) {
+    return this.documents.reviewDocument(...args);
   }
 }

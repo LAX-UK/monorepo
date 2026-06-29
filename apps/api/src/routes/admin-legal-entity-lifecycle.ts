@@ -8,7 +8,6 @@ import {
   createRequireCapability,
   requireLegalEntityBrowse,
 } from "../middleware/require-capability.js";
-import type { LegalEntityDocumentAdminService } from "../services/admin/legal-entity-document-admin.service.js";
 import type { IAdminLegalEntityLifecycleApplicationService } from "../services/interfaces/admin-routes.js";
 
 const legalEntityIdParamSchema = z.object({
@@ -59,7 +58,6 @@ async function runLifecycle(
 export function attachAdminLegalEntityLifecycleRoutes(
   platform: Hono<{ Variables: { userId?: string; userRole?: string } }>,
   legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService,
-  legalEntityDocuments: LegalEntityDocumentAdminService,
 ) {
   platform.get(
     "/legal-entities/:id",
@@ -81,7 +79,7 @@ export function attachAdminLegalEntityLifecycleRoutes(
     zValidator("param", legalEntityIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const docs = await legalEntityDocuments.listDocuments(id);
+      const docs = await legalEntityLifecycle.listDocuments(id);
       if (docs === null) return c.json({ error: "not_found" }, 404);
       return c.json({ data: docs });
     },
@@ -97,9 +95,10 @@ export function attachAdminLegalEntityLifecycleRoutes(
       if (!userId) return c.json({ error: "Unauthorized" }, 401);
       const { id, documentId } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await legalEntityDocuments.reviewDocument(id, documentId, userId, body);
+      const result = await legalEntityLifecycle.reviewDocument(id, documentId, userId, body);
       if (!result.ok) {
-        return c.json({ error: result.code }, result.code === "not_found" ? 404 : 404);
+        const status = result.code === "forbidden_kind" ? 400 : 404;
+        return c.json({ error: result.code }, status);
       }
       return c.json({ data: { reviewed: true } });
     },

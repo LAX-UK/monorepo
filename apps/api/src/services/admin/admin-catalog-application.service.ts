@@ -3,6 +3,7 @@ import type {
   AdminCatalogCreateArtistBody,
   AdminCatalogUpdateArtistBody,
 } from "../../admin/admin-route-dtos.js";
+import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { IAdminCatalogApplicationService } from "../interfaces/admin-routes.js";
@@ -14,6 +15,7 @@ export class AdminCatalogApplicationService implements IAdminCatalogApplicationS
     private readonly categoryService: CategoryService,
     private readonly artistProfileService: ArtistProfileService,
     private readonly artistRegistry: IArtistRegistryService,
+    private readonly platformCatalogLegalEntityIdProvider: PlatformCatalogLegalEntityIdProvider,
   ) {}
 
   listCategoriesForAdmin(input: { includeArchived: boolean }) {
@@ -66,5 +68,9 @@ export class AdminCatalogApplicationService implements IAdminCatalogApplicationS
 
   searchArtists(query: string, limit?: number) {
     return this.artistRegistry.search(query, limit);
+  }
+
+  resolvePlatformCatalogLegalEntityId() {
+    return this.platformCatalogLegalEntityIdProvider();
   }
 }
