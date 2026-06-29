@@ -1,6 +1,6 @@
 # Auction monorepo
 
-Turborepo + pnpm. Five deployable apps and seven shared packages.
+Turborepo + pnpm. Five Node.js apps, a ClamAV malware-scan service, and seven shared packages.
 
 | App | Stack | Role |
 |---|---|---|
@@ -9,6 +9,7 @@ Turborepo + pnpm. Five deployable apps and seven shared packages.
 | `apps/auth` | Hono + Better Auth | OIDC issuer (auth.lax.bid), JWKS, social providers |
 | `apps/ws` | Socket.IO + Redis | Real-time bid/lot fan-out |
 | `apps/worker` | BullMQ + Hono | Async jobs: email outbox, image validation, projectors, GC, marketing-sync |
+| `apps/clamav` | ClamAV REST (`ajilaag/clamav-rest`) | Internal malware scanning for Source-of-Funds document uploads (`/v2/scan` on port 9000); worker-only, prod App Platform |
 
 Shared workspaces: `packages/db` (Drizzle schema + migrations + role grants), `packages/auth` (better-auth wrapper), `packages/email` (templates + outbox service), `packages/types`, `packages/validators` (Zod), `packages/ui` (React + Tailwind primitives), `packages/config-ts`, `packages/config-biome`.
 
@@ -33,6 +34,8 @@ See `docs/development.md` for OAuth callback testing with ngrok, least-privilege
 | Auth | http://localhost:3003 | OIDC issuer, JWKS, `/api/auth/*` (parallel to API today; D7 dual-stack) |
 | Worker | http://localhost:3004 | `/health/live`, `/health/ready`, `/metrics` only — BullMQ consumers and projector runner |
 
+**ClamAV (optional locally):** production worker sets `CLAMAV_URL=http://clamav:9000` (see `infra/terraform/ephemeral/prod/main.tf`). For local dev, leave `CLAMAV_HOST` / `CLAMAV_URL` unset and SoF uploads skip scanning (no-op). To exercise scanning, run the image from `apps/clamav/Dockerfile` and point the worker at `CLAMAV_URL=http://127.0.0.1:9000` or `CLAMAV_HOST=127.0.0.1` + `CLAMAV_PORT=3310`.
+
 **Typed client:** `apps/web/src/lib/hc.ts` uses Hono `hc<AppType>` with `AppType` from `@auction/api/app`.
 
 **Real-time:** API publishes to Redis `lot:{lotId}:events` and `user:{userId}:notifications`; `apps/ws` bridges to Socket.IO (`bidUpdate`, `lotExtended`, `lotEnded`, `userNotification`).
@@ -41,7 +44,7 @@ See `docs/development.md` for OAuth callback testing with ngrok, least-privilege
 
 ## Docker
 
-- `apps/api/Dockerfile` and `apps/ws/Dockerfile` — run with `tsx` against workspace sources.
+- `apps/api/Dockerfile`, `apps/ws/Dockerfile`, and `apps/clamav/Dockerfile` — API/WS run with `tsx` against workspace sources; ClamAV wraps `ajilaag/clamav-rest` with a pre-seeded signature DB for faster cold starts on App Platform.
 - `.dockerignore` excludes `node_modules` and build artifacts.
 
 **Migrations: `password authentication failed` on the host, but `docker compose exec postgres psql …` works:** the volume may have been initialized with a different password than `docker-compose.yml`, or another Postgres is on host `5432`. Align password inside the DB with `ALTER USER`, or use `POSTGRES_PUBLISH_PORT=5433` and `DATABASE_URL=…@localhost:5433/auction`, recreate Postgres, export `DATABASE_URL`, then `pnpm db:migrate` — or skip the host and use `pnpm db:migrate:docker`.
