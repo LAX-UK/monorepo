@@ -2,10 +2,7 @@
   "src/routes/admin.ts": [
     "container.adminMetricsService",
     "container.adminSaleOperationsSnapshotService",
-    "container.adminSourceOfFundsQueryService",
-    "container.amlService",
     "container.bidService",
-    "container.conditionReportService",
     "container.db",
     "container.env",
     "container.itemSubmissionService",
@@ -13,12 +10,8 @@
     "container.lotFulfilmentService",
     "container.lotLifecycleQueryService",
     "container.lotTransitionOrchestrator",
-    "container.mediaAssetEnricher",
-    "container.mediaUrlResolver",
     "container.paddleService",
     "container.profileService",
-    "container.qrCodeAnalytics",
-    "container.qrCodeService",
     "container.redis",
     "container.repoFactory",
     "container.resolvePlatformCatalogLegalEntityId",
@@ -26,9 +19,6 @@
     "container.saleroomCheckInService",
     "container.saleroomOnBlockPolicy",
     "container.saleroomService",
-    "container.sourceOfFundsDocumentCollectionService",
-    "container.sourceOfFundsDocumentReviewService",
-    "container.sourceOfFundsService",
     "container.stripeConnectService",
     "container.telephoneBidBookingService"
   ]

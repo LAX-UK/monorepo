@@ -16,6 +16,7 @@ import type {
   UserRole,
   UserStaffRole,
 } from "@auction/types";
+import type { ResolvedQrCodeAnalyticsQuery } from "@auction/validators";
 import type { Result } from "neverthrow";
 import type {
   AdminArtistListOptions,
@@ -33,8 +34,15 @@ import type { AuthzError } from "../../lib/errors.js";
 import type { LifecycleAdminOp } from "../../lib/legal-entity-lifecycle-transitions.js";
 import type { AdminTodayMetrics } from "../admin-metrics.service.js";
 import type { AdminNavCounts } from "../admin/admin-nav-counts.service.js";
+import type { AdminSourceOfFundsQueryService } from "../admin/admin-source-of-funds-query.service.js";
+import type { AmlService } from "../aml/aml.service.js";
 import type { CreateInvitationInput, InvitationError } from "../invitation.service.js";
 import type { LegalEntityLifecycleFailure } from "../legal-entity-lifecycle-admin.service.js";
+import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
+import type { QrCodeService } from "../qr-code.service.js";
+import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
+import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/source-of-funds-document-review.service.js";
+import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
 import type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "./admin-kpi-trend.js";
 import type {
   AdminActivityEntry,
@@ -47,6 +55,11 @@ import type { AdminAnalyticsDashboard, DateRange } from "./analytics.js";
 import type { ArtistSearchHit } from "./artist-registry.js";
 import type { AttentionItem } from "./attention-feed.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.js";
+import type {
+  ConditionReportServiceError,
+  FulfillConditionReportInput,
+  IConditionReportService,
+} from "./condition-report.js";
 import type { IDisplayOverlayService } from "./display-overlay-service.js";
 import type { IDisplayPairingService } from "./display-pairing-service.js";
 import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "./email-observability.js";
@@ -443,6 +456,46 @@ export interface IAdminSaleroomDisplayService {
   clearOverlay: IDisplayOverlayService["clearOverlay"];
 }
 
+export interface IAdminQrCodesApplicationService {
+  listForEntity: QrCodeService["listForEntity"];
+  getOrCreateDefault: QrCodeService["getOrCreateDefault"];
+  update: QrCodeService["update"];
+  regenerateDefault: QrCodeService["regenerateDefault"];
+  getDetailedAnalytics(
+    id: string,
+    query: ResolvedQrCodeAnalyticsQuery,
+  ): ReturnType<QrCodeAnalyticsService["getDetailed"]>;
+}
+
+export interface IAdminConditionReportsApplicationService {
+  listForAdmin: IConditionReportService["listForAdmin"];
+  markInProgress: IConditionReportService["markInProgress"];
+  fulfill(input: FulfillConditionReportInput): Promise<Result<Lot, ConditionReportServiceError>>;
+  decline: IConditionReportService["decline"];
+}
+
+export interface IAdminAmlApplicationService {
+  listForUser: AmlService["listForUser"];
+  listPendingReviews: AmlService["listPendingReviews"];
+  countPendingReviews: AmlService["countPendingReviews"];
+  triage: AmlService["triage"];
+  decide: AmlService["decide"];
+}
+
+export interface IAdminSourceOfFundsApplicationService {
+  listEnriched: AdminSourceOfFundsQueryService["listEnriched"];
+  getDetail: AdminSourceOfFundsQueryService["getDetail"];
+  listForUser: AdminSourceOfFundsQueryService["listForUser"];
+  triage: SourceOfFundsService["triage"];
+  decide: SourceOfFundsService["decide"];
+  reopenRejected: SourceOfFundsService["reopenRejected"];
+  requestDocuments: SourceOfFundsDocumentCollectionService["requestDocuments"];
+  getStaffDownloadUrl: SourceOfFundsDocumentCollectionService["getStaffDownloadUrl"];
+  getStaffBulkDownloadZip: SourceOfFundsDocumentCollectionService["getStaffBulkDownloadZip"];
+  getStaffPreviewBytes: SourceOfFundsDocumentCollectionService["getStaffPreviewBytes"];
+  reviewDocument: SourceOfFundsDocumentReviewService["reviewDocument"];
+}
+
 export type AdminRouteServices = {
   requestLifecycle: IAdminRequestLifecycleService;
   ops: IAdminOpsReadService;
@@ -460,4 +513,8 @@ export type AdminRouteServices = {
   xero: IXeroAdminApplicationService;
   display: IAdminSaleroomDisplayService;
   dashboardMetrics: IAdminDashboardMetricsService;
+  qrCodes: IAdminQrCodesApplicationService;
+  conditionReports: IAdminConditionReportsApplicationService;
+  aml: IAdminAmlApplicationService;
+  sourceOfFunds: IAdminSourceOfFundsApplicationService;
 };

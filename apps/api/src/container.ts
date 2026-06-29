@@ -1532,6 +1532,16 @@ export function createContainer(env: Env): Container {
     paymentExternalRefRepository: paymentExtRepo,
     displayPairingService,
     displayOverlayService,
+    qrCodeService,
+    qrCodeAnalytics,
+    conditionReportService,
+    mediaUrlResolver,
+    mediaAssetEnricher,
+    amlService,
+    adminSourceOfFundsQueryService,
+    sourceOfFundsService,
+    sourceOfFundsDocumentCollectionService,
+    sourceOfFundsDocumentReviewService,
     env,
   });
 

@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { Env } from "../../env.js";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
 import type { AdminUserService } from "../admin-user.service.js";
+import type { AmlService } from "../aml/aml.service.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
@@ -11,6 +12,7 @@ import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
+import type { IConditionReportService } from "../interfaces/condition-report.js";
 import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-reader.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
@@ -26,9 +28,18 @@ import type {
 import type { InvitationService } from "../invitation.service.js";
 import type { LegalEntityLifecycleAdminService } from "../legal-entity-lifecycle-admin.service.js";
 import type { LotService } from "../lot.service.js";
+import type { MediaAssetEnricher } from "../media-asset-enricher.js";
+import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { PaymentService } from "../payment.service.js";
+import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
+import type { QrCodeService } from "../qr-code.service.js";
+import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
+import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/source-of-funds-document-review.service.js";
+import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
+import { AdminAmlApplicationService } from "./admin-aml-application.service.js";
 import { AdminCatalogApplicationService } from "./admin-catalog-application.service.js";
+import { AdminConditionReportsApplicationService } from "./admin-condition-reports-application.service.js";
 import { AdminDashboardMetricsApplicationService } from "./admin-dashboard-metrics-application.service.js";
 import { AdminDashboardQueryService } from "./admin-dashboard-query.service.js";
 import { AdminDisputeCaseQueryService } from "./admin-dispute-case-query.service.js";
@@ -46,9 +57,12 @@ import type { AdminPaymentListQueryService } from "./admin-payment-list-query.se
 import { AdminPaymentsApplicationService } from "./admin-payments-application.service.js";
 import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
+import { AdminQrCodesApplicationService } from "./admin-qr-codes-application.service.js";
 import { AdminRequestLifecycleApplicationService } from "./admin-request-lifecycle-application.service.js";
 import { AdminSaleroomDisplayApplicationService } from "./admin-saleroom-display-application.service.js";
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
+import { AdminSourceOfFundsApplicationService } from "./admin-source-of-funds-application.service.js";
+import type { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
 import { AdminUserApplicationService } from "./admin-user-application.service.js";
 import { AdminXeroApplicationService } from "./admin-xero-application.service.js";
 
@@ -83,6 +97,16 @@ export type CreateAdminRouteServicesInput = {
   paymentExternalRefRepository: IPaymentExternalRefRepository;
   displayPairingService: IDisplayPairingService;
   displayOverlayService: IDisplayOverlayService;
+  qrCodeService: QrCodeService;
+  qrCodeAnalytics: QrCodeAnalyticsService;
+  conditionReportService: IConditionReportService;
+  mediaUrlResolver: MediaUrlResolver;
+  mediaAssetEnricher: MediaAssetEnricher;
+  amlService: AmlService;
+  adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
+  sourceOfFundsService: SourceOfFundsService;
+  sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
+  sourceOfFundsDocumentReviewService: SourceOfFundsDocumentReviewService;
   env: Pick<Env, "XERO_REDIRECT_URI" | "API_PUBLIC_URL" | "XERO_WEBHOOK_KEY">;
 };
 
@@ -140,6 +164,19 @@ export function createAdminRouteServices(
     display: new AdminSaleroomDisplayApplicationService(
       input.displayPairingService,
       input.displayOverlayService,
+    ),
+    qrCodes: new AdminQrCodesApplicationService(input.qrCodeService, input.qrCodeAnalytics),
+    conditionReports: new AdminConditionReportsApplicationService(
+      input.conditionReportService,
+      input.mediaUrlResolver,
+      input.mediaAssetEnricher,
+    ),
+    aml: new AdminAmlApplicationService(input.amlService),
+    sourceOfFunds: new AdminSourceOfFundsApplicationService(
+      input.adminSourceOfFundsQueryService,
+      input.sourceOfFundsService,
+      input.sourceOfFundsDocumentCollectionService,
+      input.sourceOfFundsDocumentReviewService,
     ),
   };
 }

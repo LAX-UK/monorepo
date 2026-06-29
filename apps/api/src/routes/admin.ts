@@ -89,7 +89,6 @@ import type { Container } from "../container.js";
 import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-browse.js";
 import { mapAdminUserListQuery } from "../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { presentLotImages } from "../lib/media-presenters.js";
 import { checkPaddleAssignRateLimit } from "../lib/paddle-assign-rate-limit.js";
 import { applyStaffPreviewFramingHeaders } from "../lib/staff-preview-framing.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -413,7 +412,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminQrCodeEntityQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const items = await container.qrCodeService.listForEntity(q.entityType, q.entityId);
+      const items = await container.admin.qrCodes.listForEntity(q.entityType, q.entityId);
       return c.json({ data: { items } });
     },
   );
@@ -424,7 +423,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminQrCodeCreateSchema),
     async (c) => {
       const body = c.req.valid("json");
-      const result = await container.qrCodeService.getOrCreateDefault({
+      const result = await container.admin.qrCodes.getOrCreateDefault({
         entityType: body.entityType,
         entityId: body.entityId,
         actorUserId: c.get("userId") ?? null,
@@ -439,7 +438,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         body.campaign !== undefined || body.placement !== undefined || body.expiresAt !== undefined;
       const item =
         result.created && hasMetadata
-          ? ((await container.qrCodeService.update(result.item.id, {
+          ? ((await container.admin.qrCodes.update(result.item.id, {
               campaign: body.campaign ?? null,
               placement: body.placement ?? null,
               expiresAt: body.expiresAt ?? null,
@@ -455,7 +454,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminQrCodeRegenerateSchema),
     async (c) => {
       const body = c.req.valid("json");
-      const item = await container.qrCodeService.regenerateDefault({
+      const item = await container.admin.qrCodes.regenerateDefault({
         entityType: body.entityType,
         entityId: body.entityId,
         actorUserId: c.get("userId") ?? null,
@@ -472,7 +471,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("json", adminQrCodeUpdateSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const item = await container.qrCodeService.update(id, c.req.valid("json"));
+      const item = await container.admin.qrCodes.update(id, c.req.valid("json"));
       if (!item) return c.json({ error: "Not found" }, 404);
       return c.json({ data: item });
     },
@@ -492,7 +491,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       } catch {
         return c.json({ error: "Invalid analytics range" }, 400);
       }
-      const data = await container.qrCodeAnalytics.getDetailed(id, resolved);
+      const data = await container.admin.qrCodes.getDetailedAnalytics(id, resolved);
       return c.json({ data });
     },
   );
@@ -519,7 +518,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminConditionReportListQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const { items, total } = await container.conditionReportService.listForAdmin({
+      const { items, total } = await container.admin.conditionReports.listForAdmin({
         status: q.status,
         lotId: q.lotId,
         limit: q.limit,
@@ -536,7 +535,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { id } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.conditionReportService.markInProgress({
+      const result = await container.admin.conditionReports.markInProgress({
         id,
         actorUserId: userId,
       });
@@ -557,7 +556,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.conditionReportService.fulfill({
+      const result = await container.admin.conditionReports.fulfill({
         id,
         fulfilledByUserId: userId,
         conditionReport: body.conditionReport,
@@ -573,12 +572,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
           asHttpStatus(e.status),
         );
       }
-      const data = await presentLotImages(
-        container.mediaUrlResolver,
-        result.value,
-        container.mediaAssetEnricher,
-      );
-      return c.json({ data });
+      return c.json({ data: result.value });
     },
   );
 
@@ -591,7 +585,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.conditionReportService.decline({
+      const result = await container.admin.conditionReports.decline({
         id,
         fulfilledByUserId: userId,
         ...(body.responseNote !== undefined ? { responseNote: body.responseNote } : {}),
@@ -1951,7 +1945,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", userIdParamSchema),
     async (c) => {
       const { userId } = c.req.valid("param");
-      const data = await container.amlService.listForUser(userId);
+      const data = await container.admin.aml.listForUser(userId);
       return c.json({ data });
     },
   );
@@ -1964,8 +1958,8 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { limit, offset } = c.req.valid("query");
       const [data, total] = await Promise.all([
-        container.amlService.listPendingReviews(limit, offset),
-        container.amlService.countPendingReviews(),
+        container.admin.aml.listPendingReviews(limit, offset),
+        container.admin.aml.countPendingReviews(),
       ]);
       return c.json({ data, meta: { total, limit, offset } });
     },
@@ -1982,7 +1976,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { recommendation, notes } = c.req.valid("json");
       const analystUserId = c.get("userId") as string;
       try {
-        const record = await container.amlService.triage({
+        const record = await container.admin.aml.triage({
           screeningId: id,
           analystUserId,
           recommendation,
@@ -2020,7 +2014,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { decision, notes } = c.req.valid("json");
       const reviewerUserId = c.get("userId") as string;
       try {
-        const record = await container.amlService.decide({
+        const record = await container.admin.aml.decide({
           screeningId: id,
           reviewerUserId,
           decision,
@@ -2053,7 +2047,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", sourceOfFundsListQuerySchema),
     async (c) => {
       const { limit, offset, status } = c.req.valid("query");
-      const { rows, total } = await container.adminSourceOfFundsQueryService.listEnriched(
+      const { rows, total } = await container.admin.sourceOfFunds.listEnriched(
         status,
         limit,
         offset,
@@ -2068,7 +2062,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", sourceOfFundsIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const detail = await container.adminSourceOfFundsQueryService.getDetail(id);
+      const detail = await container.admin.sourceOfFunds.getDetail(id);
       if (!detail) {
         return c.json({ error: "source_of_funds_not_found" }, 404);
       }
@@ -2087,7 +2081,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { recommendation, notes } = c.req.valid("json");
       const analystUserId = c.get("userId") as string;
       try {
-        const record = await container.sourceOfFundsService.triage({
+        const record = await container.admin.sourceOfFunds.triage({
           caseId: id,
           analystUserId,
           recommendation,
@@ -2125,7 +2119,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { decision, notes } = c.req.valid("json");
       const reviewerUserId = c.get("userId") as string;
       try {
-        const record = await container.sourceOfFundsService.decide({
+        const record = await container.admin.sourceOfFunds.decide({
           caseId: id,
           reviewerUserId,
           decision,
@@ -2162,7 +2156,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { id } = c.req.valid("param");
       const actorUserId = c.get("userId") as string;
       try {
-        const record = await container.sourceOfFundsService.reopenRejected({
+        const record = await container.admin.sourceOfFunds.reopenRejected({
           caseId: id,
           actorUserId,
         });
@@ -2190,7 +2184,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { documentTypes, note } = c.req.valid("json");
       const staffUserId = c.get("userId") as string;
       try {
-        const record = await container.sourceOfFundsDocumentCollectionService.requestDocuments({
+        const record = await container.admin.sourceOfFunds.requestDocuments({
           caseId: id,
           staffUserId,
           documentTypes,
@@ -2222,7 +2216,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const staffUserId = c.get("userId") as string;
       const clientIp =
         c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
-      const result = await container.sourceOfFundsDocumentCollectionService.getStaffDownloadUrl({
+      const result = await container.admin.sourceOfFunds.getStaffDownloadUrl({
         caseId: id,
         documentId: docId,
         staffUserId,
@@ -2242,13 +2236,11 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const staffUserId = c.get("userId") as string;
       const clientIp =
         c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
-      const result = await container.sourceOfFundsDocumentCollectionService.getStaffBulkDownloadZip(
-        {
-          caseId: id,
-          staffUserId,
-          clientIp,
-        },
-      );
+      const result = await container.admin.sourceOfFunds.getStaffBulkDownloadZip({
+        caseId: id,
+        staffUserId,
+        clientIp,
+      });
       if (!result) return c.json({ error: "no_documents" }, 404);
       c.header("Content-Type", "application/zip");
       c.header("Content-Disposition", `attachment; filename="${result.fileName}"`);
@@ -2265,7 +2257,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const staffUserId = c.get("userId") as string;
       const clientIp =
         c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
-      const result = await container.sourceOfFundsDocumentCollectionService.getStaffPreviewBytes({
+      const result = await container.admin.sourceOfFunds.getStaffPreviewBytes({
         caseId: id,
         documentId: docId,
         staffUserId,
@@ -2293,7 +2285,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const body = c.req.valid("json");
       const staffUserId = c.get("userId") as string;
       try {
-        const row = await container.sourceOfFundsDocumentReviewService.reviewDocument({
+        const row = await container.admin.sourceOfFunds.reviewDocument({
           caseId: id,
           documentId: docId,
           staffUserId,
@@ -2328,7 +2320,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", adminUserIdParamSchema),
     async (c) => {
       const { userId } = c.req.valid("param");
-      const rows = await container.adminSourceOfFundsQueryService.listForUser(userId, 20);
+      const rows = await container.admin.sourceOfFunds.listForUser(userId, 20);
       return c.json({ data: rows });
     },
   );
