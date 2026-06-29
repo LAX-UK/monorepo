@@ -37,8 +37,8 @@ describe("admin lots browse routes", () => {
           isSuspended: vi.fn().mockResolvedValue(false),
           reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
         },
+        lots: { listAttachable },
       },
-      adminLotBrowseService: { listAttachable },
     } as unknown as Container;
 
     const authenticator: IAuthenticator = {
@@ -75,8 +75,8 @@ describe("admin lots browse routes", () => {
           isSuspended: vi.fn().mockResolvedValue(false),
           reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
         },
+        lots: { listAttachable: vi.fn() },
       },
-      adminLotBrowseService: { listAttachable: vi.fn() },
     } as unknown as Container;
 
     const authenticator: IAuthenticator = {

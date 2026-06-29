@@ -1501,6 +1501,8 @@ export function createContainer(env: Env): Container {
     emailUnsubscribeService.applyToken(token),
   );
 
+  const adminPaymentListQueryService = new AdminPaymentListQueryService(paymentRepo);
+
   const adminBase = createAdminRouteServices({
     db,
     domainEventPublisher,
@@ -1519,7 +1521,10 @@ export function createContainer(env: Env): Container {
     conveyorPipelineReader,
     itemSubmissionService,
     paymentService,
+    adminPaymentListQueryService,
     lotService,
+    adminLotBrowseService,
+    artistRegistryService,
     invitationService,
     xeroOAuthService,
     xeroConnectionRepository: xeroConnRepo,
@@ -1559,7 +1564,6 @@ export function createContainer(env: Env): Container {
     salesKpiTrend: adminSalesKpiTrendService,
     payoutsKpiTrend: adminPayoutsKpiTrendService,
   });
-  const adminPaymentListQueryService = new AdminPaymentListQueryService(paymentRepo);
 
   return {
     env,

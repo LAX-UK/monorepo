@@ -51,6 +51,7 @@ import type { IDisplayOverlayService } from "./display-overlay-service.js";
 import type { IDisplayPairingService } from "./display-pairing-service.js";
 import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "./email-observability.js";
 import type { InvitationAdminListFilters, InvitationAdminListRow } from "./invitation.js";
+import type { ListPaymentsAdminTableFilter } from "./payment-write.js";
 import type { ListSubmissionsFilter } from "./repositories.js";
 
 export type AdminImpersonationLookupResult =
@@ -186,6 +187,7 @@ export interface IAdminCatalogApplicationService {
   createArtist(adminUserId: string, body: AdminCatalogCreateArtistBody): Promise<ArtistProfile>;
   getArtist(artistId: string): Promise<ArtistProfile | null>;
   updateArtist(artistId: string, body: AdminCatalogUpdateArtistBody): Promise<ArtistProfile>;
+  searchArtists(query: string, limit?: number): Promise<ArtistSearchHit[]>;
 }
 
 export interface IAdminEmailApplicationService {
@@ -319,6 +321,9 @@ export interface IAdminPaymentsApplicationService {
     paymentId: string,
     userStaffRole?: string | null,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>>;
+  listPage(
+    filter: ListPaymentsAdminTableFilter,
+  ): Promise<import("../admin/admin-payment-list-query.service.js").AdminPaymentListPage>;
 }
 
 export interface IAdminLotsApplicationService {
@@ -331,6 +336,12 @@ export interface IAdminLotsApplicationService {
     | { ok: true; data: Lot }
     | { ok: false; status: number; error: string; code?: string | undefined }
   >;
+  listAttachable(
+    input: import("../admin/admin-lot-browse.service.js").AdminLotBrowseInput,
+  ): Promise<{
+    data: import("../admin/admin-lot-browse.service.js").AdminAttachableLotRow[];
+    total: number;
+  }>;
 }
 
 export interface IAdminInvitationApplicationService {

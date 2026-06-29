@@ -3,9 +3,13 @@ import type { Lot } from "@auction/types";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import type { IAdminLotsApplicationService } from "../interfaces/admin-routes.js";
 import type { LotService } from "../lot.service.js";
+import type { AdminLotBrowseService } from "./admin-lot-browse.service.js";
 
 export class AdminLotsApplicationService implements IAdminLotsApplicationService {
-  constructor(private readonly lots: LotService) {}
+  constructor(
+    private readonly lots: LotService,
+    private readonly lotBrowse: AdminLotBrowseService,
+  ) {}
 
   async approveWithdrawalRequest(
     adminUserId: string,
@@ -33,5 +37,9 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
       return { ok: false, status: e.status, error: e.message };
     }
     return { ok: false, status: (e as { status?: number }).status ?? 400, error: e.message };
+  }
+
+  listAttachable(...args: Parameters<AdminLotBrowseService["listAttachable"]>) {
+    return this.lotBrowse.listAttachable(...args);
   }
 }

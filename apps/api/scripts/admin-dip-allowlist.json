@@ -1,12 +1,9 @@
 {
   "src/routes/admin.ts": [
-    "container.adminLotBrowseService",
     "container.adminMetricsService",
-    "container.adminPaymentListQueryService",
     "container.adminSaleOperationsSnapshotService",
     "container.adminSourceOfFundsQueryService",
     "container.amlService",
-    "container.artistRegistryService",
     "container.bidService",
     "container.conditionReportService",
     "container.db",

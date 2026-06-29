@@ -9,6 +9,7 @@ import type { ImpersonationAuditService } from "../impersonation-audit.service.j
 import type { ImpersonationSessionService } from "../impersonation-session.service.js";
 import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
+import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
 import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-reader.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
@@ -36,10 +37,12 @@ import { AdminEmailApplicationService } from "./admin-email-application.service.
 import { AdminImpersonationService } from "./admin-impersonation.service.js";
 import { AdminInvitationApplicationService } from "./admin-invitation-application.service.js";
 import { AdminLegalEntityLifecycleApplicationService } from "./admin-legal-entity-lifecycle-application.service.js";
+import type { AdminLotBrowseService } from "./admin-lot-browse.service.js";
 import { AdminLotsApplicationService } from "./admin-lots-application.service.js";
 import type { AdminLotsKpiTrendService } from "./admin-lots-kpi-trend.service.js";
 import type { AdminNavCountsService } from "./admin-nav-counts.service.js";
 import { AdminOpsReadApplicationService } from "./admin-ops-read-application.service.js";
+import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 import { AdminPaymentsApplicationService } from "./admin-payments-application.service.js";
 import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
@@ -69,7 +72,10 @@ export type CreateAdminRouteServicesInput = {
   conveyorPipelineReader: IConveyorPipelineReader;
   itemSubmissionService: IItemSubmissionService;
   paymentService: PaymentService;
+  adminPaymentListQueryService: AdminPaymentListQueryService;
   lotService: LotService;
+  adminLotBrowseService: AdminLotBrowseService;
+  artistRegistryService: IArtistRegistryService;
   invitationService: InvitationService;
   xeroOAuthService: XeroOAuthService | null;
   xeroConnectionRepository: IXeroConnectionRepository;
@@ -105,11 +111,18 @@ export function createAdminRouteServices(
     domainEvents,
     disputeCases: new AdminDisputeCaseQueryService(domainEvents, input.db),
     dashboard: new AdminDashboardQueryService(input.db),
-    catalog: new AdminCatalogApplicationService(input.categoryService, input.artistProfileService),
+    catalog: new AdminCatalogApplicationService(
+      input.categoryService,
+      input.artistProfileService,
+      input.artistRegistryService,
+    ),
     email: new AdminEmailApplicationService(input.emailObservabilityRepository),
     users: new AdminUserApplicationService(input.adminUserService),
-    payments: new AdminPaymentsApplicationService(input.paymentService),
-    lots: new AdminLotsApplicationService(input.lotService),
+    payments: new AdminPaymentsApplicationService(
+      input.paymentService,
+      input.adminPaymentListQueryService,
+    ),
+    lots: new AdminLotsApplicationService(input.lotService, input.adminLotBrowseService),
     invitations: new AdminInvitationApplicationService(input.invitationService),
     legalEntityLifecycle: new AdminLegalEntityLifecycleApplicationService(
       input.legalEntityRepository,

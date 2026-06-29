@@ -6,13 +6,14 @@ import type {
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { IAdminCatalogApplicationService } from "../interfaces/admin-routes.js";
-import type { ArtistSearchHit } from "../interfaces/artist-registry.js";
+import type { ArtistSearchHit, IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "../interfaces/category.js";
 
 export class AdminCatalogApplicationService implements IAdminCatalogApplicationService {
   constructor(
     private readonly categoryService: CategoryService,
     private readonly artistProfileService: ArtistProfileService,
+    private readonly artistRegistry: IArtistRegistryService,
   ) {}
 
   listCategoriesForAdmin(input: { includeArchived: boolean }) {
@@ -61,5 +62,9 @@ export class AdminCatalogApplicationService implements IAdminCatalogApplicationS
 
   updateArtist(artistId: string, body: AdminCatalogUpdateArtistBody) {
     return this.artistProfileService.update(artistId, body);
+  }
+
+  searchArtists(query: string, limit?: number) {
+    return this.artistRegistry.search(query, limit);
   }
 }

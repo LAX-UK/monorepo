@@ -389,7 +389,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminPaymentsListQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const page = await container.adminPaymentListQueryService.getPage({
+      const page = await container.admin.payments.listPage({
         limit: q.limit,
         offset: q.offset,
         ...(q.status ? { status: q.status } : {}),
@@ -1501,7 +1501,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminLotBrowseQuerySchema),
     async (c) => {
       const query = c.req.valid("query");
-      const result = await container.adminLotBrowseService.listAttachable({
+      const result = await container.admin.lots.listAttachable({
         limit: query.limit,
         offset: query.offset,
         state: query.state,
@@ -1732,7 +1732,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminArtistSearchQuerySchema),
     async (c) => {
       const { q, limit } = c.req.valid("query");
-      const data = await container.artistRegistryService.search(q, limit);
+      const data = await container.admin.catalog.searchArtists(q, limit);
       return c.json({ data });
     },
   );
