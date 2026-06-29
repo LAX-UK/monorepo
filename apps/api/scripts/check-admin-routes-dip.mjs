@@ -2,19 +2,26 @@
  * Enforces DIP for admin HTTP routes: only `container.admin` (not `container.adminUserService`, etc.).
  * Existing violations are frozen in admin-dip-allowlist.json; new references fail the build.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
-const files = [
+const staticFiles = [
   "src/routes/admin.ts",
   "src/routes/admin-invitations.ts",
   "src/routes/admin-legal-entity-lifecycle.ts",
   "src/routes/xero-admin.ts",
 ];
+
+const adminDir = join(root, "src/routes/admin");
+const adminModuleFiles = readdirSync(adminDir)
+  .filter((name) => name.endsWith(".routes.ts"))
+  .map((name) => `src/routes/admin/${name}`);
+
+const files = [...staticFiles, ...adminModuleFiles];
 
 /** Skip import paths like `../container.js` (slash before `container`). */
 const re = /(?<![\w./])container\.(\w+)\b/g;
