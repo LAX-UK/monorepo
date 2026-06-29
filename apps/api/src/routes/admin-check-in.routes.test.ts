@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -9,15 +9,18 @@ const SALE_ID = "00000000-0000-4000-8000-000000000002";
 const USER_ID = "usr_8sK2xQ1aB9c";
 const ENTITY_ID = "00000000-0000-4000-8000-0000000000e1";
 
-function buildCheckInApp() {
-  const checkInBidder = vi.fn().mockResolvedValue(
-    ok({
-      registrationId: "00000000-0000-4000-8000-0000000000a1",
-      paddleNumber: 205,
-      checkedInAt: new Date("2026-06-15T12:00:00.000Z"),
-      bidLimit: "50000.00",
-    }),
-  );
+function buildCheckInApp(checkInBidder?: ReturnType<typeof vi.fn>) {
+  const checkInFn =
+    checkInBidder ??
+    vi.fn().mockResolvedValue(
+      ok({
+        registrationId: "00000000-0000-4000-8000-0000000000a1",
+        paddleNumber: 205,
+        checkedInAt: new Date("2026-06-15T12:00:00.000Z"),
+        bidLimit: "50000.00",
+      }),
+    );
+
   const searchCandidates = vi.fn().mockResolvedValue([
     {
       userId: USER_ID,
@@ -38,13 +41,7 @@ function buildCheckInApp() {
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
       disputeCases: { countOpenCases: vi.fn().mockResolvedValue(0) },
-    },
-    telephoneBidBookingService: { countGlobalPending: vi.fn().mockResolvedValue(0) },
-    onsiteEventRsvpService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
-    saleroomCheckInService: { checkInBidder, searchCandidates },
-    redis: {
-      incr: vi.fn().mockResolvedValue(1),
-      expire: vi.fn().mockResolvedValue(1),
+      saleroomCheckIn: { checkInBidder: checkInFn, searchCandidates },
     },
   } as unknown as Container;
 
@@ -56,12 +53,20 @@ function buildCheckInApp() {
 
   const app = new Hono();
   app.route("/admin", createAdminRoutes(container, authenticator));
-  return { app, checkInBidder, searchCandidates };
+  return { app, checkInBidder: checkInFn, searchCandidates };
 }
 
 describe("saleroom check-in admin routes", () => {
   it("POST /admin/sales/:saleId/registrations/check-in", async () => {
-    const { app, checkInBidder } = buildCheckInApp();
+    const checkInBidder = vi.fn().mockResolvedValue(
+      ok({
+        registrationId: "00000000-0000-4000-8000-0000000000a1",
+        paddleNumber: 205,
+        checkedInAt: new Date("2026-06-15T12:00:00.000Z"),
+        bidLimit: "50000.00",
+      }),
+    );
+    const { app } = buildCheckInApp(checkInBidder);
     const res = await app.request(`http://test/admin/sales/${SALE_ID}/registrations/check-in`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,6 +89,29 @@ describe("saleroom check-in admin routes", () => {
         paddleNumber: 205,
       }),
     );
+  });
+
+  it("POST check-in maps rate_limited from facade to 429", async () => {
+    const checkInBidder = vi
+      .fn()
+      .mockResolvedValue(
+        err({ message: "Too many check-in attempts", status: 429, code: "rate_limited" }),
+      );
+    const { app } = buildCheckInApp(checkInBidder);
+    const res = await app.request(`http://test/admin/sales/${SALE_ID}/registrations/check-in`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: USER_ID,
+        buyerLegalEntityId: ENTITY_ID,
+      }),
+    });
+
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({
+      error: "Too many check-in attempts",
+      code: "rate_limited",
+    });
   });
 
   it("GET /admin/sales/:saleId/registrations/check-in-candidates", async () => {

@@ -2,6 +2,8 @@ import type { UserRole } from "@auction/types";
 import type { Lot } from "@auction/types";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import type { IAdminLotsApplicationService } from "../interfaces/admin-routes.js";
+import type { LotLifecycleQueryService } from "../lot-lifecycle-query.service.js";
+import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.js";
 import type { LotService } from "../lot.service.js";
 import type { AdminLotBrowseService } from "./admin-lot-browse.service.js";
 
@@ -9,6 +11,8 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
   constructor(
     private readonly lots: LotService,
     private readonly lotBrowse: AdminLotBrowseService,
+    private readonly lotTransitions: LotTransitionOrchestrator,
+    private readonly lotLifecycleQuery: LotLifecycleQueryService,
   ) {}
 
   async approveWithdrawalRequest(
@@ -41,5 +45,18 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
 
   listAttachable(...args: Parameters<AdminLotBrowseService["listAttachable"]>) {
     return this.lotBrowse.listAttachable(...args);
+  }
+
+  returnToInventory(...args: Parameters<LotTransitionOrchestrator["returnToInventory"]>) {
+    return this.lotTransitions.returnToInventory(...args);
+  }
+
+  async getLifecycle(lotId: string, opts: { limit?: number; includeSaleContext?: boolean } = {}) {
+    const snapshot = await this.lotLifecycleQuery.getSnapshot(lotId);
+    const events = await this.lotLifecycleQuery.timeline(lotId, {
+      limit: opts.limit ?? 10,
+      includeSaleContext: opts.includeSaleContext ?? true,
+    });
+    return { snapshot, events };
   }
 }

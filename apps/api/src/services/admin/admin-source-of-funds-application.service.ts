@@ -5,12 +5,17 @@ import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.se
 import type { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
 
 export class AdminSourceOfFundsApplicationService implements IAdminSourceOfFundsApplicationService {
+  readonly staffPreviewEnv: IAdminSourceOfFundsApplicationService["staffPreviewEnv"];
+
   constructor(
     private readonly query: AdminSourceOfFundsQueryService,
     private readonly lifecycle: SourceOfFundsService,
     private readonly documentCollection: SourceOfFundsDocumentCollectionService,
     private readonly documentReview: SourceOfFundsDocumentReviewService,
-  ) {}
+    staffPreviewEnv: IAdminSourceOfFundsApplicationService["staffPreviewEnv"],
+  ) {
+    this.staffPreviewEnv = staffPreviewEnv;
+  }
 
   listEnriched(...args: Parameters<AdminSourceOfFundsQueryService["listEnriched"]>) {
     return this.query.listEnriched(...args);

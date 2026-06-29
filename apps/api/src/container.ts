@@ -1526,6 +1526,8 @@ export function createContainer(env: Env): Container {
     adminPaymentListQueryService,
     lotService,
     adminLotBrowseService,
+    lotTransitionOrchestrator,
+    lotLifecycleQueryService,
     saleRegistrationService,
     artistRegistryService,
     resolvePlatformCatalogLegalEntityId,
@@ -1547,6 +1549,20 @@ export function createContainer(env: Env): Container {
     sourceOfFundsDocumentCollectionService,
     sourceOfFundsDocumentReviewService,
     stripeConnectService,
+    saleroomService,
+    adminSaleOperationsSnapshotService,
+    saleroomCheckInService,
+    lotFulfilmentService,
+    bidService,
+    saleroomOnBlockPolicy,
+    paddleService,
+    telephoneBidBookingService,
+    redis,
+    findLotById: async (lotId) => {
+      const lot = await repoFactory.root.lot.findById(lotId);
+      if (!lot?.saleId) return null;
+      return { id: lot.id, saleId: lot.saleId };
+    },
     env,
   });
 

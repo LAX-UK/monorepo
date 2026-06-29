@@ -1,5 +1,4 @@
 import type { lotFulfilment } from "@auction/db/schema";
-import { bid } from "@auction/db/schema";
 
 type LotFulfilmentStatusCol = (typeof lotFulfilment.$inferSelect)["status"];
 import {
@@ -81,7 +80,6 @@ import {
   updateProfileNameFormSchema,
   userIdParamSchema,
 } from "@auction/validators";
-import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
@@ -89,7 +87,6 @@ import type { Container } from "../container.js";
 import type { AdminLegalEntityBrowseParams } from "../lib/admin-legal-entity-browse.js";
 import { mapAdminUserListQuery } from "../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { checkPaddleAssignRateLimit } from "../lib/paddle-assign-rate-limit.js";
 import { applyStaffPreviewFramingHeaders } from "../lib/staff-preview-framing.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -687,7 +684,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const { q } = c.req.valid("query");
-      const items = await container.saleroomCheckInService.searchCandidates({ saleId, q });
+      const items = await container.admin.saleroomCheckIn.searchCandidates({ saleId, q });
       return c.json({ data: { items } });
     },
   );
@@ -701,11 +698,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId } = c.req.valid("param");
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
-      const allowed = await checkPaddleAssignRateLimit(container.redis, clerkUserId);
-      if (!allowed) {
-        return c.json({ error: "Too many check-in attempts", code: "rate_limited" }, 429);
-      }
-      const result = await container.saleroomCheckInService.checkInBidder({
+      const result = await container.admin.saleroomCheckIn.checkInBidder({
         saleId,
         userId: body.userId,
         buyerLegalEntityId: body.buyerLegalEntityId,
@@ -737,43 +730,6 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
-      const lotRow = await container.repoFactory.root.lot.findById(body.lotId);
-      if (!lotRow?.saleId) return c.json({ error: "Lot not found" }, 404);
-      const onBlock = await container.saleroomOnBlockPolicy.assertLotOnBlock(
-        lotRow.saleId,
-        body.lotId,
-      );
-      if (onBlock.isErr()) {
-        const e = onBlock.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      if (body.telephoneBookingId) {
-        const bookingCheck =
-          await container.telephoneBidBookingService.assertBookingAllowsTelephoneBid({
-            bookingId: body.telephoneBookingId,
-            saleId: lotRow.saleId,
-            lotId: body.lotId,
-            amount: body.amount,
-            ...(body.maxAutoBidAmount !== undefined
-              ? { maxAutoBidAmount: body.maxAutoBidAmount }
-              : {}),
-          });
-        if (bookingCheck.isErr()) {
-          const e = bookingCheck.error;
-          return c.json(
-            e.code ? { error: e.message, code: e.code } : { error: e.message },
-            asHttpStatus(e.status),
-          );
-        }
-      }
-      const placement = {
-        placedVia: "telephone" as const,
-        clerkUserId,
-        ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
-      };
       const idempotencyKey =
         body.idempotencyKey ??
         c.req.header("idempotency-key") ??
@@ -781,44 +737,27 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
         (body.telephoneBookingId
           ? `telephone-booking:${body.lotId}:${body.telephoneBookingId}:${body.amount}`
           : `telephone-clerk:${body.lotId}:${clerkUserId}:${body.buyerUserId}:${body.amount}`);
-      const bidInput = {
-        placedByUserId: body.buyerUserId,
-        buyerLegalEntityId: body.buyerLegalEntityId,
+      const out = await container.admin.liveBidding.placeTelephoneBid({
         lotId: body.lotId,
+        buyerUserId: body.buyerUserId,
+        buyerLegalEntityId: body.buyerLegalEntityId,
         amount: body.amount,
-        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
-        placedVia: placement.placedVia,
         clerkUserId,
+        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
         ...(body.telephoneBookingId != null ? { telephoneBookingId: body.telephoneBookingId } : {}),
-        ...(idempotencyKey ? { idempotencyKey } : {}),
-      };
-      if (idempotencyKey) {
-        const out = await container.bidService.placeBidWithIdempotency(bidInput);
-        if (out.type === "replay") {
-          return c.json(out.body, 201);
-        }
-        if (out.type === "err") {
-          const e = out.error;
-          return c.json(
-            e.code ? { error: e.message, code: e.code } : { error: e.message },
-            asHttpStatus(e.status),
-          );
-        }
+        idempotencyKey,
+      });
+      if (out.type === "replay") {
         return c.json(out.body, 201);
       }
-      const result = await container.bidService.placeBid({
-        placedByUserId: body.buyerUserId,
-        buyerLegalEntityId: body.buyerLegalEntityId,
-        lotId: body.lotId,
-        amount: body.amount,
-        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
-        placement,
-      });
-      return result.match(
-        (bid) => c.json({ data: bid }),
-        (e) =>
-          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
-      );
+      if (out.type === "err") {
+        const e = out.error;
+        return c.json(
+          e.code ? { error: e.message, code: e.code } : { error: e.message },
+          asHttpStatus(e.status),
+        );
+      }
+      return c.json(out.body, 201);
     },
   );
 
@@ -829,48 +768,20 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
-      const onBlock = await container.saleroomOnBlockPolicy.assertLotOnBlock(
-        body.saleId,
-        body.lotId,
-      );
-      if (onBlock.isErr()) {
-        const e = onBlock.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      const resolution = await container.paddleService.assertPaddleAllowsBid({
-        saleId: body.saleId,
-        paddleNumber: body.paddleNumber,
-        lotId: body.lotId,
-      });
-      if (resolution.isErr()) {
-        const e = resolution.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      const resolved = resolution.value;
       const idempotencyKey =
         body.idempotencyKey ??
         c.req.header("idempotency-key") ??
         c.req.header("Idempotency-Key") ??
         `paddle:${body.saleId}:${body.paddleNumber}:${body.lotId}:${body.amount}`;
-      const bidInput = {
-        placedByUserId: resolved.userId,
-        buyerLegalEntityId: resolved.buyerLegalEntityId,
-        lotId: body.lotId,
-        amount: body.amount,
-        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
-        placedVia: "saleroom" as const,
-        clerkUserId,
+      const out = await container.admin.liveBidding.placePaddleBid({
         saleId: body.saleId,
+        lotId: body.lotId,
         paddleNumber: body.paddleNumber,
+        amount: body.amount,
+        clerkUserId,
+        ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
         idempotencyKey,
-      };
-      const out = await container.bidService.placeBidWithIdempotency(bidInput);
+      });
       if (out.type === "replay") {
         paddleBidPlacedTotal.inc({ outcome: "replay" });
         console.info(
@@ -904,29 +815,27 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
           asHttpStatus(e.status),
         );
       }
-      container.adminMetricsService.recordBidPlaced();
-      paddleBidPlacedTotal.inc({ outcome: "ok" });
-      const [countRow] = await container.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(bid)
-        .where(eq(bid.lotId, body.lotId));
-      void container.saleroomService.publishClerkPaddleBidSummary({
-        saleId: body.saleId,
-        lotId: body.lotId,
-        currentPrice: out.body.data.amount,
-        bidCount: countRow?.count ?? 0,
-        leaderPaddleNumber: body.paddleNumber,
-      });
-      console.info(
-        JSON.stringify({
-          action: "paddle_bid_placed",
+      if (out.type === "ok_with_summary") {
+        paddleBidPlacedTotal.inc({ outcome: "ok" });
+        void container.admin.saleroom.publishClerkPaddleBidSummary({
           saleId: body.saleId,
           lotId: body.lotId,
-          paddleNumber: body.paddleNumber,
-          clerkUserId,
-          outcome: "ok",
-        }),
-      );
+          currentPrice: out.body.data.amount,
+          bidCount: out.bidCount,
+          leaderPaddleNumber: body.paddleNumber,
+        });
+        console.info(
+          JSON.stringify({
+            action: "paddle_bid_placed",
+            saleId: body.saleId,
+            lotId: body.lotId,
+            paddleNumber: body.paddleNumber,
+            clerkUserId,
+            outcome: "ok",
+          }),
+        );
+        return c.json(out.body, 201);
+      }
       return c.json(out.body, 201);
     },
   );
@@ -940,11 +849,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId, registrationId } = c.req.valid("param");
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
-      const allowed = await checkPaddleAssignRateLimit(container.redis, clerkUserId);
-      if (!allowed) {
-        return c.json({ error: "Too many paddle assignments", code: "rate_limited" }, 429);
-      }
-      const result = await container.paddleService.assignPaddle({
+      const result = await container.admin.liveBidding.assignPaddle({
         saleId,
         registrationId,
         clerkUserId,
@@ -965,7 +870,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId, registrationId } = c.req.valid("param");
       const clerkUserId = c.get("userId") as string;
-      const result = await container.paddleService.clearPaddle({
+      const result = await container.admin.liveBidding.clearPaddle({
         saleId,
         registrationId,
         clerkUserId,
@@ -984,7 +889,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", adminSalePaddleRosterParamsSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");
-      const roster = await container.paddleService.listSaleRoster(saleId);
+      const roster = await container.admin.liveBidding.listSaleRoster(saleId);
       return c.json({ data: { items: roster } });
     },
   );
@@ -995,7 +900,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", adminSaleroomSaleIdParamSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");
-      const data = await container.adminSaleOperationsSnapshotService.getSnapshot(saleId);
+      const data = await container.admin.saleroom.getOperationsSnapshot(saleId);
       if (!data) return c.json({ error: "Sale not found or not a saleroom sale" }, 404);
       return c.json({ data });
     },
@@ -1021,7 +926,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminSaleroomSessionBatchQuerySchema),
     async (c) => {
       const { saleIds } = c.req.valid("query");
-      const sessions = await container.saleroomService.getSessionStatuses(saleIds);
+      const sessions = await container.admin.saleroom.getSessionStatuses(saleIds);
       return c.json({ sessions });
     },
   );
@@ -1032,7 +937,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", adminSaleroomSaleIdParamSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");
-      const data = await container.saleroomService.getSessionWithRecentEvents(saleId);
+      const data = await container.admin.saleroom.getSessionWithRecentEvents(saleId);
       return c.json({ data });
     },
   );
@@ -1044,7 +949,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.saleroomService.goLive({ saleId, actorUserId: userId });
+      const result = await container.admin.saleroom.goLive({ saleId, actorUserId: userId });
       return result.match(
         (body) => c.json({ data: body }),
         (e) =>
@@ -1060,7 +965,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.saleroomService.pause({ saleId, actorUserId: userId });
+      const result = await container.admin.saleroom.pause({ saleId, actorUserId: userId });
       return result.match(
         (body) => c.json({ data: body }),
         (e) =>
@@ -1076,7 +981,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.saleroomService.resume({ saleId, actorUserId: userId });
+      const result = await container.admin.saleroom.resume({ saleId, actorUserId: userId });
       return result.match(
         (body) => c.json({ data: body }),
         (e) =>
@@ -1094,7 +999,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { saleId } = c.req.valid("param");
       const { lotId } = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.saleroomService.advanceToLot({
+      const result = await container.admin.saleroom.advanceToLot({
         saleId,
         lotId,
         actorUserId: userId,
@@ -1114,7 +1019,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.saleroomService.hammerCurrentLot({
+      const result = await container.admin.saleroom.hammerCurrentLot({
         saleId,
         actorUserId: userId,
       });
@@ -1133,7 +1038,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.saleroomService.noSaleCurrentLot({
+      const result = await container.admin.saleroom.noSaleCurrentLot({
         saleId,
         actorUserId: userId,
       });
@@ -1152,7 +1057,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { saleId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.saleroomService.closeSession({ saleId, actorUserId: userId });
+      const result = await container.admin.saleroom.closeSession({ saleId, actorUserId: userId });
       return result.match(
         (body) => c.json({ data: body }),
         (e) =>
@@ -1266,7 +1171,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const query = adminLotFulfilmentListQuerySchema.parse(c.req.valid("query"));
       const limit = query.limit ?? 50;
       const offset = query.offset ?? 0;
-      const result = await container.lotFulfilmentService.listForAdmin(
+      const result = await container.admin.lotFulfilment.listForAdmin(
         query.status === undefined
           ? {
               ...(query.q ? { q: query.q } : {}),
@@ -1293,7 +1198,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", adminLotFulfilmentLotIdParamSchema),
     async (c) => {
       const { lotId } = c.req.valid("param");
-      const data = await container.lotFulfilmentService.getByLotIdForAdmin(lotId);
+      const data = await container.admin.lotFulfilment.getByLotIdForAdmin(lotId);
       return c.json({ data });
     },
   );
@@ -1307,7 +1212,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { lotId } = c.req.valid("param");
       const body = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.lotFulfilmentService.approveRelease({
+      const result = await container.admin.lotFulfilment.approveRelease({
         lotId,
         actorUserId: userId,
         ...(body.notes !== undefined ? { notes: body.notes } : {}),
@@ -1329,7 +1234,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { lotId } = c.req.valid("param");
       const body = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.lotFulfilmentService.markShipped({
+      const result = await container.admin.lotFulfilment.markShipped({
         lotId,
         actorUserId: userId,
         carrier: body.carrier,
@@ -1350,7 +1255,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { lotId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.lotFulfilmentService.markReadyForCollection({
+      const result = await container.admin.lotFulfilment.markReadyForCollection({
         lotId,
         actorUserId: userId,
       });
@@ -1369,7 +1274,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     async (c) => {
       const { lotId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.lotFulfilmentService.markDelivered({
+      const result = await container.admin.lotFulfilment.markDelivered({
         lotId,
         actorUserId: userId,
       });
@@ -1390,7 +1295,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const { lotId } = c.req.valid("param");
       const body = c.req.valid("json");
       const userId = c.get("userId") as string;
-      const result = await container.lotFulfilmentService.markCollected({
+      const result = await container.admin.lotFulfilment.markCollected({
         lotId,
         actorUserId: userId,
         collectedBy: body.collectedBy,
@@ -1515,11 +1420,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("param", lotIdOnlyParamSchema),
     async (c) => {
       const { lotId } = c.req.valid("param");
-      const snapshot = await container.lotLifecycleQueryService.getSnapshot(lotId);
-      const events = await container.lotLifecycleQueryService.timeline(lotId, {
-        limit: 10,
-        includeSaleContext: true,
-      });
+      const { snapshot, events } = await container.admin.lots.getLifecycle(lotId);
       return c.json({
         data: {
           snapshot: snapshot
@@ -1553,7 +1454,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       const { lotId } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.lotTransitionOrchestrator.returnToInventory(
+      const result = await container.admin.lots.returnToInventory(
         userId,
         role,
         lotId,
@@ -2265,7 +2166,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
       if (!result) return c.json({ error: "document_not_found" }, 404);
       c.header("Content-Type", result.contentType);
       c.header("X-Content-Type-Options", "nosniff");
-      applyStaffPreviewFramingHeaders(c, container.env);
+      applyStaffPreviewFramingHeaders(c, container.admin.sourceOfFunds.staffPreviewEnv);
       c.header(
         "Content-Disposition",
         `inline; filename="${result.fileName.replace(/[^\w\s.-]/g, "_")}"`,
@@ -2520,11 +2421,13 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 
-  attachAdminStripeConnectRoutes(
-    platform,
-    container.admin.stripeConnect,
-    container.env?.WEB_ORIGIN,
-  );
+  if (container.admin.stripeConnect) {
+    attachAdminStripeConnectRoutes(
+      platform,
+      container.admin.stripeConnect,
+      container.admin.stripeConnect.webOrigin,
+    );
+  }
 
   attachAdminInvitationRoutes(platform, container.admin.invitations);
 

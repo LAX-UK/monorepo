@@ -33,6 +33,7 @@ import type {
 import type { AuthzError } from "../../lib/errors.js";
 import type { LifecycleAdminOp } from "../../lib/legal-entity-lifecycle-transitions.js";
 import type { AdminTodayMetrics } from "../admin-metrics.service.js";
+import type { AdminSaleOperationsSnapshotService } from "../admin-sale-operations-snapshot.service.js";
 import type { AdminNavCounts } from "../admin/admin-nav-counts.service.js";
 import type { AdminSourceOfFundsQueryService } from "../admin/admin-source-of-funds-query.service.js";
 import type {
@@ -40,11 +41,21 @@ import type {
   LegalEntityDocumentAdminService,
 } from "../admin/legal-entity-document-admin.service.js";
 import type { AmlService } from "../aml/aml.service.js";
+import type { PlaceBidWithIdempotencyOutcome } from "../bid/place-bid-idempotency.js";
 import type { CreateInvitationInput, InvitationError } from "../invitation.service.js";
 import type { LegalEntityLifecycleFailure } from "../legal-entity-lifecycle-admin.service.js";
+import type { LotFulfilmentService } from "../lot-fulfilment.service.js";
+import type {
+  LotLifecycleSnapshotRow,
+  LotLifecycleTimelineEvent,
+} from "../lot-lifecycle-query.service.js";
+import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.js";
+import type { PaddleService, PaddleServiceError } from "../paddle.service.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
 import type { QrCodeService } from "../qr-code.service.js";
 import type { SaleRegistrationService } from "../sale-registration.service.js";
+import type { SaleroomCheckInService } from "../saleroom-check-in.service.js";
+import type { SaleroomService } from "../saleroom.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
 import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/source-of-funds-document-review.service.js";
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
@@ -365,6 +376,84 @@ export interface IAdminLotsApplicationService {
     data: import("../admin/admin-lot-browse.service.js").AdminAttachableLotRow[];
     total: number;
   }>;
+  returnToInventory: LotTransitionOrchestrator["returnToInventory"];
+  getLifecycle(
+    lotId: string,
+    opts?: { limit?: number; includeSaleContext?: boolean },
+  ): Promise<{
+    snapshot: LotLifecycleSnapshotRow | null;
+    events: LotLifecycleTimelineEvent[];
+  }>;
+}
+
+export interface IAdminSaleroomApplicationService {
+  goLive: SaleroomService["goLive"];
+  pause: SaleroomService["pause"];
+  resume: SaleroomService["resume"];
+  advanceToLot: SaleroomService["advanceToLot"];
+  hammerCurrentLot: SaleroomService["hammerCurrentLot"];
+  noSaleCurrentLot: SaleroomService["noSaleCurrentLot"];
+  closeSession: SaleroomService["closeSession"];
+  getSessionStatuses: SaleroomService["getSessionStatuses"];
+  getSessionWithRecentEvents: SaleroomService["getSessionWithRecentEvents"];
+  publishClerkPaddleBidSummary: SaleroomService["publishClerkPaddleBidSummary"];
+  getOperationsSnapshot: AdminSaleOperationsSnapshotService["getSnapshot"];
+}
+
+export interface IAdminSaleroomCheckInApplicationService {
+  searchCandidates: SaleroomCheckInService["searchCandidates"];
+  checkInBidder: SaleroomCheckInService["checkInBidder"];
+}
+
+export interface IAdminLotFulfilmentApplicationService {
+  listForAdmin: LotFulfilmentService["listForAdmin"];
+  getByLotIdForAdmin: LotFulfilmentService["getByLotIdForAdmin"];
+  approveRelease: LotFulfilmentService["approveRelease"];
+  markShipped: LotFulfilmentService["markShipped"];
+  markReadyForCollection: LotFulfilmentService["markReadyForCollection"];
+  markDelivered: LotFulfilmentService["markDelivered"];
+  markCollected: LotFulfilmentService["markCollected"];
+}
+
+export type AdminLiveBiddingRateLimitError = {
+  message: string;
+  status: 429;
+  code: "rate_limited";
+};
+
+export type AdminPlacePaddleBidResult =
+  | PlaceBidWithIdempotencyOutcome
+  | {
+      type: "ok_with_summary";
+      body: { data: { amount: string } };
+      bidCount: number;
+    };
+
+export interface IAdminLiveBiddingApplicationService {
+  placePaddleBid(input: {
+    saleId: string;
+    lotId: string;
+    paddleNumber: number;
+    amount: number;
+    clerkUserId: string;
+    maxAutoBidAmount?: number | undefined;
+    idempotencyKey?: string | undefined;
+  }): Promise<AdminPlacePaddleBidResult>;
+  placeTelephoneBid(input: {
+    lotId: string;
+    buyerUserId: string;
+    buyerLegalEntityId: string;
+    amount: number;
+    clerkUserId: string;
+    maxAutoBidAmount?: number | undefined;
+    telephoneBookingId?: string | undefined;
+    idempotencyKey?: string | undefined;
+  }): Promise<PlaceBidWithIdempotencyOutcome>;
+  assignPaddle(
+    input: Parameters<PaddleService["assignPaddle"]>[0],
+  ): Promise<Result<{ paddleNumber: number }, PaddleServiceError | AdminLiveBiddingRateLimitError>>;
+  clearPaddle: PaddleService["clearPaddle"];
+  listSaleRoster: PaddleService["listSaleRoster"];
 }
 
 export interface IAdminInvitationApplicationService {
@@ -420,7 +509,9 @@ export interface IAdminSaleRegistrationsApplicationService {
   updateBidLimit: SaleRegistrationService["updateBidLimit"];
 }
 
-export type IAdminStripeConnectApplicationService = IStripeConnectService;
+export type IAdminStripeConnectApplicationService = IStripeConnectService & {
+  readonly webOrigin: string | undefined;
+};
 
 export type XeroConnectionHealth = "healthy" | "degraded" | "disconnected";
 
@@ -504,6 +595,11 @@ export interface IAdminAmlApplicationService {
 }
 
 export interface IAdminSourceOfFundsApplicationService {
+  readonly staffPreviewEnv: {
+    WEB_ORIGIN: string;
+    WEB_ORIGINS?: string[] | undefined;
+    SSR_TRUSTED_ORIGINS?: string[] | undefined;
+  };
   listEnriched: AdminSourceOfFundsQueryService["listEnriched"];
   getDetail: AdminSourceOfFundsQueryService["getDetail"];
   listForUser: AdminSourceOfFundsQueryService["listForUser"];
@@ -540,4 +636,8 @@ export type AdminRouteServices = {
   sourceOfFunds: IAdminSourceOfFundsApplicationService;
   saleRegistrations: IAdminSaleRegistrationsApplicationService;
   stripeConnect: IAdminStripeConnectApplicationService;
+  saleroom: IAdminSaleroomApplicationService;
+  saleroomCheckIn: IAdminSaleroomCheckInApplicationService;
+  lotFulfilment: IAdminLotFulfilmentApplicationService;
+  liveBidding: IAdminLiveBiddingApplicationService;
 };

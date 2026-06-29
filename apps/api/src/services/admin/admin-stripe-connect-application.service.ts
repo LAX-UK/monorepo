@@ -2,7 +2,14 @@ import type { IAdminStripeConnectApplicationService } from "../interfaces/admin-
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 
 export class AdminStripeConnectApplicationService implements IAdminStripeConnectApplicationService {
-  constructor(private readonly stripe: IStripeConnectService) {}
+  readonly webOrigin: string | undefined;
+
+  constructor(
+    private readonly stripe: IStripeConnectService,
+    webOrigin: string | undefined,
+  ) {
+    this.webOrigin = webOrigin;
+  }
 
   applyAccountUpdate(...args: Parameters<IStripeConnectService["applyAccountUpdate"]>) {
     return this.stripe.applyAccountUpdate(...args);

@@ -116,7 +116,10 @@ describe("admin compliance routes (DIP facade)", () => {
       fileName: "bank-statement.pdf",
     });
     const container = createComplianceContainer({
-      sourceOfFunds: { getStaffPreviewBytes } as never,
+      sourceOfFunds: {
+        getStaffPreviewBytes,
+        staffPreviewEnv: { WEB_ORIGIN: "http://test" },
+      } as never,
     });
     const authenticator: IAuthenticator = {
       getSessionUser: vi
