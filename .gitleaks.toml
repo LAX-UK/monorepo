@@ -9,7 +9,17 @@ paths = [
   '''packages/db/src/seed.ts''',
   # Common-password blocklist — intentional weak strings, never real secrets.
   '''packages/validators/src/password-policy\.ts''',
+  # Vitest-only HMAC fixture; historical commits used a hex-looking literal.
+  '''apps/api/src/routes/auth-email-change\.routes\.test\.ts''',
+  # Runbook uses sk_test_YOUR_KEY placeholder in curl examples.
+  '''docs/runbooks/xero-stripe-payment-setup\.md''',
   # Never scan pnpm content-store or node_modules (minified code triggers generic-api-key / jwt).
   '''(^|/)\.pnpm-store/''',
   '''(^|/)node_modules/''',
+]
+regexes = [
+  # Public GA4 env key name in Terraform maps — not a secret value.
+  '''GA4_MEASUREMENT_ID''',
+  # Stripe doc placeholder in runbook curl examples.
+  '''sk_test_YOUR_KEY''',
 ]

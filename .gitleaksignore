@@ -1,10 +1,6 @@
-# Vitest-only HMAC fixture (hex-looking string); code fixed in 6bf10f39 — historical FP in 49c57ba3.
-49c57ba31743353b0ddb2c166256b95bf38f06a0:apps/api/src/routes/auth-email-change.routes.test.ts:generic-api-key:6
-# Common-password blocklist entries misidentified as API keys — entire file is now path-allowlisted in .gitleaks.toml.
-e4ae3c490b45d61441afc898f805935775df2f88:packages/validators/src/password-policy.ts:generic-api-key:52
-e4ae3c490b45d61441afc898f805935775df2f88:packages/validators/src/password-policy.ts:generic-api-key:64
-# Terraform env map key/value pair for GA4 measurement ID (public identifier), flagged by generic-api-key in history scan.
-bdea2e91e954635e76bdf3e2e31c470a0c50df0d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:220
-bdea2e91e954635e76bdf3e2e31c470a0c50df0d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:306
-# Doc runbook curl -u placeholder (sk_test_YOUR_KEY) — replaced with Bearer header in b9a67639.
-28182d1207d8100338533058fc6137c22149ef93:docs/runbooks/xero-stripe-payment-setup.md:curl-auth-user:47
+# Commit-scoped ignores for historical false positives (survives path/regex allowlists in edge cases).
+# Updated after history rewrite — prefer .gitleaks.toml allowlists for new FPs.
+375784de4352853a5f125d68802ccb473d21f523:apps/api/src/routes/auth-email-change.routes.test.ts:generic-api-key:6
+a458b28276851535706b3f8bfd5c2f5c180b0d1d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:220
+a458b28276851535706b3f8bfd5c2f5c180b0d1d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:306
+69f8ce3855b1a6f570fb798aa7544ef83e8856aa:docs/runbooks/xero-stripe-payment-setup.md:curl-auth-user:47
