@@ -21,3 +21,9 @@ export { Sha256PiiHasher } from "./sha256-pii.hasher.js";
 export { mergeClientContextIntoUserData } from "./merge-client-context.js";
 export { SgtmMarketingEventPublisher } from "./sgtm-marketing-event.publisher.js";
 export { metaEventNameFor } from "./meta-event-name-map.js";
+export {
+  getMarketingEventsConfig,
+  isMarketingEventsEnabled,
+  type MarketingEventsConfig,
+  type MarketingEventsEnv,
+} from "./config.js";

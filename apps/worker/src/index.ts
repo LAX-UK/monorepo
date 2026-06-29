@@ -1,4 +1,4 @@
-import { createExportProviderDeps } from "@auction/api/exports";
+import { DrizzleRepositoryFactory, createExportProviderDeps } from "@auction/api/exports";
 import { closeDb, createDb } from "@auction/db";
 import {
   ConsoleEmailService,
@@ -147,6 +147,7 @@ const log = pino({
   timestamp: pino.stdTimeFunctions.isoTime,
 });
 const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
+const repoFactory = new DrizzleRepositoryFactory(db);
 const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: null,
   enableReadyCheck: true,
@@ -654,6 +655,7 @@ const legalEntityArchiveWorker = new Worker<LegalEntityArchiveJobData>(
     }
     await runLegalEntityArchiveCascadeJob({
       db,
+      repoFactory,
       emailService: emailOutboxService,
       log,
       webOrigin: env.WEB_ORIGIN,
