@@ -30,7 +30,6 @@ Top-level layout:
 - [packages/](../../packages/) — shared workspaces. The ones you'll touch most are [`packages/db`](../../packages/db/) (Drizzle schema, migrations, repositories), [`packages/auth`](../../packages/auth/) (better-auth wrapper), [`packages/email`](../../packages/email/) (templates + outbox service), [`packages/validators`](../../packages/validators/) (Zod), and [`packages/ui`](../../packages/ui/) (React + Tailwind primitives).
 - [infra/terraform/](../../infra/terraform/) — DigitalOcean + Cloudflare IaC, split into `bootstrap/` (manual one-time), `persistent/` (DNS, projects, Sentry), and `ephemeral/` (databases, App Platform). State lives in DigitalOcean Spaces.
 - [docs/](../) — this directory. Architecture, runbooks, integrations, design, security, onboarding.
-- [specs/](../../specs/) — Spec Kit spec/plan/tasks artefacts for in-flight features.
 
 Read in this order on day one: [docs/README.md](../README.md) → [docs/architecture/01-overview.md](../architecture/01-overview.md) → [docs/architecture/02-decisions.md](../architecture/02-decisions.md). That gets you the shape of the system and the eleven decisions that shape it.
 

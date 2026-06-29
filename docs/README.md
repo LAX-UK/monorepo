@@ -85,7 +85,6 @@ How each external system talks to TheAlx and what to configure on the external s
 - [Diagrams](./DIAGRAMS.md) — system, ERD, lifecycle, bid-placement, realtime, payment, public API
 - [OpenAPI](./openapi.yaml) — REST surface for `apps/api`
 - [Load testing outline](./LOAD_TESTING.md) — k6/Artillery scenarios for bidding, anti-sniping, Dutch acceptance, payments
-- [Spec Kit workflow](./SPEC_KIT_WORKFLOW.md) — how to use `/speckit-*` skills in this repo
 
 ## Conventions
 

@@ -1,4 +1,4 @@
-/** Persisted roles (see specs/003-role-model-invites). */
+/** Persisted roles (see docs/V1_PRODUCT_SPEC.md and packages/types role policy). */
 export const userRoles = ["staff", "client"] as const;
 export type UserRole = (typeof userRoles)[number];
 
