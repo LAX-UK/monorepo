@@ -26,6 +26,7 @@ import type { LotService } from "../lot.service.js";
 import type { PaymentService } from "../payment.service.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
 import { AdminCatalogApplicationService } from "./admin-catalog-application.service.js";
+import { AdminDashboardMetricsApplicationService } from "./admin-dashboard-metrics-application.service.js";
 import { AdminDashboardQueryService } from "./admin-dashboard-query.service.js";
 import { AdminDisputeCaseQueryService } from "./admin-dispute-case-query.service.js";
 import { AdminDomainEventQueryService } from "./admin-domain-event-query.service.js";
@@ -34,11 +35,18 @@ import { AdminImpersonationService } from "./admin-impersonation.service.js";
 import { AdminInvitationApplicationService } from "./admin-invitation-application.service.js";
 import { AdminLegalEntityLifecycleApplicationService } from "./admin-legal-entity-lifecycle-application.service.js";
 import { AdminLotsApplicationService } from "./admin-lots-application.service.js";
+import type { AdminLotsKpiTrendService } from "./admin-lots-kpi-trend.service.js";
+import type { AdminNavCountsService } from "./admin-nav-counts.service.js";
 import { AdminOpsReadApplicationService } from "./admin-ops-read-application.service.js";
 import { AdminPaymentsApplicationService } from "./admin-payments-application.service.js";
+import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
+import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
 import { AdminRequestLifecycleApplicationService } from "./admin-request-lifecycle-application.service.js";
+import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
 import { AdminUserApplicationService } from "./admin-user-application.service.js";
 import { AdminXeroApplicationService } from "./admin-xero-application.service.js";
+
+export type AdminRouteServicesCore = Omit<AdminRouteServices, "dashboardMetrics">;
 
 export type CreateAdminRouteServicesInput = {
   db: Database;
@@ -67,7 +75,9 @@ export type CreateAdminRouteServicesInput = {
   env: Pick<Env, "XERO_REDIRECT_URI" | "API_PUBLIC_URL" | "XERO_WEBHOOK_KEY">;
 };
 
-export function createAdminRouteServices(input: CreateAdminRouteServicesInput): AdminRouteServices {
+export function createAdminRouteServices(
+  input: CreateAdminRouteServicesInput,
+): AdminRouteServicesCore {
   const domainEvents = new AdminDomainEventQueryService(input.db);
   return {
     requestLifecycle: new AdminRequestLifecycleApplicationService(
@@ -108,6 +118,31 @@ export function createAdminRouteServices(input: CreateAdminRouteServicesInput): 
       input.paymentExternalRefRepository,
       input.db,
       input.env,
+    ),
+  };
+}
+
+export type AttachAdminDashboardMetricsInput = {
+  navCounts: AdminNavCountsService;
+  lotsKpiTrend: AdminLotsKpiTrendService;
+  paymentsKpiTrend: AdminPaymentsKpiTrendService;
+  salesKpiTrend: AdminSalesKpiTrendService;
+  payoutsKpiTrend: AdminPayoutsKpiTrendService;
+};
+
+/** Nav counts depend on `admin` (circular); attach dashboard metrics after both are built. */
+export function attachAdminDashboardMetrics(
+  admin: AdminRouteServicesCore,
+  metrics: AttachAdminDashboardMetricsInput,
+): AdminRouteServices {
+  return {
+    ...admin,
+    dashboardMetrics: new AdminDashboardMetricsApplicationService(
+      metrics.navCounts,
+      metrics.lotsKpiTrend,
+      metrics.paymentsKpiTrend,
+      metrics.salesKpiTrend,
+      metrics.payoutsKpiTrend,
     ),
   };
 }

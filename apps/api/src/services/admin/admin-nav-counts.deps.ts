@@ -5,7 +5,6 @@ import type { Sale } from "@auction/types";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { AmlService } from "../aml/aml.service.js";
 import type { ConditionReportService } from "../condition-report.service.js";
-import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import type { InvitationService } from "../invitation.service.js";
 import type { LotFulfilmentService } from "../lot-fulfilment.service.js";
@@ -13,10 +12,11 @@ import type { SaleService } from "../sale.service.js";
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
 import type { TelephoneBidBookingService } from "../telephone-bid-booking.service.js";
 import type { AdminNavCountsDeps } from "./admin-nav-counts.service.js";
+import type { AdminRouteServicesCore } from "./create-admin-route-services.js";
 
 export type CreateAdminNavCountsDepsInput = {
   db: Database;
-  admin: AdminRouteServices;
+  admin: AdminRouteServicesCore;
   repoFactory: IRepositoryFactory;
   conditionReportService: ConditionReportService;
   lotFulfilmentService: LotFulfilmentService;

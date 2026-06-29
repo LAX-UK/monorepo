@@ -335,7 +335,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
   });
 
   platform.get("/nav-counts", requireAdminDashboard, async (c) => {
-    const data = await container.adminNavCountsService.getCounts();
+    const data = await container.admin.dashboardMetrics.getNavCounts();
     return c.json({ data });
   });
 
@@ -345,7 +345,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.adminLotsKpiTrendService.getTrend(q.periodDays);
+      const data = await container.admin.dashboardMetrics.getLotsTrend(q.periodDays);
       return c.json({ data });
     },
   );
@@ -356,7 +356,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.adminPaymentsKpiTrendService.getTrend(q.periodDays);
+      const data = await container.admin.dashboardMetrics.getPaymentsTrend(q.periodDays);
       return c.json({ data });
     },
   );
@@ -367,7 +367,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.adminSalesKpiTrendService.getTrend(q.periodDays);
+      const data = await container.admin.dashboardMetrics.getSalesTrend(q.periodDays);
       return c.json({ data });
     },
   );
@@ -378,7 +378,7 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.adminPayoutsKpiTrendService.getTrend(q.periodDays);
+      const data = await container.admin.dashboardMetrics.getPayoutsTrend(q.periodDays);
       return c.json({ data });
     },
   );

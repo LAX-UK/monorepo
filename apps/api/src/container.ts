@@ -100,7 +100,10 @@ import { AdminPaymentsKpiTrendService } from "./services/admin/admin-payments-kp
 import { AdminPayoutsKpiTrendService } from "./services/admin/admin-payouts-kpi-trend.service.js";
 import { AdminSalesKpiTrendService } from "./services/admin/admin-sales-kpi-trend.service.js";
 import { AdminSourceOfFundsQueryService } from "./services/admin/admin-source-of-funds-query.service.js";
-import { createAdminRouteServices } from "./services/admin/create-admin-route-services.js";
+import {
+  attachAdminDashboardMetrics,
+  createAdminRouteServices,
+} from "./services/admin/create-admin-route-services.js";
 import { LegalEntityDocumentAdminService } from "./services/admin/legal-entity-document-admin.service.js";
 import { StructuredQueueAuditService } from "./services/admin/queue-audit.service.js";
 import { BullMQQueueInspector } from "./services/admin/queue-inspector.service.js";
@@ -1498,7 +1501,7 @@ export function createContainer(env: Env): Container {
     emailUnsubscribeService.applyToken(token),
   );
 
-  const admin = createAdminRouteServices({
+  const adminBase = createAdminRouteServices({
     db,
     domainEventPublisher,
     impersonationSessionService,
@@ -1525,10 +1528,15 @@ export function createContainer(env: Env): Container {
     env,
   });
 
+  const adminLotsKpiTrendService = new AdminLotsKpiTrendService(lotRepo);
+  const adminPaymentsKpiTrendService = new AdminPaymentsKpiTrendService(paymentRepo);
+  const adminSalesKpiTrendService = new AdminSalesKpiTrendService(saleRepo);
+  const adminPayoutsKpiTrendService = new AdminPayoutsKpiTrendService(payoutRepository);
+
   const adminNavCountsService = new AdminNavCountsService(
     createAdminNavCountsDeps({
       db,
-      admin,
+      admin: adminBase,
       repoFactory,
       conditionReportService,
       lotFulfilmentService,
@@ -1541,10 +1549,14 @@ export function createContainer(env: Env): Container {
     cache,
     30,
   );
-  const adminLotsKpiTrendService = new AdminLotsKpiTrendService(lotRepo);
-  const adminPaymentsKpiTrendService = new AdminPaymentsKpiTrendService(paymentRepo);
-  const adminSalesKpiTrendService = new AdminSalesKpiTrendService(saleRepo);
-  const adminPayoutsKpiTrendService = new AdminPayoutsKpiTrendService(payoutRepository);
+
+  const admin = attachAdminDashboardMetrics(adminBase, {
+    navCounts: adminNavCountsService,
+    lotsKpiTrend: adminLotsKpiTrendService,
+    paymentsKpiTrend: adminPaymentsKpiTrendService,
+    salesKpiTrend: adminSalesKpiTrendService,
+    payoutsKpiTrend: adminPayoutsKpiTrendService,
+  });
   const adminPaymentListQueryService = new AdminPaymentListQueryService(paymentRepo);
 
   return {

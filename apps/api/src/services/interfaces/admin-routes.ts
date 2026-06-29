@@ -32,8 +32,10 @@ import type {
 import type { AuthzError } from "../../lib/errors.js";
 import type { LifecycleAdminOp } from "../../lib/legal-entity-lifecycle-transitions.js";
 import type { AdminTodayMetrics } from "../admin-metrics.service.js";
+import type { AdminNavCounts } from "../admin/admin-nav-counts.service.js";
 import type { CreateInvitationInput, InvitationError } from "../invitation.service.js";
 import type { LegalEntityLifecycleFailure } from "../legal-entity-lifecycle-admin.service.js";
+import type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "./admin-kpi-trend.js";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
@@ -409,6 +411,17 @@ export interface IXeroAdminApplicationService {
   disconnect(): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
+export type { AdminNavCounts } from "../admin/admin-nav-counts.service.js";
+export type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "./admin-kpi-trend.js";
+
+export interface IAdminDashboardMetricsService {
+  getNavCounts(): Promise<AdminNavCounts>;
+  getLotsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+  getPaymentsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+  getSalesTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+  getPayoutsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+}
+
 export type AdminRouteServices = {
   requestLifecycle: IAdminRequestLifecycleService;
   ops: IAdminOpsReadService;
@@ -424,4 +437,5 @@ export type AdminRouteServices = {
   invitations: IAdminInvitationApplicationService;
   legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService;
   xero: IXeroAdminApplicationService;
+  dashboardMetrics: IAdminDashboardMetricsService;
 };
