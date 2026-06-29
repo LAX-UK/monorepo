@@ -15,6 +15,7 @@ coverage
 playwright-report
 test-results
 .cursor/
+.specify/
 apps/event/.upload/
 
 # Pre-go-live audit artifact — keep local only (do not commit or stage).
