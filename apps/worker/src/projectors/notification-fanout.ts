@@ -11,6 +11,7 @@ import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
 import { listStaffOpsRecipients } from "../lib/staff-ops-email-recipients.js";
+import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
 
 export const NOTIFICATION_FANOUT_PROJECTOR = "notification_fanout";
 
@@ -206,7 +207,17 @@ export async function processNotificationFanout(options: {
       }
       maxId = row.id;
     } catch (err) {
-      log.error({ err, eventId: row.id, eventType: row.eventType }, "notification_fanout_failed");
+      const outcome = await recordProjectorEventFailure({
+        db,
+        log,
+        projectorName: NOTIFICATION_FANOUT_PROJECTOR,
+        eventId: row.id,
+        err,
+      });
+      if (outcome.action === "skip") {
+        maxId = row.id;
+        continue;
+      }
       return;
     }
   }

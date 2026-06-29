@@ -116,6 +116,7 @@ export const user = pgTable(
     uniqueIndex("user_phone_number_uidx")
       .on(table.phoneNumber)
       .where(sql`${table.phoneNumber} IS NOT NULL`),
+    index("user_role_active_idx").on(table.role).where(sql`${table.suspendedAt} IS NULL`),
   ],
 );
 

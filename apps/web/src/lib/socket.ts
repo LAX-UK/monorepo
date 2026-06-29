@@ -7,7 +7,8 @@ export function getSocket(): Socket {
   const url = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3002";
   if (!socket) {
     socket = io(url, {
-      transports: ["websocket", "polling"],
+      // WebSocket-only: DO App Platform has no sticky sessions across ws replicas.
+      transports: ["websocket"],
       withCredentials: true,
       auth: (cb) => {
         void fetchAuthJwtForSocket().then((token) => cb(token ? { token } : {}));
