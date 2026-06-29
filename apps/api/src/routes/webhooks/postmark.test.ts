@@ -1,7 +1,9 @@
+import type { Database } from "@auction/db";
 import { emailHash } from "@auction/email";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
+import { PostmarkWebhookService } from "../../services/postmark-webhook.service.js";
 import { createPostmarkWebhookRoutes } from "./postmark.js";
 
 const originalNodeEnv = process.env.NODE_ENV;
@@ -9,13 +11,13 @@ const originalNodeEnv = process.env.NODE_ENV;
 function appWithEnv(nodeEnv: "development" | "production", basicAuth?: string) {
   process.env.NODE_ENV = nodeEnv;
   const app = new Hono();
-  const insert = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+  const handle = vi.fn().mockResolvedValue(undefined);
   const container = {
     env: { NODE_ENV: nodeEnv, POSTMARK_WEBHOOK_BASIC_AUTH: basicAuth },
-    db: { insert },
+    postmarkWebhookService: { handle },
   } as unknown as Container;
   app.route("/webhooks/postmark", createPostmarkWebhookRoutes(container));
-  return { app, insert };
+  return { app, handle };
 }
 
 describe("Postmark webhook auth", () => {
@@ -25,7 +27,7 @@ describe("Postmark webhook auth", () => {
   });
 
   it("fails closed when basic auth is unset in production", async () => {
-    const { app, insert } = appWithEnv("production");
+    const { app, handle } = appWithEnv("production");
 
     const res = await app.request("/webhooks/postmark", {
       method: "POST",
@@ -34,12 +36,12 @@ describe("Postmark webhook auth", () => {
     });
 
     expect(res.status).toBe(503);
-    expect(insert).not.toHaveBeenCalled();
+    expect(handle).not.toHaveBeenCalled();
   });
 
   it("allows missing basic auth in non-production and logs a warning", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const { app, insert } = appWithEnv("development");
+    const { app, handle } = appWithEnv("development");
 
     const res = await app.request("/webhooks/postmark", {
       method: "POST",
@@ -48,7 +50,7 @@ describe("Postmark webhook auth", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(insert).toHaveBeenCalled();
+    expect(handle).toHaveBeenCalled();
     expect(warn).toHaveBeenCalled();
   });
 });
@@ -88,10 +90,11 @@ describe("Postmark bounce without outbox match", () => {
           where: vi.fn(() => Promise.resolve(undefined)),
         })),
       })),
-    };
+    } as unknown as Database;
+    const postmarkWebhookService = new PostmarkWebhookService(db, vi.fn());
     const container = {
       env: { NODE_ENV: "development", POSTMARK_WEBHOOK_BASIC_AUTH: undefined },
-      db,
+      postmarkWebhookService,
     } as unknown as Container;
     const app = new Hono();
     app.route("/webhooks/postmark", createPostmarkWebhookRoutes(container));

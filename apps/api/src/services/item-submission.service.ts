@@ -23,8 +23,6 @@ import { adminSubmissionNotesSchema, updateItemSubmissionSchema } from "@auction
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../lib/errors.js";
 import { presentSubmissionImages, presentSubmissionsImages } from "../lib/media-presenters.js";
-import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
-import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import { insertArtistInTx } from "./artist-registry.service.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
@@ -41,6 +39,7 @@ import type {
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
 } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
@@ -65,7 +64,15 @@ export class ItemSubmissionService implements IItemSubmissionService {
     private readonly mediaUrlResolver: MediaUrlResolver | undefined = undefined,
     private readonly mediaAssetEnricher: MediaAssetEnricher | undefined = undefined,
     private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
+    private readonly repoFactory: IRepositoryFactory | null = null,
   ) {}
+
+  private txRepos(tx: Database) {
+    if (!this.repoFactory) {
+      throw new Error("item_submission_repo_factory_required");
+    }
+    return this.repoFactory.forTransaction(tx);
+  }
 
   private async assertSellerEntityAllowsSubmissions(
     legalEntityId: string,
@@ -344,8 +351,8 @@ export class ItemSubmissionService implements IItemSubmissionService {
     try {
       const { lot, submission, legalEntityId, title, readinessPercent } = await this.db.transaction(
         async (tx) => {
-          const subRepo = new DrizzleItemSubmissionRepository(tx);
-          const lotRepo = new DrizzleLotRepository(tx);
+          const subRepo = this.txRepos(tx).itemSubmission;
+          const lotRepo = this.txRepos(tx).lot;
           const s = await subRepo.findById(id);
           if (!s) {
             throw new SubmissionError("Not found", 404);

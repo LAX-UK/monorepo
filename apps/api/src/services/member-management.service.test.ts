@@ -2,9 +2,26 @@ import type { Database } from "@auction/db";
 import { describe, expect, it } from "vitest";
 import { DomainEventPublisher } from "./domain-event.publisher.js";
 import { MemberPermissionError } from "./interfaces/member-management.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { MemberManagementService } from "./member-management.service.js";
 
 const testPublisher = new DomainEventPublisher();
+
+function testRepoFactory(): IRepositoryFactory {
+  const bid = {
+    listActiveProxyBidPairsForMemberOnEntity: async () =>
+      [] as { lotId: string; bidderId: string }[],
+    clearProxyAutoBidForBidderOnLot: async () => 0,
+  };
+  const conn = { lot: {}, bid };
+  return {
+    root: conn,
+    forConnection: () => conn,
+    forTransaction: () => ({ ...conn, sale: {}, itemSubmission: {} }),
+    runInTransaction: async <T>(fn: (r: typeof conn, tx: Database) => Promise<T>) =>
+      fn(conn, {} as Database),
+  } as unknown as IRepositoryFactory;
+}
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
 const PRIMARY_USER_ID = "user-primary";
@@ -80,7 +97,7 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       isPrimaryAdmin: false,
     });
     const { db } = makeFluentDb([[meRow]]);
-    const svc = new MemberManagementService(db, testPublisher);
+    const svc = new MemberManagementService(db, testPublisher, testRepoFactory());
 
     let thrown: unknown;
     try {
@@ -95,7 +112,7 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
   it("rejects when the target member is missing or removed", async () => {
     const meRow = memberRow({});
     const { db } = makeFluentDb([[meRow], []]);
-    const svc = new MemberManagementService(db, testPublisher);
+    const svc = new MemberManagementService(db, testPublisher, testRepoFactory());
 
     await expect(
       svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
@@ -108,7 +125,7 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       [meRow],
       [meRow], // target lookup returns same row
     ]);
-    const svc = new MemberManagementService(db, testPublisher);
+    const svc = new MemberManagementService(db, testPublisher, testRepoFactory());
 
     await expect(
       svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, PRIMARY_MEMBER_ID),
@@ -142,7 +159,7 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
 
     const { db, chains } = makeFluentDb([[meRow], [targetRow], [fromAfter], [toAfter]]);
 
-    const svc = new MemberManagementService(db, testPublisher);
+    const svc = new MemberManagementService(db, testPublisher, testRepoFactory());
     const result = await svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
 
     expect(chains.map((c) => c.op)).toEqual([
@@ -170,7 +187,7 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       [], // demote returns nothing
     ]);
 
-    const svc = new MemberManagementService(db, testPublisher);
+    const svc = new MemberManagementService(db, testPublisher, testRepoFactory());
     await expect(
       svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
     ).rejects.toMatchObject({ code: "transfer_demote_failed" });
@@ -188,7 +205,7 @@ describe("MemberManagementService.removeMember", () => {
       isPrimaryAdmin: true,
     });
     const { db } = makeFluentDb([[meRow], [targetRow]]);
-    const svc = new MemberManagementService(db, testPublisher);
+    const svc = new MemberManagementService(db, testPublisher, testRepoFactory());
 
     await expect(
       svc.removeMember(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
@@ -206,7 +223,7 @@ describe("MemberManagementService.updateRole", () => {
       role: "owner",
     });
     const { db } = makeFluentDb([[meRow], [targetRow]]);
-    const svc = new MemberManagementService(db, testPublisher);
+    const svc = new MemberManagementService(db, testPublisher, testRepoFactory());
 
     await expect(
       svc.updateRole(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID, {

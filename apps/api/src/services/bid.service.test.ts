@@ -186,6 +186,7 @@ function createMockFactory(
   return {
     root: repos,
     forConnection: () => repos,
+    forTransaction: () => ({ ...repos, sale: {} as never, itemSubmission: {} as never }),
     runInTransaction: async <T>(fn: (r: typeof repos, tx: Database) => Promise<T>) =>
       fn(repos, mockTx as unknown as Database),
   };

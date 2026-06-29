@@ -1,10 +1,6 @@
-import { emailSuppression } from "@auction/db/schema";
-import { emailHash } from "@auction/email";
 import { type Context, Hono } from "hono";
 import type { Container } from "../container.js";
 import { verifyUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
-import { emailPreferenceKey } from "../lib/notification-preference-keys.js";
-import type { NotificationPreferenceInput } from "../services/interfaces/notification-preference.js";
 
 export function createEmailRoutes(container: Container) {
   const r = new Hono();
@@ -51,7 +47,7 @@ export function createEmailRoutes(container: Container) {
     const token = await tokenFromRequest(c);
     if (!token) return c.json({ ok: false, error: "Missing unsubscribe token" }, 400);
     try {
-      await applyUnsubscribeToken(container, token);
+      await container.emailUnsubscribeService.applyToken(token);
       return c.json({ ok: true });
     } catch {
       return c.json({ ok: false, error: "Invalid unsubscribe token" }, 400);
@@ -59,29 +55,6 @@ export function createEmailRoutes(container: Container) {
   });
 
   return r;
-}
-
-export async function applyUnsubscribeToken(container: Container, token: string): Promise<void> {
-  const payload = verifyUnsubscribeToken(token, container.env.EMAIL_UNSUBSCRIBE_SECRET);
-  const user = await container.userService.getById(payload.userId);
-  if (!user) throw new Error("User not found");
-
-  if (payload.scope === "global") {
-    await container.db
-      .insert(emailSuppression)
-      .values({ emailHash: emailHash(user.email), reason: "unsubscribe" })
-      .onConflictDoUpdate({
-        target: emailSuppression.emailHash,
-        set: { reason: "unsubscribe", createdAt: new Date() },
-      });
-    return;
-  }
-
-  const key = emailPreferenceKey(payload.notificationType);
-  if (!key) throw new Error("Unsupported notification type");
-  await container.notificationPreferenceRepository.upsert(payload.userId, {
-    [key]: false,
-  } as Partial<NotificationPreferenceInput>);
 }
 
 async function tokenFromRequest(c: Context): Promise<string | null> {

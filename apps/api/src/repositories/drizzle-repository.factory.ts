@@ -1,7 +1,13 @@
 import type { Database } from "@auction/db";
-import type { IRepositoryFactory, LotBidRepos } from "../services/interfaces/repository-factory.js";
+import type {
+  IRepositoryFactory,
+  LotBidRepos,
+  TransactionRepos,
+} from "../services/interfaces/repository-factory.js";
 import { DrizzleBidRepository } from "./drizzle-bid.repository.js";
+import { DrizzleItemSubmissionRepository } from "./drizzle-item-submission.repository.js";
 import { DrizzleLotRepository } from "./drizzle-lot.repository.js";
+import { DrizzleSaleRepository } from "./drizzle-sale.repository.js";
 
 export class DrizzleRepositoryFactory implements IRepositoryFactory {
   readonly root: LotBidRepos;
@@ -14,6 +20,14 @@ export class DrizzleRepositoryFactory implements IRepositoryFactory {
     return {
       lot: new DrizzleLotRepository(conn),
       bid: new DrizzleBidRepository(conn),
+    };
+  }
+
+  forTransaction(conn: Database): TransactionRepos {
+    return {
+      ...this.forConnection(conn),
+      sale: new DrizzleSaleRepository(conn),
+      itemSubmission: new DrizzleItemSubmissionRepository(conn),
     };
   }
 

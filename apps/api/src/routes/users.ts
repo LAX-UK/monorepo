@@ -245,12 +245,11 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       userId,
       customData: { lotId },
     });
-    const row = await container.db.transaction(async (tx) => {
-      const added = await container.watchlistService.add(userId, lotId, tx);
-      if (!added) throw new Error("watchlist_insert_failed");
-      await container.marketingEventService.stage(marketingEvent, tx);
-      return added;
-    });
+    const row = await container.watchlistService.addWithMarketingEvent(
+      userId,
+      lotId,
+      marketingEvent,
+    );
     await container.marketingEventService.enqueue(marketingEvent);
     return c.json({ data: row, marketingEventId: eventId }, 201);
   });
@@ -269,10 +268,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         userId,
         customData: { lotId },
       });
-      await container.db.transaction(async (tx) => {
-        await container.watchlistService.remove(userId, lotId, tx);
-        await container.marketingEventService.stage(marketingEvent, tx);
-      });
+      await container.watchlistService.removeWithMarketingEvent(userId, lotId, marketingEvent);
       await container.marketingEventService.enqueue(marketingEvent);
       return c.body(null, 204);
     },
@@ -828,19 +824,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         }
       }
 
-      await container.db.transaction(async (tx) => {
-        await tx
-          .update(userTable)
-          .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
-          .where(eq(userTable.id, userId));
-        await container.domainEventPublisher.publish(tx, {
-          aggregateType: "user",
-          aggregateId: userId,
-          eventType: "user.deletion_requested",
-          payload: { userId },
-          actorUserId: userId,
-        });
-      });
+      await container.userService.requestAccountDeletion(userId);
 
       return c.json({ ok: true });
     },

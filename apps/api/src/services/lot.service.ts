@@ -37,7 +37,6 @@ import { presentLotsImages } from "../lib/media-presenters.js";
 import { findPostgresError } from "../lib/pg-error.js";
 import { publishSingleLot } from "../lib/publish-single-lot.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
-import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
@@ -51,6 +50,7 @@ import type {
   ISaleRepository,
   ListLotsFilter,
 } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
@@ -139,6 +139,7 @@ export type LotServiceOptions = {
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
   qrCodeService?: QrCodeService | null;
   telephoneBidBookingService?: ITelephoneBidBookingService | null;
+  repoFactory?: IRepositoryFactory | null;
 };
 
 export class LotService {
@@ -161,6 +162,7 @@ export class LotService {
   private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
   private readonly qrCodeService: QrCodeService | null;
   private readonly telephoneBidBookingService: ITelephoneBidBookingService | null;
+  private readonly repoFactory: IRepositoryFactory | null;
 
   constructor(opts: LotServiceOptions) {
     this.lotRepo = opts.lotRepo;
@@ -182,6 +184,14 @@ export class LotService {
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
     this.qrCodeService = opts.qrCodeService ?? null;
     this.telephoneBidBookingService = opts.telephoneBidBookingService ?? null;
+    this.repoFactory = opts.repoFactory ?? null;
+  }
+
+  private txLot(tx: Database): ILotRepository {
+    if (!this.repoFactory) {
+      throw new Error("lot_service_repo_factory_required");
+    }
+    return this.repoFactory.forConnection(tx).lot;
   }
 
   returnToInventory(
@@ -258,7 +268,7 @@ export class LotService {
       let created: Lot;
       try {
         created = await this.db.transaction(async (tx) => {
-          const lotRepo = new DrizzleLotRepository(tx);
+          const lotRepo = this.txLot(tx);
           const row = await lotRepo.create(createPayload);
           await this.lotLifecycleRecording?.recordCreated(tx, {
             lot: row,
@@ -370,7 +380,7 @@ export class LotService {
     let updated: Lot;
     if (this.db && this.lotLifecycleRecording) {
       updated = await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
+        const lotRepo = this.txLot(tx);
         if (alignedPatch) {
           await lotRepo.update(lotId, alignedPatch);
         }
@@ -428,7 +438,7 @@ export class LotService {
     let updated: Lot;
     if (this.db && this.lotLifecycleRecording) {
       updated = await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
+        const lotRepo = this.txLot(tx);
         await lotRepo.updateStatus(lotId, "cancelled");
         const row = await lotRepo.findById(lotId);
         if (!row) throw new LotError("Lot not found", 404);
@@ -543,7 +553,7 @@ export class LotService {
         this.lotLifecycleRecording
       ) {
         updated = await this.db.transaction(async (tx) => {
-          const lotRepo = new DrizzleLotRepository(tx);
+          const lotRepo = this.txLot(tx);
           const row = await lotRepo.update(lotId, patch);
           if (a.saleId && patch.saleId !== a.saleId) {
             await this.lotLifecycleRecording?.recordDetached(tx, a, a.saleId);

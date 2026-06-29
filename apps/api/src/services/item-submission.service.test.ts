@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IItemSubmissionRepository, IUserRepository } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 
 const hoisted = vi.hoisted(() => ({
@@ -12,21 +13,21 @@ const hoisted = vi.hoisted(() => ({
   txLotCreate: vi.fn(),
 }));
 
-vi.mock("../repositories/drizzle-item-submission.repository.js", () => {
-  class DrizzleItemSubmissionRepository {
-    findById = hoisted.txSubFindById;
-    update = hoisted.txSubUpdate;
-    create = vi.fn();
-  }
-  return { DrizzleItemSubmissionRepository };
-});
-
-vi.mock("../repositories/drizzle-lot.repository.js", () => {
-  class DrizzleLotRepository {
-    create = hoisted.txLotCreate;
-  }
-  return { DrizzleLotRepository };
-});
+function testRepoFactory(): IRepositoryFactory {
+  const txSubRepo = {
+    findById: hoisted.txSubFindById,
+    update: hoisted.txSubUpdate,
+  };
+  const txLotRepo = { create: hoisted.txLotCreate };
+  const conn = { lot: txLotRepo, bid: {} as never };
+  return {
+    root: conn,
+    forConnection: () => conn,
+    forTransaction: () => ({ ...conn, sale: {} as never, itemSubmission: txSubRepo as never }),
+    runInTransaction: async <T>(fn: (r: typeof conn, tx: Database) => Promise<T>) =>
+      fn(conn, {} as Database),
+  } as unknown as IRepositoryFactory;
+}
 
 import { ItemSubmissionService } from "./item-submission.service.js";
 
@@ -235,6 +236,12 @@ describe("ItemSubmissionService", () => {
       dispatcher,
       undefined,
       legalEntityRecipients,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testRepoFactory(),
     );
     const r = await svc.approve("admin-1", "sub-1", { reviewNotes: "Nice work" });
     expect(r.isOk()).toBe(true);
@@ -337,6 +344,12 @@ describe("ItemSubmissionService", () => {
       dispatcher,
       undefined,
       legalEntityRecipients,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testRepoFactory(),
     );
 
     const ARTIST_ID = "11111111-2222-4333-8444-555555555555";
@@ -366,6 +379,14 @@ describe("ItemSubmissionService", () => {
       submissions,
       {} as unknown as IUserRepository,
       { dispatch: vi.fn() } as unknown as NotificationDispatcher,
+      undefined,
+      null,
+      null,
+      null,
+      undefined,
+      undefined,
+      null,
+      testRepoFactory(),
     );
     const r = await svc.approve("admin-1", "sub-3", {
       artistId: "11111111-2222-4333-8444-555555555555",
@@ -406,6 +427,12 @@ describe("ItemSubmissionService", () => {
       dispatcher,
       undefined,
       legalEntityRecipients,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testRepoFactory(),
     );
     const r = await svc.reject("admin-1", "sub-1", "Not suitable", "See policy");
     expect(r.isOk()).toBe(true);

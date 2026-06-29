@@ -7,6 +7,7 @@ import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IVenueRepository } from "./interfaces/venue.js";
 import { SaleService, type SaleServiceOptions } from "./sale.service.js";
 
@@ -17,14 +18,29 @@ async function testResolvePlatformCatalogLegalEntityId(): Promise<string | null>
   return TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID;
 }
 
+function testRepoFactory(lotRepo: ILotRepository, saleRepo: ISaleRepository): IRepositoryFactory {
+  const conn = { lot: lotRepo, bid: {} as never };
+  return {
+    root: conn,
+    forConnection: () => conn,
+    forTransaction: () => ({ ...conn, sale: saleRepo, itemSubmission: {} as never }),
+    runInTransaction: async <T>(fn: (r: typeof conn, tx: Database) => Promise<T>) =>
+      fn(conn, {} as Database),
+  } as unknown as IRepositoryFactory;
+}
+
 function saleServiceOpts(
   overrides: Omit<SaleServiceOptions, "resolvePlatformCatalogLegalEntityId"> &
     Partial<Pick<SaleServiceOptions, "resolvePlatformCatalogLegalEntityId">>,
 ): SaleServiceOptions {
-  return {
+  const opts: SaleServiceOptions = {
     resolvePlatformCatalogLegalEntityId: testResolvePlatformCatalogLegalEntityId,
     ...overrides,
   };
+  if (opts.db && opts.lotRepo && opts.saleRepo && !opts.repoFactory) {
+    opts.repoFactory = testRepoFactory(opts.lotRepo, opts.saleRepo);
+  }
+  return opts;
 }
 
 function baseSale(overrides: Partial<Sale> = {}): Sale {

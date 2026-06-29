@@ -1,5 +1,7 @@
 import type { Database } from "@auction/db";
+import type { MarketingEvent } from "@auction/types";
 import type { Lot } from "@auction/types";
+import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
 import type { IWatchlistRepository, WatchlistRow } from "./interfaces/watchlist.js";
 
@@ -22,7 +24,41 @@ export class WatchlistService {
   constructor(
     private readonly watchlist: IWatchlistRepository,
     private readonly lots: ILotRepository,
+    private readonly db?: Database,
+    private readonly marketingEvents?: IMarketingEventService,
   ) {}
+
+  async addWithMarketingEvent(
+    userId: string,
+    lotId: string,
+    event: MarketingEvent,
+  ): Promise<WatchlistRow> {
+    if (!this.db || !this.marketingEvents) {
+      throw new Error("watchlist_marketing_not_configured");
+    }
+    const marketingEvents = this.marketingEvents;
+    return this.db.transaction(async (tx) => {
+      const added = await this.add(userId, lotId, tx);
+      if (!added) throw new Error("watchlist_insert_failed");
+      await marketingEvents.stage(event, tx);
+      return added;
+    });
+  }
+
+  async removeWithMarketingEvent(
+    userId: string,
+    lotId: string,
+    event: MarketingEvent,
+  ): Promise<void> {
+    if (!this.db || !this.marketingEvents) {
+      throw new Error("watchlist_marketing_not_configured");
+    }
+    const marketingEvents = this.marketingEvents;
+    await this.db.transaction(async (tx) => {
+      await this.remove(userId, lotId, tx);
+      await marketingEvents.stage(event, tx);
+    });
+  }
 
   async add(userId: string, lotId: string, conn?: Database): Promise<WatchlistRow | null> {
     const lot = await this.lots.findById(lotId);

@@ -72,6 +72,7 @@ function createFactory(lots: ILotRepository, bids: Partial<IBidRepository>): IRe
   return {
     root,
     forConnection: () => root,
+    forTransaction: () => ({ ...root, sale: {} as never, itemSubmission: {} as never }),
     runInTransaction: async <T>(fn: (r: typeof root, tx: Database) => Promise<T>) =>
       fn(root, {} as unknown as Database),
   };

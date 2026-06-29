@@ -53,13 +53,12 @@ import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catal
 import { enrichPressCoverageWithOpenGraphImages } from "../lib/press-coverage-enrichment.js";
 import { publishSingleLot } from "../lib/publish-single-lot.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
-import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
-import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { IVenueRepository } from "./interfaces/venue.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
@@ -114,6 +113,7 @@ export type SaleServiceOptions = {
   venueRepository?: IVenueRepository | null;
   enforceIndividualConnectOnPublish?: boolean;
   qrCodeService?: QrCodeService | null;
+  repoFactory?: IRepositoryFactory | null;
 };
 
 export class SaleService {
@@ -134,6 +134,7 @@ export class SaleService {
   private readonly venueRepository: IVenueRepository | null;
   private readonly enforceIndividualConnectOnPublish: boolean;
   private readonly qrCodeService: QrCodeService | null;
+  private readonly repoFactory: IRepositoryFactory | null;
 
   constructor(opts: SaleServiceOptions) {
     this.saleRepo = opts.saleRepo;
@@ -153,6 +154,14 @@ export class SaleService {
     this.venueRepository = opts.venueRepository ?? null;
     this.enforceIndividualConnectOnPublish = opts.enforceIndividualConnectOnPublish ?? false;
     this.qrCodeService = opts.qrCodeService ?? null;
+    this.repoFactory = opts.repoFactory ?? null;
+  }
+
+  private txRepos(tx: Database) {
+    if (!this.repoFactory) {
+      throw new Error("sale_service_repo_factory_required");
+    }
+    return this.repoFactory.forTransaction(tx);
   }
 
   private publishSingleLotDeps() {
@@ -287,7 +296,7 @@ export class SaleService {
         }
         if (this.db && this.lotLifecycleRecording) {
           const created = await this.db.transaction(async (tx) => {
-            const lotRepo = new DrizzleLotRepository(tx);
+            const lotRepo = this.txRepos(tx).lot;
             const created = await lotRepo.create({
               ...lotFields,
               sellerLegalEntityId: sellerId,
@@ -590,8 +599,8 @@ export class SaleService {
 
     if (this.db && this.lotLifecycleRecording) {
       await this.db.transaction(async (tx) => {
-        const saleRepo = new DrizzleSaleRepository(tx);
-        const lotRepo = new DrizzleLotRepository(tx);
+        const saleRepo = this.txRepos(tx).sale;
+        const lotRepo = this.txRepos(tx).lot;
         if (caps.inheritsLotTiming) {
           for (const l of lots) {
             const resolved = resolveLotTimingForSale(sale, l.startTime, l.endTime);
@@ -717,8 +726,8 @@ export class SaleService {
     }
     if (this.db && this.lotLifecycleRecording) {
       await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
-        const saleRepo = new DrizzleSaleRepository(tx);
+        const lotRepo = this.txRepos(tx).lot;
+        const saleRepo = this.txRepos(tx).sale;
         for (const l of lots) {
           await lotRepo.updateStatus(l.id, "draft");
           const row = await lotRepo.findById(l.id);
@@ -773,8 +782,8 @@ export class SaleService {
     }
     if (this.db && this.lotLifecycleRecording) {
       await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
-        const saleRepo = new DrizzleSaleRepository(tx);
+        const lotRepo = this.txRepos(tx).lot;
+        const saleRepo = this.txRepos(tx).sale;
         for (const l of lots) {
           if (l.status === "draft" || l.status === "scheduled" || l.status === "active") {
             await lotRepo.updateStatus(l.id, "cancelled");
@@ -868,7 +877,7 @@ export class SaleService {
     if (this.db && this.lotLifecycleRecording) {
       try {
         created = await this.db.transaction(async (tx) => {
-          const lotRepo = new DrizzleLotRepository(tx);
+          const lotRepo = this.txRepos(tx).lot;
           const row = await lotRepo.create(createFields);
           await this.lotLifecycleRecording?.recordCreated(tx, { lot: row, source: createdSource });
           return row;
@@ -945,7 +954,7 @@ export class SaleService {
     let updated: Lot;
     if (this.db && this.lotLifecycleRecording) {
       updated = await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
+        const lotRepo = this.txRepos(tx).lot;
         const row = await lotRepo.update(lotId, {
           saleId,
           lotNumber,
@@ -1011,7 +1020,7 @@ export class SaleService {
     const fromSaleId = l.saleId;
     if (this.db && this.lotLifecycleRecording) {
       await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
+        const lotRepo = this.txRepos(tx).lot;
         await lotRepo.clearSaleId(lotId);
         await this.lotLifecycleRecording?.recordDetached(tx, l, fromSaleId);
       });
@@ -1157,8 +1166,8 @@ export class SaleService {
       };
       if (this.db) {
         const updated = await this.db.transaction(async (tx) => {
-          const lotRepo = new DrizzleLotRepository(tx);
-          const saleRepo = new DrizzleSaleRepository(tx);
+          const lotRepo = this.txRepos(tx).lot;
+          const saleRepo = this.txRepos(tx).sale;
           await syncDraftLots(lotRepo);
           return saleRepo.update(saleId, normalized);
         });

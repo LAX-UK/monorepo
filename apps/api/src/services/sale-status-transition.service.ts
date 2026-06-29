@@ -14,12 +14,11 @@ import { AuthzError, LotError } from "../lib/errors.js";
 import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
-import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
-import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleStatusTransitionService } from "./interfaces/sale-status-transition.js";
 import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 
@@ -33,7 +32,15 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     private readonly lotLifecycleRecording: LotLifecycleRecording | null = null,
     private readonly legalEntityRepository: ILegalEntityRepository | null = null,
     private readonly enforceIndividualConnectOnPublish = false,
+    private readonly repoFactory: IRepositoryFactory | null = null,
   ) {}
+
+  private txRepos(tx: Database) {
+    if (!this.repoFactory) {
+      throw new Error("sale_status_transition_repo_factory_required");
+    }
+    return this.repoFactory.forTransaction(tx);
+  }
 
   private async recordLot(fn: (tx: Database) => Promise<void>): Promise<void> {
     if (!this.db || !this.lotLifecycleRecording) return;
@@ -74,8 +81,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     }
     if (this.db && this.lotLifecycleRecording) {
       await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
-        const saleRepo = new DrizzleSaleRepository(tx);
+        const lotRepo = this.txRepos(tx).lot;
+        const saleRepo = this.txRepos(tx).sale;
         for (const l of endingLots) {
           await lotRepo.updateStatus(l.id, "ended");
           const row = await lotRepo.findById(l.id);
@@ -229,7 +236,7 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     let updated: Lot;
     if (this.db && this.lotLifecycleRecording) {
       updated = await this.db.transaction(async (tx) => {
-        const lotRepo = new DrizzleLotRepository(tx);
+        const lotRepo = this.txRepos(tx).lot;
         await lotRepo.updateStatus(lotId, status);
         const row = await lotRepo.findById(lotId);
         if (!row) throw new LotError("Lot not found", 404);

@@ -2,7 +2,6 @@ import type { Database } from "@auction/db";
 import { legalEntityMember, user } from "@auction/db/schema";
 import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { DrizzleBidRepository } from "../repositories/drizzle-bid.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import {
   type IMemberManagementService,
@@ -10,6 +9,7 @@ import {
   type MemberWithUser,
   type UpdateMemberRoleInput,
 } from "./interfaces/member-management.js";
+import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
 
@@ -32,6 +32,7 @@ export class MemberManagementService implements IMemberManagementService {
   constructor(
     private readonly db: Database,
     private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly repoFactory: IRepositoryFactory,
   ) {}
 
   private async assertActorIsAdmin(
@@ -147,7 +148,7 @@ export class MemberManagementService implements IMemberManagementService {
     }
 
     await this.db.transaction(async (tx) => {
-      const bids = new DrizzleBidRepository(tx);
+      const bids = this.repoFactory.forConnection(tx).bid;
       const pairs = await bids.listActiveProxyBidPairsForMemberOnEntity(
         target.userId,
         legalEntityId,
