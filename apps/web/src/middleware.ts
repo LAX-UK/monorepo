@@ -111,10 +111,7 @@ export async function middleware(request: NextRequest) {
     res.headers.set("x-nonce", nonce);
     baseResponse = res;
   } else {
-    const redirectUrl = getAuthPublicCookieRedirectUrl(
-      request.nextUrl,
-      cookieHeader,
-    );
+    const redirectUrl = getAuthPublicCookieRedirectUrl(request.nextUrl, cookieHeader);
     if (redirectUrl) {
       return NextResponse.redirect(redirectUrl, 307);
     }

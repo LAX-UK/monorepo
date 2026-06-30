@@ -26,19 +26,17 @@ describe("isProtectedPostAuthPath", () => {
 
 describe("shouldBypassAuthEdgeRedirect", () => {
   it("bypasses recovery and explicit-intent query flags", () => {
-    expect(
-      shouldBypassAuthEdgeRedirect("/login", new URLSearchParams("session_expired=1")),
-    ).toBe(true);
-    expect(
-      shouldBypassAuthEdgeRedirect("/login", new URLSearchParams("social_error=1")),
-    ).toBe(true);
+    expect(shouldBypassAuthEdgeRedirect("/login", new URLSearchParams("session_expired=1"))).toBe(
+      true,
+    );
+    expect(shouldBypassAuthEdgeRedirect("/login", new URLSearchParams("social_error=1"))).toBe(
+      true,
+    );
     expect(shouldBypassAuthEdgeRedirect("/login", new URLSearchParams("switch=1"))).toBe(true);
   });
 
   it("bypasses register with invite", () => {
-    expect(
-      shouldBypassAuthEdgeRedirect("/register", new URLSearchParams("invite=abc")),
-    ).toBe(true);
+    expect(shouldBypassAuthEdgeRedirect("/register", new URLSearchParams("invite=abc"))).toBe(true);
   });
 });
 
@@ -85,9 +83,7 @@ describe("buildStaleSessionRecoveryLoginUrl", () => {
 
   it("preserves catalogue query params on lot pages", () => {
     const login = buildStaleSessionRecoveryLoginUrl(
-      new URL(
-        "http://localhost:3000/lot/foo/1?view=grid&from=auth-edge&welcome=back",
-      ),
+      new URL("http://localhost:3000/lot/foo/1?view=grid&from=auth-edge&welcome=back"),
     );
     expect(login.searchParams.get("next")).toBe("/lot/foo/1?view=grid");
   });
@@ -127,9 +123,7 @@ describe("isLoginRecoveryLanding", () => {
     expect(isLoginRecoveryLanding(new URL("http://localhost:3000/login?social_error=1"))).toBe(
       true,
     );
-    expect(isLoginRecoveryLanding(new URL("http://localhost:3000/login?auth=required"))).toBe(
-      true,
-    );
+    expect(isLoginRecoveryLanding(new URL("http://localhost:3000/login?auth=required"))).toBe(true);
     expect(isLoginRecoveryLanding(new URL("http://localhost:3000/login"))).toBe(false);
   });
 });

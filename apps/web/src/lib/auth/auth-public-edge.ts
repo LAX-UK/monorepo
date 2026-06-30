@@ -1,9 +1,7 @@
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 import type { NextRequest } from "next/server";
 import {
-  buildStaleSessionRecoveryLoginUrl,
   isProtectedPostAuthPath,
-  isStaleAuthEdgePublicLanding,
   resolveAuthEdgeRedirectTarget,
   shouldBypassAuthEdgeRedirect,
 } from "./auth-edge-policy";
