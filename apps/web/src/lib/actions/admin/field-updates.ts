@@ -2,12 +2,13 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
+import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
+import { revalidateAdminUserDetailPaths } from "@/lib/actions/admin/_shared/revalidate-paths";
 import {
   adminUpdateArtistResultAction,
   adminUpdateCategoryResultAction,
-  adminUpdateLotResultAction,
-} from "@/lib/actions/admin";
-import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
+} from "@/lib/actions/admin/admin-catalog";
+import { adminUpdateLotResultAction } from "@/lib/actions/admin/admin-lots";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import {
   type ActionResult,
@@ -107,11 +108,4 @@ export async function adminUpdateClientDisplayNameFieldAction(
     revalidateAdminUserDetailPaths(id);
     return actionSuccess();
   });
-}
-
-function revalidateAdminUserDetailPaths(userId: string): void {
-  revalidatePath("/admin/clients");
-  revalidatePath("/admin/staff");
-  revalidatePath(`/admin/clients/${userId}`);
-  revalidatePath(`/admin/staff/${userId}`);
 }
