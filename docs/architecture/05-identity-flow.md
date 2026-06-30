@@ -219,9 +219,13 @@ flowchart LR
   SSR --> Client[Client session hints on login]
 ```
 
-1. **Edge (`apps/web/src/middleware.ts`)** — If the request path is `/login` or `/register` (without `invite`) and the `Cookie` header matches `better-auth|session_token`, respond with **307** to a safe `?next` or `/dashboard`, appending `from=auth-edge` and `welcome=back` for loop-safety and UX. `/forgot-password` is **not** redirected at the edge so SSR can send staff to `/admin` and clients to account settings. `/login?switch=1` bypasses the edge redirect (account switch).
+1. **Edge (`apps/web/src/middleware.ts`)** — Two checks run before any other logic (see `auth-edge-policy.ts`):
+   - **Stale public landing recovery**: if a non-dashboard/admin page arrives with `?from=auth-edge` *and* a `better-auth.session_token` cookie, the edge redirects 307 to `/login?session_expired=1` (preserving a clean `next`, purging auth cookies). This prevents users being stranded on marketing pages after backing out of OAuth.
+   - **Auth-page fast-path**: if the path is `/login` or `/register` (without bypass flags) and a session cookie is present, redirect 307. Protected `next` values (`/dashboard/**`, `/admin/**`) go directly with `?from=auth-edge&welcome=back`. All other `next` values (marketing pages, lot pages, etc.) route through `/auth/social-callback` so SSR validates the session before landing anywhere unguarded.
+   - **Bypass flags** (edge redirect skipped): `?switch=1`, `?session_expired=1`, `?auth=required`, `?social_error=1`, `?registered=1`, `?reset=1`, `?verify_pending=1`, `/register?invite=…`.
+   - `/forgot-password` is never matched at the edge so SSR can route staff to `/admin` and clients to account settings.
 2. **Server (`apps/web/src/lib/auth/guards.server.ts`)** — `getServerSessionUser` is authoritative. `redirectIfAuthenticated` and `redirectIfVerifyPendingNotNeeded` enforce the routing table; `requireAuthenticatedUser` protects `/dashboard`, `/admin`, and handles `x-lax-auth-edge` when the session is missing (redirect to `/login?session_expired=1` instead of bouncing forever).
-3. **Client** — `SignInForm` shows “already signed in” / switch-account UI when Better Auth’s client session disagrees with SSR (multi-tab, rare races).
+3. **Client** — `SocialSignInButtons` uses `disableRedirect: true` + `window.location.replace()` so the pre-OAuth `/login` page is removed from browser history; Back at the provider lands on the page *before* login rather than looping back through it. `SignInForm` shows “already signed in” / switch-account UI when Better Auth’s client session disagrees with SSR (multi-tab, rare races).
 
 ### `?next=` safety
 

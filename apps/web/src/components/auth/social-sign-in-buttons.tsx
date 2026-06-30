@@ -30,15 +30,25 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
     const webOrigin = window.location.origin;
     const safeNext = isSafeNextPath(next) ? next : "/dashboard";
     const callbackParams = new URLSearchParams({ next: safeNext });
-    const { error } = await authClient.signIn.social({
+    const { data, error } = await authClient.signIn.social({
       provider,
       callbackURL: `${webOrigin}/auth/social-callback?${callbackParams.toString()}`,
       errorCallbackURL: `${webOrigin}/login?social_error=1`,
+      disableRedirect: true,
     });
     if (error) {
       setPending(null);
-      window.location.href = "/login?social_error=1";
+      window.location.replace("/login?social_error=1");
+      return;
     }
+    const redirectUrl = (data as { url?: string } | null | undefined)?.url;
+    if (redirectUrl) {
+      // Replace (not assign) so Back from the provider skips the pre-OAuth /login page.
+      window.location.replace(redirectUrl);
+      return;
+    }
+    setPending(null);
+    window.location.replace("/login?social_error=1");
   };
 
   return (

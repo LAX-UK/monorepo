@@ -1,6 +1,7 @@
 import {
   buildRequestWithAuthEdgeHeader,
   getAuthPublicCookieRedirectUrl,
+  isStaleAuthEdgePublicLanding,
 } from "@/lib/auth/auth-public-edge";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
@@ -43,22 +44,55 @@ describe("getAuthPublicCookieRedirectUrl", () => {
 
   it("bypasses when verify_pending=1", () => {
     const u = new URL("http://localhost:3000/login?verify_pending=1");
-    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
+    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1")).toBeNull();
+  });
+
+  it("bypasses when social_error=1 (OAuth cancel / failure recovery)", () => {
+    const u = new URL("http://localhost:3000/login?social_error=1&reason=access_denied");
+    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1")).toBeNull();
   });
 
   it("redirects login with cookie to safe next", () => {
     const u = new URL("http://localhost:3000/login?next=/dashboard/bids");
-    const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session=1");
+    const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1");
     expect(out?.pathname).toBe("/dashboard/bids");
     expect(out?.searchParams.get("from")).toBe("auth-edge");
     expect(out?.searchParams.get("welcome")).toBe("back");
   });
 
+  it("routes public next through social-callback instead of marketing pages", () => {
+    const u = new URL("http://localhost:3000/login?next=/");
+    const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1");
+    expect(out?.pathname).toBe("/auth/social-callback");
+    expect(out?.searchParams.get("next")).toBe("/");
+    expect(out?.searchParams.get("from")).toBeNull();
+  });
+
   it("falls back to post-auth callback when next is unsafe", () => {
     const u = new URL("http://localhost:3000/login?next=//evil.com");
-    const out = getAuthPublicCookieRedirectUrl(u, "session_token=x");
+    const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=x");
     expect(out?.pathname).toBe("/auth/social-callback");
     expect(out?.searchParams.get("from")).toBeNull();
+  });
+});
+
+describe("isStaleAuthEdgePublicLanding", () => {
+  it("detects homepage stale edge landing", () => {
+    expect(
+      isStaleAuthEdgePublicLanding(
+        new URL("http://localhost:3000/?from=auth-edge&welcome=back"),
+        "better-auth.session_token=1",
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores protected dashboard edge landing", () => {
+    expect(
+      isStaleAuthEdgePublicLanding(
+        new URL("http://localhost:3000/dashboard?from=auth-edge&welcome=back"),
+        "better-auth.session_token=1",
+      ),
+    ).toBe(false);
   });
 });
 

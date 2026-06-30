@@ -1,6 +1,9 @@
 import {
   buildRequestWithAuthEdgeHeader,
+  buildStaleSessionRecoveryLoginUrl,
   getAuthPublicCookieRedirectUrl,
+  isLoginRecoveryLanding,
+  isStaleAuthEdgePublicLanding,
 } from "@/lib/auth/auth-public-edge";
 import { purgeStaleAuthCookies } from "@/lib/auth/purge-stale-auth-cookies";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
@@ -81,17 +84,22 @@ function applyOrgOnboardingPathHeaders(request: NextRequest, reqHeaders: Headers
   }
 }
 
-/** True when the URL is the post-stale-session landing page; we purge the cookies as we render it. */
+/** True when the URL is a post-stale-session landing page; we purge the cookies as we render it. */
 function isStaleSessionLanding(url: URL): boolean {
-  if (url.pathname !== "/login") return false;
-  return (
-    url.searchParams.get("session_expired") === "1" || url.searchParams.get("auth") === "required"
-  );
+  return isLoginRecoveryLanding(url);
 }
 
 export async function middleware(request: NextRequest) {
   const nonce = generateNonce();
   const themeInitScriptSrcToken = await themeInitScriptSrcTokenPromise;
+  const cookieHeader = request.headers.get("cookie") ?? "";
+
+  if (isStaleAuthEdgePublicLanding(request.nextUrl, cookieHeader)) {
+    const recovery = buildStaleSessionRecoveryLoginUrl(request.nextUrl);
+    const res = NextResponse.redirect(recovery, 307);
+    purgeStaleAuthCookies(res);
+    return res;
+  }
 
   // Auth edge header tagging.
   const tagged = buildRequestWithAuthEdgeHeader(request);
@@ -105,7 +113,7 @@ export async function middleware(request: NextRequest) {
   } else {
     const redirectUrl = getAuthPublicCookieRedirectUrl(
       request.nextUrl,
-      request.headers.get("cookie") ?? "",
+      cookieHeader,
     );
     if (redirectUrl) {
       return NextResponse.redirect(redirectUrl, 307);

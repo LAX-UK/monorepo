@@ -17,7 +17,12 @@ export default async function SocialCallbackPage({
 
   const user = await getServerSessionUser();
   if (!user) {
-    redirect("/login?social_error=1&reason=session_missing");
+    const requestedNext = typeof sp.next === "string" ? sp.next : null;
+    const params = new URLSearchParams({ social_error: "1", reason: "session_missing" });
+    if (isSafeNextPath(requestedNext ?? undefined)) {
+      params.set("next", requestedNext as string);
+    }
+    redirect(`/login?${params.toString()}`);
   }
 
   if (user.suspended === true) {
