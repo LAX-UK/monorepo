@@ -1,20 +1,18 @@
-export const PALETTE_OPEN_EVENT = "lax-command-palette-open";
+import { useCommandPaletteStore } from "@/lib/stores/command-palette-store";
 
-let pendingOpen = false;
+export const PALETTE_OPEN_EVENT = "lax-command-palette-open";
 
 export function openCommandPalette(): void {
   if (typeof window === "undefined") return;
-  pendingOpen = true;
+  useCommandPaletteStore.getState().requestOpen();
   window.dispatchEvent(new Event(PALETTE_OPEN_EVENT));
 }
 
 /** Consumes a palette open requested before the lazy chunk mounted. */
 export function takePendingPaletteOpen(): boolean {
-  const wasPending = pendingOpen;
-  pendingOpen = false;
-  return wasPending;
+  return useCommandPaletteStore.getState().takePendingOpen();
 }
 
 export function clearPendingPaletteOpen(): void {
-  pendingOpen = false;
+  useCommandPaletteStore.getState().clearPendingOpen();
 }

@@ -19,6 +19,7 @@ import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { PLATFORM_ADMIN_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { AdminNuqsAdapter } from "@/lib/nuqs/admin-nuqs-adapter";
 import {
   DASHBOARD_DENSITY_COOKIE,
   parseDashboardDensityCookie,
@@ -125,46 +126,48 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <ExportShellClient>
-      <div
-        className={
-          showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
-        }
-      >
-        <ImpersonationEndWarningListener />
-        {impersonation && showImpersonationBanner ? (
-          <ImpersonationBanner
-            entityName={impersonation.displayName}
-            expiresAtIso={impersonation.expiresAtIso}
-          />
-        ) : null}
-        {role === "finance" ? (
-          <FinanceShell
-            user={user}
-            pendingSubmissionCount={pendingSubmissionCount}
-            navCounts={navCounts}
-            cookieDensity={cookieDensity}
-            acting={acting}
-            headerRightSlot={headerRightSlot}
-            topSlot={<WelcomeBackToast />}
-          >
-            {children}
-          </FinanceShell>
-        ) : (
-          <StaffShell
-            user={user}
-            pendingSubmissionCount={pendingSubmissionCount}
-            pendingArtistCount={pendingArtistCount}
-            navCounts={navCounts}
-            cookieDensity={cookieDensity}
-            acting={acting}
-            headerRightSlot={headerRightSlot}
-            contextBanner={<PlatformStaffContextBanners />}
-            topSlot={<WelcomeBackToast />}
-          >
-            {children}
-          </StaffShell>
-        )}
-      </div>
+      <AdminNuqsAdapter>
+        <div
+          className={
+            showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
+          }
+        >
+          <ImpersonationEndWarningListener />
+          {impersonation && showImpersonationBanner ? (
+            <ImpersonationBanner
+              entityName={impersonation.displayName}
+              expiresAtIso={impersonation.expiresAtIso}
+            />
+          ) : null}
+          {role === "finance" ? (
+            <FinanceShell
+              user={user}
+              pendingSubmissionCount={pendingSubmissionCount}
+              navCounts={navCounts}
+              cookieDensity={cookieDensity}
+              acting={acting}
+              headerRightSlot={headerRightSlot}
+              topSlot={<WelcomeBackToast />}
+            >
+              {children}
+            </FinanceShell>
+          ) : (
+            <StaffShell
+              user={user}
+              pendingSubmissionCount={pendingSubmissionCount}
+              pendingArtistCount={pendingArtistCount}
+              navCounts={navCounts}
+              cookieDensity={cookieDensity}
+              acting={acting}
+              headerRightSlot={headerRightSlot}
+              contextBanner={<PlatformStaffContextBanners />}
+              topSlot={<WelcomeBackToast />}
+            >
+              {children}
+            </StaffShell>
+          )}
+        </div>
+      </AdminNuqsAdapter>
     </ExportShellClient>
   );
 }

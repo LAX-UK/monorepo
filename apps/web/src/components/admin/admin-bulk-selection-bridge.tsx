@@ -1,15 +1,13 @@
 "use client";
 
-import { BulkActionsToolbar, type BulkOperation } from "@/components/admin/bulk-actions-toolbar";
-import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react";
+import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import {
+  type AdminBulkSelectionBridge,
+  useAdminBulkSelectionStore,
+} from "@/lib/stores/admin-bulk-selection-store";
+import type { ReactNode } from "react";
 
-export type AdminBulkSelectionBridge = {
-  selectedIds: readonly string[];
-  operations: readonly BulkOperation[];
-  clear: () => void;
-  isSelected: (id: string) => boolean;
-  toggleSelected: (id: string, checked: boolean) => void;
-};
+export type { AdminBulkSelectionBridge };
 
 type AdminBulkSelectionActions = {
   registerBulk: (bulk: AdminBulkSelectionBridge | null) => void;
@@ -19,34 +17,18 @@ type AdminBulkSelectionContextValue = AdminBulkSelectionActions & {
   bulk: AdminBulkSelectionBridge | null;
 };
 
-const AdminBulkSelectionActionsContext = createContext<AdminBulkSelectionActions | null>(null);
-const AdminBulkSelectionBulkContext = createContext<AdminBulkSelectionBridge | null>(null);
-
-/** Shares bulk selection between a list board and shell-level mobile cards. */
+/** Legacy wrapper — bulk selection state lives in Zustand (no Context re-renders). */
 export function AdminBulkSelectionProvider({ children }: { children: ReactNode }) {
-  const [bulk, setBulk] = useState<AdminBulkSelectionBridge | null>(null);
-
-  const registerBulk = useCallback((next: AdminBulkSelectionBridge | null) => {
-    setBulk(next);
-  }, []);
-
-  const actions = useMemo(() => ({ registerBulk }), [registerBulk]);
-
-  return (
-    <AdminBulkSelectionActionsContext.Provider value={actions}>
-      <AdminBulkSelectionBulkContext.Provider value={bulk}>
-        {children}
-      </AdminBulkSelectionBulkContext.Provider>
-    </AdminBulkSelectionActionsContext.Provider>
-  );
+  return <>{children}</>;
 }
 
 export function useAdminBulkSelectionActions(): AdminBulkSelectionActions | null {
-  return useContext(AdminBulkSelectionActionsContext);
+  const registerBulk = useAdminBulkSelectionStore((s) => s.registerBulk);
+  return { registerBulk };
 }
 
 export function useAdminBulkSelectionBulk(): AdminBulkSelectionBridge | null {
-  return useContext(AdminBulkSelectionBulkContext);
+  return useAdminBulkSelectionStore((s) => s.bulk);
 }
 
 export function useAdminBulkSelection(): AdminBulkSelectionContextValue | null {

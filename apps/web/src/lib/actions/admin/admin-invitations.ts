@@ -83,58 +83,74 @@ export async function adminCreateInvitationAction(formData: FormData): Promise<v
   );
 }
 
+export async function adminRevokeInvitationResultAction(
+  invitationId: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminRevokeInvitationResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
+    if (denied) return denied;
+    const p = invitationIdUuidParamSchema.safeParse({ invitationId });
+    if (!p.success) {
+      return actionFailure("Invalid invitation", zodErrorToFieldErrors(p.error));
+    }
+    const res = await authedServerFetch(`/admin/invitations/${p.data.invitationId}/revoke`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      return actionFailure(payload.error ?? "Could not revoke", undefined, res.status);
+    }
+    revalidatePath("/admin/invitations");
+    return actionSuccess();
+  });
+}
+
 export async function adminRevokeInvitationAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminRevokeInvitationAction",
     async () => {
-      const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
-      if (denied && !denied.ok) {
-        redirect(`/admin/invitations?error=${encodeURIComponent(denied.error)}`);
-      }
       const id = String(formData.get("invitationId") ?? "").trim();
-      const p = invitationIdUuidParamSchema.safeParse({ invitationId: id });
-      if (!p.success) {
-        redirect(`/admin/invitations?error=${encodeURIComponent("Invalid invitation")}`);
+      const r = await adminRevokeInvitationResultAction(id);
+      if (!r.ok) {
+        redirect(`/admin/invitations?error=${encodeURIComponent(r.error)}`);
       }
-      const res = await authedServerFetch(`/admin/invitations/${p.data.invitationId}/revoke`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirect(
-          `/admin/invitations?error=${encodeURIComponent(payload.error ?? "Could not revoke")}`,
-        );
-      }
-      revalidatePath("/admin/invitations");
       redirect("/admin/invitations");
     },
     { formData },
   );
 }
 
+export async function adminResendInvitationResultAction(
+  invitationId: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminResendInvitationResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
+    if (denied) return denied;
+    const p = invitationIdUuidParamSchema.safeParse({ invitationId });
+    if (!p.success) {
+      return actionFailure("Invalid invitation", zodErrorToFieldErrors(p.error));
+    }
+    const res = await authedServerFetch(`/admin/invitations/${p.data.invitationId}/resend`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      return actionFailure(payload.error ?? "Could not resend", undefined, res.status);
+    }
+    revalidatePath("/admin/invitations");
+    return actionSuccess();
+  });
+}
+
 export async function adminResendInvitationAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminResendInvitationAction",
     async () => {
-      const denied = await denyUnlessAdminCapability(INVITATIONS_ACCESS);
-      if (denied && !denied.ok) {
-        redirect(`/admin/invitations?error=${encodeURIComponent(denied.error)}`);
-      }
       const id = String(formData.get("invitationId") ?? "").trim();
-      const p = invitationIdUuidParamSchema.safeParse({ invitationId: id });
-      if (!p.success) {
-        redirect(`/admin/invitations?error=${encodeURIComponent("Invalid invitation")}`);
+      const r = await adminResendInvitationResultAction(id);
+      if (!r.ok) {
+        redirect(`/admin/invitations?error=${encodeURIComponent(r.error)}`);
       }
-      const res = await authedServerFetch(`/admin/invitations/${p.data.invitationId}/resend`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirect(
-          `/admin/invitations?error=${encodeURIComponent(payload.error ?? "Could not resend")}`,
-        );
-      }
-      revalidatePath("/admin/invitations");
       redirect("/admin/invitations");
     },
     { formData },

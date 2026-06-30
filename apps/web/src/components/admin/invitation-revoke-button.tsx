@@ -1,7 +1,10 @@
 "use client";
 
-import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
-import { adminRevokeInvitationAction } from "@/lib/actions/admin";
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
+import { adminRevokeInvitationResultAction } from "@/lib/actions/admin/admin-invitations";
+import { notify } from "@/lib/ui/notify";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 
 export function InvitationRevokeButton({
   invitationId,
@@ -10,24 +13,33 @@ export function InvitationRevokeButton({
   invitationId: string;
   disabled?: boolean;
 }) {
-  const formId = `revoke-invitation-${invitationId}`;
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  const handleRevoke = () => {
+    startTransition(async () => {
+      const result = await adminRevokeInvitationResultAction(invitationId);
+      if (!result.ok) {
+        notify.error(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  };
 
   return (
-    <form id={formId} action={adminRevokeInvitationAction}>
-      <input type="hidden" name="invitationId" value={invitationId} />
-      <ConfirmFormSubmit
-        formId={formId}
-        variant="ghost"
-        size="sm"
-        disabled={disabled}
-        className="font-label text-[10px] uppercase"
-        confirmTitle="Revoke invitation?"
-        confirmBody="The invite link will stop working immediately."
-        confirmLabel="Revoke"
-        tone="danger"
-      >
-        Revoke
-      </ConfirmFormSubmit>
-    </form>
+    <ConfirmActionButton
+      variant="ghost"
+      size="sm"
+      disabled={disabled || pending}
+      className="font-label text-[10px] uppercase"
+      confirmTitle="Revoke invitation?"
+      confirmBody="The invite link will stop working immediately."
+      confirmLabel="Revoke"
+      tone="danger"
+      onConfirmed={handleRevoke}
+    >
+      {pending ? "Revoking…" : "Revoke"}
+    </ConfirmActionButton>
   );
 }

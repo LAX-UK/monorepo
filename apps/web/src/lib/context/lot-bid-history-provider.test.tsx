@@ -1,4 +1,5 @@
 import { LotBidHistoryProvider, useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -50,16 +51,27 @@ const history = [
   },
 ];
 
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+}
+
 function wrapper({ children }: { children: ReactNode }) {
+  const queryClient = createTestQueryClient();
   return (
-    <LotBidHistoryProvider
-      lotId={LOT_ID}
-      initialHistory={[]}
-      initialCurrentPrice="100.00"
-      initialLeadingBidderId={null}
-    >
-      {children}
-    </LotBidHistoryProvider>
+    <QueryClientProvider client={queryClient}>
+      <LotBidHistoryProvider
+        lotId={LOT_ID}
+        initialHistory={[]}
+        initialCurrentPrice="100.00"
+        initialLeadingBidderId={null}
+      >
+        {children}
+      </LotBidHistoryProvider>
+    </QueryClientProvider>
   );
 }
 

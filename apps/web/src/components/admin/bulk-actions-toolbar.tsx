@@ -109,11 +109,14 @@ export function BulkActionsToolbar({
     startTransition(() => {
       void (async () => {
         const result = await operation.run(selectedIds, options);
+        const refresh = () => {
+          router.refresh();
+        };
         const handled = handleBulkActionResult({
           operationLabel: operation.label,
           result,
           onPartialClear: onClear,
-          refresh: () => router.refresh(),
+          refresh,
         });
         if (handled.variant === "error") {
           notify.error(handled.message);
@@ -128,7 +131,7 @@ export function BulkActionsToolbar({
           }
         }
         if (handled.shouldClear) onClear();
-        if (handled.shouldRefresh) router.refresh();
+        if (handled.shouldRefresh) refresh();
       })();
     });
   };

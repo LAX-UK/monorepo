@@ -29,6 +29,7 @@ import {
   THEME_COOKIE_NAME,
   parseThemeCookie,
 } from "@/lib/preferences/theme-cookie";
+import { AppQueryProvider } from "@/lib/query/query-provider";
 import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
@@ -139,9 +140,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <MarketingClickIdsSync />
           <BrowserOfflineBanner />
           <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
-            <PushBootstrap />
-            <PwaInstallPrompt />
-            {children}
+            <AppQueryProvider>
+              <PushBootstrap />
+              <PwaInstallPrompt />
+              {children}
+            </AppQueryProvider>
           </AuthSessionProvider>
           <Toaster />
           <WebVitalsReporter />

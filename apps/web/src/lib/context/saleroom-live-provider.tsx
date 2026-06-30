@@ -1,11 +1,13 @@
 "use client";
 
+import { useSaleroomStatusQuery } from "@/hooks/saleroom/use-saleroom-status-query";
 import {
   LIVE_CONNECTIVITY_COPY,
   saleroomHydrateNoticeId,
 } from "@/lib/connection/live-connectivity-copy";
 import { useLiveConnectivityNoticeReporterOptional } from "@/lib/connection/live-connectivity-notice";
-import { fetchSaleroomStatus } from "@/lib/data/http/saleroom-status.client";
+import { saleroomKeys } from "@/lib/data/queries/saleroom";
+import { useQueryCacheState } from "@/lib/query/use-query-cache-state";
 import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import {
@@ -14,6 +16,7 @@ import {
 } from "@/lib/saleroom/public-session-status";
 import { getSocket } from "@/lib/socket";
 import type { SaleroomRealtimePayload } from "@auction/types";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type ReactNode,
   createContext,
@@ -22,11 +25,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
-
-/** How often to silently re-sync saleroom status while the tab is mounted. */
-const RESYNC_INTERVAL_MS = 15_000;
 
 type SaleroomLiveContextValue = PublicSaleroomSessionStatus & {
   isSessionActive: boolean;
@@ -44,47 +43,49 @@ type Props = {
   children: ReactNode;
 };
 
+/**
+ * Subscribe to saleroom cache updates for socket-driven patches.
+ * useQuery().data does not re-render after setQueryData when initialData is set
+ * (see use-saleroom-status-query.cache-update.test.tsx).
+ */
+function useSaleroomCacheState(
+  saleId: string,
+  initial: PublicSaleroomSessionStatus,
+): PublicSaleroomSessionStatus {
+  return useQueryCacheState(saleroomKeys.status(saleId), initial, {
+    matchUpdatedKey: (updatedKey) =>
+      updatedKey[0] === saleroomKeys.all[0] && updatedKey[2] === saleId,
+  });
+}
+
 /** Subscribes to saleroom session events for hybrid/onsite buyer awareness. */
 export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
-  const [state, setState] = useState<PublicSaleroomSessionStatus>(initial);
+  const queryClient = useQueryClient();
   const noticeReporter = useLiveConnectivityNoticeReporterOptional();
   const noticeReporterRef = useRef(noticeReporter);
-  /** After first socket event or HTTP hydrate, ignore SSR `initial` re-seeds. */
-  const hasAuthoritativeStateRef = useRef(false);
   /** Prevents overlapping silent hydrates from stacking. */
   const hydratingSilentlyRef = useRef(false);
+  const initialRef = useRef(initial);
+
+  useEffect(() => {
+    initialRef.current = initial;
+  }, [initial]);
+
+  const { refetch, isFetching } = useSaleroomStatusQuery(saleId, {
+    initialData: initial,
+  });
+
+  const state = useSaleroomCacheState(saleId, initial);
 
   useEffect(() => {
     noticeReporterRef.current = noticeReporter;
   }, [noticeReporter]);
 
-  useEffect(() => {
-    if (!hasAuthoritativeStateRef.current) {
-      setState(initial);
-    }
-  }, [initial]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribe when sale changes; `initial` is applied once per saleId transition
-  useEffect(() => {
-    hasAuthoritativeStateRef.current = false;
-    hydratingSilentlyRef.current = false;
-    setState(initial);
-
-    const socket = getSocket();
-    let hadConnected = socket.connected;
-
-    const markAuthoritative = () => {
-      hasAuthoritativeStateRef.current = true;
-    };
-
-    /**
-     * Fetch the current saleroom status from the server and apply it.
-     * When `silent` is true, failures are swallowed and no toasts are shown,
-     * which is appropriate for the periodic interval and focus-resync paths.
-     */
-    const hydrateFromServer = async (opts?: { silent?: boolean }): Promise<boolean> => {
+  const hydrateFromServer = useCallback(
+    async (opts?: { silent?: boolean }): Promise<boolean> => {
       const noticeId = saleroomHydrateNoticeId(saleId);
-      const snap = await fetchSaleroomStatus(saleId);
+      const result = await refetch();
+      const snap = result.data ?? null;
       if (!snap) {
         if (!opts?.silent) {
           noticeReporterRef.current?.reportNotice({
@@ -94,36 +95,36 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
         }
         return false;
       }
-      setState(snap);
-      markAuthoritative();
       noticeReporterRef.current?.clearNotice(noticeId);
       return true;
-    };
+    },
+    [saleId, refetch],
+  );
 
-    /**
-     * Silent re-hydrate used by the interval and visibility paths.
-     * De-duped by `hydratingSilentlyRef` so simultaneous triggers only fire once.
-     */
-    const silentHydrate = () => {
-      if (hydratingSilentlyRef.current) return;
-      hydratingSilentlyRef.current = true;
-      void hydrateFromServer({ silent: true }).finally(() => {
-        hydratingSilentlyRef.current = false;
-      });
-    };
+  const silentHydrate = useCallback(() => {
+    if (hydratingSilentlyRef.current || isFetching) return;
+    hydratingSilentlyRef.current = true;
+    void hydrateFromServer({ silent: true }).finally(() => {
+      hydratingSilentlyRef.current = false;
+    });
+  }, [hydrateFromServer, isFetching]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribe when sale changes
+  useEffect(() => {
+    hydratingSilentlyRef.current = false;
+
+    const socket = getSocket();
+    let hadConnected = socket.connected;
+    const queryKey = saleroomKeys.status(saleId);
 
     const onSaleroom = (raw: unknown) => {
       const event = raw as SaleroomRealtimePayload;
       if (!event || typeof event.kind !== "string" || event.saleId !== saleId) return;
-      setState((prev) => applySaleroomEvent(prev, event));
-      markAuthoritative();
+      queryClient.setQueryData<PublicSaleroomSessionStatus>(queryKey, (prev) =>
+        applySaleroomEvent(prev ?? initialRef.current, event),
+      );
     };
 
-    /**
-     * Join the saleroom socket room, then re-hydrate once the server confirms
-     * the join. This closes the join/advance race where `advanced_to_lot` fires
-     * between the initial hydrate fetch and the room-join completing.
-     */
     const join = () => {
       socket.emit("joinSaleroom", { saleId }, () => {
         silentHydrate();
@@ -138,7 +139,6 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
       hadConnected = true;
     };
 
-    /** Re-hydrate when the tab becomes visible (returning user is immediately correct). */
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         silentHydrate();
@@ -151,14 +151,10 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
     socket.on("connect", onConnect);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
-    /** Periodic resync: catches any missed saleroom event while the socket stays connected. */
-    const intervalId = setInterval(silentHydrate, RESYNC_INTERVAL_MS);
-
     return () => {
       socket.off("saleroomEvent", onSaleroom);
       socket.off("connect", onConnect);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      clearInterval(intervalId);
       socket.emit("leaveSaleroom", { saleId }, () => {});
     };
   }, [saleId]);
@@ -169,21 +165,8 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
   );
 
   const refresh = useCallback(() => {
-    if (hydratingSilentlyRef.current) return;
-    hydratingSilentlyRef.current = true;
-    const noticeId = saleroomHydrateNoticeId(saleId);
-    void fetchSaleroomStatus(saleId)
-      .then((snap) => {
-        if (snap) {
-          setState(snap);
-          hasAuthoritativeStateRef.current = true;
-          noticeReporterRef.current?.clearNotice(noticeId);
-        }
-      })
-      .finally(() => {
-        hydratingSilentlyRef.current = false;
-      });
-  }, [saleId]);
+    silentHydrate();
+  }, [silentHydrate]);
 
   const value = useMemo(
     (): SaleroomLiveContextValue => ({

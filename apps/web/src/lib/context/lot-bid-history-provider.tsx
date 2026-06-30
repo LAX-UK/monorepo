@@ -1,14 +1,12 @@
 "use client";
 
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import { useLotBidHydrateQuery } from "@/hooks/lot-bid/use-lot-bid-hydrate-query";
 import { useLotRealtime } from "@/hooks/use-lot-realtime";
-import { fetchLotBidHistory } from "@/lib/bid/fetch-lot-bid-history.client";
-import { type LotBidSnapshot, fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
+import type { LotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
 import {
-  type LotBidHistoryState,
   type OwnBidInput,
   reduceOnBidUpdate,
-  reduceOnHydrate,
   reduceOnOwnBid,
 } from "@/lib/bid/lot-bid-history-reducer";
 import type { OwnBidEchoGuard } from "@/lib/bid/own-bid-echo-guard";
@@ -19,7 +17,15 @@ import {
 } from "@/lib/connection/live-connectivity-copy";
 import { useLiveConnectivityNoticeReporterOptional } from "@/lib/connection/live-connectivity-notice";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
-import type { BidUpdateEvent, Lot, LotEndedEvent } from "@auction/types";
+import {
+  type LotBidHydrateData,
+  buildLotBidInitialHydrate,
+  fetchLotBidHydrate,
+  lotBidKeys,
+} from "@/lib/data/queries/lot-bid";
+import { useQueryCacheState } from "@/lib/query/use-query-cache-state";
+import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type ReactNode,
   createContext,
@@ -28,11 +34,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
-
-/** How often to silently re-sync lot bid state while the tab is mounted. */
-const RESYNC_INTERVAL_MS = 15_000;
 
 type LotBidHistoryContextValue = {
   entries: BidHistoryEntry[];
@@ -50,17 +52,6 @@ type LotBidHistoryContextValue = {
 
 const LotBidHistoryContext = createContext<LotBidHistoryContextValue | null>(null);
 
-function deriveLeadingBidderId(entries: BidHistoryEntry[]): string | null {
-  if (entries.length === 0) return null;
-  const sorted = [...entries].sort((a, b) => {
-    const na = Number.parseFloat(a.amount);
-    const nb = Number.parseFloat(b.amount);
-    if (nb !== na) return nb - na;
-    return b.at - a.at;
-  });
-  return sorted[0]?.bidderId ?? null;
-}
-
 type ProviderProps = {
   lotId: string;
   initialHistory: BidHistoryEntry[];
@@ -69,6 +60,17 @@ type ProviderProps = {
   currentUserId?: string | null;
   children: ReactNode;
 };
+
+function hydrateDataToContext(
+  data: LotBidHydrateData,
+): Omit<LotBidHistoryContextValue, "applyOwnBid" | "setEndedWinner" | "refreshFromServer"> {
+  return {
+    entries: data.entries,
+    currentPrice: data.snapshot.currentPrice,
+    leadingBidderId: data.leadingBidderId,
+    latestSnapshotReserveMet: data.reserveMet,
+  };
+}
 
 /** Single source of truth for lot bid history and live price on the marketing page. */
 export function LotBidHistoryProvider({
@@ -79,20 +81,59 @@ export function LotBidHistoryProvider({
   currentUserId = null,
   children,
 }: ProviderProps) {
+  const queryClient = useQueryClient();
   const onlineLifecycle = useOnlineLotLifecycle();
   const noticeReporter = useLiveConnectivityNoticeReporterOptional();
   const localOwnBidRef = useRef<OwnBidEchoGuard | null>(null);
   const ownBidEchoGuardRef = onlineLifecycle?.ownBidEchoGuardRef ?? localOwnBidRef;
 
-  const [state, setState] = useState<LotBidHistoryState>(() => ({
-    entries: initialHistory,
-    currentPrice: initialCurrentPrice,
-    leadingBidderId: initialLeadingBidderId,
-  }));
-  const [latestSnapshotReserveMet, setLatestSnapshotReserveMet] = useState<boolean | undefined>(
-    undefined,
+  const initialHydrate = useMemo(
+    () =>
+      buildLotBidInitialHydrate({
+        lotId,
+        initialHistory,
+        initialCurrentPrice,
+        initialLeadingBidderId,
+      }),
+    [lotId, initialHistory, initialCurrentPrice, initialLeadingBidderId],
   );
-  const lotStatusRef = useRef<Lot["status"] | null>(null);
+
+  const { refetch } = useLotBidHydrateQuery(lotId, {
+    initialData: initialHydrate,
+  });
+  const hydrateData = useQueryCacheState(lotBidKeys.hydrate(lotId), initialHydrate);
+
+  const patchHydrateCache = useCallback(
+    (updater: (prev: LotBidHydrateData) => LotBidHydrateData) => {
+      queryClient.setQueryData<LotBidHydrateData>(lotBidKeys.hydrate(lotId), (prev) =>
+        updater(prev ?? initialHydrate),
+      );
+    },
+    [queryClient, lotId, initialHydrate],
+  );
+
+  const applyLifecycleFromSnapshot = useCallback(
+    (snapshot: LotBidSnapshot) => {
+      const endMs = new Date(snapshot.endTime).getTime();
+      onlineLifecycle?.setLiveEndTimeMs(endMs);
+      onlineLifecycle?.setLiveLotStatus(snapshot.status);
+    },
+    [onlineLifecycle],
+  );
+
+  useEffect(() => {
+    applyLifecycleFromSnapshot(hydrateData.snapshot);
+  }, [hydrateData.snapshot, applyLifecycleFromSnapshot]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && hydrateData.snapshot.status !== "ended") {
+        void refetch();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [refetch, hydrateData.snapshot.status]);
 
   const applyOwnBid = useCallback(
     (bid: OwnBidInput) => {
@@ -103,30 +144,53 @@ export function LotBidHistoryProvider({
         leadingBidderId: bidderId || null,
         at: Date.now(),
       };
-      setState((prev) => reduceOnOwnBid(prev, bid));
+      patchHydrateCache((prev) => {
+        const nextState = reduceOnOwnBid(
+          {
+            entries: prev.entries,
+            currentPrice: prev.snapshot.currentPrice,
+            leadingBidderId: prev.leadingBidderId,
+          },
+          bid,
+        );
+        return {
+          ...prev,
+          entries: nextState.entries,
+          leadingBidderId: nextState.leadingBidderId,
+          snapshot: {
+            ...prev.snapshot,
+            currentPrice: nextState.currentPrice,
+          },
+        };
+      });
     },
-    [ownBidEchoGuardRef],
+    [ownBidEchoGuardRef, patchHydrateCache],
   );
 
-  const setEndedWinner = useCallback((winnerId: string | null, currentPrice: string) => {
-    setState((prev) => ({
-      ...prev,
-      currentPrice,
-      leadingBidderId: winnerId,
-    }));
-  }, []);
+  const setEndedWinner = useCallback(
+    (winnerId: string | null, currentPrice: string) => {
+      patchHydrateCache((prev) => ({
+        ...prev,
+        leadingBidderId: winnerId,
+        snapshot: {
+          ...prev.snapshot,
+          currentPrice,
+          status: "ended",
+          winnerId,
+        },
+      }));
+    },
+    [patchHydrateCache],
+  );
 
-  const hydrateFromServer = useCallback(
+  const refreshFromServer = useCallback(
     async (opts?: { silent?: boolean }): Promise<{
       ok: boolean;
       snapshot?: LotBidSnapshot;
     }> => {
       const noticeId = lotHydrateNoticeId(lotId);
-      const [lotSnap, bidEntries] = await Promise.all([
-        fetchLotBidSnapshot(lotId),
-        fetchLotBidHistory(lotId),
-      ]);
-      if (!lotSnap || !bidEntries) {
+      const hydrated = await fetchLotBidHydrate(lotId);
+      if (!hydrated) {
         if (!opts?.silent) {
           noticeReporter?.reportNotice({
             id: noticeId,
@@ -135,28 +199,14 @@ export function LotBidHistoryProvider({
         }
         return { ok: false };
       }
-      lotStatusRef.current = lotSnap.status;
-      const leadingBidderId =
-        lotSnap.status === "ended"
-          ? (lotSnap.winnerId ?? deriveLeadingBidderId(bidEntries))
-          : deriveLeadingBidderId(bidEntries);
-      setState((prev) =>
-        reduceOnHydrate(prev, {
-          currentPrice: lotSnap.currentPrice,
-          leadingBidderId,
-          entries: bidEntries,
-        }),
-      );
-      const endMs = new Date(lotSnap.endTime).getTime();
-      onlineLifecycle?.setLiveEndTimeMs(endMs);
-      onlineLifecycle?.setLiveLotStatus(lotSnap.status);
+
+      queryClient.setQueryData(lotBidKeys.hydrate(lotId), hydrated);
+      applyLifecycleFromSnapshot(hydrated.snapshot);
       noticeReporter?.clearNotice(noticeId);
-      if (lotSnap.reserveMet !== undefined) {
-        setLatestSnapshotReserveMet(lotSnap.reserveMet);
-      }
-      return { ok: true, snapshot: lotSnap };
+
+      return { ok: true, snapshot: hydrated.snapshot };
     },
-    [lotId, onlineLifecycle, noticeReporter],
+    [lotId, queryClient, noticeReporter, applyLifecycleFromSnapshot],
   );
 
   useLotRealtime(lotId, {
@@ -166,54 +216,55 @@ export function LotBidHistoryProvider({
         ownBidEchoGuardRef.current,
         currentUserId ?? null,
       );
-      setState((prev) => reduceOnBidUpdate(prev, e, { skipPriceLeader }));
+      patchHydrateCache((prev) => {
+        const nextState = reduceOnBidUpdate(
+          {
+            entries: prev.entries,
+            currentPrice: prev.snapshot.currentPrice,
+            leadingBidderId: prev.leadingBidderId,
+          },
+          e,
+          { skipPriceLeader },
+        );
+        return {
+          ...prev,
+          entries: nextState.entries,
+          leadingBidderId: nextState.leadingBidderId,
+          snapshot: skipPriceLeader
+            ? prev.snapshot
+            : {
+                ...prev.snapshot,
+                currentPrice: nextState.currentPrice,
+              },
+        };
+      });
     },
     onLotEnded: (p) => {
       const ev = p as LotEndedEvent;
-      lotStatusRef.current = "ended";
-      setState((prev) => ({
+      patchHydrateCache((prev) => ({
         ...prev,
-        currentPrice: ev.currentPrice,
         leadingBidderId: ev.winnerId ?? null,
+        snapshot: {
+          ...prev.snapshot,
+          currentPrice: ev.currentPrice,
+          status: "ended",
+          winnerId: ev.winnerId ?? null,
+        },
       }));
     },
     onReconnect: () => {
-      void hydrateFromServer();
+      void refreshFromServer();
     },
   });
 
-  useEffect(() => {
-    const silentHydrate = () => {
-      if (lotStatusRef.current === "ended") return;
-      void hydrateFromServer({ silent: true });
-    };
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        silentHydrate();
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    const intervalId = setInterval(silentHydrate, RESYNC_INTERVAL_MS);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      clearInterval(intervalId);
-    };
-  }, [hydrateFromServer]);
-
   const value = useMemo(
     (): LotBidHistoryContextValue => ({
-      entries: state.entries,
-      currentPrice: state.currentPrice,
-      leadingBidderId: state.leadingBidderId,
-      latestSnapshotReserveMet,
+      ...hydrateDataToContext(hydrateData),
       applyOwnBid,
       setEndedWinner,
-      refreshFromServer: hydrateFromServer,
+      refreshFromServer,
     }),
-    [state, latestSnapshotReserveMet, applyOwnBid, setEndedWinner, hydrateFromServer],
+    [hydrateData, applyOwnBid, setEndedWinner, refreshFromServer],
   );
 
   return <LotBidHistoryContext.Provider value={value}>{children}</LotBidHistoryContext.Provider>;

@@ -1,5 +1,6 @@
 import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
 import type { Lot } from "@auction/types";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,6 +40,8 @@ vi.mock("@/lib/context/online-lot-lifecycle", () => ({
   useOnlineLotLifecycle: () => ({
     extendedByMs: null,
     setExtendedDeltaMs: vi.fn(),
+    setLiveEndTimeMs: vi.fn(),
+    setLiveLotStatus: vi.fn(),
     bidCardInView: true,
     setBidCardInView: vi.fn(),
   }),
@@ -109,16 +112,21 @@ function selectAutoBidMode() {
 }
 
 function renderArtworkBidPanel(props: ComponentProps<typeof ArtworkBidPanel>) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <LotBidHistoryProvider
-      lotId={props.auction.id}
-      initialHistory={props.initialHistory}
-      initialCurrentPrice={props.auction.currentPrice}
-      initialLeadingBidderId={props.initialLeadingBidderId ?? null}
-      currentUserId={props.sessionUser?.id ?? null}
-    >
-      <ArtworkBidPanel {...props} />
-    </LotBidHistoryProvider>,
+    <QueryClientProvider client={queryClient}>
+      <LotBidHistoryProvider
+        lotId={props.auction.id}
+        initialHistory={props.initialHistory}
+        initialCurrentPrice={props.auction.currentPrice}
+        initialLeadingBidderId={props.initialLeadingBidderId ?? null}
+        currentUserId={props.sessionUser?.id ?? null}
+      >
+        <ArtworkBidPanel {...props} />
+      </LotBidHistoryProvider>
+    </QueryClientProvider>,
   );
 }
 

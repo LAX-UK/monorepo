@@ -1,5 +1,7 @@
 import { SaleroomLiveProvider, useSaleroomLive } from "@/lib/context/saleroom-live-provider";
+import { saleroomKeys } from "@/lib/data/queries/saleroom";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -42,12 +44,35 @@ const INITIAL_NONE: PublicSaleroomSessionStatus = { status: "none", currentLotId
 const LIVE_LOT1: PublicSaleroomSessionStatus = { status: "live", currentLotId: "lot-1" };
 const LIVE_NO_LOT: PublicSaleroomSessionStatus = { status: "live", currentLotId: null };
 
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+}
+
 function wrapper(saleId: string, initial: PublicSaleroomSessionStatus) {
+  const queryClient = createTestQueryClient();
   return ({ children }: { children: ReactNode }) => (
-    <SaleroomLiveProvider saleId={saleId} initial={initial}>
-      {children}
-    </SaleroomLiveProvider>
+    <QueryClientProvider client={queryClient}>
+      <SaleroomLiveProvider saleId={saleId} initial={initial}>
+        {children}
+      </SaleroomLiveProvider>
+    </QueryClientProvider>
   );
+}
+
+function wrapperWithClient(saleId: string, initial: PublicSaleroomSessionStatus) {
+  const queryClient = createTestQueryClient();
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <SaleroomLiveProvider saleId={saleId} initial={initial}>
+        {children}
+      </SaleroomLiveProvider>
+    </QueryClientProvider>
+  );
+  return { queryClient, Wrapper };
 }
 
 /** Trigger the joinSaleroom ack (third arg to socket.emit). */
@@ -379,6 +404,22 @@ describe("SaleroomLiveProvider — socket event passthrough", () => {
 
     expect(result.current?.currentLotId).toBe("lot-1");
     expect(result.current?.isLotOnBlock("lot-1")).toBe(true);
+  });
+
+  it("writes socket events to the TanStack Query cache (single source of truth)", async () => {
+    mockFetchSaleroomStatus.mockResolvedValue(INITIAL_NONE);
+
+    const { queryClient, Wrapper } = wrapperWithClient("sale-1", INITIAL_NONE);
+
+    renderHook(() => useSaleroomLive(), { wrapper: Wrapper });
+
+    await advanceAndFlush(100);
+
+    await act(async () => {
+      triggerSaleroomEvent({ kind: "advanced_to_lot", saleId: "sale-1", lotId: "lot-1" });
+    });
+
+    expect(queryClient.getQueryData(saleroomKeys.status("sale-1"))).toEqual(LIVE_LOT1);
   });
 
   it("ignores saleroomEvent for a different saleId", async () => {

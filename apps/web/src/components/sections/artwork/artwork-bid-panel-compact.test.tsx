@@ -5,6 +5,7 @@
 import { BidPanelSurfaceProvider } from "@/components/sections/artwork/online/bid-panel-surface";
 import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
 import type { Lot } from "@auction/types";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,6 +45,8 @@ vi.mock("@/lib/context/online-lot-lifecycle", () => ({
   useOnlineLotLifecycle: () => ({
     extendedByMs: null,
     setExtendedDeltaMs: vi.fn(),
+    setLiveEndTimeMs: vi.fn(),
+    setLiveLotStatus: vi.fn(),
     bidCardInView: true,
     setBidCardInView: vi.fn(),
   }),
@@ -108,25 +111,30 @@ const summarySeed = {
 
 function renderCompact(props: Partial<ComponentProps<typeof ArtworkBidPanel>> = {}) {
   const auction = props.auction ?? liveLot();
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <LotBidHistoryProvider
-      lotId={auction.id}
-      initialHistory={props.initialHistory ?? []}
-      initialCurrentPrice={auction.currentPrice}
-      initialLeadingBidderId={null}
-      currentUserId={props.sessionUser?.id ?? null}
-    >
-      <BidPanelSurfaceProvider surface="videoCompact">
-        <ArtworkBidPanel
-          auction={auction}
-          initialHistory={[]}
-          sessionUser={buyerSession}
-          summarySeed={summarySeed}
-          initialAutoBidSettings={null}
-          {...props}
-        />
-      </BidPanelSurfaceProvider>
-    </LotBidHistoryProvider>,
+    <QueryClientProvider client={queryClient}>
+      <LotBidHistoryProvider
+        lotId={auction.id}
+        initialHistory={props.initialHistory ?? []}
+        initialCurrentPrice={auction.currentPrice}
+        initialLeadingBidderId={null}
+        currentUserId={props.sessionUser?.id ?? null}
+      >
+        <BidPanelSurfaceProvider surface="videoCompact">
+          <ArtworkBidPanel
+            auction={auction}
+            initialHistory={[]}
+            sessionUser={buyerSession}
+            summarySeed={summarySeed}
+            initialAutoBidSettings={null}
+            {...props}
+          />
+        </BidPanelSurfaceProvider>
+      </LotBidHistoryProvider>
+    </QueryClientProvider>,
   );
 }
 
