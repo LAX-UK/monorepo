@@ -25,7 +25,10 @@ export function isProtectedPostAuthPath(path: string): boolean {
   );
 }
 
-export function shouldBypassAuthEdgeRedirect(pathname: string, searchParams: URLSearchParams): boolean {
+export function shouldBypassAuthEdgeRedirect(
+  pathname: string,
+  searchParams: URLSearchParams,
+): boolean {
   for (const [param, value] of LOGIN_EDGE_BYPASS) {
     if (searchParams.get(param) === value) return true;
   }
