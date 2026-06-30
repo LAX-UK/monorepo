@@ -1,4 +1,5 @@
-import { DrizzleRepositoryFactory, createExportProviderDeps } from "@auction/api/exports";
+import { createExportProviderDeps } from "@auction/api/exports/providers";
+import { DrizzleRepositoryFactory } from "@auction/api/exports/repository-factory";
 import { closeDb, createDb } from "@auction/db";
 import {
   ConsoleEmailService,

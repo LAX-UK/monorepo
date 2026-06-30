@@ -5,7 +5,8 @@ const { persistQrCodeScan } = vi.hoisted(() => ({
   persistQrCodeScan: vi.fn(),
 }));
 
-vi.mock("@auction/api/exports", () => ({
+vi.mock("@auction/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@auction/db")>()),
   persistQrCodeScan,
 }));
 

@@ -7,7 +7,7 @@ import {
   type ExportProviderDeps,
   createExportProviders,
   exportAuthContextFromRow,
-} from "@auction/api/exports";
+} from "@auction/api/exports/providers";
 import type { Database } from "@auction/db";
 import { dataExport } from "@auction/db/schema";
 import { type ExportFormat, formatCsvHeader, formatCsvRow } from "@auction/exports";

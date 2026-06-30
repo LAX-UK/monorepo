@@ -1,4 +1,4 @@
-import { persistQrCodeScan } from "@auction/api/exports";
+import { persistQrCodeScan } from "@auction/db";
 import type { Database } from "@auction/db";
 import type { QrCodeScanJobPayload } from "@auction/queues";
 import type pino from "pino";

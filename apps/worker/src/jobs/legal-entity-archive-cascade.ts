@@ -1,4 +1,4 @@
-import type { IRepositoryFactory } from "@auction/api/exports";
+import type { IRepositoryFactory } from "@auction/api/exports/repository-factory";
 import type { createDb } from "@auction/db";
 import { domainEvent, legalEntity, legalEntityMember, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";

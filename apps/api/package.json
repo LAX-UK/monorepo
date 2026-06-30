@@ -15,6 +15,14 @@
     "./exports": {
       "types": "./dist/exports/index.d.ts",
       "default": "./dist/exports/index.js"
+    },
+    "./exports/repository-factory": {
+      "types": "./dist/exports/repository-factory.d.ts",
+      "default": "./dist/exports/repository-factory.js"
+    },
+    "./exports/providers": {
+      "types": "./dist/exports/providers.d.ts",
+      "default": "./dist/exports/providers.js"
     }
   },
   "scripts": {
