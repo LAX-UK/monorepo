@@ -1,6 +1,6 @@
 # Auction monorepo
 
-Turborepo + pnpm. Five Node.js apps, a ClamAV malware-scan service, and seven shared packages.
+Turborepo + pnpm. Five Node.js apps, a ClamAV malware-scan service, and seventeen shared packages.
 
 | App | Stack | Role |
 |---|---|---|
@@ -11,7 +11,27 @@ Turborepo + pnpm. Five Node.js apps, a ClamAV malware-scan service, and seven sh
 | `apps/worker` | BullMQ + Hono | Async jobs: email outbox, image validation, projectors, GC, marketing-sync |
 | `apps/clamav` | ClamAV REST (`ajilaag/clamav-rest`) | Internal malware scanning for Source-of-Funds document uploads (`/v2/scan` on port 9000); worker-only, prod App Platform |
 
-Shared workspaces: `packages/db` (Drizzle schema + migrations + role grants), `packages/auth` (better-auth wrapper), `packages/email` (templates + outbox service), `packages/types`, `packages/validators` (Zod), `packages/ui` (React + Tailwind primitives), `packages/config-ts`, `packages/config-biome`.
+Shared workspaces (`packages/`):
+
+| Package | Role |
+|---|---|
+| `auth` | Better Auth wrapper (server/client/permissions) |
+| `branding` | Design tokens |
+| `config-biome` | Shared Biome config |
+| `config-ts` | Shared TypeScript config |
+| `connect` | Stripe Connect shared types/helpers |
+| `db` | Drizzle schema, migrations, role grants, seed |
+| `domain` | Pure business rules (transitions, reserve, money compare) |
+| `email` | React Email templates + outbox service |
+| `exports` | CSV/export utilities |
+| `http-headers` | Shared HTTP header constants |
+| `marketing-events` | Meta CAPI / marketing event publishing |
+| `observability` | Sentry/metrics shared setup |
+| `queues` | BullMQ queue registry, producers, mutation policy |
+| `sms` | Twilio Verify SMS service |
+| `types` | Shared TypeScript types |
+| `ui` | Canonical shadcn/Radix primitives |
+| `validators` | Zod schemas, request DTO parsers, policy helpers |
 
 ## Local setup (Node on host)
 

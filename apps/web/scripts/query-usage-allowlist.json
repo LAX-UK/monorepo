@@ -1,0 +1,21 @@
+{
+  "prefixes": [
+    "lib/query/",
+    "lib/data/queries/saleroom.ts",
+    "lib/data/queries/lot-bid.ts",
+    "lib/data/queries/admin-invitations.ts",
+    "lib/data/queries/admin-disputes.ts",
+    "hooks/saleroom/",
+    "hooks/lot-bid/",
+    "hooks/admin/use-admin-invitations-page-query.ts",
+    "hooks/admin/use-admin-disputes-page-query.ts",
+    "lib/context/saleroom-live-provider.tsx",
+    "lib/context/lot-bid-history-provider.tsx",
+    "app/admin/(platform)/invitations/page.tsx",
+    "app/admin/(finance)/disputes/page.tsx",
+    "components/admin/admin-invitations-board-container.tsx",
+    "components/admin/admin-disputes-board-container.tsx",
+    "lib/admin/invitations-list-nuqs.ts",
+    "lib/admin/disputes-list-nuqs.ts"
+  ]
+}

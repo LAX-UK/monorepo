@@ -147,3 +147,15 @@ Pick the next D-number after the highest currently in this document. Write the d
 If you're revising an existing decision, do not edit it. Add a new D-number with a header like "Supersedes D5 as of 2026-08-15." Link from the old decision to the new one. Both stay in this document. The git history of this file is itself a useful artifact.
 
 Reference D-numbers in code comments where the rationale matters: `// D8: same-transaction publish required` next to a `DomainEventPublisher.publish` call is significantly more useful than reverse-engineering it from blame six months later.
+
+## D12. Worker reuses apps/api repository factory and export providers
+
+**Chosen.** `apps/worker` depends on `@auction/api` subpath exports (`@auction/api/exports/repository-factory`, `@auction/api/exports/providers`) for `DrizzleRepositoryFactory`, `IRepositoryFactory`, and export provider wiring. BullMQ jobs share the same repository implementations as the HTTP API rather than duplicating Drizzle access in the worker.
+
+**Alternatives considered.** A slim `@auction/kernel` package with repositories only was deferred — the factory and provider surface is still evolving with API features, and splitting now would duplicate container wiring. Copy-pasting Drizzle queries into the worker was rejected (drift risk).
+
+**Why this wins.** One implementation of repository contracts for API and async jobs. Worker jobs stay type-aligned with API services. The coupling cost is bounded: worker imports only explicit export subpaths, not the full HTTP route graph.
+
+**Follow-up (accepted debt).** When repository + provider wiring stabilizes, extract a shared `@auction/data-access` (or similar) package and point both `apps/api` and `apps/worker` at it so worker no longer depends on the API app package.
+
+**Status.** *Implemented.* Worker imports in [apps/worker/src/index.ts](../../apps/worker/src/index.ts), [apps/worker/src/jobs/data-export.ts](../../apps/worker/src/jobs/data-export.ts), and [apps/worker/src/jobs/legal-entity-archive-cascade.ts](../../apps/worker/src/jobs/legal-entity-archive-cascade.ts).

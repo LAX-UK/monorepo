@@ -1,4 +1,16 @@
 export {
+  addMoneyStrings,
+  minMoneyStrings,
+  minorUnitsToMoneyString,
+  moneyEq,
+  moneyGt,
+  moneyGte,
+  moneyLt,
+  numberToMinorUnits,
+  numberToMoneyString,
+  parseMoneyToMinorUnits,
+} from "./money-compare.js";
+export {
   canTransition,
   nextStatus,
   transitionErrorMessage,

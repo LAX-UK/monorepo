@@ -3,30 +3,19 @@
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { BuyerGate, isAdminBuyerBlocked } from "@/components/marketing/admin-cannot-buy-notice";
 import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout-lot-mobile-chrome";
-import { useCheckoutPurchaseState } from "@/components/sections/checkout/use-checkout-purchase-state";
 import {
-  type CheckoutPaymentActionData,
-  createCheckoutPaymentAction,
-} from "@/lib/actions/checkout";
+  formatCheckoutAddressLines,
+  useCheckoutPurchaseState,
+} from "@/components/sections/checkout/use-checkout-purchase-state";
 import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
-import { trackBeginCheckout } from "@/lib/analytics/events";
-import {
-  checkoutPaymentErrorMessage,
-  manualReviewReasonCopy,
-  resolveCheckoutManualReviewDisplayReason,
-} from "@/lib/checkout/checkout-payment-errors";
+import { manualReviewReasonCopy } from "@/lib/checkout/checkout-payment-errors";
 import {
   formatSettlementsContactLine,
   settlementsEmailDisplay,
   settlementsPhone,
 } from "@/lib/checkout/settlements-contact";
-import {
-  dashboardCheckoutLotUrl,
-  dashboardSofRequirementsUrl,
-} from "@/lib/dashboard/dashboard-copy";
+import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import type { SessionUser } from "@/lib/data/contracts";
-import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
-import { notify } from "@/lib/ui/notify";
 import type { ManualReviewReason, PaymentStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardContent } from "@auction/ui/components/card";
@@ -40,17 +29,8 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Separator } from "@auction/ui/components/separator";
-import {
-  type CheckoutTermsAcceptanceValues,
-  checkoutTermsAcceptanceSchema,
-} from "@auction/validators";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, ShieldCheck, Truck, VerifiedIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
 
 type Props = {
   sessionUser: SessionUser;
@@ -66,44 +46,11 @@ type Props = {
   paymentComplete?: boolean;
   openPaymentStatus?: PaymentStatus | null;
   openPaymentManualReviewReason?: ManualReviewReason | null;
-  /** Rail of the open payment — gates the post-return "confirming" state to card only. */
   openPaymentCheckoutRail?: "card" | "gb_bank_transfer" | null;
-  /** When true, hide pay form — payment history failed to load (may already be paid). */
   paymentsLoadFailed?: boolean;
-  /** Pre-flight user-level compliance gate — set before any payment row exists. */
   preflightComplianceGate?: "clear" | "aml_hold" | "source_of_funds_required" | null;
-  /** True when buyer returned from Stripe with ?payment=success (webhook capture may lag). */
   stripeReturnSuccess?: boolean;
 };
-
-function parseAddress(raw: unknown): ProfileAddressRow {
-  const row = raw as Record<string, unknown>;
-  return {
-    id: String(row.id ?? ""),
-    label: String(row.label ?? ""),
-    line1: String(row.line1 ?? ""),
-    line2: row.line2 == null ? null : String(row.line2),
-    city: String(row.city ?? ""),
-    state: row.state == null ? null : String(row.state),
-    postalCode: String(row.postalCode ?? ""),
-    country: String(row.country ?? ""),
-    addressType:
-      row.addressType === "shipping" || row.addressType === "billing" || row.addressType === "both"
-        ? row.addressType
-        : "both",
-    isDefault: Boolean(row.isDefault),
-  };
-}
-
-function formatAddressLines(address: ProfileAddressRow): string {
-  const line2 = address.line2 ? `, ${address.line2}` : "";
-  return `${address.line1}${line2}, ${address.city}, ${address.postalCode}, ${address.country}`;
-}
-
-function addressesSettingsHref(lotId: string): string {
-  const next = encodeURIComponent(dashboardCheckoutLotUrl(lotId));
-  return `/dashboard/settings/addresses?next=${next}`;
-}
 
 function PaymentCompleteBlock() {
   return (
@@ -323,77 +270,44 @@ export function CheckoutPurchasePanel({
   preflightComplianceGate = null,
   stripeReturnSuccess = false,
 }: Props) {
-  const router = useRouter();
-  const [submitted, setSubmitted] = useState(false);
-  const [redirectingToStripe, setRedirectingToStripe] = useState(false);
-  const [redirectFailed, setRedirectFailed] = useState(false);
-  const [pendingCheckoutUrl, setPendingCheckoutUrl] = useState<string | null>(null);
-  const [submittedReviewReason, setSubmittedReviewReason] = useState<ManualReviewReason | null>(
-    null,
-  );
-  const addresses = rawAddresses.map(parseAddress);
-  const checkoutAddresses = addresses.filter(
-    (address) => address.addressType === "shipping" || address.addressType === "both",
-  );
-  const billingOnlyAddresses = addresses.filter((address) => address.addressType === "billing");
-  const defaultAddress =
-    checkoutAddresses.find((address) => address.isDefault) ?? checkoutAddresses[0];
-  const form = useForm<CheckoutTermsAcceptanceValues>({
-    resolver: zodResolver(checkoutTermsAcceptanceSchema),
-    defaultValues: { addressId: defaultAddress?.id ?? "", termsAccepted: false },
-  });
-  const addressId = useWatch({ control: form.control, name: "addressId" });
-  const termsAccepted = useWatch({ control: form.control, name: "termsAccepted" });
-  const selectedAddress = useMemo(
-    () => checkoutAddresses.find((a) => a.id === addressId) ?? null,
-    [checkoutAddresses, addressId],
-  );
-  const canSubmit =
-    Boolean(termsAccepted) &&
-    Boolean(addressId) &&
-    checkoutAddresses.some((address) => address.id === addressId);
-
-  useEffect(() => {
-    // Don't fire begin_checkout when there's nothing left to start: payment already
-    // complete, or a bank transfer is in flight (authorized) awaiting confirmation.
-    if (
-      totalMinor != null &&
-      totalMinor > 0 &&
-      !paymentComplete &&
-      openPaymentStatus !== "authorized"
-    ) {
-      trackBeginCheckout({ lotId, valueMinor: totalMinor, currency });
-    }
-  }, [lotId, totalMinor, currency, paymentComplete, openPaymentStatus]);
-
-  useEffect(() => {
-    if (!redirectingToStripe) return;
-    const timeout = window.setTimeout(() => {
-      setRedirectingToStripe(false);
-      setRedirectFailed(true);
-    }, 8000);
-    return () => window.clearTimeout(timeout);
-  }, [redirectingToStripe]);
-
-  const showManualReview = resolveCheckoutManualReviewDisplayReason({
-    submitted,
-    submittedReviewReason,
-    openPaymentStatus,
-    openPaymentManualReviewReason,
-    preflightComplianceGate,
-  });
-
   const {
+    form,
+    checkoutAddresses,
+    billingOnlyAddresses,
+    selectedAddress,
+    canSubmit,
+    showManualReview,
     awaitingCaptureConfirmation,
     bankTransferInstructions,
     confirmationTimedOut,
+    redirectingToStripe,
+    redirectFailed,
+    pendingCheckoutUrl,
     refreshStatus,
+    submitCheckout,
+    retryStripeRedirect,
+    addressesSettingsHref,
   } = useCheckoutPurchaseState({
-    stripeReturnSuccess,
+    lotId,
+    totalMinor,
+    currency,
+    rawAddresses,
     paymentComplete,
     openPaymentStatus,
+    openPaymentManualReviewReason,
     openPaymentCheckoutRail,
+    preflightComplianceGate,
+    stripeReturnSuccess,
   });
+
+  const orderSummary = (
+    <OrderSummaryCard
+      hammer={hammer}
+      buyerPremium={buyerPremium}
+      total={total}
+      premiumPercentLabel={premiumPercentLabel}
+    />
+  );
 
   if (paymentComplete) {
     return (
@@ -406,12 +320,7 @@ export function CheckoutPurchasePanel({
   if (bankTransferInstructions) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
-        <OrderSummaryCard
-          hammer={hammer}
-          buyerPremium={buyerPremium}
-          total={total}
-          premiumPercentLabel={premiumPercentLabel}
-        />
+        {orderSummary}
         <BankTransferInstructionsBlock lotTitle={lotTitle} />
       </div>
     );
@@ -420,12 +329,7 @@ export function CheckoutPurchasePanel({
   if (awaitingCaptureConfirmation) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
-        <OrderSummaryCard
-          hammer={hammer}
-          buyerPremium={buyerPremium}
-          total={total}
-          premiumPercentLabel={premiumPercentLabel}
-        />
+        {orderSummary}
         <PaymentConfirmingBlock
           lotTitle={lotTitle}
           timedOut={confirmationTimedOut}
@@ -438,12 +342,7 @@ export function CheckoutPurchasePanel({
   if (paymentsLoadFailed) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
-        <OrderSummaryCard
-          hammer={hammer}
-          buyerPremium={buyerPremium}
-          total={total}
-          premiumPercentLabel={premiumPercentLabel}
-        />
+        {orderSummary}
         <output className="block rounded-xl border border-warning/40 bg-warning-container/15 px-6 py-6 font-body text-sm text-on-surface">
           We could not confirm whether this lot is already paid. Refresh the page before attempting
           checkout again.
@@ -455,12 +354,7 @@ export function CheckoutPurchasePanel({
   if (redirectFailed && pendingCheckoutUrl) {
     return (
       <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
-        <OrderSummaryCard
-          hammer={hammer}
-          buyerPremium={buyerPremium}
-          total={total}
-          premiumPercentLabel={premiumPercentLabel}
-        />
+        {orderSummary}
         <output
           className="block rounded-xl border border-primary/20 bg-primary-container/15 px-6 py-8 text-center shadow-sm sm:px-8"
           aria-live="polite"
@@ -469,15 +363,7 @@ export function CheckoutPurchasePanel({
           <p className="mx-auto mt-3 max-w-md font-body text-sm text-on-surface-variant">
             Your browser may have blocked the redirect. Use the button below to continue securely.
           </p>
-          <Button
-            type="button"
-            className="mt-6"
-            onClick={() => {
-              setRedirectFailed(false);
-              setRedirectingToStripe(true);
-              window.location.assign(pendingCheckoutUrl);
-            }}
-          >
+          <Button type="button" className="mt-6" onClick={retryStripeRedirect}>
             Open Stripe checkout
           </Button>
         </output>
@@ -504,35 +390,9 @@ export function CheckoutPurchasePanel({
     );
   }
 
-  const handlePaymentResult = (data: CheckoutPaymentActionData) => {
-    if (data.checkoutUrl) {
-      // Purchase conversion is recorded server-side when Stripe capture succeeds
-      // (payment-capture.service → marketing events). Do not fire GA4 purchase on redirect.
-      setPendingCheckoutUrl(data.checkoutUrl);
-      setRedirectFailed(false);
-      setRedirectingToStripe(true);
-      window.location.assign(data.checkoutUrl);
-      return;
-    }
-    if (data.manualReviewReason) {
-      setSubmittedReviewReason(data.manualReviewReason);
-      setSubmitted(true);
-      notify.success("Payment submitted for review", {
-        description: manualReviewReasonCopy(data.manualReviewReason),
-      });
-      return;
-    }
-    router.refresh();
-  };
-
   return (
     <div id="checkout-complete-purchase" className="scroll-mt-28 space-y-8">
-      <OrderSummaryCard
-        hammer={hammer}
-        buyerPremium={buyerPremium}
-        total={total}
-        premiumPercentLabel={premiumPercentLabel}
-      />
+      {orderSummary}
 
       {showManualReview ? <ManualReviewBlock reason={showManualReview} /> : null}
 
@@ -588,24 +448,7 @@ export function CheckoutPurchasePanel({
               <form
                 id="checkout-purchase-form"
                 className="min-w-0 space-y-6"
-                onSubmit={form.handleSubmit(async (values) => {
-                  form.clearErrors("root");
-                  const r = await createCheckoutPaymentAction(lotId, values.addressId);
-                  if (!r.ok) {
-                    if (r.status === 401 && r.errorCode === "session_required") {
-                      const next = encodeURIComponent(dashboardCheckoutLotUrl(lotId));
-                      window.location.assign(`/login?session_expired=1&next=${next}`);
-                      return;
-                    }
-                    notifyAdminCannotBuyIfNeeded(r.error, r.status ?? 500);
-                    const msg = r.errorCode
-                      ? checkoutPaymentErrorMessage(r.error, r.errorCode)
-                      : r.error;
-                    form.setError("root", { message: msg });
-                    return;
-                  }
-                  if (r.data) handlePaymentResult(r.data);
-                })}
+                onSubmit={form.handleSubmit(submitCheckout)}
               >
                 <FormField
                   control={form.control}
@@ -625,10 +468,7 @@ export function CheckoutPurchasePanel({
                               asChild
                               className="h-auto"
                             >
-                              <Link
-                                href={addressesSettingsHref(lotId)}
-                                className="inline-flex gap-1"
-                              >
+                              <Link href={addressesSettingsHref} className="inline-flex gap-1">
                                 <Plus className="size-3.5" aria-hidden />
                                 Add new address
                               </Link>
@@ -645,17 +485,14 @@ export function CheckoutPurchasePanel({
                               <p className="mt-3 break-words font-body text-sm text-on-surface-variant">
                                 You only have billing-specific profiles. Update one to include
                                 shipping or choose “Billing & shipping” in{" "}
-                                <Link
-                                  href={addressesSettingsHref(lotId)}
-                                  className="text-link underline"
-                                >
+                                <Link href={addressesSettingsHref} className="text-link underline">
                                   addresses
                                 </Link>
                                 .
                               </p>
                             ) : null}
                             <Button asChild variant="secondary" className="mt-4">
-                              <Link href={addressesSettingsHref(lotId)}>Add address</Link>
+                              <Link href={addressesSettingsHref}>Add address</Link>
                             </Button>
                           </div>
                         ) : (
@@ -677,7 +514,7 @@ export function CheckoutPurchasePanel({
                               field.onChange(checkoutAddresses[nextIndex]?.id ?? "");
                             }}
                           >
-                            {checkoutAddresses.map((address) => {
+                            {checkoutAddresses.map((address: ProfileAddressRow) => {
                               const selected = field.value === address.id;
                               return (
                                 <Button
@@ -700,7 +537,7 @@ export function CheckoutPurchasePanel({
                                     {address.isDefault ? " · Default" : ""}
                                   </span>
                                   <span className="mt-1 block break-words font-body text-sm text-on-surface-variant">
-                                    {formatAddressLines(address)}
+                                    {formatCheckoutAddressLines(address)}
                                   </span>
                                 </Button>
                               );
@@ -724,7 +561,7 @@ export function CheckoutPurchasePanel({
                     <span className="font-medium text-on-surface">Shipping to:</span>{" "}
                     {selectedAddress.label}
                     {" — "}
-                    {formatAddressLines(selectedAddress)}
+                    {formatCheckoutAddressLines(selectedAddress)}
                   </output>
                 ) : null}
                 <FormField

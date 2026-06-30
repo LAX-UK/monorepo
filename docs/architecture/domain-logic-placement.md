@@ -13,7 +13,7 @@ Convention for where business rules, validation, orchestration, and presentation
 
 ## Rules
 
-1. **`packages/domain` is pure.** No I/O, no framework imports, no Zod. Functions take typed inputs and return typed outputs. Safe to import from API, worker, and web (read-only derivations only on web).
+1. **`packages/domain` is pure.** No I/O, no framework imports, no Zod. Functions take typed inputs and return typed outputs. Safe to import from API, worker, and web (read-only derivations only on web). String money helpers (`moneyGte`, `parseMoneyToMinorUnits`, etc.) live in `packages/domain/src/money-compare.ts`; `@auction/validators` re-exports them for backward compatibility.
 2. **`packages/validators` validates shapes.** Event payload schemas, route body/query parsers, and reusable policy checks that depend on Zod belong here—not in `apps/api/src/domain`.
 3. **`apps/api` orchestrates.** Services coordinate repositories, external APIs, and domain functions. Keep transition guards in domain; keep “load row, check guard, persist, emit event” in services.
 4. **`apps/web` presents.** Map API/wire types to UI labels, dates, and badge variants in `lib/presenters` and list view-models. Do not duplicate domain transition rules in the web app.
