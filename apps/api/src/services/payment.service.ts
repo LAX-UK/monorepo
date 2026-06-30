@@ -1,13 +1,10 @@
 import type { Database } from "@auction/db";
 import {
-  type Lot,
   type PaymentStatus,
-  type Sale,
   type UserRole,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
-import { buildBuyerPremiumPolicy } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import Stripe from "stripe";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../lib/decimal-money.js";
@@ -38,6 +35,11 @@ import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 import { type MyPaymentRowDTO, presentMyPayments } from "./payment-me-presenter.js";
 import { resolveCheckoutAddressSnapshot } from "./payment/checkout-address.js";
+import {
+  type CheckoutOrchestratorDeps,
+  resolveCheckoutForPendingOrPromoteCompliance,
+  revokeOpenStripeCheckoutForPayment,
+} from "./payment/checkout-orchestrator.js";
 import { ensureXeroInvoiceForPayment } from "./payment/ensure-xero-invoice.js";
 import { formatPaymentDueDateFromCreated } from "./payment/payment-due-date.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
@@ -46,10 +48,9 @@ import type {
   ManualReviewReason,
   PaymentTierPolicy,
 } from "./payment/payment-tier.policy.js";
-import {
-  manualReviewReasonFromCheckoutBlockCode,
-  resolveNewPaymentReviewDecision,
-} from "./payment/resolve-manual-review-reason.js";
+import { executePaymentRefundLedger } from "./payment/refund-execution.js";
+import { resolveNewPaymentReviewDecision } from "./payment/resolve-manual-review-reason.js";
+import { computeTotalDuePence } from "./payment/total-due.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 export type CreatePendingPaymentResult = {
@@ -75,6 +76,8 @@ function paymentProviderErrorFromUnknown(e: unknown): PaymentProviderError {
 }
 
 export class PaymentService {
+  private readonly checkoutOrchestratorDeps: CheckoutOrchestratorDeps;
+
   constructor(
     private readonly lots: ILotRepository,
     private readonly payments: IPaymentWriteRepository,
@@ -111,7 +114,21 @@ export class PaymentService {
      * to true to preserve strict behaviour for callers/fixtures that don't pass the env flag.
      */
     private readonly xeroInvoiceBlocking: boolean = true,
-  ) {}
+  ) {
+    this.checkoutOrchestratorDeps = {
+      payments: this.payments,
+      users: this.users,
+      accounting: this.accounting,
+      stripeCheckout: this.stripeCheckout,
+      stripePayments: this.stripePayments,
+      settlementCompliance: this.settlementCompliance,
+      paymentTierPolicy: this.paymentTierPolicy,
+      legalEntityRepository: this.legalEntityRepository,
+      db: this.db,
+      domainEventPublisher: this.domainEventPublisher,
+      xeroInvoiceBlocking: this.xeroInvoiceBlocking,
+    };
+  }
 
   /** Winning bidder initiates Stripe checkout (card or UK bank transfer by amount tier). */
   async createPendingForWinner(
@@ -197,7 +214,8 @@ export class PaymentService {
           manualReviewReason,
         });
       }
-      const checkout = await this.resolveCheckoutForPendingOrPromoteCompliance(
+      const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
+        this.checkoutOrchestratorDeps,
         existing.id,
         lot,
         buyerId,
@@ -217,7 +235,7 @@ export class PaymentService {
       return err(new LotError("Payment for this lot has already been refunded", 409));
     }
 
-    const amountPence = await this.totalDuePence(lot);
+    const amountPence = await computeTotalDuePence(this.sales, lot);
     const amount = gbpPenceToMajorString(amountPence);
     const platformFee = this.platformFeePolicy
       ? await this.platformFeePolicy.computePlatformFeeFromPence(
@@ -292,7 +310,8 @@ export class PaymentService {
     let checkoutUrl: string | null = null;
     let checkoutRail: CheckoutRailKind | null = null;
     if (!requiresManualReview) {
-      const checkout = await this.resolveCheckoutForPendingOrPromoteCompliance(
+      const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
+        this.checkoutOrchestratorDeps,
         created.id,
         lot,
         buyerId,
@@ -476,9 +495,6 @@ export class PaymentService {
       return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
     }
 
-    const db = this.db;
-    const publisher = this.domainEventPublisher;
-
     let refundOutcome: Awaited<ReturnType<IStripePaymentGateway["createRefund"]>>;
     try {
       refundOutcome = await this.stripePayments.createRefund({
@@ -492,333 +508,25 @@ export class PaymentService {
 
     const stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
 
-    try {
-      await db.transaction(async (tx) => {
-        const refunded = await this.payments.applyRefundedInTransaction(
-          tx,
-          paymentId,
-          stripeRefundId,
-        );
-        if (!refunded) {
-          return;
-        }
-        if (this.payoutAdjustments && p.sellerLegalEntityId) {
-          const negativeAmount = (-gbpAmountToPence(p.amount) / 100).toFixed(2);
-          await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
-            legalEntityId: p.sellerLegalEntityId,
-            paymentId,
-            amount: negativeAmount,
-            kind: "refund",
-            sourceEventId: `admin_refund:${paymentId}`,
-            note: `Admin refund: ${paymentId}`,
-            tx,
-          });
-        }
-        await publisher.publish(tx, {
-          aggregateType: "payment",
-          aggregateId: paymentId,
-          eventType: "payment.refunded",
-          payload: {
-            amount: p.amount,
-            currency: "GBP",
-            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-            via: "admin_manual",
-            stripeRefundId,
-          },
-          actorUserId: adminUserId,
-          actingLegalEntityId: p.sellerLegalEntityId ?? null,
-        });
-      });
-    } catch (persistErr) {
-      recordMoneyPathEvent("refund_db_persist_failed");
-      if (this.paymentRefundReconcile) {
-        await this.paymentRefundReconcile.enqueue({
-          paymentId,
-          stripeRefundId,
-          adminUserId,
-          payload: {
-            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-            amount: p.amount,
-            stripeRefundId,
-            via: "admin_manual",
-          },
-        });
-      }
-      console.error(
-        JSON.stringify({
-          msg: "refund_db_persist_failed",
-          paymentId,
-          stripeRefundId,
-          error: persistErr instanceof Error ? persistErr.message : String(persistErr),
-        }),
-      );
-      return err(
-        new PaymentProviderError(
-          "Stripe refund succeeded but local ledger update failed — manual reconciliation required",
-          500,
-        ),
-      );
-    }
-
-    await this.recordXeroRefundCreditNote(paymentId, p.amount, `admin_refund:${paymentId}`);
-    return ok(undefined);
-  }
-
-  private async revokeOpenStripeCheckoutForPayment(paymentId: string): Promise<void> {
-    if (!this.stripePayments?.isConfigured()) return;
-    const row = await this.payments.findById(paymentId);
-    if (!row) return;
-    try {
-      await this.stripePayments.revokeOpenCheckoutForPayment(paymentId, row.stripePaymentIntentId);
-      recordMoneyPathEvent("stripe_checkout_revoked_for_manual_review");
-    } catch (err) {
-      recordMoneyPathEvent("stripe_checkout_revoke_failed");
-      console.error(
-        JSON.stringify({
-          msg: "stripe_checkout_revoke_failed",
-          paymentId,
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      );
-    }
-  }
-
-  private async resolvePendingCheckoutManualReviewReason(
-    paymentId: string,
-    lot: Lot,
-    buyerId: string,
-    amount: string,
-  ): Promise<ManualReviewReason | null> {
-    const amountPence = gbpAmountToPence(amount);
-    if (this.settlementCompliance) {
-      const compliance = await this.settlementCompliance.evaluate({
-        buyerUserId: buyerId,
-        amountPence,
-        excludePaymentId: paymentId,
-      });
-      if (compliance.hold && compliance.reason) {
-        return compliance.reason;
-      }
-    }
-    const sellerLegalEntityId = lot.sellerLegalEntityId;
-    const sellerEntity =
-      this.legalEntityRepository && sellerLegalEntityId
-        ? await this.legalEntityRepository.findById(sellerLegalEntityId)
-        : null;
-    const sellerArchived = sellerEntity?.status === "archived";
-    if (sellerArchived) {
-      return this.paymentTierPolicy.resolveManualReviewReason(amountPence, sellerArchived);
-    }
-    return null;
-  }
-
-  private async promotePendingToComplianceManualReview(
-    paymentId: string,
-    lot: Lot,
-    buyerId: string,
-    amount: string,
-    reason: ManualReviewReason,
-  ): Promise<{
-    checkoutUrl: null;
-    checkoutRail: null;
-    manualReviewReason: ManualReviewReason;
-  }> {
-    await this.revokeOpenStripeCheckoutForPayment(paymentId);
-    await this.payments.updateStatus(paymentId, "requires_manual_review");
-    if (this.db && this.domainEventPublisher) {
-      await this.domainEventPublisher.publish(this.db, {
-        aggregateType: "payment",
-        aggregateId: paymentId,
-        eventType: "payment.requires_manual_review",
-        payload: {
-          paymentId,
-          lotId: lot.id,
-          buyerUserId: buyerId,
-          buyerLegalEntityId: lot.buyerLegalEntityId,
-          sellerLegalEntityId: lot.sellerLegalEntityId,
-          amount,
-          currency: "GBP",
-          reason,
-        },
-        actorUserId: buyerId,
-        actingLegalEntityId: lot.buyerLegalEntityId ?? null,
-      });
-    }
-    recordMoneyPathEvent(`settlement_compliance_hold_${reason}`);
-    return { checkoutUrl: null, checkoutRail: null, manualReviewReason: reason };
-  }
-
-  private async resolveCheckoutForPendingOrPromoteCompliance(
-    paymentId: string,
-    lot: Lot,
-    buyerId: string,
-    amount: string,
-  ): Promise<
-    Result<
+    return executePaymentRefundLedger(
       {
-        checkoutUrl: string | null;
-        checkoutRail: CheckoutRailKind | null;
-        manualReviewReason: ManualReviewReason | null;
+        payments: this.payments,
+        db: this.db,
+        domainEventPublisher: this.domainEventPublisher,
+        payoutAdjustments: this.payoutAdjustments,
+        paymentRefundReconcile: this.paymentRefundReconcile,
+        xeroPaymentRecorder: this.xeroPaymentRecorder,
       },
-      PaymentProviderError
-    >
-  > {
-    const manualReviewReason = await this.resolvePendingCheckoutManualReviewReason(
-      paymentId,
-      lot,
-      buyerId,
-      amount,
+      {
+        payment: p,
+        adminUserId,
+        stripeRefundId,
+        via: "admin_manual",
+        sourceEventId: `admin_refund:${paymentId}`,
+        clawbackNote: `Admin refund: ${paymentId}`,
+        logViaField: false,
+      },
     );
-    if (manualReviewReason) {
-      return ok(
-        await this.promotePendingToComplianceManualReview(
-          paymentId,
-          lot,
-          buyerId,
-          amount,
-          manualReviewReason,
-        ),
-      );
-    }
-
-    const checkout = await this.issueCheckoutForPendingPayment(paymentId, lot, buyerId, amount);
-    if (checkout.isOk()) {
-      return ok({
-        checkoutUrl: checkout.value.checkoutUrl,
-        checkoutRail: checkout.value.checkoutRail,
-        manualReviewReason: null,
-      });
-    }
-    const reason = manualReviewReasonFromCheckoutBlockCode(checkout.error.stripeCode);
-    if (reason) {
-      return ok(
-        await this.promotePendingToComplianceManualReview(paymentId, lot, buyerId, amount, reason),
-      );
-    }
-    return err(checkout.error);
-  }
-
-  private async issueCheckoutForPendingPayment(
-    paymentId: string,
-    lot: Lot,
-    buyerId: string,
-    amount: string,
-  ): Promise<
-    Result<
-      { checkoutUrl: string | null; checkoutRail: CheckoutRailKind | null },
-      PaymentProviderError
-    >
-  > {
-    const amountPence = gbpAmountToPence(amount);
-    if (this.settlementCompliance) {
-      const compliance = await this.settlementCompliance.evaluate({
-        buyerUserId: buyerId,
-        amountPence,
-        excludePaymentId: paymentId,
-      });
-      if (compliance.hold) {
-        const code =
-          compliance.reason === "aml_hold"
-            ? "payment_checkout_blocked_aml_hold"
-            : "payment_checkout_blocked_source_of_funds";
-        const message =
-          compliance.reason === "aml_hold"
-            ? "Checkout is blocked pending AML/sanctions compliance review."
-            : "Checkout is blocked until source-of-funds review is complete.";
-        return err(new PaymentProviderError(message, 403, code));
-      }
-    }
-    const validation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
-    if (validation === "blocked") {
-      return err(
-        new PaymentProviderError(
-          "Payment amount exceeds the maximum online payment limit",
-          400,
-          "payment_amount_exceeds_limit",
-        ),
-      );
-    }
-    if (validation === "invalid_amount") {
-      return err(new PaymentProviderError("Invalid payment amount", 400, "invalid_payment_amount"));
-    }
-
-    const invoiceResult = await ensureXeroInvoiceForPayment(
-      this.accounting,
-      this.users,
-      paymentId,
-      lot,
-      buyerId,
-      amount,
-    );
-    if (!invoiceResult.ok) {
-      if (this.xeroInvoiceBlocking) {
-        return err(
-          new PaymentProviderError(
-            invoiceResult.error ?? "Accounting invoice unavailable",
-            503,
-            "accounting_unavailable",
-          ),
-        );
-      }
-      // Non-blocking: the payment is the source of truth. The `payment_external_ref` row is left
-      // pending/error and the `retry-xero-invoice-creation` cron creates the invoice once Xero is
-      // healthy. Buyers are never blocked by a stale Xero connection.
-      recordMoneyPathEvent("xero_invoice_deferred");
-    }
-
-    if (!this.stripeCheckout?.isAvailable()) {
-      return err(
-        new PaymentProviderError(
-          "Stripe checkout is not configured",
-          503,
-          "stripe_checkout_unavailable",
-        ),
-      );
-    }
-
-    const rail = this.paymentTierPolicy.resolveCheckoutRail(amountPence);
-    if (!rail) {
-      return err(
-        new PaymentProviderError(
-          "Checkout is not available for this amount",
-          400,
-          "invalid_payment_amount",
-        ),
-      );
-    }
-
-    const buyer = await this.users.findById(buyerId);
-    if (!buyer?.email) {
-      return err(new PaymentProviderError("Buyer email is required for checkout", 400));
-    }
-    if (!lot.buyerLegalEntityId) {
-      return err(new PaymentProviderError("Buyer legal entity is required for checkout", 400));
-    }
-
-    const checkout = await this.stripeCheckout.createCheckout(rail, {
-      paymentId,
-      lot,
-      buyerEmail: buyer.email,
-      buyerName: buyer.name,
-      amount,
-      buyerLegalEntityId: lot.buyerLegalEntityId,
-      amountPence,
-    });
-
-    if (!checkout.checkoutUrl) {
-      return err(
-        new PaymentProviderError(
-          checkout.error ?? "Failed to create Stripe checkout session",
-          502,
-          checkout.errorCode ?? "stripe_checkout_unavailable",
-        ),
-      );
-    }
-
-    return ok({
-      checkoutUrl: checkout.checkoutUrl,
-      checkoutRail: checkout.checkoutRail,
-    });
   }
 
   /**
@@ -852,22 +560,6 @@ export class PaymentService {
       recordMoneyPathEvent("xero_invoice_backfilled");
     }
     return result;
-  }
-
-  private async recordXeroRefundCreditNote(
-    paymentId: string,
-    amount: string,
-    reference: string,
-  ): Promise<void> {
-    if (!this.xeroPaymentRecorder) return;
-    const result = await this.xeroPaymentRecorder.recordRefundCreditNote(
-      paymentId,
-      amount,
-      reference,
-    );
-    if (!result.ok) {
-      recordMoneyPathEvent("xero_refund_credit_note_failed");
-    }
   }
 
   async markCapturedByAdmin(
@@ -1061,9 +753,6 @@ export class PaymentService {
       return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
     }
 
-    const db = this.db;
-    const publisher = this.domainEventPublisher;
-
     let stripeRefundId: string | null = null;
     if (p.stripeChargeId && this.stripePayments?.isConfigured()) {
       try {
@@ -1078,81 +767,26 @@ export class PaymentService {
       }
     }
 
-    try {
-      await db.transaction(async (tx) => {
-        const refunded = await this.payments.applyRefundedInTransaction(
-          tx,
-          paymentId,
-          stripeRefundId,
-        );
-        if (!refunded) {
-          return;
-        }
-        if (this.payoutAdjustments && p.sellerLegalEntityId) {
-          const negativeAmount = (-gbpAmountToPence(p.amount) / 100).toFixed(2);
-          await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
-            legalEntityId: p.sellerLegalEntityId,
-            paymentId,
-            amount: negativeAmount,
-            kind: "refund",
-            sourceEventId: `admin_manual_review_refund:${paymentId}`,
-            note: `Manual review refund: ${paymentId}`,
-            tx,
-          });
-        }
-        await publisher.publish(tx, {
-          aggregateType: "payment",
-          aggregateId: paymentId,
-          eventType: "payment.refunded",
-          payload: {
-            amount: p.amount,
-            currency: "GBP",
-            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-            via: "admin_manual_review",
-            reason: "seller_archived",
-            stripeRefundId,
-          },
-          actorUserId: adminUserId,
-          actingLegalEntityId: p.sellerLegalEntityId ?? null,
-        });
-      });
-    } catch (persistErr) {
-      recordMoneyPathEvent("refund_db_persist_failed");
-      if (this.paymentRefundReconcile) {
-        await this.paymentRefundReconcile.enqueue({
-          paymentId,
-          stripeRefundId,
-          adminUserId,
-          payload: {
-            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-            amount: p.amount,
-            stripeRefundId,
-            via: "admin_manual_review",
-          },
-        });
-      }
-      console.error(
-        JSON.stringify({
-          msg: "refund_db_persist_failed",
-          paymentId,
-          stripeRefundId,
-          via: "admin_manual_review",
-          error: persistErr instanceof Error ? persistErr.message : String(persistErr),
-        }),
-      );
-      return err(
-        new PaymentProviderError(
-          "Stripe refund succeeded but local ledger update failed — manual reconciliation required",
-          500,
-        ),
-      );
-    }
-    await this.recordXeroRefundCreditNote(
-      paymentId,
-      p.amount,
-      `admin_manual_review_refund:${paymentId}`,
+    return executePaymentRefundLedger(
+      {
+        payments: this.payments,
+        db: this.db,
+        domainEventPublisher: this.domainEventPublisher,
+        payoutAdjustments: this.payoutAdjustments,
+        paymentRefundReconcile: this.paymentRefundReconcile,
+        xeroPaymentRecorder: this.xeroPaymentRecorder,
+      },
+      {
+        payment: p,
+        adminUserId,
+        stripeRefundId,
+        via: "admin_manual_review",
+        eventReason: "seller_archived",
+        sourceEventId: `admin_manual_review_refund:${paymentId}`,
+        clawbackNote: `Manual review refund: ${paymentId}`,
+        logViaField: true,
+      },
     );
-    return ok(undefined);
   }
 
   /** Buyer abandons an unpaid pending invoice (e.g. relinquishes the win). */
@@ -1171,7 +805,7 @@ export class PaymentService {
     await this.payments.updateStatus(paymentId, "cancelled");
     // Best-effort: expire the open Stripe Checkout session / cancel the PaymentIntent so a
     // buyer cannot still complete payment on a stale tab after cancelling (charge-but-not-captured).
-    await this.revokeOpenStripeCheckoutForPayment(paymentId);
+    await revokeOpenStripeCheckoutForPayment(this.checkoutOrchestratorDeps, paymentId);
     if (this.db && this.domainEventPublisher) {
       await this.domainEventPublisher.publish(this.db, {
         aggregateType: "payment",
@@ -1217,7 +851,7 @@ export class PaymentService {
   ): Promise<void> {
     await this.payments.updateStatus(row.id, "cancelled");
     // Best-effort: revoke any open Stripe Checkout session for the expired payment.
-    await this.revokeOpenStripeCheckoutForPayment(row.id);
+    await revokeOpenStripeCheckoutForPayment(this.checkoutOrchestratorDeps, row.id);
     if (this.db && this.domainEventPublisher) {
       await this.domainEventPublisher.publish(this.db, {
         aggregateType: "payment",
@@ -1253,29 +887,5 @@ export class PaymentService {
       return ok({ ok: false, error: r.error ?? "Xero sync failed" });
     }
     return ok({ ok: true });
-  }
-
-  /**
-   * Hammer + buyer's premium, in major-currency units (e.g. £125.00 → 125).
-   *
-   * Pricing rule (Strategy + Dependency Inversion):
-   *  1. Resolve the parent sale (if a `ISaleRepository` is wired and `lot.saleId` is set).
-   *  2. Delegate to `buildBuyerPremiumPolicy({ saleTiers, lotRate })` — a sale with non-empty
-   *     `buyerPremiumTiers` overrides the per-lot flat rate; otherwise the existing per-lot
-   *     `buyerPremiumRate` is used (back-compat).
-   *  3. Add the premium to hammer.
-   */
-  private async totalDuePence(lot: Lot): Promise<number> {
-    const hammerPence = gbpAmountToPence(lot.currentPrice);
-    let sale: Sale | null = null;
-    if (this.sales && lot.saleId) {
-      sale = await this.sales.findById(lot.saleId).catch(() => null);
-    }
-    const policy = buildBuyerPremiumPolicy({
-      saleTiers: sale?.buyerPremiumTiers ?? null,
-      lotRate: lot.buyerPremiumRate,
-    });
-    const premiumPence = gbpAmountToPence(policy.computePremiumMajor(lot.currentPrice));
-    return hammerPence + premiumPence;
   }
 }
