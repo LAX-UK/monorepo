@@ -1,5 +1,6 @@
 import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
-import { buildListHref, firstString } from "@/lib/admin/admin-list-params";
+import { buildListHref, firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
+import type { AdminListQueryBase } from "@/lib/admin/i-admin-list-controller";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -18,6 +19,11 @@ export type InvitationsListFilters = {
   status?: InvitationListStatus;
 };
 
+/** Full invitations list query (pagination + filters) — single parse for RSC and controllers. */
+export type InvitationsListQuery = AdminListQueryBase & {
+  status?: InvitationListStatus;
+};
+
 function isInvitationStatus(s: string | undefined): s is InvitationListStatus {
   return s != null && (INVITATION_STATUSES as readonly string[]).includes(s);
 }
@@ -30,14 +36,30 @@ function omitParamsHref(basePath: string, sp: SearchParams, omit: readonly strin
   return buildListHref(basePath, sp, patch);
 }
 
-export function parseInvitationsListFilters(sp: SearchParams): InvitationsListFilters {
-  const q = firstString(sp.q)?.trim();
+/** Parse invitations list URL params once (pagination, search, status). */
+export function parseInvitationsListQuery(sp: SearchParams): InvitationsListQuery {
+  const base = parseListSearchParams(sp);
   const statusRaw = firstString(sp.status);
   const status = isInvitationStatus(statusRaw) ? statusRaw : undefined;
   return {
-    ...(q ? { q } : {}),
+    ...base,
+    limit: Math.min(200, base.limit),
     ...(status ? { status } : {}),
   };
+}
+
+export function invitationsListFiltersFromQuery(
+  query: InvitationsListQuery,
+): InvitationsListFilters {
+  return {
+    ...(query.q ? { q: query.q } : {}),
+    ...(query.status ? { status: query.status } : {}),
+  };
+}
+
+/** @deprecated Prefer parseInvitationsListQuery + invitationsListFiltersFromQuery */
+export function parseInvitationsListFilters(sp: SearchParams): InvitationsListFilters {
+  return invitationsListFiltersFromQuery(parseInvitationsListQuery(sp));
 }
 
 export function countInvitationsListActiveFilters(filters: InvitationsListFilters): number {

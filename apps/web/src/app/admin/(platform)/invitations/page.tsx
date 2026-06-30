@@ -12,12 +12,13 @@ import { InvitationsListPagination } from "@/components/admin/invitations-list-p
 import { InvitationsMobileCards } from "@/components/admin/people/invitations-mobile-cards";
 import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import { invitationsListController } from "@/lib/admin/admin-list-controllers";
+import type { invitationsListController } from "@/lib/admin/admin-list-controllers";
 import {
   buildInvitationsActiveFilterChips,
   countInvitationsListActiveFilters,
   hasInvitationsListActiveFilters,
-  parseInvitationsListFilters,
+  invitationsListFiltersFromQuery,
+  parseInvitationsListQuery,
 } from "@/lib/admin/invitations-list-query";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminInvitationsPage } from "@/lib/data/http/invitations.server";
@@ -45,8 +46,8 @@ export default async function AdminInvitationsPage({
 }) {
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
-  const query = invitationsListController.parseQuery(sp);
-  const listFilters = parseInvitationsListFilters(sp);
+  const query = parseInvitationsListQuery(sp);
+  const listFilters = invitationsListFiltersFromQuery(query);
   const activeFilterChips = buildInvitationsActiveFilterChips(
     "/admin/invitations",
     sp,

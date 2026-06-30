@@ -12,3 +12,4 @@ export * from "./admin-legal-entities.server";
 export * from "./admin-users.server";
 export * from "./admin-audit.server";
 export * from "./admin-telephone.server";
+export * from "./disputes.server";

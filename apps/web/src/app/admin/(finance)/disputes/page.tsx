@@ -1,16 +1,20 @@
+import { AdminDisputesBoardContainer } from "@/components/admin/admin-disputes-board-container";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { AdminDisputesBoard } from "@/components/admin/disputes-board";
+import { DisputesListPagination } from "@/components/admin/disputes-list-pagination";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { disputesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminDisputesPage } from "@/lib/data/http/disputes.server";
+import { adminDisputesKeys } from "@/lib/data/queries/admin-disputes";
+import { getQueryClient } from "@/lib/query/get-query-client";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { AdminDisputeCaseSummary } from "@auction/types";
+import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -28,6 +32,12 @@ export default async function AdminDisputesPage({
   const error = safeDecodeAdminErrorParam(sp.error);
   const query = disputesListController.parseQuery(sp);
 
+  const listQueryParams = {
+    offset: query.offset,
+    limit: query.limit,
+    ...(query.status ? { status: query.status } : {}),
+  };
+
   let rows: Awaited<ReturnType<typeof disputesListController.fetch>>["rows"] = [];
   let hasNextPage = false;
   let loadError: string | null = null;
@@ -38,12 +48,18 @@ export default async function AdminDisputesPage({
     lost: 0,
     closed: 0,
   };
+  let disputesPageData: Awaited<ReturnType<typeof getAdminDisputesPage>> | null = null;
+  let dehydratedState: ReturnType<typeof dehydrate> | undefined;
 
   try {
-    const result = await disputesListController.fetch(query);
+    const queryClient = getQueryClient();
+    const result = await getAdminDisputesPage(listQueryParams);
+    queryClient.setQueryData(adminDisputesKeys.list(listQueryParams), result);
+    disputesPageData = result;
     rows = result.rows;
-    hasNextPage = result.hasNextPage ?? false;
-    summary = result.summary ?? summary;
+    hasNextPage = result.hasNextPage;
+    summary = result.summary;
+    dehydratedState = dehydrate(queryClient);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load dispute cases.";
   }
@@ -87,22 +103,11 @@ export default async function AdminDisputesPage({
 
   const pagination =
     !loadError && (query.offset > 0 || hasNextPage) ? (
-      <CatalogPagination
+      <DisputesListPagination
         offset={query.offset}
         limit={query.limit}
         countOnPage={rows.length}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/disputes", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          hasNextPage
-            ? buildListHref("/admin/disputes", sp, { offset: query.offset + query.limit })
-            : null
-        }
+        hasNextPage={hasNextPage}
       />
     ) : null;
 
@@ -143,7 +148,13 @@ export default async function AdminDisputesPage({
         ) : null
       }
       wrapView={false}
-      view={!loadError && rows.length > 0 ? <AdminDisputesBoard rows={rows} /> : null}
+      view={
+        !loadError && rows.length > 0 && disputesPageData ? (
+          <HydrationBoundary state={dehydratedState}>
+            <AdminDisputesBoardContainer params={listQueryParams} />
+          </HydrationBoundary>
+        ) : null
+      }
       empty={
         !loadError && rows.length === 0 ? (
           <CatalogListEmptyState

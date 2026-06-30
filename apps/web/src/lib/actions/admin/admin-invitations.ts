@@ -2,7 +2,7 @@
 
 import { postBulkAction } from "@/lib/actions/admin/_shared/bulk-action";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
   actionFailure,
@@ -52,14 +52,9 @@ export async function adminCreateInvitationResultAction(
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
     }
-    const res = await authedServerFetch("/admin/invitations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed.data),
-    });
-    if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Could not create invite", undefined, res.status);
+    const r = await getWriteContainer().invitations.create(parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
     }
     revalidatePath("/admin/invitations");
     return actionSuccess();
@@ -93,12 +88,9 @@ export async function adminRevokeInvitationResultAction(
     if (!p.success) {
       return actionFailure("Invalid invitation", zodErrorToFieldErrors(p.error));
     }
-    const res = await authedServerFetch(`/admin/invitations/${p.data.invitationId}/revoke`, {
-      method: "POST",
-    });
-    if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Could not revoke", undefined, res.status);
+    const r = await getWriteContainer().invitations.revoke(p.data.invitationId);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
     }
     revalidatePath("/admin/invitations");
     return actionSuccess();
@@ -130,12 +122,9 @@ export async function adminResendInvitationResultAction(
     if (!p.success) {
       return actionFailure("Invalid invitation", zodErrorToFieldErrors(p.error));
     }
-    const res = await authedServerFetch(`/admin/invitations/${p.data.invitationId}/resend`, {
-      method: "POST",
-    });
-    if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Could not resend", undefined, res.status);
+    const r = await getWriteContainer().invitations.resend(p.data.invitationId);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
     }
     revalidatePath("/admin/invitations");
     return actionSuccess();

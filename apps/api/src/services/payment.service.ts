@@ -1,15 +1,7 @@
 import type { Database } from "@auction/db";
-import {
-  type PaymentStatus,
-  type UserRole,
-  normalizeUserStaffRole,
-  roleHasCapability,
-} from "@auction/types";
-import { type Result, err, ok } from "neverthrow";
-import Stripe from "stripe";
-import { gbpAmountToPence, gbpPenceToMajorString } from "../lib/decimal-money.js";
-import { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
-import { recordMoneyPathEvent } from "../middleware/metrics.js";
+import type { PaymentStatus } from "@auction/types";
+import type { Result } from "neverthrow";
+import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
@@ -17,7 +9,6 @@ import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
-import type { LotFulfilmentAddressSnapshot } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
@@ -30,862 +21,229 @@ import type {
   IUserRepository,
 } from "./interfaces/repositories.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
-import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
-import { type MyPaymentRowDTO, presentMyPayments } from "./payment-me-presenter.js";
-import { resolveCheckoutAddressSnapshot } from "./payment/checkout-address.js";
+import type { MyPaymentRowDTO } from "./payment-me-presenter.js";
+import type { CheckoutOrchestratorDeps } from "./payment/checkout-orchestrator.js";
 import {
-  type CheckoutOrchestratorDeps,
-  resolveCheckoutForPendingOrPromoteCompliance,
-  revokeOpenStripeCheckoutForPayment,
-} from "./payment/checkout-orchestrator.js";
-import { ensureXeroInvoiceForPayment } from "./payment/ensure-xero-invoice.js";
-import { formatPaymentDueDateFromCreated } from "./payment/payment-due-date.js";
+  backfillXeroInvoiceForPayment,
+  countPendingOlderThanHours,
+  listAllForAdmin,
+  markCapturedByAdmin,
+  releaseManualReviewForCapture,
+  sumCapturedBetween,
+  syncPaymentFromXeroAsAdmin,
+} from "./payment/payment-admin-ops.js";
+import {
+  cancelPendingAsBuyer,
+  createPendingForWinner,
+  expireStalePendingPayments,
+  getBuyerComplianceGateStatus,
+  listForBuyer,
+  listMyPaymentsForBuyerApi,
+} from "./payment/payment-buyer-ops.js";
+import { refundManualReviewPayment, refundPayment } from "./payment/payment-refund-ops.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
 import type {
-  CheckoutRailKind,
-  ManualReviewReason,
-  PaymentTierPolicy,
-} from "./payment/payment-tier.policy.js";
-import { executePaymentRefundLedger } from "./payment/refund-execution.js";
-import { resolveNewPaymentReviewDecision } from "./payment/resolve-manual-review-reason.js";
-import { computeTotalDuePence } from "./payment/total-due.js";
+  CreatePendingPaymentResult,
+  PaymentServiceDeps,
+} from "./payment/payment-service-types.js";
+import type { PaymentTierPolicy } from "./payment/payment-tier.policy.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
-export type CreatePendingPaymentResult = {
-  paymentId: string;
-  checkoutUrl: string | null;
-  checkoutRail: CheckoutRailKind | null;
-  manualReviewReason: ManualReviewReason | null;
-};
-
-/** Seller entity must not be in these states for refund. */
-const REFUND_BLOCKED_STATUSES = ["archived", "rejected"];
-
-function paymentProviderErrorFromUnknown(e: unknown): PaymentProviderError {
-  if (e instanceof Stripe.errors.StripeError) {
-    const status =
-      e.type === "StripeInvalidRequestError" || e.type === "StripeCardError" ? 400 : 502;
-    return new PaymentProviderError(e.message, status, e.code ?? undefined);
-  }
-  if (e instanceof Error) {
-    return new PaymentProviderError(e.message, 502);
-  }
-  return new PaymentProviderError("Payment provider error", 502);
-}
+export type { CreatePendingPaymentResult } from "./payment/payment-service-types.js";
 
 export class PaymentService {
-  private readonly checkoutOrchestratorDeps: CheckoutOrchestratorDeps;
+  private readonly deps: PaymentServiceDeps;
 
   constructor(
-    private readonly lots: ILotRepository,
-    private readonly payments: IPaymentWriteRepository,
-    private readonly notificationDispatcher: NotificationDispatcher | null,
-    private readonly notificationFactory: NotificationFactory,
-    private readonly users: IUserRepository,
-    private readonly accounting: IInvoiceAccountingProvider,
-    private readonly paymentTierPolicy: PaymentTierPolicy,
-    private readonly legalEntityRepository?: ILegalEntityRepository,
-    private readonly db?: Database,
-    private readonly domainEventPublisher?: DomainEventPublisher,
-    private readonly stripePayments: IStripePaymentGateway | null = null,
-    private readonly mediaUrlResolver?: MediaUrlResolver,
-    private readonly lotFulfilmentHooks: ILotFulfilmentPaymentHook | null = null,
-    /**
-     * Optional sale repository used by `totalDue` to resolve sale-level buyer-premium
-     * tiers. When omitted (e.g. older test fixtures) the service falls back to the
-     * existing per-lot `buyerPremiumRate` — preserving the previous behaviour exactly.
-     */
-    private readonly sales: ISaleRepository | null = null,
+    lots: ILotRepository,
+    payments: IPaymentWriteRepository,
+    notificationDispatcher: NotificationDispatcher | null,
+    notificationFactory: NotificationFactory,
+    users: IUserRepository,
+    accounting: IInvoiceAccountingProvider,
+    paymentTierPolicy: PaymentTierPolicy,
+    legalEntityRepository?: ILegalEntityRepository,
+    db?: Database,
+    domainEventPublisher?: DomainEventPublisher,
+    stripePayments: IStripePaymentGateway | null = null,
+    mediaUrlResolver?: MediaUrlResolver,
+    lotFulfilmentHooks: ILotFulfilmentPaymentHook | null = null,
+    sales: ISaleRepository | null = null,
     _marketingEvents: IMarketingEventService | null = null,
-    private readonly platformFeePolicy: IPlatformFeePolicy | null = null,
-    private readonly paymentCapture: IPaymentCaptureService | null = null,
-    private readonly stripeCheckout: IStripeCheckoutService | null = null,
-    private readonly payoutAdjustments: IPayoutAdjustmentService | null = null,
-    private readonly paymentRefundReconcile: PaymentRefundReconcileService | null = null,
-    private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
-    private readonly addresses: IAddressRepository | null = null,
-    /** Pre-settlement AML/SoF compliance gate (CDD Sections 5 & 6). */
-    private readonly settlementCompliance: ISettlementCompliancePolicy | null = null,
-    /**
-     * When true, a Xero invoice failure blocks checkout (503). When false, checkout proceeds
-     * and the invoice is reconciled later by the `retry-xero-invoice-creation` cron. Defaults
-     * to true to preserve strict behaviour for callers/fixtures that don't pass the env flag.
-     */
-    private readonly xeroInvoiceBlocking: boolean = true,
+    platformFeePolicy: IPlatformFeePolicy | null = null,
+    paymentCapture: IPaymentCaptureService | null = null,
+    stripeCheckout: IStripeCheckoutService | null = null,
+    payoutAdjustments: IPayoutAdjustmentService | null = null,
+    paymentRefundReconcile: PaymentRefundReconcileService | null = null,
+    xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
+    addresses: IAddressRepository | null = null,
+    settlementCompliance: ISettlementCompliancePolicy | null = null,
+    xeroInvoiceBlocking = true,
   ) {
-    this.checkoutOrchestratorDeps = {
-      payments: this.payments,
-      users: this.users,
-      accounting: this.accounting,
-      stripeCheckout: this.stripeCheckout,
-      stripePayments: this.stripePayments,
-      settlementCompliance: this.settlementCompliance,
-      paymentTierPolicy: this.paymentTierPolicy,
-      legalEntityRepository: this.legalEntityRepository,
-      db: this.db,
-      domainEventPublisher: this.domainEventPublisher,
-      xeroInvoiceBlocking: this.xeroInvoiceBlocking,
+    const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
+      payments,
+      users,
+      accounting,
+      stripeCheckout,
+      stripePayments,
+      settlementCompliance,
+      paymentTierPolicy,
+      legalEntityRepository,
+      db,
+      domainEventPublisher,
+      xeroInvoiceBlocking,
+    };
+    this.deps = {
+      lots,
+      payments,
+      notificationDispatcher,
+      notificationFactory,
+      users,
+      accounting,
+      paymentTierPolicy,
+      legalEntityRepository,
+      db,
+      domainEventPublisher,
+      stripePayments,
+      mediaUrlResolver,
+      lotFulfilmentHooks,
+      sales,
+      platformFeePolicy,
+      paymentCapture,
+      stripeCheckout,
+      payoutAdjustments,
+      paymentRefundReconcile,
+      xeroPaymentRecorder,
+      addresses,
+      settlementCompliance,
+      xeroInvoiceBlocking,
+      checkoutOrchestratorDeps,
     };
   }
 
-  /** Winning bidder initiates Stripe checkout (card or UK bank transfer by amount tier). */
-  async createPendingForWinner(
+  createPendingForWinner(
     buyerId: string,
     lotId: string,
     addressId: string,
   ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
-    const lot = await this.lots.findById(lotId);
-    if (!lot) {
-      return err(new LotError("Lot not found", 404));
-    }
-    if (lot.winnerId !== buyerId) {
-      return err(new AuthzError("Only the winning bidder can initiate payment", 403));
-    }
-    if (lot.status !== "ended") {
-      return err(new AuthzError("Lot must be ended before payment", 400));
-    }
-    if (!lot.buyerLegalEntityId) {
-      return err(new AuthzError("Winning legal entity is missing for this lot", 400));
-    }
-    if (!lot.sellerLegalEntityId) {
-      return err(new AuthzError("Seller legal entity is missing for this lot", 400));
-    }
-
-    let addressSnapshot: LotFulfilmentAddressSnapshot;
-    try {
-      if (!this.addresses) {
-        return err(new LotError("Address service unavailable", 503, "address_service_unavailable"));
-      }
-      addressSnapshot = await resolveCheckoutAddressSnapshot(this.addresses, buyerId, addressId);
-    } catch (e) {
-      if (e instanceof LotError) return err(e);
-      throw e;
-    }
-
-    const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
-    if (existing) {
-      await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, existing.id, addressSnapshot);
-      if (existing.status === "captured") {
-        return ok({
-          paymentId: existing.id,
-          checkoutUrl: null,
-          checkoutRail: null,
-          manualReviewReason: null,
-        });
-      }
-      if (existing.status === "refunded") {
-        return err(new LotError("Payment for this lot has already been refunded", 409));
-      }
-      if (existing.status === "authorized") {
-        return ok({
-          paymentId: existing.id,
-          checkoutUrl: null,
-          checkoutRail: null,
-          manualReviewReason: null,
-        });
-      }
-      if (existing.status === "requires_manual_review") {
-        const amountPence = gbpAmountToPence(existing.amount);
-        const sellerEntity =
-          this.legalEntityRepository && existing.sellerLegalEntityId
-            ? await this.legalEntityRepository.findById(existing.sellerLegalEntityId)
-            : null;
-        // Prefer the compliance reason (aml_hold / source_of_funds_required) so it
-        // is preserved for display/audit; fall back to the value-tier reason.
-        const complianceDecision = this.settlementCompliance
-          ? await this.settlementCompliance.evaluate({
-              buyerUserId: buyerId,
-              amountPence,
-              excludePaymentId: existing.id,
-            })
-          : { hold: false, reason: null };
-        const manualReviewReason: ManualReviewReason = complianceDecision.hold
-          ? (complianceDecision.reason as ManualReviewReason)
-          : (this.paymentTierPolicy.resolveManualReviewReason(
-              amountPence,
-              sellerEntity?.status === "archived",
-            ) ?? "finance_release_required");
-        return ok({
-          paymentId: existing.id,
-          checkoutUrl: null,
-          checkoutRail: null,
-          manualReviewReason,
-        });
-      }
-      const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
-        this.checkoutOrchestratorDeps,
-        existing.id,
-        lot,
-        buyerId,
-        existing.amount,
-      );
-      if (checkout.isErr()) return err(checkout.error);
-      return ok({
-        paymentId: existing.id,
-        checkoutUrl: checkout.value.checkoutUrl,
-        checkoutRail: checkout.value.checkoutRail,
-        manualReviewReason: checkout.value.manualReviewReason,
-      });
-    }
-
-    const priorRefund = await this.payments.findRefundedByLotAndBuyer(lotId, buyerId);
-    if (priorRefund) {
-      return err(new LotError("Payment for this lot has already been refunded", 409));
-    }
-
-    const amountPence = await computeTotalDuePence(this.sales, lot);
-    const amount = gbpPenceToMajorString(amountPence);
-    const platformFee = this.platformFeePolicy
-      ? await this.platformFeePolicy.computePlatformFeeFromPence(
-          lot.sellerLegalEntityId,
-          amountPence,
-        )
-      : gbpPenceToMajorString(Math.round(amountPence * 0.05));
-    const amountValidation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
-    if (amountValidation === "blocked") {
-      return err(
-        new LotError(
-          "Payment amount exceeds the maximum online payment limit. Contact settlements.",
-          400,
-          "payment_amount_exceeds_limit",
-        ),
-      );
-    }
-    if (amountValidation === "invalid_amount") {
-      return err(new LotError("Invalid payment amount", 400, "invalid_payment_amount"));
-    }
-
-    const sellerLegalEntityId = lot.sellerLegalEntityId;
-    const sellerEntity =
-      this.legalEntityRepository && sellerLegalEntityId
-        ? await this.legalEntityRepository.findById(sellerLegalEntityId)
-        : null;
-    const sellerArchived = sellerEntity?.status === "archived";
-
-    const reviewDecision = await resolveNewPaymentReviewDecision({
-      buyerUserId: buyerId,
-      amountPence,
-      sellerArchived,
-      paymentTierPolicy: this.paymentTierPolicy,
-      settlementCompliance: this.settlementCompliance,
-    });
-    const { requiresManualReview, manualReviewReason } = reviewDecision;
-    if (reviewDecision.complianceHold && manualReviewReason) {
-      recordMoneyPathEvent(`settlement_compliance_hold_${manualReviewReason}`);
-    }
-
-    const created = await this.payments.create({
-      lotId,
-      paidByUserId: buyerId,
-      buyerLegalEntityId: lot.buyerLegalEntityId,
-      sellerLegalEntityId: lot.sellerLegalEntityId,
-      amount,
-      platformFee,
-      stripePaymentIntentId: null,
-      status: requiresManualReview ? "requires_manual_review" : "pending",
-    });
-
-    if (requiresManualReview && this.db && this.domainEventPublisher && manualReviewReason) {
-      await this.domainEventPublisher.publish(this.db, {
-        aggregateType: "payment",
-        aggregateId: created.id,
-        eventType: "payment.requires_manual_review",
-        payload: {
-          paymentId: created.id,
-          lotId,
-          buyerUserId: buyerId,
-          buyerLegalEntityId: lot.buyerLegalEntityId,
-          sellerLegalEntityId: lot.sellerLegalEntityId,
-          amount,
-          currency: "GBP",
-          reason: manualReviewReason,
-        },
-        actorUserId: buyerId,
-        actingLegalEntityId: lot.buyerLegalEntityId,
-      });
-    }
-
-    let checkoutUrl: string | null = null;
-    let checkoutRail: CheckoutRailKind | null = null;
-    if (!requiresManualReview) {
-      const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
-        this.checkoutOrchestratorDeps,
-        created.id,
-        lot,
-        buyerId,
-        created.amount,
-      );
-      if (checkout.isErr()) return err(checkout.error);
-      if (checkout.value.manualReviewReason) {
-        return ok({
-          paymentId: created.id,
-          checkoutUrl: null,
-          checkoutRail: null,
-          manualReviewReason: checkout.value.manualReviewReason,
-        });
-      }
-      checkoutUrl = checkout.value.checkoutUrl;
-      checkoutRail = checkout.value.checkoutRail;
-    }
-
-    await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id, addressSnapshot);
-
-    if (this.notificationDispatcher && !requiresManualReview) {
-      const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
-      await this.notificationDispatcher.dispatch(
-        buyerId,
-        notificationRowToPayload(
-          this.notificationFactory.createPaymentDue(lot, buyerId, {
-            paymentId: created.id,
-            amount: created.amount,
-            checkoutUrl,
-            dueDate,
-          }),
-        ),
-      );
-    }
-
-    return ok({
-      paymentId: created.id,
-      checkoutUrl,
-      checkoutRail,
-      manualReviewReason,
-    });
+    return createPendingForWinner(this.deps, buyerId, lotId, addressId);
   }
 
-  async listAllForAdmin(
+  listAllForAdmin(
     userRole: string,
     userStaffRole?: string | null,
   ): Promise<Result<PaymentRecord[], AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "finance.read",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    const rows = await this.payments.listAll();
-    return ok(rows);
+    return listAllForAdmin(this.deps, userRole, userStaffRole);
   }
 
-  async listForBuyer(buyerId: string): Promise<PaymentRecord[]> {
-    return this.payments.listByBuyerId(buyerId);
+  listForBuyer(buyerId: string): Promise<PaymentRecord[]> {
+    return listForBuyer(this.deps, buyerId);
   }
 
-  /** Buyer dashboard: list, optional status filter, lot hydration, presentation. */
-  async listMyPaymentsForBuyerApi(
+  listMyPaymentsForBuyerApi(
     userId: string,
     options: { status?: PaymentStatus },
   ): Promise<{ data: MyPaymentRowDTO[] }> {
-    const all = await this.listForBuyer(userId);
-    const filtered = options.status ? all.filter((p) => p.status === options.status) : all;
-    const lotIds = Array.from(new Set(filtered.map((p) => p.lotId)));
-    const lots = await Promise.all(lotIds.map((id) => this.lots.findById(id)));
-    const lotById = new Map<string, NonNullable<(typeof lots)[number]>>();
-    for (const lot of lots) {
-      if (lot) lotById.set(lot.id, lot);
-    }
-    const sellerArchivedByEntityId = new Map<string, boolean>();
-    if (this.legalEntityRepository) {
-      const legalEntityRepository = this.legalEntityRepository;
-      const sellerIds = Array.from(
-        new Set(
-          filtered
-            .map((p) => p.sellerLegalEntityId)
-            .filter((id): id is string => typeof id === "string" && id.length > 0),
-        ),
-      );
-      await Promise.all(
-        sellerIds.map(async (id) => {
-          const entity = await legalEntityRepository.findById(id);
-          if (entity) sellerArchivedByEntityId.set(id, entity.status === "archived");
-        }),
-      );
-    }
-    const data = await presentMyPayments(filtered, lotById, this.mediaUrlResolver, {
-      paymentTierPolicy: this.paymentTierPolicy,
-      sellerArchivedByEntityId,
-      settlementCompliance: this.settlementCompliance,
-    });
-    return { data };
+    return listMyPaymentsForBuyerApi(this.deps, userId, options);
   }
 
-  /**
-   * Pre-flight read-only compliance gate for buyer surfaces. Surfaces an active
-   * AML hold or an open (pending) Source-of-Funds case without creating a
-   * payment row and without any side effects (no SoF case creation, no events) —
-   * safe to call from GET handlers on every checkout/portfolio load.
-   *
-   * This intentionally does NOT predict whether a not-yet-attempted purchase
-   * would cross the SoF threshold; the authoritative amount-based gate runs at
-   * `POST /payments`. It closes the pre-payment-row gap where a pending case
-   * already exists but no payment row carries the reason yet.
-   */
-  async getBuyerComplianceGateStatus(
+  getBuyerComplianceGateStatus(
     userId: string,
   ): Promise<{ status: "clear" | "aml_hold" | "source_of_funds_required" }> {
-    if (!this.settlementCompliance) return { status: "clear" };
-    const decision = await this.settlementCompliance.peek(userId);
-    if (decision.hold) {
-      const reason = decision.reason;
-      if (reason === "aml_hold" || reason === "source_of_funds_required") {
-        return { status: reason };
-      }
-    }
-    return { status: "clear" };
+    return getBuyerComplianceGateStatus(this.deps, userId);
   }
 
   countPendingOlderThanHours(hours: number): Promise<number> {
-    return this.payments.countPendingOlderThanHours(hours);
+    return countPendingOlderThanHours(this.deps, hours);
   }
 
   sumCapturedBetween(start: Date, end: Date): Promise<string> {
-    return this.payments.sumCapturedBetween(start, end);
+    return sumCapturedBetween(this.deps, start, end);
   }
 
-  async refundPayment(
+  refundPayment(
     adminUserId: string,
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
     userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
-    const isPlatformFinanceWrite = roleHasCapability(
-      userRole as UserRole,
-      "finance.platform.write",
-      normalizeUserStaffRole(userStaffRole ?? undefined),
-    );
-    if (!isPlatformFinanceWrite && !actingLegalEntityId) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    const p = await this.payments.findById(paymentId);
-    if (!p) {
-      return err(new AuthzError("Payment not found", 404));
-    }
-    if (
-      !isPlatformFinanceWrite &&
-      (!p.sellerLegalEntityId || p.sellerLegalEntityId !== actingLegalEntityId)
-    ) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    if (p.status === "refunded") {
-      return ok(undefined);
-    }
-
-    if (this.legalEntityRepository && p.sellerLegalEntityId) {
-      const sellerEntity = await this.legalEntityRepository.findById(p.sellerLegalEntityId);
-      if (sellerEntity && REFUND_BLOCKED_STATUSES.includes(sellerEntity.status)) {
-        return err(new AuthzError(`Cannot refund: seller entity is ${sellerEntity.status}`, 400));
-      }
-    }
-
-    if (!p.stripeChargeId) {
-      return err(new PaymentProviderError("Cannot refund: payment has no Stripe charge id", 400));
-    }
-    if (!this.stripePayments?.isConfigured()) {
-      return err(
-        new PaymentProviderError("Stripe is not configured for this environment", 503, undefined),
-      );
-    }
-    if (!this.db || !this.domainEventPublisher) {
-      return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
-    }
-
-    let refundOutcome: Awaited<ReturnType<IStripePaymentGateway["createRefund"]>>;
-    try {
-      refundOutcome = await this.stripePayments.createRefund({
-        chargeId: p.stripeChargeId,
-        amount: gbpAmountToPence(p.amount),
-        reason: "requested_by_customer",
-      });
-    } catch (e) {
-      return err(paymentProviderErrorFromUnknown(e));
-    }
-
-    const stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
-
-    return executePaymentRefundLedger(
-      {
-        payments: this.payments,
-        db: this.db,
-        domainEventPublisher: this.domainEventPublisher,
-        payoutAdjustments: this.payoutAdjustments,
-        paymentRefundReconcile: this.paymentRefundReconcile,
-        xeroPaymentRecorder: this.xeroPaymentRecorder,
-      },
-      {
-        payment: p,
-        adminUserId,
-        stripeRefundId,
-        via: "admin_manual",
-        sourceEventId: `admin_refund:${paymentId}`,
-        clawbackNote: `Admin refund: ${paymentId}`,
-        logViaField: false,
-      },
-    );
-  }
-
-  /**
-   * Backfill the Xero ACCREC invoice for a settleable payment that has none yet (created while
-   * Xero was unavailable in non-blocking mode). Idempotent: `ensureInvoiceForPayment` early-returns
-   * when an invoice already exists, and is a no-op while Xero is still disconnected. Drained by the
-   * `retry-xero-invoice-creation` cron; the existing capture-sync cron then records the bank payment.
-   */
-  async backfillXeroInvoiceForPayment(paymentId: string): Promise<{ ok: boolean; error?: string }> {
-    if (!this.accounting.isConfigured()) {
-      return { ok: false, error: "accounting_not_configured" };
-    }
-    const p = await this.payments.findById(paymentId);
-    if (!p) return { ok: false, error: "payment_not_found" };
-    if (p.status !== "pending" && p.status !== "authorized" && p.status !== "captured") {
-      return { ok: false, error: "payment_not_settleable" };
-    }
-    const lot = await this.lots.findById(p.lotId);
-    if (!lot) return { ok: false, error: "lot_not_found" };
-    const buyerId = p.buyerId ?? p.paidByUserId;
-    if (!buyerId) return { ok: false, error: "buyer_not_found" };
-    const result = await ensureXeroInvoiceForPayment(
-      this.accounting,
-      this.users,
+    return refundPayment(
+      this.deps,
+      adminUserId,
+      userRole,
       paymentId,
-      lot,
-      buyerId,
-      p.amount,
+      actingLegalEntityId,
+      userStaffRole,
     );
-    if (result.ok) {
-      recordMoneyPathEvent("xero_invoice_backfilled");
-    }
-    return result;
   }
 
-  async markCapturedByAdmin(
+  backfillXeroInvoiceForPayment(paymentId: string): Promise<{ ok: boolean; error?: string }> {
+    return backfillXeroInvoiceForPayment(this.deps, paymentId);
+  }
+
+  markCapturedByAdmin(
     adminUserId: string | null | undefined,
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
     userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
-    const isPlatformFinanceWrite = roleHasCapability(
-      userRole as UserRole,
-      "finance.platform.write",
-      normalizeUserStaffRole(userStaffRole ?? undefined),
-    );
-    if (!isPlatformFinanceWrite && !actingLegalEntityId) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    const p = await this.payments.findById(paymentId);
-    if (!p) {
-      return err(new AuthzError("Payment not found", 404));
-    }
-    if (
-      !isPlatformFinanceWrite &&
-      (!p.sellerLegalEntityId || p.sellerLegalEntityId !== actingLegalEntityId)
-    ) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    if (p.status === "captured") {
-      return ok(undefined);
-    }
-    if (p.status === "requires_manual_review") {
-      return err(new AuthzError("Payment requires platform manual review", 409));
-    }
-
-    let resolvedChargeId: string | null = p.stripeChargeId;
-
-    if (p.stripePaymentIntentId) {
-      if (!this.stripePayments?.isConfigured()) {
-        return err(
-          new PaymentProviderError("Stripe is not configured for this environment", 503, undefined),
-        );
-      }
-      let pi: Stripe.PaymentIntent;
-      try {
-        pi = await this.stripePayments.capturePaymentIntent(p.stripePaymentIntentId);
-      } catch (e) {
-        return err(paymentProviderErrorFromUnknown(e));
-      }
-      const expectedPence = gbpAmountToPence(p.amount);
-      if (pi.amount !== expectedPence) {
-        recordMoneyPathEvent("admin_capture_amount_mismatch");
-        return err(
-          new PaymentProviderError(
-            "Stripe payment amount does not match the invoice total",
-            400,
-            "payment_intent_amount_mismatch",
-          ),
-        );
-      }
-      const lc = pi.latest_charge;
-      const fromPi =
-        typeof lc === "string"
-          ? lc
-          : lc && typeof lc === "object" && "id" in lc
-            ? (lc as Stripe.Charge).id
-            : null;
-      if (fromPi) {
-        resolvedChargeId = fromPi;
-      }
-    }
-
-    if (!this.paymentCapture) {
-      return err(new PaymentProviderError("Payment capture persistence is not configured", 500));
-    }
-
-    await this.paymentCapture.capture({
+    return markCapturedByAdmin(
+      this.deps,
+      adminUserId,
+      userRole,
       paymentId,
-      via: p.stripePaymentIntentId ? "stripe_payment_intent" : "admin_manual",
-      stripeChargeId: resolvedChargeId,
-      stripePaymentIntentId: p.stripePaymentIntentId,
-      actorUserId: adminUserId ?? null,
-    });
-
-    return ok(undefined);
+      actingLegalEntityId,
+      userStaffRole,
+    );
   }
 
-  async releaseManualReviewForCapture(
+  releaseManualReviewForCapture(
     adminUserId: string,
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "finance.platform.write",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    const p = await this.payments.findById(paymentId);
-    if (!p) {
-      return err(new AuthzError("Payment not found", 404));
-    }
-    if (p.status !== "requires_manual_review") {
-      return err(new AuthzError("Payment is not in manual review", 409));
-    }
-    // CDD: do not release to checkout while AML/SoF settlement compliance still blocks.
-    if (this.settlementCompliance) {
-      const amountPence = gbpAmountToPence(p.amount);
-      const compliance = await this.settlementCompliance.evaluate({
-        buyerUserId: p.paidByUserId ?? (p as PaymentRecord & { buyerId?: string }).buyerId ?? "",
-        amountPence,
-        excludePaymentId: paymentId,
-      });
-      if (compliance.hold) {
-        const code =
-          compliance.reason === "aml_hold"
-            ? "payment_release_blocked_aml_hold"
-            : "payment_release_blocked_source_of_funds";
-        const message =
-          compliance.reason === "aml_hold"
-            ? "Cannot release: buyer is on an AML/sanctions compliance hold. MLRO must clear the screening first."
-            : "Cannot release: source-of-funds review is required or pending. Compliance must approve the SoF case first.";
-        return err(new AuthzError(message, 403, { code }));
-      }
-    }
-    const db = this.db;
-    const publisher = this.domainEventPublisher;
-    if (!db || !publisher) {
-      await this.payments.updateStatus(paymentId, "pending");
-      return ok(undefined);
-    }
-
-    try {
-      await db.transaction(async (tx) => {
-        const released = await this.payments.applyReleasedFromManualReviewInTransaction(
-          tx,
-          paymentId,
-        );
-        if (!released) {
-          throw new Error("payment_not_in_manual_review");
-        }
-        await publisher.publish(tx, {
-          aggregateType: "payment",
-          aggregateId: paymentId,
-          eventType: "payment.manual_review_released",
-          payload: {
-            paymentId,
-            lotId: p.lotId,
-            sellerLegalEntityId: p.sellerLegalEntityId ?? null,
-            action: "capture_and_process",
-          },
-          actorUserId: adminUserId,
-          actingLegalEntityId: p.sellerLegalEntityId ?? null,
-        });
-      });
-    } catch (e) {
-      if (e instanceof Error && e.message === "payment_not_in_manual_review") {
-        return err(new AuthzError("Payment is not in manual review", 409));
-      }
-      throw e;
-    }
-    return ok(undefined);
+    return releaseManualReviewForCapture(
+      this.deps,
+      adminUserId,
+      userRole,
+      paymentId,
+      userStaffRole,
+    );
   }
 
-  async refundManualReviewPayment(
+  refundManualReviewPayment(
     adminUserId: string,
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "finance.platform.write",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    const p = await this.payments.findById(paymentId);
-    if (!p) {
-      return err(new AuthzError("Payment not found", 404));
-    }
-    if (p.status !== "requires_manual_review") {
-      return err(new AuthzError("Payment is not in manual review", 409));
-    }
-    if (!this.db || !this.domainEventPublisher) {
-      return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
-    }
-
-    let stripeRefundId: string | null = null;
-    if (p.stripeChargeId && this.stripePayments?.isConfigured()) {
-      try {
-        const refundOutcome = await this.stripePayments.createRefund({
-          chargeId: p.stripeChargeId,
-          amount: gbpAmountToPence(p.amount),
-          reason: "requested_by_customer",
-        });
-        stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
-      } catch (e) {
-        return err(paymentProviderErrorFromUnknown(e));
-      }
-    }
-
-    return executePaymentRefundLedger(
-      {
-        payments: this.payments,
-        db: this.db,
-        domainEventPublisher: this.domainEventPublisher,
-        payoutAdjustments: this.payoutAdjustments,
-        paymentRefundReconcile: this.paymentRefundReconcile,
-        xeroPaymentRecorder: this.xeroPaymentRecorder,
-      },
-      {
-        payment: p,
-        adminUserId,
-        stripeRefundId,
-        via: "admin_manual_review",
-        eventReason: "seller_archived",
-        sourceEventId: `admin_manual_review_refund:${paymentId}`,
-        clawbackNote: `Manual review refund: ${paymentId}`,
-        logViaField: true,
-      },
-    );
+    return refundManualReviewPayment(this.deps, adminUserId, userRole, paymentId, userStaffRole);
   }
 
-  /** Buyer abandons an unpaid pending invoice (e.g. relinquishes the win). */
-  async cancelPendingAsBuyer(
+  cancelPendingAsBuyer(
     buyerId: string,
     paymentId: string,
   ): Promise<Result<void, AuthzError | LotError>> {
-    const p = await this.payments.findById(paymentId);
-    if (!p) return err(new LotError("Payment not found", 404));
-    if (p.paidByUserId !== buyerId) {
-      return err(new AuthzError("Only the buyer can cancel this payment", 403));
-    }
-    if (p.status !== "pending") {
-      return err(new LotError("Only pending payments can be cancelled", 409));
-    }
-    await this.payments.updateStatus(paymentId, "cancelled");
-    // Best-effort: expire the open Stripe Checkout session / cancel the PaymentIntent so a
-    // buyer cannot still complete payment on a stale tab after cancelling (charge-but-not-captured).
-    await revokeOpenStripeCheckoutForPayment(this.checkoutOrchestratorDeps, paymentId);
-    if (this.db && this.domainEventPublisher) {
-      await this.domainEventPublisher.publish(this.db, {
-        aggregateType: "payment",
-        aggregateId: paymentId,
-        eventType: "payment.cancelled",
-        payload: {
-          lotId: p.lotId,
-          buyerUserId: buyerId,
-          reason: "buyer_abandoned",
-        },
-        actorUserId: buyerId,
-        actingLegalEntityId: p.buyerLegalEntityId ?? null,
-      });
-    }
-    return ok(undefined);
+    return cancelPendingAsBuyer(this.deps, buyerId, paymentId);
   }
 
-  /** Cron: expire pending and authorized payments older than configured thresholds. */
-  async expireStalePendingPayments(
+  expireStalePendingPayments(
     pendingMaxAgeDays: number,
     authorizedMaxAgeDays?: number,
   ): Promise<number> {
-    const pendingCutoff = new Date(Date.now() - pendingMaxAgeDays * 86_400_000);
-    const stalePending = await this.payments.listStalePendingBefore(pendingCutoff);
-    const authorizedDays = authorizedMaxAgeDays ?? pendingMaxAgeDays * 2;
-    const authorizedCutoff = new Date(Date.now() - authorizedDays * 86_400_000);
-    const staleAuthorized = await this.payments.listStaleAuthorizedBefore(authorizedCutoff);
-    let expired = 0;
-    for (const row of stalePending) {
-      await this.cancelStalePayment(row, "stale_pending_expired");
-      expired += 1;
-    }
-    for (const row of staleAuthorized) {
-      await this.cancelStalePayment(row, "stale_authorized_expired");
-      expired += 1;
-    }
-    return expired;
+    return expireStalePendingPayments(this.deps, pendingMaxAgeDays, authorizedMaxAgeDays);
   }
 
-  private async cancelStalePayment(
-    row: { id: string; lotId: string; buyerId: string },
-    reason: string,
-  ): Promise<void> {
-    await this.payments.updateStatus(row.id, "cancelled");
-    // Best-effort: revoke any open Stripe Checkout session for the expired payment.
-    await revokeOpenStripeCheckoutForPayment(this.checkoutOrchestratorDeps, row.id);
-    if (this.db && this.domainEventPublisher) {
-      await this.domainEventPublisher.publish(this.db, {
-        aggregateType: "payment",
-        aggregateId: row.id,
-        eventType: "payment.cancelled",
-        payload: {
-          lotId: row.lotId,
-          buyerUserId: row.buyerId,
-          reason,
-        },
-        actorUserId: null,
-        actingLegalEntityId: null,
-      });
-    }
-  }
-
-  async syncPaymentFromXeroAsAdmin(
+  syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
     userStaffRole?: string | null,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "finance.platform.write",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Forbidden", 403));
-    }
-    const r = await this.accounting.syncPaymentFromProvider(paymentId);
-    if (!r.ok) {
-      return ok({ ok: false, error: r.error ?? "Xero sync failed" });
-    }
-    return ok({ ok: true });
+    return syncPaymentFromXeroAsAdmin(this.deps, userRole, paymentId, userStaffRole);
   }
 }

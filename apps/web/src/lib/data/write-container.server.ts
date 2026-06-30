@@ -4,6 +4,7 @@ import { type IAuthedApiClient, getAuthedApiClient } from "@/lib/services/http/a
 import { AccountService } from "@/lib/services/impl/account.service";
 import { AdminArtistService } from "@/lib/services/impl/admin-artist.service";
 import { AdminCategoryService } from "@/lib/services/impl/admin-category.service";
+import { AdminInvitationService } from "@/lib/services/impl/admin-invitation.service";
 import { AdminLotService } from "@/lib/services/impl/admin-lot.service";
 import { AdminPaymentOpsService } from "@/lib/services/impl/admin-payment-ops.service";
 import { AdminSaleService } from "@/lib/services/impl/admin-sale.service";
@@ -19,6 +20,7 @@ import { UiPrefsService } from "@/lib/services/impl/ui-prefs.service";
 import type { IAccountService } from "@/lib/services/interfaces/account-service";
 import type { IAdminArtistService } from "@/lib/services/interfaces/admin-artist-service";
 import type { IAdminCategoryService } from "@/lib/services/interfaces/admin-category-service";
+import type { IAdminInvitationService } from "@/lib/services/interfaces/admin-invitation-service";
 import type { IAdminLotService } from "@/lib/services/interfaces/admin-lot-service";
 import type { IAdminPaymentOpsService } from "@/lib/services/interfaces/admin-payment-ops-service";
 import type { IAdminSaleService } from "@/lib/services/interfaces/admin-sale-service";
@@ -49,6 +51,7 @@ export type WriteServiceContainer = {
   adminSubmissions: IAdminSubmissionService;
   adminUsers: IAdminUserService;
   adminPayments: IAdminPaymentOpsService;
+  invitations: IAdminInvitationService;
 };
 
 let cached: WriteServiceContainer | null = null;
@@ -76,6 +79,7 @@ export function getWriteContainer(): WriteServiceContainer {
     adminSubmissions: new AdminSubmissionService(api),
     adminUsers: new AdminUserService(api),
     adminPayments: new AdminPaymentOpsService(api),
+    invitations: new AdminInvitationService(api),
   };
   return cached;
 }

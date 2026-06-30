@@ -36,6 +36,11 @@ function lotRoutesApp(opts: {
     conditionReportService: { findForBuyerOnLot, createRequest, listForAdmin: vi.fn() },
     absenteeBidService: { schedule: vi.fn() },
     autoBidService: { setForLot: vi.fn() },
+    bidding: {
+      conditionReportService: { findForBuyerOnLot, createRequest },
+      absenteeBidService: { schedule: vi.fn() },
+      autoBidService: { setForLot: vi.fn() },
+    },
     bidService: {},
     lotReaderService: {},
     lotDocumentService: {},

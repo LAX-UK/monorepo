@@ -26,3 +26,11 @@ export {
   type NoSaleReason,
   type ReserveStatus,
 } from "./reserve.js";
+export {
+  canTransition as canLotTransition,
+  canAdminOverrideLotStatus,
+  targetStatusForKind,
+  LOT_TRANSITIONS,
+  type LotTransitionKind,
+  type LotTransitionDef,
+} from "./lot-transitions.js";

@@ -30,7 +30,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.absenteeBidService.schedule({
+      const result = await container.bidding.absenteeBidService.schedule({
         userId,
         lotId: id,
         buyerLegalEntityId: body.buyerLegalEntityId,
@@ -55,7 +55,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const row = await container.conditionReportService.findForBuyerOnLot({
+      const row = await container.bidding.conditionReportService.findForBuyerOnLot({
         userId,
         lotId: id,
       });
@@ -74,7 +74,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.conditionReportService.createRequest({
+      const result = await container.bidding.conditionReportService.createRequest({
         userId,
         lotId: id,
         ...(body.requestNote !== undefined ? { requestNote: body.requestNote } : {}),
@@ -101,7 +101,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     async (c) => {
       const { id } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.autoBidService.getAutoBid({
+      const result = await container.bidding.autoBidService.getAutoBid({
         lotId: id,
         placedByUserId: userId,
       });
@@ -132,7 +132,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
       const legalEntityContext = c.get("legalEntityContext");
       const body = c.req.valid("json");
       const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
-      const result = await container.autoBidService.setAutoBid({
+      const result = await container.bidding.autoBidService.setAutoBid({
         lotId: id,
         placedByUserId: userId,
         buyerLegalEntityId: legalEntityContext?.legalEntityId ?? "",
@@ -162,7 +162,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     async (c) => {
       const { id } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.autoBidService.clearAutoBid({
+      const result = await container.bidding.autoBidService.clearAutoBid({
         lotId: id,
         placedByUserId: userId,
       });

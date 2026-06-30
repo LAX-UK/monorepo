@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { canAdminOverrideLotStatus } from "@auction/domain";
 import {
   type Lot,
   type LotStatus,
@@ -9,7 +10,6 @@ import {
 } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
-import { canAdminOverrideLotStatus } from "../domain/lot-transitions.js";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";

@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
 import { lot } from "@auction/db/schema";
+import { canAdminOverrideLotStatus, canLotTransition } from "@auction/domain";
 import type { Lot, LotStatus, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
-import { canAdminOverrideLotStatus, canTransition } from "../domain/lot-transitions.js";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
@@ -62,7 +62,7 @@ export class LotTransitionOrchestrator {
     if (!row) return err(new LotError("Lot not found", 404));
     if (row.deletedAt) return err(new LotError("Lot not found", 404));
 
-    if (!canTransition(row.status, "return_to_inventory")) {
+    if (!canLotTransition(row.status, "return_to_inventory")) {
       return err(new LotError("This lot cannot be returned to inventory in its current status"));
     }
 

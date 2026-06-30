@@ -7,6 +7,7 @@ import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuth } from "./container/create-auth.js";
+import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
 import { createCatalogServices } from "./container/create-catalog-services.js";
 import { createComplianceMedia } from "./container/create-compliance-media.js";
@@ -67,6 +68,7 @@ import type { AdminRouteServices } from "./services/interfaces/admin-routes.js";
 import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
+import type { BiddingRouteServices } from "./services/interfaces/bidding-routes.js";
 import type { IConditionReportService } from "./services/interfaces/condition-report.js";
 import type { IDisplayOverlayService } from "./services/interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "./services/interfaces/display-pairing-service.js";
@@ -351,6 +353,8 @@ export type Container = {
   postmarkWebhookService: PostmarkWebhookService;
   adminMarketingEventsService: AdminMarketingEventsService;
   emailUnsubscribeService: EmailUnsubscribeService;
+  /** Lot bidding HTTP orchestration (auto-bid, absentee, condition-report requests). Route files under `routes/lots/bidding*` should use this facade only; run `pnpm --filter @auction/api check:bidding-dip`. */
+  bidding: BiddingRouteServices;
   /** Platform-admin HTTP orchestration (SOLID application layer for `routes/admin*`). Keep route files on `container.admin` only; run `pnpm --filter @auction/api check:admin-dip` in CI. */
   admin: AdminRouteServices;
   /** Engineering-only BullMQ inspection and mutations (super_admin). */
@@ -401,7 +405,7 @@ export function createContainer(env: Env): Container {
     complianceMedia,
     catalog,
   });
-  const bidding = createBiddingSaleroom({
+  const biddingSaleroom = createBiddingSaleroom({
     env,
     db,
     infra,
@@ -435,7 +439,7 @@ export function createContainer(env: Env): Container {
     complianceMedia,
     catalog,
     payments,
-    bidding,
+    bidding: biddingSaleroom,
     userMisc,
   });
 
@@ -460,29 +464,29 @@ export function createContainer(env: Env): Container {
     lotSoftDeleteService: catalog.lotSoftDeleteService,
     saleFollowService: catalog.saleFollowService,
     saleBiddersService: catalog.saleBiddersService,
-    saleRegistrationService: bidding.saleRegistrationService,
+    saleRegistrationService: biddingSaleroom.saleRegistrationService,
     lotLifecycleService: lotLifecycle.lotLifecycleService,
     lotLifecycleQueryService: catalog.lotLifecycleQueryService,
     lotTransitionOrchestrator: catalog.lotTransitionOrchestrator,
     adminLotBrowseService: catalog.adminLotBrowseService,
-    absenteeBidService: bidding.absenteeBidService,
+    absenteeBidService: biddingSaleroom.absenteeBidService,
     telephoneBidBookingService: catalog.telephoneBidBookingService,
     paddleService: catalog.paddleService,
     saleroomCheckInService: catalog.saleroomCheckInService,
     onsiteEventRsvpService: catalog.onsiteEventRsvpService,
     onsiteEventCheckInService: catalog.onsiteEventCheckInService,
-    adminSaleOperationsSnapshotService: bidding.adminSaleOperationsSnapshotService,
-    saleroomService: bidding.saleroomService,
-    displayPairingService: bidding.displayPairingService,
-    displayOverlayService: bidding.displayOverlayService,
-    displaySnapshotReader: bidding.displaySnapshotReader,
-    saleroomOnBlockPolicy: bidding.saleroomOnBlockPolicy,
+    adminSaleOperationsSnapshotService: biddingSaleroom.adminSaleOperationsSnapshotService,
+    saleroomService: biddingSaleroom.saleroomService,
+    displayPairingService: biddingSaleroom.displayPairingService,
+    displayOverlayService: biddingSaleroom.displayOverlayService,
+    displaySnapshotReader: biddingSaleroom.displaySnapshotReader,
+    saleroomOnBlockPolicy: biddingSaleroom.saleroomOnBlockPolicy,
     lotFulfilmentService: payments.lotFulfilmentService,
     saleLifecycleService: lotLifecycle.saleLifecycleService,
     lotJobScheduler: catalog.lotJobScheduler,
     saleStatusTransitionService: catalog.saleStatusTransitionService,
-    bidService: bidding.bidService,
-    autoBidService: bidding.autoBidService,
+    bidService: biddingSaleroom.bidService,
+    autoBidService: biddingSaleroom.autoBidService,
     categoryService: catalog.categoryService,
     venueService: catalog.venueService,
     resolvePlatformCatalogLegalEntityId: catalog.resolvePlatformCatalogLegalEntityId,
@@ -590,6 +594,11 @@ export function createContainer(env: Env): Container {
     postmarkWebhookService: userMisc.postmarkWebhookService,
     adminMarketingEventsService: userMisc.adminMarketingEventsService,
     emailUnsubscribeService: userMisc.emailUnsubscribeService,
+    bidding: createBiddingRouteServices({
+      absenteeBidService: biddingSaleroom.absenteeBidService,
+      autoBidService: biddingSaleroom.autoBidService,
+      conditionReportService: catalog.conditionReportService,
+    }),
     admin: admin.admin,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,

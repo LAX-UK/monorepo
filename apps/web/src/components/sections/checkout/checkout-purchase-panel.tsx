@@ -3,13 +3,13 @@
 import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { BuyerGate, isAdminBuyerBlocked } from "@/components/marketing/admin-cannot-buy-notice";
 import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout-lot-mobile-chrome";
+import { useCheckoutPurchaseState } from "@/components/sections/checkout/use-checkout-purchase-state";
 import {
   type CheckoutPaymentActionData,
   createCheckoutPaymentAction,
 } from "@/lib/actions/checkout";
 import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
 import { trackBeginCheckout } from "@/lib/analytics/events";
-import { isAwaitingCaptureConfirmation } from "@/lib/checkout/checkout-page-state";
 import {
   checkoutPaymentErrorMessage,
   manualReviewReasonCopy,
@@ -383,38 +383,17 @@ export function CheckoutPurchasePanel({
     preflightComplianceGate,
   });
 
-  const awaitingCaptureConfirmation = isAwaitingCaptureConfirmation({
+  const {
+    awaitingCaptureConfirmation,
+    bankTransferInstructions,
+    confirmationTimedOut,
+    refreshStatus,
+  } = useCheckoutPurchaseState({
     stripeReturnSuccess,
     paymentComplete,
     openPaymentStatus,
     openPaymentCheckoutRail,
   });
-
-  const bankTransferInstructions =
-    stripeReturnSuccess &&
-    !paymentComplete &&
-    openPaymentCheckoutRail === "gb_bank_transfer" &&
-    openPaymentStatus === "pending";
-
-  const [confirmationTimedOut, setConfirmationTimedOut] = useState(false);
-
-  useEffect(() => {
-    if (!awaitingCaptureConfirmation) {
-      setConfirmationTimedOut(false);
-      return;
-    }
-    // Cap the poll so a lost/delayed webhook can't refresh the tab forever.
-    const deadline = Date.now() + 3 * 60 * 1000;
-    const id = window.setInterval(() => {
-      if (Date.now() > deadline) {
-        setConfirmationTimedOut(true);
-        window.clearInterval(id);
-        return;
-      }
-      if (!document.hidden) router.refresh();
-    }, 8000);
-    return () => window.clearInterval(id);
-  }, [awaitingCaptureConfirmation, router]);
 
   if (paymentComplete) {
     return (
@@ -450,7 +429,7 @@ export function CheckoutPurchasePanel({
         <PaymentConfirmingBlock
           lotTitle={lotTitle}
           timedOut={confirmationTimedOut}
-          onRefresh={() => router.refresh()}
+          onRefresh={refreshStatus}
         />
       </div>
     );
