@@ -4,7 +4,6 @@ import {
   authSubmitFailure,
   mapBetterAuthSecondaryFailure,
 } from "@/lib/auth/auth-error-code";
-import { notifyTwoFactorEnabledEmail } from "@/lib/auth/security-notify.client";
 
 export type EnableTwoFactorResult =
   | { ok: true; totpURI: string; backupCodes: string[] }
@@ -27,6 +26,8 @@ export async function enableTwoFactorService(password: string): Promise<EnableTw
   if (typeof totpURI !== "string" || !Array.isArray(backupCodes)) {
     return authSubmitFailure("two_factor_unexpected_response");
   }
-  notifyTwoFactorEnabledEmail();
+  // 2FA is not actually enabled yet at this point — Better Auth only flips
+  // `user.twoFactorEnabled` once the TOTP code is confirmed. The "enabled"
+  // notification email is sent from the confirm step, not here.
   return { ok: true, totpURI, backupCodes };
 }

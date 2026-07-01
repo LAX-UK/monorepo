@@ -101,6 +101,47 @@ describe("renderEmail", () => {
     expect(rendered.html).toContain("https://lax.bid/dashboard/seller/connect");
   });
 
+  it("renders 2fa-enabled with the correct subject and security copy", async () => {
+    const rendered = await renderEmail("2fa-enabled", { userName: "Ada" });
+
+    expect(rendered.subject).toBe("Two-factor authentication was turned on — LAX.BID");
+    expect(rendered.html).toContain("Two-factor enabled");
+    expect(rendered.html).toContain("successfully enabled");
+    expect(rendered.text).toContain("contact support immediately");
+  });
+
+  it("renders 2fa-disabled with the correct subject and security copy", async () => {
+    const rendered = await renderEmail("2fa-disabled", { userName: "Ada" });
+
+    expect(rendered.subject).toBe("Two-factor authentication was turned off — LAX.BID");
+    expect(rendered.html).toContain("Two-factor disabled");
+    expect(rendered.html).toContain("turned off");
+    expect(rendered.text).toContain("re-enable 2FA");
+  });
+
+  it("renders new-device-login with the sign-in time and device summary", async () => {
+    const rendered = await renderEmail("new-device-login", {
+      userName: "Ada",
+      whenDisplay: "Mon, 01 Jun 2026 10:00:00 GMT",
+      deviceSummary: "Chrome on macOS",
+    });
+
+    expect(rendered.subject).toBe("New sign-in to your LAX.BID account");
+    expect(rendered.html).toContain("New sign-in");
+    expect(rendered.html).toContain("Mon, 01 Jun 2026 10:00:00 GMT");
+    expect(rendered.html).toContain("Chrome on macOS");
+  });
+
+  it("renders new-device-login without a device line when deviceSummary is absent", async () => {
+    const rendered = await renderEmail("new-device-login", {
+      userName: "Ada",
+      whenDisplay: "Mon, 01 Jun 2026 10:00:00 GMT",
+      deviceSummary: null,
+    });
+
+    expect(rendered.html).not.toContain("Device:");
+  });
+
   it("applies category accent colours from design tokens", async () => {
     const alertHtml = (
       await renderEmail("lot-voided-notice", {
