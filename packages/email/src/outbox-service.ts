@@ -51,7 +51,31 @@ export class PostmarkEmailService implements IEmailService {
   ): Promise<{ outboxId: string }> {
     const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input);
     const existing = await this.findByIdempotencyKey(idempotencyKey);
-    if (existing) return { outboxId: existing.id };
+    if (existing) {
+      // A terminally-failed row (5 exhausted attempts) must not permanently block this
+      // notification on every future trigger — e.g. a transient provider outage or a
+      // since-fixed recipient issue should not mean the user never gets this email again.
+      // Re-arm the same row and re-queue it under a fresh job id (BullMQ dedupes by jobId,
+      // and the original job id is the outboxId, so a plain re-add would be swallowed).
+      if (existing.status === "failed") {
+        await this.db
+          .update(emailOutbox)
+          .set({ status: "pending", attempts: 0, lastError: null, messageId: null })
+          .where(eq(emailOutbox.id, existing.id));
+        await this.emailQueue.add(
+          "send-email",
+          { outboxId: existing.id },
+          {
+            jobId: `${existing.id}:retry:${Date.now()}`,
+            attempts: 5,
+            backoff: { type: "exponential", delay: 30_000 },
+            removeOnComplete: 1000,
+            removeOnFail: 5000,
+          },
+        );
+      }
+      return { outboxId: existing.id };
+    }
 
     const toEmailHash = emailHash(input.to);
     const [suppression] = await this.db
