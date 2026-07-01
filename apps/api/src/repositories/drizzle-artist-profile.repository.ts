@@ -1,24 +1,13 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
-import {
-  artistAlias,
-  artistCategories,
-  artistProfile,
-  artistWatchlist,
-  category,
-  lot,
-  user,
-} from "@auction/db/schema";
+import { artistAlias, artistProfile, artistWatchlist, lot, user } from "@auction/db/schema";
 import type {
   AdminArtistListResult,
-  AdminArtistListRow,
   AdminArtistStats,
-  ArtistCategoryRef,
   ArtistDeleteGuardCounts,
   ArtistKind,
   ArtistProfile,
   ArtistStatus,
-  PublicArtistDirectoryFacets,
   PublicArtistDirectoryResult,
   PublicArtistDirectoryRow,
 } from "@auction/types";
@@ -27,15 +16,26 @@ import {
   type adminUpdateArtistBodySchema,
   parseCreatorAttributes,
 } from "@auction/validators";
-import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { AdminArtistListOptions } from "../admin/admin-route-dtos.js";
 import { replaceArtistCategoriesInTx } from "../services/artist-registry.service.js";
 import type { DbTransaction } from "../services/interfaces/artist-delete.js";
+import { computeDirectoryFacets } from "./artist-profile/artist-profile-directory-facets.js";
 import {
-  artistHasPublicBrowseLotsExists,
-  artistPublicCatalogLotCountSubquery,
-} from "./artist-public-lot-count.sql.js";
+  aliasCountExpr,
+  buildAdminListFilters,
+  buildPublicDirectoryWhere,
+  lotCountExpr,
+  orderByClause,
+  publicDirectoryOrderBy,
+  publicLotCountExpr,
+} from "./artist-profile/artist-profile-list-filters.js";
+import { mapAdminListRow, mapArtist } from "./artist-profile/artist-profile-mappers.js";
+import {
+  loadCategories,
+  loadCategoriesForArtists,
+} from "./artist-profile/artist-profile-read.helpers.js";
 
 export type CreateArtistInput = z.infer<typeof adminCreateArtistBodySchema> & {
   slug: string;
@@ -46,196 +46,8 @@ export type UpdateArtistInput = z.infer<typeof adminUpdateArtistBodySchema> & {
   slug?: string | undefined;
 };
 
-function mapArtist(row: typeof artistProfile.$inferSelect): ArtistProfile {
-  return {
-    id: row.id,
-    displayName: row.displayName,
-    slug: row.slug,
-    portraitUrl: row.portraitUrl,
-    heroImageUrl: row.heroImageUrl,
-    shortBio: row.shortBio,
-    longBio: row.longBio,
-    statement: row.statement,
-    nationality: row.nationality,
-    location: row.location,
-    countryCode: row.countryCode ?? null,
-    birthYear: row.birthYear,
-    deathYear: row.deathYear,
-    foundedYear: row.foundedYear ?? null,
-    dissolvedYear: row.dissolvedYear ?? null,
-    websiteUrl: row.websiteUrl,
-    socialLinks: row.socialLinks ?? {},
-    attributes: row.attributes ?? {},
-    featured: row.featured,
-    verified: row.verified,
-    archived: row.archived,
-    kind: row.kind as ArtistKind,
-    status: row.status as ArtistStatus,
-    mergedIntoArtistId: row.mergedIntoArtistId ?? null,
-    ownerUserId: row.ownerUserId,
-    ownerLegalEntityId: row.ownerLegalEntityId ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-function mapAdminListRow(
-  row: typeof artistProfile.$inferSelect,
-  extras: {
-    lotCount: number;
-    aliasCount: number;
-    ownerDisplayName: string | null;
-    ownerImage: string | null;
-  },
-): AdminArtistListRow {
-  return { ...mapArtist(row), ...extras };
-}
-
-function buildAdminListFilters(options: AdminArtistListOptions) {
-  const filters = [];
-  if (options.archivedOnly) {
-    filters.push(eq(artistProfile.archived, true));
-  } else if (!options.includeArchived) {
-    filters.push(eq(artistProfile.archived, false));
-  }
-
-  if (options.q?.trim()) {
-    const q = `%${options.q.trim().replace(/[%_\\]/g, "")}%`;
-    filters.push(
-      sql`(${artistProfile.displayName} ilike ${q} or ${artistProfile.slug} ilike ${q})`,
-    );
-  }
-
-  if (options.kinds && options.kinds.length > 0) {
-    filters.push(inArray(artistProfile.kind, options.kinds));
-  } else if (options.kind) {
-    filters.push(eq(artistProfile.kind, options.kind));
-  }
-
-  if (options.status) filters.push(eq(artistProfile.status, options.status));
-  if (options.ownerUserId?.trim()) {
-    filters.push(eq(artistProfile.ownerUserId, options.ownerUserId.trim()));
-  }
-  if (options.country?.trim()) {
-    filters.push(eq(artistProfile.countryCode, options.country.trim().toUpperCase()));
-  }
-  if (options.categoryId) {
-    filters.push(
-      sql`exists (select 1 from ${artistCategories} where ${artistCategories.artistProfileId} = ${artistProfile.id} and ${artistCategories.categoryId} = ${options.categoryId})`,
-    );
-  }
-  if (options.featured === true) filters.push(eq(artistProfile.featured, true));
-  if (options.verified === true) filters.push(eq(artistProfile.verified, true));
-  const linked = options.linked ?? "any";
-  if (linked === "yes") filters.push(isNotNull(artistProfile.ownerUserId));
-  if (linked === "no") filters.push(isNull(artistProfile.ownerUserId));
-
-  return filters.length > 0 ? (filters.length === 1 ? filters[0] : and(...filters)) : undefined;
-}
-
-/** Correlated lot counts for SELECT lists. Drizzle strips table qualifiers inside
- * `sql` selected fields (see drizzle-orm#5734), so correlate with bare SQL
- * table names that match the outer `artist_profile` row.
- *
- * Admin list: all non-deleted lots with FK attribution to the artist.
- * Public directory card counts: public catalogue lots (scheduled + active + ended). */
-const lotCountExpr = sql<number>`(
-  select count(*)::int
-  from lot
-  where lot.artist_id = artist_profile.id
-    and lot.deleted_at is null
-)`;
-const publicLotCountExpr = artistPublicCatalogLotCountSubquery();
-const aliasCountExpr = sql<number>`(
-  select count(*)::int
-  from artist_alias
-  where artist_alias.artist_profile_id = artist_profile.id
-)`;
-
-/** Extract the leading 4-digit year from `birth_year` text using a Postgres regex.
- * Returns `NULL` when no year prefix is present. Reused by decade filter + facets. */
-const birthYearExpr = sql<number | null>`case
-  when substring(coalesce(${artistProfile.birthYear}, '') from '^\\d{4}') ~ '^\\d{4}$'
-  then substring(${artistProfile.birthYear} from '^\\d{4}')::int
-  else null
-end`;
-
-/** Build a `where` clause that filters artists into a decade slug. Returns `null`
- * when the slug isn't recognised so callers can skip filter merge. */
-function decadeWhereClause(slug: string | undefined) {
-  if (!slug) return null;
-  const norm = slug.trim().toLowerCase();
-  if (norm === "pre-1800") {
-    return sql`${birthYearExpr} is not null and ${birthYearExpr} < 1800`;
-  }
-  const m = /^(\d{4})s$/.exec(norm);
-  if (!m || !m[1]) return null;
-  const start = Number.parseInt(m[1], 10);
-  if (!Number.isFinite(start)) return null;
-  return sql`${birthYearExpr} is not null and ${birthYearExpr} >= ${start} and ${birthYearExpr} < ${start + 10}`;
-}
-
-function orderByClause(sort: AdminArtistListOptions["sort"]) {
-  const s = sort ?? "name_asc";
-  switch (s) {
-    case "name_desc":
-      return [desc(artistProfile.displayName)];
-    case "updated_desc":
-      return [desc(artistProfile.updatedAt)];
-    case "updated_asc":
-      return [asc(artistProfile.updatedAt)];
-    case "lots_desc":
-      return [desc(lotCountExpr), asc(artistProfile.displayName)];
-    case "lots_asc":
-      return [asc(lotCountExpr), asc(artistProfile.displayName)];
-    case "status_asc":
-      return [asc(artistProfile.status), asc(artistProfile.displayName)];
-    case "status_desc":
-      return [desc(artistProfile.status), asc(artistProfile.displayName)];
-    default:
-      return [asc(artistProfile.displayName)];
-  }
-}
-
 export class DrizzleArtistProfileRepository {
   constructor(private readonly db: Database) {}
-
-  /** Ordered category (department) refs for one artist. */
-  private async loadCategories(artistProfileId: string): Promise<ArtistCategoryRef[]> {
-    const rows = await this.db
-      .select({ id: category.id, name: category.name, slug: category.slug })
-      .from(artistCategories)
-      .innerJoin(category, eq(category.id, artistCategories.categoryId))
-      .where(eq(artistCategories.artistProfileId, artistProfileId))
-      .orderBy(asc(artistCategories.sortOrder), asc(category.name));
-    return rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug }));
-  }
-
-  /** Batch category loader for list views (avoids N+1). */
-  private async loadCategoriesForArtists(
-    artistProfileIds: string[],
-  ): Promise<Map<string, ArtistCategoryRef[]>> {
-    const map = new Map<string, ArtistCategoryRef[]>();
-    if (artistProfileIds.length === 0) return map;
-    const rows = await this.db
-      .select({
-        artistProfileId: artistCategories.artistProfileId,
-        id: category.id,
-        name: category.name,
-        slug: category.slug,
-        sortOrder: artistCategories.sortOrder,
-      })
-      .from(artistCategories)
-      .innerJoin(category, eq(category.id, artistCategories.categoryId))
-      .where(inArray(artistCategories.artistProfileId, artistProfileIds))
-      .orderBy(asc(artistCategories.sortOrder), asc(category.name));
-    for (const row of rows) {
-      const list = map.get(row.artistProfileId) ?? [];
-      list.push({ id: row.id, name: row.name, slug: row.slug });
-      map.set(row.artistProfileId, list);
-    }
-    return map;
-  }
 
   async list(
     options: {
@@ -292,7 +104,10 @@ export class DrizzleArtistProfileRepository {
       .limit(limit)
       .offset(offset);
 
-    const categoriesById = await this.loadCategoriesForArtists(rows.map((r) => r.ap.id));
+    const categoriesById = await loadCategoriesForArtists(
+      this.db,
+      rows.map((r) => r.ap.id),
+    );
 
     return {
       total,
@@ -341,7 +156,7 @@ export class DrizzleArtistProfileRepository {
       .where(eq(artistProfile.id, id))
       .limit(1);
     if (!row) return null;
-    return { ...mapArtist(row), categories: await this.loadCategories(id) };
+    return { ...mapArtist(row), categories: await loadCategories(this.db, id) };
   }
 
   /** Public marketing directory: approved, not archived, server-paged.
@@ -368,212 +183,26 @@ export class DrizzleArtistProfileRepository {
     hasUpcoming?: boolean;
     sort?: "name_asc" | "popular" | "recent";
   }): Promise<PublicArtistDirectoryResult> {
-    const baseFilters = [eq(artistProfile.archived, false), eq(artistProfile.status, "approved")];
-    if (options.q?.trim()) {
-      const q = `%${options.q.trim().replace(/[%_\\]/g, "")}%`;
-      baseFilters.push(
-        sql`(${artistProfile.displayName} ilike ${q} or ${artistProfile.slug} ilike ${q})`,
-      );
-    }
-
-    const refinedFilters = [...baseFilters];
-    if (options.featuredOnly === true) refinedFilters.push(eq(artistProfile.featured, true));
-    if (options.kinds && options.kinds.length > 0) {
-      refinedFilters.push(inArray(artistProfile.kind, options.kinds));
-    } else if (options.kind) {
-      refinedFilters.push(eq(artistProfile.kind, options.kind));
-    }
-    if (options.living === true) refinedFilters.push(isNull(artistProfile.deathYear));
-    if (options.historical === true) refinedFilters.push(isNotNull(artistProfile.deathYear));
-    if (options.nationality?.trim()) {
-      refinedFilters.push(ilike(artistProfile.nationality, `%${options.nationality.trim()}%`));
-    }
-    if (options.country?.trim()) {
-      refinedFilters.push(eq(artistProfile.countryCode, options.country.trim().toUpperCase()));
-    }
-    if (options.categorySlug?.trim()) {
-      refinedFilters.push(
-        sql`exists (select 1 from ${artistCategories} inner join ${category} on ${category.id} = ${artistCategories.categoryId} where ${artistCategories.artistProfileId} = ${artistProfile.id} and ${category.slug} = ${options.categorySlug.trim()})`,
-      );
-    }
-    const decadeFilter = decadeWhereClause(options.decade);
-    if (decadeFilter) refinedFilters.push(decadeFilter);
-    if (options.hasUpcoming === true) {
-      refinedFilters.push(artistHasPublicBrowseLotsExists());
-    }
-    const letter = options.letter?.trim().toLowerCase();
-    if (letter === "other") {
-      refinedFilters.push(sql`lower(left(trim(${artistProfile.displayName}), 1)) !~ '^[a-z0-9]'`);
-    } else if (letter && letter.length === 1) {
-      if (letter >= "0" && letter <= "9") {
-        refinedFilters.push(sql`left(trim(${artistProfile.displayName}), 1) = ${letter}`);
-      } else if (letter >= "a" && letter <= "z") {
-        refinedFilters.push(sql`lower(left(trim(${artistProfile.displayName}), 1)) = ${letter}`);
-      }
-    }
-
-    const whereClause = and(...refinedFilters);
-    const baseWhere = and(...baseFilters);
+    const { whereClause, baseWhere } = buildPublicDirectoryWhere(options);
 
     const [countRow] = await this.db.select({ n: count() }).from(artistProfile).where(whereClause);
     const total = Number(countRow?.n ?? 0);
-
-    const sort = options.sort ?? "name_asc";
-    const orderBy =
-      options.featuredFirst === true
-        ? [desc(artistProfile.featured), asc(artistProfile.displayName)]
-        : sort === "recent"
-          ? [desc(artistProfile.updatedAt), asc(artistProfile.displayName)]
-          : sort === "popular"
-            ? [desc(publicLotCountExpr), asc(artistProfile.displayName)]
-            : [asc(artistProfile.displayName)];
 
     const rows = await this.db
       .select({ ap: artistProfile, lotCount: publicLotCountExpr })
       .from(artistProfile)
       .where(whereClause)
-      .orderBy(...orderBy)
+      .orderBy(...publicDirectoryOrderBy(options))
       .limit(options.limit)
       .offset(options.offset);
 
-    const facets = await this.computeDirectoryFacets(baseWhere);
+    const facets = await computeDirectoryFacets(this.db, baseWhere);
 
     const mapped: PublicArtistDirectoryRow[] = rows.map((r) => ({
       ...mapArtist(r.ap),
       lotCount: Number(r.lotCount ?? 0),
     }));
     return { total, rows: mapped, facets };
-  }
-
-  /** Facet aggregates for the public directory — letters / kinds / living-historical / featured / nationalities.
-   * Computed against the *base* filter (q + approved + non-archived) so each
-   * facet count is independent of the current refinement (else chip counts
-   * always equal the current total, which is useless for navigation). */
-  private async computeDirectoryFacets(
-    baseWhere: ReturnType<typeof and>,
-  ): Promise<PublicArtistDirectoryFacets> {
-    const [agg] = await this.db
-      .select({
-        total: sql<number>`count(*)::int`,
-        featured: sql<number>`count(*) filter (where ${artistProfile.featured})::int`,
-        living: sql<number>`count(*) filter (where ${artistProfile.deathYear} is null)::int`,
-        historical: sql<number>`count(*) filter (where ${artistProfile.deathYear} is not null)::int`,
-        hasUpcoming: sql<number>`count(*) filter (where ${artistHasPublicBrowseLotsExists()})::int`,
-      })
-      .from(artistProfile)
-      .where(baseWhere);
-
-    // Kind counts grouped dynamically so new kinds appear without code changes (OCP).
-    const kindRows = await this.db
-      .select({ kind: artistProfile.kind, n: sql<number>`count(*)::int` })
-      .from(artistProfile)
-      .where(baseWhere)
-      .groupBy(artistProfile.kind);
-    const byKind: Partial<Record<ArtistKind, number>> = {};
-    for (const row of kindRows) {
-      byKind[row.kind as ArtistKind] = Number(row.n ?? 0);
-    }
-
-    // Top collecting categories (departments) for the directory side rail.
-    const categoryFacetRows = await this.db
-      .select({
-        id: category.id,
-        name: category.name,
-        slug: category.slug,
-        n: sql<number>`count(*)::int`,
-      })
-      .from(artistCategories)
-      .innerJoin(category, eq(category.id, artistCategories.categoryId))
-      .innerJoin(artistProfile, eq(artistProfile.id, artistCategories.artistProfileId))
-      .where(and(baseWhere, eq(category.archived, false)))
-      .groupBy(category.id, category.name, category.slug)
-      .orderBy(sql`count(*) desc`)
-      .limit(12);
-    const topCategories = categoryFacetRows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      slug: r.slug,
-      count: Number(r.n ?? 0),
-    }));
-
-    const letterBucketExpr = sql<string>`case
-      when lower(left(trim(${artistProfile.displayName}), 1)) ~ '^[a-z]' then lower(left(trim(${artistProfile.displayName}), 1))
-      when lower(left(trim(${artistProfile.displayName}), 1)) ~ '^[0-9]' then '#'
-      else 'other'
-    end`;
-
-    const letterRows = await this.db
-      .select({
-        bucket: letterBucketExpr,
-        n: sql<number>`count(*)::int`,
-      })
-      .from(artistProfile)
-      .where(baseWhere)
-      .groupBy(letterBucketExpr);
-
-    const letters = letterRows.map((r) => ({
-      letter: String(r.bucket),
-      count: Number(r.n ?? 0),
-    }));
-
-    const nationalityRows = await this.db
-      .select({
-        nationality: artistProfile.nationality,
-        n: sql<number>`count(*)::int`,
-      })
-      .from(artistProfile)
-      .where(and(baseWhere, isNotNull(artistProfile.nationality)))
-      .groupBy(artistProfile.nationality)
-      .orderBy(sql`count(*) desc`)
-      .limit(12);
-
-    const topNationalities = nationalityRows
-      .map((r) => ({
-        value: (r.nationality ?? "").trim(),
-        count: Number(r.n ?? 0),
-      }))
-      .filter((r) => r.value.length > 0);
-
-    /** Decades grouped on the floor of birthYear / 10, with a single "pre-1800"
-     * bucket so the rail doesn't sprawl. We return the top 8 by count so the
-     * UI stays compact. */
-    const decadeBucketExpr = sql<string>`case
-      when ${birthYearExpr} is null then null
-      when ${birthYearExpr} < 1800 then 'pre-1800'
-      else (floor(${birthYearExpr} / 10) * 10)::int::text || 's'
-    end`;
-
-    const decadeRows = await this.db
-      .select({
-        bucket: decadeBucketExpr,
-        n: sql<number>`count(*)::int`,
-      })
-      .from(artistProfile)
-      .where(and(baseWhere, isNotNull(artistProfile.birthYear)))
-      .groupBy(decadeBucketExpr)
-      .orderBy(decadeBucketExpr);
-
-    const topDecades = decadeRows
-      .map((r) => {
-        const key = String(r.bucket ?? "").trim();
-        if (!key) return null;
-        const label = key === "pre-1800" ? "Before 1800" : key;
-        return { key, label, count: Number(r.n ?? 0) };
-      })
-      .filter((r): r is { key: string; label: string; count: number } => r !== null);
-
-    return {
-      total: Number(agg?.total ?? 0),
-      featured: Number(agg?.featured ?? 0),
-      living: Number(agg?.living ?? 0),
-      historical: Number(agg?.historical ?? 0),
-      byKind,
-      hasUpcoming: Number(agg?.hasUpcoming ?? 0),
-      topNationalities,
-      topCategories,
-      topDecades,
-      letters,
-    };
   }
 
   /** Aliases for a single artist, sorted by alias text — used by public profile chips. */
@@ -595,7 +224,7 @@ export class DrizzleArtistProfileRepository {
       .where(eq(artistProfile.slug, slug))
       .limit(1);
     if (!row) return null;
-    return { ...mapArtist(row), categories: await this.loadCategories(row.id) };
+    return { ...mapArtist(row), categories: await loadCategories(this.db, row.id) };
   }
 
   async create(input: CreateArtistInput): Promise<ArtistProfile> {
@@ -632,7 +261,7 @@ export class DrizzleArtistProfileRepository {
     if (input.categoryIds && input.categoryIds.length > 0) {
       await replaceArtistCategoriesInTx(this.db, row.id, input.categoryIds);
     }
-    return { ...mapArtist(row), categories: await this.loadCategories(row.id) };
+    return { ...mapArtist(row), categories: await loadCategories(this.db, row.id) };
   }
 
   async update(id: string, input: UpdateArtistInput): Promise<ArtistProfile | null> {
@@ -687,7 +316,7 @@ export class DrizzleArtistProfileRepository {
     if (input.categoryIds !== undefined) {
       await replaceArtistCategoriesInTx(this.db, id, input.categoryIds);
     }
-    return { ...mapArtist(row), categories: await this.loadCategories(id) };
+    return { ...mapArtist(row), categories: await loadCategories(this.db, id) };
   }
 
   /** Count of `lot` rows currently attached to a given artist via FK. Used by

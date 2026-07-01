@@ -72,6 +72,9 @@ jobs:
       - name: Lint
         run: pnpm turbo run lint
 
+      - name: Dependency graph (no circular)
+        run: pnpm lint:deps
+
       - name: Typecheck
         run: pnpm turbo run typecheck
 

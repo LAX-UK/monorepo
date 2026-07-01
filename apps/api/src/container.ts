@@ -26,7 +26,6 @@ import type {
   createRequireLegalEntityContext,
   createSubmissionsLegalEntityContext,
 } from "./middleware/require-legal-entity-context.js";
-import type { AbsenteeBidService } from "./services/absentee-bid.service.js";
 import type { IXeroPaymentRecorder } from "./services/accounting/xero-payment-recorder.js";
 import type { XeroPayoutBillWriter } from "./services/accounting/xero-payout-bill.writer.js";
 import type { AddressService } from "./services/address.service.js";
@@ -34,19 +33,14 @@ import type { AdminMetricsService } from "./services/admin-metrics.service.js";
 import type { AdminSaleOperationsSnapshotService } from "./services/admin-sale-operations-snapshot.service.js";
 import type { AdminUserService } from "./services/admin-user.service.js";
 import type { AdminLotBrowseService } from "./services/admin/admin-lot-browse.service.js";
-import type { AdminLotsKpiTrendService } from "./services/admin/admin-lots-kpi-trend.service.js";
 import type { AdminMarketingEventsService } from "./services/admin/admin-marketing-events.service.js";
 import type { AdminNavCountsService } from "./services/admin/admin-nav-counts.service.js";
 import type { AdminPaymentListQueryService } from "./services/admin/admin-payment-list-query.service.js";
-import type { AdminPaymentsKpiTrendService } from "./services/admin/admin-payments-kpi-trend.service.js";
-import type { AdminPayoutsKpiTrendService } from "./services/admin/admin-payouts-kpi-trend.service.js";
-import type { AdminSalesKpiTrendService } from "./services/admin/admin-sales-kpi-trend.service.js";
-import type { AdminSourceOfFundsQueryService } from "./services/admin/admin-source-of-funds-query.service.js";
+import type { IAdminSourceOfFundsQueryService } from "./services/admin/admin-source-of-funds-query.service.js";
 import type { LegalEntityDocumentAdminService } from "./services/admin/legal-entity-document-admin.service.js";
 import type { BullMQQueueInspector } from "./services/admin/queue-inspector.service.js";
 import type { BullMQQueueMutator } from "./services/admin/queue-mutator.service.js";
 import type { AmlService } from "./services/aml/aml.service.js";
-import type { AnalyticsService } from "./services/analytics.service.js";
 import type { ArtistDeleteService } from "./services/artist-delete.service.js";
 import type { ArtistProfileService } from "./services/artist-profile.service.js";
 import type { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
@@ -60,11 +54,13 @@ import type { DashboardQueryService } from "./services/dashboard-query.service.j
 import type { DomainEventPublisher } from "./services/domain-event.publisher.js";
 import type { EmailUnsubscribeService } from "./services/email-unsubscribe.service.js";
 import type { EntityDocumentService } from "./services/entity-document.service.js";
-import type { ErrorHandlerService } from "./services/error-handler.service.js";
 import type { ExportService } from "./services/export/export.service.js";
 import type { ImpersonationAuditService } from "./services/impersonation-audit.service.js";
 import type { ImpersonationSessionService } from "./services/impersonation-session.service.js";
+import type { IAbsenteeBidService } from "./services/interfaces/absentee-bid-service.js";
+import type { IAdminKpiTrendService } from "./services/interfaces/admin-kpi-trend.js";
 import type { AdminRouteServices } from "./services/interfaces/admin-routes.js";
+import type { IAnalyticsService } from "./services/interfaces/analytics.js";
 import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
@@ -74,6 +70,7 @@ import type { IDisplayOverlayService } from "./services/interfaces/display-overl
 import type { IDisplayPairingService } from "./services/interfaces/display-pairing-service.js";
 import type { IDisplaySnapshotReader } from "./services/interfaces/display-snapshot-reader.js";
 import type { IEmailObservabilityRepository } from "./services/interfaces/email-observability.js";
+import type { IHttpErrorHandler } from "./services/interfaces/error-handling.js";
 import type { IInvitationLifecycleService } from "./services/interfaces/invitation-lifecycle.js";
 import type { IInvoiceAccountingProvider } from "./services/interfaces/invoice-accounting.js";
 import type { IItemSubmissionService } from "./services/interfaces/item-submission-service.js";
@@ -84,6 +81,7 @@ import type { ILegalEntityNotificationRecipientReader } from "./services/interfa
 import type { ILegalEntityRepository } from "./services/interfaces/legal-entity-repository.js";
 import type { IMarketingEventService } from "./services/interfaces/marketing-event-service.js";
 import type { IMemberManagementService } from "./services/interfaces/member-management.js";
+import type { INotificationOutboxProcessor } from "./services/interfaces/notification-outbox.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
 import type { IOnsiteEventCheckInService } from "./services/interfaces/onsite-event-check-in-service.js";
@@ -92,11 +90,18 @@ import type { IOrganizationOnboardingService } from "./services/interfaces/organ
 import type { IPayoutRepository } from "./services/interfaces/payout-repository.js";
 import type { IPayoutService } from "./services/interfaces/payout.js";
 import type { IPendingInvitationsReader } from "./services/interfaces/pending-invitations-reader.js";
+import type { IPressArchiveReadService } from "./services/interfaces/press-archive-read.service.js";
 import type { IPushSubscriptionRepository } from "./services/interfaces/push.js";
 import type { IRateLimitStore } from "./services/interfaces/rate-limit-store.js";
+import type { IRegistrationService } from "./services/interfaces/registration.js";
 import type { IItemSubmissionRepository } from "./services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "./services/interfaces/repository-factory.js";
+import type { ISaleRegistrationService } from "./services/interfaces/sale-registration-service.js";
+import type { ISaleStatusTransitionService } from "./services/interfaces/sale-status-transition.js";
+import type { ISaleroomCheckInService } from "./services/interfaces/saleroom-check-in-service.js";
+import type { ISaleroomService } from "./services/interfaces/saleroom-service.js";
 import type { IStripeConnectService } from "./services/interfaces/stripe-connect.js";
+import type { ITelephoneBidBookingService } from "./services/interfaces/telephone-bid-booking-service.js";
 import type { ITransactionalMailer } from "./services/interfaces/transactional-mail.js";
 import type { IUiPreferenceRepository } from "./services/interfaces/ui-preference.js";
 import type {
@@ -110,7 +115,7 @@ import type { KycResubmissionNotifier } from "./services/kyc/kyc-resubmission-no
 import type { LegalEntityAccessService } from "./services/legal-entity-access.service.js";
 import type { LegalEntityLifecycleAdminService } from "./services/legal-entity-lifecycle-admin.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
-import type { PersonalLegalEntityResolver } from "./services/legal-entity/personal-legal-entity-resolver.service.js";
+import type { IPersonalLegalEntityResolver } from "./services/legal-entity/personal-legal-entity-resolver.service.js";
 import type { LotFulfilmentService } from "./services/lot-fulfilment.service.js";
 import type { LotInvoiceInitiationService } from "./services/lot-invoice-initiation.service.js";
 import type { LotLifecycleQueryService } from "./services/lot-lifecycle-query.service.js";
@@ -120,7 +125,6 @@ import type { LotTransitionOrchestrator } from "./services/lot-transition-orches
 import type { LotService } from "./services/lot.service.js";
 import type { MediaAssetEnricher } from "./services/media-asset-enricher.js";
 import type { MediaUrlResolver } from "./services/media-url-resolver.js";
-import type { NotificationOutboxProcessor } from "./services/notification-outbox.processor.js";
 import type { NotificationQueryService } from "./services/notification-query.service.js";
 import type { NotificationDispatcher } from "./services/notification.dispatcher.js";
 import type { NotificationFactory } from "./services/notification.factory.js";
@@ -130,28 +134,21 @@ import type { PaddleService } from "./services/paddle.service.js";
 import type { PaymentService } from "./services/payment.service.js";
 import type { PaymentRefundReconcileService } from "./services/payment/payment-refund-reconcile.service.js";
 import type { PostmarkWebhookService } from "./services/postmark-webhook.service.js";
-import type { PressArchiveReadService } from "./services/press-archive-read.service.js";
 import type { ProfileService } from "./services/profile.service.js";
 import type { QrCodeAnalyticsService } from "./services/qr-code-analytics.service.js";
 import type { QrCodeService } from "./services/qr-code.service.js";
-import type { RegistrationService } from "./services/registration.service.js";
 import type { SaleBiddersService } from "./services/sale-bidders.service.js";
 import type { SaleFollowService } from "./services/sale-follow.service.js";
 import type { SaleLifecycleService } from "./services/sale-lifecycle.service.js";
-import type { SaleListReadService } from "./services/sale-list-read.service.js";
-import type { SaleRegistrationService } from "./services/sale-registration.service.js";
+import type { ISaleListReadService } from "./services/sale-list-read.service.js";
 import type { SaleSoftDeleteService } from "./services/sale-soft-delete.service.js";
-import type { SaleStatusTransitionService } from "./services/sale-status-transition.service.js";
 import type { SaleService } from "./services/sale.service.js";
-import type { SaleroomCheckInService } from "./services/saleroom-check-in.service.js";
-import type { SaleroomService } from "./services/saleroom.service.js";
 import type { SavedSearchService } from "./services/saved-search.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "./services/source-of-funds/source-of-funds-document-collection.service.js";
 import type { SourceOfFundsDocumentReviewService } from "./services/source-of-funds/source-of-funds-document-review.service.js";
 import type { SourceOfFundsService } from "./services/source-of-funds/source-of-funds.service.js";
 import type { StripePaymentWebhookService } from "./services/stripe-payment-webhook.service.js";
-import type { TelephoneBidBookingService } from "./services/telephone-bid-booking.service.js";
 import type { UiPreferenceService } from "./services/ui-preference.service.js";
 import type { UploadService } from "./services/upload.service.js";
 import type { UserDashboardReadService } from "./services/user-dashboard-read.service.js";
@@ -185,27 +182,27 @@ export type Container = {
   lotService: LotService;
   conditionReportService: IConditionReportService;
   saleService: SaleService;
-  saleListReadService: SaleListReadService;
-  pressArchiveReadService: PressArchiveReadService;
+  saleListReadService: ISaleListReadService;
+  pressArchiveReadService: IPressArchiveReadService;
   venueService: VenueService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   saleSoftDeleteService: SaleSoftDeleteService;
   lotSoftDeleteService: LotSoftDeleteService;
   saleFollowService: SaleFollowService;
   saleBiddersService: SaleBiddersService;
-  saleRegistrationService: SaleRegistrationService;
+  saleRegistrationService: ISaleRegistrationService;
   lotLifecycleService: LotLifecycleService;
   lotLifecycleQueryService: LotLifecycleQueryService;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
   adminLotBrowseService: AdminLotBrowseService;
-  absenteeBidService: AbsenteeBidService;
-  telephoneBidBookingService: TelephoneBidBookingService;
+  absenteeBidService: IAbsenteeBidService;
+  telephoneBidBookingService: ITelephoneBidBookingService;
   paddleService: PaddleService;
-  saleroomCheckInService: SaleroomCheckInService;
+  saleroomCheckInService: ISaleroomCheckInService;
   onsiteEventRsvpService: IOnsiteEventRsvpService;
   onsiteEventCheckInService: IOnsiteEventCheckInService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
-  saleroomService: SaleroomService;
+  saleroomService: ISaleroomService;
   displayPairingService: IDisplayPairingService;
   displayOverlayService: IDisplayOverlayService;
   displaySnapshotReader: IDisplaySnapshotReader;
@@ -213,7 +210,7 @@ export type Container = {
   lotFulfilmentService: LotFulfilmentService;
   saleLifecycleService: SaleLifecycleService;
   lotJobScheduler: ILotJobScheduler;
-  saleStatusTransitionService: SaleStatusTransitionService;
+  saleStatusTransitionService: ISaleStatusTransitionService;
   bidService: BidService;
   autoBidService: AutoBidService;
   categoryService: CategoryService;
@@ -247,17 +244,17 @@ export type Container = {
   uiPreferenceService: UiPreferenceService;
   pushSubscriptionRepository: IPushSubscriptionRepository;
   notificationDispatcher: NotificationDispatcher;
-  notificationOutboxProcessor: NotificationOutboxProcessor;
+  notificationOutboxProcessor: INotificationOutboxProcessor;
   notificationFactory: NotificationFactory;
   emailService: IEmailService;
   emailObservabilityRepository: IEmailObservabilityRepository;
   userSuspensionChecker: IUserSuspensionChecker;
   userSuspensionCacheInvalidator: IUserSuspensionCacheInvalidator;
-  registrationService: RegistrationService;
+  registrationService: IRegistrationService;
   invitationService: InvitationService;
   profileService: ProfileService;
   addressService: AddressService;
-  analyticsService: AnalyticsService;
+  analyticsService: IAnalyticsService;
   domainEventPublisher: DomainEventPublisher;
   /** `auth.*` rows in `domain_events` (password setup, email change, suspension, etc.). */
   authAuditPublisher: AuthAuditPublisher;
@@ -273,20 +270,20 @@ export type Container = {
   requireSubmissionsLegalEntityContext: ReturnType<typeof createSubmissionsLegalEntityContext>;
   adminUserService: AdminUserService;
   adminNavCountsService: AdminNavCountsService;
-  adminLotsKpiTrendService: AdminLotsKpiTrendService;
-  adminPaymentsKpiTrendService: AdminPaymentsKpiTrendService;
-  adminSalesKpiTrendService: AdminSalesKpiTrendService;
-  adminPayoutsKpiTrendService: AdminPayoutsKpiTrendService;
+  adminLotsKpiTrendService: IAdminKpiTrendService;
+  adminPaymentsKpiTrendService: IAdminKpiTrendService;
+  adminSalesKpiTrendService: IAdminKpiTrendService;
+  adminPayoutsKpiTrendService: IAdminKpiTrendService;
   adminPaymentListQueryService: AdminPaymentListQueryService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
-  httpErrorHandler: ErrorHandlerService;
+  httpErrorHandler: IHttpErrorHandler;
   itemSubmissionRepository: IItemSubmissionRepository;
   itemSubmissionService: IItemSubmissionService;
   /** legal entity repository (membership + acting context). */
   legalEntityRepository: ILegalEntityRepository;
   /** Lazily provisions personal legal entities for client flows. */
-  personalLegalEntityResolver: PersonalLegalEntityResolver;
+  personalLegalEntityResolver: IPersonalLegalEntityResolver;
   /** role-aware notification recipient lookup for legal entities. */
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader;
   /** KYC (Veriff identity verification). */
@@ -298,7 +295,7 @@ export type Container = {
   /** Source-of-Funds (CDD Section 6) collection + MLRO/finance review gate. */
   sourceOfFundsService: SourceOfFundsService;
   /** Admin read models for SoF compliance queues (list enrichment + detail). */
-  adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
+  adminSourceOfFundsQueryService: IAdminSourceOfFundsQueryService;
   /** In-platform SoF document request / upload / submit flow. */
   sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
   /** Staff per-document verification checklist (event-sourced). */
