@@ -11,7 +11,63 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ github.job }}-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ github.job }}-${{ runner.os }}-
+
+      - name: Biome root check
+        run: pnpm exec biome check .
+
+      - name: Queue registry lint
+        run: node scripts/lint-queue-registry.mjs
+
+      - name: Verify web build args match Terraform
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/web-build-args.sh
+          for env in test prod; do
+            ENVIRONMENT="$env" ./scripts/ci/web-build-args.sh verify-origin
+          done
+
+      # OSS binary — avoids gitleaks/gitleaks-action@v2 org license requirement (GITLEAKS_LICENSE).
+      - name: Gitleaks secret scan
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION=8.30.1
+          curl -sSLf "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz
+          ./gitleaks detect --source . --verbose --redact
+
+      - name: Lint
+        run: pnpm turbo run lint --affected
+
+      - name: Dependency graph (no circular)
+        run: pnpm lint:deps
+
+      - name: Typecheck
+        run: pnpm turbo run typecheck --affected
+
+  test:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -44,42 +100,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ github.job }}-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ github.job }}-${{ runner.os }}-
+
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
 
-      - name: Biome root check
-        run: pnpm exec biome check .
-
-      - name: Queue registry lint
-        run: node scripts/lint-queue-registry.mjs
-
-      - name: Verify web build args match Terraform
-        run: |
-          set -euo pipefail
-          chmod +x scripts/ci/web-build-args.sh
-          for env in test prod; do
-            ENVIRONMENT="$env" ./scripts/ci/web-build-args.sh verify-origin
-          done
-
-      # OSS binary — avoids gitleaks/gitleaks-action@v2 org license requirement (GITLEAKS_LICENSE).
-      - name: Gitleaks secret scan
-        run: |
-          set -euo pipefail
-          GITLEAKS_VERSION=8.30.1
-          curl -sSLf "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz
-          ./gitleaks detect --source . --verbose --redact
-
-      - name: Lint
-        run: pnpm turbo run lint
-
-      - name: Dependency graph (no circular)
-        run: pnpm lint:deps
-
-      - name: Typecheck
-        run: pnpm turbo run typecheck
-
       - name: Test
-        run: pnpm turbo run test
+        run: pnpm turbo run test --affected
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ github.job }}-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ github.job }}-${{ runner.os }}-
 
       - name: Build
-        run: pnpm turbo run build
+        run: pnpm turbo run build --affected

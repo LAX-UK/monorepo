@@ -1,5 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "pnpm-lock.yaml",
+    "package.json",
+    "biome.json",
+    "packages/config-ts/**",
+    "packages/config-biome/**"
+  ],
   "globalPassThroughEnv": [
     "NODE_ENV",
     "PORT",
