@@ -1,12 +1,5 @@
 import { lotNotDeleted } from "@auction/db";
-import {
-  legalEntityMember,
-  lot,
-  payment,
-  payout,
-  twoFactor,
-  user as userTable,
-} from "@auction/db/schema";
+import { legalEntityMember, lot, payment, payout, user as userTable } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { extractBetterAuthSessionToken } from "../../lib/session-cookie.js";
@@ -109,13 +102,15 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     const userId = c.get("userId") as string;
     // Server-side assertion: verify 2FA is actually enabled in the DB before
     // sending the notification. This prevents a malicious client from triggering
-    // false security emails or spamming the user.
-    const [tf] = await container.authDb
-      .select({ id: twoFactor.id })
-      .from(twoFactor)
-      .where(eq(twoFactor.userId, userId))
+    // false security emails or spamming the user. `user.twoFactorEnabled` is the
+    // single source of truth Better Auth flips only once TOTP setup is verified —
+    // a `twoFactor` row alone can exist unverified (e.g. abandoned setup wizard).
+    const [authUser] = await container.authDb
+      .select({ twoFactorEnabled: userTable.twoFactorEnabled })
+      .from(userTable)
+      .where(eq(userTable.id, userId))
       .limit(1);
-    if (!tf) {
+    if (!authUser?.twoFactorEnabled) {
       return c.json(
         { error: "Two-factor authentication is not enabled", code: "two_factor_not_enabled" },
         409,
@@ -144,13 +139,14 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
   r.post("/me/security-notify/two-factor-disabled", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
     // Server-side assertion: verify 2FA is actually disabled before sending the
-    // notification. A row in two_factor means 2FA is still active — reject the call.
-    const [tf] = await container.authDb
-      .select({ id: twoFactor.id })
-      .from(twoFactor)
-      .where(eq(twoFactor.userId, userId))
+    // notification. `user.twoFactorEnabled` still true means 2FA is still active —
+    // reject the call.
+    const [authUser] = await container.authDb
+      .select({ twoFactorEnabled: userTable.twoFactorEnabled })
+      .from(userTable)
+      .where(eq(userTable.id, userId))
       .limit(1);
-    if (tf) {
+    if (authUser?.twoFactorEnabled) {
       return c.json(
         { error: "Two-factor authentication is still enabled", code: "two_factor_still_enabled" },
         409,
