@@ -1,25 +1,38 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSignUpController } from "./use-sign-up-controller";
 
-const push = vi.fn();
-const refresh = vi.fn();
+const mocks = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+  run: vi.fn(),
+  notifySignUpRegistrationError: vi.fn(),
+  notifyError: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, refresh }),
+  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
+}));
+
+vi.mock("@/lib/auth/notify-sign-up-error", () => ({
+  notifySignUpRegistrationError: mocks.notifySignUpRegistrationError,
 }));
 
 vi.mock("@/lib/auth/use-auth-submit", () => ({
   useAuthSubmit: () => ({
-    run: vi.fn().mockResolvedValue({ ok: true }),
+    run: mocks.run,
     loading: false,
-    bannerError: null,
-    lastErrorCode: null,
   }),
 }));
 
 vi.mock("@/lib/analytics/events", () => ({
   trackSignUp: vi.fn(),
+}));
+
+vi.mock("@/lib/ui/notify", () => ({
+  notify: {
+    error: mocks.notifyError,
+  },
 }));
 
 let mockSiteKey: string | undefined;
@@ -28,6 +41,12 @@ vi.mock("@/lib/auth/turnstile-site-key", () => ({
 }));
 
 describe("useSignUpController", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSiteKey = undefined;
+    mocks.run.mockResolvedValue({ ok: true });
+  });
+
   it("redirect URL contains email after successful signup", async () => {
     const { result } = renderHook(() => useSignUpController());
 
@@ -41,13 +60,68 @@ describe("useSignUpController", () => {
       await result.current.onSubmit();
     });
 
-    expect(push).toHaveBeenCalledWith(
+    expect(mocks.push).toHaveBeenCalledWith(
       expect.stringMatching(/\/register\/verify-pending\?.*email=ada%40example\.com/),
     );
   });
 
+  it("shows registration error toast when signup fails", async () => {
+    mocks.run.mockResolvedValue({
+      ok: false,
+      code: "email_already_registered",
+      message: "This email is already registered.",
+    });
+
+    const { result } = renderHook(() =>
+      useSignUpController({
+        loginHref: "/login",
+        forgotPasswordHref: "/forgot-password",
+      }),
+    );
+
+    await act(async () => {
+      result.current.form.setValue("firstName", "Ada");
+      result.current.form.setValue("lastName", "Lovelace");
+      result.current.form.setValue("email", "taken@example.com");
+      result.current.form.setValue("password", "supersecret1!");
+      result.current.form.setValue("persona", "individual");
+      result.current.form.setValue("acceptTerms", true);
+      await result.current.onSubmit();
+    });
+
+    expect(mocks.notifySignUpRegistrationError).toHaveBeenCalledWith(
+      "email_already_registered",
+      "This email is already registered.",
+      {
+        loginHref: "/login",
+        forgotPasswordHref: "/forgot-password",
+        onNavigate: expect.any(Function),
+      },
+    );
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("shows captcha toast when turnstile is required but missing", async () => {
+    mockSiteKey = "site-key";
+    const { result } = renderHook(() => useSignUpController());
+
+    await act(async () => {
+      result.current.form.setValue("firstName", "Ada");
+      result.current.form.setValue("lastName", "Lovelace");
+      result.current.form.setValue("email", "ada@example.com");
+      result.current.form.setValue("password", "supersecret1!");
+      result.current.form.setValue("persona", "individual");
+      result.current.form.setValue("acceptTerms", true);
+      await result.current.onSubmit();
+    });
+
+    expect(mocks.notifyError).toHaveBeenCalledWith("Please complete the security check.", {
+      id: "signup-captcha-required",
+    });
+    expect(mocks.run).not.toHaveBeenCalled();
+  });
+
   it("turnstileReady is true when no site key is configured", () => {
-    mockSiteKey = undefined;
     const { result } = renderHook(() => useSignUpController());
     expect(result.current.turnstileReady).toBe(true);
   });

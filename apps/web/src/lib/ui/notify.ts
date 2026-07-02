@@ -1,9 +1,16 @@
 import { toast } from "sonner";
 
+export type NotifyAction = {
+  label: string;
+  onClick: () => void;
+};
+
 export type NotifyOpts = {
   description?: string;
   id?: string;
   duration?: number;
+  action?: NotifyAction;
+  cancel?: NotifyAction;
 };
 
 /** Matches global Toaster default in `@auction/ui` / app wrapper. */
@@ -52,6 +59,8 @@ export const notify = {
       duration: opts?.duration ?? DEFAULT_ERROR_DURATION_MS,
       ...(opts?.description !== undefined ? { description: opts.description } : {}),
       ...(opts?.id !== undefined ? { id: opts.id } : {}),
+      ...(opts?.action !== undefined ? { action: opts.action } : {}),
+      ...(opts?.cancel !== undefined ? { cancel: opts.cancel } : {}),
     });
   },
 

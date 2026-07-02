@@ -37,6 +37,22 @@ describe("notify", () => {
     expect(mocks.toastError).toHaveBeenCalledWith("Failed", { duration: 8000 });
   });
 
+  it("error forwards action and cancel buttons", () => {
+    const onSignIn = vi.fn();
+    const onReset = vi.fn();
+    notify.error("Already registered", {
+      id: "signup-email-already-registered",
+      action: { label: "Sign in", onClick: onSignIn },
+      cancel: { label: "Reset password", onClick: onReset },
+    });
+    expect(mocks.toastError).toHaveBeenCalledWith("Already registered", {
+      id: "signup-email-already-registered",
+      duration: 8000,
+      action: { label: "Sign in", onClick: onSignIn },
+      cancel: { label: "Reset password", onClick: onReset },
+    });
+  });
+
   it("info requires id and forwards description", () => {
     notify.info("Hello", { id: "x", description: "d" });
     expect(mocks.toastInfo).toHaveBeenCalledWith("Hello", {
