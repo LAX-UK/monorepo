@@ -6,7 +6,6 @@ import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SignUpFields } from "@/components/auth/sign-up-fields";
 import { SignUpInviteBanner } from "@/components/auth/sign-up-invite-banner";
 import { SignUpLegalConsent } from "@/components/auth/sign-up-legal-consent";
-import { SignUpOrgNextSteps } from "@/components/auth/sign-up-org-next-steps";
 import { SignUpPersonaSummary } from "@/components/auth/sign-up-persona-summary";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
@@ -63,7 +62,6 @@ export function SignUpDetailsStep({
       {showPersonaSummary && persona ? (
         <SignUpPersonaSummary persona={persona} onChange={onChangePersona} />
       ) : null}
-      {persona === "organisation" ? <SignUpOrgNextSteps /> : null}
       <SignUpFields
         control={control}
         phoneDefaultCountry={phoneDefaultCountry}

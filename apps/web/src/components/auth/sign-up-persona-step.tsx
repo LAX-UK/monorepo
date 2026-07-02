@@ -6,8 +6,7 @@ import type { SignUpFormValues } from "@/lib/auth/schemas";
 import { SIGN_UP_PERSONA_OPTIONS, SIGN_UP_WIZARD_STEPS } from "@/lib/auth/sign-up-persona-options";
 import { RadioCardGroup } from "@auction/ui/components/radio-card-group";
 import { WizardNav } from "@auction/ui/components/wizard-nav";
-import { type Control, Controller, useWatch } from "react-hook-form";
-import { SignUpOrgNextSteps } from "./sign-up-org-next-steps";
+import { type Control, Controller } from "react-hook-form";
 
 type SignUpPersonaStepProps = {
   control: Control<SignUpFormValues>;
@@ -16,8 +15,6 @@ type SignUpPersonaStepProps = {
 };
 
 export function SignUpPersonaStep({ control, onContinue, loginHref }: SignUpPersonaStepProps) {
-  const persona = useWatch({ control, name: "persona" });
-
   return (
     <AuthStepShell
       wizardSteps={SIGN_UP_WIZARD_STEPS}
@@ -39,7 +36,6 @@ export function SignUpPersonaStep({ control, onContinue, loginHref }: SignUpPers
           />
         )}
       />
-      <div aria-live="polite">{persona === "organisation" ? <SignUpOrgNextSteps /> : null}</div>
       <div className="flex flex-col gap-6">
         <WizardNav
           isFirst
