@@ -49,6 +49,7 @@ import { createExportProviderDeps } from "./exports/deps.js";
 import { createExportProviders } from "./exports/registry.js";
 import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authenticator.js";
 import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
+import { BetterAuthVerificationEmailResender } from "./infrastructure/better-auth-verification-email.resender.js";
 import { BullmqMarketingEventQueue } from "./infrastructure/bullmq-marketing-event.queue.js";
 import { CachedClickIdStore } from "./infrastructure/cached-click-id.store.js";
 import { CachedUserSuspensionChecker } from "./infrastructure/cached-user-suspension.checker.js";
@@ -56,6 +57,7 @@ import { CompositeAuthenticator } from "./infrastructure/composite-authenticator
 import { CompositeErrorClassifier } from "./infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
 import { DrizzleMarketingEventOutboxRepository } from "./infrastructure/drizzle-marketing-event-outbox.repository.js";
+import { DrizzleExistingAccountReader } from "./infrastructure/drizzle-existing-account.reader.js";
 import { DrizzleRegistrationCompensator } from "./infrastructure/drizzle-registration.compensator.js";
 import { EmailNotificationChannel } from "./infrastructure/email-notification.channel.js";
 import { EventMarketingConsentGate } from "./infrastructure/header-marketing-consent.gate.js";
@@ -1600,6 +1602,8 @@ export function createContainer(env: Env): Container {
 
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
+    new DrizzleExistingAccountReader(db),
+    new BetterAuthVerificationEmailResender(auth, env.WEB_ORIGIN),
     new BetterAuthEmailSignupPersister(auth, env.WEB_ORIGIN),
     new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),

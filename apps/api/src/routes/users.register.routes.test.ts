@@ -79,6 +79,35 @@ describe("POST /users/register", () => {
     expect(json.error).toBe("Email already registered");
   });
 
+  it("returns email_already_registered code for verified existing email", async () => {
+    const { app } = mountRegister({
+      registrationService: {
+        register: vi.fn().mockResolvedValue({
+          ok: false,
+          code: "email_already_registered",
+          message: "This email is already registered. Sign in or reset your password.",
+          status: 409,
+        }),
+      },
+    } as unknown as Partial<Container>);
+    const res = await app.request("/users/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: "Ada",
+        lastName: "Lovelace",
+        email: "taken@example.com",
+        password: "supersecret12!",
+        persona: "individual",
+        acceptTerms: true,
+      }),
+    });
+    expect(res.status).toBe(409);
+    const json = (await res.json()) as { error: string; code: string };
+    expect(json.code).toBe("email_already_registered");
+    expect(json.error).toContain("already registered");
+  });
+
   it("accepts organisation persona on production host (org module launched)", async () => {
     const { app, registrationService } = mountRegister({
       env: { WEB_ORIGIN: "https://lax.bid" },

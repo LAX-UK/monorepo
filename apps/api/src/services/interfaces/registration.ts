@@ -55,8 +55,30 @@ export interface IRegistrationCompensator {
   deleteOrphanedUser(userId: string): Promise<{ ok: boolean }>;
 }
 
+export type ExistingAccountSnapshot = {
+  userId: string;
+  emailVerified: boolean;
+};
+
+export interface IExistingAccountReader {
+  findByEmail(email: string): Promise<ExistingAccountSnapshot | null>;
+}
+
+export interface IVerificationEmailResender {
+  resend(input: {
+    email: string;
+    persona?: SignupPersona;
+    inviteToken?: string;
+  }): Promise<{ ok: boolean }>;
+}
+
+export type RegistrationFailure = {
+  ok: false;
+  message: string;
+  status: number;
+  code?: string;
+};
+
 export interface IRegistrationService {
-  register(
-    input: RegistrationInput,
-  ): Promise<{ ok: true; userId: string } | { ok: false; message: string; status: number }>;
+  register(input: RegistrationInput): Promise<{ ok: true; userId: string } | RegistrationFailure>;
 }

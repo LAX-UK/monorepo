@@ -106,7 +106,13 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         : {}),
     });
     if (!result.ok) {
-      return c.json({ error: result.message }, result.status as 400);
+      return c.json(
+        {
+          error: result.message,
+          ...(result.code ? { code: result.code } : {}),
+        },
+        result.status as 400,
+      );
     }
     const marketingEventId = crypto.randomUUID();
     await container.marketingEventService.emit(

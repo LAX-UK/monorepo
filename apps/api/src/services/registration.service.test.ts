@@ -4,6 +4,12 @@ import { RegistrationService } from "./registration.service.js";
 
 function makeDeps(overrides?: Partial<{ welcome: ReturnType<typeof vi.fn> }>) {
   const validator = { validate: vi.fn().mockReturnValue({ ok: true }) };
+  const existingAccountReader = {
+    findByEmail: vi.fn().mockResolvedValue(null),
+  };
+  const verificationEmailResender = {
+    resend: vi.fn().mockResolvedValue({ ok: true }),
+  };
   const emailSignup = {
     signUpEmail: vi.fn().mockResolvedValue({ ok: true, userId: "user-new" }),
   };
@@ -16,16 +22,27 @@ function makeDeps(overrides?: Partial<{ welcome: ReturnType<typeof vi.fn> }>) {
   const invitations = {
     validateForRegistration: vi.fn().mockResolvedValue(ok(undefined)),
     consumeInviteForNewUser: vi.fn().mockResolvedValue(ok(undefined)),
-  } as unknown as ConstructorParameters<typeof RegistrationService>[4];
+  } as unknown as ConstructorParameters<typeof RegistrationService>[6];
   const compensator = {
     deleteOrphanedUser: vi.fn().mockResolvedValue({ ok: true }),
   };
-  return { validator, emailSignup, userProfile, welcome, invitations, compensator };
+  return {
+    validator,
+    existingAccountReader,
+    verificationEmailResender,
+    emailSignup,
+    userProfile,
+    welcome,
+    invitations,
+    compensator,
+  };
 }
 
 function makeService(deps: ReturnType<typeof makeDeps>) {
   return new RegistrationService(
     deps.validator,
+    deps.existingAccountReader,
+    deps.verificationEmailResender,
     deps.emailSignup,
     deps.userProfile,
     deps.welcome,
@@ -73,6 +90,77 @@ describe("RegistrationService", () => {
     expect(deps.userProfile.setRegistrationProfile).toHaveBeenCalledWith(
       expect.objectContaining({ persona: "individual" }),
     );
+  });
+
+  it("rejects verified existing email without calling signUpEmail", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.existingAccountReader.findByEmail).mockResolvedValue({
+      userId: "user-existing",
+      emailVerified: true,
+    });
+    const svc = makeService(deps);
+
+    const result = await svc.register({
+      firstName: "Old",
+      lastName: "User",
+      email: "taken@example.com",
+      password: "supersecret",
+      persona: "individual",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      code: "email_already_registered",
+      message: "This email is already registered. Sign in or reset your password.",
+      status: 409,
+    });
+    expect(deps.emailSignup.signUpEmail).not.toHaveBeenCalled();
+    expect(deps.verificationEmailResender.resend).not.toHaveBeenCalled();
+  });
+
+  it("resends verification for unverified existing email and returns success", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.existingAccountReader.findByEmail).mockResolvedValue({
+      userId: "user-pending",
+      emailVerified: false,
+    });
+    const svc = makeService(deps);
+
+    const result = await svc.register({
+      firstName: "Pending",
+      lastName: "User",
+      email: "pending@example.com",
+      password: "supersecret",
+      persona: "individual",
+    });
+
+    expect(result).toEqual({ ok: true, userId: "user-pending" });
+    expect(deps.verificationEmailResender.resend).toHaveBeenCalledWith({
+      email: "pending@example.com",
+      persona: "individual",
+    });
+    expect(deps.emailSignup.signUpEmail).not.toHaveBeenCalled();
+    expect(deps.userProfile.setRegistrationProfile).not.toHaveBeenCalled();
+  });
+
+  it("still returns success when resend fails for unverified existing email", async () => {
+    const deps = makeDeps();
+    vi.mocked(deps.existingAccountReader.findByEmail).mockResolvedValue({
+      userId: "user-pending",
+      emailVerified: false,
+    });
+    vi.mocked(deps.verificationEmailResender.resend).mockResolvedValue({ ok: false });
+    const svc = makeService(deps);
+
+    const result = await svc.register({
+      firstName: "Pending",
+      lastName: "User",
+      email: "pending@example.com",
+      password: "supersecret",
+      persona: "individual",
+    });
+
+    expect(result).toEqual({ ok: true, userId: "user-pending" });
   });
 
   it("fails registration and compensates when profile persistence persistently fails", async () => {

@@ -1,9 +1,11 @@
 import type {
   IEmailSignupPersister,
+  IExistingAccountReader,
   IRegistrationCompensator,
   IRegistrationService,
   IRegistrationValidator,
   IUserProfilePersister,
+  IVerificationEmailResender,
   IWelcomeNotifier,
   RegistrationInput,
 } from "./interfaces/registration.js";
@@ -12,6 +14,8 @@ import type { IInvitationConsumption } from "./invitation-consumption.service.js
 export class RegistrationService implements IRegistrationService {
   constructor(
     private readonly validator: IRegistrationValidator,
+    private readonly existingAccountReader: IExistingAccountReader,
+    private readonly verificationEmailResender: IVerificationEmailResender,
     private readonly emailSignup: IEmailSignupPersister,
     private readonly userProfile: IUserProfilePersister,
     private readonly welcome: IWelcomeNotifier,
@@ -47,6 +51,25 @@ export class RegistrationService implements IRegistrationService {
         };
       }
     }
+
+    const existing = await this.existingAccountReader.findByEmail(input.email);
+    if (existing?.emailVerified === true) {
+      return {
+        ok: false as const,
+        code: "email_already_registered",
+        message: "This email is already registered. Sign in or reset your password.",
+        status: 409,
+      };
+    }
+    if (existing) {
+      await this.verificationEmailResender.resend({
+        email: input.email,
+        persona: input.persona,
+        ...(input.inviteToken ? { inviteToken: input.inviteToken } : {}),
+      });
+      return { ok: true as const, userId: existing.userId };
+    }
+
     const displayName = `${input.firstName} ${input.lastName}`.trim();
     const signup = await this.emailSignup.signUpEmail({
       name: displayName,

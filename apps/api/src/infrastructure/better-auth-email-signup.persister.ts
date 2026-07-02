@@ -1,4 +1,5 @@
 import type { Auth } from "@auction/auth/server";
+import { buildVerifyEmailCallbackUrl } from "../lib/verify-email-callback-url.js";
 import type { IEmailSignupPersister } from "../services/interfaces/registration.js";
 
 export class BetterAuthEmailSignupPersister implements IEmailSignupPersister {
@@ -18,15 +19,11 @@ export class BetterAuthEmailSignupPersister implements IEmailSignupPersister {
     { ok: true; userId: string } | { ok: false; message: string; status?: number | undefined }
   > {
     try {
-      const base = this.webOrigin.replace(/\/$/, "");
-      const params = new URLSearchParams({ email: input.email });
-      if (input.persona === "individual" || input.persona === "organisation") {
-        params.set("persona", input.persona);
-      }
-      if (input.inviteToken) {
-        params.set("invite", input.inviteToken);
-      }
-      const callbackURL = `${base}/verify-email?${params.toString()}`;
+      const callbackURL = buildVerifyEmailCallbackUrl(this.webOrigin, {
+        email: input.email,
+        ...(input.persona ? { persona: input.persona } : {}),
+        ...(input.inviteToken ? { inviteToken: input.inviteToken } : {}),
+      });
       const result = await this.auth.api.signUpEmail({
         body: {
           name: input.name,
