@@ -2,12 +2,14 @@
 
 import { trackSignUp } from "@/lib/analytics/events";
 import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
+import { notifySignUpRegistrationError } from "@/lib/auth/notify-sign-up-error";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 /** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
 import { signUpService } from "@/lib/auth/services/sign-up.service";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
+import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -18,11 +20,13 @@ export function useSignUpController(opts?: {
   /** Pre-resolved invite email (field is locked in the UI). */
   defaultEmail?: string;
   next?: string;
+  loginHref?: string;
+  forgotPasswordHref?: string;
   phoneDefaultCountry?: string;
   sellIntent?: boolean;
 }) {
   const router = useRouter();
-  const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(signUpService);
+  const { run, loading } = useAuthSubmit(signUpService);
   const siteKey = turnstileSiteKey();
   const needsTurnstile = Boolean(siteKey);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -57,7 +61,7 @@ export function useSignUpController(opts?: {
 
   const onSubmit = form.handleSubmit(async (data) => {
     if (needsTurnstile && !turnstileToken) {
-      form.setError("root", { message: "Please complete the security check." });
+      notify.error("Please complete the security check.", { id: "signup-captcha-required" });
       return;
     }
     const { turnstileToken: _ignoredTs, ...rest } = data;
@@ -76,15 +80,24 @@ export function useSignUpController(opts?: {
       if (safe) params.set("next", safe);
       router.push(`/register/verify-pending?${params.toString()}`);
       router.refresh();
+      return;
     }
+
+    const authLinks =
+      opts?.loginHref && opts?.forgotPasswordHref
+        ? {
+            loginHref: opts.loginHref,
+            forgotPasswordHref: opts.forgotPasswordHref,
+            onNavigate: (href: string) => router.push(href),
+          }
+        : undefined;
+    notifySignUpRegistrationError(result.code, result.message, authLinks);
   });
 
   return {
     form,
     onSubmit,
     loading,
-    bannerError,
-    lastErrorCode,
     turnstileSiteKey: siteKey,
     turnstileReady: !needsTurnstile || Boolean(turnstileToken),
     onTurnstileToken,

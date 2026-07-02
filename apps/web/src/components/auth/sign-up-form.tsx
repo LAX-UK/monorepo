@@ -1,20 +1,17 @@
 "use client";
 
 import { AuthFooterLink } from "@/components/auth/primitives/footer-link";
-import { FormBanner } from "@/components/auth/primitives/form-error";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SellAuthIntentBanner } from "@/components/auth/sell-auth-intent-banner";
 import { SignUpFields } from "@/components/auth/sign-up-fields";
 import { SignUpLegalConsent } from "@/components/auth/sign-up-legal-consent";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
-import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
 import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignUpController } from "@/lib/auth/hooks/use-sign-up-controller";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { rememberPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
 import { MailCheck } from "lucide-react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
@@ -53,6 +50,8 @@ export function SignUpForm({
     ...(inviteToken ? { inviteToken } : {}),
     ...(invitePreview?.email ? { defaultEmail: invitePreview.email } : {}),
     ...(safeNext ? { next: safeNext } : {}),
+    loginHref,
+    forgotPasswordHref,
     phoneDefaultCountry,
     ...(sellIntent ? { sellIntent: true } : {}),
   };
@@ -60,8 +59,6 @@ export function SignUpForm({
     form,
     onSubmit,
     loading,
-    bannerError,
-    lastErrorCode,
     turnstileSiteKey,
     turnstileReady,
     onTurnstileToken,
@@ -82,19 +79,6 @@ export function SignUpForm({
   return (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
       <SellAuthIntentBanner />
-      <FormBanner
-        message={(form.formState.errors.root?.message as string | undefined) ?? bannerError ?? null}
-      />
-      {lastErrorCode === "email_already_registered" ? (
-        <div className="flex flex-col gap-3">
-          <Link href={loginHref} className={AUTH_FOOTER_LINK_ROW}>
-            Sign in to your account
-          </Link>
-          <Link href={forgotPasswordHref} className={AUTH_FOOTER_LINK_ROW}>
-            Reset your password
-          </Link>
-        </div>
-      ) : null}
       {invitePreview ? (
         <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary-container/15 p-4">
           <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
