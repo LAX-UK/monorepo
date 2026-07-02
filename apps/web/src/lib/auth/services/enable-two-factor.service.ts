@@ -9,8 +9,10 @@ export type EnableTwoFactorResult =
   | { ok: true; totpURI: string; backupCodes: string[] }
   | { ok: false; code: AuthErrorCode; message: string };
 
-export async function enableTwoFactorService(password: string): Promise<EnableTwoFactorResult> {
-  const res = await authClient.twoFactor.enable({ password });
+export async function enableTwoFactorService(password?: string): Promise<EnableTwoFactorResult> {
+  const res = await authClient.twoFactor.enable(
+    password != null && password.length > 0 ? { password } : {},
+  );
   if (res.error) {
     const rawCode =
       "code" in res.error && typeof res.error.code === "string" ? res.error.code : undefined;

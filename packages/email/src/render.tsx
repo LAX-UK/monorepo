@@ -100,6 +100,12 @@ import ProxyCancelledNoticeEmail, {
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SocialAccountLinkedEmail, {
+  subject as socialAccountLinkedSubject,
+} from "./templates/social-account-linked.js";
+import SocialAccountUnlinkedEmail, {
+  subject as socialAccountUnlinkedSubject,
+} from "./templates/social-account-unlinked.js";
 import SourceOfFundsApprovedEmail, {
   subject as sourceOfFundsApprovedSubject,
 } from "./templates/source-of-funds-approved.js";
@@ -167,6 +173,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "2fa-disabled": {
     subject: twoFactorDisabledSubject,
     component: (vars) => <TwoFactorDisabledEmail {...vars} />,
+  },
+  "social-account-linked": {
+    subject: socialAccountLinkedSubject,
+    component: (vars) => <SocialAccountLinkedEmail {...vars} />,
+  },
+  "social-account-unlinked": {
+    subject: socialAccountUnlinkedSubject,
+    component: (vars) => <SocialAccountUnlinkedEmail {...vars} />,
   },
   "new-device-login": {
     subject: newDeviceLoginSubject,

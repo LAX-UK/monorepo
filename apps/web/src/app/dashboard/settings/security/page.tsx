@@ -1,8 +1,8 @@
-import { SecurityPasswordForm } from "@/components/auth/security-password-form";
 import { TwoFactorStatusCard } from "@/components/auth/two-factor-status-card";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
+import { SecurityAccountMethods } from "@/components/settings/security-account-methods";
 import { SecuritySettingsAlerts } from "@/components/settings/security-settings-alerts";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SETTINGS_NARROW_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
@@ -50,19 +50,14 @@ export default async function SecuritySettingsPage() {
           </AlertDescription>
         </Alert>
       ) : null}
-      <Surface
-        id="password-setup"
-        variant="section"
-        padding="md"
-        className="space-y-6 scroll-mt-24"
-      >
+      <Surface variant="section" padding="md" className="space-y-6 scroll-mt-24">
         <div className="space-y-1">
-          <h2 className="font-headline text-lg font-semibold text-on-surface">Password</h2>
+          <h2 className="font-headline text-lg font-semibold text-on-surface">Sign-in methods</h2>
           <p className="font-body text-sm text-on-surface-variant">
-            Use a strong password you do not reuse on other sites.
+            Manage how you sign in to LAX — password, linked accounts, and related security options.
           </p>
         </div>
-        <SecurityPasswordForm />
+        <SecurityAccountMethods emailVerified={me.emailVerified === true} />
       </Surface>
       <TwoFactorStatusCard twoFactorEnabled={twoFactorEnabled} />
       {deletionRequestedAt ? null : (

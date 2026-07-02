@@ -74,7 +74,7 @@ type AuctionAuthClient = {
     }) => Promise<{ data?: unknown; error?: AuthErr }>;
   };
   twoFactor: {
-    enable: (args: { password: string }) => Promise<{
+    enable: (args: { password?: string }) => Promise<{
       data?: { totpURI?: string; backupCodes?: string[] };
       error?: AuthErr;
     }>;
@@ -86,12 +86,30 @@ type AuctionAuthClient = {
       data?: unknown;
       error?: AuthErr;
     }>;
-    disable: (args: { password: string }) => Promise<{ data?: unknown; error?: AuthErr }>;
-    generateBackupCodes: (args: { password: string }) => Promise<{
+    disable: (args: { password?: string }) => Promise<{ data?: unknown; error?: AuthErr }>;
+    generateBackupCodes: (args: { password?: string }) => Promise<{
       data?: { backupCodes?: string[] };
       error?: AuthErr;
     }>;
   };
+  listAccounts: () => Promise<{
+    data?: Array<{
+      id: string;
+      accountId: string;
+      providerId: string;
+      createdAt: string;
+      updatedAt: string;
+      scopes: string[];
+    }> | null;
+    error?: AuthErr;
+  }>;
+  linkSocial: (args: {
+    provider: "google" | "apple";
+    callbackURL: string;
+  }) => Promise<{ data?: unknown; error?: AuthErr }>;
+  unlinkAccount: (args: {
+    providerId: "google" | "apple";
+  }) => Promise<{ data?: unknown; error?: AuthErr }>;
 };
 
 /** Points at the canonical auth issuer; Better Auth uses `/api/auth` routes on that host. */

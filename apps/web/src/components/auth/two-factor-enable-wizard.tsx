@@ -6,6 +6,7 @@ import { UnderlineInput } from "@/components/ui/input";
 import { useEnableTwoFactorController } from "@/lib/auth/hooks/use-enable-two-factor-controller";
 import { parseTotpSecretFromUri } from "@/lib/auth/totp-uri";
 import { notify } from "@/lib/ui/notify";
+import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import {
   Card,
@@ -22,9 +23,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Skeleton } from "@auction/ui/components/skeleton";
 import { WizardProgress } from "@auction/ui/components/wizard-progress";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import type { Control } from "react-hook-form";
 
 const QRCodeSVG = dynamic(() => import("qrcode.react").then((m) => m.QRCodeSVG), {
   ssr: false,
@@ -36,16 +40,14 @@ const QRCodeSVG = dynamic(() => import("qrcode.react").then((m) => m.QRCodeSVG),
   ),
 });
 
-const steps = [
-  { id: "password", label: "Password" },
-  { id: "qr", label: "Scan" },
-  { id: "confirm", label: "Verify" },
-  { id: "backup", label: "Save codes" },
-] as const;
-
 export function TwoFactorEnableWizard() {
   const router = useRouter();
   const {
+    hasPassword,
+    accountsLoading,
+    accountsError,
+    accountsFirstLoadFailed,
+    refreshAccounts,
     step,
     totpURI,
     backupCodes,
@@ -53,10 +55,28 @@ export function TwoFactorEnableWizard() {
     pwdForm,
     confirmForm,
     startEnable,
+    startPasswordlessEnable,
     verifyEnable,
     goToConfirm,
     resetWizard,
   } = useEnableTwoFactorController();
+
+  const steps = useMemo(() => {
+    const usePasswordFlow = accountsLoading ? true : hasPassword;
+    return usePasswordFlow
+      ? ([
+          { id: "password", label: "Password" },
+          { id: "qr", label: "Scan" },
+          { id: "confirm", label: "Verify" },
+          { id: "backup", label: "Save codes" },
+        ] as const)
+      : ([
+          { id: "intro", label: "Confirm" },
+          { id: "qr", label: "Scan" },
+          { id: "confirm", label: "Verify" },
+          { id: "backup", label: "Save codes" },
+        ] as const);
+  }, [accountsLoading, hasPassword]);
 
   const secret = totpURI ? parseTotpSecretFromUri(totpURI) : null;
 
@@ -68,17 +88,49 @@ export function TwoFactorEnableWizard() {
         <CardTitle className="text-base">Set up authenticator</CardTitle>
         <CardDescription>
           Use an app such as Google Authenticator, 1Password, or Authy to scan the QR code.
+          {!accountsLoading && !hasPassword ? (
+            <>
+              {" "}
+              Because you sign in without a password, two-factor protects password and magic-link
+              sign-ins — we recommend also setting a password in Security settings.
+            </>
+          ) : null}
         </CardDescription>
-        <WizardProgress
-          steps={steps.map((s) => ({ id: s.id, label: s.label }))}
-          currentIndex={stepIndex < 0 ? 0 : stepIndex}
-          maxReachableIndex={stepIndex < 0 ? 0 : stepIndex}
-          variant="chips"
-          className="mt-4"
-        />
+        {accountsLoading ? (
+          <Skeleton className="mt-4 h-8 w-full" aria-hidden />
+        ) : (
+          <WizardProgress
+            steps={steps.map((s) => ({ id: s.id, label: s.label }))}
+            currentIndex={stepIndex < 0 ? 0 : stepIndex}
+            maxReachableIndex={stepIndex < 0 ? 0 : stepIndex}
+            variant="chips"
+            className="mt-4"
+          />
+        )}
       </CardHeader>
       <CardContent className="space-y-8">
-        {step === "password" ? (
+        {accountsFirstLoadFailed ? (
+          <Alert variant="destructive">
+            <AlertDescription className="space-y-3">
+              <p>{accountsError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void refreshAccounts()}
+              >
+                Try again
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {!accountsFirstLoadFailed && accountsLoading ? (
+          <div className="space-y-4" aria-busy="true" aria-label="Loading account settings">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : null}
+        {!accountsFirstLoadFailed && !accountsLoading && step === "password" ? (
           <Form {...pwdForm}>
             <form className="space-y-6" onSubmit={startEnable} noValidate>
               {pwdForm.formState.errors.root ? (
@@ -87,7 +139,7 @@ export function TwoFactorEnableWizard() {
                 </p>
               ) : null}
               <FormField
-                control={pwdForm.control}
+                control={pwdForm.control as unknown as Control<{ password: string }>}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
@@ -114,7 +166,28 @@ export function TwoFactorEnableWizard() {
           </Form>
         ) : null}
 
-        {step === "qr" && totpURI ? (
+        {!accountsFirstLoadFailed && !accountsLoading && step === "intro" ? (
+          <div className="space-y-6">
+            <p className="font-body text-sm text-on-surface-variant">
+              You&apos;re already signed in securely. We&apos;ll use your current session to start
+              two-factor setup — no password required.
+            </p>
+            {pwdForm.formState.errors.root ? (
+              <p role="alert" className="text-sm text-error">
+                {pwdForm.formState.errors.root.message}
+              </p>
+            ) : null}
+            <AuthSubmitButton
+              loading={busy}
+              loadingLabel="Starting…"
+              onClick={() => void startPasswordlessEnable()}
+            >
+              Continue
+            </AuthSubmitButton>
+          </div>
+        ) : null}
+
+        {!accountsFirstLoadFailed && !accountsLoading && step === "qr" && totpURI ? (
           <div className="space-y-6">
             <div className="flex justify-center rounded-xl border border-border-hairline bg-white p-4 dark:bg-surface-container-highest">
               <QRCodeSVG value={totpURI} size={192} level="M" includeMargin />
@@ -158,7 +231,7 @@ export function TwoFactorEnableWizard() {
           </div>
         ) : null}
 
-        {step === "confirm" ? (
+        {!accountsFirstLoadFailed && !accountsLoading && step === "confirm" ? (
           <Form {...confirmForm}>
             <form className="space-y-6" onSubmit={verifyEnable} noValidate>
               <FormField
@@ -204,7 +277,10 @@ export function TwoFactorEnableWizard() {
           </Form>
         ) : null}
 
-        {step === "backup" && backupCodes.length > 0 ? (
+        {!accountsFirstLoadFailed &&
+        !accountsLoading &&
+        step === "backup" &&
+        backupCodes.length > 0 ? (
           <div className="space-y-4">
             <p className="font-body text-sm text-on-surface-variant">
               Save these backup codes before continuing. Each code works once if you lose your

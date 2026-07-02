@@ -1,11 +1,35 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useEnableTwoFactorController } from "./use-enable-two-factor-controller";
 
 const enableTwoFactorService = vi.fn();
 const verifyTotpService = vi.fn();
 const notifyTwoFactorEnabledEmail = vi.fn();
 const refetchSession = vi.fn().mockResolvedValue(undefined);
+
+let mockHasPassword = true;
+let mockLoading = true;
+let mockError: string | null = null;
+const mockRefresh = vi.fn();
+
+vi.mock("@/lib/auth/hooks/use-connected-accounts", () => ({
+  useConnectedAccounts: () => ({
+    state: {
+      hasPassword: mockHasPassword,
+      google: mockHasPassword ? null : { id: "1" },
+      apple: null,
+      totalMethods: 1,
+      accounts: [],
+    },
+    loading: mockLoading,
+    refreshing: false,
+    error: mockError,
+    refresh: mockRefresh,
+    canUnlink: () => false,
+    linkSocial: vi.fn(),
+    unlinkAccount: vi.fn(),
+    setupPassword: vi.fn(),
+  }),
+}));
 
 vi.mock("@/lib/auth/services/enable-two-factor.service", () => ({
   enableTwoFactorService: (...args: unknown[]) => enableTwoFactorService(...args),
@@ -27,8 +51,14 @@ vi.mock("@/lib/ui/notify", () => ({
   notify: { error: vi.fn() },
 }));
 
+import { useEnableTwoFactorController } from "./use-enable-two-factor-controller";
+
 describe("useEnableTwoFactorController", () => {
   beforeEach(() => {
+    mockHasPassword = true;
+    mockLoading = false;
+    mockError = null;
+    mockRefresh.mockReset();
     enableTwoFactorService.mockReset();
     verifyTotpService.mockReset();
     notifyTwoFactorEnabledEmail.mockReset();
@@ -52,8 +82,6 @@ describe("useEnableTwoFactorController", () => {
       await result.current.startEnable();
     });
 
-    // Password step only creates an unverified TOTP secret — 2FA isn't on yet,
-    // so no "enabled" email should have gone out.
     expect(result.current.step).toBe("qr");
     expect(notifyTwoFactorEnabledEmail).not.toHaveBeenCalled();
 
@@ -64,7 +92,6 @@ describe("useEnableTwoFactorController", () => {
       await result.current.verifyEnable();
     });
 
-    // Only now has Better Auth actually flipped user.twoFactorEnabled.
     expect(result.current.step).toBe("backup");
     expect(notifyTwoFactorEnabledEmail).toHaveBeenCalledTimes(1);
   });
@@ -107,5 +134,54 @@ describe("useEnableTwoFactorController", () => {
 
     expect(notifyTwoFactorEnabledEmail).not.toHaveBeenCalled();
     expect(result.current.step).toBe("password");
+  });
+
+  it("starts on the intro step and enables 2FA without a password for OAuth-only users", async () => {
+    mockHasPassword = false;
+    enableTwoFactorService.mockResolvedValue({
+      ok: true,
+      totpURI: "otpauth://totp/LAX:a@b.com",
+      backupCodes: ["a1b2c3"],
+    });
+
+    const { result } = renderHook(() => useEnableTwoFactorController());
+
+    expect(result.current.step).toBe("intro");
+    expect(result.current.hasPassword).toBe(false);
+
+    await act(async () => {
+      await result.current.startPasswordlessEnable();
+    });
+
+    expect(enableTwoFactorService).toHaveBeenCalledWith(undefined);
+    expect(result.current.step).toBe("qr");
+  });
+
+  it("re-aligns to the password step once account loading completes for password users", async () => {
+    mockHasPassword = true;
+    mockLoading = true;
+
+    const { result, rerender } = renderHook(() => useEnableTwoFactorController());
+
+    expect(result.current.step).toBe("intro");
+    expect(result.current.accountsLoading).toBe(true);
+
+    mockLoading = false;
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.step).toBe("password");
+    });
+  });
+
+  it("flags first-load account failures and exposes refresh", () => {
+    mockLoading = false;
+    mockError = "Could not load connected accounts.";
+
+    const { result } = renderHook(() => useEnableTwoFactorController());
+
+    expect(result.current.accountsFirstLoadFailed).toBe(true);
+    expect(result.current.accountsError).toBe("Could not load connected accounts.");
+    expect(result.current.refreshAccounts).toBe(mockRefresh);
   });
 });

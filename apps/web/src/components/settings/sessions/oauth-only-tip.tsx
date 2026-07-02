@@ -10,12 +10,19 @@ export function OauthOnlyTip() {
     <p className="rounded-lg border border-border-hairline bg-surface-container-high/30 px-3 py-2 font-body text-xs text-on-surface-variant">
       <span className="font-medium text-on-surface">Tip:</span> Add a password under{" "}
       <Link
-        href="/dashboard/settings?tab=security#password-setup"
+        href="/dashboard/settings/security#password-setup"
+        className="text-link underline-offset-2 hover:underline"
+      >
+        Sign-in methods
+      </Link>{" "}
+      or connect another account under{" "}
+      <Link
+        href="/dashboard/settings/security#connected-accounts"
         className="text-link underline-offset-2 hover:underline"
       >
         Connected accounts
       </Link>{" "}
-      to enable extra security checks on sensitive actions.
+      so you always have more than one way to sign in.
     </p>
   );
 }

@@ -11,6 +11,8 @@ export const templateNames = [
   "password-changed",
   "2fa-enabled",
   "2fa-disabled",
+  "social-account-linked",
+  "social-account-unlinked",
   "new-device-login",
   "password-changed-elsewhere",
   "password-changed-sessions-not-revoked",
@@ -100,6 +102,14 @@ export type TemplateVarsByName = {
     userName?: string | null;
   };
   "2fa-disabled": {
+    userName?: string | null;
+  };
+  "social-account-linked": {
+    provider: "google" | "apple";
+    userName?: string | null;
+  };
+  "social-account-unlinked": {
+    provider: "google" | "apple";
     userName?: string | null;
   };
   "new-device-login": {
@@ -389,6 +399,8 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "password-changed": "live",
   "2fa-enabled": "live",
   "2fa-disabled": "live",
+  "social-account-linked": "live",
+  "social-account-unlinked": "live",
   "new-device-login": "live",
   "password-changed-elsewhere": "live",
   "password-changed-sessions-not-revoked": "live",

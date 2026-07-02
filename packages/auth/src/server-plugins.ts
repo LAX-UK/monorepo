@@ -116,7 +116,7 @@ export function buildJwtAndOidcPlugins(options: {
         staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
       }),
     }),
-    twoFactor({ issuer: "LAX" }),
+    twoFactor({ issuer: "LAX", allowPasswordless: true }),
     magicLink({
       disableSignUp: true,
       storeToken: "hashed",

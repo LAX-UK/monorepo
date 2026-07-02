@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { useEffect, useState } from "react";
+import type { Control } from "react-hook-form";
 
 type TwoFactorRegenerateCodesDialogProps = {
   open: boolean;
@@ -32,19 +33,21 @@ export function TwoFactorRegenerateCodesDialog({
   open,
   onOpenChange,
 }: TwoFactorRegenerateCodesDialogProps) {
-  const [phase, setPhase] = useState<"password" | "codes">("password");
+  const [phase, setPhase] = useState<"confirm" | "codes">("confirm");
   const [codes, setCodes] = useState<string[]>([]);
 
-  const { busy, form, submit } = useRegenerateBackupCodesController((next) => {
-    setCodes(next);
-    setPhase("codes");
-  });
+  const { hasPassword, accountsLoading, busy, form, submit } = useRegenerateBackupCodesController(
+    (next) => {
+      setCodes(next);
+      setPhase("codes");
+    },
+  );
 
   useEffect(() => {
     if (!open) {
-      setPhase("password");
+      setPhase("confirm");
       setCodes([]);
-      form.reset();
+      form.reset({ password: "" });
     }
   }, [open, form]);
 
@@ -59,13 +62,15 @@ export function TwoFactorRegenerateCodesDialog({
         <DialogHeader>
           <DialogTitle>Regenerate backup codes</DialogTitle>
           <DialogDescription>
-            {phase === "password"
-              ? "Enter your password. Your previous backup codes will stop working immediately after new codes are issued."
+            {phase === "confirm"
+              ? hasPassword
+                ? "Enter your password. Your previous backup codes will stop working immediately after new codes are issued."
+                : "Your current session confirms this change. Previous backup codes will stop working immediately after new codes are issued."
               : "Store these new codes — each works once."}
           </DialogDescription>
         </DialogHeader>
 
-        {phase === "password" ? (
+        {phase === "confirm" ? (
           <Form {...form}>
             <form className="space-y-4" onSubmit={submit} noValidate>
               {form.formState.errors.root ? (
@@ -73,25 +78,27 @@ export function TwoFactorRegenerateCodesDialog({
                   {form.formState.errors.root.message}
                 </p>
               ) : null}
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <UnderlineInput
-                        type="password"
-                        autoComplete="current-password"
-                        className="w-full border-b-2 border-outline-variant/40 py-3"
-                        {...field}
-                        disabled={busy}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {hasPassword && !accountsLoading ? (
+                <FormField
+                  control={form.control as unknown as Control<{ password: string }>}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <UnderlineInput
+                          type="password"
+                          autoComplete="current-password"
+                          className="w-full border-b-2 border-outline-variant/40 py-3"
+                          {...field}
+                          disabled={busy || accountsLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button
                   type="button"
@@ -101,7 +108,11 @@ export function TwoFactorRegenerateCodesDialog({
                 >
                   Cancel
                 </Button>
-                <AuthSubmitButton loading={busy} loadingLabel="Generating…">
+                <AuthSubmitButton
+                  loading={busy}
+                  loadingLabel="Generating…"
+                  disabled={accountsLoading}
+                >
                   Generate new codes
                 </AuthSubmitButton>
               </DialogFooter>

@@ -55,4 +55,14 @@ describe("enableTwoFactorService", () => {
     });
     expect(notifyTwoFactorEnabledEmail).not.toHaveBeenCalled();
   });
+
+  it("calls enable without a password for OAuth-only users", async () => {
+    enable.mockResolvedValue({
+      data: { totpURI: "otpauth://totp/LAX:a@b.com", backupCodes: ["a1b2c3"] },
+    });
+
+    await enableTwoFactorService();
+
+    expect(enable).toHaveBeenCalledWith({});
+  });
 });

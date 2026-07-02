@@ -3,8 +3,10 @@ import { authSubmitFailure, mapBetterAuthSecondaryFailure } from "@/lib/auth/aut
 import type { AuthSubmitResult } from "@/lib/auth/auth-submit-result";
 import { notifyTwoFactorDisabledEmail } from "@/lib/auth/security-notify.client";
 
-export async function disableTwoFactorService(password: string): Promise<AuthSubmitResult> {
-  const res = await authClient.twoFactor.disable({ password });
+export async function disableTwoFactorService(password?: string): Promise<AuthSubmitResult> {
+  const res = await authClient.twoFactor.disable(
+    password != null && password.length > 0 ? { password } : {},
+  );
   if (res.error) {
     const rawCode =
       "code" in res.error && typeof res.error.code === "string" ? res.error.code : undefined;

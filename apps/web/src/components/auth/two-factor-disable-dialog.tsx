@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { useEffect } from "react";
+import type { Control } from "react-hook-form";
 
 type TwoFactorDisableDialogProps = {
   open: boolean;
@@ -32,7 +33,7 @@ export function TwoFactorDisableDialog({
   onOpenChange,
   onDisabled,
 }: TwoFactorDisableDialogProps) {
-  const { busy, form, submit } = useDisableTwoFactorController(() => {
+  const { hasPassword, accountsLoading, busy, form, submit } = useDisableTwoFactorController(() => {
     onOpenChange(false);
     onDisabled?.();
   });
@@ -58,6 +59,9 @@ export function TwoFactorDisableDialog({
             <div className="space-y-2 font-body text-sm text-on-surface-variant">
               <p>You will no longer be asked for a code when you sign in.</p>
               <p>Any unused backup codes will stop working.</p>
+              {!hasPassword ? (
+                <p>Your current session confirms this change — no password is required.</p>
+              ) : null}
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -68,25 +72,27 @@ export function TwoFactorDisableDialog({
                 {form.formState.errors.root.message}
               </p>
             ) : null}
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm with your password</FormLabel>
-                  <FormControl>
-                    <UnderlineInput
-                      type="password"
-                      autoComplete="current-password"
-                      className="w-full border-b-2 border-outline-variant/40 py-3"
-                      {...field}
-                      disabled={busy}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {hasPassword && !accountsLoading ? (
+              <FormField
+                control={form.control as unknown as Control<{ password: string }>}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm with your password</FormLabel>
+                    <FormControl>
+                      <UnderlineInput
+                        type="password"
+                        autoComplete="current-password"
+                        className="w-full border-b-2 border-outline-variant/40 py-3"
+                        {...field}
+                        disabled={busy || accountsLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
             <DialogFooter className="gap-2 sm:gap-0">
               <UiButton
                 type="button"
@@ -96,7 +102,7 @@ export function TwoFactorDisableDialog({
               >
                 Cancel
               </UiButton>
-              <UiButton type="submit" variant="destructive" disabled={busy}>
+              <UiButton type="submit" variant="destructive" disabled={busy || accountsLoading}>
                 {busy ? "Disabling…" : "Turn off 2FA"}
               </UiButton>
             </DialogFooter>

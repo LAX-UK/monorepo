@@ -54,13 +54,25 @@ type UseConnectedAccountsReturn = {
   error: string | null;
   refresh: () => Promise<void>;
   /** True when unlinking `providerId` would still leave at least one
-   * sign-in method. UX guard only — Better Auth enforces server-side.
+   * *account row* (password or another social provider). UX guard only —
+   * Better Auth enforces server-side.
+   *
+   * @deprecated Does not account for the email magic-link sign-in method,
+   * so it under-counts available methods for verified-email users. Prefer
+   * `computeSignInMethods` (`@/lib/auth/sign-in-methods`) composed with the
+   * page's `emailVerified` flag, as done in `SecurityAccountMethods`.
    */
   canUnlink: (providerId: LinkableProvider) => boolean;
   linkSocial: (provider: LinkableProvider) => Promise<MutationResult>;
   unlinkAccount: (providerId: LinkableProvider) => Promise<MutationResult>;
   setupPassword: (password: string) => Promise<MutationResult>;
 };
+
+/** Narrow surface for presentational components that consume account state. */
+export type ConnectedAccountsActions = Pick<
+  UseConnectedAccountsReturn,
+  "state" | "loading" | "error" | "canUnlink" | "linkSocial" | "unlinkAccount" | "setupPassword"
+>;
 
 /** Type-narrowing helper for Better Auth client responses, whose shape
  * varies slightly between fetch and SDK calls.
@@ -94,10 +106,7 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const client = authClient as unknown as {
-        listAccounts: () => Promise<{ data: ConnectedAccount[] | null; error: unknown }>;
-      };
-      const { data, error: err } = await client.listAccounts();
+      const { data, error: err } = await authClient.listAccounts();
       if (err) {
         setError(readMessage(err, "Could not load connected accounts."));
         // Keep stale state on background refresh failure so the UI does
@@ -136,15 +145,9 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
   );
 
   const linkSocial = useCallback<UseConnectedAccountsReturn["linkSocial"]>(async (provider) => {
-    const callbackURL = `${window.location.origin}/dashboard/settings?tab=security`;
+    const callbackURL = `${window.location.origin}/dashboard/settings?tab=security&linked=${provider}`;
     try {
-      const client = authClient as unknown as {
-        linkSocial: (args: {
-          provider: LinkableProvider;
-          callbackURL: string;
-        }) => Promise<{ error: unknown }>;
-      };
-      const { error: err } = await client.linkSocial({ provider, callbackURL });
+      const { error: err } = await authClient.linkSocial({ provider, callbackURL });
       if (err) return { ok: false, error: readMessage(err, "Could not start linking.") };
       return { ok: true, value: undefined };
     } catch (e) {
@@ -155,10 +158,7 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
   const unlinkAccount = useCallback<UseConnectedAccountsReturn["unlinkAccount"]>(
     async (providerId) => {
       try {
-        const client = authClient as unknown as {
-          unlinkAccount: (args: { providerId: LinkableProvider }) => Promise<{ error: unknown }>;
-        };
-        const { error: err } = await client.unlinkAccount({ providerId });
+        const { error: err } = await authClient.unlinkAccount({ providerId });
         if (err) return { ok: false, error: readMessage(err, "Could not disconnect.") };
         await refresh();
         return { ok: true, value: undefined };

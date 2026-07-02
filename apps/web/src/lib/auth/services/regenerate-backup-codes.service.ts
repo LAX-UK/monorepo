@@ -10,9 +10,11 @@ export type RegenerateBackupCodesResult =
   | { ok: false; code: AuthErrorCode; message: string };
 
 export async function regenerateBackupCodesService(
-  password: string,
+  password?: string,
 ): Promise<RegenerateBackupCodesResult> {
-  const res = await authClient.twoFactor.generateBackupCodes({ password });
+  const res = await authClient.twoFactor.generateBackupCodes(
+    password != null && password.length > 0 ? { password } : {},
+  );
   if (res.error) {
     const rawCode =
       "code" in res.error && typeof res.error.code === "string" ? res.error.code : undefined;
