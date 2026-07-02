@@ -266,7 +266,7 @@ export function createRegisterRateLimitMiddleware(redis: Redis) {
     const ipKey = `rl:register:ip:${ip}`;
     const ipCount = await slidingIncrement(redis, ipKey, RATE_LIMIT_CONFIG.registerIpWindowSec);
     if (ipCount > RATE_LIMIT_CONFIG.registerIpMax) {
-      return c.json({ error: "Too many requests" }, 429);
+      return c.json({ error: "Too many requests", code: "rate_limited" }, 429);
     }
     const email = await emailFromJsonBody(c.req.raw);
     if (email) {
@@ -277,7 +277,7 @@ export function createRegisterRateLimitMiddleware(redis: Redis) {
         RATE_LIMIT_CONFIG.registerEmailWindowSec,
       );
       if (emailCount > RATE_LIMIT_CONFIG.registerEmailMax) {
-        return c.json({ error: "Too many requests" }, 429);
+        return c.json({ error: "Too many requests", code: "rate_limited" }, 429);
       }
     }
     await next();

@@ -28,6 +28,9 @@ export async function signUpService(input: SignUpSubmitInput): Promise<AuthSubmi
     if (payload.code === "email_already_registered") {
       return authSubmitFailure("email_already_registered");
     }
+    if (payload.code === "rate_limited" || res.status === 429) {
+      return authSubmitFailure("rate_limited");
+    }
     if (
       res.status === 400 &&
       typeof payload.error === "string" &&
