@@ -1,11 +1,12 @@
 "use client";
 
-import { AuthFooterLink } from "@/components/auth/primitives/footer-link";
 import { AuthStepShell } from "@/components/auth/primitives/auth-step-shell";
+import { AuthFooterLink } from "@/components/auth/primitives/footer-link";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SignUpFields } from "@/components/auth/sign-up-fields";
 import { SignUpInviteBanner } from "@/components/auth/sign-up-invite-banner";
 import { SignUpLegalConsent } from "@/components/auth/sign-up-legal-consent";
+import { SignUpOrgNextSteps } from "@/components/auth/sign-up-org-next-steps";
 import { SignUpPersonaSummary } from "@/components/auth/sign-up-persona-summary";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
@@ -54,19 +55,15 @@ export function SignUpDetailsStep({
 
   return (
     <AuthStepShell
-      {...(showWizardProgress
-        ? { wizardSteps: SIGN_UP_WIZARD_STEPS, currentStepIndex: 1 }
-        : {})}
+      {...(showWizardProgress ? { wizardSteps: SIGN_UP_WIZARD_STEPS, currentStepIndex: 1 } : {})}
       title="Your account details"
       visuallyHiddenTitle
     >
-      <SignUpInviteBanner
-        isInvite={isInvite}
-        {...(invitePreview ? { invitePreview } : {})}
-      />
+      <SignUpInviteBanner isInvite={isInvite} {...(invitePreview ? { invitePreview } : {})} />
       {showPersonaSummary && persona ? (
         <SignUpPersonaSummary persona={persona} onChange={onChangePersona} />
       ) : null}
+      {persona === "organisation" ? <SignUpOrgNextSteps /> : null}
       <SignUpFields
         control={control}
         phoneDefaultCountry={phoneDefaultCountry}

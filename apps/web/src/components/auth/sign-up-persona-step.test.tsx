@@ -21,11 +21,7 @@ function Harness() {
   });
   return (
     <Form {...form}>
-      <SignUpPersonaStep
-        control={form.control}
-        onContinue={vi.fn()}
-        loginHref="/login"
-      />
+      <SignUpPersonaStep control={form.control} onContinue={vi.fn()} loginHref="/login" />
     </Form>
   );
 }
@@ -40,6 +36,18 @@ describe("SignUpPersonaStep", () => {
     });
     expect(individual).toBeChecked();
     expect(organisation).not.toBeChecked();
+    expect(screen.queryByTestId("sign-up-org-next-steps")).not.toBeInTheDocument();
+  });
+
+  it("shows org roadmap preview when organisation is selected", () => {
+    render(<Harness />);
+    fireEvent.click(
+      screen.getByRole("radio", {
+        name: /representing a gallery, dealer, or estate/i,
+      }),
+    );
+    expect(screen.getByTestId("sign-up-org-next-steps")).toBeInTheDocument();
+    expect(screen.getByText(/after you verify your email/i)).toBeInTheDocument();
   });
 
   it("calls onContinue when Continue is clicked", () => {

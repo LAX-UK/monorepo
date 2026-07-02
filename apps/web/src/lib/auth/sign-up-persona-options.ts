@@ -1,6 +1,6 @@
-import type { SignupPersona } from "@auction/validators";
 import type { RadioCardOption } from "@auction/ui/components/radio-card-group";
 import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
+import type { SignupPersona } from "@auction/validators";
 
 export const SIGN_UP_WIZARD_STEPS: readonly WizardProgressStep[] = [
   { id: "persona", label: "Account type" },
@@ -25,11 +25,5 @@ export function signUpPersonaLabel(persona: SignupPersona): string {
 }
 
 export function signUpPersonaSummary(persona: SignupPersona): string {
-  return persona === "organisation"
-    ? "Representing a gallery, dealer, or estate"
-    : "An individual";
-}
-
-export function signUpWizardStepIndex(step: "persona" | "details"): number {
-  return step === "persona" ? 0 : 1;
+  return persona === "organisation" ? "Representing a gallery, dealer, or estate" : "An individual";
 }
