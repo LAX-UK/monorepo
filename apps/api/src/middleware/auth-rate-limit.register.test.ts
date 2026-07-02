@@ -61,6 +61,8 @@ describe("createRegisterRateLimitMiddleware", () => {
       body: JSON.stringify({ email: "user@example.com" }),
     });
     expect(res.status).toBe(429);
+    const json = (await res.json()) as { code?: string };
+    expect(json.code).toBe("rate_limited");
   });
 
   it("429s over the per-email limit even when IP is under", async () => {
@@ -74,6 +76,8 @@ describe("createRegisterRateLimitMiddleware", () => {
       body: JSON.stringify({ email: "user@example.com" }),
     });
     expect(res.status).toBe(429);
+    const json = (await res.json()) as { code?: string };
+    expect(json.code).toBe("rate_limited");
   });
 
   it("skips the email bucket when the body has no email", async () => {
