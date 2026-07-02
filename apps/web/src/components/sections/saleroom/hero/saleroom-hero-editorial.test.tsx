@@ -1,7 +1,7 @@
 import { SaleroomHeroEditorial } from "@/components/sections/saleroom/hero/saleroom-hero-editorial";
 import { saleroomHeroFixture } from "@/components/sections/saleroom/saleroom-hero.fixture";
 import { render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/image", () => ({
   default: (props: { alt: string }) => <img alt={props.alt} />,
@@ -16,6 +16,10 @@ vi.mock("@/lib/time/use-client-clock", () => ({
 }));
 
 beforeEach(() => {
+  // Pin wall clock so the server-side `resolveHeroCountdownEnd` (which reads
+  // `new Date()`) sees the same "during sale" instant as the mocked client clock.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-06-12T12:00:00.000Z"));
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     configurable: true,
@@ -29,6 +33,10 @@ beforeEach(() => {
       dispatchEvent: vi.fn(),
     })),
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("SaleroomHeroEditorial", () => {

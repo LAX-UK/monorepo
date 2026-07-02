@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function SalesAuctionRow({ vm, index = 0 }: Props) {
-  const isLive = vm.status === "active" && Boolean(vm.countdownEndIso);
+  const isLive = vm.status === "active";
 
   const actions: SaleAction[] = [];
   if (vm.showRegisterButton) {
@@ -41,9 +41,12 @@ export function SalesAuctionRow({ vm, index = 0 }: Props) {
               href={vm.href}
               coverImageUrl={vm.coverImageUrl}
               coverImageAlt={vm.coverImageAlt}
+              status={vm.status}
+              {...(vm.deliveryMode != null ? { deliveryMode: vm.deliveryMode } : {})}
               isLive={isLive}
               sizes="(max-width: 768px) 100vw, (max-width: 1280px) 300px, 340px"
               className="max-h-[11rem] sm:max-h-none"
+              {...(vm.endTimeIso != null ? { endTimeIso: vm.endTimeIso } : {})}
               {...(vm.countdownEndIso != null ? { countdownEndIso: vm.countdownEndIso } : {})}
             />
             <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-5 md:gap-6 lg:gap-8">

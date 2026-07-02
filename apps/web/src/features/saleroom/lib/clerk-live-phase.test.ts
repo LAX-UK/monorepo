@@ -7,11 +7,16 @@ describe("deriveClerkLivePhase", () => {
     expect(deriveClerkLivePhase("ended", { betweenLots: true }, null)).toBe("setup");
   });
 
-  it("returns paused when session is paused", () => {
+  it("returns paused when session is paused with lots remaining", () => {
     expect(deriveClerkLivePhase("paused", { betweenLots: false }, "lot-1")).toBe("paused");
   });
 
-  it("returns betweenLots when live with no lot on block", () => {
+  it("returns concluded when session is open and all lots are done", () => {
+    expect(deriveClerkLivePhase("live", { betweenLots: true }, null, true)).toBe("concluded");
+    expect(deriveClerkLivePhase("paused", { betweenLots: false }, null, true)).toBe("concluded");
+  });
+
+  it("returns betweenLots when live with no lot on block but lots remain", () => {
     expect(deriveClerkLivePhase("live", { betweenLots: true }, null)).toBe("betweenLots");
     expect(deriveClerkLivePhase("live", { betweenLots: false }, null)).toBe("betweenLots");
   });

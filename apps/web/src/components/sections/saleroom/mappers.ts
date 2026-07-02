@@ -252,6 +252,7 @@ export function mapSaleToHeroVM(
     ...(typeof opts.registeredBidderCount === "number"
       ? { registeredBidderCount: opts.registeredBidderCount }
       : {}),
+    deliveryMode: sale.deliveryMode,
   };
 }
 

@@ -1,6 +1,7 @@
+import { SaleAgendaLiveCountdown } from "@/components/sections/sales/sale-agenda-live-countdown";
 import type { SaleAgendaItemVM } from "@/components/sections/sales/sales-view-models";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { Countdown, LiveDot, cn } from "@auction/ui";
+import { LiveDot, cn } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -93,10 +94,15 @@ export function SalesCalendarMonthGrid({ items }: { items: readonly SaleAgendaIt
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-3 self-center">
-                      {isLive && item.countdownEndIso ? (
-                        <span className="hidden font-label text-xs font-semibold tabular-nums text-cta-bg sm:inline">
-                          <Countdown end={new Date(item.countdownEndIso)} announce={false} />
-                        </span>
+                      {isLive && item.endTimeIso ? (
+                        <SaleAgendaLiveCountdown
+                          status={item.status}
+                          deliveryMode={item.deliveryMode}
+                          endTimeIso={item.endTimeIso}
+                          {...(item.countdownEndIso != null
+                            ? { countdownEndIso: item.countdownEndIso }
+                            : {})}
+                        />
                       ) : isEnded ? (
                         <span className="hidden font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant sm:inline">
                           Results

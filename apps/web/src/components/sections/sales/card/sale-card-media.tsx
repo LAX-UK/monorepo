@@ -68,6 +68,9 @@ function MediaShell({
   coverImageUrl,
   coverImageAlt,
   countdownEndIso,
+  status,
+  deliveryMode,
+  endTimeIso,
   isLive,
   sizes,
   className,
@@ -90,7 +93,14 @@ function MediaShell({
       {scrimClassName ? (
         <div className={cn("pointer-events-none absolute inset-0", scrimClassName)} aria-hidden />
       ) : null}
-      {isLive && countdownEndIso ? <SaleStatusBadge countdownEndIso={countdownEndIso} /> : null}
+      {isLive ? (
+        <SaleStatusBadge
+          {...(status != null ? { status } : {})}
+          {...(deliveryMode != null ? { deliveryMode } : {})}
+          {...(endTimeIso != null ? { endTime: endTimeIso } : {})}
+          {...(countdownEndIso != null ? { countdownEndIso } : {})}
+        />
+      ) : null}
     </>
   );
 

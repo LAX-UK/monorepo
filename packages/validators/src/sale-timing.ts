@@ -1,6 +1,7 @@
 import type {
   OptionalIsoTime,
   SaleCardTimingVM,
+  SaleDeliveryMode,
   SaleTimingSource,
   SaleTimingValue,
 } from "@auction/types";
@@ -31,11 +32,18 @@ export function toSaleCardTimingVM(source: SaleTimingSource): SaleCardTimingVM {
 }
 
 /** ISO end instant for live-sale countdown badges. */
-export function toSaleCountdownEndIso(source: {
-  status: SaleTimingSource["status"];
-  endTime: SaleTimingValue;
-}): OptionalIsoTime {
-  return toActiveCountdownEndIso(source.status, source.endTime);
+export function toSaleCountdownEndIso(
+  source: {
+    status: SaleTimingSource["status"];
+    endTime: SaleTimingValue;
+    deliveryMode?: SaleDeliveryMode;
+  },
+  opts?: { now?: Date },
+): OptionalIsoTime {
+  return toActiveCountdownEndIso(source.status, source.endTime, {
+    ...(source.deliveryMode != null ? { deliveryMode: source.deliveryMode } : {}),
+    ...(opts?.now != null ? { now: opts.now } : {}),
+  });
 }
 
 /** Optional preview-open ISO for sale heroes and agendas. */

@@ -62,4 +62,31 @@ describe("mapOperationsSnapshotToRadarRow", () => {
   it("excludes online sales", () => {
     expect(mapOperationsSnapshotToRadarRow(snapshot("online"))).toBeNull();
   });
+
+  it("flags ended sales with open sessions as needs closing", () => {
+    const row = mapOperationsSnapshotToRadarRow(
+      snapshot("hybrid", {
+        sale: {
+          id: "sale-1",
+          title: "Test sale",
+          status: "ended",
+          deliveryMode: "hybrid",
+          startTime: null,
+          venueName: null,
+          streamUrl: null,
+        },
+        registrations: { pending: 0, approved: 2, rejected: 0 },
+        saleroomSession: {
+          status: "live",
+          currentLotId: null,
+          currentLotNumber: null,
+          currentLotTitle: null,
+        },
+      }),
+    );
+    expect(row).toMatchObject({
+      isLiveSession: true,
+      needsClosing: true,
+    });
+  });
 });

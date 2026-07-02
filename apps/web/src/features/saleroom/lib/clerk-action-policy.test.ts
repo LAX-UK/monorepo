@@ -68,4 +68,21 @@ describe("resolveClerkActionPolicy", () => {
       jumpToLotInRunway: true,
     });
   });
+
+  it("disables all lot actions when concluded", () => {
+    expect(
+      resolveClerkActionPolicy({
+        phase: "concluded",
+        sessionStatus: "live",
+        canHammer: true,
+        nextLot: null,
+        betweenLots: true,
+      }),
+    ).toEqual({
+      advanceInRunway: false,
+      advanceInDock: false,
+      hammerInDock: false,
+      jumpToLotInRunway: false,
+    });
+  });
 });

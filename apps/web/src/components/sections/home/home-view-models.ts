@@ -164,6 +164,7 @@ export type HomeUpcomingAuctionTileVM = {
   startsSoon?: boolean;
   /** Live sale end time for `SaleCardMedia` countdown (active sales only). */
   countdownEndIso?: string;
+  endTimeIso?: string;
   locationLabel: string | null;
 };
 
@@ -367,6 +368,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
   const startsSoon =
     !isLive && Number.isFinite(startMs) && startMs > now && startMs <= now + sevenDaysMs;
   const countdownEndIso = toSaleCountdownEndIso(sale);
+  const endTimeIso = toOptionalIsoString(sale.endTime);
   const locationLabel = saleMarketingLocationLabel(sale);
   return {
     id: sale.id,
@@ -382,6 +384,7 @@ export function toHomeUpcomingAuctionTileVM(row: SaleListRow): HomeUpcomingAucti
     locationLabel,
     ...(isLive ? { isLive: true } : {}),
     ...(startsSoon ? { startsSoon: true } : {}),
+    ...(endTimeIso !== undefined ? { endTimeIso } : {}),
     ...(countdownEndIso !== undefined ? { countdownEndIso } : {}),
   };
 }

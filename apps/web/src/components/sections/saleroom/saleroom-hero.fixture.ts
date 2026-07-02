@@ -17,4 +17,5 @@ export const saleroomHeroFixture: SaleHeroVM = {
   leftColumnLabel: null,
   rightColumnLabel: null,
   liveLotsCount: 8,
+  deliveryMode: "hybrid",
 };

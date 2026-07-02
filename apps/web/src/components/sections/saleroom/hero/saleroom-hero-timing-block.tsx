@@ -51,6 +51,9 @@ export function SaleroomHeroTimingBlock({ hero }: Props) {
           showLiveDot={isActive}
           secondaryLine={secondaryLine}
           className="pt-1"
+          status={hero.status}
+          deliveryMode={hero.deliveryMode}
+          endTime={hero.endTime ?? countdownEnd}
         />
       ) : null}
     </fieldset>

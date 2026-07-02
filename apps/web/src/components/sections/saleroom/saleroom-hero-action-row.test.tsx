@@ -30,6 +30,7 @@ const hero = {
   biddingStartsShort: null,
   leftColumnLabel: null,
   rightColumnLabel: null,
+  deliveryMode: "online",
 } satisfies SaleHeroVM;
 
 describe("SaleroomHeroActionRow", () => {

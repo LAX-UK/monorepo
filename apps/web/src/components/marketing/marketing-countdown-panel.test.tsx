@@ -77,4 +77,40 @@ describe("MarketingCountdownPanel", () => {
     expect(screen.queryByText("Hours")).not.toBeInTheDocument();
     expect(screen.getByText(formatted)).toBeInTheDocument();
   });
+
+  it("returns null for saleroom active sale past scheduled end", () => {
+    vi.mocked(useClientClock).mockReturnValue(Date.parse("2026-06-03T12:00:00.000Z"));
+    const endIso = "2026-06-02T00:00:00.000Z";
+
+    const { container } = render(
+      <MarketingCountdownPanel
+        label="Closes in"
+        endIso={endIso}
+        showLiveDot
+        status="active"
+        deliveryMode="hybrid"
+        endTime={endIso}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows ended copy for online active sale past scheduled end", () => {
+    vi.mocked(useClientClock).mockReturnValue(Date.parse("2026-06-03T12:00:00.000Z"));
+    const endIso = "2026-06-02T00:00:00.000Z";
+
+    render(
+      <MarketingCountdownPanel
+        label="Closes in"
+        endIso={endIso}
+        showLiveDot
+        status="active"
+        deliveryMode="online"
+        endTime={endIso}
+      />,
+    );
+
+    expect(screen.getByText("This sale has ended")).toBeInTheDocument();
+  });
 });

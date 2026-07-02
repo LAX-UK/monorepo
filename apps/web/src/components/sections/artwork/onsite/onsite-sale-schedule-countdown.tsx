@@ -16,7 +16,12 @@ import {
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
-import { normalizeAuctionTime, parseNormalizedIsoMs, toDisplayDate } from "@auction/validators";
+import {
+  isSaleroomDeliveryMode,
+  normalizeAuctionTime,
+  parseNormalizedIsoMs,
+  toDisplayDate,
+} from "@auction/validators";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -25,7 +30,7 @@ type Props = {
   variant?: "default" | "compact";
 };
 
-type Phase = "before" | "during" | "ended";
+type Phase = "before" | "during" | "livePastEnd" | "ended";
 
 /** Coarse bucket for screen-reader announcements (same cadence as packages/ui Countdown). */
 function formatAnnounceBucket(secondsRemaining: number): string {
@@ -61,7 +66,7 @@ function pad2(n: number): string {
 }
 
 function tierToUrgency(phase: Phase, tier: CountdownTier): LiveCountdownUrgency {
-  if (phase === "during") return "live";
+  if (phase === "during" || phase === "livePastEnd") return "live";
   if (tier === "critical") return "imminent";
   if (tier === "urgent") return "soon";
   return "normal";
@@ -112,8 +117,11 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
     if (now == null) return "before";
     if (now < startMs) return "before";
     if (now < endMs) return "during";
+    if (sale.status === "active" && isSaleroomDeliveryMode(sale.deliveryMode)) {
+      return "livePastEnd";
+    }
     return "ended";
-  }, [now, startMs, endMs]);
+  }, [now, startMs, endMs, sale.deliveryMode, sale.status]);
 
   const targetIso =
     phase === "before"
@@ -137,14 +145,18 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
       ? "Live event starts in"
       : phase === "during"
         ? "Auction in progress · ends in"
-        : "This event has ended";
+        : phase === "livePastEnd"
+          ? "Auction in progress"
+          : "This event has ended";
 
   const secondaryLine =
     phase === "before"
       ? `Session opens · ${formatTargetDatetime(sale.startTime)}`
       : phase === "during"
         ? `Session ends · ${formatTargetDatetime(sale.endTime)}`
-        : null;
+        : phase === "livePastEnd"
+          ? `Scheduled end · ${formatTargetDatetime(sale.endTime)}`
+          : null;
 
   const ariaLabel =
     msLeft == null
@@ -153,20 +165,22 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
         ? formatStartsAriaLabel(msLeft)
         : phase === "during"
           ? formatCountdownAriaLabel(msLeft)
-          : "This event has ended";
+          : phase === "livePastEnd"
+            ? "Auction in progress"
+            : "This event has ended";
 
   const secondsRemaining = msLeft != null ? Math.floor(msLeft / 1000) : null;
   const bucket = secondsRemaining != null ? formatAnnounceBucket(secondsRemaining) : "";
   const [liveMessage, setLiveMessage] = useState("");
   useEffect(() => {
-    if (secondsRemaining == null || phase === "ended") return;
+    if (secondsRemaining == null || phase === "ended" || phase === "livePastEnd") return;
     const prefix = phase === "before" ? "Live event starts in" : "Time remaining";
     const msg = secondsRemaining <= 0 ? "This event has ended" : `${prefix}: ${bucket}`;
     setLiveMessage((prev) => (prev === msg ? prev : msg));
   }, [bucket, phase, secondsRemaining]);
 
   const labelRow =
-    phase === "during" ? (
+    phase === "during" || phase === "livePastEnd" ? (
       <span className="inline-flex items-center justify-center gap-2">
         <LiveDot className="live-dot-pulse h-2 w-2" aria-hidden />
         {label}
@@ -175,7 +189,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
       label
     );
 
-  const clock = msLeft != null && phase !== "ended" ? formatCountdownForDisplay(msLeft) : null;
+  const clock = msLeft != null && phase === "during" ? formatCountdownForDisplay(msLeft) : null;
 
   if (variant === "compact") {
     return (
@@ -186,13 +200,18 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
               <LiveDot className="live-dot-pulse h-2 w-2" aria-hidden />
               Live · ends in
             </span>
+          ) : phase === "livePastEnd" ? (
+            <span className="inline-flex items-center gap-1.5">
+              <LiveDot className="live-dot-pulse h-2 w-2" aria-hidden />
+              Live
+            </span>
           ) : phase === "before" ? (
             "Starts in"
           ) : (
             "Ended"
           )}
         </p>
-        {phase !== "ended" ? (
+        {phase === "before" || phase === "during" ? (
           <time
             dateTime={targetIso ?? undefined}
             aria-label={ariaLabel}
@@ -206,14 +225,14 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
           >
             {clock ?? "\u00A0"}
           </time>
-        ) : (
+        ) : phase === "livePastEnd" ? null : (
           <p className="mt-0.5 font-body text-sm text-on-surface-variant">This event has ended</p>
         )}
       </div>
     );
   }
 
-  if (reduced && phase !== "ended" && targetIso) {
+  if (reduced && (phase === "before" || phase === "during") && targetIso) {
     return (
       <div className={cn("text-center", className)}>
         <p className="font-body text-sm font-medium text-on-surface-variant sm:text-base">
@@ -231,7 +250,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
   }
 
   const showDays = segments != null && segments.days > 0;
-  const placeholder = segments == null && phase !== "ended";
+  const placeholder = segments == null && (phase === "before" || phase === "during");
 
   return (
     <div className={cn("text-center", className)}>
@@ -239,7 +258,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
         {labelRow}
       </p>
 
-      {phase !== "ended" ? (
+      {phase === "before" || phase === "during" ? (
         <>
           <span className="sr-only" aria-live="polite" aria-atomic="true">
             {liveMessage}
@@ -287,6 +306,8 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
             <p className="mt-3 font-body text-xs text-on-surface-variant">{secondaryLine}</p>
           ) : null}
         </>
+      ) : phase === "livePastEnd" && secondaryLine ? (
+        <p className="mt-3 font-body text-xs text-on-surface-variant">{secondaryLine}</p>
       ) : null}
     </div>
   );

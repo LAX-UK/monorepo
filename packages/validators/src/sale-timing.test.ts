@@ -26,4 +26,14 @@ describe("toSaleCountdownEndIso", () => {
       toSaleCountdownEndIso({ status: "ended", endTime: "2026-01-02T00:00:00.000Z" }),
     ).toBeUndefined();
   });
+
+  it("threads deliveryMode for saleroom past-end suppression", () => {
+    const now = new Date("2026-01-03T00:00:00.000Z");
+    expect(
+      toSaleCountdownEndIso(
+        { status: "active", endTime: "2026-01-02T00:00:00.000Z", deliveryMode: "hybrid" },
+        { now },
+      ),
+    ).toBeUndefined();
+  });
 });

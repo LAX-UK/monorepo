@@ -27,6 +27,8 @@ export type SaleCalendarCardVM = {
   locationLabel: string | null;
   /** ISO timestamp for live sale countdown (sale end). */
   countdownEndIso?: string;
+  /** ISO end instant for reactive countdown self-heal on long-open pages. */
+  endTimeIso?: string;
   categoryLabel?: string;
   resultsSummary?: { hammer?: string; total?: string };
   deliveryMode: Sale["deliveryMode"];
@@ -101,6 +103,7 @@ export function mapSaleToCalendarCardVM(
 
   const locationLabel = saleMarketingLocationLabel(sale);
   const countdownEndIso = toSaleCountdownEndIso(sale);
+  const endTimeIso = toOptionalIsoString(sale.endTime);
 
   return {
     id: sale.id,
@@ -116,6 +119,7 @@ export function mapSaleToCalendarCardVM(
     itemsLabel,
     locationLabel,
     deliveryMode: sale.deliveryMode,
+    ...(endTimeIso ? { endTimeIso } : {}),
     ...(countdownEndIso ? { countdownEndIso } : {}),
     ...(categoryLabel ? { categoryLabel } : {}),
     ...(resultsSummary ? { resultsSummary } : {}),
@@ -212,6 +216,7 @@ export function mapSaleToFeaturedAuctionCardVM(
     itemsLabel: base.itemsLabel,
     status: base.status,
     deliveryMode: base.deliveryMode,
+    ...(base.endTimeIso ? { endTimeIso: base.endTimeIso } : {}),
     ...(base.countdownEndIso ? { countdownEndIso: base.countdownEndIso } : {}),
   };
 }
@@ -246,6 +251,8 @@ export type SaleAgendaItemVM = {
   auctionTypeLabel: string;
   itemsLabel: string;
   locationLabel: string | null;
+  deliveryMode: Sale["deliveryMode"];
+  endTimeIso?: string;
   /** ISO end for the live-sale countdown. */
   countdownEndIso?: string;
 };
@@ -255,11 +262,13 @@ export function mapSaleToAgendaItemVM(row: SaleListRow, listLocale = "en-GB"): S
   const start = toDisplayDate(sale.startTime);
   const countdownEndIso = toSaleCountdownEndIso(sale);
   const startIso = toOptionalIsoString(sale.startTime) ?? "";
+  const endTimeIso = toOptionalIsoString(sale.endTime);
   return {
     id: sale.id,
     href: salePath(sale),
     title: sale.title,
     status: sale.status,
+    deliveryMode: sale.deliveryMode,
     startIso,
     dayLabel: String(start.getDate()),
     weekdayLabel: new Intl.DateTimeFormat(listLocale, { weekday: "short" })
@@ -269,6 +278,7 @@ export function mapSaleToAgendaItemVM(row: SaleListRow, listLocale = "en-GB"): S
     auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
     itemsLabel: formatSaleLotsLabel(lotCount),
     locationLabel: saleMarketingLocationLabel(sale),
+    ...(endTimeIso ? { endTimeIso } : {}),
     ...(countdownEndIso ? { countdownEndIso } : {}),
   };
 }
@@ -282,6 +292,7 @@ export function mapSaleToAuctionRowVM(
   const { lead, rest } = buildRowScheduleParts(sale, lots, listLocale);
   const itemsLabel = formatSaleItemsLabel(lotCount);
   const countdownEndIso = toSaleCountdownEndIso(sale);
+  const endTimeIso = toOptionalIsoString(sale.endTime);
 
   return {
     id: sale.id,
@@ -297,6 +308,7 @@ export function mapSaleToAuctionRowVM(
     status: sale.status,
     showRegisterButton: opts.showRegisterButton,
     deliveryMode: sale.deliveryMode,
+    ...(endTimeIso ? { endTimeIso } : {}),
     ...(countdownEndIso ? { countdownEndIso } : {}),
   };
 }

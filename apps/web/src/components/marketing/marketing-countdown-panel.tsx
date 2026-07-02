@@ -12,9 +12,11 @@ import {
   liveUrgencyPulseClass,
   liveUrgencyTextClass,
 } from "@/lib/presenters/status-presentation";
+import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { useClientClock } from "@/lib/time/use-client-clock";
+import type { SaleDeliveryMode } from "@auction/types";
 import { LabelCaps, LiveDot, cn } from "@auction/ui";
-import { toDisplayDate } from "@auction/validators";
+import { isSaleroomDeliveryMode, toDisplayDate } from "@auction/validators";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -25,6 +27,9 @@ type Props = {
   /** Muted line below chips (e.g. "Ends · 14 Jun 2026, 18:00"). */
   secondaryLine?: string | null;
   className?: string;
+  status?: string;
+  deliveryMode?: SaleDeliveryMode;
+  endTime?: Date | string;
 };
 
 function formatAnnounceBucket(secondsRemaining: number): string {
@@ -100,14 +105,30 @@ export function MarketingCountdownPanel({
   showLiveDot = false,
   secondaryLine,
   className,
+  status,
+  deliveryMode,
+  endTime,
 }: Props) {
   const reduced = useReducedMotion();
   const nowMs = useClientClock(1000);
 
+  const isActiveSaleroomCountdown =
+    status === "active" && deliveryMode != null && isSaleroomDeliveryMode(deliveryMode);
+
+  const reactiveEndIso = useActiveSaleCountdownEndIso({
+    status: status ?? "active",
+    endTime: endTime ?? endIso,
+    ...(deliveryMode != null ? { deliveryMode } : {}),
+    initialEndIso: endIso,
+  });
+
+  const effectiveEndIso = isActiveSaleroomCountdown ? reactiveEndIso : endIso;
+
   const endMs = useMemo(() => {
-    const d = toDisplayDate(endIso);
+    if (effectiveEndIso == null) return Number.NaN;
+    const d = toDisplayDate(effectiveEndIso);
     return Number.isNaN(d.getTime()) ? Number.NaN : d.getTime();
-  }, [endIso]);
+  }, [effectiveEndIso]);
 
   const msLeft = useMemo(() => {
     if (nowMs == null || !Number.isFinite(endMs)) return null;
@@ -137,8 +158,12 @@ export function MarketingCountdownPanel({
   const showDays = segments != null && segments.days > 0;
   const placeholder = segments == null && !ended;
 
-  if (reduced && Number.isFinite(endMs)) {
-    const formatted = toDisplayDate(endIso).toLocaleString("en-GB", {
+  if (isActiveSaleroomCountdown && effectiveEndIso == null) {
+    return null;
+  }
+
+  if (reduced && Number.isFinite(endMs) && effectiveEndIso != null) {
+    const formatted = toDisplayDate(effectiveEndIso).toLocaleString("en-GB", {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -149,7 +174,7 @@ export function MarketingCountdownPanel({
           {label}
         </LabelCaps>
         <time
-          dateTime={endIso}
+          dateTime={effectiveEndIso}
           className="mt-2 block font-headline text-lg font-semibold tabular-nums text-on-surface"
           suppressHydrationWarning
         >
@@ -177,7 +202,7 @@ export function MarketingCountdownPanel({
             {liveMessage}
           </span>
           <time
-            dateTime={endIso}
+            dateTime={effectiveEndIso}
             aria-label={ariaLabel}
             className="mt-3 block"
             suppressHydrationWarning

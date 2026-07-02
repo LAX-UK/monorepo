@@ -1,4 +1,5 @@
-import type { AuctionTimingValue, OptionalIsoTime } from "@auction/types";
+import type { AuctionTimingValue, OptionalIsoTime, SaleDeliveryMode } from "@auction/types";
+import { isSaleroomDeliveryMode } from "./sale-mode-policy.js";
 
 /** Normalize an auction instant to ISO 8601, or null when unknown. */
 export function normalizeAuctionTime(value: AuctionTimingValue): string | null {
@@ -39,9 +40,23 @@ export function toRequiredIsoString(value: AuctionTimingValue, fallback = ""): s
 export function toActiveCountdownEndIso(
   status: string,
   endTime: AuctionTimingValue,
+  opts?: { deliveryMode?: SaleDeliveryMode; now?: Date },
 ): OptionalIsoTime {
   if (status !== "active") return undefined;
-  return normalizeAuctionTime(endTime) ?? undefined;
+  const endIso = normalizeAuctionTime(endTime);
+  if (endIso == null) return undefined;
+
+  const deliveryMode = opts?.deliveryMode;
+  const now = opts?.now ?? new Date();
+  if (
+    deliveryMode != null &&
+    isSaleroomDeliveryMode(deliveryMode) &&
+    Date.parse(endIso) <= now.getTime()
+  ) {
+    return undefined;
+  }
+
+  return endIso;
 }
 
 /** Parse normalized ISO to epoch ms; null when unknown. */

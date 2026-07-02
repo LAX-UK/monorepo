@@ -10,6 +10,8 @@ export type SaleCardCommon = {
   status: Sale["status"];
   countdownEndIso?: string;
   deliveryMode?: Sale["deliveryMode"];
+  /** ISO end instant for reactive countdown self-heal on long-open pages. */
+  endTimeIso?: string;
 };
 
 /** OCP: extend actions without changing `SaleCardActions` layout. */
@@ -30,6 +32,9 @@ export type SaleCardMediaProps = Pick<
   "href" | "coverImageUrl" | "coverImageAlt"
 > & {
   countdownEndIso?: string;
+  status?: Sale["status"] | "voided";
+  deliveryMode?: Sale["deliveryMode"];
+  endTimeIso?: string;
   /** When true, show live pill + countdown (caller derives from status + countdown). */
   isLive: boolean;
   sizes?: string;

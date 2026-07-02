@@ -1,8 +1,10 @@
+import type { ClerkLivePhase } from "@/features/saleroom/lib/clerk-live-phase";
 import type { ClerkAlertDefinition } from "@/features/saleroom/types/clerk-console.types";
 
 export type ClerkAlertContext = {
   paddleRosterEmpty: boolean;
   saleStatus?: string;
+  livePhase?: ClerkLivePhase;
   pendingTelForLot: number;
   selfServiceConflict: boolean;
   error?: string | null;
@@ -44,11 +46,21 @@ export function buildClerkConsoleAlertDefinitions(ctx: ClerkAlertContext): Clerk
     });
   }
 
-  if (ctx.saleStatus && ctx.saleStatus !== "active") {
+  if (ctx.saleStatus && (ctx.saleStatus === "draft" || ctx.saleStatus === "scheduled")) {
     alerts.push({
       key: "sale",
       title: "Sale not live yet",
       body: "Saleroom session controls work best when the sale status is active.",
+      variant: "default",
+      priority: 11,
+    });
+  }
+
+  if (ctx.livePhase === "concluded") {
+    alerts.push({
+      key: "concluded",
+      title: "Sale has ended",
+      body: "All lots are complete — close the saleroom session when you're ready.",
       variant: "default",
       priority: 11,
     });

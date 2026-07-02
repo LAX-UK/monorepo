@@ -45,6 +45,7 @@ describe("saleroom-hero-copy", () => {
         status: "active",
         startTime: "2026-01-01T00:00:00.000Z",
         endTime: "2026-01-02T00:00:00.000Z",
+        deliveryMode: "online",
       }),
     ).toBe("2026-01-02T00:00:00.000Z");
     expect(
@@ -52,6 +53,7 @@ describe("saleroom-hero-copy", () => {
         status: "scheduled",
         startTime: "2026-01-01T00:00:00.000Z",
         endTime: "2026-01-02T00:00:00.000Z",
+        deliveryMode: "hybrid",
       }),
     ).toBe("2026-01-01T00:00:00.000Z");
     expect(
@@ -59,7 +61,22 @@ describe("saleroom-hero-copy", () => {
         status: "ended",
         startTime: "2026-01-01T00:00:00.000Z",
         endTime: "2026-01-02T00:00:00.000Z",
+        deliveryMode: "hybrid",
       }),
+    ).toBeNull();
+  });
+
+  it("suppresses past-end countdown for saleroom heroes", () => {
+    expect(
+      resolveHeroCountdownEnd(
+        {
+          status: "active",
+          startTime: "2026-01-01T00:00:00.000Z",
+          endTime: "2026-01-02T00:00:00.000Z",
+          deliveryMode: "hybrid",
+        },
+        new Date("2026-01-03T00:00:00.000Z"),
+      ),
     ).toBeNull();
   });
 

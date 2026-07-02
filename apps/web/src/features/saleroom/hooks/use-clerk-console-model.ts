@@ -78,7 +78,11 @@ export function useClerkConsoleModel(input: Input): ClerkConsoleModel {
       : 0;
 
   const sessionLive = sessionStatus === "live";
-  const livePhase = deriveClerkLivePhase(sessionStatus, progress, currentLotId);
+  const allLotsDone =
+    (sessionStatus === "live" || sessionStatus === "paused") &&
+    nextLot == null &&
+    currentLotId == null;
+  const livePhase = deriveClerkLivePhase(sessionStatus, progress, currentLotId, allLotsDone);
   const phaseLayout = CLERK_PHASE_LAYOUT[livePhase];
   const canHammer = sessionLive && currentLotId != null;
 
@@ -93,6 +97,7 @@ export function useClerkConsoleModel(input: Input): ClerkConsoleModel {
   const alerts = buildClerkConsoleAlertDefinitions({
     paddleRosterEmpty,
     ...(saleStatus ? { saleStatus } : {}),
+    livePhase,
     pendingTelForLot,
     selfServiceConflict,
     ...(error != null ? { error } : {}),

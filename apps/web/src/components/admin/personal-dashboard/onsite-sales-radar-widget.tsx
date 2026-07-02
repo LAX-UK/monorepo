@@ -54,7 +54,13 @@ export function SaleroomSalesRadarWidget({ rows }: Props) {
                     {row.title}
                   </Link>
                   <SaleDeliveryModeBadge mode={row.deliveryMode} />
-                  {row.isLiveSession ? <LiveBadge /> : null}
+                  {row.needsClosing ? (
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                      Needs closing
+                    </span>
+                  ) : row.isLiveSession ? (
+                    <LiveBadge />
+                  ) : null}
                 </div>
                 <p className="font-body text-xs text-on-surface-variant capitalize">
                   {row.status}
@@ -116,6 +122,7 @@ export function mapOperationsSnapshotToRadarRow(
   }
 
   const isLiveSession = sessionStatus === "live" || sessionStatus === "paused";
+  const needsClosing = isLiveSession && snapshot.sale.status === "ended";
 
   return {
     saleId: snapshot.sale.id,
@@ -128,5 +135,6 @@ export function mapOperationsSnapshotToRadarRow(
     sessionStatus,
     currentLotTitle: snapshot.saleroomSession?.currentLotTitle ?? null,
     isLiveSession,
+    needsClosing,
   };
 }

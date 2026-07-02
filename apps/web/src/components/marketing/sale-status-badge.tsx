@@ -1,19 +1,38 @@
 "use client";
 
+import { CountdownFadeSlot } from "@/components/marketing/countdown-fade-slot";
 import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { SaleCalendarCountdown } from "@/components/sections/sales/sale-calendar-countdown";
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
+import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
+import type { Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 
 type SaleStatusBadgeProps = {
-  countdownEndIso: string;
+  countdownEndIso?: string;
+  status?: string;
+  deliveryMode?: Sale["deliveryMode"];
+  endTime?: Date | string;
   className?: string;
 };
 
-/** Live overlay on sale media — registry live badge + countdown until sale end. */
-export function SaleStatusBadge({ countdownEndIso, className }: SaleStatusBadgeProps) {
+/** Live overlay on sale media — registry live badge + optional countdown until sale end. */
+export function SaleStatusBadge({
+  countdownEndIso,
+  status = "active",
+  deliveryMode,
+  endTime,
+  className,
+}: SaleStatusBadgeProps) {
   const tone = useOverlayTone("bottomLeft");
+  const reactiveEndIso = useActiveSaleCountdownEndIso({
+    status,
+    endTime: endTime ?? countdownEndIso ?? "",
+    ...(deliveryMode != null ? { deliveryMode } : {}),
+    ...(countdownEndIso != null ? { initialEndIso: countdownEndIso } : {}),
+  });
+  const showTimer = reactiveEndIso != null;
 
   return (
     <div
@@ -23,13 +42,20 @@ export function SaleStatusBadge({ countdownEndIso, className }: SaleStatusBadgeP
         className,
       )}
       {...overlayToneProps(tone)}
-      aria-label="Live auction, time remaining"
+      aria-label={showTimer ? "Live auction, time remaining" : "Live auction"}
     >
       <SaleLifecycleBadge
         status="active"
         className="border-transparent bg-transparent px-0 py-0 ring-0 text-[color:var(--overlay-fg)] [&_span]:bg-[color:var(--overlay-fg)]"
       />
-      <SaleCalendarCountdown endIso={countdownEndIso} className="text-[color:var(--overlay-fg)]" />
+      <CountdownFadeSlot visible={showTimer}>
+        {showTimer ? (
+          <SaleCalendarCountdown
+            endIso={reactiveEndIso}
+            className="text-[color:var(--overlay-fg)]"
+          />
+        ) : null}
+      </CountdownFadeSlot>
     </div>
   );
 }

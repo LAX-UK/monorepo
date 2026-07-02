@@ -46,7 +46,10 @@ export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }:
     href: tile.href,
     coverImageUrl: tile.coverImageUrl,
     coverImageAlt: tile.coverImageAlt,
+    status: tile.status,
+    deliveryMode: tile.deliveryMode,
     isLive,
+    ...(tile.endTimeIso != null ? { endTimeIso: tile.endTimeIso } : {}),
     ...(tile.countdownEndIso != null ? { countdownEndIso: tile.countdownEndIso } : {}),
   };
 

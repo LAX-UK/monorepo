@@ -17,6 +17,8 @@ export function SaleroomRelatedAuctionCard({ sale, index = 0 }: Props) {
     href: sale.href,
     coverImageUrl: sale.imageUrl,
     coverImageAlt: sale.coverImageAlt,
+    status: sale.status,
+    deliveryMode: sale.deliveryMode,
     isLive: sale.isLive,
     linkMode: "area" as const,
     layout: "calendarRow" as const,

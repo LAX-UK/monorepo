@@ -30,6 +30,13 @@ export const CLERK_PHASE_LAYOUT: Record<ClerkLivePhase, ClerkPhaseLayoutConfig> 
     reserveDockSpace: true,
     stickySessionToolbar: true,
   },
+  concluded: {
+    sessionBarMode: "live",
+    toolsPresentation: "tabbed",
+    defaultToolsTab: "display",
+    reserveDockSpace: true,
+    stickySessionToolbar: true,
+  },
 };
 
 export function resolveDefaultToolsTab(

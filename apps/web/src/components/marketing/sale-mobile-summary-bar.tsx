@@ -1,11 +1,13 @@
 "use client";
 
+import { CountdownFadeSlot } from "@/components/marketing/countdown-fade-slot";
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
 import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile-summary-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import {
   type SaleroomLotRef,
   resolveSaleroomMobileSummaryBarMode,
@@ -54,6 +56,12 @@ export function SaleMobileSummaryBar({
   canParticipate = true,
 }: Props) {
   const saleroomLive = useSaleroomLive();
+  const reactiveLiveEndIso = useActiveSaleCountdownEndIso({
+    status,
+    endTime: end,
+    deliveryMode,
+    ...(status === "active" ? { initialEndIso: end.toISOString() } : {}),
+  });
   const saleroomMode =
     status === "active" && deliveryMode === "hybrid" && saleroomLotRefs.length > 0 && saleroomLive
       ? resolveSaleroomMobileSummaryBarMode(
@@ -94,6 +102,9 @@ export function SaleMobileSummaryBar({
   const target = isUpcoming ? start : end;
   const kicker = isUpcoming ? "Opens in" : "Live sale";
   const isOnsite = !saleAllowsWebBidding(deliveryMode);
+
+  const showCountdown =
+    isUpcoming || deliveryMode === "online" || (status === "active" && reactiveLiveEndIso != null);
 
   const renderCta = () => {
     if (isOnsite) {
@@ -157,11 +168,15 @@ export function SaleMobileSummaryBar({
           size="sm"
         />
         <span className="sr-only">{saleTitle}</span>
-        <Countdown
-          end={target}
-          announce
-          className="font-headline text-sm text-on-surface tabular-nums md:text-base"
-        />
+        <CountdownFadeSlot visible={showCountdown}>
+          {showCountdown ? (
+            <Countdown
+              end={target}
+              announce={isUpcoming || deliveryMode === "online"}
+              className="font-headline text-sm text-on-surface tabular-nums md:text-base"
+            />
+          ) : null}
+        </CountdownFadeSlot>
         {saleroomMode?.kind === "live_no_lot" ? (
           <p className="mt-0.5 font-label text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-variant">
             Saleroom live · {saleroomMode.progressLabel}

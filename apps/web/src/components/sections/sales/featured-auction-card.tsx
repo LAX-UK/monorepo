@@ -12,7 +12,7 @@ type Props = {
 };
 
 export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
-  const isLive = vm.status === "active" && Boolean(vm.countdownEndIso);
+  const isLive = vm.status === "active";
 
   return (
     <li className="h-full min-w-0 flex-1">
@@ -22,12 +22,15 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
             href={vm.href}
             coverImageUrl={vm.coverImageUrl}
             coverImageAlt={vm.coverImageAlt}
+            status={vm.status}
+            deliveryMode={vm.deliveryMode}
             isLive={isLive}
             linkMode="none"
             layout="featured"
             imageRoundedClassName="rounded"
             scrimClassName="rounded bg-black/20"
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            {...(vm.endTimeIso != null ? { endTimeIso: vm.endTimeIso } : {})}
             {...(vm.countdownEndIso != null ? { countdownEndIso: vm.countdownEndIso } : {})}
           />
 

@@ -105,9 +105,13 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
             <input type="hidden" name="saleId" value={saleId} />
             <ConfirmFormSubmit
               formId={`saleroom-close-${saleId}`}
-              variant="secondary"
+              variant={livePhase === "concluded" ? "default" : "secondary"}
               confirmTitle="Close saleroom session?"
-              confirmBody="Bidders will no longer see live updates until you go live again."
+              confirmBody={
+                livePhase === "concluded"
+                  ? "The sale is finished. Closing ends live updates for bidders and staff."
+                  : "Bidders will no longer see live updates until you go live again."
+              }
               confirmLabel="Close session"
               tone="warning"
               className="min-h-11"

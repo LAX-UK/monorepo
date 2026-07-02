@@ -6,6 +6,7 @@ import {
 } from "@/components/sections/sales/sales-view-models";
 import { saleListRow } from "@/lib/sale-list-row";
 import type { Lot, Sale } from "@auction/types";
+import { toSaleCountdownEndIso } from "@auction/validators";
 import { describe, expect, it } from "vitest";
 
 function makeSale(overrides: Partial<Sale> = {}): Sale {
@@ -115,5 +116,39 @@ describe("mapSaleToFeaturedAuctionCardVM", () => {
     const lots: Lot[] = [{ id: "l1" } as Lot, { id: "l2" } as Lot];
     const vm = mapSaleToFeaturedAuctionCardVM(saleListRow(sale, lots));
     expect(vm.itemsLabel).toBe("2 Items");
+  });
+});
+
+describe("saleroom past-end countdown suppression", () => {
+  it("omits countdown for active hybrid sales past scheduled end", () => {
+    const sale = makeSale({
+      status: "active",
+      deliveryMode: "hybrid",
+      endTime: new Date("2026-04-01T10:00:00Z"),
+    });
+    const now = new Date("2026-04-09T10:00:00Z");
+    const vm = mapSaleToCalendarGridCardVM(saleListRow(sale, []), { showRegisterButton: false });
+    expect(
+      toSaleCountdownEndIso(
+        { status: sale.status, endTime: sale.endTime, deliveryMode: sale.deliveryMode },
+        { now },
+      ),
+    ).toBeUndefined();
+    expect(vm.countdownEndIso).toBeUndefined();
+  });
+
+  it("keeps countdown for active online sales past scheduled end", () => {
+    const sale = makeSale({
+      status: "active",
+      deliveryMode: "online",
+      endTime: new Date("2026-04-01T10:00:00Z"),
+    });
+    const now = new Date("2026-04-09T10:00:00Z");
+    expect(
+      toSaleCountdownEndIso(
+        { status: sale.status, endTime: sale.endTime, deliveryMode: sale.deliveryMode },
+        { now },
+      ),
+    ).toBe("2026-04-01T10:00:00.000Z");
   });
 });

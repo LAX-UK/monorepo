@@ -18,6 +18,35 @@ describe("buildClerkConsoleAlertDefinitions", () => {
     expect(alerts[1]?.key).toBe("load-warning-0");
     expect(alerts.some((a) => a.key === "paddles")).toBe(true);
   });
+
+  it("shows pre-sale alert only for draft or scheduled sales", () => {
+    const draft = buildClerkConsoleAlertDefinitions({
+      paddleRosterEmpty: false,
+      saleStatus: "draft",
+      pendingTelForLot: 0,
+      selfServiceConflict: false,
+    });
+    expect(draft.some((a) => a.key === "sale")).toBe(true);
+
+    const ended = buildClerkConsoleAlertDefinitions({
+      paddleRosterEmpty: false,
+      saleStatus: "ended",
+      pendingTelForLot: 0,
+      selfServiceConflict: false,
+    });
+    expect(ended.some((a) => a.key === "sale")).toBe(false);
+  });
+
+  it("shows concluded alert when live phase is concluded", () => {
+    const alerts = buildClerkConsoleAlertDefinitions({
+      paddleRosterEmpty: false,
+      saleStatus: "active",
+      livePhase: "concluded",
+      pendingTelForLot: 0,
+      selfServiceConflict: false,
+    });
+    expect(alerts.some((a) => a.key === "concluded")).toBe(true);
+  });
 });
 
 describe("partitionClerkConsoleAlerts", () => {

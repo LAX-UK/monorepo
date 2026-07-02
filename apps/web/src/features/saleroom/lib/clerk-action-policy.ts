@@ -33,6 +33,15 @@ export function resolveClerkActionPolicy(input: ResolveClerkActionPolicyInput): 
     };
   }
 
+  if (phase === "concluded") {
+    return {
+      advanceInRunway: false,
+      advanceInDock: false,
+      hammerInDock: false,
+      jumpToLotInRunway: false,
+    };
+  }
+
   if (phase === "betweenLots" || phase === "paused") {
     return {
       advanceInRunway: hasNextLot && !betweenLots,

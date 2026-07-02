@@ -1,5 +1,5 @@
 import type { StreamPresentation } from "@/lib/sale-stream-policy";
-import type { LotCardTimingVM, SaleDayMedia } from "@auction/types";
+import type { LotCardTimingVM, Sale, SaleDayMedia } from "@auction/types";
 
 /** View-models for the saleroom page (ISP).
  * These types are intentionally small and opinionated toward rendering; mappers in
@@ -43,6 +43,7 @@ export type SaleHeroVM = {
   estimatedTotalLabel?: string;
   /** Masked registered bidder count when API provides it. */
   registeredBidderCount?: number;
+  deliveryMode: Sale["deliveryMode"];
 };
 
 export type SaleLotCardVM = {

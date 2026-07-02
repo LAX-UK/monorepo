@@ -52,6 +52,7 @@ export type RadarRowVM = {
   sessionStatus: string | null;
   currentLotTitle: string | null;
   isLiveSession: boolean;
+  needsClosing: boolean;
 };
 
 export type ClerkBidEntryState = {

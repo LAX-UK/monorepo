@@ -99,6 +99,21 @@ describe("OnsiteSaleScheduleCountdown", () => {
     expect(screen.queryByText("Sec")).not.toBeInTheDocument();
   });
 
+  it("shows live label without ended copy when active saleroom sale runs past scheduled end", () => {
+    vi.mocked(useClientClock).mockReturnValue(baseNow);
+    const sale = makeSale({
+      status: "active",
+      startTime: new Date(baseNow - 48 * 3_600_000),
+      endTime: new Date(baseNow - 24 * 3_600_000),
+    });
+
+    render(<OnsiteSaleScheduleCountdown sale={sale} />);
+
+    expect(screen.getByText(/Auction in progress/i)).toBeInTheDocument();
+    expect(screen.queryByText("This event has ended")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ended")).not.toBeInTheDocument();
+  });
+
   it("applies live phase label when sale is active", () => {
     vi.mocked(useClientClock).mockReturnValue(baseNow);
     const sale = makeSale({

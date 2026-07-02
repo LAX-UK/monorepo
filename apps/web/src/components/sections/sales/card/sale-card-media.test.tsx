@@ -10,6 +10,10 @@ vi.mock("next/image", () => ({
   }) => <img alt={props.alt} data-testid="next-image" data-crossorigin={props.crossOrigin ?? ""} />,
 }));
 
+vi.mock("@/lib/time/use-client-clock", () => ({
+  useClientClock: vi.fn(() => Date.parse("2026-06-01T12:00:00.000Z")),
+}));
+
 beforeEach(() => {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -116,9 +120,23 @@ describe("SaleCardMedia", () => {
         linkMode="area"
       />,
     );
-    expect(screen.getByLabelText(/live auction/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/live auction, time remaining/i)).toBeInTheDocument();
     expect(screen.getByText("Live")).toBeInTheDocument();
     expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
     expect(screen.getByTestId("next-image")).toHaveAttribute("data-crossorigin", "anonymous");
+  });
+
+  it("shows live pill without countdown when isLive without countdownEndIso", () => {
+    render(
+      <SaleCardMedia
+        href="/sale/1"
+        coverImageUrl="https://example.com/x.jpg"
+        coverImageAlt="Live sale"
+        isLive
+        linkMode="area"
+      />,
+    );
+    expect(screen.getByLabelText(/^live auction$/i)).toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
   });
 });

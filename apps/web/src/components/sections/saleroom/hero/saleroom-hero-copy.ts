@@ -1,6 +1,7 @@
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
+import { toSaleCountdownEndIso } from "@auction/validators";
 
 export type SaleroomHeroLotRef = {
   id: string;
@@ -38,9 +39,21 @@ export function resolveSaleroomHeroLiveTrailing(
 }
 
 export function resolveHeroCountdownEnd(
-  hero: Pick<SaleHeroVM, "status" | "startTime" | "endTime">,
+  hero: Pick<SaleHeroVM, "status" | "startTime" | "endTime" | "deliveryMode">,
+  now = new Date(),
 ): string | null {
-  if (hero.status === "active") return hero.endTime;
+  if (hero.status === "active") {
+    return (
+      toSaleCountdownEndIso(
+        {
+          status: hero.status,
+          endTime: hero.endTime,
+          deliveryMode: hero.deliveryMode,
+        },
+        { now },
+      ) ?? null
+    );
+  }
   if (hero.status === "scheduled") return hero.startTime;
   return null;
 }

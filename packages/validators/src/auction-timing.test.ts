@@ -42,4 +42,40 @@ describe("toActiveCountdownEndIso", () => {
     );
     expect(toActiveCountdownEndIso("scheduled", "2026-06-01T12:00:00.000Z")).toBeUndefined();
   });
+
+  it("suppresses past-end countdown for saleroom delivery modes", () => {
+    const now = new Date("2026-06-02T12:00:00.000Z");
+    expect(
+      toActiveCountdownEndIso("active", "2026-06-01T12:00:00.000Z", {
+        deliveryMode: "hybrid",
+        now,
+      }),
+    ).toBeUndefined();
+    expect(
+      toActiveCountdownEndIso("active", "2026-06-01T12:00:00.000Z", {
+        deliveryMode: "onsite",
+        now,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("keeps past-end countdown for online sales", () => {
+    const now = new Date("2026-06-02T12:00:00.000Z");
+    expect(
+      toActiveCountdownEndIso("active", "2026-06-01T12:00:00.000Z", {
+        deliveryMode: "online",
+        now,
+      }),
+    ).toBe("2026-06-01T12:00:00.000Z");
+  });
+
+  it("keeps future-end countdown for saleroom sales", () => {
+    const now = new Date("2026-05-31T12:00:00.000Z");
+    expect(
+      toActiveCountdownEndIso("active", "2026-06-01T12:00:00.000Z", {
+        deliveryMode: "hybrid",
+        now,
+      }),
+    ).toBe("2026-06-01T12:00:00.000Z");
+  });
 });

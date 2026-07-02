@@ -15,7 +15,7 @@ type Props = {
 };
 
 export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
-  const isLive = vm.status === "active" && Boolean(vm.countdownEndIso);
+  const isLive = vm.status === "active";
 
   const actions: SaleAction[] = [];
   if (vm.showRegisterButton) {
@@ -44,12 +44,15 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
             href={vm.href}
             coverImageUrl={vm.coverImageUrl}
             coverImageAlt={vm.coverImageAlt}
+            status={vm.status}
+            deliveryMode={vm.deliveryMode}
             isLive={isLive}
             linkMode="area"
             layout="featured"
             imageRoundedClassName="rounded"
             scrimClassName="rounded bg-black/20"
             sizes="(max-width: 768px) 50vw, (max-width: 1280px) 50vw, 33vw"
+            {...(vm.endTimeIso != null ? { endTimeIso: vm.endTimeIso } : {})}
             {...(vm.countdownEndIso != null ? { countdownEndIso: vm.countdownEndIso } : {})}
           />
 

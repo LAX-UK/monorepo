@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ClerkLivePhase } from "./clerk-live-phase";
 import { CLERK_PHASE_LAYOUT } from "./clerk-phase-layout";
 
-const PHASES: ClerkLivePhase[] = ["setup", "betweenLots", "selling", "paused"];
+const PHASES: ClerkLivePhase[] = ["setup", "betweenLots", "selling", "paused", "concluded"];
 
 describe("CLERK_PHASE_LAYOUT", () => {
   it("defines config for every live phase", () => {

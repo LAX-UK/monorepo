@@ -28,8 +28,11 @@ function sortHubRows(
     const session = sessions[row.saleId];
     const snap = snapshots[row.saleId];
     const pending = (snap?.registrations.pending ?? 0) + (snap?.telephoneBookings.requested ?? 0);
-    if (session?.status === "live") return 1000 + pending;
-    if (session?.status === "paused") return 900 + pending;
+    const needsClosing =
+      isSaleroomSessionLive(session?.status ?? "none") && row.saleStatus === "ended";
+    if (session?.status === "live" && !needsClosing) return 1000 + pending;
+    if (session?.status === "paused" && !needsClosing) return 900 + pending;
+    if (needsClosing) return 850 + pending;
     if (pending > 0) return 800 + pending;
     if (row.saleStatus === "active") return 100;
     return 0;
@@ -60,6 +63,7 @@ function RoomCard({
   const pendingReg = snapshot?.registrations.pending ?? 0;
   const pendingTel = snapshot?.telephoneBookings.requested ?? 0;
   const needsAttention = pendingReg > 0 || pendingTel > 0;
+  const needsClosing = isSaleroomSessionLive(session.status) && row.saleStatus === "ended";
 
   let progressLabel: string;
   if (session.currentLotId && enriched.currentLotNumber != null && row.totalLots > 0) {
@@ -94,7 +98,13 @@ function RoomCard({
               {row.title}
             </Link>
             <SaleDeliveryModeBadge mode={row.deliveryMode} />
-            {isSaleroomSessionLive(session.status) ? <LiveBadge /> : null}
+            {needsClosing ? (
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                Needs closing
+              </span>
+            ) : isSaleroomSessionLive(session.status) ? (
+              <LiveBadge />
+            ) : null}
             {session.status === "paused" ? (
               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
                 Paused
