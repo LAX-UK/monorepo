@@ -233,6 +233,18 @@
       "types": "./dist/components/ui/wizard-nav.d.ts",
       "default": "./dist/components/ui/wizard-nav.js"
     },
+    "./components/radio-card-group": {
+      "types": "./dist/components/ui/radio-card-group.d.ts",
+      "default": "./dist/components/ui/radio-card-group.js"
+    },
+    "./components/selection-summary-strip": {
+      "types": "./dist/components/ui/selection-summary-strip.d.ts",
+      "default": "./dist/components/ui/selection-summary-strip.js"
+    },
+    "./components/auth-or-divider": {
+      "types": "./dist/components/ui/auth-or-divider.d.ts",
+      "default": "./dist/components/ui/auth-or-divider.js"
+    },
     "./components/wizard-context-strip": {
       "types": "./dist/components/ui/wizard-context-strip.d.ts",
       "default": "./dist/components/ui/wizard-context-strip.js"

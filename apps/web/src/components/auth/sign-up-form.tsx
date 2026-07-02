@@ -1,25 +1,18 @@
 "use client";
 
-import { AuthFooterLink } from "@/components/auth/primitives/footer-link";
-import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SellAuthIntentBanner } from "@/components/auth/sell-auth-intent-banner";
-import { SignUpFields } from "@/components/auth/sign-up-fields";
-import { SignUpLegalConsent } from "@/components/auth/sign-up-legal-consent";
-import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
-import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { SignUpDetailsStep } from "@/components/auth/sign-up-details-step";
+import { SignUpPersonaStep } from "@/components/auth/sign-up-persona-step";
 import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignUpController } from "@/lib/auth/hooks/use-sign-up-controller";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import type { SignUpInvitePreview } from "@/lib/auth/sign-up-types";
 import { rememberPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
-import { MailCheck } from "lucide-react";
+import { Form } from "@auction/ui/components/form";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
-export type SignUpInvitePreview = {
-  email: string;
-  roleLabel: string;
-  entityScoped: boolean;
-};
+export type { SignUpInvitePreview } from "@/lib/auth/sign-up-types";
 
 type Props = {
   inviteToken?: string;
@@ -46,6 +39,9 @@ export function SignUpForm({
   const forgotPasswordHref = buildAuthHref("/forgot-password", {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
   });
+  const isInvite = Boolean(inviteToken);
+  const showPersonaChoice = orgModuleEnabled && !isInvite;
+  const startAtDetails = isInvite || !showPersonaChoice;
   const controllerOpts = {
     ...(inviteToken ? { inviteToken } : {}),
     ...(invitePreview?.email ? { defaultEmail: invitePreview.email } : {}),
@@ -54,11 +50,15 @@ export function SignUpForm({
     forgotPasswordHref,
     phoneDefaultCountry,
     ...(sellIntent ? { sellIntent: true } : {}),
+    initialStep: startAtDetails ? ("details" as const) : ("persona" as const),
   };
   const {
     form,
     onSubmit,
     loading,
+    step,
+    goToDetails,
+    backToPersona,
     turnstileSiteKey,
     turnstileReady,
     onTurnstileToken,
@@ -73,63 +73,36 @@ export function SignUpForm({
     void rememberPendingEntityInviteAction(inviteToken);
   }, [inviteToken, orgModuleEnabled, invitePreview]);
 
-  const isInvite = Boolean(inviteToken);
-  const showPersonaChoice = orgModuleEnabled && !isInvite;
-
   return (
-    <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
-      <SellAuthIntentBanner />
-      {invitePreview ? (
-        <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary-container/15 p-4">
-          <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-          <div className="flex flex-col gap-1">
-            <p className="font-body text-sm font-medium text-on-surface">
-              You&apos;ve been invited to join London Art Exchange
-            </p>
-            <p className="font-body text-sm text-on-surface-variant">
-              Joining as{" "}
-              <span className="font-medium text-on-surface">{invitePreview.roleLabel}</span>. Finish
-              creating your account below.
-            </p>
-          </div>
-        </div>
-      ) : isInvite ? (
-        <p className="font-body text-sm text-on-surface-variant">
-          You&apos;re signing up with an invitation. Use the email address the invitation was sent
-          to.
-        </p>
-      ) : null}
-      <SignUpFields
-        control={form.control}
-        orgModuleEnabled={showPersonaChoice}
-        phoneDefaultCountry={phoneDefaultCountry}
-        {...(invitePreview?.email ? { lockedEmail: invitePreview.email } : {})}
-      />
-      <SignUpLegalConsent control={form.control} />
-      <TurnstileWidget
-        siteKey={turnstileSiteKey}
-        onToken={onTurnstileToken}
-        onClear={onTurnstileExpire}
-      />
-      {!isInvite ? (
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-4 text-on-surface-variant" aria-hidden>
-            <span className="h-px flex-1 bg-outline-variant/40" />
-            <span className="font-footer-links text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
-              or
-            </span>
-            <span className="h-px flex-1 bg-outline-variant/40" />
-          </div>
-          <SocialSignInButtons next={next} />
-        </div>
-      ) : null}
-
-      <div className="flex flex-col gap-6">
-        <AuthSubmitButton loading={loading} loadingLabel="Signing up…" disabled={!turnstileReady}>
-          {isInvite ? "Accept invitation & sign up" : "Sign Up"}
-        </AuthSubmitButton>
-        <AuthFooterLink prefix="Already have an account?" linkText="Log in" href={loginHref} />
-      </div>
-    </form>
+    <Form {...form}>
+      <form onSubmit={onSubmit} className="flex w-full flex-col gap-10" noValidate>
+        <SellAuthIntentBanner />
+        {step === "persona" ? (
+          <SignUpPersonaStep
+            control={form.control}
+            onContinue={() => void goToDetails()}
+            loginHref={loginHref}
+          />
+        ) : (
+          <SignUpDetailsStep
+            control={form.control}
+            phoneDefaultCountry={phoneDefaultCountry}
+            {...(invitePreview?.email ? { lockedEmail: invitePreview.email } : {})}
+            showPersonaSummary={showPersonaChoice}
+            onChangePersona={backToPersona}
+            showWizardProgress={showPersonaChoice}
+            isInvite={isInvite}
+            {...(invitePreview ? { invitePreview } : {})}
+            next={next}
+            loginHref={loginHref}
+            loading={loading}
+            turnstileReady={turnstileReady}
+            turnstileSiteKey={turnstileSiteKey}
+            onTurnstileToken={onTurnstileToken}
+            onTurnstileExpire={onTurnstileExpire}
+          />
+        )}
+      </form>
+    </Form>
   );
 }

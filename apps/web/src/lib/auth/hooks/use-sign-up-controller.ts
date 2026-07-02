@@ -7,12 +7,14 @@ import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 /** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
 import { signUpService } from "@/lib/auth/services/sign-up.service";
+import type { SignUpWizardStep } from "@/lib/auth/sign-up-types";
+import { useSignUpWizardStep } from "@/lib/auth/hooks/use-sign-up-wizard-step";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import { useForm } from "react-hook-form";
 
 export function useSignUpController(opts?: {
@@ -24,6 +26,7 @@ export function useSignUpController(opts?: {
   forgotPasswordHref?: string;
   phoneDefaultCountry?: string;
   sellIntent?: boolean;
+  initialStep?: SignUpWizardStep;
 }) {
   const router = useRouter();
   const { run, loading } = useAuthSubmit(signUpService);
@@ -47,6 +50,11 @@ export function useSignUpController(opts?: {
     },
   });
 
+  const { step, goToDetails, backToPersona } = useSignUpWizardStep(
+    form,
+    opts?.initialStep ?? "persona",
+  );
+
   const onTurnstileToken = useCallback(
     (t: string) => {
       setTurnstileToken(t);
@@ -59,7 +67,7 @@ export function useSignUpController(opts?: {
     setTurnstileToken(null);
   }, []);
 
-  const onSubmit = form.handleSubmit(async (data) => {
+  const submitRegistration = form.handleSubmit(async (data) => {
     if (needsTurnstile && !turnstileToken) {
       notify.error("Please complete the security check.", { id: "signup-captcha-required" });
       return;
@@ -94,10 +102,25 @@ export function useSignUpController(opts?: {
     notifySignUpRegistrationError(result.code, result.message, authLinks);
   });
 
+  const onSubmit = useCallback(
+    (event?: FormEvent<HTMLFormElement>) => {
+      if (step !== "details") {
+        event?.preventDefault();
+        void goToDetails();
+        return;
+      }
+      void submitRegistration(event);
+    },
+    [step, goToDetails, submitRegistration],
+  );
+
   return {
     form,
     onSubmit,
     loading,
+    step,
+    goToDetails,
+    backToPersona,
     turnstileSiteKey: siteKey,
     turnstileReady: !needsTurnstile || Boolean(turnstileToken),
     onTurnstileToken,

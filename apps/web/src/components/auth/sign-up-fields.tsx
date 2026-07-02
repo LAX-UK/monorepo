@@ -6,28 +6,21 @@ import { PhoneNumberField } from "@/components/forms/phone-number-field";
 import { passwordStrength } from "@/lib/auth/password-strength";
 import { isPersonalDomain } from "@/lib/auth/personal-email-domains";
 import type { SignUpFormValues } from "@/lib/auth/schemas";
-import { Label } from "@auction/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import { useId, useMemo } from "react";
 import { type Control, Controller, useWatch } from "react-hook-form";
 
 export function SignUpFields({
   control,
-  orgModuleEnabled = true,
   phoneDefaultCountry = "GB",
   lockedEmail,
 }: {
   control: Control<SignUpFormValues>;
-  orgModuleEnabled?: boolean;
   phoneDefaultCountry?: string;
   /** Invitation signups: email is fixed to the invited address. */
   lockedEmail?: string;
 }) {
   const pwdHintId = useId();
   const pwdMeterId = useId();
-  const personaGroupId = useId();
-  const personaIndividualId = useId();
-  const personaOrganisationId = useId();
   const personaNudgeId = useId();
   const pwd = useWatch({ control, name: "password" }) ?? "";
   const persona = useWatch({ control, name: "persona" });
@@ -37,76 +30,6 @@ export function SignUpFields({
 
   return (
     <div className="flex flex-col gap-10">
-      {orgModuleEnabled ? (
-        <Controller
-          control={control}
-          name="persona"
-          render={({ field, fieldState }) => (
-            <fieldset
-              aria-labelledby={personaGroupId}
-              aria-describedby={fieldState.error?.message ? `${personaGroupId}-error` : undefined}
-            >
-              <legend
-                id={personaGroupId}
-                className="mb-3 font-label text-sm font-medium text-on-surface"
-              >
-                I'm joining as…
-              </legend>
-              <RadioGroup
-                value={field.value}
-                onValueChange={field.onChange}
-                className="flex flex-col gap-3"
-              >
-                <Label
-                  htmlFor={personaIndividualId}
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant/40 p-3 has-[:checked]:border-primary"
-                >
-                  <RadioGroupItem
-                    id={personaIndividualId}
-                    value="individual"
-                    className="mt-0.5"
-                    ref={field.ref}
-                  />
-                  <span className="flex flex-col gap-0.5">
-                    <span className="font-body text-sm font-medium text-on-surface">
-                      An individual
-                    </span>
-                    <span className="font-body text-xs text-on-surface-variant">
-                      Bid and buy on your own behalf.
-                    </span>
-                  </span>
-                </Label>
-                <Label
-                  htmlFor={personaOrganisationId}
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant/40 p-3 has-[:checked]:border-primary"
-                >
-                  <RadioGroupItem
-                    id={personaOrganisationId}
-                    value="organisation"
-                    className="mt-0.5"
-                  />
-                  <span className="flex flex-col gap-0.5">
-                    <span className="font-body text-sm font-medium text-on-surface">
-                      Representing a gallery, dealer, or estate
-                    </span>
-                    <span className="font-body text-xs text-on-surface-variant">
-                      Sell and consign on behalf of an organisation.
-                    </span>
-                  </span>
-                </Label>
-              </RadioGroup>
-              {fieldState.error?.message ? (
-                <p
-                  id={`${personaGroupId}-error`}
-                  className="mt-2 font-footer-links text-xs text-error"
-                >
-                  {fieldState.error.message}
-                </p>
-              ) : null}
-            </fieldset>
-          )}
-        />
-      ) : null}
       <RHFInput control={control} name="firstName" label="First Name" autoComplete="given-name" />
       <RHFInput control={control} name="lastName" label="Last Name" autoComplete="family-name" />
       {lockedEmail ? (

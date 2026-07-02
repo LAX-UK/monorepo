@@ -201,6 +201,13 @@ export type {
 export { WizardNav } from "./components/ui/wizard-nav.js";
 export type { WizardNavLayout, WizardNavProps } from "./components/ui/wizard-nav.js";
 export { wizardContinueLabel } from "./lib/wizard-copy.js";
+export { RadioCardGroup } from "./components/ui/radio-card-group.js";
+export type { RadioCardGroupProps, RadioCardOption } from "./components/ui/radio-card-group.js";
+export { SelectionSummaryStrip } from "./components/ui/selection-summary-strip.js";
+export type { SelectionSummaryStripProps } from "./components/ui/selection-summary-strip.js";
+export { AuthOrDivider } from "./components/ui/auth-or-divider.js";
+export type { AuthOrDividerProps } from "./components/ui/auth-or-divider.js";
+export { useFocusOnMount } from "./hooks/use-focus-on-mount.js";
 export { WizardContextStrip } from "./components/ui/wizard-context-strip.js";
 export type {
   WizardContextStripProps,

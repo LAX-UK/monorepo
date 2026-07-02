@@ -48,7 +48,7 @@ describe("useSignUpController", () => {
   });
 
   it("redirect URL contains email after successful signup", async () => {
-    const { result } = renderHook(() => useSignUpController());
+    const { result } = renderHook(() => useSignUpController({ initialStep: "details" }));
 
     await act(async () => {
       result.current.form.setValue("firstName", "Ada");
@@ -74,6 +74,7 @@ describe("useSignUpController", () => {
 
     const { result } = renderHook(() =>
       useSignUpController({
+        initialStep: "details",
         loginHref: "/login",
         forgotPasswordHref: "/forgot-password",
       }),
@@ -103,7 +104,7 @@ describe("useSignUpController", () => {
 
   it("shows captcha toast when turnstile is required but missing", async () => {
     mockSiteKey = "site-key";
-    const { result } = renderHook(() => useSignUpController());
+    const { result } = renderHook(() => useSignUpController({ initialStep: "details" }));
 
     await act(async () => {
       result.current.form.setValue("firstName", "Ada");
@@ -140,5 +141,47 @@ describe("useSignUpController", () => {
       result.current.onTurnstileExpire();
     });
     expect(result.current.turnstileReady).toBe(false);
+  });
+
+  it("starts on persona step by default", () => {
+    const { result } = renderHook(() => useSignUpController());
+    expect(result.current.step).toBe("persona");
+  });
+
+  it("starts on details when initialStep is details", () => {
+    const { result } = renderHook(() => useSignUpController({ initialStep: "details" }));
+    expect(result.current.step).toBe("details");
+  });
+
+  it("goToDetails advances to details step", async () => {
+    const { result } = renderHook(() => useSignUpController());
+
+    await act(async () => {
+      await result.current.goToDetails();
+    });
+
+    expect(result.current.step).toBe("details");
+  });
+
+  it("onSubmit on persona step advances to details without calling register", async () => {
+    const { result } = renderHook(() => useSignUpController());
+
+    await act(async () => {
+      await result.current.onSubmit();
+    });
+
+    expect(result.current.step).toBe("details");
+    expect(mocks.run).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("backToPersona returns to persona step", async () => {
+    const { result } = renderHook(() => useSignUpController({ initialStep: "details" }));
+
+    act(() => {
+      result.current.backToPersona();
+    });
+
+    expect(result.current.step).toBe("persona");
   });
 });
