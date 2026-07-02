@@ -11,6 +11,7 @@ export const AUTH_ERROR_CODES = [
   "registration_disabled",
   "registration_validation",
   "registration_failed",
+  "email_already_registered",
   "forgot_password_failed",
   "magic_link_request_failed",
   "reset_password_failed",
@@ -59,6 +60,8 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   registration_disabled: "New registrations are temporarily unavailable. Please try again later.",
   registration_validation: "Please check the highlighted fields and try again.",
   registration_failed: "We could not complete registration. Please try again.",
+  email_already_registered:
+    "This email is already registered. Sign in or reset your password to access your account.",
   forgot_password_failed: "Something went wrong. Please try again.",
   magic_link_request_failed: "We could not send an activation link. Please try again.",
   reset_password_failed: "We could not reset your password. Please request a new link.",

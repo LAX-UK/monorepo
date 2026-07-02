@@ -2,8 +2,10 @@ import type { Auth } from "@auction/auth/server";
 import type { Database } from "@auction/db";
 import type { Env } from "../env.js";
 import { BetterAuthEmailSignupPersister } from "../infrastructure/better-auth-email-signup.persister.js";
+import { BetterAuthVerificationEmailResender } from "../infrastructure/better-auth-verification-email.resender.js";
 import { CompositeErrorClassifier } from "../infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "../infrastructure/console-error.logger.js";
+import { DrizzleExistingAccountReader } from "../infrastructure/drizzle-existing-account.reader.js";
 import { DrizzleRegistrationCompensator } from "../infrastructure/drizzle-registration.compensator.js";
 import { JsonErrorResponseBuilder } from "../infrastructure/json-error-response.builder.js";
 import { NoOpWelcomeNotifier } from "../infrastructure/no-op-welcome.notifier.js";
@@ -195,6 +197,8 @@ export function createUserMiscServices(
 
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
+    new DrizzleExistingAccountReader(db),
+    new BetterAuthVerificationEmailResender(auth, env.WEB_ORIGIN),
     new BetterAuthEmailSignupPersister(auth, env.WEB_ORIGIN),
     new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),

@@ -8,11 +8,13 @@ import { SignUpFields } from "@/components/auth/sign-up-fields";
 import { SignUpLegalConsent } from "@/components/auth/sign-up-legal-consent";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
 import { buildAuthHref } from "@/lib/auth/auth-route-links";
 import { useSignUpController } from "@/lib/auth/hooks/use-sign-up-controller";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { rememberPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
 import { MailCheck } from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
@@ -44,6 +46,9 @@ export function SignUpForm({
   const loginHref = buildAuthHref("/login", {
     ...(safeNext !== undefined ? { next: safeNext } : {}),
   });
+  const forgotPasswordHref = buildAuthHref("/forgot-password", {
+    ...(safeNext !== undefined ? { next: safeNext } : {}),
+  });
   const controllerOpts = {
     ...(inviteToken ? { inviteToken } : {}),
     ...(invitePreview?.email ? { defaultEmail: invitePreview.email } : {}),
@@ -56,6 +61,7 @@ export function SignUpForm({
     onSubmit,
     loading,
     bannerError,
+    lastErrorCode,
     turnstileSiteKey,
     turnstileReady,
     onTurnstileToken,
@@ -79,6 +85,16 @@ export function SignUpForm({
       <FormBanner
         message={(form.formState.errors.root?.message as string | undefined) ?? bannerError ?? null}
       />
+      {lastErrorCode === "email_already_registered" ? (
+        <div className="flex flex-col gap-3">
+          <Link href={loginHref} className={AUTH_FOOTER_LINK_ROW}>
+            Sign in to your account
+          </Link>
+          <Link href={forgotPasswordHref} className={AUTH_FOOTER_LINK_ROW}>
+            Reset your password
+          </Link>
+        </div>
+      ) : null}
       {invitePreview ? (
         <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary-container/15 p-4">
           <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
