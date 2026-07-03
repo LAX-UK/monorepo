@@ -93,6 +93,7 @@ import { DrizzleUploadObjectReader } from "../repositories/drizzle-upload-object
 import { DrizzleUploadPersistenceRepository } from "../repositories/drizzle-upload-persistence.repository.js";
 import { DrizzleUserMetricsReader } from "../repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "../repositories/drizzle-user-suspension.checker.js";
+import { DrizzleUserEmailChangeRepository } from "../repositories/drizzle-user-email-change.repository.js";
 import { DrizzleUserRepository } from "../repositories/drizzle-user.repository.js";
 import { DrizzleVenueRepository } from "../repositories/drizzle-venue.repository.js";
 import { DrizzleWatchlistRepository } from "../repositories/drizzle-watchlist.repository.js";
@@ -136,6 +137,7 @@ import type { ILegalEntityNotificationRecipientReader } from "../services/interf
 import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import type { INotificationPreferenceRepository } from "../services/interfaces/notification-preference.js";
 import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
+import type { IUserEmailChangeRepository } from "../repositories/interfaces/user-email-change.repository.js";
 import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type { IItemSubmissionRepository } from "../services/interfaces/repositories.js";
@@ -149,6 +151,7 @@ export type ContainerRepositories = {
   lotRepo: ReturnType<IRepositoryFactory["forConnection"]>["lot"];
   saleRepo: DrizzleSaleRepository;
   userRepo: DrizzleUserRepository;
+  userEmailChangeRepository: IUserEmailChangeRepository;
   itemSubmissionRepository: IItemSubmissionRepository;
   legalEntityRepository: ILegalEntityRepository;
   legalEntityOnboardingRepository: ILegalEntityOnboardingRepository;
@@ -247,6 +250,7 @@ export function createRepositories(db: Database): ContainerRepositories {
   const lotRepo = repoFactory.root.lot;
   const saleRepo = new DrizzleSaleRepository(db);
   const userRepo = new DrizzleUserRepository(db);
+  const userEmailChangeRepository = new DrizzleUserEmailChangeRepository(db);
   const itemSubmissionRepository = new DrizzleItemSubmissionRepository(db);
   const legalEntityRepository = createDrizzleLegalEntityRepository(db);
   const legalEntityOnboardingRepository = new DrizzleLegalEntityOnboardingRepository(db);
@@ -351,6 +355,7 @@ export function createRepositories(db: Database): ContainerRepositories {
     lotRepo,
     saleRepo,
     userRepo,
+    userEmailChangeRepository,
     itemSubmissionRepository,
     legalEntityRepository,
     legalEntityOnboardingRepository,

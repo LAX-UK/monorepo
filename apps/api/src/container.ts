@@ -228,6 +228,7 @@ export function createContainer(env: Env): Container {
     itemSubmissionService: catalog.itemSubmissionService,
     itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,
     itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
+    userEmailChangeRepository: repos.userEmailChangeRepository,
     legalEntityRepository: repos.legalEntityRepository,
     personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
     legalEntityNotificationRecipients: repos.legalEntityNotificationRecipients,

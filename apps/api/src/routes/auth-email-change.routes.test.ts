@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
+import { DrizzleUserEmailChangeRepository } from "../repositories/drizzle-user-email-change.repository.js";
 import { createEmailChangeToken } from "../lib/email-change-token.js";
 import { createAuthRoutes } from "./auth.js";
 
@@ -106,7 +107,8 @@ function mountAuthDb(db: object, authDb: object = db) {
     },
     userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
     sessionRevocation: { revokeAllForUser: vi.fn(async () => 0) },
-    userService: {},
+    userService: { getById: vi.fn(async () => null) },
+    userEmailChangeRepository: new DrizzleUserEmailChangeRepository(db as never),
     emailService: { enqueue: vi.fn() },
     authAuditPublisher: { publish: vi.fn(async () => {}) },
   };
@@ -302,7 +304,8 @@ describe("DELETE /auth/change-email", () => {
       authenticator: { getSessionUser: vi.fn(async () => null) },
       userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
       sessionRevocation: { revokeAllForUser: vi.fn(async () => {}) },
-      userService: {},
+      userService: { getById: vi.fn(async () => null) },
+      userEmailChangeRepository: new DrizzleUserEmailChangeRepository(db as never),
       emailService: { enqueue: vi.fn() },
       authAuditPublisher: { publish: vi.fn(async () => {}) },
     };

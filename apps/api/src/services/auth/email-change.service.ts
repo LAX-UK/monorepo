@@ -1,60 +1,61 @@
-import { user } from "@auction/db/schema";
+import type { IEmailService } from "@auction/email";
+import type { Database } from "@auction/db";
 import type { RequestEmailChangeInput } from "@auction/validators";
-import { and, eq, ne, sql } from "drizzle-orm";
-import type { Container } from "../../container.js";
+import type { Env } from "../../env.js";
 import { createEmailChangeToken, verifyEmailChangeToken } from "../../lib/email-change-token.js";
 import { createAppLogger } from "../../lib/logger.js";
+import type { IUserEmailChangeRepository } from "../../repositories/interfaces/user-email-change.repository.js";
+import { EmailChangeConfirmError } from "../../repositories/user-email-change.types.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
+import type { UserService } from "../user.service.js";
+import type { SessionRevocationService } from "../session-revocation.service.js";
+
+export type EmailChangeDeps = {
+  userService: Pick<UserService, "getById">;
+  emailChange: IUserEmailChangeRepository;
+  emailService: Pick<IEmailService, "enqueue">;
+  env: Pick<Env, "BETTER_AUTH_SECRET" | "WEB_ORIGIN" | "LOG_LEVEL" | "NODE_ENV">;
+  authDb: Database;
+  sessionRevocation: SessionRevocationService;
+};
 
 export async function requestEmailChange(args: {
-  container: Container;
+  deps: EmailChangeDeps;
   userId: string;
   body: RequestEmailChangeInput;
   authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<{ ok: true } | { ok: false; kind: "user_not_found" | "same_email" | "email_taken" }> {
-  const { container, userId, body, authAudit } = args;
-  const current = await container.userService.getById(userId);
+  const { deps, userId, body, authAudit } = args;
+  const current = await deps.userService.getById(userId);
   if (!current) return { ok: false, kind: "user_not_found" };
 
   const newEmailNorm = body.newEmail.trim().toLowerCase();
   const currentNorm = current.email.trim().toLowerCase();
   if (newEmailNorm === currentNorm) return { ok: false, kind: "same_email" };
 
-  const [clash] = await container.db
-    .select({ id: user.id })
-    .from(user)
-    .where(sql`lower(${user.email}) = ${newEmailNorm}`)
-    .limit(1);
-  if (clash && clash.id !== userId) return { ok: false, kind: "email_taken" };
+  if (await deps.emailChange.isEmailTakenByOtherUser(newEmailNorm, userId)) {
+    return { ok: false, kind: "email_taken" };
+  }
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await container.db
-    .update(user)
-    .set({
-      pendingNewEmail: newEmailNorm,
-      emailChangeOldOk: false,
-      emailChangeNewOk: false,
-      emailChangeExpiresAt: expiresAt,
-      updatedAt: new Date(),
-    })
-    .where(eq(user.id, userId));
+  await deps.emailChange.setPendingChange(userId, newEmailNorm, expiresAt);
 
   const ttlSeconds = 7 * 24 * 60 * 60;
   const tokenOld = createEmailChangeToken(
     { userId, oldEmail: current.email, newEmail: newEmailNorm, confirmFor: "old" },
-    container.env.BETTER_AUTH_SECRET,
+    deps.env.BETTER_AUTH_SECRET,
     ttlSeconds,
   );
   const tokenNew = createEmailChangeToken(
     { userId, oldEmail: current.email, newEmail: newEmailNorm, confirmFor: "new" },
-    container.env.BETTER_AUTH_SECRET,
+    deps.env.BETTER_AUTH_SECRET,
     ttlSeconds,
   );
-  const base = `${container.env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/account/confirm`;
+  const base = `${deps.env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/account/confirm`;
   const urlOld = `${base}?t=${encodeURIComponent(tokenOld)}`;
   const urlNew = `${base}?t=${encodeURIComponent(tokenNew)}`;
 
-  await container.emailService.enqueue({
+  await deps.emailService.enqueue({
     template: "change-email",
     to: current.email,
     userId,
@@ -67,7 +68,7 @@ export async function requestEmailChange(args: {
       recipient: "current",
     },
   });
-  await container.emailService.enqueue({
+  await deps.emailService.enqueue({
     template: "change-email",
     to: newEmailNorm,
     userId,
@@ -94,29 +95,16 @@ export async function requestEmailChange(args: {
 }
 
 export async function clearEmailChangeInProgress(args: {
-  container: Container;
+  deps: EmailChangeDeps;
   userId: string;
   authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<{ ok: true } | { ok: false; kind: "none_in_progress" }> {
-  const { container, userId, authAudit } = args;
+  const { deps, userId, authAudit } = args;
 
-  const [row] = await container.db
-    .select({ pendingNewEmail: user.pendingNewEmail })
-    .from(user)
-    .where(eq(user.id, userId))
-    .limit(1);
-  if (!row?.pendingNewEmail) return { ok: false, kind: "none_in_progress" };
+  const pending = await deps.emailChange.getPendingNewEmail(userId);
+  if (!pending) return { ok: false, kind: "none_in_progress" };
 
-  await container.db
-    .update(user)
-    .set({
-      pendingNewEmail: null,
-      emailChangeOldOk: false,
-      emailChangeNewOk: false,
-      emailChangeExpiresAt: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(user.id, userId));
+  await deps.emailChange.clearPendingChange(userId);
 
   void authAudit
     ?.publish({
@@ -139,81 +127,33 @@ export type ConfirmEmailChangeResult =
     };
 
 export async function confirmEmailChangeFromToken(args: {
-  container: Container;
+  deps: EmailChangeDeps;
   token: string;
   authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<ConfirmEmailChangeResult> {
-  const { container, token, authAudit } = args;
+  const { deps, token, authAudit } = args;
   let payload: ReturnType<typeof verifyEmailChangeToken>;
   try {
-    payload = verifyEmailChangeToken(token, container.env.BETTER_AUTH_SECRET);
+    payload = verifyEmailChangeToken(token, deps.env.BETTER_AUTH_SECRET);
   } catch {
     return { ok: false, kind: "invalid_token" };
   }
 
   try {
-    const completed = await container.authDb.transaction(async (tx) => {
-      const [row] = await tx.select().from(user).where(eq(user.id, payload.userId)).limit(1);
-      if (!row) throw new Error("user_not_found");
-      if (!row.pendingNewEmail || row.pendingNewEmail !== payload.newEmail) {
-        throw new Error("stale_flow");
-      }
-      if (row.email !== payload.oldEmail) {
-        throw new Error("stale_flow");
-      }
-      if (row.emailChangeExpiresAt && row.emailChangeExpiresAt.getTime() < Date.now()) {
-        throw new Error("expired");
-      }
-
-      if (payload.confirmFor === "old") {
-        await tx
-          .update(user)
-          .set({ emailChangeOldOk: true, updatedAt: new Date() })
-          .where(eq(user.id, payload.userId));
-      } else {
-        await tx
-          .update(user)
-          .set({ emailChangeNewOk: true, updatedAt: new Date() })
-          .where(eq(user.id, payload.userId));
-      }
-
-      const [fresh] = await tx.select().from(user).where(eq(user.id, payload.userId)).limit(1);
-      if (!fresh?.pendingNewEmail) return false;
-      if (!fresh.emailChangeOldOk || !fresh.emailChangeNewOk) return false;
-
-      const [other] = await tx
-        .select({ id: user.id })
-        .from(user)
-        .where(
-          and(sql`lower(${user.email}) = ${fresh.pendingNewEmail}`, ne(user.id, payload.userId)),
-        )
-        .limit(1);
-      if (other) throw new Error("email_taken");
-
-      await tx
-        .update(user)
-        .set({
-          email: fresh.pendingNewEmail,
-          emailVerified: true,
-          emailStatus: "ok",
-          emailStatusChangedAt: new Date(),
-          pendingNewEmail: null,
-          emailChangeOldOk: false,
-          emailChangeNewOk: false,
-          emailChangeExpiresAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(user.id, payload.userId));
-      return true;
+    const completed = await deps.emailChange.confirmInAuthTransaction(deps.authDb, {
+      userId: payload.userId,
+      oldEmail: payload.oldEmail,
+      newEmail: payload.newEmail,
+      confirmFor: payload.confirmFor,
     });
 
     if (completed) {
       try {
-        await container.sessionRevocation.revokeAllForUser(payload.userId);
+        await deps.sessionRevocation.revokeAllForUser(payload.userId);
       } catch (revErr) {
         createAppLogger({
-          LOG_LEVEL: container.env.LOG_LEVEL ?? "info",
-          NODE_ENV: container.env.NODE_ENV ?? "production",
+          LOG_LEVEL: deps.env.LOG_LEVEL ?? "info",
+          NODE_ENV: deps.env.NODE_ENV ?? "production",
         }).error(
           { err: revErr instanceof Error ? revErr.message : String(revErr) },
           "email_change_revoke_sessions_failed",
@@ -231,11 +171,7 @@ export async function confirmEmailChangeFromToken(args: {
     }
     return { ok: true, completed: false, confirmFor: payload.confirmFor };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (msg === "user_not_found") return { ok: false, kind: "user_not_found" };
-    if (msg === "stale_flow") return { ok: false, kind: "stale_flow" };
-    if (msg === "expired") return { ok: false, kind: "expired" };
-    if (msg === "email_taken") return { ok: false, kind: "email_taken" };
+    if (e instanceof EmailChangeConfirmError) return { ok: false, kind: e.kind };
     return { ok: false, kind: "invalid_token" };
   }
 }

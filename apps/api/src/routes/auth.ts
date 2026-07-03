@@ -7,6 +7,7 @@ import {
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
+import type { EmailChangeDeps } from "../services/auth/email-change.service.js";
 import { createAppLogger } from "../lib/logger.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -32,6 +33,17 @@ import {
   stampReauthWithPassword,
   stampSessionPasswordProofNow,
 } from "../services/auth/reauth.service.js";
+
+function emailChangeDeps(container: Container): EmailChangeDeps {
+  return {
+    userService: container.userService,
+    emailChange: container.userEmailChangeRepository,
+    emailService: container.emailService,
+    env: container.env,
+    authDb: container.authDb,
+    sessionRevocation: container.sessionRevocation,
+  };
+}
 
 export function createAuthRoutes(container: Container) {
   const r = new Hono();
@@ -173,7 +185,7 @@ export function createAuthRoutes(container: Container) {
 
       const body = c.req.valid("json");
       const out = await requestEmailChange({
-        container,
+        deps: emailChangeDeps(container),
         userId,
         body,
         authAudit: container.authAuditPublisher,
@@ -203,7 +215,7 @@ export function createAuthRoutes(container: Container) {
     if (!userId) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
 
     const out = await clearEmailChangeInProgress({
-      container,
+      deps: emailChangeDeps(container),
       userId,
       authAudit: container.authAuditPublisher,
     });
@@ -221,7 +233,7 @@ export function createAuthRoutes(container: Container) {
     }
 
     const result = await confirmEmailChangeFromToken({
-      container,
+      deps: emailChangeDeps(container),
       token: body.token,
       authAudit: container.authAuditPublisher,
     });
